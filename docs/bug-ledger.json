@@ -1233,6 +1233,31 @@
       ]
     },
     {
+      "id": "BF-0a31d1f",
+      "title": "Malformed completed tool-call arguments whose `oldText`, `newText`, or `content` property separator lost `…",
+      "symptom": "Malformed completed tool-call arguments whose `oldText`, `newText`, or `content` property separator lost `: \"` into `\u003e` (for example `\"newText\"\u003e...`) are now repaired after standard JSON parsing and string repair fail, while valid JSON, other properties, partial streams, and non-object roots keep their original result or error.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Malformed completed tool-call arguments whose `oldText`, `newText`, or `content` property separator lost `: \"` into `\u003e` (for example `\"newText\"\u003e...`) are now repaired after standard JSON parsing and string repair fail, while valid JSON, other properties, partial streams, and non-object roots keep their original result or error.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0a31d1f868",
+          "date": "2026-11-18"
+        }
+      ],
+      "tests": [
+        "ai/tool_args_tag_repair_test.go::TestTagArrowEditIsRepaired",
+        "ai/tool_args_tag_repair_test.go::TestTagArrowLeavesValidAndOtherBrokenJSONAlone",
+        "ai/tool_args_tag_repair_test.go::TestTagArrowSingleAndContent",
+        "coding/cli/tool_args_repair_log_test.go::TestToolArgumentsRepairIsLogged"
+      ]
+    },
+    {
       "id": "BF-0a3e8ce",
       "title": "In print and JSON mode, SIGTERM or SIGHUP no longer hangs when a Go, Python or Rust extension's…",
       "symptom": "In print and JSON mode, SIGTERM or SIGHUP no longer hangs when a Go, Python or Rust extension's `session_shutdown` handler makes a host call that waits for the agent, such as `wait_for_idle`.",
@@ -48615,6 +48640,10 @@
       "id": "D233",
       "title": "A Streamable HTTP application/json reply is capped at maxMessageBytes, and an HTTP error body keeps its first…",
       "entry": "BF-d4e641b"
+    },
+    {
+      "id": "D236",
+      "title": "Repair malformed tag-arrow text properties in completed tool arguments"
     },
     {
       "id": "D247",
