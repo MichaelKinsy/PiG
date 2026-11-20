@@ -149,7 +149,7 @@ func printableProviders(target AuthCommandTarget, runtime *codingagent.RequestAu
 
 // createCredentialPrintRuntime mirrors the ModelRuntime.create call of
 // upstream runAuthCommand for credential printing: file-backed credentials,
-// models.json, and a local availability pass.
+// models.json, and a local availability pass over the file-backed catalog.
 func createCredentialPrintRuntime(ctx context.Context, agentDir string) (*codingagent.RequestAuthRuntime, error) {
 	credentials, err := ai.NewAuthStorage(authJSONPath(agentDir))
 	if err != nil {
