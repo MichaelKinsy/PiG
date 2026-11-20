@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"fmt"
 	"net"
 	"sync"
@@ -10,7 +11,7 @@ import (
 // pig additive (D232): listenMaxConnections bounds the connections a --listen server holds at once: each one builds a full session, and with the isolated default its own extension processes, so an unbounded count is bounded only by memory and descriptors. A connection still waiting for the build lock counts.
 const listenMaxConnections = 64
 
-// pig additive (D232): listenRefusalWriteTimeout bounds the one line a refused connection is sent, written inline in the accept loop, so a peer that never reads cannot hold the loop.
+// pig additive (D232): listenRefusalWriteTimeout bounds the one line a refused connection is sent, written inline in the accept loop, so a peer that never reads cannot hold the loop. It counts from the Write: nothing is computed between arming it and the Write call.
 var listenRefusalWriteTimeout = time.Second
 
 // listenAdmission counts the live connections of a --listen server and refuses the one past max. pig additive (D232).
@@ -61,9 +62,11 @@ func (a *listenAdmission) liveCount() int {
 	return a.live
 }
 
-// refuseConnection sends the response rpc mode gives an error that belongs to no command (Pi's rpc-mode.ts error(undefined, "parse", ...): no id, command "parse") and closes conn.
+// refuseConnection sends the response rpc mode gives an error that belongs to no command (Pi's rpc-mode.ts error(undefined, "parse", ...): no id, command "parse") and closes conn. The line is built before the write deadline is armed and the deadline is armed right before the one Write, so listenRefusalWriteTimeout is the peer's wait for the write: time the server itself spends unscheduled while it builds the line does not use it up, which would drop the line for a peer that reads.
 func refuseConnection(conn net.Conn, max int) {
+	var line bytes.Buffer
+	writeJSONLine(&line, rpcError(nil, "parse", fmt.Sprintf("too many connections (max %d)", max)))
 	_ = conn.SetWriteDeadline(time.Now().Add(listenRefusalWriteTimeout)) //portlint:allow clock a socket write deadline is a wall-clock bound on the peer, not session time
-	writeJSONLine(conn, rpcError(nil, "parse", fmt.Sprintf("too many connections (max %d)", max)))
+	_, _ = conn.Write(line.Bytes())
 	_ = conn.Close()
 }
