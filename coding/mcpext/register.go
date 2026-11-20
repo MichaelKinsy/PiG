@@ -106,13 +106,6 @@ func CreateMcpExtension(options Options) extension.ExtensionFactory {
 func Factory(options Options) func(api API) *Extension {
 	return func(api API) *Extension {
 		e := New(apiHost{api}, options)
-		if options.Terminal != nil && options.Terminal.ChannelRenderer != nil {
-			if renderers, ok := api.(interface {
-				RegisterMessageRenderer(string, extension.MessageRenderer)
-			}); ok {
-				renderers.RegisterMessageRenderer("mcp-channel", options.Terminal.ChannelRenderer)
-			}
-		}
 		if options.Terminal != nil && options.Terminal.ToolRendererResolver != nil {
 			api.RegisterToolRenderer(options.Terminal.ToolRendererResolver)
 		}

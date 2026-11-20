@@ -200,7 +200,7 @@ type ConnectionOptions struct {
 	OnChange func(*Connection)
 	// OnChannel receives validated opted-in channel messages, in transport order.
 	// It must enqueue without awaiting a model turn or making MCP requests.
-	OnChannel func(extension.SendMessagePayload)
+	OnChannel func(extension.SendMessagePayload, *extension.SendMessageOptions)
 	// Log receives the server's log messages (`notifications/message`).
 	Log *McpServerLog
 	// ClientName and ClientVersion identify this client to servers. Defaults:
@@ -228,7 +228,7 @@ type Connection struct {
 	settled       func(context.Context)
 	onTools       func(*Connection)
 	onChange      func(*Connection)
-	onChannel     func(extension.SendMessagePayload)
+	onChannel     func(extension.SendMessagePayload, *extension.SendMessageOptions)
 	log           *McpServerLog
 	clientName    string
 	clientVersion string
@@ -677,8 +677,9 @@ func (c *Connection) connectOnce(ctx context.Context) (*mcp.Client, error) {
 			if _, declared := caps.Experimental["claude/channel"]; !declared || c.lifetime.Err() != nil {
 				return
 			}
-			if message, ok := channelMessage(c.Name(), params); ok {
-				c.onChannel(message)
+			source := c.Name()
+			if message, ok := channelMessage(source, params); ok {
+				c.onChannel(message, channelOptions(source))
 			}
 		})
 	}

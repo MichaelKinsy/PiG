@@ -134,6 +134,8 @@ type CustomMessageEntry struct {
 	Content    any    `json:"content"` // string | []ContentBlock
 	Display    bool   `json:"display"`
 	Details    any    `json:"details,omitempty"`
+	// MCPChannelSource is host attribution, not extension-controlled Details.
+	MCPChannelSource string `json:"mcpChannelSource,omitempty"`
 }
 
 // UnmarshalJSON keeps the member order of `data`, the object an extension wrote (session-manager.ts appendCustomEntry).

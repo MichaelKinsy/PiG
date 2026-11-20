@@ -6,6 +6,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/mcpchannel"
 )
 
 // sendExtensionMessage is an extension's pi.sendMessage in interactive mode. It routes the message as upstream
@@ -28,13 +29,16 @@ func (m *InteractiveMode) sendExtensionMessage(msg extension.CustomMessageRef, o
 	if msg.Details != nil {
 		agentMsg.Custom["details"] = msg.Details
 	}
+	if opts.MCPChannel.Attribute(agentMsg.Custom) {
+		agentMsg.QueueGroup = mcpchannel.CustomType
+	}
 	triggers := opts.TriggerTurn != nil && *opts.TriggerTurn
 	// idle is the route for a message that no running turn takes: it starts a run when the extension asked for one and is otherwise appended.
 	idle := func() error {
 		if triggers {
 			return m.startCustomTurn(agentMsg, opts.DeliverAs == extension.DeliverAsFollowUp)
 		}
-		return m.appendCustomMessageNow(msg)
+		return m.appendCustomMessageNow(agentMsg.Custom)
 	}
 	switch routeCustomMessage(m.agent != nil, m.agent != nil && m.runStreaming(), opts.TriggerTurn, opts.DeliverAs) {
 	case customMessageNextTurn:
@@ -67,18 +71,18 @@ func (m *InteractiveMode) sendExtensionMessage(msg extension.CustomMessageRef, o
 		}
 		return nil
 	default:
-		return m.appendCustomMessageNow(msg)
+		return m.appendCustomMessageNow(agentMsg.Custom)
 	}
 }
 
 // appendCustomMessageNow persists a custom message and renders it, starting no run (upstream _appendCustomMessage).
-func (m *InteractiveMode) appendCustomMessageNow(msg extension.CustomMessageRef) error {
-	entry, err := m.currentSession().customMessageEntry(msg.CustomType, msg.Content, msg.Display, msg.Details, true)
+func (m *InteractiveMode) appendCustomMessageNow(custom map[string]any) error {
+	entry, err := m.currentSession().appendAgentCustomMessage(custom)
 	if err != nil {
 		return err
 	}
 	// The agent renders a message it takes at its message_start (interactive_events.go); only a message that is persisted here without a run is rendered now.
-	if msg.Display {
+	if entry.Display {
 		m.runOnMain(m.runCtx, func() {
 			m.appendCustomMessage(entry)
 			m.tuiInst.Render()

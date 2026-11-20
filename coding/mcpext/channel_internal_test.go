@@ -72,12 +72,12 @@ func TestChannelConfigOptIn(t *testing.T) {
 func TestChannelAdapterUsesCustomSteering(t *testing.T) {
 	fake := extensiontest.NewFake()
 	message, _ := channelMessage("server", json.RawMessage(`{"content":"wake"}`))
-	apiHost{newPiAdapter(fake)}.SendChannel(message)
+	apiHost{newPiAdapter(fake)}.SendChannel(message, channelOptions("server"))
 	if len(fake.SendMessageCalls) != 1 || len(fake.SendUserMessageCalls) != 0 {
 		t.Fatal("channel lost custom provenance")
 	}
 	call := fake.SendMessageCalls[0]
-	if call.Message.CustomType != "mcp-channel" || call.Options.DeliverAs != extension.DeliverAsSteer || call.Options.TriggerTurn == nil || !*call.Options.TriggerTurn {
+	if call.Message.CustomType != "mcp-channel" || call.Options.MCPChannel.Name() != "server" || call.Options.DeliverAs != extension.DeliverAsSteer || call.Options.TriggerTurn == nil || !*call.Options.TriggerTurn {
 		t.Fatalf("call=%+v", call)
 	}
 }

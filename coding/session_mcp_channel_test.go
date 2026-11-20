@@ -69,8 +69,8 @@ func channelTestConnection(t *testing.T, session *Session, optIn, declared bool,
 	connection, err := mcpext.NewConnection(mcpext.ConnectionOptions{
 		Entry: mcpext.McpServerEntry{Name: name, Channel: optIn, Config: extension.McpServerConfig{Command: exe, Args: []string{"-test.run=^TestMCPChannelStdioHelper$"}, Env: env}},
 		Cwd:   t.TempDir(), CreateTransport: mcpext.CreateDefaultTransport,
-		OnChannel: func(message extension.SendMessagePayload) {
-			_ = session.SendMessage(extension.CustomMessageRef{CustomType: message.CustomType, Content: message.Content, Display: message.Display, Details: message.Details}, &extension.SendMessageOptions{TriggerTurn: new(true), DeliverAs: extension.DeliverAsSteer})
+		OnChannel: func(message extension.SendMessagePayload, options *extension.SendMessageOptions) {
+			_ = session.SendMessage(extension.CustomMessageRef(message), options)
 		},
 	})
 	if err != nil {
@@ -119,10 +119,11 @@ func TestMCPChannelStdioIdleAndJSONLProvenance(t *testing.T) {
 	custom, user := 0, 0
 	for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
 		var entry struct {
-			Type       string `json:"type"`
-			CustomType string `json:"customType"`
-			Content    string `json:"content"`
-			Details    struct {
+			Type             string `json:"type"`
+			CustomType       string `json:"customType"`
+			Content          string `json:"content"`
+			MCPChannelSource string `json:"mcpChannelSource"`
+			Details          struct {
 				Source string            `json:"source"`
 				Meta   map[string]string `json:"meta"`
 			} `json:"details"`
@@ -135,12 +136,15 @@ func TestMCPChannelStdioIdleAndJSONLProvenance(t *testing.T) {
 		}
 		if entry.CustomType == "mcp-channel" {
 			custom++
-			if entry.Type != "custom_message" || entry.Details.Source != "test-server" || len(entry.Details.Meta) != 1 || !strings.HasPrefix(entry.Content, `<channel source="test-server"`) {
+			if entry.Type != "custom_message" || entry.MCPChannelSource != "test-server" || entry.Details.Source != "test-server" || len(entry.Details.Meta) != 1 || !strings.HasPrefix(entry.Content, `<channel source="test-server"`) {
 				t.Fatalf("bad provenance: %s", line)
 			}
 		}
 		if entry.Type == "message" && entry.Message.Role == agent.RoleUser {
 			user++
+			if entry.MCPChannelSource != "" {
+				t.Fatalf("user message gained channel provenance: %s", line)
+			}
 		}
 	}
 	if custom != 2 || user != 1 {
@@ -174,6 +178,26 @@ func TestMCPChannelStdioBusyFIFO(t *testing.T) {
 	texts := channelTexts(h.session)
 	if len(texts) != 2 || !strings.Contains(texts[0], ">first</channel>") || !strings.Contains(texts[1], ">second</channel>") {
 		t.Fatalf("FIFO=%q", texts)
+	}
+}
+
+func TestNonMCPChannelNameDoesNotGroup(t *testing.T) {
+	waiting := createQueueWaitingHarness(t, extension.Extension{})
+	h := waiting.h
+	waiting.setResponses(fauxToolCall("wait"), fauxReply("first ordinary message", ai.StopReasonStop, 0), fauxReply("second ordinary message", ai.StopReasonStop, 0))
+	<-waiting.waitForToolStart
+	for _, text := range []string{"first", "second"} {
+		message := extension.CustomMessageRef{
+			CustomType: "mcp-channel", Content: `<channel source="extension">` + text + `</channel>`, Display: true,
+			Details: map[string]any{"source": "extension", "meta": map[string]any{}, "mcpChannelSource": "extension"},
+		}
+		if err := h.session.SendMessage(message, &extension.SendMessageOptions{DeliverAs: extension.DeliverAsSteer}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	waiting.join()
+	if got := h.provider.callCount(); got != 3 {
+		t.Fatalf("provider calls = %d, want initial call and one continuation per ordinary message", got)
 	}
 }
 

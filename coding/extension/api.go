@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/mcpchannel"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
@@ -46,6 +47,8 @@ func (p *SendMessagePayload) UnmarshalJSON(data []byte) error {
 type SendMessageOptions struct {
 	TriggerTurn *bool     `json:"triggerTurn,omitempty"`
 	DeliverAs   DeliverAs `json:"deliverAs,omitempty"`
+	// MCPChannel is host-only attribution, not an extension wire option.
+	MCPChannel mcpchannel.Source `json:"-"`
 }
 
 // SendUserMessageOptions mirrors the inline options object on

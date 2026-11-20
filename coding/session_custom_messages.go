@@ -9,6 +9,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/mcpchannel"
 )
 
 // SendCustomMessage awaits custom-message delivery and any triggered turn. An explicit false TriggerTurn defers an active turn's append until its tool results are complete.
@@ -38,15 +39,14 @@ func (s *Session) sendCustomMessage(ctx context.Context, message extension.Custo
 	if message.Details != nil {
 		fields["details"] = message.Details
 	}
-	app := agent.AgentMessage{Custom: fields}
-	if message.CustomType == "mcp-channel" {
-		// Server pushes arriving during a turn are delivered together at the
-		// next steering boundary, independent of the user's steering mode.
-		app.QueueGroup = "mcp-channel"
-	}
 	var opts extension.SendMessageOptions
 	if options != nil {
 		opts = *options
+	}
+	app := agent.AgentMessage{Custom: fields}
+	if opts.MCPChannel.Attribute(fields) {
+		// pig additive (D657): only validated server pushes share the queue group.
+		app.QueueGroup = mcpchannel.CustomType
 	}
 	s.pendingBashMu.Lock()
 	select {
@@ -202,9 +202,7 @@ func (s *Session) completeCustomMessage(ctx context.Context, finish context.Canc
 
 // appendCustomMessage runs while admission is excluded by pendingBashMu or while the active Agent is suspended at a completed turn.
 func (s *Session) appendCustomMessage(message agent.AgentMessage) error {
-	customType, _ := message.Custom["customType"].(string)
-	display, _ := message.Custom["display"].(bool)
-	if _, err := s.inner.AppendCustomMessageEntry(customType, message.Custom["content"], display, message.Custom["details"]); err != nil {
+	if _, err := s.inner.AppendAgentCustomMessage(message.Custom); err != nil {
 		return err
 	}
 	s.refreshContext()

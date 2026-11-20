@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/mcpchannel"
 )
 
 // ChannelMaxBytes bounds the complete notification params, before decoding.
@@ -51,7 +52,7 @@ func channelMessage(source string, params json.RawMessage) (extension.SendMessag
 	}
 	text.WriteString(">" + channelContentEscaper.Replace(*payload.Content) + "</channel>")
 	return extension.SendMessagePayload{
-		CustomType: "mcp-channel", Content: text.String(), Display: true,
+		CustomType: mcpchannel.CustomType, Content: text.String(), Display: true,
 		Details: map[string]any{"source": source, "meta": meta},
 	}, true
 }
@@ -59,19 +60,21 @@ func channelMessage(source string, params json.RawMessage) (extension.SendMessag
 // channelSender is optional so embedded/headless hosts that cannot start turns
 // continue to work. Delivery is synchronous admission only, not a model call.
 type channelSender interface {
-	SendChannel(extension.SendMessagePayload)
+	SendChannel(extension.SendMessagePayload, *extension.SendMessageOptions)
 }
 
-func (h apiHost) SendChannel(message extension.SendMessagePayload) {
+func (h apiHost) SendChannel(message extension.SendMessagePayload, options *extension.SendMessageOptions) {
 	if sender, ok := h.api.(channelSender); ok {
-		sender.SendChannel(message)
+		sender.SendChannel(message, options)
 	}
 }
 
-func (a *piAdapter) SendChannel(message extension.SendMessagePayload) {
-	a.pi.SendMessage(message, &extension.SendMessageOptions{TriggerTurn: new(true), DeliverAs: extension.DeliverAsSteer})
+func (a *piAdapter) SendChannel(message extension.SendMessagePayload, options *extension.SendMessageOptions) {
+	a.pi.SendMessage(message, options)
 }
 
-func (a *piAdapter) RegisterMessageRenderer(customType string, renderer extension.MessageRenderer) {
-	a.pi.RegisterMessageRenderer(customType, renderer)
+func channelOptions(source string) *extension.SendMessageOptions {
+	return &extension.SendMessageOptions{
+		TriggerTurn: new(true), DeliverAs: extension.DeliverAsSteer, MCPChannel: mcpchannel.ValidatedSource(source),
+	}
 }
