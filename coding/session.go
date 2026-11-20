@@ -3474,6 +3474,10 @@ func (s *Session) checkCompactionDecision(ctx context.Context, assistantMsg *age
 	default:
 		contextTokens = directContextTokens
 	}
+	// pig divergence (D660): a context window of 0 or below is unknown, so the threshold check is skipped; Pi's shouldCompact(tokens, 0, settings) is true after every reply that carries usage.
+	if contextWindow <= 0 {
+		return false, nil
+	}
 	if compaction.ShouldCompact(contextTokens, contextWindow, settings) {
 		return compact(ctx, "threshold", false)
 	}
