@@ -22632,6 +22632,10 @@ headers: {
 "Editor-Plugin-Version": string;
 "Copilot-Integration-Id": string;
 };
+compat: {
+supportsStrictMode: boolean;
+supportsOpenAIGrammarTools: boolean;
+};
 thinkingLevelMap: {
 off: null;
 minimal: string;
@@ -22640,9 +22644,6 @@ medium: string;
 high: string;
 xhigh: string;
 max: null;
-};
-compat: {
-supportsOpenAIGrammarTools: boolean;
 };
 inputLimits: {
 images: {
@@ -22678,6 +22679,10 @@ headers: {
 "Editor-Plugin-Version": string;
 "Copilot-Integration-Id": string;
 };
+compat: {
+supportsStrictMode: boolean;
+supportsOpenAIGrammarTools: boolean;
+};
 thinkingLevelMap: {
 off: null;
 minimal: string;
@@ -22686,9 +22691,6 @@ medium: string;
 high: string;
 xhigh: string;
 max: null;
-};
-compat: {
-supportsOpenAIGrammarTools: boolean;
 };
 inputLimits: {
 images: {
@@ -22731,6 +22733,12 @@ headers: {
 "Editor-Plugin-Version": string;
 "Copilot-Integration-Id": string;
 };
+compat: {
+supportsStrictMode: boolean;
+supportsMidConvoSystemMessages: boolean;
+supportsAdditionalTools: boolean;
+supportsOpenAIGrammarTools: boolean;
+};
 thinkingLevelMap: {
 off: null;
 minimal: string;
@@ -22739,11 +22747,6 @@ medium: string;
 high: string;
 xhigh: string;
 max: string;
-};
-compat: {
-supportsMidConvoSystemMessages: boolean;
-supportsAdditionalTools: boolean;
-supportsOpenAIGrammarTools: boolean;
 };
 inputLimits: {
 images: {
@@ -22786,6 +22789,12 @@ headers: {
 "Editor-Plugin-Version": string;
 "Copilot-Integration-Id": string;
 };
+compat: {
+supportsStrictMode: boolean;
+supportsMidConvoSystemMessages: boolean;
+supportsAdditionalTools: boolean;
+supportsOpenAIGrammarTools: boolean;
+};
 thinkingLevelMap: {
 off: null;
 minimal: string;
@@ -22794,11 +22803,6 @@ medium: string;
 high: string;
 xhigh: string;
 max: string;
-};
-compat: {
-supportsMidConvoSystemMessages: boolean;
-supportsAdditionalTools: boolean;
-supportsOpenAIGrammarTools: boolean;
 };
 inputLimits: {
 images: {
@@ -22841,6 +22845,12 @@ headers: {
 "Editor-Plugin-Version": string;
 "Copilot-Integration-Id": string;
 };
+compat: {
+supportsStrictMode: boolean;
+supportsMidConvoSystemMessages: boolean;
+supportsAdditionalTools: boolean;
+supportsOpenAIGrammarTools: boolean;
+};
 thinkingLevelMap: {
 off: null;
 minimal: string;
@@ -22849,11 +22859,6 @@ medium: string;
 high: string;
 xhigh: string;
 max: string;
-};
-compat: {
-supportsMidConvoSystemMessages: boolean;
-supportsAdditionalTools: boolean;
-supportsOpenAIGrammarTools: boolean;
 };
 inputLimits: {
 images: {
@@ -22896,6 +22901,12 @@ headers: {
 "Editor-Plugin-Version": string;
 "Copilot-Integration-Id": string;
 };
+compat: {
+supportsStrictMode: boolean;
+supportsMidConvoSystemMessages: boolean;
+supportsAdditionalTools: boolean;
+supportsOpenAIGrammarTools: boolean;
+};
 thinkingLevelMap: {
 off: null;
 minimal: null;
@@ -22904,11 +22915,6 @@ medium: string;
 high: string;
 xhigh: string;
 max: string;
-};
-compat: {
-supportsMidConvoSystemMessages: boolean;
-supportsAdditionalTools: boolean;
-supportsOpenAIGrammarTools: boolean;
 };
 inputLimits: {
 images: {
@@ -22951,6 +22957,12 @@ headers: {
 "Editor-Plugin-Version": string;
 "Copilot-Integration-Id": string;
 };
+compat: {
+supportsStrictMode: boolean;
+supportsMidConvoSystemMessages: boolean;
+supportsAdditionalTools: boolean;
+supportsOpenAIGrammarTools: boolean;
+};
 thinkingLevelMap: {
 off: string;
 minimal: null;
@@ -22959,11 +22971,6 @@ medium: string;
 high: string;
 xhigh: string;
 max: string;
-};
-compat: {
-supportsMidConvoSystemMessages: boolean;
-supportsAdditionalTools: boolean;
-supportsOpenAIGrammarTools: boolean;
 };
 inputLimits: {
 images: {
@@ -23006,6 +23013,12 @@ headers: {
 "Editor-Plugin-Version": string;
 "Copilot-Integration-Id": string;
 };
+compat: {
+supportsStrictMode: boolean;
+supportsMidConvoSystemMessages: boolean;
+supportsAdditionalTools: boolean;
+supportsOpenAIGrammarTools: boolean;
+};
 thinkingLevelMap: {
 off: string;
 minimal: null;
@@ -23014,11 +23027,6 @@ medium: string;
 high: string;
 xhigh: string;
 max: string;
-};
-compat: {
-supportsMidConvoSystemMessages: boolean;
-supportsAdditionalTools: boolean;
-supportsOpenAIGrammarTools: boolean;
 };
 inputLimits: {
 images: {
@@ -23061,6 +23069,12 @@ headers: {
 "Editor-Plugin-Version": string;
 "Copilot-Integration-Id": string;
 };
+compat: {
+supportsStrictMode: boolean;
+supportsMidConvoSystemMessages: boolean;
+supportsAdditionalTools: boolean;
+supportsOpenAIGrammarTools: boolean;
+};
 thinkingLevelMap: {
 off: null;
 minimal: null;
@@ -23069,11 +23083,6 @@ medium: string;
 high: string;
 xhigh: string;
 max: string;
-};
-compat: {
-supportsMidConvoSystemMessages: boolean;
-supportsAdditionalTools: boolean;
-supportsOpenAIGrammarTools: boolean;
 };
 inputLimits: {
 images: {
@@ -23116,6 +23125,12 @@ headers: {
 "Editor-Plugin-Version": string;
 "Copilot-Integration-Id": string;
 };
+compat: {
+supportsStrictMode: boolean;
+supportsMidConvoSystemMessages: boolean;
+supportsAdditionalTools: boolean;
+supportsOpenAIGrammarTools: boolean;
+};
 thinkingLevelMap: {
 off: string;
 minimal: null;
@@ -23124,11 +23139,6 @@ medium: string;
 high: string;
 xhigh: string;
 max: string;
-};
-compat: {
-supportsMidConvoSystemMessages: boolean;
-supportsAdditionalTools: boolean;
-supportsOpenAIGrammarTools: boolean;
 };
 inputLimits: {
 images: {
@@ -23170,6 +23180,9 @@ headers: {
 "Editor-Version": string;
 "Editor-Plugin-Version": string;
 "Copilot-Integration-Id": string;
+};
+compat: {
+supportsStrictMode: boolean;
 };
 thinkingLevelMap: {
 off: null;
@@ -23221,6 +23234,9 @@ headers: {
 "Editor-Plugin-Version": string;
 "Copilot-Integration-Id": string;
 };
+compat: {
+supportsStrictMode: boolean;
+};
 thinkingLevelMap: {
 off: null;
 minimal: null;
@@ -23271,6 +23287,9 @@ headers: {
 "Editor-Plugin-Version": string;
 "Copilot-Integration-Id": string;
 };
+compat: {
+supportsStrictMode: boolean;
+};
 thinkingLevelMap: {
 off: null;
 minimal: null;
@@ -23313,6 +23332,9 @@ headers: {
 "Editor-Version": string;
 "Editor-Plugin-Version": string;
 "Copilot-Integration-Id": string;
+};
+compat: {
+supportsStrictMode: boolean;
 };
 thinkingLevelMap: {
 off: null;
