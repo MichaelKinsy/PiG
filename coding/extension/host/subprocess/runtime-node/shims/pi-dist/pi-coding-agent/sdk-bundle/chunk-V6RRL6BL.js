@@ -7073,6 +7073,20 @@ function sleep(ms, signal) {
   });
 }
 __name(sleep, "sleep");
+function flushStdout() {
+  return new Promise((resolve8) => {
+    const finish = /* @__PURE__ */ __name((error) => {
+      clearTimeout(timer);
+      if (!error)
+        process.stdout.off("error", finish);
+      resolve8();
+    }, "finish");
+    const timer = setTimeout(finish, 1e3);
+    process.stdout.on("error", finish);
+    process.stdout.write("", finish);
+  });
+}
+__name(flushStdout, "flushStdout");
 
 // pi-dist/pi-coding-agent/utils/tool-result-images.js
 async function normalizeToolResultImages(content, options) {
@@ -16841,6 +16855,7 @@ export {
   printHelp,
   parseFrontmatter,
   stripFrontmatter,
+  flushStdout,
   formatNoModelsAvailableMessage,
   createCompactionSummaryMessage,
   createCustomMessage,

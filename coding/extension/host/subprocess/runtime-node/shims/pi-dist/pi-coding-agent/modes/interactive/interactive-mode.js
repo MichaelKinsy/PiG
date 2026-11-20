@@ -44,6 +44,7 @@ import { extensionForImageMimeType, readClipboardImage } from "../../utils/clipb
 import { parseGitUrl } from "../../utils/git.js";
 import { ensurePngTranscoder } from "../../utils/image-convert.js";
 import { getCwdRelativePath, shortenHomePath } from "../../utils/paths.js";
+import { flushStdout } from "../../utils/sleep.js";
 import { getPiUserAgent } from "../../utils/pi-user-agent.js";
 import { killTrackedDetachedChildren } from "../../utils/shell.js";
 import { loadAllHighlightLanguages } from "../../utils/syntax-highlight.js";
@@ -1734,6 +1735,7 @@ export class InteractiveMode {
         }
         stopThemeWatcher();
         this.stop("transcript");
+        await flushStdout();
         process.exit(1);
     }
     getCrashExtensionHint(error) {
@@ -3636,6 +3638,7 @@ export class InteractiveMode {
             this.themeController.disableAutoSync();
             await this.ui.terminal.drainInput(1000);
             this.stop();
+            await flushStdout();
             process.exit(0);
         }
         // Interactive quit (Ctrl+D, Ctrl+C, /quit, extension shutdown()). Stop the
@@ -3653,6 +3656,7 @@ export class InteractiveMode {
             // Own line so the command can be selected with a triple-click (#12237).
             process.stdout.write(`${chalk.dim("To resume this session:")}\n${resumeCommand}\n`);
         }
+        await flushStdout();
         process.exit(0);
     }
     emergencyTerminalExit() {

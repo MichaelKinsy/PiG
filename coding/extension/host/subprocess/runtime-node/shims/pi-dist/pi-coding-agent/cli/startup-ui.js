@@ -11,6 +11,7 @@ import { FirstTimeSetupComponent, } from "../modes/interactive/components/first-
 import { SYSTEM_THEME_NAME } from "../modes/interactive/theme/system-theme.js";
 import { getTerminalTheme, initTheme, loadThemeFromPath, markTerminalColorsPending, resolveThemeSetting, setRegisteredThemes, setTerminalColors, setTheme, } from "../modes/interactive/theme/theme.js";
 import { requestTerminalColors } from "../modes/interactive/theme/theme-controller.js";
+import { flushStdout } from "../utils/sleep.js";
 const OFFICIAL_PACKAGE_NAME = "@earendil-works/pi-coding-agent";
 const OFFICIAL_APP_NAME = "pi";
 const OFFICIAL_CONFIG_DIR_NAME = ".pi";
@@ -122,6 +123,7 @@ export async function showStartupSelector(settingsManager, title, options) {
             settled = true;
             await clearStartupTui(ui);
             ui.stop();
+            await flushStdout();
             resolve(result);
         };
         const selector = new ExtensionSelectorComponent(title, options.map((option) => option.label), (option) => void finish(options.find((entry) => entry.label === option)?.value), () => void finish(undefined), { tui: ui });
@@ -147,6 +149,7 @@ export async function showFirstTimeSetup(settingsManager) {
             }
             await clearStartupTui(ui);
             ui.stop();
+            await flushStdout();
             resolve();
         };
         ui.start();
@@ -180,6 +183,7 @@ export async function showStartupInput(settingsManager, title, placeholder) {
             input.dispose();
             await clearStartupTui(ui);
             ui.stop();
+            await flushStdout();
             resolve(result);
         };
         const input = new ExtensionInputComponent(title, placeholder, (value) => void finish(value), () => void finish(undefined), {
