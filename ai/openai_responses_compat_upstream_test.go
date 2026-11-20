@@ -188,7 +188,7 @@ func TestOpenAIResponsesCompatDefaultsUpstream(t *testing.T) {
 	for _, tc := range []struct{ provider, id string }{
 		{"cloudflare-ai-gateway", "gpt-5.6-sol"},
 		{"github-copilot", "gpt-5.3-codex"},
-		{"github-copilot", "mai-code-2"},
+		{"github-copilot", "mai-code-1.1-flash"},
 		{"github-copilot", "grok-4.7"},
 	} {
 		t.Run("sets strict mode explicitly for "+tc.provider+"/"+tc.id+" Responses tools", func(t *testing.T) {
