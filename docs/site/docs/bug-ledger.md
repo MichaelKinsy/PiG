@@ -251,6 +251,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1d5b4bb](#bf-1d5b4bb) | The Go SDK's start-order tests no longer fail on a loaded machine since v0.5.2 (a test-claim fix: the SDK is… | PiG's own defect | All platforms | Unreleased |
 | [BF-1dcaef7](#bf-1dcaef7) | Durable: a JSONL line that starts with a byte order mark now opens, as in Pi, instead of failing with… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1de9126](#bf-1de9126) | fix(schema/formats): keep lone surrogates, drop unused idna helpers, check the generators in | PiG's own defect | All platforms | Unreleased |
+| [BF-1e2d25f](#bf-1e2d25f) | A `turn_end` handler's in-place edit of `event.message` (an `agent_end` handler's of `event.messages`) no… | PiG's own defect | All platforms | Unreleased |
 | [BF-1e2fa7e](#bf-1e2fa7e) | A Go, Rust, Python or Lisp extension can now set the Kitty image id of an image node of a view, as a Node… | PiG's own defect | All platforms | Unreleased |
 | [BF-1e64d3f](#bf-1e64d3f) | A Durable core's warm turn waits exactly the microtask passes Pi's does | PiG's own defect | All platforms | Unreleased |
 | [BF-1ea5c18](#bf-1ea5c18) | A `usage` object that an extension supplies is written to the session file as the extension wrote it, as in… | PiG's own defect | All platforms | Unreleased |
@@ -5647,6 +5648,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `1de91268b6` (2026-10-31)
 - **Tests:** `schema/formats/conformance_test.go::TestConformance`, `schema/formats/formats_test.go::TestSplitSurrogatePairs`, `schema/formats/oracle_test.go::TestOracleCorpus`
+
+### BF-1e2d25f
+
+**A `turn_end` handler's in-place edit of `event.message` (an `agent_end` handler's of `event.messages`) no…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A `turn_end` handler's in-place edit of `event.message` (an `agent_end` handler's of `event.messages`) no longer races with the consumer of `Session.Events`, and no longer reaches the `message_end` and `turn_end` events published before it.
+- **Root cause:** ReplaceMessageInPlace (introduced by 0bed50c8ff) overwrites the members of the one message value the transcript, the saved entry and the message_end and turn_end events hold, and Session.publishAgentEvent sent those events to the consumer of Events, which reads them on its own goroutine, with that same value; a handler's edit at turn_end ran while the consumer read the events published before it.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1e2d25f161` (2026-11-20)
+- **Tests:** `agent/event_view_test.go::TestEventViewIsNotChangedByAReplacementOfTheMessage`, `agent/event_view_test.go::TestEventViewIsRaceFreeWithAReplacementOfTheMessage`, `coding/session_event_view_test.go::TestEventsConsumerReadsMessagesAsPublishedAcrossLaterInPlaceEdits`, `test/extension-conformance/in_place_message_events_test.go::TestInPlaceMessageEventEditsMatchPi`
+- **Release note:** A `turn_end` handler's in-place edit of `event.message` (an `agent_end` handler's of `event.messages`) no longer races with the consumer of `Session.Events`, and no longer reaches the `message_end` and `turn_end` events published before it. The session publishes those two events with the message as it was when the event was published, which is what Pi's listeners, running at the event, see; the transcript, the saved entry, the events published after the edit and the payloads of the extensions follow the edit as before. The consumer reads on its own goroutine and held the one message object the edit overwrites: the race detector reported it (`go test -race`, `TestInPlaceMessageEventEditsMatchPi/subprocess-node-packed/turn_end/deep`), a message serialized during the edit could mix the old and the edited content, and the edit of a custom message clears and refills its member map, a map read while it is written, which is a fatal error in Go.
 
 ### BF-1e2fa7e
 
