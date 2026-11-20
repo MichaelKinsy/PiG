@@ -130,6 +130,43 @@ func TestAFrameHeldForTheGrammarLoadIsPaintedWhenTheLoadPanics(t *testing.T) {
 	})
 }
 
+// A key typed while the load runs is not lost: the keyboard's own paint (dispatchTerminalRead) shows it at once, and a frame the key asked for waits
+// like any other, so the text is on the terminal by the time the load has ended.
+func TestAKeyTypedWhileTheGrammarLoadRunsIsPaintedByTheLoadsEnd(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m, term := newTickRenderProbe(t, "regular")
+		ctx, cancel := context.WithCancel(t.Context())
+		m.backgroundCtx = ctx
+		endLoad := heldLoad(t, nil)
+		t.Cleanup(func() {
+			endLoad()
+			cancel()
+			m.backgroundTasks.Wait()
+		})
+		m.tuiInst.RenderNow()
+		term.take()
+		m.loadRemainingHighlightLanguages()
+		time.Sleep(20 * time.Millisecond)
+		dispatchRead(t, ctx, m, "z", "q")
+		synctest.Wait()
+		m.drainMainLoopOnce()
+		before := term.take()
+
+		endLoad()
+		synctest.Wait()
+		m.drainMainLoopOnce()
+		time.Sleep(time.Second)
+		synctest.Wait()
+		m.drainMainLoopOnce()
+		if painted := before + term.take(); !strings.Contains(painted, "zq") {
+			t.Fatalf("a key typed while the grammar load ran was not painted by the load's end: %q", painted)
+		}
+		if m.editor.Text() != "zq" {
+			t.Fatalf("the editor holds %q, want the typed text", m.editor.Text())
+		}
+	})
+}
+
 // A mode that stops while the load runs must not keep a hold that nothing will lift: the continuation cannot be posted, so the task lifts it.
 func TestTheFrameHoldEndsWhenTheModeStopsWhileTheGrammarLoadRuns(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
