@@ -291,7 +291,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/.manifest.json",
-      "sha256": "f31031182abb891e6babcb479161edba59457841e82400545733e91bbd08f98d"
+      "sha256": "db7c48b5caed8081aa87e6f4931adacc1c926eed473356c7f8fc9605c29d70c4"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/amazon-bedrock.json",
@@ -335,7 +335,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/github-copilot.json",
-      "sha256": "f51be058d6c8dcd9818b0b043f6cc8aec5e88f42c6ddd8bc870c481f4dfd6b0d"
+      "sha256": "fe7f7ce26492638216b27fa6466139076423af69a1bcdcb154bb5bf528a0b0e2"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/google-vertex.json",
