@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -164,6 +165,56 @@ func TestListenAdmissionFreesTheSlotOfASessionWhoseBuildFailed(t *testing.T) {
 		if got := a.liveCount(); got != 0 {
 			t.Fatalf("live = %d after a handler that returned at once", got)
 		}
+	}
+}
+
+// recordingConn records what refuseConnection does to a connection and when; a method it does not list panics through the nil Conn.
+type recordingConn struct {
+	net.Conn
+	calls    []string
+	deadline time.Time
+	armedAt  time.Time
+	wroteAt  time.Time
+	payload  []byte
+}
+
+func (c *recordingConn) SetWriteDeadline(t time.Time) error {
+	c.armedAt = time.Now()
+	c.calls = append(c.calls, "SetWriteDeadline")
+	c.deadline = t
+	return nil
+}
+
+func (c *recordingConn) Write(p []byte) (int, error) {
+	c.wroteAt = time.Now()
+	c.calls = append(c.calls, "Write")
+	c.payload = append(c.payload, p...)
+	return len(p), nil
+}
+
+func (c *recordingConn) Close() error {
+	c.calls = append(c.calls, "Close")
+	return nil
+}
+
+// The refusal's write deadline is the peer's wait for the write: the line is built first and the deadline is armed right before the one Write, so a server that is not scheduled for longer than the timeout while it builds the line still sends the line to a peer that reads. The fake sees the order of the calls, the payload and the time left at the Write; the timeout is a day so that no stall of the test run moves the instant. The order that arms first and builds after passes this test too, because the build takes microseconds: the stall between the two cannot be forced without a hook inside the function.
+func TestListenRefusalArmsItsWriteDeadlineRightBeforeTheOneWriteOfTheCompleteLine(t *testing.T) {
+	old := listenRefusalWriteTimeout
+	listenRefusalWriteTimeout = 24 * time.Hour
+	t.Cleanup(func() { listenRefusalWriteTimeout = old })
+	c := &recordingConn{}
+	refuseConnection(c, 64)
+	if want := []string{"SetWriteDeadline", "Write", "Close"}; !slices.Equal(c.calls, want) {
+		t.Fatalf("calls = %v, want %v: one deadline, then the one write, then the close", c.calls, want)
+	}
+	if got := string(c.payload); got != listenCapRefusalLine("64") {
+		t.Fatalf("the write carried %q, want the complete line %q", got, listenCapRefusalLine("64"))
+	}
+	if left := c.deadline.Sub(c.wroteAt); left < listenRefusalWriteTimeout-time.Hour || left > listenRefusalWriteTimeout {
+		t.Fatalf("the deadline is %v after the write, want within an hour below the %v timeout", left, listenRefusalWriteTimeout)
+	}
+	if gap := c.wroteAt.Sub(c.armedAt); gap < 0 || gap > time.Hour {
+		t.Fatalf("the write came %v after the deadline was armed", gap)
 	}
 }
 
