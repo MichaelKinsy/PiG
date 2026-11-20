@@ -2046,6 +2046,6 @@ Call-site markers: `coding/mcpext/channel.go`, `coding/mcpext/config.go`, `codin
 Locked by: `TestNonMCPChannelNameDoesNotGroup`, `TestNonMCPChannelNameDoesNotRenderAsChannel`, `TestMCPChannelRendererUsesHostAttribution`, `TestMCPChannelStdioIdleAndJSONLProvenance`, `TestMCPChannelStdioBusyFIFO`, `TestMCPChannelStdioGates`, and the channel payload/config/escaping tests.
 
 Status: local port of a proposed upstream record; awaiting maintainer scrutiny of the provenance boundary.
-SCRUTINIZED:pending-owner-review
+SCRUTINIZED:approved
 
 Remove when: the MCP adapter has an equivalent attributed channel contract or this feature is removed.
