@@ -207,6 +207,13 @@ func TestLoadAndWaitReportsSSEProgressAndWaitsForLoadedCatalogState(t *testing.T
 		}
 	})
 	if err != nil {
+		select {
+		case <-reported:
+		default:
+			if ctx.Err() != nil {
+				t.Fatalf("the client never reported the stage Loading text model (progress so far: %+v): %v", progress, err)
+			}
+		}
 		t.Fatalf("LoadAndWait: %v; progress = %+v", err, progress)
 	}
 	if model.Status.Value != LlamaModelStatusLoaded {
@@ -296,6 +303,13 @@ func TestDownloadAndWaitReportsByteProgressAndReturnsRefreshedCatalog(t *testing
 		}
 	})
 	if err != nil {
+		select {
+		case <-reported:
+		default:
+			if ctx.Err() != nil {
+				t.Fatalf("the client never reported the byte progress %s (progress so far: %+v): %v", wantProgress.Detail, progress, err)
+			}
+		}
 		t.Fatalf("DownloadAndWait: %v; progress = %+v", err, progress)
 	}
 	want := []LlamaModelInfo{{ID: "owner/repo:Q4_K_M", Status: LlamaModelInfoStatus{Value: LlamaModelStatusUnloaded}}}
