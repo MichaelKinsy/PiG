@@ -1292,6 +1292,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-873f87d](#bf-873f87d) | Chord: a context linked from two abort sources now reports the reason of the source that aborted first when… | PiG's own defect | All platforms | Unreleased |
 | [BF-8780292](#bf-8780292) | The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start | PiG's own defect | All platforms | 0.7.0 |
 | [BF-87a6ac5](#bf-87a6ac5) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-87ea4f9](#bf-87ea4f9) | A session whose model has no known context window (a model an extension registers without a `contextWindow`… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-87faba8](#bf-87faba8) | Loading several source-based extensions (Go, Rust, Lisp or Node directories) hashes their sources together… | PiG's own defect | All platforms | Unreleased |
 | [BF-8894a13](#bf-8894a13) | A double-quoted YAML string in a skill, prompt template or `parseFrontmatter` header now reads a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8894a13-2](#bf-8894a13-2) | The liveness conformance harness answers the host-parser helper calls a factory makes before the register… | PiG's own defect | All platforms | 0.5.0 |
@@ -20059,6 +20060,22 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `87a6ac512c` (2026-10-25)
 - **Tests:** None recorded.
 
+### BF-87ea4f9
+
+**A session whose model has no known context window (a model an extension registers without a `contextWindow`…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D660)
+- **Symptom:** A session whose model has no known context window (a model an extension registers without a `contextWindow`, or one an embedding program builds without `ContextWindow`) no longer compacts its history after every reply: a window of 0 is unknown, not used up, so the threshold check is skipped for it and a known window is checked as before.
+- **Root cause:** A window of 0 means the model did not say its window; Pi compares usage with -reserveTokens and compacts after every reply (agent-session.ts:3034). PiG had the same unguarded check since v0.2.0. The post-reply decision now returns before the threshold comparison when the window is 0 or below, as the pre-turn check (exceedsCompactionThreshold) already does. Overflow recovery, explicit compaction and known windows are unchanged.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi guards the post-reply check against a window of 0 (checked on Pi main on 2026-11-19: not yet; `agent-session.ts:3135`, `:3251`).
+- **Fix commits:** `87ea4f926e` (2026-11-19)
+- **Tests:** `coding/compaction_unknown_window_shapes_test.go::TestCheckCompactionDecisionUnknownWindow`, `coding/compaction_unknown_window_shapes_test.go::TestUnknownWindowAfterReplyAcrossProviderShapes`, `coding/compaction_unknown_window_test.go::TestCompactionUnknownWindowNoThresholdCompaction`
+- **Release note:** A session whose model has no known context window (a model an extension registers without a `contextWindow`, or one an embedding program builds without `ContextWindow`) no longer compacts its history after every reply: a window of 0 is unknown, not used up, so the threshold check is skipped for it and a known window is checked as before. PiG had compacted after every reply for such a model since 0.2.0, which cost a summariser request and the history of each turn; Pi still does (D660). Fix from #548 by @Cpt-Falcon.
+
 ### BF-87faba8
 
 **Loading several source-based extensions (Go, Rust, Lisp or Node directories) hashes their sources together…**
@@ -36159,6 +36176,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D652 | The compaction line shows the elapsed time and the streamed size of the summary, where Pi shows a bare label | [BF-D652](#bf-d652) |
 | D657 | Every handler of an event gets its own copy of the payload, in every SDK; Pi's handlers of one emit share one… | [BF-D657](#bf-d657) |
 | D658 | The Go, Rust, Python and Lisp SDKs invoke handlers in request arrival order, but a descheduled thread can run… | [BF-D658](#bf-d658) |
+| D660 | A reply whose model has no known context window starts no threshold compaction, where Pi compacts after every… | [BF-87ea4f9](#bf-87ea4f9) |
 
 ## Fix-titled commits that are not bugs in a release
 
