@@ -176,6 +176,7 @@ func (s *configState) readFile(path, scope string) {
 		var channel struct {
 			Channel *bool `json:"channel"`
 		}
+		// pig additive (D657): reject invalid channel opt-ins with a config diagnostic.
 		if err := json.Unmarshal(raw, &channel); err != nil {
 			s.errors = append(s.errors, fmt.Sprintf("%s: server %q: channel must be a boolean", path, name))
 			continue

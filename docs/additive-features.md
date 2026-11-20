@@ -2041,7 +2041,7 @@ Stock disposition: inert capability. Default is off. A push must come from a ser
 
 Contract: the adapter attributes only validated pushes. These remain `mcp-channel` custom messages with a host-assigned `mcpChannelSource` in session JSONL, independent of model-visible user-role conversion. Idle admission starts a run; busy admission waits for the steering boundary and groups adjacent attributed pushes FIFO. Only attributed pushes receive the dedicated TUI source marker, live or on resume; a same-name extension message uses its ordinary queue and renderer. No separate task, deduplication, retry or approval grant is added. Disabled/replaced/closed connections stop admission. The complete params budget is one MiB; invalid inputs are dropped. Body text escapes `&<>` while preserving quotes; attributes are fully escaped. Queue length/rate are not capped. The full contract is in `docs/mcp-channels.md`.
 
-Call-site markers: `coding/mcpext/channel.go`, `coding/session_custom_messages.go`, `internal/codingagent/interactive_mcp_channel.go`.
+Call-site markers: `coding/mcpext/channel.go`, `coding/mcpext/config.go`, `coding/session_custom_messages.go`, `internal/codingagent/interactive_mcp_channel.go`.
 
 Locked by: `TestNonMCPChannelNameDoesNotGroup`, `TestNonMCPChannelNameDoesNotRenderAsChannel`, `TestMCPChannelRendererUsesHostAttribution`, `TestMCPChannelStdioIdleAndJSONLProvenance`, `TestMCPChannelStdioBusyFIFO`, `TestMCPChannelStdioGates`, and the channel payload/config/escaping tests.
 
