@@ -2033,18 +2033,18 @@ SCRUTINIZED:approved
 
 ## D658 Go reload continuations
 
-Summary: A Go extension can request one next-turn message through ReloadOptions, including scheduling a real reload after a busy interactive tool returns.
+Summary: A Go extension can request one follow-up user message with ReloadWithOptions, including after a busy interactive turn settles.
 
 Audience: author
 
-Stock disposition: inert capability. Only a nonempty `ReloadOptions.ContinueWith` selects continuation delivery.
+Stock disposition: inert capability. `Context.Reload() error` keeps its parameterless signature and behavior, including method values and interfaces. `Context.ReloadWithOptions` is a separate method; only a nonempty `ReloadOptions.ContinueWith` selects continuation delivery or extends retirement to running tools. Plain reload keeps the command-only retirement gate and Pi's warning-only streaming refusal.
 
-Contract: idle and print/RPC calls await reload then submit one follow-up through the replacement runtime. A busy interactive tool returns after scheduling; full agent settlement, including settled handlers, releases the real reload before continuation delivery. Deferred failures still deliver one `[reload failed: <error>]` prefix line. No independent goroutine is introduced and shutdown cancels pending work. Immediate failures reach the caller. Old contexts remain invalid after actual replacement; a scheduled return only confirms admission. External reload still drains retired tools synchronously. Upstream's existing label API is retained. Pi's parameterless interactive `handleReloadCommand` warns and returns while streaming, which remains unchanged.
+Contract: idle interactive and print/RPC calls await reload, then submit one follow-up through the replacement runtime. A busy interactive tool returns after admission; after the full turn and settled handlers finish, the owner loop runs the reload before sending the continuation. If that deferred reload fails, the continuation still goes out with one `[reload failed: <error>]` prefix line. Synchronous reload or submission errors reach the caller; a synchronous reload failure sends no continuation. Shutdown cancels pending work. Old contexts become stale on replacement, not at admission. No independent goroutine is introduced. An empty option delegates to `Reload()`.
 
-Call-site markers: `extensions/sdk/context.go`, `coding/extension/host/subprocess/ui_bridge.go`, `internal/codingagent/interactive_reload.go`.
+Call-site markers: `extensions/sdk/context.go`, `coding/extension/host/subprocess/host.go`, `coding/extension/host/subprocess/host_calls.go`, `coding/extension/host/subprocess/ui_bridge.go`, `internal/codingagent/interactive_reload.go`.
 
-Locked by: `TestReloadContinuationUsesOneReloadCallAndOldContextStaysStale` (`extensions/sdk/reload_continue_test.go`), `TestReloadContinuationUsesNewRuntimeExactlyOnce` (`coding/extension/host/subprocess/reload_continue_test.go`), `TestDeferredReloadFailurePrefixesOneLineAndKeepsContinuation`, `TestPendingReloadWaitsForTheActiveTurn` (`internal/codingagent/reload_continuation_test.go`), `TestGoReloadContinuationIsNextUserTurn` (`coding/cli/reload_continue_test.go`), `TestGoReloadContinuationRestartsChangedCodeInInteractiveMode`, `TestGoReloadContinuationFailureStillResumesInteractiveMode`, and `TestGoMultipleReloadContinuationsWaitForEachInteractiveTurn` (`coding/cli/reload_continue_interactive_test.go`).
+Locked by: `TestReloadPreservesStockMethodTypeAndCall`, `TestReloadContinuationUsesOneReloadCallAndOldContextStaysStale` (`extensions/sdk/reload_continue_test.go`), `TestReloadOnlyContinuationRetainsRunningTools`, `TestReloadContinuationUsesNewRuntimeExactlyOnce` (`coding/extension/host/subprocess/reload_continue_test.go`), `TestDeferredReloadFailurePrefixesOneLineAndKeepsContinuation`, `TestPendingReloadWaitsForTheActiveTurn` (`internal/codingagent/reload_continuation_test.go`), `TestGoReloadContinuationIsNextUserTurn` (`coding/cli/reload_continue_test.go`), `TestGoReloadContinuationRestartsChangedCodeInInteractiveMode`, `TestGoReloadContinuationFailureStillResumesInteractiveMode`, and `TestGoMultipleReloadContinuationsWaitForEachInteractiveTurn` (`coding/cli/reload_continue_interactive_test.go`).
 
-SCRUTINIZED:approved
+SCRUTINIZED:pending-owner-review
 
 Remove when: Pi has an equivalent continuation option or this Go convenience is removed.

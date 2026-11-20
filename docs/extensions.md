@@ -115,17 +115,17 @@ PiG loads session history for an extension only when the extension reads it. A p
 
 ## Go SDK: reload and continue
 
-Use `ctx.Reload()` to reload without a continuation. To reload and submit a follow-up user message, pass one options value:
+Use `ctx.Reload()` to reload without a continuation. To reload and submit a follow-up user message, use the separate `ReloadWithOptions` method:
 
 ```go
-err := ctx.Reload(sdk.ReloadOptions{ContinueWith: "Continue with the refreshed extensions."})
+err := ctx.ReloadWithOptions(sdk.ReloadOptions{ContinueWith: "Continue with the refreshed extensions."})
 ```
 
-This Go SDK convenience uses the reload host call's optional `continueWith` string (D658). In print/RPC modes and an idle interactive session, the host awaits reload and then submits the string once through the replacement runtime with `deliverAs: "followUp"`. An empty string sends nothing. A synchronous reload failure sends nothing. A submission failure reaches the caller; a successful reload is not rolled back.
+This Go SDK convenience uses the reload host call's optional `continueWith` string (D658). In print/RPC modes and an idle interactive session, the host awaits reload and then submits the string once through the replacement runtime with `deliverAs: "followUp"`. An empty string behaves like `ctx.Reload()` and sends nothing. A synchronous reload failure sends nothing. A submission failure reaches the caller; a successful reload is not rolled back.
 
-During an interactive model turn, the call instead schedules the reload and returns success immediately, so a tool does not deadlock waiting for the agent that is awaiting it. After the agent and all settled handlers finish, the owner loop runs the real reload and submits the continuation through the current runtime. If the deferred reload fails, the continuation still arrives, prefixed with one line: `[reload failed: <error>]`. Shutdown cancels pending work. Separate reload calls are not deduplicated.
+During an interactive model turn, a nonempty continuation instead schedules the reload and returns success immediately, so a tool does not deadlock waiting for the agent that is awaiting it. After the agent and all settled handlers finish, the owner loop runs the real reload and submits the continuation through the current runtime. If the deferred reload fails, the continuation still arrives, prefixed with one line: `[reload failed: <error>]`. Shutdown cancels pending work. Separate reload calls are not deduplicated.
 
-The old context becomes stale when the real reload takes place. A scheduled return is admission, not confirmation that replacement code is already loaded. Do not use the old context after replacement. Existing direct `Reload()` calls still compile. Nonvariadic method values or interfaces need a wrapper/adapter for the new variadic signature. Interactive reload without a continuation retains Pi's streaming refusal and warning-only completion. A client must keep the session alive until the resulting run settles.
+The old context becomes stale when the real reload takes place. A scheduled return is admission, not confirmation that replacement code is already loaded. Do not use the old context after replacement. The stock `Reload() error` signature is unchanged, including method values and interfaces. Interactive reload without a continuation retains Pi's streaming refusal and warning-only completion. A client must keep the session alive until the resulting run settles.
 
 ## Reload
 
