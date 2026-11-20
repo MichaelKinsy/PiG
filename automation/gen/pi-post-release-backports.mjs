@@ -2786,6 +2786,17 @@ mirrorSource("e56d35ce5ece", "packages/coding-agent/src/core/model-resolver.ts",
 // not carried: packages/ai catalog/providers/openai-codex.ts, packages/ai test and CHANGELOG: the package ships none of them; the generated data carries the change.
 // END backport cead615b48b8
 
+// BEGIN backport 63dec2621
+// 63dec2621 (#12237): the resume command printed on exit is on its own line after "To resume this session:", so a triple-click selects it. The vendored runtime and the
+// parity oracle run the compiled interactive mode (scenarios interactive-rendering/22 and extensions-runtime/73 compare the exit text).
+patch("63dec2621", "pi-coding-agent/modes/interactive/interactive-mode.js", [
+    ['            process.stdout.write(`${chalk.dim("To resume this session:")} ${resumeCommand}\\n`);\n',
+      `            ${note("63dec2621").trim()}\n` +
+      "            // Own line so the command can be selected with a triple-click (#12237).\n" +
+      '            process.stdout.write(`${chalk.dim("To resume this session:")}\\n${resumeCommand}\\n`);\n'],
+]);
+// END backport 63dec2621
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 // Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.

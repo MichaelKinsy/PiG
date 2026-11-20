@@ -1684,12 +1684,12 @@ func (m *InteractiveMode) printResumeHint() {
 	if cmd == "" {
 		return
 	}
-	// upstream: interactive-mode.ts:4326 `${chalk.dim("To resume this session:")} ${resumeCommand}`, dim only at a nonzero chalk level.
+	// upstream: interactive-mode.ts `${chalk.dim("To resume this session:")}\n${resumeCommand}\n`: the command on its own line (#12237), dim only at a nonzero chalk level.
 	label := "To resume this session:"
 	if chalkModifiersEnabled() {
 		label = ChalkApply("\x1b[2m", "\x1b[22m", label)
 	}
-	_, _ = fmt.Printf("%s %s\n", label, cmd)
+	_, _ = fmt.Printf("%s\n%s\n", label, cmd)
 }
 
 // Run renders the initial editor and footer even with quiet startup, then blocks in the interactive loop until the user exits.

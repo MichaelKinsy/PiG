@@ -1,0 +1,24 @@
+from = "1.5.2+cead615b"
+to = "1.5.2+63dec262"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/upstream_signal_shutdown_test.go#TestUpstreamSignalShutdownExtensionCleanup", "test:internal/codingagent/interactive_exit_hint_test.go#TestInteractiveQuitPrintsOneHintAfterTerminalRestore", "test:internal/codingagent/upstream_signal_shutdown_test.go#TestResumeHintIsPlainAtChalkLevelZero"]
+rationale = "63dec2621 (#12237): the resume command printed on exit follows `To resume this session:` on its own line, so a triple-click selects it. PiG's counterpart is InteractiveMode.printResumeHint, which writes the label, a newline, the command and a newline under the same TTY and persistence gates as before."
+oracle = "carried: 63dec2621 (modes/interactive/interactive-mode.js)."
+
+[[files]]
+path = "packages/coding-agent/test/suite/regressions/5080-signal-shutdown-extension-cleanup.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/upstream_signal_shutdown_test.go#TestUpstreamSignalShutdownExtensionCleanup"]
+rationale = "63dec2621: the interactive quit case expects the faint label, a newline and the command line (`pig --session test-session`) in place of one line. The Go twin has the same input and the same expected bytes; the chalk-level-0 twin and the exit-hint test carry the same change."
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "63dec2621: Pi's changelog entry for the resume command on its own line. PiG's user-visible change is its own changelog.d fragment."
