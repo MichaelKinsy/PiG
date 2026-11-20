@@ -45,8 +45,10 @@ import (
 
 // McpServerEntry is one configured server.
 type McpServerEntry struct {
-	Name   string
-	Config extension.McpServerConfig
+	// Channel opts this mcp.json entry into untrusted server-pushed messages.
+	Channel bool
+	Name    string
+	Config  extension.McpServerConfig
 	// Source is the config file that defined the entry, or the path of the
 	// extension that registered it.
 	Source string
@@ -171,10 +173,17 @@ func (s *configState) readFile(path, scope string) {
 			s.errors = append(s.errors, fmt.Sprintf(`%s: server "%s": auth is only allowed in the global mcp.json`, path, name))
 			continue
 		}
+		var channel struct {
+			Channel *bool `json:"channel"`
+		}
+		if err := json.Unmarshal(raw, &channel); err != nil {
+			s.errors = append(s.errors, fmt.Sprintf("%s: server %q: channel must be a boolean", path, name))
+			continue
+		}
 		if _, exists := s.servers[name]; !exists {
 			s.names = append(s.names, name)
 		}
-		s.servers[name] = McpServerEntry{Name: name, Config: config, Source: path, Scope: scope}
+		s.servers[name] = McpServerEntry{Name: name, Config: config, Source: path, Scope: scope, Channel: channel.Channel != nil && *channel.Channel}
 		if object, err := orderedjson.Parse(raw); err == nil {
 			s.raw[name] = object
 		}

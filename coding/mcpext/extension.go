@@ -353,6 +353,8 @@ type Extension struct {
 	host    Host
 	options Options
 
+	// channelMu serializes admission across servers in callback-arrival order.
+	channelMu         sync.Mutex
 	mu                sync.Mutex
 	servers           []*server
 	configuredEntries []McpServerEntry
@@ -918,6 +920,15 @@ func (e *Extension) createConnection(s *server, isCurrent func() bool) (*Connect
 			return token(ctx, provider)
 		},
 		Log: e.getServerLog(),
+		OnChannel: func(message extension.SendMessagePayload) {
+			e.channelMu.Lock()
+			defer e.channelMu.Unlock()
+			if isCurrent() {
+				if sender, ok := e.host.(channelSender); ok {
+					sender.SendChannel(message)
+				}
+			}
+		},
 		OnTools: func(connection *Connection) {
 			if isCurrent() {
 				e.registerTools(connection)
@@ -1906,6 +1917,8 @@ type Terminal struct {
 	Renderers func(label string) *extension.ToolRenderers
 	// ToolRendererResolver renders calls to MCP tools before their server connected (a resumed session).
 	ToolRendererResolver extension.ToolRendererResolver
+	// ChannelRenderer displays server pushes with a distinct source marker.
+	ChannelRenderer extension.MessageRenderer
 	// ShowManager runs manage in the manager view until it returns.
 	ShowManager func(ctx context.Context, ui extension.UIContext, events EventContext, copyToClipboard func(text string) error, manage func(McpUi) error) error
 }

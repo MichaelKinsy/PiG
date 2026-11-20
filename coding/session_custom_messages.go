@@ -39,6 +39,11 @@ func (s *Session) sendCustomMessage(ctx context.Context, message extension.Custo
 		fields["details"] = message.Details
 	}
 	app := agent.AgentMessage{Custom: fields}
+	if message.CustomType == "mcp-channel" {
+		// Server pushes arriving during a turn are delivered together at the
+		// next steering boundary, independent of the user's steering mode.
+		app.QueueGroup = "mcp-channel"
+	}
 	var opts extension.SendMessageOptions
 	if options != nil {
 		opts = *options

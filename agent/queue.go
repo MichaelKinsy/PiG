@@ -62,11 +62,18 @@ func (q *PendingMessageQueue) peekLocked() []AgentMessage {
 	if q.mode == QueueModeAll {
 		return slices.Clone(q.messages)
 	}
-	return []AgentMessage{q.messages[0]}
+	count := 1
+	if group := q.messages[0].QueueGroup; group != "" {
+		for count < len(q.messages) && q.messages[count].QueueGroup == group {
+			count++
+		}
+	}
+	return slices.Clone(q.messages[:count])
 }
 
 // Drain removes and returns pending messages according to the queue's mode.
-// "all" drains every message; "one-at-a-time" drains the oldest single message.
+// "all" drains every message; "one-at-a-time" drains the oldest message (or
+// adjacent messages sharing its nonempty QueueGroup).
 // Returns nil when the queue is empty. Mirrors upstream PendingMessageQueue.drain.
 func (q *PendingMessageQueue) Drain() []AgentMessage {
 	q.mu.Lock()

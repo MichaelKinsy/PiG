@@ -2030,3 +2030,22 @@ Remove when: Pi evaluates plugins in a runtime PiG does not start, or the progra
 
 Approval: owner decision relayed 2026-11-01 for the plugins' Node evaluator (plugfull lane), the same as D221.
 SCRUTINIZED:approved
+
+## D657 Opt-in MCP channel pushes
+
+Summary: An explicitly enabled MCP server can wake a session or enqueue attributed, untrusted channel context between turns without impersonating human input.
+
+Audience: author
+
+Stock disposition: inert capability. Both explicit boolean server opt-in and the experimental `claude/channel` capability are required; default is off.
+
+Contract: custom `mcp-channel` messages retain source provenance independently of model-visible user-role conversion. Idle admission starts a run; busy admission waits for the steering boundary and groups adjacent channel messages FIFO. No separate task, deduplication, retry or approval grant is added. Disabled/replaced/closed connections stop admission. The complete params budget is one MiB; invalid inputs are dropped. Body text escapes `&<>` while preserving quotes; attributes are fully escaped. Queue length/rate are not capped. The full contract is in `docs/mcp-channels.md`.
+
+Call-site marker: `coding/mcpext/channel.go`.
+
+Locked by: channel payload/config/escaping tests, real-server session provenance and busy-FIFO tests, queue grouping and renderer tests, and `python3 scripts/probe-mcp-channels.py --pig ./bin/pig`.
+
+Status: local port of a proposed upstream record; awaiting maintainer scrutiny.
+SCRUTINIZED:pending-owner-review
+
+Remove when: the MCP adapter has an equivalent attributed channel contract or this feature is removed.
