@@ -21112,26 +21112,39 @@
     {
       "id": "BF-59c1814",
       "title": "A Pi extension that starts the harness again (`process.execPath process.argv[1] ...`) and ends it with…",
-      "symptom": "A Pi extension that starts the harness again (`process.execPath process.argv[1] ...`) and ends it with SIGKILL after SIGTERM no longer leaves the PiG binary running: the harness entry cannot forward SIGKILL, so a small watchdog it starts kills the binary when the entry dies.",
+      "symptom": "A Pi extension that starts the harness again (`process.execPath process.argv[1] ...`) and ends it with SIGKILL no longer leaves the PiG binary running, which 0.7.0 always did: the harness entry cannot forward SIGKILL, so it starts a small supervisor that runs the binary and kills it when its channel to the entry closes.",
       "rootCause": "The entry is a wrapper around the PiG binary and cannot forward SIGKILL, so an aborted subagent whose binary trapped or was slow on SIGTERM was orphaned. A watchdog (the entry run again with PIG_HARNESS_WATCHDOG) holds a pipe the entry owns and kills the binary when it closes, only if the process still has the binary's start time; the entry stands it down on the binary's exit. The embedded runtime pack and digest are regenerated, and a host test runs the entry from the packed and isolated runtimes.",
       "rootCauseSource": "commit",
       "userImpact": "An operation failed or was rejected",
       "platform": "Windows",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A Pi extension that starts the harness again (`process.execPath process.argv[1] ...`) and ends it with SIGKILL after SIGTERM no longer leaves the PiG binary running: the harness entry cannot forward SIGKILL, so a small watchdog it starts kills the binary when the entry dies. Signal forwarding, stdio and exit status are unchanged. Windows ends the binary by pid alone and is untested.",
+      "releaseNote": "A Pi extension that starts the harness again (`process.execPath process.argv[1] ...`) and ends it with SIGKILL no longer leaves the PiG binary running, which 0.7.0 always did: the harness entry cannot forward SIGKILL, so it starts a small supervisor that runs the binary and kills it when its channel to the entry closes. The binary exists only as the supervisor's child, so no instant has a binary without something to end it: a SIGKILL right after the binary starts, and a SIGTERM, SIGINT or SIGHUP before the entry has installed its handlers, end it as well. Signals sent to the entry still reach the binary, and stdio, process group, environment and exit status are unchanged; a harness-launched binary starts about 40 ms later. Windows ends the binary by its handle and is untested.",
       "origin": "release note",
       "commits": [
         {
           "hash": "59c181494e",
           "date": "2026-11-08"
+        },
+        {
+          "hash": "f5af42b553",
+          "date": "2026-11-20"
         }
       ],
       "tests": [
         "coding/extension/host/subprocess/harness_cli_kill_host_test.go::TestHarnessEntryKillAcrossIsolationModes",
+        "coding/extension/host/subprocess/harness_cli_kill_test.go::TestHarnessEntryEndsBySignalLikeItsBinary",
+        "coding/extension/host/subprocess/harness_cli_kill_test.go::TestHarnessEntryForkedByANodeParentIsStillTheEntry",
+        "coding/extension/host/subprocess/harness_cli_kill_test.go::TestHarnessEntryForwardsTermAndKeepsTheExitStatus",
+        "coding/extension/host/subprocess/harness_cli_kill_test.go::TestHarnessEntryGivesTheBinaryItsStdioArgumentsAndProcessGroup",
         "coding/extension/host/subprocess/harness_cli_kill_test.go::TestHarnessEntryKeepsBinaryExitStatus",
+        "coding/extension/host/subprocess/harness_cli_kill_test.go::TestHarnessEntryKillAfterTheBinaryEndedSignalsNothing",
         "coding/extension/host/subprocess/harness_cli_kill_test.go::TestHarnessEntryKillEndsItsBinary",
-        "coding/extension/host/subprocess/harness_cli_kill_test.go::TestHarnessWatchdogIgnoresGoneBinary"
+        "coding/extension/host/subprocess/harness_cli_kill_test.go::TestHarnessEntryKilledWhileStarting",
+        "coding/extension/host/subprocess/harness_cli_kill_test.go::TestHarnessEntryLeavesTheBinaryEnvironmentAndFilesAlone",
+        "coding/extension/host/subprocess/harness_cli_kill_test.go::TestHarnessEntryNests",
+        "coding/extension/host/subprocess/harness_cli_kill_test.go::TestHarnessEntryNeverReadsTheBinarysStdin",
+        "coding/extension/host/subprocess/harness_cli_kill_test.go::TestHarnessEntrySignalBeforeTheBinaryStartsReachesTheBinary"
       ]
     },
     {
