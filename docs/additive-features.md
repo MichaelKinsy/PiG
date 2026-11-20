@@ -2049,6 +2049,6 @@ Locked by: `TestCompactionSummaryModelUnsetUsesTheSessionModel`, `TestCompaction
 
 Status: local addition; awaiting maintainer scrutiny.
 
-SCRUTINIZED:pending-owner-review
+SCRUTINIZED:approved
 
 Remove when: Pi lets a setting choose the compaction summary model, or this setting is removed.
