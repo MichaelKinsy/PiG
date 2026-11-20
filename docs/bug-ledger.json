@@ -4408,6 +4408,29 @@
       "tests": []
     },
     {
+      "id": "BF-159e2a1",
+      "title": "Enter on a Tab menu for an absolute path (`look at /tmp/x/fi`) or on a command argument menu whose items…",
+      "symptom": "Enter on a Tab menu for an absolute path (`look at /tmp/x/fi`) or on a command argument menu whose items start with `/` (`/open /tm`) completes the text and keeps it in the editor; it used to send the unfinished prompt as well.",
+      "rootCause": "Enter on an open autocomplete menu completed the text and then submitted the prompt whenever the completion's prefix started with \"/\". A Tab menu for an absolute path (look at /tmp/x/fi) or a command argument (/open /tm) has such a prefix, so Enter sent the unfinished prompt. Enter now submits only from the slash command name menu: the text before the cursor, read before the completion is applied, is a slash command with no space (Pi's isInSlashCommandNameContext, which the Tab key shares through Editor.inSlashCommandNameContext).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Enter on a Tab menu for an absolute path (`look at /tmp/x/fi`) or on a command argument menu whose items start with `/` (`/open /tm`) completes the text and keeps it in the editor; it used to send the unfinished prompt as well. Enter on a command name (`/mo`) still runs the command, as in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "159e2a1922",
+          "date": "2026-11-19"
+        }
+      ],
+      "tests": [
+        "tui/editor_enter_command_name_oracle_test.go::TestEditorEnterOnAMenuSubmitsOnlyACommandNameLikePi",
+        "tui/editor_enter_command_name_upstream_test.go::TestUpstreamEditorEnterSubmitsOnlyFromTheSlashCommandNameMenu"
+      ]
+    },
+    {
       "id": "BF-15a5c0b",
       "title": "The Kimi Code, Meta and xAI device logins judge the verification URI the way Pi does, and Meta and xAI open…",
       "symptom": "The Kimi Code, Meta and xAI device logins judge the verification URI the way Pi does, and Meta and xAI open the URL Pi opens.",
