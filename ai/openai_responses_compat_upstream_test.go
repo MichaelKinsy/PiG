@@ -188,6 +188,7 @@ func TestOpenAIResponsesCompatDefaultsUpstream(t *testing.T) {
 	for _, tc := range []struct{ provider, id string }{
 		{"cloudflare-ai-gateway", "gpt-5.6-sol"},
 		{"github-copilot", "gpt-5.3-codex"},
+		// Stands for Pi's mai-code-2: that id is not in the catalog at this pin, and this model takes the same Copilot Responses compat path.
 		{"github-copilot", "mai-code-1.1-flash"},
 		{"github-copilot", "grok-4.7"},
 	} {
