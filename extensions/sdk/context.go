@@ -2610,9 +2610,33 @@ func (c Context) SwitchSession(sessionPath string, opts map[string]any) (Cancell
 	return c.callReplacement("switchSession", args)
 }
 
-// Reload reloads extensions, skills, prompts, and themes.
+// Reload reloads extensions, skills, prompts, and themes. The old Context
+// becomes stale when the reload replaces its runtime.
 func (c Context) Reload() error {
-	result, err := c.callHost("reload", nil)
+	return c.reload(nil)
+}
+
+// ReloadOptions controls the follow-up message for [Context.ReloadWithOptions].
+// pig additive (D658): the host carries a continuation across SDK context invalidation.
+type ReloadOptions struct {
+	// ContinueWith is sent once as a follow-up user message after reload.
+	// Empty means no continuation. A synchronous reload failure sends nothing;
+	// a deferred interactive reload failure prefixes the message with the error.
+	ContinueWith string `json:"continueWith,omitempty"`
+}
+
+// ReloadWithOptions reloads like [Context.Reload] and optionally submits a
+// follow-up user message. During an active interactive turn, a nonempty
+// continuation schedules the reload and follow-up for after the turn settles.
+func (c Context) ReloadWithOptions(opts ReloadOptions) error {
+	if opts.ContinueWith == "" {
+		return c.Reload()
+	}
+	return c.reload(opts)
+}
+
+func (c Context) reload(args any) error {
+	result, err := c.callHost("reload", args)
 	// agent-session.ts:3660-3664: the reload invalidates this context before it returns, so its members throw the stale message after it. The host sends the invalidate notify before the call result, and the main loop applies notifies after the read loop routed the result here, so wait for those notifies.
 	if result != nil && c.ext != nil && c.hostConnection() == c.ext.conn {
 		c.ext.waitNotifications(result.notifySeq, nil)

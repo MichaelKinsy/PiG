@@ -613,6 +613,7 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 		return m.waitForIdle(m.runCtx)
 	})
 	b.SetHostAction("reload", m.reloadFromExtension)
+	b.SetHostAction("reloadContinuation", m.reloadContinuationFromExtension)
 	b.SetHostAction("compact", func(ctx context.Context, opts *extension.CompactOptions) {
 		extension.CallInitiated(ctx)
 		// upstream: agent-session.ts:3369-3379. The Session starts and owns the compaction and reports through the extension's callbacks; without callbacks the outcome is dropped.

@@ -435,6 +435,13 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 	defer endExecSignal()
 
 	h.endSyncRunHold(conn, call)
+	// pig additive (D658): only a continuation reload extends retirement to running tools.
+	if call.Method == "reload" {
+		if options, err := decodeReloadOptions(call.Args); err == nil && options.ContinueWith != "" {
+			me.reloadCalls.Add(1)
+			defer me.reloadCalls.Add(-1)
+		}
+	}
 	var result *CallResultPayload
 	var err error
 	switch {

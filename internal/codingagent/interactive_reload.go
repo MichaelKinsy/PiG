@@ -5,6 +5,7 @@ package codingagent
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/ctxowner"
@@ -31,6 +32,66 @@ func (m *InteractiveMode) reloadFromExtension(ctx context.Context) error {
 		m.showError(err.Error())
 		return nil
 	})
+}
+
+// pig additive (D658): reloadContinuationFromExtension admits the operation on the owner loop. A tool cannot await idle while the agent awaits that tool, so a busy call only queues the reload.
+func (m *InteractiveMode) reloadContinuationFromExtension(ctx context.Context, continuation string) error {
+	extension.CallInitiated(ctx)
+	return m.runOnMainAndWait(ctx, func() error {
+		if m.runStreaming() {
+			m.pendingReloadContinuations = append(m.pendingReloadContinuations, continuation)
+			m.showStatus("Reload scheduled after this turn.")
+			return nil
+		}
+		return m.performReloadContinuation(m.runCtx, continuation, false)
+	})
+}
+
+// runPendingReloadContinuations runs only after the agent and settled handlers finish. If another turn started first, its settlement owns the pending operations instead.
+func (m *InteractiveMode) runPendingReloadContinuations() {
+	if m.runStreaming() || m.isCompacting || len(m.pendingReloadContinuations) == 0 {
+		return
+	}
+	pending := m.pendingReloadContinuations
+	m.pendingReloadContinuations = nil
+	for _, continuation := range pending {
+		if err := m.performReloadContinuation(m.runCtx, continuation, true); err != nil {
+			m.showError(err.Error())
+		}
+	}
+}
+
+func (m *InteractiveMode) performReloadContinuation(ctx context.Context, continuation string, deferred bool) error {
+	if ctx == nil {
+		return errors.New("reload continuation: interactive owner is not available")
+	}
+	if err := ctx.Err(); err != nil {
+		return context.Cause(ctx)
+	}
+	// Call the real reload, not the slash wrapper that intentionally swallows a streaming refusal.
+	err := m.buildSlashContext(ctx).Reload()
+	if ctx.Err() != nil {
+		return context.Cause(ctx)
+	}
+	if err == nil && len(m.reloadIssues) > 0 {
+		err = errors.New(strings.Join(m.reloadIssues, "; "))
+	}
+	if err == nil && m.opts.SubprocessHost != nil {
+		if report := m.opts.SubprocessHost.LastReloadReport(); report != nil && len(report.Issues) > 0 {
+			err = errors.New(strings.Join(report.Issues, "; "))
+		}
+	}
+	if err != nil && !deferred {
+		return err
+	}
+	return m.deliverUserMessage(reloadContinuationText(continuation, err), extension.DeliverAsFollowUp)
+}
+
+func reloadContinuationText(continuation string, err error) string {
+	if err == nil {
+		return continuation
+	}
+	return "[reload failed: " + strings.Join(strings.Fields(err.Error()), " ") + "]\n" + continuation
 }
 
 // beginReloadBlocker keeps the editor unavailable until the awaited reload finishes, including session_start handlers.

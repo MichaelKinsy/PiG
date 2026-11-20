@@ -1378,6 +1378,12 @@ type RemoteOverlayClosePayload struct {
 
 // ── Call (ext→host) ──────────────────────────────────────────────────────────
 
+// ReloadOptions is the optional argument of the reload host call.
+// pig additive (D19): continuation delivery belongs to the host, not a stale SDK context.
+type ReloadOptions struct {
+	ContinueWith string `json:"continueWith,omitempty"`
+}
+
 // CallPayload is an extension calling a host method.
 type CallPayload struct {
 	Method          string          `json:"method"` // e.g. "ui.notify", "ui.setStatus", "sendMessage"

@@ -659,8 +659,10 @@ type managedExt struct {
 	// wantsModelRegistry records RegisterPayload.WantsModelRegistry: only such a runtime is sent model-registry snapshots.
 	wantsModelRegistry bool
 	nodeRuntime        bool // isolated extension hosted by the Node runtime; a packed one reports through packedProcess.node
-	// commands counts the command requests running on this generation, so a reload that replaces it waits for them (retireGeneration).
-	commands commandGate
+	// commands retains running commands across reload; requests also retains tools while their generation awaits a continuation reload (retireGeneration).
+	commands    commandGate
+	requests    commandGate
+	reloadCalls atomic.Int64
 	// replaced is set when a commit replaces or removes this generation; its later host calls fail as stale (runCall).
 	replaced atomic.Bool
 
@@ -3990,10 +3992,16 @@ func (h *Host) makeMessageRenderer(me *managedExt, customType string) extension.
 // discarding the answer the user was still typing. The caller-owned ctx
 // remains authoritative for cancellation.
 func (h *Host) makeToolExecuteFunc(me *managedExt, toolName string) extension.ToolExecuteFunc {
-	return h.toolExecuteFunc(toolName, toolTarget{
-		connection: func() *Conn { return me.current().connection() },
-		syncState:  func(ctx context.Context, conn *Conn) error { return h.pushStateTo(ctx, me.current(), conn) },
-	})
+	return func(ctx context.Context, toolCallID string, params json.RawMessage, onUpdate extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+		generation := me.current()
+		// pig additive (D658): a tool awaiting a continuation reload retains its old connection until it returns.
+		generation.requests.begin()
+		defer generation.requests.end()
+		return h.toolExecuteFunc(toolName, toolTarget{
+			connection: generation.connection,
+			syncState:  func(ctx context.Context, conn *Conn) error { return h.pushStateTo(ctx, generation, conn) },
+		})(ctx, toolCallID, params, onUpdate)
+	}
 }
 
 // toolTarget is where a tool's execute runs: the connection that serves it, the state the extension holds before it runs, and the child agent session whose customTools define it ("" for a registered tool).
@@ -4280,6 +4288,8 @@ func (h *Host) makeCommandHandler(me *managedExt, cmdName string) extension.Comm
 
 		me.commands.begin()
 		defer me.commands.end()
+		me.requests.begin()
+		defer me.requests.end()
 		flight := h.beginCommandFlight(me)
 		defer h.endCommandFlight(flight)
 		ctx = h.withCommandSuspension(ctx, flight)

@@ -233,6 +233,8 @@ type InteractiveMode struct {
 	settledMu              sync.Mutex
 	emittingAgentSettled   bool
 	deferredSettledActions []func()
+	// pendingReloadContinuations belongs to the owner loop; settlement releases these reloads after the initiating tool and all settled handlers return.
+	pendingReloadContinuations []string
 
 	// ownerGoroutine is the id of the goroutine running the input loop, or 0 when no loop runs. See onOwnerLoop.
 	ownerGoroutine atomic.Uint64

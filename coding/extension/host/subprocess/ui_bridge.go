@@ -474,6 +474,9 @@ type HostCallbacks struct {
 	// Reload reloads extensions, skills, prompts, themes.
 	// upstream: types.ts:358
 	Reload func(context.Context) error
+
+	// ReloadContinuation is the mode-owned reload-and-follow-up operation. A busy interactive mode schedules it after settlement instead of blocking the initiating tool.
+	ReloadContinuation func(context.Context, string) error
 }
 
 // SendMessageOptions mirrors upstream options for sendMessage.
@@ -1228,6 +1231,8 @@ func (b *UIBridge) SetHostAction(key string, fn any) {
 		b.actions.SwitchSession = fn.(func(context.Context, string, *extension.SwitchSessionOptions) (extension.CancelledResult, error))
 	case "reload":
 		b.actions.Reload = fn.(func(context.Context) error)
+	case "reloadContinuation":
+		b.actions.ReloadContinuation = fn.(func(context.Context, string) error)
 	case "getScopedModels":
 		b.actions.GetScopedModels = fn.(func() []extension.ScopedModel)
 	case "getModelInfo":
@@ -1597,7 +1602,7 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 	case "switchSession":
 		return b.handleSwitchSession(ctx, extName, owner, actions, call.Args)
 	case "reload":
-		return b.handleReload(ctx, actions)
+		return b.handleReload(ctx, actions, call.Args)
 
 	default:
 		return &CallResultPayload{
@@ -2594,15 +2599,53 @@ func (b *UIBridge) handleSwitchSession(ctx context.Context, extName string, owne
 	return &CallResultPayload{Result: result}, nil
 }
 
-func (b *UIBridge) handleReload(ctx context.Context, actions *HostCallbacks) (*CallResultPayload, error) {
+func decodeReloadOptions(args json.RawMessage) (ReloadOptions, error) {
+	var options ReloadOptions
+	if len(args) > 0 {
+		if err := json.Unmarshal(args, &options); err != nil {
+			return ReloadOptions{}, fmt.Errorf("parse reload args: %w", err)
+		}
+	}
+	return options, nil
+}
+
+func (b *UIBridge) handleReload(ctx context.Context, actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
+	options, err := decodeReloadOptions(args)
+	if err != nil {
+		return nil, err
+	}
+	if options.ContinueWith != "" && actions != nil && actions.ReloadContinuation != nil {
+		if err := actions.ReloadContinuation(ctx, options.ContinueWith); err != nil {
+			return &CallResultPayload{Error: &ErrorInfo{Message: err.Error()}}, nil
+		}
+		return &CallResultPayload{}, nil
+	}
 	if actions == nil || actions.Reload == nil {
 		// runner.ts:386-387,561: an unbound reload handler is `async () => {}`.
 		extension.CallInitiated(ctx)
+		if options.ContinueWith != "" {
+			return &CallResultPayload{Error: &ErrorInfo{Message: "reload continuation: reload is not available"}}, nil
+		}
 		return &CallResultPayload{}, nil
 	}
 	if err := actions.Reload(ctx); err != nil {
 		// session.reload() rejects with the Error it threw (agent-session.ts:3575-3625), so the extension sees its own message.
 		return &CallResultPayload{Error: &ErrorInfo{Message: err.Error()}}, nil
+	}
+	// pig additive (D658): deliver through the newly bound runtime without reviving the calling generation.
+	if options.ContinueWith != "" {
+		b.mu.RLock()
+		var send func(any, SendUserMessageOptions) error
+		if b.actions != nil {
+			send = b.actions.SendUserMessage
+		}
+		b.mu.RUnlock()
+		if send == nil {
+			return &CallResultPayload{Error: &ErrorInfo{Message: "reload continuation: sendUserMessage is not available"}}, nil
+		}
+		if err := send(options.ContinueWith, SendUserMessageOptions{DeliverAs: "followUp"}); err != nil {
+			return &CallResultPayload{Error: &ErrorInfo{Message: err.Error()}}, nil
+		}
 	}
 	return &CallResultPayload{}, nil
 }
