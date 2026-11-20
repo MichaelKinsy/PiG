@@ -2817,6 +2817,11 @@ function isLlamaClassifierModel`],
 ]);
 // END backport 5799e217e
 
+// BEGIN backport e5c01ca6cb9d
+// e5c01ca6cb9d (#12329, closes #12286): the strict flag of the GitHub Copilot Responses models is catalog data: the pi-overlay file catalog/providers/github-copilot.ts (Pi's, at this commit) makes the oracle's github-copilot provider data. No compiled file of the package changes.
+// not carried: packages/ai catalog/providers/github-copilot.ts, packages/ai test and CHANGELOG: the package ships none of them; the generated data carries the change.
+// END backport e5c01ca6cb9d
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 // Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.

@@ -33570,6 +33570,26 @@
       ]
     },
     {
+      "id": "BF-81f580b",
+      "title": "GitHub Copilot models on the Responses API (GPT, Grok, MAI-Code) no longer fill omitted optional tool…",
+      "symptom": "GitHub Copilot models on the Responses API (GPT, Grok, MAI-Code) no longer fill omitted optional tool arguments with empty strings or invented values.",
+      "rootCause": "Pi (#12329, closes #12286). Copilot treats a function tool without strict as strict and fills omitted optional arguments with empty strings or invented values. The generator now sets compat.supportsStrictMode for api openai-responses as Pi does; an ordinary tool goes out with strict false and a json_schema constrained one with strict true. The golden hashes are what Pi generator writes with the overlay.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "GitHub Copilot models on the Responses API (GPT, Grok, MAI-Code) no longer fill omitted optional tool arguments with empty strings or invented values. Their tools were sent without `strict`, which Copilot treats as strict mode; they now send `strict: false`, or `strict: true` for tools with JSON-schema constrained sampling. Affects 0.2.0 through 0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "81f580b72d",
+          "date": "2026-11-19"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-82253c8",
       "title": "fix(chord/nextnode/workers): a process's exit joins its output readers and ends its channel",
       "symptom": "fix(chord/nextnode/workers): a process's exit joins its output readers and ends its channel",

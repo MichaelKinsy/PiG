@@ -146,7 +146,10 @@ func githubCopilot() ProviderDefinition {
 			return models, nil
 		},
 		Classifiers: func(*ProviderContext) ([]*Obj, error) { return []*Obj{githubCopilotMicrosoftDecision1()}, nil },
-		Compat:      ApiCompatDefaults{"openai-completions": FixedCompat(O("supportsStrictMode", true))},
+		Compat: ApiCompatDefaults{
+			"openai-completions": FixedCompat(O("supportsStrictMode", true)),
+			"openai-responses":   FixedCompat(O("supportsStrictMode", true)),
+		},
 		Finalize: func(model ChatModel, _ *ProviderContext) {
 			id := model.Str("id")
 			if strings.HasPrefix(id, "gpt-5") {

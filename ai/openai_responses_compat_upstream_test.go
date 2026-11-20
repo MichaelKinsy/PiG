@@ -184,27 +184,75 @@ func TestOpenAIResponsesCompatDefaultsUpstream(t *testing.T) {
 			}
 		})
 	}
-	// .upstream/v0.87.1/packages/ai/test/openai-responses-compat.test.ts:157
-	t.Run("sets strict mode explicitly for Cloudflare OpenAI Responses tools", func(t *testing.T) {
-		cfg := responsesCompatConfig(t, "cloudflare-ai-gateway", "gpt-5.6-sol")
-		if cfg.Compat == nil || cfg.Compat.SupportsStrictMode == nil || !*cfg.Compat.SupportsStrictMode {
-			t.Fatal("catalog strict mode is not true")
+	// .upstream/v0.87.1/packages/ai/test/openai-responses-compat.test.ts:157 (Pi e5c01ca6c, #12286: Copilot treats a tool without `strict` as strict and fills omitted optional arguments, so the Copilot Responses models send it too)
+	for _, tc := range []struct{ provider, id string }{
+		{"cloudflare-ai-gateway", "gpt-5.6-sol"},
+		{"github-copilot", "gpt-5.3-codex"},
+		{"github-copilot", "mai-code-1.1-flash"},
+		{"github-copilot", "grok-4.7"},
+	} {
+		t.Run("sets strict mode explicitly for "+tc.provider+"/"+tc.id+" Responses tools", func(t *testing.T) {
+			cfg := responsesCompatConfig(t, tc.provider, tc.id)
+			if cfg.Compat == nil || cfg.Compat.SupportsStrictMode == nil || !*cfg.Compat.SupportsStrictMode {
+				t.Fatal("catalog strict mode is not true")
+			}
+			cfg.BaseURL = "https://example.invalid/v1"
+			ctx := Context{Messages: []Message{UserMessage{Content: UserText("Use a tool.")}}, Tools: []ToolSchema{
+				{Name: "ordinary", Description: "An ordinary tool", Parameters: JsonObject{"type": "object", "properties": JsonObject{"path": JsonObject{"type": "string"}, "offset": JsonObject{"type": "number"}}, "required": []string{"path"}}},
+				{Name: "constrained", Description: "A constrained tool", Parameters: JsonObject{"type": "object", "properties": JsonObject{"value": JsonObject{"type": "string"}}, "required": []string{"value"}}, ConstrainedSampling: &ConstrainedSamplingConfig{Type: "json_schema", Strict: "prefer"}},
+			}}
+			payload, _, _ := captureResponsesCompat(t, cfg, ctx, StreamOptions{}, "data: [DONE]\n\n")
+			var tools []struct {
+				Name   string `json:"name"`
+				Strict *bool  `json:"strict"`
+			}
+			if err := json.Unmarshal(payload["tools"], &tools); err != nil {
+				t.Fatal(err)
+			}
+			if len(tools) != 2 || tools[0].Name != "ordinary" || tools[0].Strict == nil || *tools[0].Strict || tools[1].Name != "constrained" || tools[1].Strict == nil || !*tools[1].Strict {
+				t.Fatalf("tools=%s", payload["tools"])
+			}
+		})
+	}
+	// Every GitHub Copilot Responses model of the catalog declares strict mode (Pi e5c01ca6c); a model of another api keeps its own flag.
+	t.Run("every GitHub Copilot Responses model of the catalog sends strict tools", func(t *testing.T) {
+		n := 0
+		for _, m := range ListModels("github-copilot") {
+			if m.Provider != "github-copilot" || m.API != "openai-responses" {
+				continue
+			}
+			n++
+			if m.Compat == nil || m.Compat.SupportsStrictMode == nil || !*m.Compat.SupportsStrictMode {
+				t.Errorf("%s does not declare supportsStrictMode", m.ID)
+			}
 		}
-		cfg.BaseURL = "https://example.invalid/v1"
+		if n == 0 {
+			t.Fatal("no GitHub Copilot Responses model in the catalog")
+		}
+	})
+	// The matrix of the shared path: an API-key OpenAI Responses model keeps strict on, a custom OpenAI-compatible base URL without the flag sends no strict key.
+	t.Run("OpenAI keeps strict tools and a custom base URL without the flag sends none", func(t *testing.T) {
 		ctx := Context{Messages: []Message{UserMessage{Content: UserText("Use a tool.")}}, Tools: []ToolSchema{
-			{Name: "ordinary", Description: "An ordinary tool", Parameters: JsonObject{"type": "object", "properties": JsonObject{"path": JsonObject{"type": "string"}, "offset": JsonObject{"type": "number"}}, "required": []string{"path"}}},
-			{Name: "constrained", Description: "A constrained tool", Parameters: JsonObject{"type": "object", "properties": JsonObject{"value": JsonObject{"type": "string"}}, "required": []string{"value"}}, ConstrainedSampling: &ConstrainedSamplingConfig{Type: "json_schema", Strict: "prefer"}},
+			{Name: "ordinary", Description: "An ordinary tool", Parameters: JsonObject{"type": "object", "properties": JsonObject{"path": JsonObject{"type": "string"}}, "required": []string{"path"}}},
 		}}
-		payload, _, _ := captureResponsesCompat(t, cfg, ctx, StreamOptions{}, "data: [DONE]\n\n")
-		var tools []struct {
-			Name   string `json:"name"`
-			Strict *bool  `json:"strict"`
+		strictOf := func(cfg OpenAIResponsesConfig) string {
+			payload, _, _ := captureResponsesCompat(t, cfg, ctx, StreamOptions{}, "data: [DONE]\n\n")
+			var tools []map[string]json.RawMessage
+			if err := json.Unmarshal(payload["tools"], &tools); err != nil || len(tools) != 1 {
+				t.Fatalf("tools=%s err=%v", payload["tools"], err)
+			}
+			if v, ok := tools[0]["strict"]; ok {
+				return string(v)
+			}
+			return "absent"
 		}
-		if err := json.Unmarshal(payload["tools"], &tools); err != nil {
-			t.Fatal(err)
+		if got := strictOf(responsesCompatConfig(t, "openai", "gpt-5.4")); got != "false" {
+			t.Fatalf("openai strict=%s, want false (strict mode on, the tool schema is not constrained)", got)
 		}
-		if len(tools) != 2 || tools[0].Name != "ordinary" || tools[0].Strict == nil || *tools[0].Strict || tools[1].Name != "constrained" || tools[1].Strict == nil || !*tools[1].Strict {
-			t.Fatalf("tools=%s", payload["tools"])
+		custom := responsesCompatConfig(t, "openai", "gpt-5.4")
+		custom.ProviderID, custom.BaseURL, custom.Compat = "custom-proxy", "https://example.invalid/v1", nil
+		if got := strictOf(custom); got != "absent" {
+			t.Fatalf("custom base URL strict=%s, want absent", got)
 		}
 	})
 	// .upstream/v0.87.1/packages/ai/test/openai-responses-compat.test.ts:208

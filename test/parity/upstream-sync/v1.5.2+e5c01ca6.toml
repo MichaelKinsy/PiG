@@ -1,0 +1,13 @@
+from = "1.5.2+cead615b"
+to = "1.5.2+e5c01ca6"
+# Pi e5c01ca6cb9d (2026-11-19): fix(ai): send strict on GitHub Copilot Responses tools (#12329, closes #12286).
+# Carried out of Pi's order: the commits between cead615b and e5c01ca6 are not taken by this line, so the file below is the only one of this commit's source changes.
+# For the lane that moves the pin past this commit: the pin's own github-copilot.ts then replaces the overlay file automation/gen/catalog-source/pi-overlay/catalog/providers/github-copilot.ts.
+
+[[files]]
+path = "packages/ai/catalog/providers/github-copilot.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi", "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"]
+rationale = "e5c01ca6cb9d (#12329): the provider overlay declares compat.supportsStrictMode for api openai-responses next to the existing openai-completions entry, so every GitHub Copilot Responses model sends `strict` on its function tools (false for an ordinary tool, true for a json_schema constrained one) where a missing `strict` was read by Copilot as strict mode and made the model fill omitted optional arguments with empty strings or invented values. internal/modelgen/providers/github_copilot.go sets the same compat default; the golden hashes of the Copilot files and of the two lists of every model are what Pi's generator writes with the overlay over the pinned mirror (PI_CATALOG_OVERLAY of equivalence.sh). The oracle's catalog data and the built-in catalog take the 14 Copilot Responses records from the same file in automation/gen/catalog-source/pi-overlay."
+oracle = "carried: e5c01ca6cb9d (the catalog overlay catalog/providers/github-copilot.ts)"
