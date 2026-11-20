@@ -384,6 +384,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4916f14](#bf-4916f14) | A streamed answer's partial commits cost the new text, not the length of the message so far, as in Pi… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-495f017](#bf-495f017) | A `bashExecution` entry records `excludeFromContext: false` when the caller passed `false`, as Pi does; an… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-495f017-2](#bf-495f017-2) | A branch-summary entry writes `fromHook: false` in Pi's member order, and the summary has its Spacer | PiG's own defect | All platforms | 0.5.0 |
+| [BF-49eab17](#bf-49eab17) | `auth.json` locking follows symlinks on the store file so writers using different links to the same… | PiG's own defect | All platforms | Unreleased |
 | [BF-4a0bc3d](#bf-4a0bc3d) | The footer context percentage is refreshed after a `!` command is recorded, as Pi's footer asks the session… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4a0d619](#bf-4a0d619) | fix(durable/core): drop the reportWrap the RPT and TKS merges both declared | PiG's own defect | All platforms | Unreleased |
 | [BF-4a70ed5](#bf-4a70ed5) | `coding/extension/host/subprocess`: in a Host with two or more extension connections (a packed runtime cell… | PiG's own defect | All platforms | 0.7.0 |
@@ -1071,6 +1072,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D220](#bf-d220) | Markdown renders each paragraph with the inline state at its position, not with the lines of an earlier… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D226](#bf-d226) | Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D247](#bf-d247) | Quit settles the interrupted run before session_shutdown and disposal | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D659](#bf-d659) | Auth storage lock is placed beside the resolved store target instead of the symlink path | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a058b99](#bf-a058b99) | The pre-flight `test-expectation` check skips the tooling directories of `test/testdata-provenance.toml` on… | PiG's own defect | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
@@ -6703,6 +6705,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `495f01780d` (2026-10-09), `6935d5ecea` (2026-10-09), `eb6ae90e7d` (2026-10-09)
 - **Tests:** `internal/codingagent/interactive_compaction_notice_test.go::TestSessionCompactedStatusIsShownByInitialRenderOnly`, `internal/codingagent/output_pad_blocks_test.go::TestResumedBranchSummaryHasPiSpacingAboveItsLabel`, `internal/sessionentry/entry_test.go::TestBashExecutionEntryKeepsExcludeFromContextFalseAndOmitsUnset`, `internal/sessionentry/entry_test.go::TestBranchSummaryEntryWritesFromHookFalseInPiMemberOrder`
 - **Release note:** A branch-summary entry writes `fromHook: false` in Pi's member order, and the summary has its Spacer. "Session compacted N time(s)" is shown only when a session is opened or its transcript is rebuilt.
+
+### BF-49eab17
+
+**`auth.json` locking follows symlinks on the store file so writers using different links to the same…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `auth.json` locking follows symlinks on the store file so writers using different links to the same credential store share one lock.
+- **Root cause:** Not recorded.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `49eab178ce` (2026-11-18)
+- **Tests:** `ai/auth_resolved_lock_link_test.go::TestR17FolderLinkNotResolved`, `ai/auth_resolved_lock_link_test.go::TestR18FileLinkThroughFolderLink`, `ai/auth_resolved_lock_link_test.go::TestR19ContenderHelper`, `ai/auth_resolved_lock_link_test.go::TestR19TwoProcessesTwoSpellingsOneLock`, `ai/auth_resolved_lock_link_test.go::TestR20bTwoSpellingsOneProcessKeepRecords`, `ai/auth_resolved_lock_link_test.go::TestR21LinkToLinkRelativeLockBesideFinalFile`, `ai/auth_resolved_lock_link_test.go::TestR21RelativeLinkLockBesideFinalFile`, `ai/auth_resolved_lock_r0_test.go::TestR0aTwoLinksOneTargetExcludeEachOther` and 18 more in docs/bug-ledger.json
+- **Release note:** `auth.json` locking follows symlinks on the store file so writers using different links to the same credential store share one lock.
 
 ### BF-4a0bc3d
 
@@ -16248,6 +16264,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4d65734a52` (2026-11-14), `8e8168061b` (2026-11-14)
 - **Tests:** `coding/runtime_dispose_settlement_test.go::TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown`
 
+### BF-D659
+
+**Auth storage lock is placed beside the resolved store target instead of the symlink path**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D659)
+- **Symptom:** yes: Pi's `FileAuthStorageBackend` (`packages/coding-agent/src/core/auth-storage.ts:86,131`) calls `proper-lockfile` with `{ realpath: false }`, so two symlinks to the same `auth.json` take distinct locks and can overwrite each other's credential updates concurrently.
+- **Root cause:** PiG writes `auth.json` through `internal/atomicfile.WriteFile` (`D651`), which follows symbolic links on the target file and atomically replaces the target while keeping the symlink intact. If two processes access the same underlying `auth.json` through two different symlinks, placing the lock beside each link allows both processes to acquire separate locks and race on refreshing or writing credentials (including single-use OAuth refresh tokens). Placing the lock beside the resolved target ensures all links to the same store share one lock.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi resolves the auth store file's symlink target before locking (or drops `{ realpath: false }` for `auth.json` locks).
+- **Fix commits:** `4a86306289` (2026-11-19)
+- **Tests:** `ai/auth_resolved_lock_r0_test.go::TestR0aTwoLinksOneTargetExcludeEachOther`, `ai/auth_resolved_lock_r0_test.go::TestR0bTwoLinksTwoProvidersBothSurvive`, `ai/auth_resolved_lock_xattr_test.go::TestR3bExtendedAttributeIsKept`
+
 ### BF-a058b99
 
 **The pre-flight `test-expectation` check skips the tooling directories of `test/testdata-provenance.toml` on…**
@@ -24626,6 +24657,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D247 | Quit settles the interrupted run before session_shutdown and disposal | [BF-D247](#bf-d247) |
 | D615 | The Go, Python, Lisp and Rust SDKs show the host each provider stream event as it was when the provider… | deliberate difference |
 | D651 | Credential files are replaced through a temporary file where that changes nothing but the inode, where Pi… | [BF-26b210c](#bf-26b210c) |
+| D659 | Auth storage lock is placed beside the resolved store target instead of the symlink path | [BF-D659](#bf-d659) |
 
 ## Fix-titled commits that are not bugs in a release
 
