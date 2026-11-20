@@ -34773,6 +34773,32 @@
       "tests": []
     },
     {
+      "id": "BF-87ea4f9",
+      "title": "A session whose model has no known context window (a model an extension registers without a `contextWindow`…",
+      "symptom": "A session whose model has no known context window (a model an extension registers without a `contextWindow`, or one an embedding program builds without `ContextWindow`) no longer compacts its history after every reply: a window of 0 is unknown, not used up, so the threshold check is skipped for it and a known window is checked as before.",
+      "rootCause": "A window of 0 means the model did not say its window; Pi compares usage with -reserveTokens and compacts after every reply (agent-session.ts:3034). PiG had the same unguarded check since v0.2.0. The post-reply decision now returns before the threshold comparison when the window is 0 or below, as the pre-turn check (exceedsCompactionThreshold) already does. Overflow recovery, explicit compaction and known windows are unchanged.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D660",
+      "removeWhen": "Pi guards the post-reply check against a window of 0 (checked on Pi main on 2026-11-19: not yet; `agent-session.ts:3135`, `:3251`).",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A session whose model has no known context window (a model an extension registers without a `contextWindow`, or one an embedding program builds without `ContextWindow`) no longer compacts its history after every reply: a window of 0 is unknown, not used up, so the threshold check is skipped for it and a known window is checked as before. PiG had compacted after every reply for such a model since 0.2.0, which cost a summariser request and the history of each turn; Pi still does (D660). Fix from #548 by @Cpt-Falcon.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "87ea4f926e",
+          "date": "2026-11-19"
+        }
+      ],
+      "tests": [
+        "coding/compaction_unknown_window_shapes_test.go::TestCheckCompactionDecisionUnknownWindow",
+        "coding/compaction_unknown_window_shapes_test.go::TestUnknownWindowAfterReplyAcrossProviderShapes",
+        "coding/compaction_unknown_window_test.go::TestCompactionUnknownWindowNoThresholdCompaction"
+      ]
+    },
+    {
       "id": "BF-87faba8",
       "title": "Loading several source-based extensions (Go, Rust, Lisp or Node directories) hashes their sources together…",
       "symptom": "Loading several source-based extensions (Go, Rust, Lisp or Node directories) hashes their sources together instead of one after another, so each Go extension no longer waits for the previous one to re-read the SDK it replaces: 16 Go extensions hash in 45 ms instead of 170 ms.",
@@ -69000,6 +69026,11 @@
       "id": "D658",
       "title": "The Go, Rust, Python and Lisp SDKs invoke handlers in request arrival order, but a descheduled thread can run…",
       "entry": "BF-D658"
+    },
+    {
+      "id": "D660",
+      "title": "A reply whose model has no known context window starts no threshold compaction, where Pi compacts after every…",
+      "entry": "BF-87ea4f9"
     }
   ],
   "exemptCommits": {

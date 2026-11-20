@@ -57,3 +57,6 @@ export default function (pi) {
 	});
 }
 ```
+
+## D660 The post-reply compaction check compacts after every reply when the model's context window is unknown
+Pi `packages/coding-agent/src/core/agent-session.ts:2918` (main: `:3135`): `_checkCompaction` reads `const contextWindow = (messageModel ?? this.model)?.contextWindow ?? 0;` and `:3034` (main: `:3251`) decides with `shouldCompact(contextTokens, contextWindow, settings)`, which is `contextTokens > contextWindow - settings.reserveTokens` (`compaction/compaction.ts:267-270`). For a model whose window is 0 (a provider registered by an extension without `contextWindow`, or a model built with `contextWindow: 0`) that is true after every reply that carries usage, so every turn ends with a threshold compaction. `_exceedsCompactionThreshold` (`:741`, main `:833`) guards the same case with `if (model.contextWindow <= 0) return false;`, so the pre-turn check skips such a model and the post-reply check does not. Expected: the post-reply check skips a model whose window is not known, as the pre-turn check does. No search for an existing Pi issue was made.
