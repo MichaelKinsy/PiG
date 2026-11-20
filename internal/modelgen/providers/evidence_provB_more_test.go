@@ -20,7 +20,6 @@ package providers
 // Behavioral evidence, second half: see evidence_provB_test.go.
 
 import (
-	"strings"
 	"testing"
 
 	. "github.com/MichaelKinsy/PiG/internal/modelgen"
@@ -282,8 +281,8 @@ func TestProvBQwenTokenPlans(t *testing.T) {
 		{"cn-only", "compat", without},
 	})
 
-	// The individual plan keeps its allowlist of the international models, and strict generation requires exactly that list.
-	all := []string{"deepseek-v4-flash-0731", "deepseek-v4-pro", "deepseek-v4-pro-0813", "deepseek-v4.1-flash", "deepseek-v4.1-flash-1017", "glm-5.2", "glm-5.3", "qwen3.6-flash", "qwen3.7-max", "qwen3.7-plus", "qwen3.8-flash", "qwen3.8-max"}
+	// The individual plan keeps its allowlist of the international models, and strict generation no longer requires exactly that list (Pi 1e34c3b4c).
+	all := []string{"deepseek-v4-flash-0731", "deepseek-v4-pro", "deepseek-v4-pro-0813", "deepseek-v4.1-flash", "deepseek-v4.1-flash-1017", "glm-5.2", "glm-5.3", "qwen3.6-flash", "qwen3.7-max", "qwen3.7-plus", "qwen3.8-flash", "qwen3.8-max", "qwen4-max-preview"}
 	var allowed []provBSpec
 	for _, id := range all {
 		allowed = append(allowed, provBSpec{ID: id})
@@ -299,11 +298,13 @@ func TestProvBQwenTokenPlans(t *testing.T) {
 		{"qwen3.7-max", "compat", without},
 	})
 	missing := &CatalogSources{ModelsDev: provBModelsDev(t, map[string][]provBSpec{"alibaba-token-plan": allowed[1:]})}
-	if _, err := provBBuild(t, "qwen-token-plan-individual", missing, true); err == nil || !strings.HasPrefix(err.Error(), "qwen-token-plan-individual model IDs do not match") {
-		t.Errorf("strict individual error = %v", err)
-	}
-	if _, err := provBBuild(t, "qwen-token-plan-individual", missing, false); err != nil {
-		t.Errorf("non-strict individual error = %v", err)
+	// A model models.dev lacks does not fail strict generation (Pi 1e34c3b4c): the provider lists the allowed models it has.
+	for _, strict := range []bool{true, false} {
+		missingCatalog, err := provBBuild(t, "qwen-token-plan-individual", missing, strict)
+		if err != nil {
+			t.Fatalf("individual with a model missing (strict %v): %v", strict, err)
+		}
+		provBIDsEqual(t, provBIDs(missingCatalog), all[1:]...)
 	}
 
 	// qwen-token-plan-individual-cn serves the same allowlist from the China catalog (Pi 3e4f8726).
@@ -318,9 +319,11 @@ func TestProvBQwenTokenPlans(t *testing.T) {
 		{"qwen3.7-max", "compat", without},
 	})
 	missingCn := &CatalogSources{ModelsDev: provBModelsDev(t, map[string][]provBSpec{"alibaba-token-plan-cn": allowed[1:]})}
-	if _, err := provBBuild(t, "qwen-token-plan-individual-cn", missingCn, true); err == nil || !strings.HasPrefix(err.Error(), "qwen-token-plan-individual-cn model IDs do not match") {
-		t.Errorf("strict individual-cn error = %v", err)
+	missingCnCatalog, err := provBBuild(t, "qwen-token-plan-individual-cn", missingCn, true)
+	if err != nil {
+		t.Fatalf("individual-cn with a model missing, strict: %v", err)
 	}
+	provBIDsEqual(t, provBIDs(missingCnCatalog), all[1:]...)
 }
 
 func TestProvBTogether(t *testing.T) {

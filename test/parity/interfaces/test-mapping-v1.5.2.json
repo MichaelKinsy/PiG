@@ -761,9 +761,9 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:00458d0fd5df2cc234f5b1d10b9130e14b9b620509e134e449828f49f7e99ec9",
       "evidence": [
-        "cmd/gen-models/generate_models_strict_test.go#TestGenerateModelsStrict"
+        "ai/qwen_token_plan_models_test.go#TestQwenTokenPlanIndividualExposesExactlyDocumentedTextModels"
       ],
-      "rationale": "Strict generation rejects on a failed source and leaves the data directory untouched. Pi c23b9ec1 delta (qwen-token-plan-individual-cn rows and compat fields) is carried by the existing cases files/tests. Pi 1397070024 delta: the mocked source lists deepseek-v4.1-flash-1017, which the Individual allowlist now requires; the Go case's source lists it too."
+      "rationale": "Pi 1e34c3b4c removes this test with the strict exact-allowlist assertion of the Individual providers (a model models.dev lacks no longer fails generation); the Go twin TestGenerateModelsStrict is removed with it, and the exact Individual model list stays held by TestQwenTokenPlanIndividualExposesExactlyDocumentedTextModels. Before that commit: Strict generation rejects on a failed source and leaves the data directory untouched. Pi c23b9ec1 delta (qwen-token-plan-individual-cn rows and compat fields) is carried by the existing cases files/tests. Pi 1397070024 delta: the mocked source lists deepseek-v4.1-flash-1017, which the Individual allowlist now requires; the Go case's source lists it too."
     },
     {
       "path": "packages/ai/test/github-copilot-anthropic.test.ts",

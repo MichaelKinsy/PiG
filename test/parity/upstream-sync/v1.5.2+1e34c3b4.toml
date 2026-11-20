@@ -1,0 +1,54 @@
+from = "1.5.2+63dec262"
+to = "1.5.2+1e34c3b4"
+
+[[files]]
+path = "packages/ai/catalog/providers/qwen-token-plan-individual.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/qwen_token_plan_models_test.go#TestQwenTokenPlanIndividualExposesExactlyDocumentedTextModels"]
+rationale = "1e34c3b4c (#12259): INDIVIDUAL_MODEL_IDS gains qwen4-max-preview (13 ids), and the models function no longer asserts the exact allowlist in strict mode, so a model models.dev lacks does not fail generation. PiG's counterpart is internal/modelgen/providers/qwen_token_plan_individual.go (qwenTokenPlanIndividualModelIDs; the strict AssertExactModelIds call goes). The catalog source holds the live models.dev row of alibaba-token-plan/qwen4-max-preview."
+oracle = "carried: 1e34c3b4c (the catalog overlay catalog/providers/qwen-token-plan-individual.ts)"
+
+[[files]]
+path = "packages/ai/catalog/providers/qwen-token-plan-individual-cn.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/qwen_token_plan_models_test.go#TestQwenTokenPlanIndividualCnExposesExactlyDocumentedTextModels"]
+rationale = "1e34c3b4c: the China endpoint serves the same allowlist from alibaba-token-plan-cn, so it gains qwen4-max-preview through INDIVIDUAL_MODEL_IDS, and loses the strict exact-allowlist assertion. PiG's counterpart is internal/modelgen/providers/qwen_token_plan_individual_cn.go through qwenTokenPlanIndividualModels."
+oracle = "carried: 1e34c3b4c (the catalog overlay catalog/providers/qwen-token-plan-individual-cn.ts)"
+
+[[files]]
+path = "packages/ai/scripts/model-data.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/modelgen/modeldata/model_data_upstream_test.go#TestModelDataValidationUpstream"]
+rationale = "1e34c3b4c: the exported assertExactModelIds is removed; the validation of the generated data keeps its own comparison (sameStrings and describeSetDifference). PiG removes modeldata.AssertExactModelIds and compares the sorted id lists of the validation with slices.Equal; the message is unchanged."
+oracle = "not carried: the pinned generator script keeps the function; nothing in the oracle's generated data uses it after the overlay"
+
+[[files]]
+path = "packages/ai/test/generate-models-strict.test.ts"
+change = "removed"
+disposition = "ported"
+evidence = []
+rationale = "1e34c3b4c removes the test of the strict exact-allowlist failure. The Go twin TestGenerateModelsStrict (cmd/gen-models/generate_models_strict_test.go) is removed with it."
+
+[[files]]
+path = "packages/ai/test/model-data-validation.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/modelgen/modeldata/model_data_upstream_test.go#TestModelDataValidationUpstream"]
+rationale = "1e34c3b4c removes the two cases of assertExactModelIds (missing and unexpected model). The two Go subtests of TestModelDataValidationUpstream are removed with them."
+
+[[files]]
+path = "packages/ai/test/qwen-token-plan-models.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/qwen_token_plan_models_test.go#TestQwenTokenPlanIndividualExposesExactlyDocumentedTextModels", "test:ai/qwen_token_plan_models_test.go#TestQwenTokenPlanIndividualCnExposesExactlyDocumentedTextModels"]
+rationale = "1e34c3b4c: INDIVIDUAL_TEXT_MODELS gains qwen4-max-preview; the Go list qwenIndividualTextModels has the same entry and the cases that read it (exact list per Individual provider, request shape per model) run on it."
+
+[[files]]
+path = "packages/ai/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "1e34c3b4c: Pi's changelog entry for qwen4-max-preview. PiG's user-visible change is its own changelog.d fragment."

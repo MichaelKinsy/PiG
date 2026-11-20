@@ -2786,6 +2786,14 @@ mirrorSource("e56d35ce5ece", "packages/coding-agent/src/core/model-resolver.ts",
 // not carried: packages/ai catalog/providers/openai-codex.ts, packages/ai test and CHANGELOG: the package ships none of them; the generated data carries the change.
 // END backport cead615b48b8
 
+// BEGIN backport 1e34c3b4c
+// 1e34c3b4c (#12259): qwen4-max-preview joins INDIVIDUAL_MODEL_IDS of the Qwen Token Plan Individual providers (both regions), and the strict exact-allowlist check of the two provider
+// files and its test go (a model models.dev lacks no longer fails generation). The catalog files catalog/providers/qwen-token-plan-individual.ts and ...-individual-cn.ts (Pi's, at this commit) are in
+// the pi-overlay the oracle's generator runs, and the models.dev row of alibaba-token-plan(-cn)/qwen4-max-preview is merged into the catalog source: no compiled file of the package changes.
+// not carried: packages/ai scripts/model-data.ts (assertExactModelIds is removed from the generator's script), test and CHANGELOG: the package ships none of them.
+// END backport 1e34c3b4c
+
+
 // BEGIN backport 63dec2621
 // 63dec2621 (#12237): the resume command printed on exit is on its own line after "To resume this session:", so a triple-click selects it. The vendored runtime and the
 // parity oracle run the compiled interactive mode (scenarios interactive-rendering/22 and extensions-runtime/73 compare the exit text).
