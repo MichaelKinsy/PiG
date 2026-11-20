@@ -3,6 +3,7 @@
 package coding
 
 import (
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -123,6 +124,41 @@ func TestAbortCompactionStillCancelsARunningCompaction(t *testing.T) {
 	err := waitCompactDone(t, done)
 	if err == nil || !strings.Contains(err.Error(), "cancel") && !strings.Contains(err.Error(), "abort") {
 		t.Fatalf("error = %v, want a cancellation", err)
+	}
+}
+
+func TestAbortCompactionBeforeCancelIsInstalled(t *testing.T) {
+	sess := buildSessionWithMessages(t, newTestServicesSmallKeep(t), 3)
+	_ = sess.Events()
+	t.Cleanup(func() { _ = sess.Close() })
+	sess.completer = &fakeCompleter{summary: "summary"}
+
+	done := make(chan error, 1)
+	func() {
+		// Compact claims admission before taking mu to read the branch, and
+		// installs its cancel function only after that read.
+		sess.mu.Lock()
+		defer sess.mu.Unlock()
+		go func() {
+			_, err := sess.Compact(t.Context(), "")
+			done <- err
+		}()
+		deadline := time.Now().Add(5 * time.Second)
+		for !sess.IsCompacting() {
+			if time.Now().After(deadline) {
+				t.Fatal("compaction was not admitted")
+			}
+			runtime.Gosched()
+		}
+		sess.AbortCompaction()
+	}()
+
+	err := waitCompactDone(t, done)
+	if end := lastCompactionEnd(t, sess); err == nil || end == nil || !end.Aborted {
+		t.Fatalf("Compact error = %v, compaction_end = %+v; want an aborted compaction", err, end)
+	}
+	if got := compactionEntries(sess); got != 0 {
+		t.Fatalf("compaction entries = %d, want 0 after cancellation", got)
 	}
 }
 

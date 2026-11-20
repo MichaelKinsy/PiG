@@ -2953,11 +2953,14 @@ func isCompactionCancelled(err error) bool {
 	return errors.Is(err, errCompactionCancelled)
 }
 
-// AbortCompaction cancels an in-flight Compact() call. Safe to call when
-// no compaction is running (no-op). Mirrors upstream abortCompaction().
+// AbortCompaction cancels an in-flight compaction, including one that has
+// started but has not installed its cancel function yet. It is a no-op when idle.
 func (s *Session) AbortCompaction() {
 	s.compactMu.Lock()
 	cancel := s.compactCancel
+	if cancel == nil && s.compacting.Load() {
+		s.compactAbortRequested = true
+	}
 	s.compactMu.Unlock()
 	if cancel != nil {
 		cancel()
