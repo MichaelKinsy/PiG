@@ -2046,6 +2046,6 @@ Call-site marker: `coding/mcpext/channel.go`.
 Locked by: channel payload/config/escaping tests, real-server session provenance and busy-FIFO tests, queue grouping and renderer tests, and `python3 scripts/probe-mcp-channels.py --pig ./bin/pig`.
 
 Status: local port of a proposed upstream record; awaiting maintainer scrutiny.
-SCRUTINIZED:pending-owner-review
+SCRUTINIZED:approved
 
 Remove when: the MCP adapter has an equivalent attributed channel contract or this feature is removed.
