@@ -9,12 +9,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/execfile"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
@@ -39,7 +41,7 @@ func harnessParent(pid int) int {
 }
 
 // harnessEntrySpec is one run of the harness entry (runtime-node/harness/cli.mjs) over a stub binary: a shell script that runs prelude, publishes its pid in $ROOT/pid, then runs body.
-// $ROOT, in prelude and body, is the test's temp directory.
+// $ROOT, in prelude and body, is the test's temp directory. The stub publishes the pid with the shell's own echo, never with a command it would start: the supervisor kills the stub with SIGKILL, and a helper process of the stub (a mv) outlives it and changes the directory while the test removes it. A reader that finds the file empty, between its creation and the write, tries again.
 type harnessEntrySpec struct {
 	prelude, body string
 	args          []string
@@ -55,8 +57,8 @@ func newHarnessEntry(t *testing.T, spec harnessEntrySpec) (cmd *exec.Cmd, root s
 	}
 	root = t.TempDir()
 	binary := filepath.Join(root, "pig")
-	script := "#!/bin/sh\nROOT='" + root + "'\n" + spec.prelude + "echo $$ > \"$ROOT/pid.tmp\" && mv \"$ROOT/pid.tmp\" \"$ROOT/pid\"\n" + spec.body
-	if err := os.WriteFile(binary, []byte(script), 0o700); err != nil {
+	script := "#!/bin/sh\nROOT='" + root + "'\n" + spec.prelude + "echo $$ > \"$ROOT/pid\"\n" + spec.body
+	if err := execfile.Write(binary, os.O_CREATE|os.O_TRUNC, 0o700, execfile.Bytes([]byte(script))); err != nil {
 		t.Fatal(err)
 	}
 	if spec.setup != nil {
@@ -81,13 +83,23 @@ func startHarnessEntry(t *testing.T, cmd *exec.Cmd) {
 	})
 }
 
-// waitHarnessChildPID waits for the pid a stub published in pidFile. The bound only fails a hang: the file's appearance is the event.
-func waitHarnessChildPID(t *testing.T, pidFile string) int {
+// harnessPublishedPID is the pid in what a stub wrote to its pid file with echo, accepted only on a complete line: echo creates the file and then writes "pid\n", so a reader can find it empty, or with the digits and not yet the newline, and must try again.
+func harnessPublishedPID(raw []byte) (int, bool) {
+	line, complete := bytes.CutSuffix(raw, []byte("\n"))
+	if !complete {
+		return 0, false
+	}
+	pid, err := strconv.Atoi(string(line))
+	return pid, err == nil
+}
+
+// waitHarnessPID waits until parse accepts what pidFile holds. The bound only fails a hang: the file's appearance is the event.
+func waitHarnessPID(t *testing.T, pidFile string, parse func([]byte) (int, bool)) int {
 	t.Helper()
 	deadline := time.Now().Add(testbudget.Wait(t))
 	for time.Now().Before(deadline) {
 		if raw, err := os.ReadFile(pidFile); err == nil {
-			if pid, err := strconv.Atoi(strings.TrimSpace(string(raw))); err == nil {
+			if pid, ok := parse(raw); ok {
 				return pid
 			}
 		}
@@ -95,6 +107,21 @@ func waitHarnessChildPID(t *testing.T, pidFile string) int {
 	}
 	t.Fatalf("%s never held a pid", pidFile)
 	return 0
+}
+
+// waitHarnessChildPID waits for the pid a process published in pidFile by a rename, which makes the file appear whole.
+func waitHarnessChildPID(t *testing.T, pidFile string) int {
+	t.Helper()
+	return waitHarnessPID(t, pidFile, func(raw []byte) (int, bool) {
+		pid, err := strconv.Atoi(strings.TrimSpace(string(raw)))
+		return pid, err == nil
+	})
+}
+
+// waitHarnessStubPID waits for the pid a stub binary published with echo: $ROOT/pid and the inner binary's inner.pid.
+func waitHarnessStubPID(t *testing.T, pidFile string) int {
+	t.Helper()
+	return waitHarnessPID(t, pidFile, harnessPublishedPID)
 }
 
 func awaitHarnessFile(t *testing.T, path string) {
@@ -187,7 +214,7 @@ func TestHarnessEntryKillEndsItsBinary(t *testing.T) {
 	})
 	startHarnessEntry(t, cmd)
 	entryEnded := harnessEntryEnds(cmd)
-	pid := waitHarnessChildPID(t, filepath.Join(root, "pid"))
+	pid := waitHarnessStubPID(t, filepath.Join(root, "pid"))
 	t.Cleanup(func() { _ = syscall.Kill(pid, syscall.SIGKILL) })
 	supervisor := harnessSupervisor(t, pid, cmd.Process.Pid)
 	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
@@ -243,7 +270,7 @@ func TestHarnessEntryKilledWhileStarting(t *testing.T) {
 			}
 			awaitHarnessEnd(t, stalled, "the process the entry started")
 			if raw, err := os.ReadFile(filepath.Join(root, "pid")); err == nil {
-				if pid, err := strconv.Atoi(strings.TrimSpace(string(raw))); err == nil {
+				if pid, ok := harnessPublishedPID(raw); ok {
 					t.Cleanup(func() { _ = syscall.Kill(pid, syscall.SIGKILL) })
 					if harnessChildAlive(pid) {
 						t.Fatalf("the binary (pid %d) outlived the process that started it", pid)
@@ -329,7 +356,7 @@ func TestHarnessEntryKillAfterTheBinaryEndedSignalsNothing(t *testing.T) {
 	startHarnessEntry(t, cmd)
 	supervisor := waitHarnessChildPID(t, flag)
 	t.Cleanup(func() { _ = syscall.Kill(supervisor, syscall.SIGKILL) })
-	if binary := waitHarnessChildPID(t, filepath.Join(root, "pid")); harnessChildAlive(binary) {
+	if binary := waitHarnessStubPID(t, filepath.Join(root, "pid")); harnessChildAlive(binary) {
 		t.Fatalf("the binary (pid %d) is still running: the supervisor is held after the binary ended", binary)
 	}
 	if err := cmd.Process.Kill(); err != nil {
@@ -350,7 +377,7 @@ func TestHarnessEntryKillAfterTheBinaryEndedSignalsNothing(t *testing.T) {
 func TestHarnessEntryKeepsBinaryExitStatus(t *testing.T) {
 	cmd, root := newHarnessEntry(t, harnessEntrySpec{body: "exit 7\n"})
 	startHarnessEntry(t, cmd)
-	waitHarnessChildPID(t, filepath.Join(root, "pid"))
+	waitHarnessStubPID(t, filepath.Join(root, "pid"))
 	err := cmd.Wait()
 	var exit *exec.ExitError
 	if !errors.As(err, &exit) || exit.ExitCode() != 7 {
@@ -368,7 +395,7 @@ func TestHarnessEntryForkedByANodeParentIsStillTheEntry(t *testing.T) {
 	parent := exec.Command(cmd.Path, "--input-type=module", "-e", `import { fork } from "node:child_process"; fork(process.argv[1], [], { execArgv: [] }).on("exit", (code) => process.exit(code ?? 1));`, cli)
 	parent.Env = cmd.Env
 	startHarnessEntry(t, parent)
-	waitHarnessChildPID(t, filepath.Join(root, "pid"))
+	waitHarnessStubPID(t, filepath.Join(root, "pid"))
 	var exit *exec.ExitError
 	if err := parent.Wait(); !errors.As(err, &exit) || exit.ExitCode() != 6 {
 		t.Fatalf("the forked entry's parent ended with %v, want the binary's status 6", err)
@@ -400,7 +427,7 @@ func TestHarnessEntryEndsBySignalLikeItsBinary(t *testing.T) {
 func TestHarnessEntryForwardsTermAndKeepsTheExitStatus(t *testing.T) {
 	cmd, root := newHarnessEntry(t, harnessEntrySpec{prelude: "trap 'exit 3' TERM\n", body: "while :; do sleep 0.1; done\n"})
 	startHarnessEntry(t, cmd)
-	waitHarnessChildPID(t, filepath.Join(root, "pid"))
+	waitHarnessStubPID(t, filepath.Join(root, "pid"))
 	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
 		t.Fatal(err)
 	}
@@ -525,8 +552,8 @@ func TestHarnessEntryNests(t *testing.T) {
 			body: "PIG_HARNESS_BINARY=\"$ROOT/inner\" exec \"$HARNESS_TEST_NODE\" \"$HARNESS_TEST_CLI\"\n",
 			env:  func(string) []string { return []string{"HARNESS_TEST_NODE=" + node, "HARNESS_TEST_CLI=" + cli} },
 			setup: func(root string) {
-				script := "#!/bin/sh\necho $$ > '" + root + "/inner.pid.tmp' && mv '" + root + "/inner.pid.tmp' '" + root + "/inner.pid'\n" + innerBody
-				if err := os.WriteFile(filepath.Join(root, "inner"), []byte(script), 0o700); err != nil {
+				script := "#!/bin/sh\necho $$ > '" + root + "/inner.pid'\n" + innerBody
+				if err := execfile.Write(filepath.Join(root, "inner"), os.O_CREATE|os.O_TRUNC, 0o700, execfile.Bytes([]byte(script))); err != nil {
 					t.Fatal(err)
 				}
 			},
@@ -543,8 +570,8 @@ func TestHarnessEntryNests(t *testing.T) {
 	t.Run("kill", func(t *testing.T) {
 		cmd, root := nested(t, "while :; do sleep 0.1; done\n")
 		startHarnessEntry(t, cmd)
-		innerEntry := waitHarnessChildPID(t, filepath.Join(root, "pid"))
-		inner := waitHarnessChildPID(t, filepath.Join(root, "inner.pid"))
+		innerEntry := waitHarnessStubPID(t, filepath.Join(root, "pid"))
+		inner := waitHarnessStubPID(t, filepath.Join(root, "inner.pid"))
 		t.Cleanup(func() {
 			_ = syscall.Kill(inner, syscall.SIGKILL)
 			_ = syscall.Kill(innerEntry, syscall.SIGKILL)
@@ -558,4 +585,106 @@ func TestHarnessEntryNests(t *testing.T) {
 		awaitHarnessBinaryEnd(t, innerEntry, outerSupervisor)
 		awaitHarnessBinaryEnd(t, inner, innerSupervisor)
 	})
+}
+
+// harnessEntryEnd is how an entry ended and what it wrote to stderr, as a stub binary's end shows it to the process that ran the entry.
+type harnessEntryEnd struct{ status, stderr string }
+
+// harnessInspectorNotice is the two lines Node's inspector thread writes when SIGUSR1 starts it. The thread writes them while the main thread drains and ends the process, so one run has them in its stderr and the next, which ends a moment earlier, does not: a notice that the inspector opened, which is not how the entry ended.
+var harnessInspectorNotice = regexp.MustCompile(`(?m)^Debugger listening on ws://\S+\nFor help, see: \S+\n`)
+
+// runHarnessEntryToEnd runs the entry over /bin/sh -c script as its binary (the entry passes its arguments through) and returns how it ended: no stub file is written, so no exec can meet a file another
+// goroutine still holds open for writing (ETXTBSY). The budget only fails a hang: a process that never ends is the failure, not a slow one.
+func runHarnessEntryToEnd(t *testing.T, node, entry, script string) harnessEntryEnd {
+	t.Helper()
+	cmd := exec.Command(node, entry, "-c", script)
+	cmd.Dir = t.TempDir()
+	// SIGUSR1 opens Node's inspector; port 0 keeps concurrent runs, of this test and of others, off port 9229, where one run would find it taken and print a line of its own.
+	cmd.Env = append(os.Environ(), "PIG_HARNESS_BINARY=/bin/sh", "NODE_OPTIONS="+strings.TrimSpace(os.Getenv("NODE_OPTIONS")+" --inspect-port=0"))
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	ended := make(chan error, 1)
+	go func() { ended <- cmd.Wait() }()
+	budget := testbudget.Wait(t)
+	select {
+	case <-ended:
+	case <-time.After(budget):
+		_ = cmd.Process.Kill()
+		<-ended
+		t.Fatalf("%s never ended: it was still running %s after its binary ended (stderr %q)", filepath.Base(entry), budget, stderr.String())
+	}
+	status := "exit " + strconv.Itoa(cmd.ProcessState.ExitCode())
+	if ws, ok := cmd.ProcessState.Sys().(syscall.WaitStatus); ok && ws.Signaled() {
+		status = "signal " + strconv.Itoa(int(ws.Signal()))
+	}
+	return harnessEntryEnd{status, stderr.String()}
+}
+
+// A binary ends by an exit code or by a signal, and the entry ends the same way: by the same code, by the same signal, or, where Node does not die from the signal (it ignores SIGPIPE and SIGXFSZ and takes SIGUSR1
+// for its inspector), with code 0 and what Node wrote. testdata/harness-entry-oracle.mjs is the entry as it ended its binary before it had a supervisor; the supervised entry must end as it does for every
+// exit code worth distinguishing and for every signal 1 to 31 by which a stub ends itself. A signal that does not end the stub (STOP, TSTP, CONT, CHLD, WINCH and the rest) is skipped by the stub's own wait status, not by a list.
+func TestHarnessEntryEndsAsItsBinaryEndedForEveryExitAndSignal(t *testing.T) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Skipf("node unavailable: %v", err)
+	}
+	oracle, err := filepath.Abs(filepath.Join("testdata", "harness-entry-oracle.mjs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry, err := filepath.Abs(filepath.Join("runtime-node", "harness", "cli.mjs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	type end struct {
+		name, body string
+		signal     syscall.Signal
+	}
+	var ends []end
+	for _, code := range []int{0, 1, 2, 127, 255} {
+		ends = append(ends, end{name: "exit " + strconv.Itoa(code), body: "exit " + strconv.Itoa(code)})
+	}
+	for n := 1; n <= 31; n++ {
+		ends = append(ends, end{name: "signal " + strconv.Itoa(n) + " " + syscall.Signal(n).String(), body: "kill -" + strconv.Itoa(n) + " $$; sleep 1", signal: syscall.Signal(n)})
+	}
+	for _, e := range ends {
+		t.Run(e.name, func(t *testing.T) {
+			t.Parallel()
+			if e.signal != 0 {
+				// The stub's own end decides whether this signal counts: run it alone and see how it ended. A stopped stub is killed.
+				own := exec.Command("/bin/sh", "-c", e.body)
+				if err := own.Start(); err != nil {
+					t.Fatal(err)
+				}
+				var ws syscall.WaitStatus
+				if _, err := syscall.Wait4(own.Process.Pid, &ws, syscall.WUNTRACED, nil); err != nil {
+					t.Fatal(err)
+				}
+				if ws.Stopped() {
+					_ = own.Process.Kill()
+					_, _ = syscall.Wait4(own.Process.Pid, &ws, 0, nil)
+					t.Skipf("the stub stops on %v and does not end", e.signal)
+				}
+				if !ws.Signaled() || ws.Signal() != e.signal {
+					t.Skipf("the stub does not end by %v (it ended %v)", e.signal, ws)
+				}
+			}
+			want := runHarnessEntryToEnd(t, node, oracle, e.body)
+			got := runHarnessEntryToEnd(t, node, entry, e.body)
+			if e.signal == syscall.SIGUSR1 {
+				// The one row that compares the status and not the notice: it is the only row where Node opens an inspector. The inspector opens once, or not before the process ends, and everything else on stderr is still compared.
+				if n := len(harnessInspectorNotice.FindAllString(got.stderr, -1)); n > 1 {
+					t.Errorf("the entry wrote the inspector notice %d times: %q", n, got.stderr)
+				}
+				want.stderr, got.stderr = harnessInspectorNotice.ReplaceAllString(want.stderr, ""), harnessInspectorNotice.ReplaceAllString(got.stderr, "")
+			}
+			if got != want {
+				t.Errorf("the entry ended %+v, the entry before the supervisor ended %+v", got, want)
+			}
+			t.Logf("%s: both ended %q with stderr %q", e.name, got.status, got.stderr)
+		})
+	}
 }

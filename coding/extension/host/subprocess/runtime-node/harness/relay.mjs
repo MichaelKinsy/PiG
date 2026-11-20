@@ -6,6 +6,9 @@ export function endLike(code, signal, handler) {
   if (signal) {
     for (const name of signals) process.off(name, handler);
     process.kill(process.pid, signal);
+    // Reached only when the signal did not end this process: Node ignores SIGPIPE and SIGXFSZ and takes SIGUSR1 for its inspector. A process with nothing left to wait for then ends with code 0, which is
+    // how the entry ended before it had a supervisor; the IPC channel to the other hop is the one thing left to wait for, so close it.
+    if (process.connected) process.disconnect();
     return;
   }
   process.exit(code ?? 1);

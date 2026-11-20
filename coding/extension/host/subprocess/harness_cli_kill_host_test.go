@@ -9,6 +9,8 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/execfile"
 )
 
 // A Node extension runs the harness entry of the materialized runtime (packed or isolated), not the one in the source tree: it starts the entry again the way pi-subagents does (process.execPath process.argv[1] ...), and SIGKILL of that entry must end the binary the entry runs.
@@ -21,7 +23,7 @@ func TestHarnessEntryKillAcrossIsolationModes(t *testing.T) {
 			stub := filepath.Join(dir, "pig")
 			termFile := filepath.Join(dir, "term")
 			script := "#!/bin/sh\ntrap 'echo > " + termFile + "' TERM\nprintf '%s\\n' \"$@\" > '" + argsFile + "'\necho $$ > '" + binaryPID + ".tmp' && mv '" + binaryPID + ".tmp' '" + binaryPID + "'\nwhile :; do sleep 0.1; done\n"
-			if err := os.WriteFile(stub, []byte(script), 0o700); err != nil {
+			if err := execfile.Write(stub, os.O_CREATE|os.O_TRUNC, 0o700, execfile.Bytes([]byte(script))); err != nil {
 				t.Fatal(err)
 			}
 			ext := filepath.Join(dir, "respawn.mjs")
