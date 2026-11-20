@@ -133,7 +133,7 @@ func TestUpstreamSignalShutdownExtensionCleanup(t *testing.T) {
 		if want := []string{"drainInput", "stop", "dispose"}; !slices.Equal(order, want) {
 			t.Fatalf("order=%v; want %v", order, want)
 		}
-		if want := "\x1b[2mTo resume this session:\x1b[22m pig --session test-session\n"; output != want {
+		if want := "\x1b[2mTo resume this session:\x1b[22m\npig --session test-session\n"; output != want {
 			t.Fatalf("output=%q; want %q", output, want)
 		}
 	})
@@ -192,7 +192,7 @@ func TestResumeHintIsPlainAtChalkLevelZero(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
-	if want := "To resume this session: pig --session test-session\n"; output != want {
+	if want := "To resume this session:\npig --session test-session\n"; output != want {
 		t.Fatalf("output=%q; want %q", output, want)
 	}
 }
