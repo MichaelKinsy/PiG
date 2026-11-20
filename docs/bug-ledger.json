@@ -29622,6 +29622,29 @@
       ]
     },
     {
+      "id": "BF-D654",
+      "title": "Threshold compaction is skipped when the model context window is unknown",
+      "symptom": "yes (`_checkCompaction`'s threshold branch omits the `contextWindow \u003c= 0` guard that Pi's separate `_exceedsCompactionThreshold` helper already has).",
+      "rootCause": "a zero context window means the window is unknown, not exhausted; attempting automatic threshold compaction after an answer or before a new run on an unknown-window model is a Pi inconsistency between `_checkCompaction` and Pi's separate `_exceedsCompactionThreshold` helper.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D654",
+      "removeWhen": "Pi guards `contextWindow \u003c= 0` in `_checkCompaction` (or `shouldCompact`) so `_checkCompaction`'s threshold branch matches `_exceedsCompactionThreshold`.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "ede743fff0",
+          "date": "2026-11-20"
+        }
+      ],
+      "tests": [
+        "coding/compaction_unknown_window_test.go::TestCompactionUnknownWindowNoThresholdCompaction"
+      ]
+    },
+    {
       "id": "BF-a058b99",
       "title": "The pre-flight `test-expectation` check skips the tooling directories of `test/testdata-provenance.toml` on…",
       "symptom": "The pre-flight `test-expectation` check skips the tooling directories of `test/testdata-provenance.toml` on main, as the line lint does, so a ledger row for such a file is no longer required by one gate and stale for the other.",
@@ -48629,6 +48652,11 @@
       "id": "D651",
       "title": "Credential files are replaced through a temporary file where that changes nothing but the inode, where Pi…",
       "entry": "BF-26b210c"
+    },
+    {
+      "id": "D654",
+      "title": "Threshold compaction is skipped when the model context window is unknown",
+      "entry": "BF-D654"
     }
   ],
   "exemptCommits": {
