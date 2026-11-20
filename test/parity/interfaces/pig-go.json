@@ -34250,9 +34250,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[1669]catalogBaseline"
+        "type": "[1671]catalogBaseline"
       },
-      "shapeHash": "sha256:0dde5cf2816d315cba5d4da25d64d593d84a9300b3d70892ce23c08a1adcead6"
+      "shapeHash": "sha256:b8b01abe805bd35ebd9c135c6737bdae79cc2954ceecf349186c4173f262f9f1"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordChunk",
@@ -43193,9 +43193,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[1669]GeneratedModel"
+        "type": "[1671]GeneratedModel"
       },
-      "shapeHash": "sha256:33cb065f6d243750b225ee0e52885d97e2a7ad84563c5e468dda7ca117d49ee9"
+      "shapeHash": "sha256:c849a97bd9d8af913a88f76b02631f39043fccadbe798812add1ac4a9a35bd4f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedStrings",
@@ -43237,9 +43237,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[917]generatedMapRef"
+        "type": "[919]generatedMapRef"
       },
-      "shapeHash": "sha256:10000507de03086bd40f42e79e02ee02c3ad3d086f6d4faa2109b2b092720ab4"
+      "shapeHash": "sha256:84fa96e4fb459c2b6d7bfadef7d1efebdf7a41c490411a37aa72c919dc2129c3"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedToolCallID",
