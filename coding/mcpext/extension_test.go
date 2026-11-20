@@ -839,12 +839,26 @@ func codemodeCall(code string) json.RawMessage {
 }
 
 func TestAgentSessionMCPCodemodeScriptWaitsForTheServersItNames(t *testing.T) {
-	h := setupSlow(t, slowConfig{}, 30*time.Millisecond)
+	// The server's answer to `initialize` is held until the gate closes. A delay's timer fires on its own thread as soon as
+	// the time has passed, so on a loaded host the server connects before the assertion that it has not.
+	gate := make(chan struct{})
+	h := setupSlow(t, slowConfig{initializeGate: gate}, 0)
 	if toolRegistered(h.host, "mcp__slow__search") {
-		t.Fatal("the server connected before the script ran")
+		t.Fatal("the server connected while its answer to initialize was held")
 	}
 
-	h.ext.ToolCall(t.Context(), "codemode", codemodeCall(`return (await tools.mcp__slow__search({ query: "q" })).structuredContent;`))
+	finished := make(chan struct{})
+	go func() {
+		defer close(finished)
+		h.ext.ToolCall(t.Context(), "codemode", codemodeCall(`return (await tools.mcp__slow__search({ query: "q" })).structuredContent;`))
+	}()
+	select {
+	case <-finished:
+		t.Fatal("the script ran before the server it names connected")
+	case <-time.After(100 * time.Millisecond):
+	}
+	close(gate)
+	within(t, "tool_call", 5*time.Second, func() { <-finished })
 
 	if !toolRegistered(h.host, "mcp__slow__search") {
 		t.Fatal("the script ran before the server it names connected")
