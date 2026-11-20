@@ -1411,3 +1411,73 @@ commit = "979e2190db1e5fe49a5da192970b54cf159ba79a"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "A tool-internal expectation of PiG's portmapcheck, not Pi behavior: the cache server now hands a shared-cache hit out as a copy in the run's private cache (the review thread at replaycacheserver.go:226 asked for it: a go cache trim could delete the shared file mid-replay), so TestCacheServerAnswersOnlyWhatItCanVerify expects the DiskPath of the hit under the store, not under the shared cache, and TestServerReadsTheLayoutOfGo compares that path relative to the store with go's own path relative to its cache. The expected value moves from the shared file's path to the copy's; the bytes, size and output id are unchanged."
+
+[[entry]]
+path = "coding/extension/host/subprocess/tool_result_event_bench_test.go"
+commit = "26a92f813f4f370d94300ab8c9d735a913a34004"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "A benchmark file, not an expectation of behavior: the value the lint counts as changed is the JavaScript source of the Node extension the benchmark loads (a handler that edits nothing, where the old benchmark edited event.isError) and the doc comment above it. The benchmark measures how the host unwraps the reply of a handler that edits nothing and asserts no result of Pi; Pi has no subprocess extension host, so no Pi line governs it."
+
+[[entry]]
+path = "internal/codingagent/interactive_teardown_test.go"
+commit = "71e0f205106068d8b698bf0743c3f0ed235f3063"
+class = "CITE"
+cite = "packages/tui/src/tui.ts:1104"
+reason = "Pi's stop() (tui.ts:1103-1106) writes showCursor (tui.ts:1104) and then terminal.stop() (tui.ts:1105), whose mode resets write the bracketed-paste-off sequence \x1b[?2004l (terminal.ts:493), so the exit output ends with \x1b[?25h\x1b[?2004l (restoreOnExit, terminal.ts:538, writes the same off sequence after the prefix it is handed); the test's expected exit output therefore ends with \x1b[?25h\x1b[?2004l where it ended with \x1b[?25h. (Pi cead615b4.)"
+
+[[entry]]
+path = "chord/next/host/host_endings_test.go"
+commit = "0b27fabfa4ebc0d41b6f7bf7edf9876ed6e136e1"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Go only, no Pi counterpart: Pi has no goroutines, so no index of paced tasks by goroutine ID. The commit removes the pacer's by-goroutine index and finds a task by what runs it (parking.Current), so pacerHolds returns one count (the paced tasks) where it returned two, and the assertion that nothing is left after every ending ran asserts the one count is 0 where it asserted both were. What must be left (nothing) is the same."
+
+[[entry]]
+path = "chord/next/host/host_pace_test.go"
+commit = "0b27fabfa4ebc0d41b6f7bf7edf9876ed6e136e1"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Go only, no Pi counterpart: Pi has no goroutines, so no index of paced tasks by goroutine ID. The commit removes the pacer's by-goroutine index, so pacerHolds returns one count (the paced tasks) where it returned two, and the churn test asserts that one count is 0 after the holds and releases where it asserted both were. What must be left (nothing) is the same."
+
+[[entry]]
+path = "chord/nextnode/workers/workers_workers_exit_test.go"
+commit = "3e66246870f63df797347f38a1280cc929724b74"
+class = "CITE"
+cite = "packages/chord/src/node/workers/workers.ts:666"
+reason = "Pi f57cd9484 publishes a worker's exit (#exited, workers.ts:666; #left and gone at :683-685) once the commits queued in the server's store settled, so a stop resolves after the exit was published. The test now reads the state and the store's last seq in the stop's own goroutine at the instant the stop resolved, instead of from a watcher whose frame can arrive after the caller ran, and expects the published exit and the landed commit at that instant."
+
+[[entry]]
+path = "chord/nextnode/workers/workers_lingering_unix_test.go"
+commit = "d3f63d62e9f6b41b4f72d0a368e73930d517c317"
+class = "CITE"
+cite = "packages/chord/src/node/workers/process.ts:81"
+reason = "Pi f57cd9484 closes a worker process's link at the exit, before the exit is told (process.ts, link.end() at :81 disconnects the channel; the exit is told at :83), so what the exited worker's holder writes on the channel afterwards is told to no one: the test expects the channel disconnected and neither a frame nor a fatal of the first worker where it expected the late fatal's reason as the first worker's cause, and two stream readers where it expected three."
+
+[[entry]]
+path = "chord/nextnode/workers/workers_process_exit_unix_test.go"
+commit = "d3f63d62e9f6b41b4f72d0a368e73930d517c317"
+class = "CITE"
+cite = "packages/chord/src/node/workers/process.ts:81"
+reason = "Pi f57cd9484 closes a worker process's link at the exit, before the exit is told (process.ts:81 link.end(); the exit is told at :83): the test counts how often the link's listener was told its close (Link.OnClose, whoever caused it) at the exit instead of how often a close was told, and expects the link already closed when the exit is told."
+
+[[entry]]
+path = "chord/next/host/host_admission_settle_test.go"
+commit = "c13aa3639df450148c06028dc15def2b7a4774bb"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The changed values are Go error identity: the verdict a released admission decision gives its waiters already had code released (data.CodeReleased), and the commit makes the Go error behind it satisfy errors.Is(err, ErrDecisionReleased), the sentinel the release wraps as the cause. Pi's JavaScript error has no such sentinel to compare, so no Pi line governs the added condition; the verdict's kind and code are the ones the test asserted before."
+
+[[entry]]
+path = "cmd/gen-models/generate_models_cli_test.go"
+commit = "132e2648408bf56a224d37b601079c49655d49a8"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The one changed value is the usage error of PiG's own generator command, which now lists the two new flags: `Error: -record, -replay, -record-source and -replay-source cannot be combined`. The generator's flags are a PiG tool interface (row 188); no Pi file behind them changed and no Pi-derived expectation moved."
+
+[[entry]]
+path = "chord/next/host/host_query_reader_queue_test.go"
+commit = "6d4e10cfcf11fad2b41f16c3ac1b82bcbb860b28"
+class = "CITE"
+cite = "packages/chord/src/host/query-reader.ts:123"
+reason = "Pi's query reader registers a read's query when `read` is called, in call order (query-reader.ts:123, `void this.#reading.read(target, context)` in #moved), so the Go reader opens each read in the section of the move and keeps one pending load behind the running one: the fake Reading now counts opens (one per move) and loads separately, and the queue test expects 2 loads and 3 opens where it expected 2 reads."
