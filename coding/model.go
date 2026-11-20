@@ -45,6 +45,20 @@ import (
 //	rt, _ := coding.NewRuntime(coding.RuntimeOptions{Services: svcs})
 //	sess, _ := rt.New(coding.SessionStartOptions{Model: model})
 func BuildModel(spec string, svcs *AgentSessionServices) (*ai.Model, error) {
+	if svcs != nil {
+		// Store-only models (remote catalogue, not bundled) resolve only via the runtime.
+		providerID, modelID := "openai", spec
+		if parts := strings.SplitN(spec, "/", 2); len(parts) == 2 {
+			providerID, modelID = parts[0], parts[1]
+		}
+		if svcs.Registry().GetProvider(providerID) == nil {
+			if _, bundled := lookupGeneratedModel(providerID, modelID); !bundled {
+				if model := svcs.ModelRuntime().GetModel(providerID, modelID); model != nil {
+					return model, nil
+				}
+			}
+		}
+	}
 	return buildModel(spec, svcs, "")
 }
 
