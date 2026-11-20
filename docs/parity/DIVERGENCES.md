@@ -279,7 +279,7 @@ Locked by: `internal/coding/pigidentity` `TestIdentityValuesAreThePiGBrand`, `Te
 
 PORT_MAP path: `packages/ai/src/utils/identity.ts`, `packages/coding-agent/src/core/client-identity.ts`, `packages/coding-agent/src/core/telemetry.ts` (setting/env gate ported; the install-report ping it also gates is D64), `packages/ai/src/auth/oauth/openai-codex.ts`, `packages/ai/src/auth/oauth/xai.ts`, `packages/coding-agent/src/cli/setup.ts`.
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:a8cfdf0dc58940f8, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:003ea442cc3693d0, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 ## D27 Word segmentation always uses ICU's warm dictionary-engine cache
 
@@ -558,7 +558,7 @@ Locked by: `internal/codingagent/selfupdate_test.go`
 `coding/pigletbuild/native_build_test.go`
 (`TestPigletBinaryBuildArgsBakesReleaseVersionOnly`).
 PORT_MAP path: n/a (standalone-binary self-replace has no upstream pi equivalent; the update notification mirrors upstream `showNewVersionNotification`).
-SCRUTINIZED:approved 2026-11-20 text-sha256:5a18015a8be27489, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:346f964daa946fbe, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 ## D44 Positive image capability for Herdr intermediaries
 
@@ -966,7 +966,7 @@ SCRUTINIZED:approved text-sha256:6bd33c34b784faf6
 
 What: upstream 0.99.2 points its hosted endpoints at pi.dev and uploads shared-session artifacts to Earendil's Radius gateway at `radius.pi.dev`. PiG serves its hosted paths from `https://pi-in-go.dev` through the private PiG platform repository. The install report and the managed installer API keep Pi's response shapes at the PiG host. PiG's version check does not call pi-in-go.dev: it reads the update manifest of the latest GitHub Release (D39, `internal/codingagent/selfupdate.go`). The installer API serves PiG GitHub Release archives and returns 404 for npm-only `package.json` and `package-lock.json` paths because PiG has no npm package. The hosted endpoints PiG calls are the install report (`/api/report-install`), the managed installer API, the session share upload (`/v1/artifacts`), the remote model catalog overlay (`/api/models/providers/<provider>`) and the MCP OAuth client-metadata document (`/oauth/client.json`, D26; it must be served there, a release gate outside this repository).
 
-Pi's `/share` uploads an organization-visible JSONL artifact to Radius only when Radius auth is available, then otherwise falls back to a private GitHub gist. PiG always requires the explicit `/share` command, displays a persistent privacy notice before the request, and uploads the same `exportSessionForShare` JSONL shape to `https://pi-in-go.dev/v1/artifacts?visibility=unlisted&title=PiG+session`. PiG needs neither Radius nor `gh` login for this path. The PiG platform stores at most 8 MiB per artifact, gives it an unlisted `https://pi-in-go.dev/session/p_<id>` URL, and expires it after 30 days. `PI_SHARE_GATEWAY_URL` explicitly replaces the complete upload URL; `PI_INSTALLER_API_BASE` keeps its upstream meaning for the installer.
+Pi's `/share` uploads an organization-visible JSONL artifact to Radius only when Radius auth is available, then otherwise falls back to a private GitHub gist. PiG always requires the explicit `/share` command, displays a persistent privacy notice before the request, and uploads the same `exportSessionForShare` JSONL shape to `https://pi-in-go.dev/v1/artifacts?visibility=unlisted&title=PiG+session`. PiG needs neither Radius nor `gh` login for this path. `PI_SHARE_GATEWAY_URL` explicitly replaces the complete upload URL; `PI_INSTALLER_API_BASE` keeps its upstream meaning for the installer.
 
 Pi's `sessionShareDestination` setting (`auto`, `gist`, `radius`; Pi cea25743) selects Pi's Radius-or-gist fallback, a forced GitHub gist, or Radius only with the error "Radius authentication is not configured. Run '/login radius' first.". PiG keeps the setting in `SettingsManager` (`GetSessionShareDestination`, `SetSessionShareDestination`) so a settings file shared with Pi keeps the value, but its `/share` uploads to the PiG gateway for every value, and `/settings` has no "Session share destination" item, because that item would change nothing.
 
@@ -990,7 +990,7 @@ Call sites:
 - `internal/codingagent/interactive.go`: the startup changelog/install-telemetry block in `Run`.
 - `automation/gen/gen-help.sh`: drops `PI_SHARE_VIEWER_URL` from the rendered `coding/cli/help_upstream.txt`.
 
-Locked by: `internal/codingagent` `TestShareSessionUploadsJSONLWithPrivacyNotice`, `TestShareSessionKeepsConcurrentExportsIsolated`, `TestUploadShareArtifactHonorsCancellationAndCanonicalOrigin`, `TestShareLoaderEscapeCancelsUpload`, `TestSharePrivacyNoticeRemainsVisibleAfterResult`, `TestShareGatewayURLDefaultAndOverride`, `TestShareBuiltinDescribesUnlistedExpiry`, `TestShareHandlerUploadsToPiGForEveryShareDestination`, and `TestSettingsSelectorOmitsShareDestination`; `coding/cli` `TestHelpOmitsUnusedShareViewerURL`; the private-platform patch's `worker/test/share.test.ts` covers route shape, R2 limits, expiry, escaping, and hashed rate limiting. `TestReportInstallTelemetry_SendsOnlyVersionToConfiguredEndpoint`, `TestReportInstallTelemetry_DefaultURLIsPiInGoDevNotPiDev`, `TestReportInstallTelemetry_SettingDisabledSkipsRequest`, `TestReportInstallTelemetry_EnvOverrideDisablesEvenWhenSettingIsOn`, `TestReportInstallTelemetry_PIOfflineSkipsEvenWhenTelemetryIsOn`, `TestReportInstallTelemetry_NeverContactsPiDotDev`, `TestRecordChangelogVersionAndMaybeReportInstall_FreshInstallPingsAndRecordsNoBanner`, `TestRecordChangelogVersionAndMaybeReportInstall_UpdateWithNewEntriesPingsAndShowsBanner`, `TestRecordChangelogVersionAndMaybeReportInstall_SameVersionNeverPings`, and `TestRecordChangelogVersionAndMaybeReportInstall_VersionBumpWithNoNewEntriesNeverPings` lock the install-telemetry ping.
+Locked by: `internal/codingagent` `TestShareSessionUploadsJSONLWithPrivacyNotice`, `TestShareSessionKeepsConcurrentExportsIsolated`, `TestUploadShareArtifactHonorsCancellationAndCanonicalOrigin`, `TestShareLoaderEscapeCancelsUpload`, `TestSharePrivacyNoticeRemainsVisibleAfterResult`, `TestShareGatewayURLDefaultAndOverride`, `TestShareBuiltinDescribesUnlistedExpiry`, `TestShareHandlerUploadsToPiGForEveryShareDestination`, and `TestSettingsSelectorOmitsShareDestination`; `coding/cli` `TestHelpOmitsUnusedShareViewerURL`. `TestReportInstallTelemetry_SendsOnlyVersionToConfiguredEndpoint`, `TestReportInstallTelemetry_DefaultURLIsPiInGoDevNotPiDev`, `TestReportInstallTelemetry_SettingDisabledSkipsRequest`, `TestReportInstallTelemetry_EnvOverrideDisablesEvenWhenSettingIsOn`, `TestReportInstallTelemetry_PIOfflineSkipsEvenWhenTelemetryIsOn`, `TestReportInstallTelemetry_NeverContactsPiDotDev`, `TestRecordChangelogVersionAndMaybeReportInstall_FreshInstallPingsAndRecordsNoBanner`, `TestRecordChangelogVersionAndMaybeReportInstall_UpdateWithNewEntriesPingsAndShowsBanner`, `TestRecordChangelogVersionAndMaybeReportInstall_SameVersionNeverPings`, and `TestRecordChangelogVersionAndMaybeReportInstall_VersionBumpWithNoNewEntriesNeverPings` lock the install-telemetry ping.
 
 Parity coverage: `test/parity/scenarios/settings/15-settings-roster-d64-d80.toml` pins Pi's "Session share destination" row and its absence in PiG; `settings/02-settings-selector.toml`, `settings/09-settings-tmux-image-capability.toml` and `clipboard-images/05-kitty-settings-visible.toml` assert the row counts in which the omitted row and D80's added row cancel.
 
@@ -1002,7 +1002,7 @@ Why not: Pi's cases assert a GitHub gist request and a Radius authentication err
 
 Remove when: never, unless PiG's owner selects another PiG-operated host, or returns `/share` to Pi's Radius/GitHub flow (update this entry and every call-site marker then).
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:54b8a71e3b7e06c7, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:72066fff91300184, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 ## D65 PiG identifies itself as `pig/<coding.Version>`
 
@@ -1097,7 +1097,7 @@ Parity allowance: no paired scenario asserts module-scope state across `/reload`
 
 Remove when: Pig re-invokes TS/JS extension factories inside a retained Node runtime on session replacement (the additive `subprocess.RuntimeRetention` host API exists for it), reusing each module's cached factory as Pi's module-level extension cache does for a replacement in the same working directory (`loader.ts:136-157,566-599`), or when upstream reload and session replacement re-evaluate every extension module.
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:9001dbe950acd993. The owner approved the session-replacement scope on 2026-09-29 (WSL QUESTIONS 04:50Z, lead note 04:50Z), approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review").
+SCRUTINIZED:approved 2026-11-20 text-sha256:72f38312c1467a49. The owner approved the session-replacement scope on 2026-09-29 (WSL QUESTIONS 04:50Z, lead note 04:50Z), re-approved by principle (owner decision 29) in the 2026-11-20 records review.
 Owner decision 2026-11-17: the in-flight handler clause approved (option a).
 
 ## D73 Live main-process object identity does not cross into Node extensions
@@ -1166,7 +1166,7 @@ Parity allowance: no paired scenario runs an extension's direct provider call; t
 
 Remove when: PiG ships the vendor SDKs to extensions and runs upstream's API implementations, or upstream removes the compat entry point's global dispatch.
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:7715a83ebbcf846d, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:2e0d37be4550bfb5, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 ## D78 SDK Provider object carriers
 
@@ -1390,7 +1390,7 @@ Parity allowance: the Pi comparison rows run the TypeScript fixture, whose handl
 
 Remove when: the Go, Rust, Python and Lisp runtimes report the end of a handler's own wait exactly, as the Node runtime does with its window, or PiG runs extensions on one shared event loop as Pi does.
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:450511aa73b0f212, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:ade20e4ef66893ff, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 ## D87 PiG's versions of Pi's easter eggs
 
@@ -1546,7 +1546,7 @@ Parity allowance: after an edit and `/reload`, the factory of an ES module exten
 
 Remove when: Pi's loader evaluates an edited ES module extension again on `/reload` (upstream issue drafted 2026-10-04).
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:783e0989f7e233e4, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:cc22d67411bb8721, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 ## D94 Subprocess editor working status runs from host snapshots
 
@@ -1709,7 +1709,7 @@ Parity allowance: no paired scenario runs a tool that ignores its signal, becaus
 
 Remove when: Pi stops awaiting aborted tool calls.
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:1fce819c0acb5f61, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:8354a911baaa2b28, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 ## D113 A Session has no `extensionRunnerRef` cell
 
@@ -2194,7 +2194,7 @@ Parity allowance: two replacements of one batch, the first replacement's `sessio
 
 Remove when: Pi answers a replacement command that is in flight when stdin ends. The part about replacements in flight together goes when Pi runs them one after the other (it starts every line at once at `rpc-mode.ts:824` and does not guard `AgentSessionRuntime` in Pi 1.5.2, and nothing upstream says it will): until then PiG keeps its order, which cannot be dropped without copying the double `session_shutdown`.
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:7bcffd5d2abf6983, first approved 2026-11-17, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:3580c9d5d2b9e034, first approved 2026-11-17, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 ## D147 Compactions requested in one input batch run one after another
 
@@ -2777,7 +2777,7 @@ Parity allowance: the fullscreen parity scenarios compare the captured screen, w
 
 Remove when: Pi scrolls the rows that moved, or an owner decision reverses this one. Then every changed row is drawn again, and the markers, `tui/tui_alt_screen_scroll.go` and this record go.
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:86a6abf8ecd307cd, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:c7801cb4c570fcd4, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 ## D206 The Durable core resolves HarnessOptions.settings once before each event, where Pi resolves it at each use
 
@@ -3181,9 +3181,9 @@ Pi bug: none. The difference comes from the wire and from the bound that keeps a
 
 Scope: a session-graph client's ExtensionRunner only (a client of the host, not an extension's own `ctx.signal`); case (1) for clients without a token, case (2) for two runs aborted at birth with no live read between them. A Host over a Session reads the agent's own context, one per run.
 
-Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row M4, record only; the wire fix is a later row). The text of this record was rewritten when that wire fix landed (the run token, the storm guard, the per-SDK statement); the rewritten text is approved by owner Michael Kinsy on 2026-11-20 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review"), as a narrowing of the 0.7.1 scope of 2026-11-05.
+Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row M4, record only; the wire fix is a later row). The text of this record was rewritten when that wire fix landed (the run token, the storm guard, the per-SDK statement); the rewritten text is approved by principle (owner decision 29) in the 2026-11-20 records review, as a narrowing of the 0.7.1 scope of 2026-11-05.
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:9cf3dcdfe1981228, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:e4f395013ed6a08a, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 Remove when: no supported client sends an answer without `run` (the host may then require it and case (1) is gone), and the host can read an aborted run without renumbering it on every sync, so that the storm guard can be dropped and two runs aborted at birth are two contexts (case (2) is gone).
 
@@ -3252,7 +3252,7 @@ Scope: `InstallDependencies`, and every other command the plugins' installer run
 
 Owner decision: 2026-11-05, approved through the coordinator for 0.7.1.
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:f2d0b7333a4cec01, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:4f7316eb1ef9af52, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 Remove when: Pi stops waiting on inherited pipes (its install settles on the command's `exit`, or bounds the wait for `close`). Then the call-site marker and this record go.
 
@@ -3316,7 +3316,7 @@ Scope: `tools.LookupToolPath` and `ToolsManager.GetToolPath` (so `EnsureTool`, `
 
 Owner decision: approved by owner Michael Kinsy on 2026-11-06 (proposed by the 0.7.1 coordinator).
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:022ed2a16ae43532, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:2573b40ad0ebd44f, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 Remove when: Pi checks that the program it found is the tool, not only that it spawns. Then the probe, the autocomplete's new session and this record go.
 
@@ -3338,7 +3338,7 @@ Scope: `/tree` navigation. The hold starts only from the choice of the prompt's 
 
 Owner decision: approved by owner Michael Kinsy on 2026-11-06 (proposed by the 0.7.1 coordinator).
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:95cea789faf13200, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:8a62f27cc102157e, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 Remove when: PiG's navigation completes within one frame for every session, or the owner decides to match Pi's brief old-transcript frame.
 
@@ -3369,7 +3369,7 @@ Scope: the go command that the toolchain resolver picks, on every platform. The 
 
 Owner decision: approved by owner Michael Kinsy on 2026-11-06.
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:544373369614c976, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:968eaa4cd2f7084b, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 Remove when: the owner prefers the type checker in the binary again, or Go ships `go/types` in a form that the binary can link at no size cost.
 
@@ -3396,7 +3396,7 @@ Scope: the Go and Lisp SDKs' packed cells (a placement of the same factory the i
 
 Owner decision: approved by owner Michael Kinsy on 2026-11-07 (proposed by the 0.7.1 coordinator).
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:d05104eebcb20b19, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:cf624138a6cc440c, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 Remove when: an extension's goroutine or thread can be contained in the process that serves other extensions, or the owner decides that a crash of a packed member stops its siblings until `/reload`. Then the call-site marker, the trace readers and this record go.
 
@@ -3420,7 +3420,7 @@ Scope: `render_message` and `render_entry` components of the Node runtime whose 
 
 Owner decision: approved by owner Michael Kinsy on 2026-11-07, in this narrowed form only.
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:ce7f3e436b80c273, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:7d02d5c9091a2d8e, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 Remove when: the host can ask the extension synchronously for a component's answer, or Pi's own components of a separate process need none.
 
@@ -3473,7 +3473,7 @@ Evidence: `app_test.go`, `app_workers_test.go`, `app_export_test.go`, `registrie
 
 Parity allowance: none needed beyond the evidence above.
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:35657887aaac3097, first approved 2026-11-08, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:dd151aae03e55dd9, first approved 2026-11-08, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 ## D462 The server and each worker have two stores, not one
 
@@ -3523,7 +3523,7 @@ Evidence: `TestNumbersMatchNode`, `TestTimesMatchNode` (random corpus against a 
 
 Parity allowance: none needed beyond the evidence above.
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:352e13fccea6e651, first approved 2026-11-08, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:3f6d4ce8ca43a0c0, first approved 2026-11-08, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 ## D465 FormatTime takes a time.Time, not `Date`, `number` or `string`
 
@@ -3543,7 +3543,7 @@ Evidence: `TestFormatTimeShowsTheInstantInTheProcessZone`; `TestFormatTimeInAZon
 
 Parity allowance: none needed beyond the evidence above.
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:7c031338208ea963, first approved 2026-11-08, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:84334d520dc0daaa, first approved 2026-11-08, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 ## D466 No per-language formatter cache
 
@@ -3563,7 +3563,7 @@ Evidence: `TestFormatsAllocateOnlyTheResultForCanonicalTags`.
 
 Parity allowance: none needed beyond the evidence above.
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:4fdb3dd5e0182205, first approved 2026-11-08, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:8687351afcf28a69, first approved 2026-11-08, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 ## D502 `TestPlugin` tests a plugin on the production topology: its host is the Node subprocess and the stubs are Go facets, not JavaScript values handed to one in-process host
 
@@ -3583,7 +3583,7 @@ Parity allowance: none needed beyond the forms above; the Pi cases pass with Go 
 
 Remove when: Pi evaluates plugins out of process (its stubs then need a wire form too) or PiG gets an in-process evaluator.
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:5963840087816bb8, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:47f3c936eb280d82, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 ## D503 `TestPlugin`'s registries are named, its contributions are data, and `root` is `RootPrincipal`: no JavaScript closure or registry token crosses
 
@@ -3603,7 +3603,7 @@ Parity allowance: none needed.
 
 Remove when: PiG's plugin host can run a Go closure in the plugin's host process, or Pi's `root` takes data.
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:5eefc4a6cebc286f, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:2e97b955e57a647e, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 ## D520 A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect
 
@@ -3640,7 +3640,7 @@ Scope: `appendStringify` (`ai/validate.go`) and so `ValidateToolArguments`: only
 
 Owner decision: owner approved option D (keep the string representation, record it as a numbered divergence) 2026-11-08 (owner list #22, "proceed with recommendations").
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:8d1474801c794e92, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:7d785a485d9acc70, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 Remove when: the tool-argument path carries a typed bigint (for example a JSON extension with a numeric tag) that every reader of the arguments understands.
 
@@ -3731,7 +3731,7 @@ Evidence: `TestDelegateServesTheUnionOfTheHostsTypes...`, `TestDelegateWhatTheDe
 
 Parity allowance: none.
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:97d20a6466ef6aea, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:51c934776426acb8, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 ## D607 The plugins component loads hosts through a Node subprocess it starts: Pi's `evaluate`, `stack` and runtime run in that subprocess, not in the Go process
 
@@ -3741,7 +3741,7 @@ Why: a JavaScript facet, module instance or `Host` cannot cross the process boun
 
 Scope: `chord/nextnode/plugins` (`plugins_runtime.go`, `plugins_plugins.go`, `plugins_node*.go`, `node/`), `chord/nextnode/surfaces` (surfaces build after the server's listen, D462).
 
-Owner decision: APPROVED for 0.8.0 (owner, 2026-11-08 17:29Z): the live-JS rows evaluateFacet, EvaluateOptions, BuiltScript, mapStack and HostPackages stay under D607 with their intention checks; follow-up after 0.8.0: Load takes a host as Pi does. SCRUTINIZED:approved 2026-11-20 text-sha256:e8a016299528470a, first approved 2026-11-08, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review").
+Owner decision: APPROVED for 0.8.0 (owner, 2026-11-08 17:29Z): the live-JS rows evaluateFacet, EvaluateOptions, BuiltScript, mapStack and HostPackages stay under D607 with their intention checks; follow-up after 0.8.0: Load takes a host as Pi does. SCRUTINIZED:approved 2026-11-20 text-sha256:408d05ff9743039d, first approved 2026-11-08, re-approved by principle (owner decision 29) in the 2026-11-20 records review.
 
 Call-site markers: `chord/nextnode/plugins/plugins_runtime.go` (`PluginRuntime`, `RuntimeLoad`), `chord/nextnode/plugins/plugins_plugins.go` (`Plugins.Load`, `Plugins.Step`, `RolloutStep`).
 
@@ -3764,7 +3764,7 @@ Scope: the Go, Python, Lisp and Rust SDKs: `ModelEventStream.Push`/`End` (Go), `
 Owner decision: approved by owner Michael Kinsy on 2026-11-09 (copy at push in the Go, Python and Lisp SDKs; keep Node as Pi does; record the burst-case difference).
 Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:0c4d9be4638483eb, first approved 2026-11-17, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:a3f872850a9af86d, first approved 2026-11-17, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 Remove when: Pi's provider stream consumer captures each event at its push (or the Go, Python and Lisp SDKs gain a synchronization point that makes the forwarder see the provider's state at the consumer's turn). Then the three call-site markers and this record go.
 
@@ -3809,7 +3809,7 @@ Scope: the Go, Python, Rust and Lisp SDKs and `coding/extension/host/subprocess`
 
 Owner decision: owner, 2026-11-11 (`handoffs/0.8.0/OWNER-DECISIONS.md`, the section `2026-11-11T17:41Z Owner: "proceed with recommendations"`): "i want it all in 0.8.0 since we delayed anyways", and "switchSession/newSession/fork from a non-command context: red-first test, IN 0.8.0"; the decision he took (c) is that the host rejects it and returns the error to the calling handler (`TERN-CLAUDE-CHANNEL.md:19154`). The Node runtime follows Pi's shape. The narrowing to the Go, Python, Rust and Lisp SDKs is forced: Go and Rust have one static context type, and the four SDKs keep one interface.
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:c7003bf25ed11a07, first approved 2026-11-11, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:e4ae143ec102e3b5, first approved 2026-11-11, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 Remove when: the Go, Python, Rust and Lisp SDKs hand event, tool and shortcut handlers a context type that has no command-only session actions (a separate command-context type), so the call cannot be written.
 
@@ -3835,7 +3835,7 @@ Scope: `tui` (`tuiBase.RequestRenderWithin`, `Loader`, `Loader.TickStep`) and `i
 
 Owner decision: owner approved 2026-11-11 (for 0.8.0).
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:fc2c6e7a79c141c4, first approved 2026-11-11, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:df01dc9909343887, first approved 2026-11-11, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 Remove when: Pi's `Loader` draws a step within a time, or the owner withdraws the change.
 
@@ -3878,7 +3878,7 @@ Owner decision: approved as an OPT-IN writer. Default-on is NOT approved: it nee
 (b) "Kitty/Ghostty/iTerm2 coverage": not shown for the three applications on macOS, which no lane can run. Run on Linux with this rule, on the corpus of this tree's writer (292 recorded sessions, 584 stream pairs, 15,922 checkpoints a side, the screen after the writer's bytes against the screen after the bytes they were made from): kitty 0.50.0's screen code, every cell, 0 differ; the kitty 0.50.0 program in a window on a virtual display, 0 differ; libghostty-vt 1.4.0, Ghostty's terminal core, 0 differ; `make test-term-engines` (xterm.js, alacritty_terminal, wezterm-term, libvterm, pyte), 0 scenarios differ. iTerm2: not run at all.
 (c) the whole parity suite passes in writer mode (this record's words for the third condition; its wording is in `OWNER-DECISIONS.md`, 2026-11-12T14:42Z): shown at 08cba8629 for the hermetic suite in CI's form (`make parity-fast`, both shards): 872 of the 872 scenarios that run pass with the default as committed, and 872 of 872 with the constant set to `"pi"`; 7 of the 879 scenario files do not run in the hermetic suite by their tags. Run again at a6e5efaad, where the default is `"pi"`: 872 of 872 with nothing selected (both shards rc 0; the fullscreen family run again with `PIG_TUI_SCREEN_WRITER_LOG` set leaves no log: no screen writer wrote) and 872 of 872 with the writer selected by `PIG_TUI_SCREEN_WRITER=writer` (the same family run leaves a log of 15,345,496 bytes). What that evidence is, and is not, is under "Parity allowance" below.
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:193d3535fe54f771, first approved 2026-11-13, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:b42e2673a5b2b5b2, first approved 2026-11-13, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 Remove when: Pi sends only what changes the screen, or the owner declines the writer. It is opt-in in 0.8.0: `TerminalScreenWriterDefault` is `"pi"`. When the owner's real-terminal condition is shown the constant becomes `"writer"` and this record says so; if he declines the writer, `internal/screenwriter`, `tui/terminal_screen_writer.go`, the five hunks in `tui/terminal.go`, the setting, the markers and this record go.
 
@@ -3902,7 +3902,7 @@ Scope: `coding.Session.refreshCurrentModelFromRegistry`, `coding.ModelRuntime.Bi
 
 Owner decision: approved (owner, 2026-11-13T01:13:59Z: "Proceed with recommendations."; the line of that decision for this record: "D626 APPROVED (setModel object kept until its registry entry changes)."). Drafted by the SetModelImpl lane on 2026-11-12.
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:861309708de06f43, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:f2843958016d6f30, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 Remove when: the extension wire can tell an in-place edit of a registry model from a copy, or Pi changes the rule of `_refreshCurrentModelFromRegistry`.
 
@@ -4009,7 +4009,7 @@ Scope: `coding/extension` (`ExecCommand`, both output pipes) and `internal/codin
 
 Owner decision: approved. The owner said "proceed with recommendations" (2026-11-12T23:22:43Z, owner decisions of 0.8.0), and the recommendation recorded there for this item is "D631 exec/bash child stdio: KEEP PIPES, record D631 as a numbered divergence with both effects locked by tests against the Pi oracle."
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:8fa5e9db2322b061, first approved 2026-11-12, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:ae844caf2125d2d2, first approved 2026-11-12, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 Remove when: PiG gives the commands of `pi.exec` and the bash tool socket pairs on Unix (stdin included where the bash tool gives one), or Node gives its children pipes.
 
@@ -4072,7 +4072,7 @@ Scope: `internal/codingagent` (`SettingsManager.UpdateGlobal`, `UpdateProject` a
 
 Owner decision: approved by the owner. `OWNER-DECISIONS.md`, section "2026-11-13T00:54:22Z owner: direction for the rest of 0.8.0", the owner verbatim: "I want the divergences that keep us on brand but still want to be faithful as we can plus our additions of go support and then my hero demo I was asking for plus ensuring the optimal quality release given how I've held it back and we can make this an exciting announcment from many angles." The line of that section that applies it, quoted: "Divergences APPROVED where PiG keeps a user safe or told the truth (on brand), each numbered, minimal, with remove-when and an upstream issue draft: D630 (hold a prompt during a reload), D632 (serialised reloads), D633 (show a failed settings save), ..."
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:5476056f294a8b2c, first approved 2026-11-13, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:1a3eca702ec34717, first approved 2026-11-13, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 Remove when: Pi reports a failed save at the point of change.
 
@@ -4198,7 +4198,7 @@ Observable effect: for the time above a user sees `[<customType>]` where Pi show
 
 Owner decision: owner approved 2026-11-14 (handoffs/0.8.0/OWNER-DECISIONS.md, entry `2026-11-14T20:05:57Z owner: "I'm fine with all recommendations and if you can't reproduce the compaction error maybe it's fixed"`): "D647: APPROVED as a record WITHOUT a held frame (a message or entry that an extension renders is drawn as the placeholder `[<customType>]` until the extension's first answer; ...; numbers after the load fixes: about 46 ms quiet, 74 ms loaded)." The in-between asked for before that entry (the first request at the proxy's build, and a kept frame of 50, 100 or 150 ms on a load or resume, measured by lane PlaceholderWindow) is not taken, as the entry of 2026-11-14T20:05:57Z says ("WITHOUT a held frame"): the transcript's first frame would come later by the window; the first request still starts at the first `Render`.
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:d940234408027def, first approved 2026-11-14, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:a04cdd509e956bcf, first approved 2026-11-14, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 Remove when: the first frame that shows a message or entry draws the component the renderer returned, not `[<customType>]`, without a wait on the render loop: that is, a test that builds the proxy, draws it once and gets the component's rows with the loop never blocked (the renderer's answer obtained before the message's first frame, off the loop), or the renderer runs in the host's process.
 
@@ -4243,7 +4243,7 @@ Scope: an `agent_settled`, `agent_before_settle` or reload handler of an extensi
 
 Owner decision: owner approved 2026-11-14T14:10:39Z ("proceed", on the recommendations of 13:2xZ; handoffs/0.8.0/OWNER-DECISIONS.md, entry `2026-11-14T14:10:39Z owner: "proceed" (on Claude's recommendations of 13:2xZ)`): "D649 APPROVED: at RPC input end a native-SDK settle-tail handler does not hold the exit." The Scope sentence for the interactive quit is approved by the owner on 2026-11-14T20:05:57Z (handoffs/0.8.0/OWNER-DECISIONS.md, entry `2026-11-14T20:05:57Z owner: "I'm fine with all recommendations and if you can't reproduce the compaction error maybe it's fixed"`, item ROWS 112 + 113: "D649 Scope: the interactive quit is in scope").
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:21f94be45d5c74f6, first approved 2026-11-14, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:249d4eae10493291, first approved 2026-11-14, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 Remove when: the SDKs report whether a handler waits on a handle (a timer, a socket, a child process), so that the host can hold the exit for exactly the handlers Pi holds it for.
 
@@ -4285,7 +4285,7 @@ Owner decision: owner approved 2026-11-14T14:10:39Z ("proceed", on the recommend
 
 Owner decision (rows 112 + 113): owner approved 2026-11-14T20:05:57Z (handoffs/0.8.0/OWNER-DECISIONS.md, entry `2026-11-14T20:05:57Z owner: "I'm fine with all recommendations and if you can't reproduce the compaction error maybe it's fixed"`, item ROWS 112 + 113): the run-awaited kinds name message_end, tool_call, tool_result and context; the Node-runtime defect sentence is deleted; ACCEPTED: a native handler of tool_call / tool_result / context that never returns and ignores the cancel signal holds an abort and a quit, ended by ctrl+c, SIGINT, SIGTERM or SIGHUP.
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:41f47b538df4d147, first approved 2026-11-14, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:4d218382ce979bb9, first approved 2026-11-14, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 Remove when: the SDKs report whether a handler waits on a handle (a timer, a socket, a child process), or the host can read it.
 
@@ -4353,7 +4353,7 @@ Scope: pig's writes of the listed files through `internal/atomicfile`. Pi's file
 
 Owner decision: approved 2026-11-14T14:10:39Z ("proceed", handoffs/0.8.0/OWNER-DECISIONS.md, entry `## 2026-11-14T14:10:39Z owner: "proceed" (on Claude's recommendations of 13:2xZ)`); the line, verbatim: "D651 APPROVED, both parts: (1) auth.json, settings, trust, keybindings and the MCP config replaced through a private temp file + rename where that changes nothing but the inode; Pi's in-place write kept for hard links, uncarriable ACL/xattrs, bind-mounted single files and unwritable directories; (2) a 5 s refresh of the async lock so a live refresher is never taken over (single-use refresh token spent once)."
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:c8b934a41de98eff, first approved 2026-11-14, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:f57e77c3ca8a278a, first approved 2026-11-14, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 Remove when: (A) Pi writes these files through a temporary file and a rename, or otherwise keeps a failed write from truncating them; (C) Pi renews its async lock faster than its sync stale window, or raises the sync stale window to at least twice the async heartbeat.
 
@@ -4462,7 +4462,7 @@ Scope: the Go, Rust, Python and Lisp SDKs, `tool_call`, `event` and `command` re
 
 Owner decision: 2026-11-18, owner Michael Kinsy approved the coordinator's recommendation "Start-order limit: give it a numbered record, covering Go, Rust and Lisp" with the words "proceed with recommendations"; on the same day, shown that the Python SDK has the same hand-off by reading, he chose "Cover Go, Rust, Python and Lisp. Python and Lisp are marked "by reading, not measured"; Pi and Node never reorder." (the coordinator's form, option text quoted). Python was measured afterwards (What). The wording of this record awaits the owner's read.
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:ef9f9403a17d080c, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
+SCRUTINIZED:approved 2026-11-20 text-sha256:676e3b6b4a5af59c, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 Remove when: an SDK can invoke the handler and hand the place on in one step the scheduler cannot split, or a start place that is held until the handler's first host call without stalling later handlers or deadlocking.
 
