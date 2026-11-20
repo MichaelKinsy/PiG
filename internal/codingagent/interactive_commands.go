@@ -470,7 +470,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			sessHandle := m.opts.SessionHandle
 			go func() {
 				// The compaction events report both the result and a rejection such as "Nothing to compact".
-				if _, err := sessHandle.Compact(ctx, customInstructions); err != nil && err.Error() == "Already compacting" {
+				if _, err := sessHandle.Compact(ctx, customInstructions); err != nil && errors.Is(err, ErrAlreadyCompacting) {
 					// D239: a refused second request emits no compaction events, so show it here.
 					m.runOnMain(ctx, func() { m.showError(err.Error()) })
 				}

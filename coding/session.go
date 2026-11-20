@@ -2811,7 +2811,7 @@ func (s *Session) CompactForExtension(ctx context.Context, customInstructions st
 }
 
 // errAlreadyCompacting refuses a compaction request while another compaction runs (D239).
-var errAlreadyCompacting = errors.New("Already compacting")
+var errAlreadyCompacting = icodingagent.ErrAlreadyCompacting
 
 func (s *Session) compact(ctx context.Context, customInstructions string) (*CompactionResult, error) {
 	// Manual compaction aborts the active run first and never continues it

@@ -989,3 +989,25 @@ commit = "6fe688207d8dee14cd2a64fbc01a4fb8278a2a7a"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "The one value the lint counts as changed is a length the test computes, not an expectation of behavior: the worst-case socket path of the kept socket directory was written with the literal leaf `e-9999.sock` and is now written with the constant worstRuntimeSocketLeaf, the longest leaf of the new per-generation socket path (`<count>.s`, at most 9 bytes), because newSocketPath replaced the per-name path `e-<counter>.sock` in host.go, packed_go.go, platform.go and retention.go. The path of a socket is a PiG host detail: Pi has no subprocess extension host and makes no sockets, so no Pi line is behind the value and no Pi-derived expectation moved."
+
+[[entry]]
+path = "coding/session_test.go"
+commit = "f49f5ea3331902196df938dff9158cecac3451b3"
+class = "DIVERGENCE"
+cite = "D239"
+reason = "TestCompactAbortsInFlightManualCompactionAndRestarts and TestCompactAbortsInFlightAutoCompactionAndRestarts previously expected Pi's abort-and-restart compaction behavior (agent-session.ts:2849-2850). Under D239, a second compaction request while one is running returns errAlreadyCompacting (\"Already compacting\") and leaves the running compaction to complete without emitting an aborted compaction_end event."
+
+[[entry]]
+path = "internal/codingagent/interactive_test.go"
+commit = "f49f5ea3331902196df938dff9158cecac3451b3"
+class = "DIVERGENCE"
+cite = "D239"
+reason = "TestInteractiveMode_EscDoesNotCancelCompactionWhileAgentIsIdle (renamed from TestInteractiveMode_EscCancelsCompactionWhileAgentIsIdle), TestInteractiveMode_EscapeClosesAutocompleteDuringCompactionWithoutAborting, and TestInteractiveMode_EscapeAbortsCompactionOnlyBetweenStartAndEnd previously expected Escape to call AbortCompaction once. Under D239, Escape leaves a running compaction running (0 AbortCompaction calls) and shows a status line pointing to /compact-cancel."
+
+[[entry]]
+path = "internal/codingagent/llama_extension_command_test.go"
+commit = "f49f5ea3331902196df938dff9158cecac3451b3"
+class = "DIVERGENCE"
+cite = "D239"
+reason = "TestSlashPopupWithoutExtensionsListsPisTwentyFourBuiltins and TestSlashPopupListsLlamaAmongExtensionCommandsInLoadOrder assert the built-in slash command count in the popup (previously 24 built-ins, 26 with /llama and /mcp). Under D239, PiG adds the /compact-cancel built-in slash command beside /compact, bringing the built-in count to 25 (27 with /llama and /mcp)."
+

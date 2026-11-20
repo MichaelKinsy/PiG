@@ -87,6 +87,7 @@ func (s CompactionSettingsJSON) MarshalJSON() ([]byte, error) {
 		fields["enabled"] = raw
 	}
 	if s.SummaryModel != nil {
+		//perf:ok settings persistence runs only when writing settings.json, not on a hot path
 		raw, e := json.Marshal(*s.SummaryModel)
 		if e != nil {
 			return nil, e

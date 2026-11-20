@@ -1070,6 +1070,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D208](#bf-d208) | From inside a component's render, a TuiAltScreen of the Go, Rust, Python and Lisp SDKs fails the calls that… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D220](#bf-d220) | Markdown renders each paragraph with the inline state at its position, not with the lines of an earlier… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D226](#bf-d226) | Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D239](#bf-d239) | An abort ends the turn only; a running compaction finishes, and `/compact-cancel` stops it | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D247](#bf-d247) | Quit settles the interrupted run before session_shutdown and disposal | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a058b99](#bf-a058b99) | The pre-flight `test-expectation` check skips the tooling directories of `test/testdata-provenance.toml` on… | PiG's own defect | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
@@ -16233,6 +16234,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `24d55ab3f0` (2026-11-02), `4a7c33c707` (2026-11-02), `82fd316d04` (2026-11-02), `e27164c914` (2026-11-02)
 - **Tests:** `test/extension-conformance/refine_arguments_test.go::TestConformance_RefinedToolArgumentsAreNotRefined`
 
+### BF-D239
+
+**An abort ends the turn only; a running compaction finishes, and `/compact-cancel` stops it**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D239)
+- **Symptom:** none; intentional policy difference. Pi has no `/compact-cancel` slash command (`packages/coding-agent/src/core/slash-commands.ts`).
+- **Root cause:** Aborting a slow turn or hitting Escape should not discard an expensive in-flight compaction summary, and a second `/compact` should report the active compaction rather than cancelling it.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi stops cancelling a compaction on abort, or this behaviour is withdrawn.
+- **Fix commits:** `444697d465` (2026-11-19)
+- **Tests:** `coding/session_compaction_no_cancel_on_abort_test.go::TestAbortCompactionStillCancelsARunningCompaction`, `coding/session_compaction_no_cancel_on_abort_test.go::TestAwaitedAbortWaitsForARunningCompaction`, `coding/session_compaction_no_cancel_on_abort_test.go::TestRequestAbortLeavesARunningCompactionRunning`, `coding/session_compaction_no_cancel_on_abort_test.go::TestSecondCompactionRequestIsRefusedAndTheFirstCompletes`, `internal/codingagent/interactive_compaction_d239_test.go::TestNavigateTreeDuringCompactionRefusesWithoutCancelling`, `internal/codingagent/interactive_compaction_d239_test.go::TestSecondCompactShowsAlreadyCompacting`, `internal/codingagent/interactive_compaction_d239_test.go::TestSettleReplacedSessionCancelsCompaction`, `internal/codingagent/interactive_compaction_d239_test.go::TestSettleRunAtQuitCancelsCompaction` and 2 more in docs/bug-ledger.json
+
 ### BF-D247
 
 **Quit settles the interrupted run before session_shutdown and disposal**
@@ -24623,6 +24639,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D228 | Terminal.app: plain Up dequeues a queued message, and Up recall elsewhere says once that the text is a copy | [BF-2359a0a](#bf-2359a0a) |
 | D231 | PiG follows Pi main 1708b4788 ahead of the v1.5.0 pin: RPC mode acts on an idle `ctx.shutdown()` | [BF-0cced6a](#bf-0cced6a) |
 | D233 | A Streamable HTTP application/json reply is capped at maxMessageBytes, and an HTTP error body keeps its first… | [BF-d4e641b](#bf-d4e641b) |
+| D239 | An abort ends the turn only; a running compaction finishes, and `/compact-cancel` stops it | [BF-D239](#bf-d239) |
 | D247 | Quit settles the interrupted run before session_shutdown and disposal | [BF-D247](#bf-d247) |
 | D615 | The Go, Python, Lisp and Rust SDKs show the host each provider stream event as it was when the provider… | deliberate difference |
 | D651 | Credential files are replaced through a temporary file where that changes nothing but the inode, where Pi… | [BF-26b210c](#bf-26b210c) |
