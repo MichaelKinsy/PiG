@@ -1,9 +1,11 @@
 package subprocess
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"net"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -92,10 +94,23 @@ func TestHostCallOfCancelledParentStaysCancelledAfterCleanup(t *testing.T) {
 // cancellation as the call's own error result (TestParentCancellationCancelsBlockedHostCall requires that result), which would reach the
 // extension ahead of the cancel and reject a promise it dropped; Pi rejects none (interactive-mode.ts showExtensionCustom 2858-2940). The
 // cancel then follows the result on the wire, and the extension cancels the call itself.
+//
+// The cancel cannot be queued while the writer is blocked on the peer and the queue behind it is full. The test reaches that state by
+// sends of its own and by the writer's own report of the frame it holds, never by a count that the writer may not have reached yet: a
+// writer that takes its batch after the queue is full frees room for the cancel, which is queued and then cancels the call, in the
+// order the test pins.
 func TestParentCancellationQueuesTheCancelBeforeCancellingItsHostCalls(t *testing.T) {
 	hostEnd, peer := net.Pipe()
 	defer func() { _ = peer.Close() }()
-	conn := NewConn("cancel-order", hostEnd)
+	// A ping never takes a place in the queue the test fills to its capacity.
+	conn := newConnWithOptions("cancel-order", hostEnd, connOptions{HeartbeatInterval: time.Hour})
+	// The write loop reports a frame once its batch is closed and its write begins: the filler it reports is held by the pipe.
+	var held atomic.Bool
+	conn.outbound = func(frame []byte) {
+		if bytes.Contains(frame, []byte(`"filler"`)) {
+			held.Store(true)
+		}
+	}
 	ctx, cancelConn := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancelConn()
 	conn.Start(ctx)
@@ -111,23 +126,28 @@ func TestParentCancellationQueuesTheCancelBeforeCancellingItsHostCalls(t *testin
 	callCtx, release := conn.hostCallContext(parent.ID, "child-call")
 	defer release()
 
-	// The peer stops reading: the writer holds the batch it took from the queue (up to writeBatchFrames frames it coalesces into one
-	// write) and the queue fills behind it, so the cancel frame cannot be queued. One more filler waits to be queued.
-	filled := make(chan struct{})
-	go func() {
-		defer close(filled)
-		for range cap(conn.outCh) + writeBatchFrames + 1 {
-			if conn.Send(&Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: "filler"}}) != nil {
-				return
-			}
+	// The peer stops reading. The first filler is alone in the queue, so it is the writer's whole batch: the writer holds it, blocked on
+	// the pipe, and every frame sent after it waits in the queue, which the cap fillers that follow fill.
+	filler := &Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: "filler"}}
+	if err := conn.Send(filler); err != nil {
+		t.Fatal(err)
+	}
+	pollUntil(t, testTimeout(t, 10*time.Second), "the writer never held the first filler", held.Load)
+	for range cap(conn.outCh) {
+		if err := conn.Send(filler); err != nil {
+			t.Fatal(err)
 		}
-	}()
-	pollUntil(t, testTimeout(t, 10*time.Second), "the writer queue never filled", func() bool { return len(conn.outCh) == cap(conn.outCh) })
+	}
+	if len(conn.outCh) != cap(conn.outCh) {
+		t.Fatalf("the queue holds %d frames, want its capacity %d", len(conn.outCh), cap(conn.outCh))
+	}
+
+	// The request ends. Its cancel counts as queued before it waits for room, so the count shows the request waiting there.
+	queued := conn.queued.Load()
 	cancelRequest()
-	select {
-	case <-callCtx.Done():
+	pollUntil(t, testTimeout(t, 10*time.Second), "the request never queued its cancel", func() bool { return conn.queued.Load() == queued+1 })
+	if callCtx.Err() != nil {
 		t.Fatal("the request's host call was cancelled before its cancel frame was queued")
-	case <-time.After(300 * time.Millisecond):
 	}
 
 	sawCancel := false
@@ -137,9 +157,8 @@ func TestParentCancellationQueuesTheCancelBeforeCancellingItsHostCalls(t *testin
 	}
 	select {
 	case <-callCtx.Done():
-	case <-time.After(10 * time.Second):
+	case <-time.After(testTimeout(t, 10*time.Second)):
 		t.Fatal("the request's host call was not cancelled after its cancel frame")
 	}
 	<-requestDone
-	<-filled
 }
