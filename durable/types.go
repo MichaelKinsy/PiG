@@ -1197,7 +1197,10 @@ type Tx interface {
 
 	// Doc returns the draft of a document, creating it when absent. args are the owner ID (conversation or task
 	// scope), then the family key and seed (families). A family access without a seed fails as upstream's undefined
-	// seed does.
+	// seed does. Calls for one document in one commit return the same draft until the document is retired, and what the
+	// transaction decides (whether a call finds the draft of an earlier call or, after a retirement, starts a replacement)
+	// is decided in the order the calls are made. What each caller does with the draft after its call returned is its own
+	// code in its own goroutine and runs in an order of its own; a caller that needs one brings a session.Continuation.
 	Doc(token AnyDocToken, args ...any) (*delta.Object, error)
 	// RetireDoc retires a document; args are the owner ID and family key as for Doc, without a seed.
 	RetireDoc(token AnyDocToken, args ...any) error

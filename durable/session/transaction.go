@@ -1109,7 +1109,9 @@ func (tx *Transaction) WriteKeys() []string {
 // Doc returns the document's *delta.Object draft, creating the document when
 // absent. args are the owner ID (conversation or task scope), then the
 // family key and seed (families). A family access without a seed fails as
-// upstream's undefined seed does; an explicit nil seed is JSON null.
+// upstream's undefined seed does; an explicit nil seed is JSON null. Whether a call finds the draft of an earlier call or,
+// after a retirement, starts a replacement is decided under tx.mu when the call is made; the callers of one draft wait on
+// the same future and return in the order the runtime wakes them (durable.Tx.Doc).
 func (tx *Transaction) Doc(token durable.AnyDocToken, args ...any) (*delta.Object, error) {
 	return tx.doc(token, args)
 }
