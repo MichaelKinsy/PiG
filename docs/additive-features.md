@@ -127,7 +127,7 @@ Tests:
 - `coding/cli/piglet_verify_cache_startup_test.go` (a signed Binary whose verification cache cannot be written runs at each start, silently in a read-only state directory and with a warning when a file is in the way)
 
 PORT_MAP path: n/a.
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:539678d63e49dbeb, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 ## D19 Multi-language subprocess SDK bridges
 
 Summary: PiG ships extension SDKs for Go, Rust, Python, and Lisp that use the same wire protocol and the same features.
@@ -289,7 +289,7 @@ Tests:
   Node listener through the production input loop.
 
 PORT_MAP path: `coding/extension/host/subprocess/` (host) and the SDK roots above.
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:e97095880d8ac9c6, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 ### TypeScript extension runtime slot
 
@@ -434,7 +434,7 @@ Tests:
 
 PORT_MAP path: n/a (downstream-only host substrate; does not map to any
 upstream pi file).
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:ea56a028aaf632ea, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 ## D21 Reload placement report
 
@@ -816,7 +816,7 @@ Remove when: the Piglet Binary component plan no longer supports fused realizati
 
 Locked by: the shared `fused-go` rows in `test/extension-conformance/`; `TestBuildNativeArtifactRejectsFusedProcessHazards`, `TestVetFusedPackagesInspectsLocalDependencyClosure`, `TestOverlayFuseBuildsExternalModuleFromReadOnlyWorkspaceCheckout`, `TestOverlayFuseBuildsExternalModuleWithoutWorkspaceReadonlyOffline`, `TestOverlayFuseRejectsMemberRequiringNewerSDK`, `TestOverlayFuseRejectsConflictingMemberReplacements`, `TestMergeFusedModulesKeepsHigherPigVersion`, `TestBuildNativeArtifactNamesModulesTheFusedVetSkipped`, `TestBuildNativeArtifactPrintsNoVetScopeNoteWithoutExternalModules`, `TestMergeFusedModulesNamesUnvettedModulesAtTheSelectedVersion`, `TestOverlayFuseNamesTheFrontendMembersUnvettedModules`, and `TestBuildInputsFrontendDigestCoversItsModuleGraph` in `coding/pigletbuild`; and `TestHost_LoadInProcess`, `TestAC59FusedFocusedComponentUsesProtocolV1`, `TestFusedFocusedTimerInvalidatesAndCleansUp`, and `TestHost_LoadInProcess_NilServe` in `coding/extension/host/subprocess/host_inprocess_test.go`.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:e39a45ad41f8c869, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 ## D36 Insecure TLS opt-in for OpenAI-compatible providers
 
 Summary: A provider entry can turn off TLS certificate checks for an OpenAI-compatible endpoint that uses a self-signed or internal certificate.
@@ -874,7 +874,7 @@ Tests:
 Remove when: upstream pi gains a first-class per-provider TLS-skip option, or
 pig adopts a global TLS-reject equivalent that supersedes this field.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:f5d71e1e4b27f10f, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 ## D40 Extension-contributed authentication targets
 
@@ -1377,7 +1377,7 @@ Parity allowance: no Pi scenario selects a Piglet strip list; Stock PiG runs non
 Remove when: Pi gains an equivalent built-in removal mechanism, or PiG stops supporting Piglet strip lists.
 
 Approval: owner Michael Kinsy, 2026-10-04 (runtime strip as the first D92 pull request); 2026-10-05 (compile-out of every realistic candidate, aligned with upstream's tool options).
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:5d1978e5a47011e0, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 ---
 
@@ -1520,7 +1520,7 @@ Locked by: `test/integration/hangup_exitlog_test.go` hangs up a real pig on a ps
 Remove when: Pi records these endings itself, or PiG can no longer lose a session without an observable trace.
 
 Approval: the owner assigned lane idle-exit-165 on 2026-10-06 to make every exit that no user action asked for leave a record.
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:9094907dddc35b82, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 ---
 
@@ -1587,7 +1587,7 @@ Parity allowance: no Pi scenario sends a view; the terminal draws what Pi's comp
 Remove when: Pi gains a cross-process component protocol.
 
 Approval: owner Michael Kinsy, 2026-10-06 (build now); conversation kinds 2026-10-07.
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:7ef86d80c4044dc7, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 ---
 
@@ -1661,7 +1661,7 @@ Request messages: (26) `ai/request_message_cache.go` `encodedMessageCache` keeps
 
 Request messages, locked by: `TestMessageKeysReadEveryField` (every field of the message types, the unexported ones too, changes the record), `TestTheMessageCacheServesOnlyTheMessageItEncoded`, `TestTheMessageCacheIsBounded`, `TestMessageCacheBodiesAreIdenticalOverAChangingHistory` and `TestTheMessageCacheLeavesLargeAndPoisonedMessages` in `ai/request_message_cache_test.go`; `TestProvidersSendTheSameBodyWithTheMessageCache` (real conversions of tools, images, thinking, cache control, unicode edge text, errored and aborted turns, empty text and orphaned tool calls, over a history that grows, is edited, compacted and branched), `TestProvidersEncodeAMessageOfAResentHistoryOnce` and `TestProvidersSendAMessageAHookEditedInPlace` in `ai/request_message_providers_test.go`; `TestPrepareRequestAfterAHookEditsCachedMessages` in `ai/anthropic_request_splice_test.go`. Call-site markers: `ai/request_message_cache.go` (the `requestMessage*` constants), `ai/request_message_splice_jsonv2.go` (`tokenMessage`).
 
-Idle release: an interactive session's idle collection (D172) calls `ai.ReleaseRequestCaches`, which empties the large-string cache and the message cache before it collects, so the encodings of the conversation a run sent are not live while the session waits; the next prompt encodes its request as the first one did. An rpc, print or json process has no idle collection and keeps them. At fb751a44b0 the message cache held about 23 KB at the tmux prompt (`process.mem_tmux_idle.heap_live_bytes`, linux/arm64 docker: 6,303,512-6,304,088 with the cache, 6,279,568-6,281,632 without). Locked by `TestReleasedRequestCachesHoldNothingAndBuildTheSameBody` (`ai/request_message_cache_test.go`) and the tmux ratchet.
+Idle release: an interactive session's idle collection (D172) calls `ai.ReleaseRequestCaches`, which empties the large-string cache and the message cache before it collects, so the encodings of the conversation a run sent are not live while the session waits; the next prompt encodes its request as the first one did. An rpc, print or json process has no idle collection and keeps them. At fb751a44b0 the message cache held about 23 KB at the tmux prompt (`process.mem_tmux_idle.heap_live_bytes`, linux/arm64 docker: 6,303,512-6,304,088 with the cache, 6,279,568-6,281,632 without). Locked by `TestReleasedRequestCachesHoldNothingAndBuildTheSameBody` (`ai/request_message_cache_test.go`) and the tmux ratchet. The heap return that follows a Session replacement or a tree navigation (D172) is locked by `TestSwitchHeapReleaseRunsOffTheOwnerLoopAndNotOnAnOrdinaryRepaint` (`internal/codingagent/switch_heap_release_owner_test.go`) and `TestSessionSwitchesRequestAHeapRelease` (`internal/codingagent/switch_heap_release_test.go`).
 
 Call-site markers: `ai/validate.go` (`argumentSchemaCacheEntries`, `argumentSchemaCacheMaxBytes`), `tui/key_match.go` (`keyIDCacheLimit`), `coding/extension/host/subprocess/frame_buffers.go` (`pooledFrameMinShift`, `pooledFrameMaxShift`), `ai/request_body_splice.go` (`requestSpliceMinBytes`, `requestSpliceCacheBytes`), `ai/request_string_splice.go` (`stringSplice`), `tui/highlight.go` (`hlCacheMax`, `hlCacheMaxBytes`: the highlighted-code memo, the lead ruled 2026-10-11 that it is a bounded performance cache under this record), `internal/codingagent/write_highlight_cache.go` (`writeWarmStep`, `warmWholeHighlight`), `internal/codingagent/session_id_index.go` (`idIndexMinTable`), `internal/codingagent/session_store.go` (`coldChunkSize`), `internal/codingagent/session.go` (`sessionWriteBuffer`), `ai/request_body_jsonv2.go` (`maxKeptRequestScratch`; the owner approved marking internal size constants, 2026-10-14).
 
@@ -1672,7 +1672,7 @@ Reverted lever, (4): a version of the request cache that kept only the positions
 Remove when: Pi bounds equivalent state, or the cache, key parse or frame read is deleted.
 
 Approval: the lead ruled on 2026-10-10 that bounded performance caches with no Pi counterpart are additive implementation limits when output is identical across an eviction; owner-approved phase 2 perf work (tasks/go-native-perf-2.md, 2026-10-09).
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:288a922a54e10c68, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 ## D160 Tool results carry a collapsed-view preview
 
@@ -1961,7 +1961,7 @@ Locked by: `TestOverlayAddsToTheBinaryPigletAndKeepsItsIdentity`, `TestOverlayRe
 Remove when: upstream Pi provides Piglet composition and immutable build artifacts that accept an overlay, or PiG drops Piglet Binaries.
 
 Approval: owner request (Nicholas Recht's feedback on the Tern renderer, 2026-10-25) for PiG 0.6.0; redesign to extends-child semantics approved by the owner 2026-10-28.
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:45cf10edcc7d46a0, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 ## D209 A session exports its active Piglet to its tool processes (`PIG_ACTIVE_PIGLET_SOURCE`)
 
@@ -2176,7 +2176,7 @@ Locked by: `TestParseArgsListen`, `TestParseArgsListenShareExtensions`, `TestPig
 Remove when: Pi gains a multi-session RPC mode.
 
 Approval: approved by owner Michael Kinsy on 2026-11-06. The owner's 2026-11-06 decision makes isolation the default and sharing an opt-in. Owner decision 13 of 2026-11-17 approved PR #404 for 0.8.0 on a maintainer branch, and owner decision 20 of 2026-11-17 approved isolated by default.
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:6b59f064a1f79231, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 ## D263 A host that cannot run generated machine code can run Code Mode on wazero's interpreter
 
@@ -2197,7 +2197,7 @@ Locked by: `TestSandboxOptionInterpreterSelectsTheInterpreterRuntime`, `TestInte
 Remove when: Pi gains an engine choice for Code Mode that PiG follows, or the program embedding Code Mode drops the option.
 
 Approval: owner scope approval for 0.7.1 row M2 (issue #410), `handoffs/0.7.1/SCOPE-PROPOSAL.md`.
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:4e56172dc883bff5, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 
 ## D273 A Go handler can read the key order of an event's objects (`Context.ObjectKeys`)
@@ -2216,12 +2216,12 @@ Why: the Posthorse port printed a tool call's arguments in the model's member or
 
 Call-site markers: `extensions/sdk/source_order.go` (`Context.ObjectKeys`).
 
-Locked by: `TestObjectKeysAreReadInTheOrderTheHostWroteThem`, `TestObjectKeysPutArrayIndexKeysFirst`, `TestObjectKeysDoNotLeakTheOrderOfAFreedObject`, `TestAKeptContextReadsByteOrderAfterTheReply` (`extensions/sdk/key_order_test.go`), `TestUnmarshalObjectRecordsTheMemberOrder` (`extensions/sdk/json/object_order_test.go`); `TestConformance_HandedBackEventObjectsKeepTheirMemberOrder/object_keys` (`test/extension-conformance/event_echo_order_test.go`: Go, Node, Rust, Python and Lisp, isolated and packed, and fused Go, each reporting the keys of a provider payload that no sorted read produces).
+Locked by: `TestObjectKeysAreReadInTheOrderTheHostWroteThem`, `TestObjectKeysPutArrayIndexKeysFirst`, `TestObjectKeysDoNotLeakTheOrderOfAFreedObject`, `TestAKeptContextReadsByteOrderAfterTheReply` (`extensions/sdk/key_order_test.go`), `TestObjectKeysKeepTheOldPlaceOfAKeyDeletedAndSetAgain` (`extensions/sdk/key_order_reset_test.go`), `TestUnmarshalObjectRecordsTheMemberOrder` (`extensions/sdk/json/object_order_test.go`); `TestConformance_HandedBackEventObjectsKeepTheirMemberOrder/object_keys` (`test/extension-conformance/event_echo_order_test.go`: Go, Node, Rust, Python and Lisp, isolated and packed, and fused Go, each reporting the keys of a provider payload that no sorted read produces).
 
 Remove when: Pi gives a Go extension an ordered object type, or the Go SDK decodes event objects into one.
 
 Approval: approved by owner Michael Kinsy on 2026-11-07 (PortPosthorse review item R1).
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:d5b57b7a4fcebfae, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 ## D276 A message or entry renderer of an SDK keeps per-message state and takes the mouse events of its view (`MessageViewEvent`, `EntryViewEvent`, `MessageRenderOptions.State`)
 
@@ -2517,5 +2517,5 @@ Locked by: `TestBranchRefsAreGetBranch`, `TestBranchRefsReadNoBody`, `TestBranch
 
 Remove when: Pi has a selective branch read of its own, or the embedding programs that use it drop it.
 
-Approval: owner decision 11 for 0.8.0 (issue #451, additive Go-embedding read API, errors not panics, reference lifetime as specified), relayed by the release coordinator on 2026-11-16.
-SCRUTINIZED:approved
+Approval: owner decision 11 for 0.8.0 (issue #451, additive Go-embedding read API, errors not panics, reference lifetime as specified), owner decision 11 of 2026-11-17 ~02:40Z (`OWNER-DECISIONS.md`).
+SCRUTINIZED:approved 2026-11-20 text-sha256:79608bd3090425ee, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
