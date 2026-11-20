@@ -146,7 +146,7 @@ func TestSubmitDispatchMatchesPi(t *testing.T) {
 		default:
 			gotAction = "prompt"
 		}
-		// pig additive (D239): /compact-cancel is not a Pi command. Pi sends such a line as a prompt; Pig runs the command.
+		// pig divergence (D239): /compact-cancel is not a Pi command. Pi sends such a line as a prompt; Pig runs the command.
 		// Only that pair is accepted; every other line must still match Pi.
 		if gotAction == "compact-cancel" && gotArg == "" && wantAction == "prompt" && wantArg == "" {
 			gotAction = "prompt"

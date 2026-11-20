@@ -2047,26 +2047,8 @@ Call-site markers: `coding/session_summarization_auth.go` (`runDefaultCompaction
 
 Locked by: `TestCompactionSummaryModelUnsetUsesTheSessionModel`, `TestCompactionSummaryModelWritesTheSummary`, `TestCompactionSummaryModelUnknownOrUnparsableFallsBack`, `TestCompactionSummaryModelProviderErrorFallsBack`, `TestCompactionSummaryModelCancelDoesNotFallBack`, `TestCompactionSummaryModelSettingRoundTripsAndBlankIsUnset`, `TestBranchSummaryIgnoresTheCompactionSummaryModel` (`coding/session_compaction_summary_model_test.go`).
 
-Status: local addition; awaiting maintainer scrutiny (SCRUTINIZED marker intentionally absent). D238 is provisional and may be renumbered.
+Status: local addition; awaiting maintainer scrutiny.
+
+SCRUTINIZED:pending-owner-review
 
 Remove when: Pi lets a setting choose the compaction summary model, or this setting is removed.
-
-## D239 An abort ends the turn only; a running compaction finishes, and `/compact-cancel` stops it
-
-Summary: Escape and abort no longer stop a compaction; a typed `/compact-cancel` stops it, and a second compaction request while one runs is refused.
-
-Audience: runtime
-
-Stock disposition: differs from upstream Pi on purpose. Upstream `abort()` also calls `abortCompaction()`, and a second `compact()` cancels the first.
-
-Contract: `Session.requestAbort`, and so `RequestAbort`, `Abort` and the extension `abort` host action, cancel the retry delay, the branch summary and the run, not the compaction. Ending or replacing the session still cancels it. Escape with only a compaction showing does nothing else and shows "Compaction is running and finishes first. Type /compact-cancel to stop it." A compaction request while one runs returns the error "Already compacting" before aborting anything (a tree navigation is still cancelled as before). `/compact-cancel` ("Cancel the running compaction") calls `AbortCompaction`, or shows "No compaction is running."; it has no key binding. An awaited abort (RPC abort, `Session.Abort`) waits for `WaitForIdle`, so it returns only after a running compaction ends. The extension `abort` host action is not awaited in interactive mode: since upstream #480 it starts the abort and returns at once, as Pi's `void this.session.abort()` does, so it returns while a compaction still runs and a handler that needs the turn or the compaction to have ended waits outside the handler the turn awaits (`ctx.waitForIdle()` in a command handler, or an `agent_settled` handler).
-
-Pi source: none; `agent-session.ts` `abort()` and `compact()` cancel the running compaction.
-
-Call-site markers: `coding/session_run_state.go` (`requestAbort`), `coding/session.go` (`compact`, `beginManualCompaction`), `internal/codingagent/interactive_input.go`, `interactive_extensions.go`, `slash_commands.go`, `slash_session_handlers.go` (`compactCancelHandler`).
-
-Locked by: `TestRequestAbortLeavesARunningCompactionRunning`, `TestSecondCompactionRequestIsRefusedAndTheFirstCompletes`, `TestAbortCompactionStillCancelsARunningCompaction`, `TestAwaitedAbortWaitsForARunningCompaction` (`coding/session_compaction_no_cancel_on_abort_test.go`), `TestInteractiveMode_EscDoesNotCancelCompactionWhileAgentIsIdle`, `TestCompactCancelCommandCancelsOnlyARunningCompaction`.
-
-Status: local addition; awaiting maintainer scrutiny (SCRUTINIZED marker intentionally absent). D239 is provisional and may be renumbered.
-
-Remove when: Pi stops cancelling a compaction on abort, or this behaviour is withdrawn.
