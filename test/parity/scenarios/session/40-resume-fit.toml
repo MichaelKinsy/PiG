@@ -40,9 +40,14 @@ keys = ["/resume"]
 wait_visible_contains = ["/resume"]
 wait_timeout_seconds = 25
 
+# Picker wait. Run 3 of this scenario failed in the final gate run (tip b44ebd97df): the Pi capture was one row shorter than the PiG capture (37 rows against 38).
+# The picker first draws "○ Current Folder | Loading ..." with an empty list, then the unfiltered list under "◉ Current Folder | ○ All": the row "ZEBRA-Q1 question 1" and the current session's row.
+# A key typed while the picker still loads reaches Pi's picker before that second frame: Pi then draws the filtered one-row list at once, and its scrollback holds one row fewer than PiG's, which draws the unfiltered, taller list first.
+# The step therefore waits for the loaded list, where both products stand in the same state, before the query is typed; the title row alone is drawn in the first frame.
+# Measured 2026-11-20 on ec6219b8d2 with the pinned Pi: the title-only wait, 5 of 440 pairs differed (160 pairs on a quiet host, 280 under 12 CPU spinners), each the Pi capture with 37 rows against PiG's 38; this wait, 0 of 440 pairs, every pair equal.
 [[tmux.steps]]
 keys = ["Enter"]
-wait_visible_contains = ["Resume Session (Current Folder)"]
+wait_visible_contains = ["Resume Session (Current Folder)", "◉ Current Folder", "ZEBRA-Q1"]
 wait_timeout_seconds = 8
 
 [[tmux.steps]]
