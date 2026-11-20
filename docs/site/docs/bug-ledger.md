@@ -1245,6 +1245,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-81e1a45](#bf-81e1a45) | Streaming a tool call's arguments allocates less per delta | PiG's own defect | All platforms | 0.7.0 |
 | [BF-81e584b](#bf-81e584b) | anthropic-messages payload now matches Pi for four cases found by the new live-Pi oracle… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-81e584b-2](#bf-81e584b-2) | Live-Pi oracle `TestMistralMessagesPayloadMatchesPi` (`ai/mistral_messages_payload_oracle_test.go`… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-81f580b](#bf-81f580b) | GitHub Copilot models on the Responses API (GPT, Grok, MAI-Code) no longer fill omitted optional tool… | PiG's own defect | All platforms | Unreleased |
 | [BF-82253c8](#bf-82253c8) | fix(chord/nextnode/workers): a process's exit joins its output readers and ends its channel | PiG's own defect | All platforms | Unreleased |
 | [BF-8241433](#bf-8241433) | A Mistral stream chunk with a member of an unexpected type is read as Pi's JavaScript reads it instead of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-825b4ab](#bf-825b4ab) | `pig config` no longer clips ` No resources found` and the `(n/total)` scroll row to the terminal width, as… | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -19410,6 +19411,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `6a6fffa638` (2026-10-10), `81e584bdba` (2026-10-11)
 - **Tests:** `agent/message_json_number_spelling_test.go::TestAgentMessageDecodeKeepsANonNumberWhereAnIntegerIsExpected`, `agent/message_json_test.go::TestAgentMessageJSONRejectsInvalidUnion`, `agent/message_type_mismatch_test.go::TestDecodedMessageKeepsMembersOfAnyType`, `agent/provider_content_block_decode_test.go::TestUnknownContentBlockCostsOnlyThatBlock`, `ai/anthropic_effort_strict_test.go::TestAnthropicManagedEffortMapping`, `ai/anthropic_messages_compat_options_oracle_test.go::TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi`, `ai/mistral_messages_payload_oracle_test.go::TestMistralMessagesPayloadMatchesPi`, `ai/openai_completions_compat_options_oracle_test.go::TestOpenAICompletionsCompatAndCacheOptionsPayloadMatchesPi` and 4 more in docs/bug-ledger.json
 - **Release note:** Live-Pi oracle `TestMistralMessagesPayloadMatchesPi` (`ai/mistral_messages_payload_oracle_test.go`, mistral-conversations.ts toChatMessages and options; 1,200 random transcripts with thinking, errored/aborted turns, foreign tool calls, tool results with images and mid-conversation system messages, thinking level maps, sampling options, tool choices): the earlier Mistral payload oracles drew one user message, so the message conversion was only checked by two hand-written bodies. No payload difference. Mutation-checked: dropping the initial-system slice, the tool-result error text and the image data-URL prefix go red; `sanitizeSurrogates` on the system prompt is not drawn (generated text has no lone surrogate).
+
+### BF-81f580b
+
+**GitHub Copilot models on the Responses API (GPT, Grok, MAI-Code) no longer fill omitted optional tool…**
+
+- **Source:** PiG's own defect
+- **Symptom:** GitHub Copilot models on the Responses API (GPT, Grok, MAI-Code) no longer fill omitted optional tool arguments with empty strings or invented values.
+- **Root cause:** Pi (#12329, closes #12286). Copilot treats a function tool without strict as strict and fills omitted optional arguments with empty strings or invented values. The generator now sets compat.supportsStrictMode for api openai-responses as Pi does; an ordinary tool goes out with strict false and a json_schema constrained one with strict true. The golden hashes are what Pi generator writes with the overlay.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `81f580b72d` (2026-11-19)
+- **Tests:** None recorded.
+- **Release note:** GitHub Copilot models on the Responses API (GPT, Grok, MAI-Code) no longer fill omitted optional tool arguments with empty strings or invented values. Their tools were sent without `strict`, which Copilot treats as strict mode; they now send `strict: false`, or `strict: true` for tools with JSON-schema constrained sampling. Affects 0.2.0 through 0.7.0.
 
 ### BF-82253c8
 
