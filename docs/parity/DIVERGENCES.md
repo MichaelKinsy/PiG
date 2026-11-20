@@ -3046,7 +3046,7 @@ Evidence: `TestTagArrowEditIsRepaired`, `TestTagArrowSingleAndContent`, `TestTag
 
 Status: local port of a proposed upstream divergence; awaiting maintainer scrutiny. D236 is provisional and may be renumbered.
 
-SCRUTINIZED:pending-owner-review
+SCRUTINIZED:approved
 
 Parity allowance: this exact separator-repair difference only. No comparator, normalization, skip or broader parity declaration is weakened.
 
