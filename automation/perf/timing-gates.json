@@ -7,6 +7,7 @@
   {"package": "./durable/codemode", "tests": ["TestJoinAdjacentTextIsLinearAtTheItemLimit"]},
   {"package": "./durable/core", "tests": ["TestSortU32CostsLogLinearInTheWatchCount"]},
   {"package": "./durable/core/jv", "tests": ["TestAppendString200KBudget", "TestKeysOfManyIndexKeysAreSortedInLogLinearTime"]},
+  {"package": "./env", "goos": "linux", "tests": ["TestConnectionAbortStopsWaitingForAStartThatDoesNotFinish", "TestConnectionAbortSettlesASentRequestTheDaemonDoesNotAnswer", "TestRemoteExecOnAHostThatDoesNotAnswer", "TestRemoteFileOperationsStopWaitingForTheConnectionWhenAborted"]},
   {"package": "./extensions/sdk/json", "tests": ["TestAppendString200KBudget"]},
   {"package": "./internal/codingagent", "tests": ["TestPiSharedFilesConcurrentWriters", "TestScanToolCallCountSkipsEscapedTextInLinearTime", "TestTreeSelectorOpensWithinPiTimeOnTheOwnerShape", "TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines", "TestScalingModelsJSONProviderComposition"]},
   {"package": "./internal/codingagent/compaction", "tests": ["TestCollectEntriesForBranchSummaryWithinPiTimeOnTheOwnerShape", "TestJSLengthCountsASCIIByWord"]},
