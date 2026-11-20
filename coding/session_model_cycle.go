@@ -85,6 +85,10 @@ func (s *Session) beginModelCycle(ctx context.Context, direction string, deferTh
 		delta = -1
 	}
 	next := candidates[(index+delta+len(candidates))%len(candidates)]
+	// pig divergence (D655): user model cycle checks refuseOversizedModelSwitch before switching.
+	if err := s.refuseOversizedModelSwitch(next.Model); err != nil {
+		return nil, nil, err
+	}
 	var explicit *ai.ModelThinkingLevel
 	if next.ThinkingLevel != "" {
 		explicit = new(next.ThinkingLevel)

@@ -20,7 +20,12 @@ func (s *Session) ExtensionSetModel(ctx context.Context, model *ai.Model) (bool,
 	if !s.modelRuntime.hasConfiguredAuth(providerID(model)) {
 		return false, nil
 	}
-	if err := s.SetModel(model); err != nil {
+	// pig divergence (D655): ExtensionSetModel skips refuseOversizedModelSwitch (extensions keep Pi's unrefused switch).
+	// The refusal of SetModel applies to hand switches only; an extension's switch keeps the auth check and user source SetModel gave it.
+	if err := s.checkModelAuth(s.backgroundContext(), model); err != nil {
+		return false, err
+	}
+	if err := s.setModel(model, extension.ModelSelectSourceUser); err != nil {
 		return false, err
 	}
 	return true, nil

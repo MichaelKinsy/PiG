@@ -29622,6 +29622,33 @@
       ]
     },
     {
+      "id": "BF-D655",
+      "title": "User-initiated model switches are refused before mutation when known session tokens exceed the target model's…",
+      "symptom": "no: intentional guard in PiG.",
+      "rootCause": "",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D655",
+      "removeWhen": "upstream Pi refuses user-initiated model switches whose target `contextWindow` is below the session's known context tokens, or PiG drops the manual-switch guard.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "d86d7800f0",
+          "date": "2026-11-19"
+        }
+      ],
+      "tests": [
+        "coding/session_model_window_refusal_test.go::TestExtensionModelSwitchAllowedWhenTokensExceedTargetWindow",
+        "coding/session_model_window_refusal_test.go::TestUserModelSwitchAllowedWhenTargetWindowUnknown",
+        "coding/session_model_window_refusal_test.go::TestUserModelSwitchAllowedWhenTokensFitTargetWindow",
+        "coding/session_model_window_refusal_test.go::TestUserModelSwitchAllowedWhenTokensUnknown",
+        "coding/session_model_window_refusal_test.go::TestUserModelSwitchRefusedWhenTokensExceedTargetWindow"
+      ]
+    },
+    {
       "id": "BF-a058b99",
       "title": "The pre-flight `test-expectation` check skips the tooling directories of `test/testdata-provenance.toml` on…",
       "symptom": "The pre-flight `test-expectation` check skips the tooling directories of `test/testdata-provenance.toml` on main, as the line lint does, so a ledger row for such a file is no longer required by one gate and stale for the other.",
@@ -48629,6 +48656,11 @@
       "id": "D651",
       "title": "Credential files are replaced through a temporary file where that changes nothing but the inode, where Pi…",
       "entry": "BF-26b210c"
+    },
+    {
+      "id": "D655",
+      "title": "User-initiated model switches are refused before mutation when known session tokens exceed the target model's…",
+      "entry": "BF-D655"
     }
   ],
   "exemptCommits": {

@@ -1071,6 +1071,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D220](#bf-d220) | Markdown renders each paragraph with the inline state at its position, not with the lines of an earlier… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D226](#bf-d226) | Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D247](#bf-d247) | Quit settles the interrupted run before session_shutdown and disposal | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D655](#bf-d655) | User-initiated model switches are refused before mutation when known session tokens exceed the target model's… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a058b99](#bf-a058b99) | The pre-flight `test-expectation` check skips the tooling directories of `test/testdata-provenance.toml` on… | PiG's own defect | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
@@ -16248,6 +16249,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4d65734a52` (2026-11-14), `8e8168061b` (2026-11-14)
 - **Tests:** `coding/runtime_dispose_settlement_test.go::TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown`
 
+### BF-D655
+
+**User-initiated model switches are refused before mutation when known session tokens exceed the target model's…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D655)
+- **Symptom:** no: intentional guard in PiG.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** upstream Pi refuses user-initiated model switches whose target `contextWindow` is below the session's known context tokens, or PiG drops the manual-switch guard.
+- **Fix commits:** `d86d7800f0` (2026-11-19)
+- **Tests:** `coding/session_model_window_refusal_test.go::TestExtensionModelSwitchAllowedWhenTokensExceedTargetWindow`, `coding/session_model_window_refusal_test.go::TestUserModelSwitchAllowedWhenTargetWindowUnknown`, `coding/session_model_window_refusal_test.go::TestUserModelSwitchAllowedWhenTokensFitTargetWindow`, `coding/session_model_window_refusal_test.go::TestUserModelSwitchAllowedWhenTokensUnknown`, `coding/session_model_window_refusal_test.go::TestUserModelSwitchRefusedWhenTokensExceedTargetWindow`
+
 ### BF-a058b99
 
 **The pre-flight `test-expectation` check skips the tooling directories of `test/testdata-provenance.toml` on…**
@@ -24626,6 +24642,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D247 | Quit settles the interrupted run before session_shutdown and disposal | [BF-D247](#bf-d247) |
 | D615 | The Go, Python, Lisp and Rust SDKs show the host each provider stream event as it was when the provider… | deliberate difference |
 | D651 | Credential files are replaced through a temporary file where that changes nothing but the inode, where Pi… | [BF-26b210c](#bf-26b210c) |
+| D655 | User-initiated model switches are refused before mutation when known session tokens exceed the target model's… | [BF-D655](#bf-d655) |
 
 ## Fix-titled commits that are not bugs in a release
 
