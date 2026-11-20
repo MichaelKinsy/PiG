@@ -503,16 +503,16 @@ portmap-check-update: ## Rewrite the unproven-tick baseline after a reviewed shr
 portmap-report: ## List every PORT_MAP tick the interface ledger does not prove
 	@go run ./test/parity/cmd/portmapcheck -report
 
-interface-gaps-update: ## Rewrite the committed interface gap baseline after a reviewed change
-	@go run ./test/parity/interface-closure/autobind -update -out build/interface-gaps
+interface-gaps-update: ## Rewrite the committed interface gap baseline: drop the closed gaps, refuse a gap it does not list (ALLOW_NEW="reason" lists new gaps on purpose)
+	@go run ./test/parity/interface-closure/autobind -update $(if $(ALLOW_NEW),-allow-new '$(ALLOW_NEW)') -out build/interface-gaps
 
 # The lane loop. ledger-check and ledger-update derive exactly what interface-gaps and interface-gaps-update derive, but read the reach graph and the decisions from the shared content-addressed cache (PIG_LEDGER_CACHE, else build/ledger-cache) when a tree with the same inputs was derived before, and publish what they compute. They also write build/interface-gaps/ledger-frontier.tsv, the root gaps of this tree ranked by the rows they unblock. CI keeps the uncached interface-gaps gate.
 ledger-check: ## Cached, exact interface gap check for lanes (same verdict as interface-gaps); writes build/interface-gaps/ledger-frontier.tsv
 	@go run ./test/parity/interface-closure/autobind -check -cache auto -out build/interface-gaps -frontier build/interface-gaps/ledger-frontier.tsv
 	@python3 test/parity/interface-closure/breakdown/proofclass.py build/ledger-proof-classes
 
-ledger-update: ## Cached rewrite of the committed interface gap baseline and mapping (same result as interface-gaps-update)
-	@go run ./test/parity/interface-closure/autobind -update -cache auto -out build/interface-gaps -frontier build/interface-gaps/ledger-frontier.tsv
+ledger-update: ## Cached rewrite of the committed interface gap baseline and mapping (same result and same refusal of a new gap as interface-gaps-update; ALLOW_NEW="reason")
+	@go run ./test/parity/interface-closure/autobind -update $(if $(ALLOW_NEW),-allow-new '$(ALLOW_NEW)') -cache auto -out build/interface-gaps -frontier build/interface-gaps/ledger-frontier.tsv
 
 # The integrator runs ledger-frontier after appending each TOTALS line; lanes read the shared file instead of deriving their own ranking.
 LEDGER_LOGS ?= build/interface-gaps

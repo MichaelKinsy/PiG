@@ -4,14 +4,15 @@
 
 ```text
 make interface-gaps          # writes build/interface-gaps/{gaps.tsv,not-a-gap.tsv,summary.md}; fails when a gap is not in the baseline
-make interface-gaps-update   # rewrites the baseline after a reviewed change
+make interface-gaps-update   # rewrites the baseline: drops the closed gaps, fails (writing nothing) on a gap the baseline does not list
+make interface-gaps-update ALLOW_NEW="reason"   # lists the new gaps on purpose, each entry carrying "allowed: reason"
 make ledger-check            # the same verdict through the shared derivation cache (lanes use this)
 make ledger-update           # interface-gaps-update through the shared cache
 go run ./test/parity/interface-closure/autobind -closed-check   # trust check 1
 go test ./test/parity/interface-closure/autobind                  # unit tests and trust check 2
 ```
 
-The same input gives the same output (two runs are byte-identical; the fixture test asserts it). A run from scratch takes under a minute on an idle host: `prodreach`, go/packages with tests over the module, then the rules. Gap list: `test/parity/interface-closure/gaps/interface-gaps-v<version>.tsv` (ID, package, reason, candidate Go symbol), sorted by ID. `build/interface-gaps/gaps.tsv` adds the rule that fired. `not-a-gap.tsv` lists the row, the Go symbol and the evidence (a test or a reachable caller) for each non-gap.
+The same input gives the same output (two runs are byte-identical; the fixture test asserts it). A run from scratch takes under a minute on an idle host: `prodreach`, go/packages with tests over the module, then the rules. Gap list: `test/parity/interface-closure/gaps/interface-gaps-v<version>.tsv` (ID, package, reason, candidate Go symbol, and for an entry listed with `ALLOW_NEW` the note `allowed: <reason>`), sorted by ID. The baseline is the list of known gaps and only shrinks: an update removes the entries whose gap is closed and keeps the notes of the others. When the tree has a gap the baseline does not list, the update fails naming it, writes nothing (closed entries stay too), and `make interface-gaps` stays red. A pin's first update, with no baseline file yet, writes the whole list. `build/interface-gaps/gaps.tsv` adds the rule that fired. `not-a-gap.tsv` lists the row, the Go symbol and the evidence (a test or a reachable caller) for each non-gap.
 
 ## The derivation cache
 
