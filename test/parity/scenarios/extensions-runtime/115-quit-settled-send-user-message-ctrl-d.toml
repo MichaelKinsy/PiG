@@ -1,0 +1,52 @@
+# Behavior family: extensions-runtime
+# Scenario: the user quits (Ctrl+D) while a tool runs, and the agent_settled handler of the interrupted run sends a user message.
+#
+# Upstream evidence (Pi main cead615b48b80d1c61eecab2f0b576d16eeaf4c5, probed with the pinned oracle under tmux, 5 of 5 runs for each of ctrl+d, ctrl+c twice and /quit):
+# the quit (interactive-mode.ts shutdown, 4251-4290) aborts the running tool; the aborted run's agent_settled handler calls pi.sendUserMessage("second"); Pi STARTS that turn
+# (agent_start, a user message_end "second", an assistant message_end, agent_end, agent_settled aborted=false), and session_shutdown (reason "quit") comes after that turn
+# settled; the process exits 0 and the session file holds the message. PiG dropped the message and emitted session_shutdown right after the aborted run's settle (divergence D247,
+# retired by this scenario). The extension reports its record on the controlling terminal from session_shutdown, so the record is the compared output.
+
+name = "115-quit-settled-send-user-message-ctrl-d"
+description = "A user message sent from the agent_settled handler of a run that Ctrl+D aborts starts its turn, and the quit waits for it"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/quit-settled-send-user-message.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/quit-settled-send-user-message.mjs"]
+
+[tmux]
+width = 120
+height = 30
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "QUIT_SETTLED_BEGIN"
+capture_end = "QUIT_SETTLED_END"
+
+[[tmux.steps]]
+keys = ["Run: tui live tool pause", "Enter"]
+wait_contains = ["LIVE-TOOL-01"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["C-d"]
+wait_contains = ["QUIT_SETTLED_END"]
+wait_timeout_seconds = 20
+
+[assert]
+both_reach_ready = true
+exit_code = 0
+both_contain = ["QUIT_SETTLED_BEGIN", "agent_settled aborted=true", "message_end user  second", "session_shutdown quit"]
+both_not_contain = ["panic:", "goroutine "]
+output_normalized_equal = true
+runs = 3

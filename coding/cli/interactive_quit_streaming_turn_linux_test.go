@@ -20,8 +20,8 @@ import (
 )
 
 // The quit of the interactive mode while a turn of a built-in provider API streams, for each of the provider API shapes a models.json provider can name: the dispose settles the
-// interrupted turn, the extensions see its end before session_shutdown, and a message that an agent_settled handler asks for during the quit starts no turn. Pi's quit stops the TUI
-// and then awaits runtimeHost.dispose(), whose first step is `await this.session.abort()` (interactive-mode.ts shutdown, agent-session-runtime.ts:415-424).
+// interrupted turn, the extensions see its end before session_shutdown, and a message that an agent_settled handler asks for during the quit starts its turn, which the quit waits for (the pinned Pi
+// does the same: scenario 115-quit-settled-send-user-message-*). Pi's quit stops the TUI and then awaits runtimeHost.dispose() (interactive-mode.ts shutdown, agent-session-runtime.ts).
 // TestInteractiveQuitWhileABuiltInProviderTurnStreams (interactive_provider_abort_quit_linux_test.go) holds the openai-completions row with the terminal's bytes.
 
 // quitShapeRecorder is a Node extension that appends the events of a turn's end and of the quit to the file @EVENTS@, one line each. With @SETTLED@ set to "send" its agent_settled
@@ -54,6 +54,7 @@ type quitShape struct {
 	api          string
 	basePath     string
 	frames       []string
+	finish       []string // the frames that end a stream after frames: the answer of every request after the first
 	abortMessage string
 }
 
@@ -65,6 +66,10 @@ var quitShapes = []quitShape{
 			`data: {"id":"c1","object":"chat.completion.chunk","created":1,"model":"hold-model","choices":[{"index":0,"delta":{"content":"alpha "},"finish_reason":null}]}` + "\n\n",
 			`data: {"id":"c1","object":"chat.completion.chunk","created":1,"model":"hold-model","choices":[{"index":0,"delta":{"content":"beta "},"finish_reason":null}]}` + "\n\n",
 		},
+		finish: []string{
+			`data: {"id":"c1","object":"chat.completion.chunk","created":1,"model":"hold-model","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}` + "\n\n",
+			"data: [DONE]\n\n",
+		},
 	},
 	{
 		name: "anthropic-messages", api: "anthropic-messages", basePath: "", abortMessage: "This operation was aborted",
@@ -73,6 +78,11 @@ var quitShapes = []quitShape{
 			"event: content_block_start\n" + `data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}` + "\n\n",
 			"event: content_block_delta\n" + `data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"alpha "}}` + "\n\n",
 			"event: content_block_delta\n" + `data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"beta "}}` + "\n\n",
+		},
+		finish: []string{
+			"event: content_block_stop\n" + `data: {"type":"content_block_stop","index":0}` + "\n\n",
+			"event: message_delta\n" + `data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":2}}` + "\n\n",
+			"event: message_stop\n" + `data: {"type":"message_stop"}` + "\n\n",
 		},
 	},
 	{
@@ -83,22 +93,33 @@ var quitShapes = []quitShape{
 			`data: {"type":"response.output_text.delta","output_index":0,"delta":"alpha "}` + "\n\n",
 			`data: {"type":"response.output_text.delta","output_index":0,"delta":"beta "}` + "\n\n",
 		},
+		finish: []string{
+			`data: {"type":"response.output_item.done","output_index":0,"item":{"type":"message","id":"msg_hold","role":"assistant","status":"completed","content":[{"type":"output_text","text":"alpha beta "}]}}` + "\n\n",
+			`data: {"type":"response.completed","response":{"id":"resp_hold","status":"completed","output":[],"usage":{"input_tokens":1,"output_tokens":2}}}` + "\n\n",
+		},
 	},
 }
 
-// quitHoldingListener serves the shape's stream to every request: the shape's frames, then the stream stays open until the client closes it. closed is closed when the first request's
-// connection ends; requests counts the requests the listener has received.
+// quitHoldingListener serves the shape's stream to the first request: the shape's frames, then the stream stays open until the client closes it. Every later request gets the frames and
+// the shape's finish frames, a stream that ends. closed is closed when the first request's connection ends; requests counts the requests the listener has received.
 func quitHoldingListener(t *testing.T, shape quitShape) (url string, closed <-chan struct{}, requests *atomic.Int32) {
 	t.Helper()
 	done := make(chan struct{})
 	requests = new(atomic.Int32)
 	listener := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests.Add(1)
+		n := requests.Add(1)
 		_, _ = io.Copy(io.Discard, r.Body)
 		w.Header().Set("Content-Type", "text/event-stream")
 		for _, frame := range shape.frames {
 			_, _ = io.WriteString(w, frame)
 			w.(http.Flusher).Flush()
+		}
+		if n > 1 {
+			for _, frame := range shape.finish {
+				_, _ = io.WriteString(w, frame)
+			}
+			w.(http.Flusher).Flush()
+			return
 		}
 		<-r.Context().Done()
 		select {
@@ -215,6 +236,11 @@ func (s quitShape) abortedTurn() string {
 	return providerAbortWant("alpha beta ", "aborted", s.abortMessage)
 }
 
+// answeredTurn is the assistant message of a request after the first: the same text, ended by the shape's finish frames.
+func (s quitShape) answeredTurn() string {
+	return providerAbortWant("alpha beta ", "stop", "")
+}
+
 // TestInteractiveQuitSettlesTheTurnOfEveryBuiltInProviderAPI: the user quits (ctrl+c twice, ctrl+d or /quit) while a turn of a built-in provider kind (openai-completions,
 // anthropic-messages or openai-responses through models.json, served by a listener that shows "alpha beta " and holds its stream open) streams. No Escape precedes the quit: the quit's
 // own dispose aborts the turn. Pi 1.5.2, run under tmux against the same listener (openai-completions), exits 0 within 0.6 s for each key; its session file ends with the assistant
@@ -241,11 +267,12 @@ func TestInteractiveQuitSettlesTheTurnOfEveryBuiltInProviderAPI(t *testing.T) {
 	}
 }
 
-// TestInteractiveQuitSkipsTheDeferredStartOfASettledAction: an extension's agent_settled handler sends a user message while the user's quit aborts the streaming turn. The message
-// is a deferred settled action: it starts a run only after the settled handlers returned. Pi's quit awaits runtimeHost.dispose() and then ends the process (interactive-mode.ts
-// shutdown ends with process.exit(0)), so no run of that message ever reaches the provider and the session file never holds it; pig's quit, which settles the interrupted turn first,
-// starts no new turn either: the listener sees the one request, pig exits 0 promptly, and the session holds the aborted turn and nothing of the message.
-func TestInteractiveQuitSkipsTheDeferredStartOfASettledAction(t *testing.T) {
+// TestInteractiveQuitRunsTheDeferredStartOfASettledAction: an extension's agent_settled handler sends a user message while the user's quit aborts the streaming turn. The message
+// is a deferred settled action: it starts a run once the settled handlers returned. The pinned Pi, quit under tmux in this situation (ctrl+d, ctrl+c twice and /quit, 5 runs each),
+// runs the turn of that message, emits session_shutdown after its agent_settled, exits 0 and leaves the message and its answer in the session file (scenario
+// 115-quit-settled-send-user-message-*). pig's quit settles the interrupted turn first, then waits for the new turn: the listener sees two requests, and the session holds the aborted
+// turn, the message and its answer.
+func TestInteractiveQuitRunsTheDeferredStartOfASettledAction(t *testing.T) {
 	t.Parallel()
 	for _, shape := range quitShapes {
 		t.Run(shape.name, func(t *testing.T) {
@@ -254,24 +281,28 @@ func TestInteractiveQuitSkipsTheDeferredStartOfASettledAction(t *testing.T) {
 				t.Run(key, func(t *testing.T) {
 					t.Parallel()
 					requests, events, sessions := quitWhileStreaming(t, key, shape, "send")
-					if requests != 1 {
-						t.Errorf("the provider received %d requests, want 1: the message of the deferred settled action started a turn during the quit", requests)
+					if requests != 2 {
+						t.Errorf("the provider received %d requests, want 2: the message of the deferred settled action must start a turn during the quit", requests)
 					}
-					if got, want := quitPersisted(t, sessions), []string{shape.abortedTurn()}; strings.Join(got, "\n") != strings.Join(want, "\n") {
+					if got, want := quitPersisted(t, sessions), []string{shape.abortedTurn(), shape.answeredTurn()}; strings.Join(got, "\n") != strings.Join(want, "\n") {
 						t.Errorf("the session files hold the assistant messages %q, want %q", got, want)
 					}
 					files, err := filepath.Glob(filepath.Join(sessions, "*.jsonl"))
 					if err != nil {
 						t.Fatal(err)
 					}
+					held := false
 					for _, file := range files {
 						if data, err := os.ReadFile(file); err != nil {
 							t.Fatal(err)
-						} else if strings.Contains(string(data), "DEFERRED") {
-							t.Errorf("the session file %s holds the deferred message:\n%s", file, data)
+						} else if strings.Contains(string(data), "DEFERRED again") {
+							held = true
 						}
 					}
-					if want := "message_end aborted\nturn_end\nagent_end\nagent_settled\nsession_shutdown quit\n"; events != want {
+					if !held {
+						t.Errorf("no session file under %s holds the deferred message", sessions)
+					}
+					if want := "message_end aborted\nturn_end\nagent_end\nagent_settled\nmessage_end stop\nturn_end\nagent_end\nagent_settled\nsession_shutdown quit\n"; events != want {
 						t.Errorf("the extension saw %q, want %q", events, want)
 					}
 				})

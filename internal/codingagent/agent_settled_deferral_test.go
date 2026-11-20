@@ -34,9 +34,9 @@ func TestAgentSettledDefersRunStartingActionsUntilAllHandlersReturn(t *testing.T
 	}
 }
 
-// A quit that is in progress starts no run from a deferred settled action: Pi's quit does not wait for the interrupted run (1.5.0 agent-session-runtime.ts dispose ends in process.exit(0)),
-// so the message an agent_settled handler sent never reaches a provider. The handlers still all run and the action is dropped, not kept for later.
-func TestAgentSettledDropsDeferredStartsOnceExitIsRequested(t *testing.T) {
+// A quit that is in progress still starts the run of a deferred settled action once every handler returned: the pinned Pi, quit under tmux while an agent_settled handler sends a user
+// message, runs the turn of that message and emits session_shutdown after it settled (5 of 5 runs for each of ctrl+d, ctrl+c twice and /quit; scenario 115-quit-settled-send-user-message-*).
+func TestAgentSettledStartsDeferredStartsOnceExitIsRequested(t *testing.T) {
 	var lifecycle []string
 	mode := &InteractiveMode{}
 	ext := extension.Extension{Path: "settled", Handlers: map[string][]extension.HandlerFn{
@@ -58,7 +58,7 @@ func TestAgentSettledDropsDeferredStartsOnceExitIsRequested(t *testing.T) {
 	mode.newRunner = inproc.NewRunner([]extension.Extension{ext}, t.TempDir())
 	mode.requestExit.Store(true)
 	mode.emitAgentSettledEvent()
-	if want := []string{"first", "second"}; !reflect.DeepEqual(lifecycle, want) {
+	if want := []string{"first", "second", "start"}; !reflect.DeepEqual(lifecycle, want) {
 		t.Fatalf("lifecycle = %v, want %v", lifecycle, want)
 	}
 	if len(mode.deferredSettledActions) != 0 {
