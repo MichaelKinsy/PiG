@@ -1,0 +1,3 @@
+### Fixed
+
+- A llama.cpp decision classifier whose server reports image input, such as Clef with its `mmproj`, now takes images: `models.classify()` sends them to `/v1/systemone` as data URLs instead of failing with "does not support image input". Decision models without image input and the next-token fallback for chat models stay text-only. <!-- fix: 64373deac1 --> <!-- cause: PiG registered every llama.cpp classifier model with input text only and no System One compat, as Pi did, so the classifier refused the images of a decision model the server had said accepts them. --> <!-- tests: TestProviderSendsImagesToDecisionModelsThatAdvertiseImageInputAsDataURLs, TestProviderRefusesImagesForClassifiersThatTakeNone, TestAIClassifierModelCarriesImageInputOfDecisionModels -->
