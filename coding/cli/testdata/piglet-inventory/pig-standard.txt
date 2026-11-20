@@ -26,6 +26,7 @@ commands./bug kept
 commands./changelog kept
 commands./clone kept
 commands./compact kept
+commands./compact-cancel kept
 commands./copy kept
 commands./debug kept
 commands./export kept

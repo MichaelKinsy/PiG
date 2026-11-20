@@ -19,6 +19,7 @@ var knownIDs = map[string][]string{
 		"/changelog",
 		"/clone",
 		"/compact",
+		"/compact-cancel",
 		"/copy",
 		"/debug",
 		"/export",

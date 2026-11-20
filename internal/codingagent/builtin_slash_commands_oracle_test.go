@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os/exec"
+	"slices"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
@@ -32,6 +33,8 @@ func TestBuiltinSlashCommandsMatchPi(t *testing.T) {
 			got = append(got, command)
 		}
 	}
+	// pig divergence (D239): /compact-cancel is not a Pi command.
+	got = slices.DeleteFunc(got, func(c BuiltinSlashCommand) bool { return c.Name == "compact-cancel" })
 	for len(got) > 0 && len(got[len(got)-1].Name) > 6 && got[len(got)-1].Name[:6] == "probe-" {
 		got = got[:len(got)-1]
 	}

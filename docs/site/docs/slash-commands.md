@@ -18,6 +18,7 @@ PiG has the built-in slash commands of Pi 1.5.0 ([Pi's slash command reference](
 | `/clone` | Duplicate session at the current position. |
 | `/tree` | Navigate session tree. |
 | `/compact [instructions]` | Manually compact the context, optionally with custom summary instructions. |
+| `/compact-cancel` | Cancel the running compaction (D239). [pig] |
 | `/reload` | Reload keybindings, extensions, skills, prompts, themes, and context files. |
 | `/reload --explain` | Same plus a placement/cell report. [pig] |
 | `/export [path]` | Export session (default HTML; specify `.jsonl`). |

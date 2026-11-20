@@ -186,7 +186,19 @@ func TestAgentSessionCompactionSuiteAbortUpstream(t *testing.T) {
 			go func() { _, err := h.session.Compact(t.Context(), ""); done <- err }()
 			<-started
 			if test.wholeSession {
-				if err := h.session.Abort(t.Context()); err != nil {
+				// D239: an awaited abort waits for the running compaction and does not cancel it; AbortCompaction does.
+				aborted := make(chan error, 1)
+				go func() { aborted <- h.session.Abort(t.Context()) }()
+				select {
+				case err := <-aborted:
+					t.Fatalf("Abort returned (%v) while the compaction was running", err)
+				case <-time.After(200 * time.Millisecond):
+				}
+				if !h.session.IsCompacting() {
+					t.Fatal("Abort cancelled the compaction")
+				}
+				h.session.AbortCompaction()
+				if err := <-aborted; err != nil {
 					t.Fatal(err)
 				}
 			} else {

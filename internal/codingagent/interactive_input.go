@@ -933,7 +933,8 @@ func (m *InteractiveMode) handleEditorAction(ctx context.Context, action keyActi
 	// onEscape only while no autocomplete is showing (custom-editor.ts:106-113),
 	// so Escape over an open autocomplete closes it and compaction continues.
 	if action == actionInterrupt && m.isCompacting && m.branchSummaryCancel == nil && m.opts.SessionHandle != nil {
-		m.opts.SessionHandle.AbortCompaction()
+		// pig divergence (D239): Escape no longer cancels a compaction; /compact-cancel does.
+		m.showStatus("Compaction is running and finishes first. Type /compact-cancel to stop it.")
 		return nil
 	}
 
@@ -1320,6 +1321,19 @@ func (m *InteractiveMode) abortRun(ctx context.Context) {
 	m.abortCtx, m.abortFn = context.WithCancel(ctx)
 }
 
+// settleReplacedSession is settleActiveRun for callers that replace the session.
+// pig divergence (D239): ending or replacing the session still cancels a running
+// compaction, so the replacement never waits for it; an abort alone does not.
+func (m *InteractiveMode) settleReplacedSession() error {
+	m.queueMu.Lock()
+	session := m.opts.SessionHandle
+	m.queueMu.Unlock()
+	if session != nil {
+		session.AbortCompaction()
+	}
+	return m.settleActiveRun()
+}
+
 // settleActiveRun aborts the active run and waits until it settles, as
 // upstream's session replacement (teardownCurrent) awaits session.abort()
 // before it touches the session, so the aborted turn persists to the
@@ -1346,11 +1360,16 @@ func (m *InteractiveMode) settleActiveRun() error {
 
 // settleRunAtQuit is the first step of Pi's dispose, `await this.session.abort()` (agent-session-runtime.ts dispose, agent-session.ts abort), for the quit by keys, whose dispose runs on the owner loop after the TUI stopped (finishInteractiveShutdown). Pi's loop turns under that await: the aborted run publishes its last events, which the extensions handle and the session file takes, agent_settled follows, and only then is the Session idle (_emitAgentSettled resolves the idle wait) and session_shutdown emitted. Here the run needs the owner loop to end: Session.RunAgentPrompt waits until the loop acknowledged its flush, and the turn's cleanup is posted to the loop. So the mode aborts the run and serves the loop, as settleActiveRun does for a replacement, until the run's goroutine has returned, which is after its agent_settled handlers. A dispose that awaited the run on the loop without serving it never ended.
 //
+// pig divergence (D239): ending or disposing the session still cancels a running compaction (AbortCompaction), matching Pi's dispose (`agent-session.ts:1428-1434`).
+//
 // A user's bash command is not joined: Pi's abort does not wait for it.
 func (m *InteractiveMode) settleRunAtQuit() {
 	m.queueMu.Lock()
 	settled, ended, session := m.turnSettled, m.turnEnded, m.opts.SessionHandle
 	m.queueMu.Unlock()
+	if session != nil {
+		session.AbortCompaction()
+	}
 	if settled != nil || session != nil && !session.IsIdle() {
 		m.abortRun(m.runCtx)
 	} else {

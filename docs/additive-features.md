@@ -2030,3 +2030,25 @@ Remove when: Pi evaluates plugins in a runtime PiG does not start, or the progra
 
 Approval: owner decision relayed 2026-11-01 for the plugins' Node evaluator (plugfull lane), the same as D221.
 SCRUTINIZED:approved
+
+## D238 A setting names the model that writes the compaction summary (`compaction.summaryModel`)
+
+Summary: A setting can name a model, as "provider/modelId", to write the compaction summary, and any failure but a cancel hands the summary back to the session model.
+
+Audience: runtime
+
+Stock disposition: inert capability. Unset or blank leaves Pi's behaviour: the session model writes the summary.
+
+Contract: `compaction.summaryModel` merges like the other compaction keys (a project value replaces a global one) and the settings schema does not list it (the rendered schema stays equal to upstream; `compaction` allows extra keys). When it names a registered model other than the session model, the compaction summary request runs on that model with the same prompt, cut, details, retries and custom instructions, and the session's thinking level clamped to the levels that model supports (the session state is unchanged). The session model writes the summary, as without the setting, when the value is blank or has no "provider/modelId" form, the registry has no such model, the request has no auth, or the request fails for any reason but a cancel. A cancelled or aborted context is returned as it is today, with no second request. Branch summaries and tree-navigation summaries still use the session model.
+
+Pi source: none. `agent-session.ts` `_runDefaultCompaction` summarizes with the session model.
+
+Call-site markers: `coding/session_summarization_auth.go` (`runDefaultCompaction`, `compactionSummaryModel`), `internal/codingagent/settings.go` (`GetCompactionSummaryModel`), `internal/codingagent/configschema/settings.go`.
+
+Locked by: `TestCompactionSummaryModelUnsetUsesTheSessionModel`, `TestCompactionSummaryModelWritesTheSummary`, `TestCompactionSummaryModelUnknownOrUnparsableFallsBack`, `TestCompactionSummaryModelProviderErrorFallsBack`, `TestCompactionSummaryModelCancelDoesNotFallBack`, `TestCompactionSummaryModelSettingRoundTripsAndBlankIsUnset`, `TestBranchSummaryIgnoresTheCompactionSummaryModel` (`coding/session_compaction_summary_model_test.go`).
+
+Status: local addition; awaiting maintainer scrutiny.
+
+SCRUTINIZED:approved
+
+Remove when: Pi lets a setting choose the compaction summary model, or this setting is removed.

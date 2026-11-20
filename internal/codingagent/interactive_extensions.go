@@ -514,7 +514,7 @@ func (m *InteractiveMode) extensionAbort() {
 	}
 	if session := m.opts.SessionHandle; session != nil {
 		session.AbortRetry()
-		session.AbortCompaction()
+		// pig divergence (D239): an abort ends the turn only; a running compaction finishes (/compact-cancel stops it).
 		session.AbortBranchSummary()
 	}
 	current := m.extensionAgent.Load()

@@ -3028,6 +3028,30 @@ Evidence: `TestStreamableHTTPAppliesMaxMessageBytesToJSONResponses` (red on 67d7
 
 Parity allowance: none needed; Pi 1.5.0 has no test of either behavior, and Pi main's tests are ported.
 
+## D239 An abort ends the turn only; a running compaction finishes, and `/compact-cancel` stops it
+
+What: Escape and abort no longer stop a running compaction; `/compact-cancel` explicitly cancels it, and a second compaction request while one runs is refused with `Already compacting`.
+
+1. `Session.requestAbort` (`coding/session_run_state.go`) cancels the active agent run, retry delay, and branch summary, without calling `AbortCompaction`. Ending, quitting, or replacing the session (`settleRunAtQuit`, `settleReplacedSession`, `Close`) still cancels any running compaction, even if its cancel function is not yet installed.
+2. In interactive mode, pressing Escape while a compaction is running and no branch summary or streaming run is active leaves the compaction running and shows `"Compaction is running and finishes first. Type /compact-cancel to stop it."` (`internal/codingagent/interactive_input.go`).
+3. `/compact-cancel` (`internal/codingagent/slash_commands.go`, `slash_session_handlers.go`) calls `AbortCompaction`, or shows `"No compaction is running."` when idle; it has no key binding.
+4. `Session.compact` and `Session.beginManualCompaction` (`coding/session.go`) return `errAlreadyCompacting` (`"Already compacting"`) before any abort side effect when a compaction is already running, instead of cancelling the running compaction.
+5. An awaited abort (`Session.Abort`, RPC abort) waits for `WaitForIdle`, so it returns only after a running compaction finishes. The extension `abort` host action (`internal/codingagent/interactive_extensions.go`) starts the abort without awaiting it, matching Pi's `void this.session.abort()`.
+
+Why: Aborting a slow turn or hitting Escape should not discard an expensive in-flight compaction summary, and a second `/compact` should report the active compaction rather than cancelling it.
+
+Upstream behavior: This is an intentional policy difference, not a Pi defect. Upstream Pi 1.5.0 (`packages/coding-agent/src/core/agent-session.ts:2519-2530`) calls `this.abortCompaction()` inside `abort()`, and `compact()` (`agent-session.ts:2849-2850`) awaits `this.abort()` first. Pi has no `/compact-cancel` slash command (`packages/coding-agent/src/core/slash-commands.ts`).
+
+Scope: `Session.requestAbort`, `Session.compact`, `Session.beginManualCompaction`, interactive Escape handling, `/compact-cancel`, and extension `abort` host action. Session replacement and disposal still cancel a running compaction.
+
+SCRUTINIZED:approved
+
+Remove when: Pi stops cancelling a compaction on abort, or this behaviour is withdrawn.
+
+Call-site markers: `coding/session_run_state.go` (`requestAbort`), `coding/session.go` (`compact`, `beginManualCompaction`), `internal/codingagent/interactive_input.go` (`handleEditorAction`, `settleRunAtQuit`, `settleReplacedSession`), `internal/codingagent/interactive_tree.go` (`navigateTree`), `internal/codingagent/interactive_extensions.go` (`extensionAbort`), `internal/codingagent/slash_commands.go` (`/compact-cancel`), `internal/codingagent/slash_session_handlers.go` (`compactCancelHandler`).
+
+Evidence: `TestRequestAbortLeavesARunningCompactionRunning`, `TestSecondCompactionRequestIsRefusedAndTheFirstCompletes`, `TestAbortCompactionStillCancelsARunningCompaction`, `TestAbortCompactionBeforeCancelIsInstalled`, `TestAwaitedAbortWaitsForARunningCompaction` (`coding/session_compaction_no_cancel_on_abort_test.go`), `TestSettleReplacedSessionCancelsCompaction`, `TestNavigateTreeDuringCompactionRefusesWithoutCancelling`, `TestSettleRunAtQuitCancelsCompaction`, `TestSecondCompactShowsAlreadyCompacting`, `TestInteractiveMode_EscDoesNotCancelCompactionWhileAgentIsIdle`, `TestCompactCancelCommandCancelsOnlyARunningCompaction` (`internal/codingagent/interactive_compaction_d239_test.go`, `internal/codingagent/interactive_test.go`).
+
 ## D247 Quit settles the interrupted run before session_shutdown and disposal
 
 What: PiG ports Pi main 7a53c310a (`fix(coding-agent): settle tool results before disposal`, #9126, fixing #9124), which is not in Pi 1.5.0. `Runtime.EmitQuitShutdown`, the first step of `Runtime.Close` and of the interactive quit, now aborts the current Session and waits until it is idle before it emits `session_shutdown` with reason `quit`. The interrupted tool's result and the final assistant message are persisted first, so extensions see `session_shutdown` after the settled turn. Like Pi's `await this.session.abort()`, and like the replacement path's `teardownCurrent`, the wait has no timeout: a tool that ignores cancellation holds the quit.

@@ -233,6 +233,8 @@ type SlashContext struct {
 	// The closure captures the appropriate context internally.
 	// nil in headless / test contexts unless explicitly wired.
 	CompactSession func(customInstructions string) error
+	// CancelCompaction cancels the running compaction (/compact-cancel, D239) and reports whether one was running.
+	CancelCompaction func() bool
 
 	// The prompts of the /tree summarize-branch flow, /import and a missing session cwd are dialogs on the extension dialog
 	// stack, as upstream awaits them through showExtensionSelector, showExtensionConfirm and showExtensionEditor.
@@ -678,6 +680,8 @@ func defaultBuiltins() []BuiltinSlashCommand {
 		{Name: "logout", Description: "Remove provider authentication", Handler: logoutHandler},
 		{Name: "new", Description: "Start a new session", Handler: newHandler},
 		{Name: "compact", Description: "Manually compact the session context", TakesArguments: true, Handler: compactHandler},
+		// pig divergence (D239): Escape and abort no longer stop a compaction; this typed command does.
+		{Name: "compact-cancel", Description: "Cancel the running compaction", Handler: compactCancelHandler},
 		{Name: "resume", Description: "Resume another session", Handler: resumeHandler},
 		{Name: "reload", Description: "Reload keybindings, extensions, skills, prompts, themes, and context files", AdditiveArguments: func(rest string, _ bool) bool { return reloadExplainRequested(rest) }, Handler: reloadHandler},
 		{Name: "quit", Description: "Quit " + AppName, Handler: quitHandler},

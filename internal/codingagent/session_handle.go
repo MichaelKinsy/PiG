@@ -2,11 +2,15 @@ package codingagent
 
 import (
 	"context"
+	"errors"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
+
+// ErrAlreadyCompacting refuses a compaction request while another compaction runs (D239).
+var ErrAlreadyCompacting = errors.New("Already compacting")
 
 // ModelMutationOptions controls whether a Session mutation also saves a global default.
 type ModelMutationOptions struct {
@@ -89,7 +93,7 @@ type InteractiveSessionHandle interface {
 	// StreamModel starts a mode-independent model operation through the
 	// Session-owned runtime.
 	StreamModel(context.Context, *ai.Model, ai.Context, ai.StreamOptions) *ai.AssistantMessageEventStream
-	// Compact runs manual compaction like upstream AgentSession.compact(): it aborts the active run, rejects a session with nothing to compact, and reports both outcomes through the compaction events.
+	// Compact runs manual compaction (agent-session.ts compact()): it aborts the active run, rejects a session with nothing to compact, and reports both outcomes through the compaction events. Under D239 it returns ErrAlreadyCompacting when one is already running instead of cancelling it.
 	Compact(ctx context.Context, customInstructions string) (*CompactionResult, error)
 	// AbortCompaction cancels an in-flight Compact() call. Safe to
 	// call when no compaction is running (no-op).

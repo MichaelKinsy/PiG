@@ -188,7 +188,7 @@ func (m *InteractiveMode) replaceSessionFromCommand(ctx context.Context, operati
 func (m *InteractiveMode) bindSessionRebind() {
 	if handle, ok := m.opts.SessionHandle.(sessionRebinder); ok {
 		handle.SetBeforeSessionReplacement(func(ctx context.Context) error {
-			return m.runOnMainAndWait(ctx, m.settleActiveRun)
+			return m.runOnMainAndWait(ctx, m.settleReplacedSession) // D239
 		})
 		handle.SetRebindSession(func(ctx context.Context, event extension.SessionStartEvent) error {
 			if err := m.runOnMainAndWait(ctx, func() error {

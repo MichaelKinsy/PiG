@@ -2810,9 +2810,16 @@ func (s *Session) CompactForExtension(ctx context.Context, customInstructions st
 	}, nil
 }
 
+// errAlreadyCompacting refuses a compaction request while another compaction runs (D239).
+var errAlreadyCompacting = icodingagent.ErrAlreadyCompacting
+
 func (s *Session) compact(ctx context.Context, customInstructions string) (*CompactionResult, error) {
 	// Manual compaction aborts the active run first and never continues it
 	// (upstream compact() awaits abort()).
+	// pig divergence (D239): a running compaction is never cancelled by a second request; refuse before any abort side effect.
+	if s.compacting.Load() {
+		return nil, errAlreadyCompacting
+	}
 	if err := s.abortKeepingDeferred(ctx); err != nil {
 		return nil, err
 	}
@@ -2946,11 +2953,14 @@ func isCompactionCancelled(err error) bool {
 	return errors.Is(err, errCompactionCancelled)
 }
 
-// AbortCompaction cancels an in-flight Compact() call. Safe to call when
-// no compaction is running (no-op). Mirrors upstream abortCompaction().
+// AbortCompaction cancels an in-flight compaction, including one that has
+// started but has not installed its cancel function yet. It is a no-op when idle.
 func (s *Session) AbortCompaction() {
 	s.compactMu.Lock()
 	cancel := s.compactCancel
+	if cancel == nil && s.compacting.Load() {
+		s.compactAbortRequested = true
+	}
 	s.compactMu.Unlock()
 	if cancel != nil {
 		cancel()
@@ -2989,21 +2999,9 @@ func (s *Session) beginManualCompaction(ctx context.Context) error {
 	for {
 		s.compactMu.Lock()
 		if s.compacting.Load() {
-			cancel := s.compactCancel
-			done := s.compactDone
-			if cancel == nil {
-				s.compactAbortRequested = true
-			}
+			// pig divergence (D239): never cancel a running compaction for a new request.
 			s.compactMu.Unlock()
-			if cancel != nil {
-				cancel()
-			}
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-done:
-			}
-			continue
+			return errAlreadyCompacting
 		}
 		cancel := s.branchSumCancel
 		done := s.branchSumDone

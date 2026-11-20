@@ -265,7 +265,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			if cancelled, err := m.beforeSessionSwitch(ctx, "new", ""); err != nil || cancelled {
 				return
 			}
-			if err := m.settleActiveRun(); err != nil {
+			if err := m.settleReplacedSession(); err != nil { // D239: replacing the session cancels a compaction
 				return
 			}
 			emitSessionShutdown(m.newRunner, "new")
@@ -422,7 +422,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			} else if cancelled {
 				return errSessionReplacementCancelled
 			}
-			if err := m.settleActiveRun(); err != nil {
+			if err := m.settleReplacedSession(); err != nil { // D239: replacing the session cancels a compaction
 				return err
 			}
 			// Fork is silent. Upstream reserves branch-summary components for
@@ -470,9 +470,19 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			sessHandle := m.opts.SessionHandle
 			go func() {
 				// The compaction events report both the result and a rejection such as "Nothing to compact".
-				_, _ = sessHandle.Compact(ctx, customInstructions)
+				if _, err := sessHandle.Compact(ctx, customInstructions); err != nil && errors.Is(err, ErrAlreadyCompacting) {
+					// D239: a refused second request emits no compaction events, so show it here.
+					m.runOnMain(ctx, func() { m.showError(err.Error()) })
+				}
 			}()
 			return nil
+		},
+		CancelCompaction: func() bool {
+			if !m.isCompacting || m.opts.SessionHandle == nil {
+				return false
+			}
+			m.opts.SessionHandle.AbortCompaction()
+			return true
 		},
 		ShowTrustSelector: m.runTrustSelector,
 		// Pi awaits showExtensionSelector, showExtensionConfirm and showExtensionEditor from the /tree summary prompts, the

@@ -536,6 +536,16 @@ func compactHandler(sc *SlashContext) error {
 	return nil
 }
 
+// compactCancelHandler is /compact-cancel (D239), the only deliberate way to stop a running compaction.
+func compactCancelHandler(sc *SlashContext) error {
+	if sc.CancelCompaction == nil || !sc.CancelCompaction() {
+		if sc.ShowStatus != nil {
+			sc.ShowStatus("No compaction is running.")
+		}
+	}
+	return nil
+}
+
 // ─── /settings handler ───────────────────────────────────────────
 
 // settingStripped reports whether the /settings row id configures a built-in

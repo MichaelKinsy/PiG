@@ -48617,6 +48617,10 @@
       "entry": "BF-d4e641b"
     },
     {
+      "id": "D239",
+      "title": "An abort ends the turn only; a running compaction finishes, and `/compact-cancel` stops it"
+    },
+    {
       "id": "D247",
       "title": "Quit settles the interrupted run before session_shutdown and disposal",
       "entry": "BF-D247"
