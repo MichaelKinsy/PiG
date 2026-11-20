@@ -188,7 +188,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-154d2c5](#bf-154d2c5) | The terminal title that a session sets (the session name, or an extension's title) is written where Pi writes… | PiG's own defect | All platforms | Unreleased |
 | [BF-155d0f3](#bf-155d0f3) | In RPC mode, SIGTERM or SIGHUP during a tool call likewise stops the run while the `session_shutdown`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1584ac1](#bf-1584ac1) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
-| [BF-159e2a1](#bf-159e2a1) | Enter on a Tab menu for an absolute path (`look at /tmp/x/fi`) or on a command argument menu whose items… | PiG's own defect | All platforms | Unreleased |
+| [BF-159e2a1](#bf-159e2a1) | Enter on a Tab menu for an absolute path (for example after `look at /tmp/x/fi`) or on a menu of command… | PiG's own defect | All platforms | Unreleased |
 | [BF-15a5c0b](#bf-15a5c0b) | The Kimi Code, Meta and xAI device logins judge the verification URI the way Pi does, and Meta and xAI open… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-15b13fc](#bf-15b13fc) | A compaction, branch summary or bug report summary no longer fails with "Summarization failed: 401… | PiG's own defect | All platforms | Unreleased |
 | [BF-160d95a](#bf-160d95a) | In RPC mode, a run that an extension command starts with `sendMessage` or `sendUserMessage` now emits… | PiG's own defect | All platforms | 0.5.0 |
@@ -4776,17 +4776,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-159e2a1
 
-**Enter on a Tab menu for an absolute path (`look at /tmp/x/fi`) or on a command argument menu whose items…**
+**Enter on a Tab menu for an absolute path (for example after `look at /tmp/x/fi`) or on a menu of command…**
 
 - **Source:** PiG's own defect
-- **Symptom:** Enter on a Tab menu for an absolute path (`look at /tmp/x/fi`) or on a command argument menu whose items start with `/` (`/open /tm`) completes the text and keeps it in the editor; it used to send the unfinished prompt as well.
+- **Symptom:** Enter on a Tab menu for an absolute path (for example after `look at /tmp/x/fi`) or on a menu of command arguments that start with `/` completes the text and keeps it in the editor; it used to send the unfinished prompt as well.
 - **Root cause:** Enter on an open autocomplete menu completed the text and then submitted the prompt whenever the completion's prefix started with "/". A Tab menu for an absolute path (look at /tmp/x/fi) or a command argument (/open /tm) has such a prefix, so Enter sent the unfinished prompt. Enter now submits only from the slash command name menu: the text before the cursor, read before the completion is applied, is a slash command with no space (Pi's isInSlashCommandNameContext, which the Tab key shares through Editor.inSlashCommandNameContext).
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `159e2a1922` (2026-11-19)
 - **Tests:** `tui/editor_enter_command_name_oracle_test.go::TestEditorEnterOnAMenuSubmitsOnlyACommandNameLikePi`, `tui/editor_enter_command_name_upstream_test.go::TestUpstreamEditorEnterSubmitsOnlyFromTheSlashCommandNameMenu`
-- **Release note:** Enter on a Tab menu for an absolute path (`look at /tmp/x/fi`) or on a command argument menu whose items start with `/` (`/open /tm`) completes the text and keeps it in the editor; it used to send the unfinished prompt as well. Enter on a command name (`/mo`) still runs the command, as in Pi.
+- **Release note:** Enter on a Tab menu for an absolute path (for example after `look at /tmp/x/fi`) or on a menu of command arguments that start with `/` completes the text and keeps it in the editor; it used to send the unfinished prompt as well. Enter on a command name still runs the command, as in Pi.
 
 ### BF-15a5c0b
 
