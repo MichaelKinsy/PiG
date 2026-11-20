@@ -27,6 +27,8 @@ func (u *notifyingUI) Notify(message, _ string) { u.messages <- message }
 // shared process ends with a trace that names this extension; "exit" ends the process with os.Exit(3), which writes no trace; "logpanic" recovers nothing and
 // writes to stderr the text a member logs for a panic it handled, in the form the Go runtime writes its own ("panic: msg", a blank line, debug.Stack());
 // "fatal" ends the process with a runtime fatal error (an unlock of an unlocked mutex, exit status 2), and "kill" with SIGKILL, neither of which is a panic.
+// "count" notifies "count-<name>-<n>", where n counts the calls of "count" and "hold" the factory has served in this process; "hold" counts, notifies "held-<name>" and
+// never returns, so a call to it is in flight until the process ends.
 func writeCrashingFactoryModule(t *testing.T, modulePath, name string) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -38,6 +40,7 @@ func writeCrashingFactoryModule(t *testing.T, modulePath, name string) string {
 import (
 	"os"
 	"runtime/debug"
+	"strconv"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk"
@@ -45,6 +48,11 @@ import (
 
 func Extension() *sdk.Extension {
 	e := sdk.New(%[1]q)
+	var mu sync.Mutex
+	calls := 0
+	bump := func() int { mu.Lock(); defer mu.Unlock(); calls++; return calls }
+	e.Command("count", "", func(ctx sdk.Context, _ string) error { ctx.Notify("count-"+%[1]q+"-"+strconv.Itoa(bump()), "info"); return nil })
+	e.Command("hold", "", func(ctx sdk.Context, _ string) error { bump(); ctx.Notify("held-"+%[1]q, "info"); select {} })
 	e.Command("ping", "", func(ctx sdk.Context, _ string) error { ctx.Notify("pong-"+%[1]q, "info"); return nil })
 	e.Command("handled", "", func(ctx sdk.Context, _ string) error { panic("handled panic of " + %[1]q) })
 	e.Command("crash", "", func(ctx sdk.Context, _ string) error {
@@ -272,4 +280,65 @@ func TestPackedProcessExitStopsTheWholeCell(t *testing.T) {
 			}
 		})
 	}
+}
+
+// count runs the member's current "count" command and requires its notification to carry n, the number of calls its factory has served since it last started.
+func (c *crashCell) count(name string, n int) {
+	c.t.Helper()
+	for _, ext := range c.h.Extensions() {
+		if ext.Name != name {
+			continue
+		}
+		if err := ext.Commands["count"].Handler(c.ctx, ""); err != nil {
+			c.t.Fatalf("%s count: %v", name, err)
+		}
+		select {
+		case got := <-c.messages:
+			if want := fmt.Sprintf("count-%s-%d", name, n); got != want {
+				c.t.Fatalf("%s answered %q, want %q", name, got, want)
+			}
+		case <-time.After(30 * time.Second):
+			c.t.Fatalf("%s never answered", name)
+		}
+		return
+	}
+	c.t.Fatalf("%s is not loaded", name)
+}
+
+// A member that did nothing wrong restarts when a sibling's goroutine ends the shared process: its factory runs again, so what it kept in memory is gone, and the
+// call it had in flight fails and is not run again. The count after the restart is 1: a member that kept its state would say 4, and one that ran the call again 2.
+func TestPackedProcessCrashRestartsTheOthersWithoutTheirStateAndFailsTheCallInFlight(t *testing.T) {
+	c := loadCrashCell(t)
+	c.count("healthy", 1)
+	c.count("healthy", 2)
+	inFlight := make(chan error, 1)
+	go func() { inFlight <- c.run("healthy", "hold") }()
+	select {
+	case got := <-c.messages:
+		if got != "held-healthy" {
+			t.Fatalf("the healthy member's held call notified %q", got)
+		}
+	case <-time.After(30 * time.Second):
+		t.Fatal("the healthy member's held call never started")
+	}
+
+	_ = c.run("culprit", "crash")
+	select {
+	case err := <-inFlight:
+		if err == nil {
+			t.Fatal("the call in flight when the process ended returned no error")
+		}
+		if !strings.Contains(err.Error(), "extension_transport") {
+			t.Fatalf("the call in flight when the process ended failed with %q, want a transport error", err)
+		}
+	case <-time.After(60 * time.Second):
+		t.Fatal("the call in flight when the process ended never returned")
+	}
+	c.waitFor("the healthy member's restart and the culprit's stop", func() bool {
+		c.h.mu.Lock()
+		defer c.h.mu.Unlock()
+		healthy := c.h.exts["healthy"]
+		return healthy != nil && healthy.ext != nil && healthy.packedProcess != nil && healthy.packedCellKey != c.packedKey && c.h.exts["culprit"] == nil
+	})
+	c.count("healthy", 1)
 }
