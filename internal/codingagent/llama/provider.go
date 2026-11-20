@@ -124,6 +124,8 @@ type ClassifierModel struct {
 	Input         []string  `json:"input"`
 	Cost          ModelCost `json:"cost"`
 	ContextWindow int       `json:"contextWindow"`
+	// Compat is how a System One decision model takes images (toPiClassifierModel); absent on a model that takes none.
+	Compat *ai.SystemOneCompat `json:"compat,omitempty"`
 }
 
 // AuthContext mirrors pi-ai AuthContext. Env reports ok=false for an unset or
@@ -341,14 +343,15 @@ func isChatModel(model LlamaModelInfo) bool {
 
 // toPiClassifierModel is a llama.cpp model used as a classifier. Decision models answer natively through llama.cpp's
 // System One endpoint (/v1/systemone). Chat models fall back to llama-cpp-classify, which reads answers from next-token
-// label probabilities (provider.ts toPiClassifierModel).
+// label probabilities and take no images. llama.cpp reads System One images from the images list of data URLs, not from
+// TypeSafe's assets (provider.ts toPiClassifierModel).
 func toPiClassifierModel(model LlamaModelInfo, serverURL string, cachedContextWindow int) ClassifierModel {
 	api, baseURL := llamaCppClassifyAPI, serverURL
 	if isDecisionModel(model) {
 		inferenceURL, _ := LlamaInferenceURL(serverURL)
 		api, baseURL = typesafeSystemOneAPI, inferenceURL
 	}
-	return ClassifierModel{
+	result := ClassifierModel{
 		Type:          "classifier",
 		ID:            model.ID,
 		Name:          model.ID,
@@ -358,6 +361,14 @@ func toPiClassifierModel(model LlamaModelInfo, serverURL string, cachedContextWi
 		Input:         []string{"text"},
 		ContextWindow: contextWindowOf(model, cachedContextWindow),
 	}
+	// pig divergence (D664): a decision model that reports image input takes images as data URLs. Pi at the pin hardcodes input ["text"],
+	// so models.classify() refuses the images of such a model (Pi main 5799e217e, #12282).
+	if isDecisionModel(model) && model.Architecture.includesInput("image") {
+		sendImageOptInHeader := false
+		result.Input = []string{"text", "image"}
+		result.Compat = &ai.SystemOneCompat{ImageInput: ai.SystemOneImageInputImages, SendImageOptInHeader: &sendImageOptInHeader}
+	}
+	return result
 }
 
 func toPiModel(model LlamaModelInfo, serverURL string, props *LlamaServerProps, cachedContextWindow int) Model {
@@ -488,6 +499,7 @@ func (m ClassifierModel) aiModel() ai.ClassifierModel {
 		Input:         m.Input,
 		Cost:          ai.ModelCost{Input: m.Cost.Input, Output: m.Cost.Output, CacheRead: m.Cost.CacheRead, CacheWrite: m.Cost.CacheWrite},
 		ContextWindow: m.ContextWindow,
+		Compat:        m.Compat, // pig divergence (D664): the image input of a decision model reaches the ai model
 	}
 }
 

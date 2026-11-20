@@ -220,6 +220,17 @@ emit(out);
 				}
 			}
 		}
+		// pig divergence (D664): a decision model that reports image input is listed with the input ["text", "image"] and the images compat, where the
+		// pinned Pi lists it text-only. Only that exact shape is mapped back to Pi's; any other difference still fails.
+		for _, model := range got.Models {
+			object := model.(map[string]any)
+			compat, _ := object["compat"].(map[string]any)
+			if object["type"] == "classifier" && object["api"] == typesafeSystemOneAPI && reflect.DeepEqual(object["input"], []any{"text", "image"}) &&
+				reflect.DeepEqual(compat, map[string]any{"imageInput": "images", "sendImageOptInHeader": false}) {
+				object["input"] = []any{"text"}
+				delete(object, "compat")
+			}
+		}
 		if got.Err != w.Err || !reflect.DeepEqual(got.Models, w.Models) {
 			if bad++; bad <= 4 {
 				g, _ := json.Marshal(got)
