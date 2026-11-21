@@ -13,6 +13,8 @@ import (
 // Pi session-share.ts:57 shareSession removes its temp directory in `finally`, whatever the share did. Here each share owns a temp directory that is gone when
 // shareSession returns after a success, a gateway failure and a cancellation alike.
 func TestShareSessionRemovesItsTempDirectoryOnEveryOutcome(t *testing.T) {
+	// Build the session before redirecting the temp directory: on Windows a session snapshot is a delete-on-close file in os.TempDir() that stays listed while the Session lives, and would otherwise land in scratch.
+	session := shareTestSession(t, "cleanup")
 	scratch := t.TempDir()
 	t.Setenv("TMPDIR", scratch)
 	t.Setenv("TMP", scratch)
@@ -27,7 +29,6 @@ func TestShareSessionRemovesItsTempDirectoryOnEveryOutcome(t *testing.T) {
 		_, _ = w.Write([]byte(`{"error":"nope"}`))
 	}))
 	defer server.Close()
-	session := shareTestSession(t, "cleanup")
 	cancelled, cancel := context.WithCancel(t.Context())
 	cancel()
 	for _, tc := range []struct {

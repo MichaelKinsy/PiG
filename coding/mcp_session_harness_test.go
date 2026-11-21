@@ -353,6 +353,10 @@ func newMCPSession(t *testing.T, exposure extension.McpExposure, listTools func(
 	if err := s.session.BindExtensions(t.Context(), ExtensionBindings{UIContext: s.ui}); err != nil {
 		t.Fatal(err)
 	}
+	if opts.realTransport {
+		// Pi's AgentSessionRuntime.dispose emits session_shutdown before session.dispose; the MCP extension closes real transports and waits for child processes there (extensions/mcp/index.ts:1132-1139). Registered after newBoundaryHarness so LIFO cleanup stops children before session.Close and t.TempDir removal.
+		t.Cleanup(func() { s.session.EmitSessionShutdown("quit") })
+	}
 	return s
 }
 
