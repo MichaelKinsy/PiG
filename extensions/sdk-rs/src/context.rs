@@ -8597,7 +8597,8 @@ mod dialog_value_tests {
     }
 }
 
-#[cfg(test)]
+// Uses UnixStream::pair as a socket transport double; Windows transport is connect-only.
+#[cfg(all(test, unix))]
 mod overlay_invalidate_tests {
     use super::*;
     use std::io::Read;
