@@ -18965,6 +18965,39 @@
       "shapeHash": "sha256:e9dff84e95ab826a7b1c51c09b590e1a045b3366b92720907f92dfb3a1ad7338"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#ModelsProvider.cachedAllModels",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "ModelsProvider.cachedAllModels",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() ([]AnyModel, error)"
+      },
+      "shapeHash": "sha256:90b997dd8ef88cd26463565b30765c0d6f804389f9f88e3e650edb5401445d20"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#ModelsProvider.cachedChatModels",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "ModelsProvider.cachedChatModels",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() ([]*Model, error)"
+      },
+      "shapeHash": "sha256:3432890ebd72c5cf901329886abc5f8af0694b70cd587a86b2d1fb9a218e6ede"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#ModelsProvider.catalogMergeCount",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "ModelsProvider.catalogMergeCount",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#ModelsPublication",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "ModelsPublication",
@@ -49534,6 +49567,17 @@
       "shapeHash": "sha256:a9ae82428796cc5cf75c1493b37feca6eb1c9498d20327e89dbaf77e3afa2d2d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#mergeProviderCatalog",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "mergeProviderCatalog",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(baseline []AnyModel, dynamic []AnyModel) *providerCatalogSnapshot"
+      },
+      "shapeHash": "sha256:647243cc2ab5f0f67a97bf0918564a2833223221d9a9c8d0e039d323719a93f9"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#mergeProviderEnv",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "mergeProviderEnv",
@@ -58356,6 +58400,28 @@
       "shapeHash": "sha256:f2b81438635572097d48395b687e4bd886e9645c51e82ae622803fe5d9b90158"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#providerCatalogCache",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "providerCatalogCache",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "providerCatalogCache"
+      },
+      "shapeHash": "sha256:e2b9afd04985e009e2b7132500d00a9a37dfacf690b15758fb1cdfae7e0b3f39"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#providerCatalogSnapshot",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "providerCatalogSnapshot",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "providerCatalogSnapshot"
+      },
+      "shapeHash": "sha256:cd5b38fda36c2fec650e18162fa8bfeab9139c66e79df245475b13192858c24f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#providerError",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "providerError",
@@ -58453,6 +58519,17 @@
         "type": "providerMaxRetryDelayKey"
       },
       "shapeHash": "sha256:484c4876834dde3a75b4e8c3f0ff8edf326ac239fd7148a697239feb2ed4da10"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#providerModelKey",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "providerModelKey",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "providerModelKey"
+      },
+      "shapeHash": "sha256:5e4876c3a3cae6d31195147b9d913763f5081be6e4ac105e0f76edaeae11e055"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#providerRefresh",
@@ -62534,17 +62611,6 @@
         "type": "func(a schemaObjectOrder, b schemaObjectOrder) bool"
       },
       "shapeHash": "sha256:a711608524e88f74c596deb0838bfa9e705e456b4c5f9b6eafd67d861a253c53"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#sameProviderModel",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "sameProviderModel",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(a AnyModel, b AnyModel) bool"
-      },
-      "shapeHash": "sha256:a7f4e4a0aca7b55f70493722917418dadd4d23016ff30bcb0eb47d8c421d772e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#sameString",

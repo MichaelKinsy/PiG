@@ -1257,6 +1257,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8291569](#bf-8291569) | fix(security): refuse a model whose api no provider serves; no request is sent (#481) | PiG's own defect | All platforms | Unreleased |
 | [BF-82ca8da](#bf-82ca8da) | On Windows, the host reports the load error of a Node extension that exits right after it sends the error | PiG's own defect | Windows | 0.7.0 |
 | [BF-82d1808](#bf-82d1808) | Subprocess extensions no longer slow down each streamed token in long sessions: the state sent before each… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-83717f0](#bf-83717f0) | fix(sdk): merge Go SDK CreateProvider model catalog once per publish | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-83928e2](#bf-83928e2) | A `context` handler that edits a message of `event.messages` in place and then throws now leaves the edit in… | PiG's own defect | All platforms | Unreleased |
 | [BF-83928e2-2](#bf-83928e2-2) | A `message_end` handler that edits `event.message` in place and returns nothing now changes the message the… | PiG's own defect | All platforms | Unreleased |
 | [BF-8392c29](#bf-8392c29) | MCP stdio servers now start in a session of their own, as Pi's stdio transport does (`detached` in Node's… | PiG's own defect | All platforms | Unreleased |
@@ -1817,6 +1818,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-bc8d37f](#bf-bc8d37f) | `FileModelsStore` roots and index keys: new live-Pi oracle… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bcc2046](#bf-bcc2046) | A nested list whose last item is empty but for spaces after its marker is followed by an empty row before the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bd00797](#bf-bd00797) | The same for a Node `before_agent_start` handler: a `get_state` sent while it awaits I/O is answered at once… | PiG's own defect | All platforms | Unreleased |
+| [BF-bd272e5](#bf-bd272e5) | fix(sdk): merge Rust SDK create_provider model catalog once per publish | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-bd3e8ab](#bf-bd3e8ab) | On arm64 and other CPUs with a fused multiply-add, Kimi, Radius and xAI OAuth credentials store the `expires`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bd3e8ab-2](#bf-bd3e8ab-2) | On arm64 and other CPUs with a fused multiply-add, the cache-warming expected savings (shown by `/session`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bd8849d](#bf-bd8849d) | Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run… | PiG's own defect | All platforms | Unreleased |
@@ -1873,6 +1875,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c4d51d5](#bf-c4d51d5) | The OpenAI Codex login reads the account id from the access token the way Pi does: the token payload is… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c4fae28](#bf-c4fae28) | Provider request bodies write a lone UTF-16 surrogate as its escape, as `JSON.stringify` does, instead of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c4fef6c](#bf-c4fef6c) | Streaming long code blocks no longer grows memory with every frame: the syntax-highlight cache keeps one copy… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-c511044](#bf-c511044) | fix(sdk): merge Python SDK create_provider model catalog once per publish | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-c51c77e](#bf-c51c77e) | An extension that calls `registerTool({})` or `registerTool(null)` now fails to load with Pi's error text… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c551a63](#bf-c551a63) | Extension SDKs: tool arguments nested thousands of levels deep no longer fail or end the extension, in any… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-c58ceed](#bf-c58ceed) | `chord/host.Forbidden("")` keeps the empty message, as Pi's `forbidden("")` does; `Forbidden()` still says… | PiG's own defect | All platforms | 0.5.0 |
@@ -1892,6 +1895,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c6fb795](#bf-c6fb795) | After a Radius sign-in, accepting the offer to configure the Radius MCP server updates the chat (its notices… | PiG's own defect | All platforms | Unreleased |
 | [BF-c723782](#bf-c723782) | In the Node extension runtime, `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., {… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-c72462b](#bf-c72462b) | Chord: a registry value an app keeps past `host.close` (`host.registry`) no longer keeps the closed host… | PiG's own defect | All platforms | Unreleased |
+| [BF-c735439](#bf-c735439) | fix(sdk): merge Lisp SDK create-provider model catalog once per publish | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-c7b91e7](#bf-c7b91e7) | Terminal input bytes decode as Node's StringDecoder does, as Pi's `stdin.setEncoding("utf8")` reads them: a… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-c7c99c6](#bf-c7c99c6) | In fullscreen mode, a click on a message or entry that an extension renders is no longer lost when it arrives… | PiG's own defect | All platforms | Unreleased |
 | [BF-c7ebb23](#bf-c7ebb23) | A cancelled prompt in a `config.oauth` login now rejects with Pi's `Login cancelled` in every SDK (it was… | PiG's own defect | All platforms | 0.5.0 |
@@ -2100,6 +2104,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-dc003a9-3](#bf-dc003a9-3) | Sign in with ChatGPT: a ChatGPT Business workspace usage-limit error… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-dc53412](#bf-dc53412) | A `pig_strip_bedrock_converse_stream` Piglet Binary no longer links the AWS SDK through the Bedrock retry… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-dc7d547](#bf-dc7d547) | An interactive shell run by the bash tool or by a `!` command no longer suspends PiG with `suspended (tty… | PiG's own defect | All platforms | Unreleased |
+| [BF-dc99069](#bf-dc99069) | With a large fetched model catalog, every model lookup through `CreateProvider` re-merged the provider's… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-dca5763](#bf-dca5763) | A notification, status or message that an extension queues on `setImmediate` or `setTimeout(0)` from inside a… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-dcf10b2](#bf-dcf10b2) | chord: a server that closed a connection while the host loop was sending on it could freeze the host for good… | PiG's own defect | All platforms | Unreleased |
 | [BF-dd06fc5](#bf-dd06fc5) | chord: `Plugins.Build` discovers again when a named plugin is unknown to discovery or a file discovery found… | PiG's own defect | All platforms | Unreleased |
@@ -19590,6 +19595,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/complexity_scaling_norace_test.go::TestScalingProviderRequestPerTurn`, `ai/complexity_scaling_norace_test.go::TestScalingProviderStreamPerDelta`, `coding/cli/complexity_scaling_norace_test.go::TestScalingExtensionEventStatePush`, `coding/complexity_scaling_norace_test.go::TestScalingSessionTurn`, `coding/extension/host/subprocess/complexity_scaling_norace_test.go::TestScalingMessageUpdatePayload`, `coding/session_context_usage_reuse_test.go::TestContextUsageReusesTheEstimateUntilTheLogOrWindowChanges`, `internal/codingagent/compaction/complexity_scaling_norace_test.go::TestScalingCompactionAndContextEstimate`, `internal/codingagent/complexity_scaling_norace_test.go::TestScalingSessionLogOperations` and 7 more in docs/bug-ledger.json
 - **Release note:** Subprocess extensions no longer slow down each streamed token in long sessions: the state sent before each event reuses the context usage estimate and the session name until the session changes.
 
+### BF-83717f0
+
+**fix(sdk): merge Go SDK CreateProvider model catalog once per publish**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** fix(sdk): merge Go SDK CreateProvider model catalog once per publish
+- **Root cause:** Ports Pi (#12366, closes #12311) to the Go extension SDK.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `83717f0974` (2026-11-21)
+- **Tests:** `extensions/sdk/create_provider_catalog_merge_test.go::TestCreateProviderCatalogMergesOncePerPublish`
+
 ### BF-83928e2
 
 **A `context` handler that edits a message of `event.messages` in place and then throws now leaves the edit in…**
@@ -27402,6 +27420,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/cli/rpc_settle_wait_test.go::TestRPCCommandDuringBeforeAgentStartHandlerNetworkWaitAnswersAcrossSDKs`
 - **Release note:** The same for a Node `before_agent_start` handler: a `get_state` sent while it awaits I/O is answered at once, before the run starts, as in Pi. It has been held since v0.5.1.
 
+### BF-bd272e5
+
+**fix(sdk): merge Rust SDK create_provider model catalog once per publish**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** fix(sdk): merge Rust SDK create_provider model catalog once per publish
+- **Root cause:** Ports Pi (#12366, closes #12311) to the Rust extension SDK.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `bd272e545e` (2026-11-21)
+- **Tests:** None recorded.
+
 ### BF-bd3e8ab
 
 **On arm64 and other CPUs with a fused multiply-add, Kimi, Radius and xAI OAuth credentials store the `expires`…**
@@ -28171,6 +28202,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/complexity_scaling_norace_test.go::TestScalingProviderRequestPerTurn`, `ai/complexity_scaling_norace_test.go::TestScalingProviderStreamPerDelta`, `coding/cli/complexity_scaling_norace_test.go::TestScalingExtensionEventStatePush`, `coding/complexity_scaling_norace_test.go::TestScalingSessionTurn`, `coding/extension/host/subprocess/complexity_scaling_norace_test.go::TestScalingMessageUpdatePayload`, `internal/codingagent/compaction/complexity_scaling_norace_test.go::TestScalingCompactionAndContextEstimate`, `internal/codingagent/complexity_scaling_norace_test.go::TestScalingSessionLogOperations`, `internal/codingagent/tools/complexity_scaling_norace_test.go::TestScalingTools` and 11 more in docs/bug-ledger.json
 - **Release note:** Streaming long code blocks no longer grows memory with every frame: the syntax-highlight cache keeps one copy of a streamed block and is bounded in bytes.
 
+### BF-c511044
+
+**fix(sdk): merge Python SDK create_provider model catalog once per publish**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** fix(sdk): merge Python SDK create_provider model catalog once per publish
+- **Root cause:** Ports Pi (#12366, closes #12311) to the Python extension SDK.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c51104493d` (2026-11-21)
+- **Tests:** None recorded.
+
 ### BF-c51c77e
 
 **An extension that calls `registerTool({})` or `registerTool(null)` now fails to load with Pi's error text…**
@@ -28437,6 +28481,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `c72462b370` (2026-11-12)
 - **Tests:** `chord/next/host/host_registry_readers_test.go::TestValuesMemoryAValueAnAppKeepsAfterHostCloseKeepsNoClosedHostAndReadsItsLastCompositionSolAstra`
 - **Release note:** Chord: a registry value an app keeps past `host.close` (`host.registry`) no longer keeps the closed host alive; after the close it reads its last composition and holds nothing of the host.
+
+### BF-c735439
+
+**fix(sdk): merge Lisp SDK create-provider model catalog once per publish**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** fix(sdk): merge Lisp SDK create-provider model catalog once per publish
+- **Root cause:** Ports Pi (#12366, closes #12311) to the Lisp extension SDK.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c7354395b9` (2026-11-21)
+- **Tests:** None recorded.
 
 ### BF-c7b91e7
 
@@ -31323,6 +31380,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `dc7d547ecf` (2026-11-11, #427)
 - **Tests:** `coding/cli/testmain_test.go::TestMain`, `coding/cli/user_bash_terminal_pty_test.go::TestInteractiveUserBashLeavesTheTerminalToPig`, `internal/codingagent/tools/bash_tty_linux_test.go::TestBashAbortAndTimeoutKillTheShellsDescendants`, `internal/codingagent/tools/bash_tty_linux_test.go::TestBashCommandCannotTakeThePigTerminal`, `internal/codingagent/tools/bash_tty_linux_test.go::TestBashShellLeadsItsOwnSessionAndProcessGroup`, `internal/codingagent/tools/testmain_test.go::TestMain`, `internal/testenv/terminal_session_linux_test.go::TestInTerminalSessionRunsTheTestAsTheLeaderOfAControllingTerminal`, `internal/testenv/terminal_session_linux_test.go::TestRequireTerminalForegroundFailsWhileAnotherGroupHoldsTheTerminal`
 - **Release note:** An interactive shell run by the bash tool or by a `!` command no longer suspends PiG with `suspended (tty input)` on the next key press. PiG started the shell in its own process group but in PiG's session, so the shell kept PiG's controlling terminal: `zsh -f -i -c true; true` opened `/dev/tty`, made its own process group the terminal's foreground group and left it so when it exited, and PiG's next read from the terminal raised SIGTTIN. `bash -i -c true; true` stopped itself and the tool call never returned. The shell now starts in a session of its own, as Pi's `detached: true` does (Node's spawn calls `setsid`), so it has no controlling terminal: `/dev/tty` cannot be opened and `bash -i` reports `no job control in this shell` and returns. The shell still leads its own process group, so abort, timeout and the exit cleanup still end every descendant (#427, reported by @asp345).
+
+### BF-dc99069
+
+**With a large fetched model catalog, every model lookup through `CreateProvider` re-merged the provider's…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** With a large fetched model catalog, every model lookup through `CreateProvider` re-merged the provider's baseline and fetched catalogs on every read, slowing model selection and request setup; the catalog is now merged once when published (stored restore or network refresh) and cached, with public getters returning an owned copy and internal lookups reading the cached snapshot directly.
+- **Root cause:** 3dd4d752e8; upstream Pi 073b0bae8 (#12366, closes #12311)
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `dc99069530` (2026-11-21)
+- **Tests:** `ai/models_provider_catalog_merge_test.go::TestCreateProviderCatalogConcurrentReadsDuringRefresh`, `ai/models_provider_catalog_merge_test.go::TestCreateProviderCatalogMergeMatchesLegacy`, `ai/models_provider_catalog_merge_test.go::TestCreateProviderCatalogReadAllocs`, `ai/models_provider_catalog_merge_test.go::TestCreateProviderMergesCatalogOncePerPublishUpstream`, `ai/models_provider_catalog_merge_test.go::TestCreateProviderReplacedGetterBypassesCache`, `ai/models_provider_catalog_merge_test.go::TestCreateProviderRestoredCatalogMergesOncePerPublish`
+- **Release note:** With a large fetched model catalog, every model lookup through `CreateProvider` re-merged the provider's baseline and fetched catalogs on every read, slowing model selection and request setup; the catalog is now merged once when published (stored restore or network refresh) and cached, with public getters returning an owned copy and internal lookups reading the cached snapshot directly. Affects v0.4.0, v0.4.1, v0.5.0, v0.5.1, v0.5.2, v0.5.3, v0.7.0.
 
 ### BF-dca5763
 
