@@ -9,8 +9,6 @@ import (
 	"os/exec"
 )
 
-func init() { holdsChannel = holdChannel }
-
 // holdChannel is `spawn("sleep", ["60"], { stdio: ["ignore", "ignore", "ignore", 3] })` of worker.ts: a process of the worker's tree
 // that inherits the worker's IPC channel as its descriptor 3, so the channel stays open after the worker's exit until the server
 // kills the tree.
