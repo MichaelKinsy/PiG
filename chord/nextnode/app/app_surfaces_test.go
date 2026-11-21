@@ -23,6 +23,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/pluginstest"
 	nodesurfaces "github.com/MichaelKinsy/PiG/chord/nextnode/surfaces"
 )
 
@@ -35,7 +36,9 @@ import (
 //
 // Forced differences: none beyond the app kit's (D601: the client tree is vendored; the Go app serves it through the same
 // routes). The tests' page template is Pi's, the HTTP requests go through net/http, and the dirty mark is awaited through the
-// plugins state's watch (Pi polls it).
+// plugins state's watch (Pi polls it) after the watcher barrier (pluginstest.Settle, see reload_support_test.go: an in-place
+// os.WriteFile emits truncate and write events on a separate watcher goroutine, and one handled after the build's snapshot keeps
+// the plugin dirty by watcher.ts:201-208).
 
 // surfacesFixture is the vendored fixtures' dir (the terminal entry the kit's terminal surface bundles).
 func surfacesFixture(t testing.TB, path ...string) string {
@@ -145,9 +148,12 @@ func urlsOf(html string) []string {
 	return urls
 }
 
-// untilDirty returns once plugin is among the dirty plugins; the plugins state's watch wakes it.
+// untilDirty returns once the watcher handled every file event written before the call and plugin is among the dirty plugins;
+// the plugins state's watch wakes it. The barrier (pluginstest.Settle) keeps a trailing event of an in-place write (truncate
+// then write) from arriving after a following ApplyChanges snapshots the marks, which would rightly leave the plugin dirty.
 func untilDirty(t testing.TB, app *App, plugin string) {
 	t.Helper()
+	pluginstest.Settle(t, app.Plugins.Component)
 	untilMarks(t, app, plugin+" dirty", func(m plugins.PluginsState) bool {
 		return slices.Contains(m.Dirty, plugin)
 	})
