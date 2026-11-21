@@ -1070,12 +1070,14 @@ func TestTheWorkerBaseInANamedDirectoryEmptiedFirstWrittenAgainThereRemovedByClo
 	}
 	notes := f.hold(fixtureNotes, "S1")
 	until(t, func() bool { return refKind(notes) == host.RefStateLive })
-	wantCopied, err := filepath.EvalSymlinks(copied)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if from := forkedFrom(f); from != wantCopied {
-		t.Fatalf("the worker ran from %q, want %q", from, wantCopied)
+	// The worker reports its own os.Executable(): Linux /proc/self/exe and macOS _NSGetExecutablePath resolve
+	// symlinks (such as /tmp -> /private/tmp), while Windows GetModuleFileNameW preserves 8.3 short names
+	// (C:\Users\RUNNER~1\...) from the launch path. Match by os.SameFile because the path is reported by the child process.
+	from := forkedFrom(f)
+	fromInfo, fromErr := os.Stat(from)
+	copiedInfo, copiedErr := os.Stat(copied)
+	if fromErr != nil || copiedErr != nil || !os.SameFile(fromInfo, copiedInfo) {
+		t.Fatalf("the worker ran from %q (%v), want %q (%v)", from, fromErr, copied, copiedErr)
 	}
 	notes.Release()
 	if err := f.workers.Close(background); err != nil {
