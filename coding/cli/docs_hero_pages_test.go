@@ -2,7 +2,7 @@ package cli
 
 import (
 	"encoding/json"
-	"errors"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -96,7 +96,6 @@ type stalledStderrPipe struct {
 	t        *testing.T
 	r, w     *os.File
 	out      *lockedBuffer
-	parked   chan struct{}
 	resume   chan struct{}
 	done     chan struct{}
 	resumed  sync.Once
@@ -111,23 +110,11 @@ func newStalledStderrPipe(t *testing.T, out *lockedBuffer) *stalledStderrPipe {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p := &stalledStderrPipe{t: t, r: r, w: w, out: out, parked: make(chan struct{}), resume: make(chan struct{}), done: make(chan struct{})}
+	p := &stalledStderrPipe{t: t, r: r, w: w, out: out, resume: make(chan struct{}), done: make(chan struct{})}
 	go func() {
 		defer close(p.done)
-		chunk := make([]byte, 4096)
-		for {
-			n, err := r.Read(chunk)
-			_, _ = out.Write(chunk[:n])
-			if err == nil {
-				continue
-			}
-			if !errors.Is(err, os.ErrDeadlineExceeded) {
-				return
-			}
-			p.parked <- struct{}{}
-			<-p.resume
-			_ = r.SetReadDeadline(time.Time{})
-		}
+		<-p.resume
+		_, _ = io.Copy(out, r)
 	}()
 	t.Cleanup(func() {
 		p.release(0)
@@ -139,17 +126,19 @@ func newStalledStderrPipe(t *testing.T, out *lockedBuffer) *stalledStderrPipe {
 	return p
 }
 
-// stall parks the reader and fills the pipe to its capacity.
+// stall fills the pipe to its capacity while the reader is parked on p.resume.
 func (p *stalledStderrPipe) stall() {
 	p.t.Helper()
-	_ = p.r.SetReadDeadline(time.Now())
-	<-p.parked
 	p.fillDone.Go(func() {
+		chunk := make([]byte, 4096)
+		for i := range chunk {
+			chunk[i] = '.'
+		}
 		for !p.fillStop.Load() {
-			if _, err := p.w.Write([]byte{'.'}); err != nil {
+			if _, err := p.w.Write(chunk); err != nil {
 				return
 			}
-			p.filled.Add(1)
+			p.filled.Add(int64(len(chunk)))
 		}
 	})
 	// Full: three checks in a row see no progress.
