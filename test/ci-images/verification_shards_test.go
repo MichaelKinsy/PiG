@@ -278,6 +278,36 @@ func TestPortmapShardsFitTheirBudget(t *testing.T) {
 	}
 }
 
+// TestBookkeepingKeepsAutofixGatesAndMovesHeavyNonAutofixToBuild guards against Bookkeeping (timeout-minutes: 15)
+// hitting 96.4% of its limit (14.5 m on westus3 in run 44880357753) while preserving every autofix gate in Bookkeeping
+// and every moved non-autofix gate in both ci-build and ci-build-pr (so nothing disappears from the light PR run).
+func TestBookkeepingKeepsAutofixGatesAndMovesHeavyNonAutofixToBuild(t *testing.T) {
+	leaves := gateLeaves(t)
+	bk := leaves("ci-bookkeeping")
+	buildFull := leaves("ci-build")
+	buildPR := leaves("ci-build-pr")
+	moved := []string{
+		"go-fix-clean",
+		"race-coverage",
+		"model-data-check",
+		"fixture-guard",
+		"source-hygiene",
+		"node-runtime-drift",
+		"vendor-pi-dist-drift",
+	}
+	for _, gate := range moved {
+		if slices.Contains(bk, gate) {
+			t.Errorf("ci-bookkeeping still contains heavy non-autofix gate %s; keep it in ci-build and ci-build-pr", gate)
+		}
+		if !slices.Contains(buildFull, gate) {
+			t.Errorf("ci-build is missing moved gate %s", gate)
+		}
+		if !slices.Contains(buildPR, gate) {
+			t.Errorf("ci-build-pr is missing moved gate %s (would disappear from the light PR run)", gate)
+		}
+	}
+}
+
 func TestLinuxAggregateRejectsUnsuccessfulShards(t *testing.T) {
 	job := verificationJobs(t)["verify"]
 	if !slices.Contains(job.Needs, "linux") || !strings.Contains(job.If, "always()") {
