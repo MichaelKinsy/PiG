@@ -4,6 +4,7 @@ package coding
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -32,7 +33,7 @@ func TestSessionCloseShutsDownOwnedResourceLoader(t *testing.T) {
 	writeProbePidExt := func(t *testing.T, extPath, pidFile string) {
 		t.Helper()
 		src := fmt.Sprintf(
-			"import { writeFileSync } from \"node:fs\";\nexport default function (pi) {\n  writeFileSync(%s, String(process.pid));\n  pi.registerCommand(\"probe\", { description: \"probe\", handler: async (args) => { if (args) writeFileSync(args, String(process.pid)); } });\n}\n",
+			"import { writeFileSync } from \"node:fs\";\nexport default function (pi) {\n  writeFileSync(%s, String(process.pid));\n  pi.registerCommand(\"probe\", { description: \"probe\", handler: async (args) => { if (args) writeFileSync(args, String(process.pid)); } });\n  pi.registerTool({ name: \"pid_probe\", label: \"PID Probe\", description: \"Report extension host pid\", parameters: { type: \"object\", properties: {} }, async execute() { return { content: [{ type: \"text\", text: String(process.pid) }], details: {} }; } });\n}\n",
 			strconv.Quote(pidFile),
 		)
 		writeExtensionFiles(t, map[string]string{extPath: src})
@@ -68,6 +69,29 @@ func TestSessionCloseShutsDownOwnedResourceLoader(t *testing.T) {
 		}
 		if gotPID := readPID(t, markerFile); gotPID != wantPID {
 			t.Fatalf("probe command answered from pid %d, want %d", gotPID, wantPID)
+		}
+	}
+	assertExtensionToolRunsInPID := func(t *testing.T, s *Session, wantPID int) {
+		t.Helper()
+		var matches []agent.AgentTool
+		for _, tool := range s.Tools() {
+			if tool.Name() == "pid_probe" {
+				matches = append(matches, tool)
+			}
+		}
+		if len(matches) != 1 {
+			t.Fatalf("session.Tools() has %d pid_probe entries, want 1 (active: %v)", len(matches), s.ActiveToolNames())
+		}
+		res, err := matches[0].Execute(t.Context(), "call-pid-probe", json.RawMessage(`{}`), nil)
+		if err != nil {
+			t.Fatalf("pid_probe.Execute failed: %v", err)
+		}
+		gotPID, err := strconv.Atoi(strings.TrimSpace(res.Text()))
+		if err != nil {
+			t.Fatalf("pid_probe returned non-integer %q (%v)", res.Text(), err)
+		}
+		if gotPID != wantPID {
+			t.Fatalf("pid_probe ran in pid %d, want %d", gotPID, wantPID)
 		}
 	}
 	newOwnedSession := func(t *testing.T) (string, string, *Session) {
@@ -275,6 +299,7 @@ func TestSessionCloseShutsDownOwnedResourceLoader(t *testing.T) {
 			t.Fatalf("extension process %d not alive after source.Close while clone lives", pid)
 		}
 		assertExtensionResponsive(t, clone, filepath.Join(root, "clone.probe"), pid)
+		assertExtensionToolRunsInPID(t, clone, pid)
 
 		if err := clone.Close(); err != nil {
 			t.Fatalf("clone.Close: %v", err)
@@ -486,6 +511,39 @@ func TestSessionCloseShutsDownOwnedResourceLoader(t *testing.T) {
 		}
 		if processAlive(oldPID) {
 			t.Fatalf("old extension process %d unexpectedly alive after cloned.Close", oldPID)
+		}
+	})
+
+	t.Run("Clone after source Close lists and executes extension tool on fresh host", func(t *testing.T) {
+		_, pidFile, source := newOwnedSession(t)
+		oldPID := readPID(t, pidFile)
+		if err := source.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if processAlive(oldPID) {
+			t.Fatalf("extension process %d still alive after source.Close", oldPID)
+		}
+		cloned, err := source.Clone()
+		if err != nil {
+			t.Fatalf("Clone on closed Session: %v", err)
+		}
+		t.Cleanup(func() { _ = cloned.Close() })
+		newPID := readPID(t, pidFile)
+		if newPID == oldPID {
+			t.Fatalf("Clone on closed Session reused old pid %d", oldPID)
+		}
+		if processAlive(oldPID) {
+			t.Fatalf("old extension process %d unexpectedly alive", oldPID)
+		}
+		if !processAlive(newPID) {
+			t.Fatalf("clone extension process %d not alive", newPID)
+		}
+		assertExtensionToolRunsInPID(t, cloned, newPID)
+		if err := cloned.Close(); err != nil {
+			t.Fatalf("cloned.Close: %v", err)
+		}
+		if processAlive(newPID) {
+			t.Fatalf("clone extension process %d still alive after cloned.Close", newPID)
 		}
 	})
 

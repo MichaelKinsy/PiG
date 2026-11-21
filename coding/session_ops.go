@@ -112,7 +112,7 @@ func (s *Session) CloneInPlace() error {
 	return nil
 }
 
-// Clone snapshots the current path-to-leaf as a new session JSONL on disk, dropping orphan branches and recording the source as parentSession. File-backed Sessions must already be saved. The original Session is unchanged; the caller owns closing the returned Session.
+// Clone snapshots the current path-to-leaf as a new session JSONL on disk, dropping orphan branches and recording the source as parentSession. File-backed Sessions must already be saved. The original Session is unchanged; the caller owns closing the returned Session. If the source Session owned its resource loader and has already been closed, Clone constructs a fresh resource loader and Extension Host for the returned Session.
 func (s *Session) Clone() (*Session, error) {
 	in := s.inner.Load()
 	leaf := in.GetLeafID()
@@ -173,6 +173,12 @@ func (s *Session) Clone() (*Session, error) {
 				opts.ResourceLoader = fresh.loader
 				opts.Runner = nil
 				opts.runnerShared = false
+				opts.toolRegistry = nil
+				opts.Tools = nil
+				opts.SkipBuiltinTools = len(s.toolRegistry.base) == 0
+				for _, entry := range s.toolRegistry.custom {
+					opts.Tools = append(opts.Tools, entry.tool)
+				}
 			}
 		}
 		opts.boundResourceLoader = bound
