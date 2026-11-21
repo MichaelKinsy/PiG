@@ -13,8 +13,9 @@ const { createAgentSessionServices } = await import(pathToFileURL(root + "dist/c
 let input = "";
 process.stdin.setEncoding("utf8");
 for await (const chunk of process.stdin) input += chunk;
+const realSandbox = realpathSync(sandbox);
 const fill = (text) => (text === null ? undefined : text.replaceAll("{S}", sandbox));
-const strip = (text) => text.replaceAll(sandbox, "{S}");
+const strip = (text) => text.replaceAll(sandbox, "{S}").replaceAll(realSandbox, "{S}");
 const results = [];
 for (const probe of JSON.parse(input)) {
   try {

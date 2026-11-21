@@ -175,6 +175,9 @@ func renderWith(frames []*daemon.Frame, root string, normalizers []wireNormalize
 		}
 		line := fmt.Sprintf("%s %s payload=%q\n", frameKindNames[frame.Kind], encoded, frame.Payload)
 		line = strings.ReplaceAll(line, root, "{ROOT}")
+		if realRoot, err := filepath.EvalSymlinks(root); err == nil && realRoot != root {
+			line = strings.ReplaceAll(line, realRoot, "{ROOT}")
+		}
 		for _, normalizer := range normalizers {
 			line = normalizer.pattern.ReplaceAllString(line, normalizer.replace)
 		}

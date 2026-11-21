@@ -1070,8 +1070,12 @@ func TestTheWorkerBaseInANamedDirectoryEmptiedFirstWrittenAgainThereRemovedByClo
 	}
 	notes := f.hold(fixtureNotes, "S1")
 	until(t, func() bool { return refKind(notes) == host.RefStateLive })
-	if from := forkedFrom(f); from != copied {
-		t.Fatalf("the worker ran from %q, want %q", from, copied)
+	wantCopied, err := filepath.EvalSymlinks(copied)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if from := forkedFrom(f); from != wantCopied {
+		t.Fatalf("the worker ran from %q, want %q", from, wantCopied)
 	}
 	notes.Release()
 	if err := f.workers.Close(background); err != nil {

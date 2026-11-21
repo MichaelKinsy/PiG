@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // bashParams marshals shell tool input in tests; a zero timeout is omitted.
@@ -493,7 +494,7 @@ func TestBashCwdDoesNotPersistMatchingUpstream(t *testing.T) {
 	// Call 2: pwd (no cd). Should report the original CWD, NOT /tmp. Git Bash
 	// maps %TEMP% (which holds t.TempDir) to /tmp, so on Windows the call asks
 	// for the Windows form of the directory with pwd -W.
-	pwd, wantCWD := "pwd", bt.CWD
+	pwd, wantCWD := "pwd", testenv.EvalSymlinks(t, bt.CWD)
 	if runtime.GOOS == "windows" {
 		pwd, wantCWD = "pwd -W", filepath.ToSlash(bt.CWD)
 	}

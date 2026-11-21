@@ -20,6 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // reloadTrustSession starts the real binary in a project without trust-requiring resources and with legacy credentials,
@@ -138,9 +139,10 @@ func TestReloadSavesImplicitProjectTrustInTheBinary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	wantCWD := testenv.EvalSymlinks(t, cwd)
 	var trust map[string]bool
-	if err := json.Unmarshal(data, &trust); err != nil || !trust[cwd] {
-		t.Fatalf("trust.json = %s (%v), want %s trusted", data, err, cwd)
+	if err := json.Unmarshal(data, &trust); err != nil || !trust[wantCWD] {
+		t.Fatalf("trust.json = %s (%v), want %s trusted", data, err, wantCWD)
 	}
 }
 

@@ -185,7 +185,16 @@ func TestDaemonExecMatchesPisDaemon(t *testing.T) {
 				environment := daemonEnvironment(base, tmp, extra...)
 				d := startWireDaemon(t, binary, root, environment)
 				frames := d.call(withRoot(test.request, root).(daemon.Object), nil)
-				outputs[index] = renderExec(frames, root, !test.window, []wireNormalizer{spillName, {regexp.MustCompile(regexp.QuoteMeta(tmp)), "{TMP}"}, {regexp.MustCompile(regexp.QuoteMeta(base)), "{BASE}"}})
+				realTmp, _ := filepath.EvalSymlinks(tmp)
+				realBase, _ := filepath.EvalSymlinks(base)
+				norms := []wireNormalizer{spillName, {regexp.MustCompile(regexp.QuoteMeta(tmp)), "{TMP}"}, {regexp.MustCompile(regexp.QuoteMeta(base)), "{BASE}"}}
+				if realTmp != "" && realTmp != tmp {
+					norms = append(norms, wireNormalizer{regexp.MustCompile(regexp.QuoteMeta(realTmp)), "{TMP}"})
+				}
+				if realBase != "" && realBase != base {
+					norms = append(norms, wireNormalizer{regexp.MustCompile(regexp.QuoteMeta(realBase)), "{BASE}"})
+				}
+				outputs[index] = renderExec(frames, root, !test.window, norms)
 			}
 			compareWire(t, test.name, outputs[0], outputs[1])
 		})
@@ -275,7 +284,11 @@ func TestDaemonHelloMatchesPisDaemon(t *testing.T) {
 					environment = append(environment, strings.ReplaceAll(entry, "{TMP}", tmp))
 				}
 				d := startWireDaemon(t, binary, root, environment)
-				text := render(d.call(object("op", "hello"), nil), root, append([]wireNormalizer{{regexp.MustCompile(regexp.QuoteMeta(base)), "{BASE}"}}, normalizers...))
+				helloNorms := []wireNormalizer{{regexp.MustCompile(regexp.QuoteMeta(base)), "{BASE}"}}
+				if realBase, err := filepath.EvalSymlinks(base); err == nil && realBase != base {
+					helloNorms = append(helloNorms, wireNormalizer{regexp.MustCompile(regexp.QuoteMeta(realBase)), "{BASE}"})
+				}
+				text := render(d.call(object("op", "hello"), nil), root, append(helloNorms, normalizers...))
 				outputs[index] = d.sync + text
 			}
 			compareWire(t, test.name, outputs[0], outputs[1])

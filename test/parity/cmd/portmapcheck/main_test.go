@@ -452,6 +452,23 @@ func TestMarkerRowIsProvenByCoverageAndAKilledMutant(t *testing.T) {
 
 // TestEvidenceEnvKeepsToolchainHomes: HOME is scratch, but the toolchains that resolve their installation from it (Cargo, Rustup, mise's
 // XDG directories) keep their real locations, so evidence tests that build Rust or Python fixtures still run.
+func TestMarkerMutantIsKilledWhenRootIsBehindASymbolicLink(t *testing.T) {
+	const marked = "package lib\n\nimport \"testing\"\n\n// pi: packages/fx/src/widget.ts\nfunc TestWidget(t *testing.T) {\n\tif (Widget{Name: \"a\"}).Hello() != \"hello a\" {\n\t\tt.Fatal(\"hello\")\n\t}\n}\n"
+	const killer = `{"packages/fx/src/widget.ts":[{"file":"lib/widget.go","old":"\"hello \" + w.Name","new":"\"bye \" + w.Name"}]}`
+	realRoot := markerFixture(t, marked, killer)
+	linkRoot := filepath.Join(t.TempDir(), "linked-root")
+	if err := os.Symlink(realRoot, linkRoot); err != nil {
+		t.Skipf("symlink: %v", err)
+	}
+	res, err := checkWith(linkRoot, true)
+	if err != nil {
+		t.Fatalf("checkWith(linkRoot): %v", err)
+	}
+	if len(res) != 1 || res[0].Derived != "✅" || len(res[0].Reasons) != 0 {
+		t.Fatalf("linked root verdict = %+v, want derived ✅ with no reasons", res)
+	}
+}
+
 func TestEvidenceEnvKeepsToolchainHomes(t *testing.T) {
 	real := t.TempDir()
 	t.Setenv("HOME", real)

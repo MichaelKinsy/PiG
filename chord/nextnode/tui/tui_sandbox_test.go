@@ -88,7 +88,7 @@ func TestTheSandboxAsAProcessReachesNoTerminalFileSQLiteNetworkOrEnvironmentPast
 	if err != nil {
 		t.Fatal(err)
 	}
-	directory := t.TempDir()
+	directory := testenv.EvalSymlinks(t, t.TempDir())
 	script := filepath.Join(directory, BootstrapFile)
 	if err := os.WriteFile(script, probe, 0o600); err != nil {
 		t.Fatal(err)

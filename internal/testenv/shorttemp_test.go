@@ -175,3 +175,16 @@ func TestWindowsShortTempPrefixesFitRunnerBudget(t *testing.T) {
 		t.Fatalf("checked only %d ShortTempDir/MkdirShortTemp callers; expected at least 10", checked)
 	}
 }
+
+func TestEvalSymlinksResolvesDirectoryLink(t *testing.T) {
+	base := EvalSymlinks(t, t.TempDir())
+	target := filepath.Join(base, "real")
+	if err := os.Mkdir(target, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(base, "link")
+	RequireDirectoryLink(t, target, link)
+	if got := EvalSymlinks(t, link); got != target {
+		t.Fatalf("EvalSymlinks(%q) = %q, want %q", link, got, target)
+	}
+}

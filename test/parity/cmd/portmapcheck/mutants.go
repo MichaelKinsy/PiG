@@ -107,6 +107,11 @@ func infraFailure(out string, err error) string {
 // that killed the mutant and also crashed the test binary still kills it: the crash is returned in note, to be reported beside the verdict.
 func killed(root string, res result, mu mutant, replays *replayCaches) (dead bool, infra, note string) {
 	mutantReplays.Add(1)
+	// `go test -overlay` keys Replace entries on the canonical path of the working directory; resolve symlinks
+	// in root once so overlays apply when the repository root lies behind a symbolic link (e.g. macOS /tmp).
+	if resolved, err := filepath.EvalSymlinks(root); err == nil {
+		root = resolved
+	}
 	src, err := os.ReadFile(filepath.Join(root, mu.File))
 	if err != nil {
 		return false, "", "the file cannot be read: " + err.Error()
