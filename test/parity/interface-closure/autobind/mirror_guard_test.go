@@ -184,9 +184,8 @@ func TestUpdateOverThePinnedMirrorWritesTheLedger(t *testing.T) {
 	}
 }
 
-// A check writes nothing, so it runs over any mirror. Over another Pi's mirror its verdict is that Pi's: make test-carried-oracles left
-// .upstream/current at the commit it tests, the next make interface-gaps reported seven gaps in pkg:durable that the tree does not have,
-// and nothing in the output said why. A failed check over such a mirror names the mirror and the fix; over the pin's it reads as before.
+// Over the pinned mirror a failed check reads as before (without naming the mirror); over another Pi's mirror (for example left by
+// make test-carried-oracles) it fails before deriving any gaps, naming the wrong mirror and the fix instead of printing a false table.
 func TestAFailedCheckNamesAMirrorThatIsNotThePinnedBuild(t *testing.T) {
 	root, reach := mirrorFixture(t)
 	args := []string{"-root", root, "-reach", reach, "-out", filepath.Join(root, "build/interface-gaps")}
@@ -214,10 +213,13 @@ func TestAFailedCheckNamesAMirrorThatIsNotThePinnedBuild(t *testing.T) {
 	}
 	writeMirror(t, root, pigversion.UpstreamVersion+"+33333333", strings.Repeat("3", 40), strings.Repeat("3", 40), pigversion.UpstreamPackageVersion)
 	code, out = runAutobind(t, append(args, "-check")...)
-	if code == 0 || !strings.Contains(out, "is not what the detector derives") {
-		t.Fatalf("autobind -check over another Pi's mirror exited %d; output:\n%s", code, out)
+	if code == 0 {
+		t.Fatalf("autobind -check over another Pi's mirror exited 0; output:\n%s", out)
 	}
-	for _, want := range []string{"this verdict is not the pin's", strings.Repeat("3", 40), "make upstream-mirror"} {
+	if strings.Contains(out, "| reason |") || strings.Contains(out, "total IDs:") {
+		t.Errorf("autobind -check over another Pi's mirror printed a gap table; output:\n%s", out)
+	}
+	for _, want := range []string{strings.Repeat("3", 40), "make upstream-mirror"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("the failed check over another Pi's mirror does not say %q; output:\n%s", want, out)
 		}
