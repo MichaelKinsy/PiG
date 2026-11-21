@@ -33,7 +33,12 @@ func TestNodeAppliesHostStateInFrameOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stall, err := filepath.Abs("testdata/node-timer-stall.mjs")
+	stallPath, err := filepath.Abs("testdata/node-timer-stall.mjs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// --import takes a module specifier, not a platform path: on Windows Node reads D:\... as URL scheme "d:".
+	stallURL, err := nodeFileURL(stallPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +48,7 @@ func TestNodeAppliesHostStateInFrameOrder(t *testing.T) {
 		env  []string
 	}{
 		{"plain", nil, nil},
-		{"every_timer_callback_late", []string{"--import", stall}, []string{"PIG_TIMER_STALL_MS=100"}},
+		{"every_timer_callback_late", []string{"--import", stallURL}, []string{"PIG_TIMER_STALL_MS=100"}},
 	} {
 		t.Run(run.name, func(t *testing.T) {
 			cmd := exec.CommandContext(t.Context(), "node", append(run.args, "testdata/node-state-order-probe.mjs", runtime)...)

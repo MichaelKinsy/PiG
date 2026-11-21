@@ -19,6 +19,8 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/browsertest"
+
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 )
 
 // A log, a terminal recording or a shared screen must not hold a live address of the bridge. By default the bridge
@@ -329,7 +331,7 @@ func TestBridgeRemovesTheTokenFile(t *testing.T) {
 		if err := os.WriteFile(inject, []byte(script), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		r := startRaw(t, []string{"--import", inject}, nil, nil)
+		r := startRaw(t, []string{"--import", nodeurl.PathToFileURL(inject, runtime.GOOS == "windows")}, nil, nil)
 		// The file is gone as soon as the error is thrown, so the line is read and the file is not.
 		m := maskedLine.FindStringSubmatch(r.firstLine(t))
 		if m == nil {

@@ -132,7 +132,7 @@ func unixListenerRust(t *testing.T) (net.Listener, func()) {
 	// A private directory per listener: time-derived names can repeat on
 	// hosts with a coarse clock (Windows), and two listeners then collide.
 	// ShortTempDir keeps the socket path within sun_path at any TEMP length.
-	dir := testenv.ShortTempDir(t, "pig-rust-packed-")
+	dir := testenv.ShortTempDir(t, "pig-rspack-")
 	path := filepath.Join(dir, "cell.sock")
 	ln, err := net.Listen("unix", path)
 	if err != nil {

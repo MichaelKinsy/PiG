@@ -1,9 +1,13 @@
 package testenv
 
 import (
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -106,5 +110,68 @@ func TestMkdirShortTempRespectsTempRootSwitch(t *testing.T) {
 	t.Cleanup(func() { _ = os.RemoveAll(unset) })
 	if filepath.Dir(unset) != "/tmp" || !strings.HasPrefix(filepath.Base(unset), "pig-unset-") {
 		t.Errorf("MkdirShortTemp with unset PIG_TEST_TEMP_ROOT = %q, want a directory named pig-unset-* directly in /tmp", unset)
+	}
+}
+
+// Every Windows-built caller of ShortTempDir or MkdirShortTemp must use a prefix short enough that the fallback directory on GitHub's Windows runner
+// (C:\Users\runneradmin\AppData\Local\pig\s\<prefix><10 digits>) stays within maxShortTempDirBytes (70). Checking literal prefixes on Linux catches
+// overlong prefixes before they reach a Windows runner.
+func TestWindowsShortTempPrefixesFitRunnerBudget(t *testing.T) {
+	const runnerFallbackDir = `C:\Users\runneradmin\AppData\Local\pig\s`
+	const uint32Digits = 10
+	maxPrefix := maxShortTempDirBytes - len(runnerFallbackDir) - 1 - uint32Digits
+	root, files := windowsTestFiles(t)
+	fset := token.NewFileSet()
+	checked := 0
+	for _, path := range files {
+		f, err := parser.ParseFile(fset, path, nil, 0)
+		if err != nil {
+			t.Fatalf("parse %s: %v", path, err)
+		}
+		rel, _ := filepath.Rel(root, path)
+		ast.Inspect(f, func(n ast.Node) bool {
+			call, ok := n.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			var fn string
+			switch fun := call.Fun.(type) {
+			case *ast.SelectorExpr:
+				fn = fun.Sel.Name
+			case *ast.Ident:
+				fn = fun.Name
+			}
+			var argIdx int
+			switch fn {
+			case "ShortTempDir":
+				argIdx = 1
+			case "MkdirShortTemp":
+				argIdx = 0
+			default:
+				return true
+			}
+			if len(call.Args) <= argIdx {
+				return true
+			}
+			lit, ok := call.Args[argIdx].(*ast.BasicLit)
+			if !ok || lit.Kind != token.STRING {
+				return true
+			}
+			prefix, err := strconv.Unquote(lit.Value)
+			if err != nil {
+				return true
+			}
+			checked++
+			if len(prefix) > maxPrefix {
+				pos := fset.Position(call.Pos())
+				dirLen := len(runnerFallbackDir) + 1 + len(prefix) + uint32Digits
+				t.Errorf("%s:%d: %s prefix %q (%d bytes) makes a %d-byte directory under %s, over maxShortTempDirBytes (%d; max prefix %d bytes)",
+					filepath.ToSlash(rel), pos.Line, fn, prefix, len(prefix), dirLen, runnerFallbackDir, maxShortTempDirBytes, maxPrefix)
+			}
+			return true
+		})
+	}
+	if checked < 10 {
+		t.Fatalf("checked only %d ShortTempDir/MkdirShortTemp callers; expected at least 10", checked)
 	}
 }

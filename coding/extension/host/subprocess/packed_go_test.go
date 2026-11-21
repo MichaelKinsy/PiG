@@ -465,7 +465,12 @@ func TestHost_KillingPackedProcessNeverClaimsItRemainedAlive(t *testing.T) {
 	}
 	// A member's connection handler waits for the process and leaves its end to the watcher, so no member is reported with the plain
 	// connection-closed notice, whichever of the two the host saw first (TestProcessDeathIsReportedOnceInEitherOrder orders them).
-	want := "packed process exited: signal: killed; kill-a, kill-b stopped; /reload restarts them (stderr: " + stderrLogPath + ")"
+	killedErr := "signal: killed"
+	if runtime.GOOS == "windows" {
+		// Windows has no POSIX signals: Process.Kill calls TerminateProcess with exit code 1, which Go reports as "exit status 1".
+		killedErr = "exit status 1"
+	}
+	want := "packed process exited: " + killedErr + "; kill-a, kill-b stopped; /reload restarts them (stderr: " + stderrLogPath + ")"
 	for name, reason := range reasons {
 		if reason != want {
 			t.Fatalf("%s crash reason = %q, want %q", name, reason, want)
