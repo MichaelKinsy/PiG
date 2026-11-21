@@ -41,7 +41,8 @@ import tarfile
 import tempfile
 import threading
 import time
-from pathlib import Path
+from pathlib import Path, PurePath
+from urllib.parse import quote
 
 try:
     import fcntl
@@ -134,6 +135,18 @@ def catalog_fetched_at() -> str:
     return json.loads((CATALOG_SOURCE / "meta.json").read_text(encoding="utf-8"))["fetchedAt"]
 
 
+def node_import_specifier(path: Path | PurePath) -> str:
+    """Return a file:// URL specifier for Node `--import` / ESM `import()`. On Windows a bare absolute path (`D:\\...`) is rejected by Node's ESM loader as an unsupported URL scheme (`d:`)."""
+    if isinstance(path, Path):
+        return path.resolve().as_uri()
+    if not path.is_absolute():
+        raise ValueError(f"relative path cannot be a file URI: {path}")
+    posix = path.as_posix()
+    if not posix.startswith("/"):
+        posix = "/" + posix
+    return "file://" + quote(posix, safe="/:")
+
+
 def generate_catalog_data(source: Path, work: Path) -> Path:
     """Run Pi's catalog generator of the source build over the committed recording and return the data directory it wrote. The generator runs in a
     copy of the build's packages/ai inside packages/ (so it resolves the build's node_modules); the build is left as built."""
@@ -157,7 +170,7 @@ def generate_catalog_data(source: Path, work: Path) -> Path:
         shutil.copytree(CATALOG_OVERLAY, copy, dirs_exist_ok=True)
         shutil.rmtree(copy / "src" / "providers" / "data")
         env = {**os.environ, "CATALOG_FIXTURES": str(fixtures), "CATALOG_FETCHED_AT": meta["fetchedAt"]}
-        done = subprocess.run([node, "--import", str(CATALOG_REPLAY), "catalog/generate.ts", "--strict"], cwd=copy, env=env, capture_output=True, text=True, check=False, timeout=600)
+        done = subprocess.run([node, "--import", node_import_specifier(CATALOG_REPLAY), "catalog/generate.ts", "--strict"], cwd=copy, env=env, capture_output=True, text=True, check=False, timeout=600)
         if done.returncode != 0:
             raise PinError(f"Pi's catalog generator failed over the committed recording:\n{(done.stderr or done.stdout).strip()[-2000:]}")
         data = work / "data"
