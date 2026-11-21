@@ -1,6 +1,12 @@
 // Drive the installed Pi's summary and skill message components, never a translated oracle.
 import { readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+// CompactionSummaryMessageComponent formats tokensBefore with Number.prototype.toLocaleString() in the process locale.
+// On Unix/macOS the caller pins LC_ALL=en_US.UTF-8; on Windows Node/ICU reads the user culture and ignores LC_ALL, so fail loudly if not en-US.
+const defaultLocale = new Intl.NumberFormat().resolvedOptions().locale;
+if (defaultLocale !== "en-US") {
+  throw new Error(`tui message_components oracle requires Node default locale en-US (got ${defaultLocale}); on Unix LC_ALL=en_US.UTF-8 pins it, on Windows ICU reads the user account culture`);
+}
 const root = realpathSync(new URL("../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/", import.meta.url)) + "/";
 if (JSON.parse(readFileSync(root + "package.json", "utf8")).version !== process.argv[2]) throw new Error("Wrong Pi oracle version");
 process.env.FORCE_COLOR = "3";
