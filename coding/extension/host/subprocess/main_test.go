@@ -21,6 +21,7 @@ const (
 var fixtureRoot string
 
 func TestMain(m *testing.M) {
+	maybeRunHarnessTestHelper()
 	if fifoPath := os.Getenv(nodePreflightHelperFIFOEnv); fifoPath != "" {
 		fifo, err := os.OpenFile(fifoPath, os.O_WRONLY, 0)
 		if err != nil {

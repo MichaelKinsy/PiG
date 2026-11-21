@@ -73,52 +73,6 @@ func newHarnessEntry(t *testing.T, spec harnessEntrySpec) (cmd *exec.Cmd, root s
 	return cmd, root
 }
 
-func startHarnessEntry(t *testing.T, cmd *exec.Cmd) {
-	t.Helper()
-	if err := cmd.Start(); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		_ = cmd.Process.Kill()
-		_ = cmd.Wait()
-	})
-}
-
-// harnessPublishedPID is the pid in what a stub wrote to its pid file with echo, accepted only on a complete line: echo creates the file and then writes "pid\n", so a reader can find it empty, or with the digits and not yet the newline, and must try again.
-func harnessPublishedPID(raw []byte) (int, bool) {
-	line, complete := bytes.CutSuffix(raw, []byte("\n"))
-	if !complete {
-		return 0, false
-	}
-	pid, err := strconv.Atoi(string(line))
-	return pid, err == nil
-}
-
-// waitHarnessPID waits until parse accepts what pidFile holds. The bound only fails a hang: the file's appearance is the event.
-func waitHarnessPID(t *testing.T, pidFile string, parse func([]byte) (int, bool)) int {
-	t.Helper()
-	deadline := time.Now().Add(testbudget.Wait(t))
-	for time.Now().Before(deadline) {
-		if raw, err := os.ReadFile(pidFile); err == nil {
-			if pid, ok := parse(raw); ok {
-				return pid
-			}
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
-	t.Fatalf("%s never held a pid", pidFile)
-	return 0
-}
-
-// waitHarnessChildPID waits for the pid a process published in pidFile by a rename, which makes the file appear whole.
-func waitHarnessChildPID(t *testing.T, pidFile string) int {
-	t.Helper()
-	return waitHarnessPID(t, pidFile, func(raw []byte) (int, bool) {
-		pid, err := strconv.Atoi(strings.TrimSpace(string(raw)))
-		return pid, err == nil
-	})
-}
-
 // waitHarnessStubPID waits for the pid a stub binary published with echo: $ROOT/pid and the inner binary's inner.pid.
 func waitHarnessStubPID(t *testing.T, pidFile string) int {
 	t.Helper()
@@ -178,13 +132,6 @@ func awaitHarnessBinaryEnd(t *testing.T, binary, supervisor int) {
 		time.Sleep(20 * time.Millisecond)
 	}
 	t.Logf("the binary ended %s after its entry was killed", time.Since(start).Round(time.Millisecond))
-}
-
-// harnessEntryEnds starts waiting for cmd in the background: the channel receives the entry's wait status once it ended.
-func harnessEntryEnds(cmd *exec.Cmd) <-chan error {
-	ended := make(chan error, 1)
-	go func() { ended <- cmd.Wait() }()
-	return ended
 }
 
 // awaitHarnessFileWhileEntryLives waits for path and fails, naming the entry's wait status, if the entry ends first.
