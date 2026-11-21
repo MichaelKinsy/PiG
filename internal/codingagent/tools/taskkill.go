@@ -36,6 +36,7 @@ func newTaskkillCommandContext(ctx context.Context, pids ...int) *exec.Cmd {
 	//nolint:gosec // G204 (class a): program is System32\taskkill.exe under SystemRoot (default C:\Windows), as upstream; args are fixed /F /T plus /PID pairs for bash children PiG started.
 	return exec.CommandContext(ctx, taskkillExePath(), args...)
 }
+
 // runTaskkill consumes spawn failures as Pi's error listener and catch do. The
 // Go executor returns these failures instead of emitting an unhandled event.
 func runTaskkill(command *exec.Cmd, run func(*exec.Cmd) error) {
