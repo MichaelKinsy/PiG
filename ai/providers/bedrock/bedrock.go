@@ -38,10 +38,12 @@ import (
 
 	awsconfig "github.com/MichaelKinsy/PiG/third_party/awssdk/config"
 	"github.com/MichaelKinsy/PiG/third_party/awssdk/credentials"
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/credentials/logincreds"
 	"github.com/MichaelKinsy/PiG/third_party/awssdk/credentials/ssocreds"
 	"github.com/MichaelKinsy/PiG/third_party/awssdk/credentials/stscreds"
 	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime"
 	btypes "github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime/types"
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/signin"
 	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/sso"
 	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/ssooidc"
 	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/sts"
@@ -351,7 +353,7 @@ func bedrockClientOptions(cfg aws.Config, httpClient bedrockruntime.HTTPClient) 
 //
 // The proxy follows packages/ai/src/api/bedrock-converse-stream.ts:242-253 (Pi commit be269f57b1b707399edd86f5f718d1a907ffea8b / #12365):
 // resolveHttpProxyUrlForTarget(model.baseUrl) is resolved once and given to the runtime client and the default credential chain's clientConfig.
-// That proxies the runtime client, STS (AssumeRole and AssumeRoleWithWebIdentity), SSO (GetRoleCredentials), and SSO OIDC (CreateToken);
+// That proxies the runtime client, STS (AssumeRole and AssumeRoleWithWebIdentity), SSO (GetRoleCredentials), SSO OIDC (CreateToken), and login_session Signin refresh (CreateOAuth2Token, @aws-sdk/credential-provider-login 3.972.90 dist-cjs/index.js:60-77);
 // IMDS, the container provider, credential_process, bearer tokens, AWS_BEDROCK_SKIP_AUTH, and static/env keys do not use the proxy.
 func loadBedrockConfig(ctx context.Context, baseURL, modelID string, options ai.StreamOptions) (aws.Config, *awshttp.BuildableClient, error) {
 	env := options.Env
@@ -378,6 +380,11 @@ func loadBedrockConfig(ctx context.Context, baseURL, modelID string, options ai.
 			}),
 			awsconfig.WithSSOTokenProviderOptions(func(o *ssocreds.SSOTokenProviderOptions) {
 				o.ClientOptions = append(o.ClientOptions, func(opt *ssooidc.Options) {
+					opt.HTTPClient = runtimeHTTPClient
+				})
+			}),
+			awsconfig.WithLoginCredentialOptions(func(o *logincreds.Options) {
+				o.ClientOptions = append(o.ClientOptions, func(opt *signin.Options) {
 					opt.HTTPClient = runtimeHTTPClient
 				})
 			}),

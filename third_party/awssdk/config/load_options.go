@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/credentials/logincreds"
 	"github.com/MichaelKinsy/PiG/third_party/awssdk/credentials/ssocreds"
 	"github.com/MichaelKinsy/PiG/third_party/awssdk/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -140,6 +141,10 @@ type LoadOptions struct {
 	// SSOTokenProviderOptions is a function for setting the
 	// credentials/ssocreds.SSOTokenProviderOptions
 	SSOTokenProviderOptions func(*ssocreds.SSOTokenProviderOptions)
+
+	// LoginCredentialOptions is a function for setting the
+	// credentials/logincreds.Options
+	LoginCredentialOptions func(*logincreds.Options)
 
 	// ProcessCredentialOptions is a function for setting
 	// the processcreds.Options
@@ -681,6 +686,29 @@ func (o LoadOptions) getSSOTokenProviderOptions(ctx context.Context) (func(*ssoc
 func WithSSOTokenProviderOptions(v func(*ssocreds.SSOTokenProviderOptions)) LoadOptionsFunc {
 	return func(o *LoadOptions) error {
 		o.SSOTokenProviderOptions = v
+		return nil
+	}
+}
+
+// getLoginCredentialOptions returns the wrapped function to set logincreds.Options
+func (o LoadOptions) getLoginCredentialOptions(ctx context.Context) (func(*logincreds.Options), bool, error) {
+	if o.LoginCredentialOptions == nil {
+		return nil, false, nil
+	}
+
+	return o.LoginCredentialOptions, true, nil
+}
+
+// WithLoginCredentialOptions is a helper function to construct functional
+// options that sets a function to modify the Options the SDK's
+// credentials/logincreds#Provider will be configured with, if the
+// logincreds.Provider is used by the configuration loader.
+//
+// If multiple WithLoginCredentialOptions calls are made, the last call overrides
+// the previous call values.
+func WithLoginCredentialOptions(v func(*logincreds.Options)) LoadOptionsFunc {
+	return func(o *LoadOptions) error {
+		o.LoginCredentialOptions = v
 		return nil
 	}
 }

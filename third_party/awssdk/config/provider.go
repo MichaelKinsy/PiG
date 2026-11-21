@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/credentials/logincreds"
 	"github.com/MichaelKinsy/PiG/third_party/awssdk/credentials/ssocreds"
 	"github.com/MichaelKinsy/PiG/third_party/awssdk/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -375,6 +376,28 @@ func getBearerAuthTokenCacheOptions(ctx context.Context, configs configs) (
 	for _, config := range configs {
 		if p, ok := config.(bearerAuthTokenCacheOptionsProvider); ok {
 			f, found, err = p.getBearerAuthTokenCacheOptions(ctx)
+			if err != nil || found {
+				break
+			}
+		}
+	}
+	return
+}
+
+// loginCredentialOptionsProvider is an interface for retrieving a function for
+// setting the SDK's credentials/logincreds#Options.
+type loginCredentialOptionsProvider interface {
+	getLoginCredentialOptions(context.Context) (func(*logincreds.Options), bool, error)
+}
+
+// getLoginCredentialOptions is an interface for retrieving a function for
+// setting the SDK's credentials/logincreds#Options.
+func getLoginCredentialOptions(ctx context.Context, configs configs) (
+	f func(*logincreds.Options), found bool, err error,
+) {
+	for _, config := range configs {
+		if p, ok := config.(loginCredentialOptionsProvider); ok {
+			f, found, err = p.getLoginCredentialOptions(ctx)
 			if err != nil || found {
 				break
 			}

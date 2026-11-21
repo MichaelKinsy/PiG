@@ -5,6 +5,12 @@ package bedrock
 import (
 	"github.com/MichaelKinsy/PiG/ai"
 
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/json"
+	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -14,12 +20,13 @@ import (
 
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/credentials/logincreds"
 	"github.com/MichaelKinsy/PiG/third_party/awssdk/credentials/ssocreds"
 )
 
 // Pi resolves the Bedrock proxy once, from model.baseUrl, and gives that handler to the runtime client and the default credential chain's clientConfig
 // (bedrock-converse-stream.ts:242-253, Pi commit be269f57b1b707399edd86f5f718d1a907ffea8b / #12365). That proxies the runtime client, STS
-// (AssumeRole and AssumeRoleWithWebIdentity), SSO (GetRoleCredentials), and SSO OIDC (CreateToken); IMDS, the container provider, credential_process,
+// (AssumeRole and AssumeRoleWithWebIdentity), SSO (GetRoleCredentials), SSO OIDC (CreateToken), and login_session Signin (CreateOAuth2Token); IMDS, the container provider, credential_process,
 // and static/env keys do not use the proxy.
 func TestBedrockProxyIsTheBaseURLsAndOnlyTheRuntimeAndSTSUseIt(t *testing.T) {
 	for _, name := range []string{
@@ -30,6 +37,7 @@ func TestBedrockProxyIsTheBaseURLsAndOnlyTheRuntimeAndSTSUseIt(t *testing.T) {
 		"AWS_BEARER_TOKEN_BEDROCK", "AWS_BEDROCK_SKIP_AUTH",
 		"AWS_ENDPOINT_URL", "AWS_ENDPOINT_URL_STS",
 		"AWS_ENDPOINT_URL_SSO", "AWS_ENDPOINT_URL_SSO_OIDC",
+		"AWS_ENDPOINT_URL_SIGNIN", "AWS_LOGIN_CACHE_DIRECTORY",
 	} {
 		t.Setenv(name, "")
 	}
@@ -270,6 +278,96 @@ func TestBedrockProxyIsTheBaseURLsAndOnlyTheRuntimeAndSTSUseIt(t *testing.T) {
 			}
 			if err == nil || len(hosts) != 0 {
 				t.Fatalf("credentials %q, err %v, proxied hosts %q; want a direct OIDC call that fails to resolve", credentials.AccessKeyID, err, hosts)
+			}
+		})
+	}
+
+	for _, tc := range []struct {
+		name, noProxy string
+		viaProxy      bool
+	}{
+		{"login_session token refresh uses the runtime proxy when baseUrl has one", "", true},
+		{"login_session token refresh goes direct when baseUrl has no proxy", "bedrock.test.invalid", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var mu sync.Mutex
+			var hosts []string
+			proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				mu.Lock()
+				hosts = append(hosts, r.Host)
+				mu.Unlock()
+				w.Header().Set("Content-Type", "application/json")
+				if r.Host != "signin.test.invalid" {
+					w.WriteHeader(http.StatusBadGateway)
+					return
+				}
+				_, _ = w.Write([]byte(`{"accessToken":{"accessKeyId":"LOGINREFRESHKEY","secretAccessKey":"login-secret","sessionToken":"login-token"},"expiresIn":3600,"refreshToken":"next-login-refresh"}`))
+			}))
+			defer proxy.Close()
+			dir := t.TempDir()
+			const loginSession = "arn:aws:iam::123456789012:user/dev"
+			config := filepath.Join(dir, "config")
+			if err := os.WriteFile(config, []byte("[profile login-session]\nlogin_session = "+loginSession+"\nregion = us-east-1\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			cacheDir := filepath.Join(dir, "login-cache")
+			if err := os.MkdirAll(cacheDir, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			tokenPath, err := logincreds.StandardCachedTokenFilepath(loginSession, cacheDir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+			if err != nil {
+				t.Fatal(err)
+			}
+			der, err := x509.MarshalECPrivateKey(key)
+			if err != nil {
+				t.Fatal(err)
+			}
+			dpopPEM := string(pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: der}))
+			tokenJSON, err := json.Marshal(map[string]any{
+				"accessToken": map[string]any{
+					"accessKeyId":     "EXPIREDKEY",
+					"secretAccessKey": "expired-secret",
+					"sessionToken":    "expired-token",
+					"accountId":       "123456789012",
+					"expiresAt":       "2020-01-01T00:00:00Z",
+				},
+				"tokenType":    "aws_sigv4",
+				"refreshToken": "login-refresh-token",
+				"clientId":     "arn:aws:signin::123456789012:client/cli",
+				"dpopKey":      dpopPEM,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(tokenPath, tokenJSON, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv("HOME", dir)
+			t.Setenv("USERPROFILE", dir)
+			t.Setenv("AWS_CONFIG_FILE", config)
+			t.Setenv("AWS_SHARED_CREDENTIALS_FILE", filepath.Join(dir, "credentials"))
+			t.Setenv("AWS_LOGIN_CACHE_DIRECTORY", cacheDir)
+			t.Setenv("AWS_ENDPOINT_URL_SIGNIN", "http://signin.test.invalid")
+			env := ai.ProviderEnv{"HTTP_PROXY": proxy.URL, "HTTPS_PROXY": proxy.URL, "NO_PROXY": tc.noProxy}
+			cfg, _, err := loadBedrockConfig(t.Context(), "http://bedrock.test.invalid", "us.anthropic.claude-opus-4-8", ai.StreamOptions{Env: env, Profile: "login-session"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			credentials, err := cfg.Credentials.Retrieve(t.Context())
+			mu.Lock()
+			defer mu.Unlock()
+			if tc.viaProxy {
+				if err != nil || credentials.AccessKeyID != "LOGINREFRESHKEY" || len(hosts) != 1 || hosts[0] != "signin.test.invalid" {
+					t.Fatalf("credentials %q, err %v, proxied hosts %q; want Signin refresh through the proxy", credentials.AccessKeyID, err, hosts)
+				}
+				return
+			}
+			if err == nil || len(hosts) != 0 {
+				t.Fatalf("credentials %q, err %v, proxied hosts %q; want a direct Signin call that fails to resolve", credentials.AccessKeyID, err, hosts)
 			}
 		})
 	}
