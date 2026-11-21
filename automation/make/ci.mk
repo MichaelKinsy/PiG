@@ -1,24 +1,26 @@
 # SPDX-License-Identifier: MIT
 
 # Hosted Linux jobs (the preflight job and the Linux shards) partition make check. test/ci-images checks this against the current prerequisite graph so adding a gate cannot silently omit it from CI.
-# ci-preflight is the compile gate the Windows, macOS and Node loader jobs wait for, so a change that does not build or vet fails before they spend their minutes.
-ci-preflight: build vet
+# ci-preflight ci-preflight-platforms vet-native vet-platforms is the compile gate the Windows, macOS and Node loader jobs wait for, so a change that does not build or vet fails before they spend their minutes.
+ci-preflight: build vet-native
+ci-preflight-platforms: vet-platforms
 autofix-check: ## Unit-test the derived-file autofix tool that the bookkeeping job and the autofix workflow share
 	@python3 -B -m unittest discover -s automation/ci -p test_autofix.py
 
 # ci-bookkeeping is the fail-fast job every other job waits for: the committed derived files, ledgers and policy gates that need only Go, Python and the Pi source mirror (no oracle build, no npm install, no test binaries). A stale ledger or a missing sign-off stops the run in minutes instead of after the 30-minute shards. CI runs it with make -k -j, so one failing gate does not hide the others; automation/ci/autofix-gates.txt names the gates whose remedy is make generate.
-ci-bookkeeping: autofix-check divergences-drift piglet-strip-ids-drift sdk-bundles-drift node-runtime-drift vendor-pi-dist-drift known-gaps-drift custom-factory-ledger-drift lint-scenarios port-map-drift coverage-drift divergence-consistency divergence-quality divergence-guard gui-import-guard source-hygiene fixture-guard module-pins test-provenance docs-drift bug-ledger-check model-data-check race-coverage perf-scoreboard-check go-fix-clean
+ci-bookkeeping: autofix-check divergences-drift piglet-strip-ids-drift sdk-bundles-drift known-gaps-drift custom-factory-ledger-drift lint-scenarios port-map-drift coverage-drift divergence-consistency divergence-quality divergence-guard gui-import-guard module-pins test-provenance docs-drift bug-ledger-check perf-scoreboard-check
 ci-startup: startup-proxies
-ci-build: module-publication lint
+ci-build: module-publication lint go-fix-clean race-coverage model-data-check fixture-guard source-hygiene node-runtime-drift vendor-pi-dist-drift
 # The light pull-request run (automation/ci/ci-tiers.txt) lints the whole changed files (CI sets LINT_BASE=origin/main); the full run keeps the repository-wide lint.
-ci-build-pr: module-publication lint-changed
+ci-build-pr: module-publication lint-changed go-fix-clean race-coverage model-data-check fixture-guard source-hygiene node-runtime-drift vendor-pi-dist-drift
 # Short gates share one hosted job each, so their setup is paid once. CI runs them with make -k, so one failing gate does not hide the others.
 ci-checks: ci-startup ci-drift ci-closure
 ci-checks-pr: ci-startup ci-drift-pr ci-closure
 ci-toolchains: ci-race ci-integration ci-sdk ci-extensions ci-term-engines
 # CI runs test-fast and test-cli in halves on separate jobs; each pair together is the whole target.
 ci-test-fast: test-fast-parallel
-ci-test-fast-sharded: test-fast-sharded
+ci-test-fast-sharded: test-fast-sharded-1
+ci-test-fast-sharded-2: test-fast-sharded-2
 # The light pull-request run's test-fast shard (automation/ci/ci-tiers.txt): the fast-parallel packages the change affects (TEST_BASE names the pull request's base), no -race so it runs what the full run does, and the whole ci-test-fast when the change touches go.mod, go.sum, go.work or go.work.sum or a file no package test reads.
 ci-test-changed: export TEST_CHANGED_FOR := fast-parallel
 ci-test-changed: export TEST_CHANGED_RACE := none
@@ -61,7 +63,7 @@ ci-durable-contract: durable-core-host-deps durable-contract
 # caches each green row in build/portmap-coverage, but a cold run is still about 170 minutes of 4-CPU runner time (run 41987378567: three shards took 44, 49 and more than 58
 # minutes, the third until the job's 60-minute limit cancelled it), so CI runs it as PORTMAP_SHARDS parallel jobs; every shard computes the same plan, judges its own rows and skips the rest, and the Linux verification
 # job requires all of them.
-PORTMAP_SHARDS := 8
+PORTMAP_SHARDS := 12
 ci-portmap-1: portmap-check-1
 ci-portmap-2: portmap-check-2
 ci-portmap-3: portmap-check-3
@@ -70,6 +72,10 @@ ci-portmap-5: portmap-check-5
 ci-portmap-6: portmap-check-6
 ci-portmap-7: portmap-check-7
 ci-portmap-8: portmap-check-8
+ci-portmap-9: portmap-check-9
+ci-portmap-10: portmap-check-10
+ci-portmap-11: portmap-check-11
+ci-portmap-12: portmap-check-12
 portmap-check-1:
 	@$(MAKE) -s portmap-check PORTMAP_SHARD=1/$(PORTMAP_SHARDS)
 portmap-check-2:
@@ -86,6 +92,14 @@ portmap-check-7:
 	@$(MAKE) -s portmap-check PORTMAP_SHARD=7/$(PORTMAP_SHARDS)
 portmap-check-8:
 	@$(MAKE) -s portmap-check PORTMAP_SHARD=8/$(PORTMAP_SHARDS)
+portmap-check-9:
+	@$(MAKE) -s portmap-check PORTMAP_SHARD=9/$(PORTMAP_SHARDS)
+portmap-check-10:
+	@$(MAKE) -s portmap-check PORTMAP_SHARD=10/$(PORTMAP_SHARDS)
+portmap-check-11:
+	@$(MAKE) -s portmap-check PORTMAP_SHARD=11/$(PORTMAP_SHARDS)
+portmap-check-12:
+	@$(MAKE) -s portmap-check PORTMAP_SHARD=12/$(PORTMAP_SHARDS)
 
 # Run after upstream-mirror under each selected Node runtime. Do not reinstall
 # npm dependencies here: the qualified npm requires a newer Node than Pi does.
@@ -132,6 +146,12 @@ test-fast-parallel: test-prereqs interface-deps parity-deps durable-interop-deps
 test-fast-sharded: test-prereqs interface-deps parity-deps durable-interop-deps
 	@./automation/ci/test-grouped.sh fast-sharded
 
+test-fast-sharded-1: test-prereqs interface-deps parity-deps durable-interop-deps
+	@./automation/ci/test-grouped.sh fast-sharded 1 2
+
+test-fast-sharded-2: test-prereqs interface-deps parity-deps durable-interop-deps
+	@./automation/ci/test-grouped.sh fast-sharded 2 2
+
 test-cli-1: test-prereqs interface-deps parity-deps durable-interop-deps
 	@./automation/ci/test-grouped.sh cli 1 4
 
@@ -168,4 +188,4 @@ test-expectation-lint: ## Fail on test expectations edited with their code and n
 
 TEST_EXPECT_BASE ?= main
 
-.PHONY: sdk-vectors-changed ci-durable-contract test-provenance test-expectation-lint ci-preflight ci-test-changed ci-bookkeeping autofix-check ci-startup ci-build ci-build-pr ci-checks ci-checks-pr ci-toolchains ci-test-fast ci-test-fast-sharded ci-test-cli-1 ci-test-cli-2 ci-test-subprocess ci-test-conformance-1 ci-test-conformance-2 ci-test-conformance-3 ci-test-conformance-4 ci-sdk ci-extensions ci-race ci-term-engines ci-integration ci-parity ci-parity-1 ci-parity-2 parity-fast-1 parity-fast-2 ci-drift ci-drift-pr ci-contracts ci-portmap-1 ci-portmap-2 ci-portmap-3 portmap-check-1 portmap-check-2 portmap-check-3 ci-closure test-fast test-fast-parallel test-fast-sharded test-cli test-cli-1 test-cli-2 test-subprocess test-conformance test-conformance-1 test-conformance-2 test-conformance-3 test-conformance-4
+.PHONY: sdk-vectors-changed ci-durable-contract test-provenance test-expectation-lint ci-preflight ci-test-changed ci-bookkeeping autofix-check ci-startup ci-build ci-build-pr ci-checks ci-checks-pr ci-toolchains ci-test-fast ci-test-fast-sharded test-fast-sharded-1 test-fast-sharded-2 ci-test-fast-sharded-2 ci-test-cli-1 ci-test-cli-2 ci-test-subprocess ci-test-conformance-1 ci-test-conformance-2 ci-test-conformance-3 ci-test-conformance-4 ci-sdk ci-extensions ci-race ci-term-engines ci-integration ci-parity ci-parity-1 ci-parity-2 parity-fast-1 parity-fast-2 ci-drift ci-drift-pr ci-contracts ci-portmap-1 ci-portmap-2 ci-portmap-3 ci-portmap-4 ci-portmap-5 ci-portmap-6 ci-portmap-7 ci-portmap-8 ci-portmap-9 ci-portmap-10 ci-portmap-11 ci-portmap-12 portmap-check-1 portmap-check-2 portmap-check-3 portmap-check-4 portmap-check-5 portmap-check-6 portmap-check-7 portmap-check-8 portmap-check-9 portmap-check-10 portmap-check-11 portmap-check-12 ci-closure test-fast test-fast-parallel test-fast-sharded test-cli test-cli-1 test-cli-2 test-subprocess test-conformance test-conformance-1 test-conformance-2 test-conformance-3 test-conformance-4

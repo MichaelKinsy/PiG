@@ -63,8 +63,8 @@ The flow in `label` mode: push; the light run reports `CI result` red with the m
 | Check | Tier | Min | What stays out of the light run |
 |---|---|---|---|
 | Changed paths, Bookkeeping, Project documents, CI result, Linux verification, Prune superseded caches | always | 5 | |
-| Linux / preflight | always | 20 | Build, and vet natively, for both Windows architectures and for Android, and `go fix` |
-| Linux / test-fast-sharded | pr | 31 | |
+| Linux / preflight, Linux / preflight-platforms | always | 20 | Two parallel compile-gate jobs: `preflight` runs `build`, native vet, and tagged vet; `preflight-platforms` runs cross-platform vet for both Windows architectures and Android |
+| Linux / test-fast-sharded, test-fast-sharded-2 | pr | 31 | Two balanced halves of the sharded fast packages (`./ai`, `./tui`, `./tui/internal/hljs` in half 1; the remaining sharded fast packages in half 2) |
 | Linux / alloc-ratchet | pr | 25 | `make ci-alloc-ratchet`: the nightly's allocation baseline for only the hot packages the change touches or imports (`make alloc-baseline-changed`); about 2.5 min for `coding/cli`, about 22 min for `ai` or `tui`, nothing when the change touches no hot package; blocks through Linux verification and CI result like every shard |
 | Linux / test-fast | pr | 26 | Packages the pull request does not affect: it runs `make ci-test-changed`, the fast packages that `automation/ci/changed-packages.py` selects against the base branch (direct, affected and the pigfault tests of the durable driver), and the whole of `ci-test-fast` when the change touches `go.mod`, `go.sum`, `go.work` or `go.work.sum`, or a file no package test reads. The sharded, cmd/pig and extension host packages stay in their own rows. The run summary lists the selection (direct, affected, tagged, unmapped and module-wide counts and lists) and says whether the run fell back to the whole shard and why. `ci-test-changed` also runs `make sdk-vectors-changed`: when the diff touches `tui/`, an SDK, `internal/typebox/` or a vector file (`automation/ci/sdk-vectors-changed.sh`), it checks the generated Pi vectors, lints every Rust crate (`make lint-rust`: rustfmt and Clippy with warnings denied, from the `rustfmt` and `clippy` components the Linux jobs install with the pinned toolchain) and runs the Go, Rust, Python and Lisp SDK suites, which the main module's package selection never reaches. The full run runs the same suites in the toolchains shard (`ci-sdk`), and `test/ci-images` checks that each one the light gate runs is still there. |
 | Linux / test-cli-1 | pr | 15 | |
@@ -79,7 +79,7 @@ The flow in `label` mode: push; the light run reports `CI result` red with the m
 | Android build | pr | 5 | |
 | Node loader / ubuntu-24.04, windows-latest, macos-15 | queue | 9 | |
 | Linux / parity-2 | queue | 12 | The other hermetic parity hash shard |
-| Linux / portmap-1, portmap-2, portmap-3, portmap-4, portmap-5, portmap-6, portmap-7, portmap-8 | queue | 45 | |
+| Linux / portmap-1, portmap-2, portmap-3, portmap-4, portmap-5, portmap-6, portmap-7, portmap-8, portmap-9, portmap-10, portmap-11, portmap-12 | queue | 45 | |
 | Linux / test-conformance-1, test-conformance-2, test-conformance-3, test-conformance-4 | queue | 115 | Conformance of every SDK, in four jobs of five shards (twenty in all, each its own go test process under the 10-minute package limit; the cells are built once per job and shared; 26 to 30 minutes warm, 36 to 43 minutes cold, predicted from runs 44864086404 and 44880357753 so every job stays <= 60% of the 60-minute limit warm and well under it cold); the totals below keep run 39510928254 until measured |
 | Linux / toolchains | queue | 7 | Race, integration, SDK (including `make lint-rust`) and extension corpus gates |
 | Node extensions | queue | 11 | |

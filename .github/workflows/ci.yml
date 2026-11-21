@@ -431,6 +431,44 @@ jobs:
           path: ~/go/pkg/mod
           key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
 
+  preflight-platforms:
+    name: Linux / preflight-platforms
+    # Cross-platform vet half of the compile gate: vets every platform declared in automation/ci/vet-tags.txt
+    # (windows/amd64, windows/arm64, android/arm64) in parallel with Linux / preflight (build + native + tagged vet).
+    # Windows, macOS and the Node loader wait for both preflight jobs so a cross-platform compile break stops them.
+    needs: [changes, bookkeeping]
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || (needs.changes.outputs.os-parallel == 'true' && needs.bookkeeping.result != 'skipped')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Restore the Go module cache
+        id: cache-the-go-module-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+      - name: Cross-platform vet every shipped target
+        env:
+          CI: '1'
+          MAKEFLAGS: -k
+        run: make ci-preflight-platforms
+
   linux:
     name: Linux / ${{ matrix.shard }}
     needs: [changes, bookkeeping]
@@ -939,8 +977,8 @@ jobs:
 
   node-loader:
     name: Node loader / ${{ matrix.os }}
-    needs: [changes, preflight]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-node-loader == 'true' && (needs.preflight.result == 'success' || (needs.changes.outputs.os-parallel == 'true' && needs.preflight.result != 'skipped')) }}
+    needs: [changes, preflight, preflight-platforms]
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-node-loader == 'true' && ((needs.preflight.result == 'success' && needs.preflight-platforms.result == 'success') || (needs.changes.outputs.os-parallel == 'true' && needs.preflight.result != 'skipped' && needs.preflight-platforms.result != 'skipped')) }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
@@ -1214,8 +1252,8 @@ jobs:
 
   windows:
     name: Windows ${{ matrix.shard }}
-    needs: [changes, preflight]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.windows != '[]' && (needs.preflight.result == 'success' || (needs.changes.outputs.os-parallel == 'true' && needs.preflight.result != 'skipped')) }}
+    needs: [changes, preflight, preflight-platforms]
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.windows != '[]' && ((needs.preflight.result == 'success' && needs.preflight-platforms.result == 'success') || (needs.changes.outputs.os-parallel == 'true' && needs.preflight.result != 'skipped' && needs.preflight-platforms.result != 'skipped')) }}
     runs-on: windows-latest
     timeout-minutes: 60
     strategy:
@@ -1493,8 +1531,8 @@ jobs:
 
   macos:
     name: macOS ${{ matrix.shard }}
-    needs: [changes, preflight]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.macos != '[]' && (needs.preflight.result == 'success' || (needs.changes.outputs.os-parallel == 'true' && needs.preflight.result != 'skipped')) }}
+    needs: [changes, preflight, preflight-platforms]
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.macos != '[]' && ((needs.preflight.result == 'success' && needs.preflight-platforms.result == 'success') || (needs.changes.outputs.os-parallel == 'true' && needs.preflight.result != 'skipped' && needs.preflight-platforms.result != 'skipped')) }}
     runs-on: macos-15
     timeout-minutes: 40
     env:
@@ -1794,7 +1832,7 @@ jobs:
     # is label) a pull request's result fails unless this run is the full run
     # on the pull request's current head, so a head that only the light run
     # tested can never satisfy the required check.
-    needs: [changes, verdict, bookkeeping, docs, preflight, verify, node-runtime, chord, windows, macos, android, node-loader, durable-cf-host, durable-contract]
+    needs: [changes, verdict, bookkeeping, docs, preflight, preflight-platforms, verify, node-runtime, chord, windows, macos, android, node-loader, durable-cf-host, durable-contract]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -1834,6 +1872,7 @@ jobs:
           DURABLE_CF_HOST: ${{ needs.durable-cf-host.result }}
           DURABLE_CONTRACT: ${{ needs.durable-contract.result }}
           PREFLIGHT: ${{ needs.preflight.result }}
+          PREFLIGHT_PLATFORMS: ${{ needs.preflight-platforms.result }}
         shell: bash
         run: |
           set -euo pipefail
@@ -1891,6 +1930,7 @@ jobs:
           expect "Bookkeeping" "$BOOKKEEPING" false
           expect "Linux verification" "$VERIFY" false
           expect "Linux preflight" "$PREFLIGHT" "$product_skip"
+          expect "Linux preflight-platforms" "$PREFLIGHT_PLATFORMS" "$product_skip"
           expect "Node extensions" "$NODE_RUNTIME" "$(skip_unless_planned "$RUN_NODE_RUNTIME")"
           expect "Chord surfaces" "$CHORD" "$(skip_unless_planned "$RUN_CHORD")"
           # The light run is one runner: all its Windows and macOS rows are queue rows, so it plans none.

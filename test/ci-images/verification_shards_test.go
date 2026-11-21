@@ -70,10 +70,10 @@ func gateLeaves(t *testing.T) func(string) []string {
 	var leaves func(string) []string
 	leaves = func(name string) []string {
 		switch name {
-		case "check", "check-core", "check-contracts-fast":
+		case "check", "check-core", "check-contracts-fast", "vet":
 		case "test":
 			// CI runs test-fast and test-cli in halves (fast-parallel and fast-sharded; two cmd/pig shard ranges) and conformance in four shard ranges, which together are make test.
-			return []string{"test-fast-parallel", "test-fast-sharded", "test-cli-1", "test-cli-2", "test-subprocess", "test-conformance-1", "test-conformance-2", "test-conformance-3", "test-conformance-4"}
+			return []string{"test-fast-parallel", "test-fast-sharded-1", "test-fast-sharded-2", "test-cli-1", "test-cli-2", "test-subprocess", "test-conformance-1", "test-conformance-2", "test-conformance-3", "test-conformance-4"}
 		case "portmap-check":
 			// CI runs the PORT_MAP evidence check as PORTMAP_SHARDS shards (PORTMAP_SHARD=N/M), which together are portmap-check.
 			var halves []string
@@ -150,6 +150,20 @@ func TestLinuxShardsRetainEveryCheck(t *testing.T) {
 		t.Fatal("the preflight job does not run make ci-preflight")
 	}
 	got = append(got, leaves("ci-preflight")...)
+	preflightPlatforms, ok := jobs["preflight-platforms"]
+	if !ok {
+		t.Fatal("ci.yml has no preflight-platforms job")
+	}
+	runsPreflightPlatforms := false
+	for _, step := range preflightPlatforms.Steps {
+		if strings.TrimSpace(step.Run) == "make ci-preflight-platforms" {
+			runsPreflightPlatforms = true
+		}
+	}
+	if !runsPreflightPlatforms {
+		t.Fatal("the preflight-platforms job does not run make ci-preflight-platforms")
+	}
+	got = append(got, leaves("ci-preflight-platforms")...)
 	// The bookkeeping job runs the fail-fast gates every spending job waits for; they count once, there.
 	bookkeeping, ok := jobs["bookkeeping"]
 	if !ok {
@@ -165,7 +179,7 @@ func TestLinuxShardsRetainEveryCheck(t *testing.T) {
 		t.Fatal("the bookkeeping job does not run make ci-bookkeeping")
 	}
 	got = append(got, leaves("ci-bookkeeping")...)
-	for _, waiting := range []string{"preflight", "linux", "node-runtime", "chord", "durable-cf-host", "durable-contract", "android"} {
+	for _, waiting := range []string{"preflight", "preflight-platforms", "linux", "node-runtime", "chord", "durable-cf-host", "durable-contract", "android"} {
 		if !slices.Contains(jobs[waiting].Needs, "bookkeeping") {
 			t.Errorf("%s does not wait for the bookkeeping job, so a bookkeeping failure would not stop it", waiting)
 		}
@@ -173,6 +187,9 @@ func TestLinuxShardsRetainEveryCheck(t *testing.T) {
 	for _, gated := range []string{"windows", "macos", "node-loader"} {
 		if !slices.Contains(jobs[gated].Needs, "preflight") {
 			t.Errorf("%s does not wait for the preflight job", gated)
+		}
+		if !slices.Contains(jobs[gated].Needs, "preflight-platforms") {
+			t.Errorf("%s does not wait for the preflight-platforms job", gated)
 		}
 	}
 	slices.Sort(want)
@@ -246,6 +263,126 @@ func TestPortmapShardsAreWiredEndToEnd(t *testing.T) {
 			t.Errorf("ci-portmap-%d does not run portmap-check-%d", n, n)
 		}
 	}
+}
+
+// TestPortmapShardsFitTheirBudget guards against regressions like runs 44870314130 and 44880357753 where
+// Linux / portmap-1 (55.5 m, 92.5% of 60 m on southcentralus) and Linux / portmap-3 (51.8 m, 86.4% on westus)
+// exceeded the 70% slow-pool budget at PORTMAP_SHARDS=8. Scaling the worst observed 8-shard work linearly to
+// PORTMAP_SHARDS must keep every shard <= 60% of the 60-minute limit on the fast pool and <= 85% on the slow pool.
+func TestPortmapShardsFitTheirBudget(t *testing.T) {
+	limit := verificationJobs(t)["linux"].Timeout * 60
+	if limit <= 0 || limit > 3600 {
+		t.Fatalf("linux timeout = %d s, want 1..3600", limit)
+	}
+	total := portmapShards(t)
+	// Measured on run 44880357753 (portmap-1 at 8 shards): 3113 s shard work + 218 s setup on southcentralus (slow pool),
+	// and run 44870314130 (portmap-1 at 8 shards): 2430 s shard work + 216 s setup on us-west-2 (fast pool).
+	const (
+		baseShards      = 8
+		fastSetupSec    = 220
+		fastWork8Sec    = 2430
+		slowSetupSec    = 240
+		slowWork8Sec    = 3113
+		slowMarginRatio = 85 // <= 85% of limit (at least 15% margin)
+	)
+	fastProjected := fastSetupSec + (fastWork8Sec*baseShards+total-1)/total
+	slowProjected := slowSetupSec + (slowWork8Sec*baseShards+total-1)/total
+	if fastProjected*5 > limit*3 {
+		t.Errorf("PORTMAP_SHARDS=%d projects %d s fast-pool wall (> 60%% of %d s limit)", total, fastProjected, limit)
+	}
+	if slowProjected*100 > limit*slowMarginRatio {
+		t.Errorf("PORTMAP_SHARDS=%d projects %d s slow-pool wall (> %d%% of %d s limit)", total, slowProjected, slowMarginRatio, limit)
+	}
+}
+
+// TestBookkeepingKeepsAutofixGatesAndMovesHeavyNonAutofixToBuild guards against Bookkeeping (timeout-minutes: 15)
+// hitting 96.4% of its limit (14.5 m on westus3 in run 44880357753) while preserving every autofix gate in Bookkeeping
+// and pinning every one of the 25 pre-move ci-bookkeeping targets in exactly one job in both the full and light plans.
+func TestBookkeepingKeepsAutofixGatesAndMovesHeavyNonAutofixToBuild(t *testing.T) {
+	leaves := gateLeaves(t)
+	preMove := []string{
+		"autofix-check",
+		"divergences-drift",
+		"piglet-strip-ids-drift",
+		"sdk-bundles-drift",
+		"node-runtime-drift",
+		"vendor-pi-dist-drift",
+		"known-gaps-drift",
+		"custom-factory-ledger-drift",
+		"lint-scenarios",
+		"port-map-drift",
+		"coverage-drift",
+		"divergence-consistency",
+		"divergence-quality",
+		"divergence-guard",
+		"gui-import-guard",
+		"source-hygiene",
+		"fixture-guard",
+		"module-pins",
+		"test-provenance",
+		"docs-drift",
+		"bug-ledger-check",
+		"model-data-check",
+		"race-coverage",
+		"perf-scoreboard-check",
+		"go-fix-clean",
+	}
+	if len(preMove) != 25 {
+		t.Fatalf("preMove has %d targets, want 25", len(preMove))
+	}
+	moved := []string{
+		"go-fix-clean",
+		"race-coverage",
+		"model-data-check",
+		"fixture-guard",
+		"source-hygiene",
+		"node-runtime-drift",
+		"vendor-pi-dist-drift",
+	}
+	bk := leaves("ci-bookkeeping")
+	buildFull := leaves("ci-build")
+	buildPR := leaves("ci-build-pr")
+	for _, gate := range moved {
+		if slices.Contains(bk, gate) {
+			t.Errorf("ci-bookkeeping still contains heavy non-autofix gate %s; keep it in ci-build and ci-build-pr", gate)
+		}
+		if !slices.Contains(buildFull, gate) {
+			t.Errorf("ci-build is missing moved gate %s", gate)
+		}
+		if !slices.Contains(buildPR, gate) {
+			t.Errorf("ci-build-pr is missing moved gate %s (would disappear from the light PR run)", gate)
+		}
+	}
+	checkPlan := func(planName string, p ciPlan) {
+		jobTargets := map[string][]string{
+			"bookkeeping":         leaves("ci-bookkeeping"),
+			"preflight":           leaves("ci-preflight"),
+			"preflight-platforms": leaves("ci-preflight-platforms"),
+		}
+		for _, entry := range p.Matrix["linux"] {
+			jobTargets["linux/"+entry.Shard] = leaves(entry.Target)
+		}
+		for _, gate := range preMove {
+			var owners []string
+			for job, targets := range jobTargets {
+				for _, target := range targets {
+					if target == gate {
+						owners = append(owners, job)
+					}
+				}
+			}
+			slices.Sort(owners)
+			wantOwner := "bookkeeping"
+			if slices.Contains(moved, gate) {
+				wantOwner = "linux/build"
+			}
+			if len(owners) != 1 || owners[0] != wantOwner {
+				t.Errorf("%s plan: pre-move bookkeeping gate %s runs in %v (count %d), want exactly [%s]", planName, gate, owners, len(owners), wantOwner)
+			}
+		}
+	}
+	checkPlan("full", planFor(t, "merge_group", ""))
+	checkPlan("light", planFor(t, "pull_request", "queue"))
 }
 
 func TestLinuxAggregateRejectsUnsuccessfulShards(t *testing.T) {
@@ -939,16 +1076,17 @@ func TestFastAndDefaultModesRunTheFaultGroupWithItsTag(t *testing.T) {
 func TestOSParallelJobsKeepTheCheapFirstOrderOnMain(t *testing.T) {
 	jobs := verificationJobs(t)
 	gate := map[string]string{
-		"preflight":        "bookkeeping",
-		"linux":            "bookkeeping",
-		"node-runtime":     "bookkeeping",
-		"chord":            "bookkeeping",
-		"durable-cf-host":  "bookkeeping",
-		"durable-contract": "bookkeeping",
-		"android":          "bookkeeping",
-		"windows":          "preflight",
-		"macos":            "preflight",
-		"node-loader":      "preflight",
+		"preflight":           "bookkeeping",
+		"preflight-platforms": "bookkeeping",
+		"linux":               "bookkeeping",
+		"node-runtime":        "bookkeeping",
+		"chord":               "bookkeeping",
+		"durable-cf-host":     "bookkeeping",
+		"durable-contract":    "bookkeeping",
+		"android":             "bookkeeping",
+		"windows":             "preflight",
+		"macos":               "preflight",
+		"node-loader":         "preflight",
 	}
 	for name, need := range gate {
 		job, ok := jobs[name]

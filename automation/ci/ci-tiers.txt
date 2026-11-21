@@ -26,7 +26,12 @@ linux | portmap-5 | queue
 linux | portmap-6 | queue
 linux | portmap-7 | queue
 linux | portmap-8 | queue
+linux | portmap-9 | queue
+linux | portmap-10 | queue
+linux | portmap-11 | queue
+linux | portmap-12 | queue
 linux | test-fast-sharded | pr
+linux | test-fast-sharded-2 | pr
 linux | alloc-ratchet | pr
 linux | test-fast | pr | ci-test-changed
 linux | test-conformance-1 | queue
