@@ -10,7 +10,8 @@ use crate::provider::{
     ProviderStreamOptions, RefreshModelsContext,
 };
 use serde_json::{Value, json};
-use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 
 /// A deferred-response cancellation: the model, the handle and the options.
 pub type ProviderCancelDeferredFn =
@@ -125,48 +126,70 @@ pub fn create_provider(options: CreateProviderOptions) -> Result<Provider, Strin
     let any_fetch_deferred = streams.iter().any(|entry| entry.fetch_deferred.is_some());
     let any_cancel_deferred = streams.iter().any(|entry| entry.cancel_deferred.is_some());
     drop(streams);
-    let baseline = options.models;
-    let dynamic: Arc<Mutex<Vec<Value>>> = Arc::new(Mutex::new(Vec::new()));
-    let current_models: Arc<dyn Fn() -> Vec<ProviderModel> + Send + Sync> = {
-        let dynamic = dynamic.clone();
-        Arc::new(move || {
-            let mut merged = baseline.clone();
-            for model in dynamic.lock().unwrap().iter() {
-                match merged.iter().position(|entry| {
-                    model_type(entry) == model_type(model) && entry["id"] == model["id"]
-                }) {
-                    Some(index) => merged[index] = model.clone(),
-                    None => merged.push(model.clone()),
+    struct CatalogSnapshot {
+        all: Vec<ProviderModel>,
+        chat: Vec<ProviderModel>,
+    }
+    let build_catalog = |baseline: &[Value], dynamic: &[Value]| -> CatalogSnapshot {
+        let mut merged: Vec<Value> = Vec::with_capacity(baseline.len() + dynamic.len());
+        merged.extend(baseline.iter().cloned());
+        if !dynamic.is_empty() {
+            // Merged once per publish, not per read (upstream: packages/ai/src/models.ts, Pi 073b0bae8 / #12311).
+            let mut index_by_key: HashMap<(String, String), usize> =
+                HashMap::with_capacity(merged.len() + dynamic.len());
+            let key_of = |model: &Value| -> (String, String) {
+                (
+                    model_type(model).to_string(),
+                    serde_json::to_string(&model["id"]).unwrap_or_default(),
+                )
+            };
+            for (index, entry) in merged.iter().enumerate() {
+                index_by_key.entry(key_of(entry)).or_insert(index);
+            }
+            for model in dynamic {
+                let key = key_of(model);
+                if let Some(&index) = index_by_key.get(&key) {
+                    merged[index] = model.clone();
+                } else {
+                    index_by_key.insert(key, merged.len());
+                    merged.push(model.clone());
                 }
             }
-            merged.into_iter().map(Arc::new).collect()
-        })
+        }
+        let all: Vec<ProviderModel> = merged.into_iter().map(Arc::new).collect();
+        let chat: Vec<ProviderModel> = all
+            .iter()
+            .filter(|model| model_type(model) == "chat")
+            .cloned()
+            .collect();
+        CatalogSnapshot { all, chat }
     };
+    let baseline = Arc::new(options.models);
+    let catalog: Arc<RwLock<CatalogSnapshot>> =
+        Arc::new(RwLock::new(build_catalog(&baseline, &[])));
     let streams_of = Arc::new(StreamsByApi { single, by_api });
     let get_models = {
-        let current = current_models.clone();
-        Arc::new(move || {
-            Ok(current()
-                .into_iter()
-                .filter(|model| model_type(model) == "chat")
-                .collect())
-        })
+        let catalog = catalog.clone();
+        Arc::new(move || Ok(catalog.read().unwrap().chat.clone()))
     };
     let get_all_models = {
-        let current = current_models.clone();
-        Arc::new(move || Ok(current()))
+        let catalog = catalog.clone();
+        Arc::new(move || Ok(catalog.read().unwrap().all.clone()))
             as Arc<dyn Fn() -> ProviderResult<Vec<ProviderModel>> + Send + Sync>
     };
     let refresh_models = options.fetch_models.map(|fetch| {
-        let dynamic = dynamic.clone();
+        let catalog = catalog.clone();
+        let baseline = baseline.clone();
         let id = id.clone();
         Arc::new(move |context: RefreshModelsContext| -> ProviderResult<()> {
             let publish = |publication: ModelsPublication| (context.publish)(publication);
             let setter =
                 |value: Vec<Value>| -> Option<Arc<dyn Fn() -> ProviderResult<()> + Send + Sync>> {
-                    let dynamic = dynamic.clone();
+                    let catalog = catalog.clone();
+                    let baseline = baseline.clone();
                     Some(Arc::new(move || {
-                        *dynamic.lock().unwrap() = value.clone();
+                        let next = build_catalog(&baseline, &value);
+                        *catalog.write().unwrap() = next;
                         Ok(())
                     }))
                 };
