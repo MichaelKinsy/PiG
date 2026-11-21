@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
@@ -19,20 +20,25 @@ import (
 
 // pi: packages/chord/test/examples/76-worker-reports/main.ts (Pi main f57cd9484)
 // Ports example 76 (main.ts, contract.ts, worker.ts), "Reports from a worker that exits": a worker reports to the server and
-// exits in the same turn; its link is closed before its exit is shown in the state, so the report being handled is aborted and
-// its transaction does not commit, and what the server keeps across runs it tags with `ctx.incarnation` and compares with the
-// incarnation in the workers' state. The twin runs the example's three steps and asserts the lines Pi prints, token by token
-// (captured from Pi f57cd9484, `node --conditions=source --experimental-strip-types test/examples/76-worker-reports/main.ts` in packages/chord, 3 of 3 runs identical, including the two `   reported:` lines of the exit and the failure it records).
+// exits in the same turn; its link is closed before its exit is shown in the state, so a report still on its way is dropped and
+// one being handled is aborted (its transaction does not commit), and what the server keeps across runs it tags with
+// `ctx.incarnation` and compares with the incarnation in the workers' state. The twin runs the example's three steps and asserts
+// the lines Pi prints, token by token (captured from Pi f57cd9484,
+// `node --conditions=source --experimental-strip-types test/examples/76-worker-reports/main.ts` in packages/chord, 3 of 3 runs
+// identical, including the two `   reported:` lines of the exit and the failure it records).
 //
 // Forced differences: the example's 50 ms `sleep` in the server's handler is a gate released when the exit is published (the
-// component's onError for the exit, which is Pi's `   reported: worker_exited` line), so the handler's transaction runs after the
-// publication, as in Pi, with no time in it; the example's `Last` state (a map of session to `{ text, incarnation }`) is the
-// fixture's journal of lines, each `<text> <incarnation>`, whose last line is the session's last report (the example has one
-// session); the fixture's `Reporter` is the example's `Probe`; the `0.2 s` wait after the exit is the report's outcome.
+// component's onError for the exit, which is Pi's `   reported: worker_exited` line), so a handler that received the report runs
+// its transaction after the publication, as in Pi, with no time in it; the example's `Last` state (a map of session to
+// `{ text, incarnation }`) is the fixture's journal of lines, each `<text> <incarnation>`, whose last line is the session's last
+// report (the example has one session); the fixture's `Reporter` is the example's `Probe`; the `0.2 s` wait after the exit is
+// every received report settling (if `"done"` reached the server before the link closed, it must end `"done unavailable"`, as in
+// Pi main.ts:52 and the sibling exit test).
 
 // lastReportsFacet is the example's facet: `Reports` into a journal of `<text> <incarnation>` lines, the transaction under the
-// report's ctx, after `gate`, if one is set. outcomes gets each report's text once its transaction ended: `committed` or the code.
-func lastReportsFacet(gate *atomic.Pointer[chan struct{}], outcomes *collector[string]) host.HostFacet {
+// report's ctx, after `gate`, if one is set. log.received records each report that enters the handler and log.outcomes records
+// its text once its transaction ended: `committed` or the code.
+func lastReportsFacet(gate *atomic.Pointer[chan struct{}], log *reportLog) host.HostFacet {
 	return host.HostFacet{Name: "@example/reports", Facet: host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
 		if err := h.Serve(fixtureJournal, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
 			document := self.State(fixtureLines).(*documents.Singleton)
@@ -62,6 +68,7 @@ func lastReportsFacet(gate *atomic.Pointer[chan struct{}], outcomes *collector[s
 				// before its transaction (under `ctx`) commits.
 				"report": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					text, _ := args.(string)
+					log.received.add(text)
 					if wait := gate.Load(); wait != nil {
 						// A wait for a gate, which the call's abort does not end.
 						chordctx.Suspend(ctx)
@@ -74,7 +81,7 @@ func lastReportsFacet(gate *atomic.Pointer[chan struct{}], outcomes *collector[s
 							outcome = string(chordErr.Code)
 						}
 					}
-					outcomes.add(text + " " + outcome)
+					log.outcomes.add(text + " " + outcome)
 					return nil, nil
 				},
 			}}}, nil
@@ -92,9 +99,9 @@ func TestExample76WorkerReports(t *testing.T) {
 			close(published)
 		}
 	}
-	outcomes := &collector[string]{}
+	log := &reportLog{}
 	f := newFleet(t, fleetOptions{
-		facets: []host.HostFacet{lastReportsFacet(&gate, outcomes)},
+		facets: []host.HostFacet{lastReportsFacet(&gate, log)},
 		onError: func(err WorkersError) {
 			printed.add("   reported: " + errorKind(err))
 			if _, exited := err.(WorkerExitedError); exited {
@@ -125,23 +132,49 @@ func TestExample76WorkerReports(t *testing.T) {
 		return incarnation != "" && state != nil && state.Status == WorkerRunning && state.Incarnation == incarnation
 	}
 	print := func(format string, args ...any) { printed.add(fmt.Sprintf(format, args...)) }
+	waitUntil := func(what string, ready func() bool) {
+		t.Helper()
+		deadline := time.Now().Add(10 * time.Second)
+		for !ready() {
+			if time.Now().After(deadline) {
+				t.Fatalf("until (%s): timed out: state=%+v received=%q outcomes=%q printed=%q journal=%q",
+					what, running(), log.received.all(), log.outcomes.all(), printed.all(), linesOf(t, journal))
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
 
 	// 1. A session's worker runs and reports: the server keeps the report with the run that sent it.
 	probe := f.get(fixtureReporter, "S1")
 	defer probe.Release()
 	reportsCall(t, probe, "report", "indexing")
-	until(t, func() bool { text, _ := lastReport(); return text == "indexing" })
+	waitUntil("indexing committed", func() bool { text, _ := lastReport(); return text == "indexing" })
+	waitUntil("indexing outcome", func() bool { return slices.Contains(log.outcomes.all(), "indexing committed") })
 	text, _ := lastReport()
 	print("1. last report: %q, of the running worker: %t", text, current())
 
-	// 2. It reports again and exits in the same turn. The server was still handling the report: the worker's link is closed
-	//    first, the report's transaction is refused, and only then the state says the worker is gone.
+	// 2. It reports again and exits in the same turn. The worker's link is closed before the exit is published: a report
+	//    still on its way is dropped and one already being handled is aborted so its transaction does not commit (Pi
+	//    packages/chord/test/examples/76-worker-reports/main.ts:52,113-116).
 	gate.Store(&published)
 	go func() { _, _ = probe.Call("reportAndExit", "done", background) }()
-	until(t, func() bool { state := running(); return state != nil && state.Status == WorkerFailed })
-	// The exit is published: the report that was waiting ended, by its transaction refused.
-	until(t, func() bool { return slices.Contains(outcomes.all(), "done unavailable") })
-	until(t, func() bool { return slices.Contains(printed.all(), "   reported: worker_failed") })
+	waitUntil("worker failed", func() bool { state := running(); return state != nil && state.Status == WorkerFailed })
+	// The exit is published: no frame of the exited worker is handled from now on, so what was received is all there will be;
+	// every received report settles, and a received "done" may only end "done unavailable" (never committed).
+	waitUntil("received reports settled", func() bool { return len(log.outcomes.all()) == len(log.received.all()) })
+	var outcomes []string
+	for _, outcome := range log.outcomes.all() {
+		if outcome != "done unavailable" {
+			outcomes = append(outcomes, outcome)
+		}
+	}
+	if !slices.Equal(outcomes, []string{"indexing committed"}) {
+		t.Fatalf("outcomes = %q, want [indexing committed] (and maybe done unavailable)", log.outcomes.all())
+	}
+	waitUntil("worker_failed reported", func() bool { return slices.Contains(printed.all(), "   reported: worker_failed") })
+	if lines := linesOf(t, journal); len(lines) != 1 || !strings.HasPrefix(lines[0], "indexing ") {
+		t.Fatalf("journal = %q, want only [indexing <incarnation>]", lines)
+	}
 	text, _ = lastReport()
 	print("2. the worker exited; last report still: %q", text)
 
@@ -149,7 +182,7 @@ func TestExample76WorkerReports(t *testing.T) {
 	if err := f.workers.Retry(session("S1"), background); err != nil {
 		t.Fatal(err)
 	}
-	until(t, func() bool { state := running(); return state != nil && state.Status == WorkerRunning })
+	waitUntil("worker running after retry", func() bool { state := running(); return state != nil && state.Status == WorkerRunning })
 	print("3. a new worker runs; the kept report is of the running worker: %t", current())
 
 	want := []string{
