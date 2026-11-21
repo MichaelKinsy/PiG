@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -51,15 +52,28 @@ func TestPackageRemoveCommandReportsAFailedSave(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Fill the pipe a page at a time until a page no longer fits, so that any write blocks.
-	page := make([]byte, 4096)
-	for {
-		_ = outWrite.SetWriteDeadline(time.Now().Add(50 * time.Millisecond))
-		if n, err := outWrite.Write(page); err != nil || n < len(page) {
-			break
+	// Fill the pipe a page at a time from a goroutine until a write blocks (os.Pipe on Windows does not support SetWriteDeadline).
+	var filled atomic.Int64
+	var fillStop atomic.Bool
+	fillDone := make(chan struct{})
+	go func() {
+		defer close(fillDone)
+		page := make([]byte, 4096)
+		for !fillStop.Load() {
+			if _, err := outWrite.Write(page); err != nil {
+				return
+			}
+			filled.Add(int64(len(page)))
+		}
+	}()
+	for last, still := int64(-1), 0; still < 3; {
+		time.Sleep(50 * time.Millisecond)
+		if now := filled.Load(); now == last {
+			still++
+		} else {
+			last, still = now, 0
 		}
 	}
-	_ = outWrite.SetWriteDeadline(time.Time{})
 	stdoutBefore, stderrBefore := os.Stdout, os.Stderr
 	os.Stdout, os.Stderr = outWrite, errWrite
 	restore := func() { os.Stdout, os.Stderr = stdoutBefore, stderrBefore }
@@ -78,9 +92,11 @@ func TestPackageRemoveCommandReportsAFailedSave(t *testing.T) {
 	}
 	// The command holds the list it read; the lock now refuses its save.
 	holdSettingsLock(t, agentDir)
+	fillStop.Store(true)
 	go func() { _, _ = io.Copy(&stdout, outRead); drained <- struct{}{} }()
 	got := <-code
 	restore()
+	<-fillDone
 	_ = outWrite.Close()
 	_ = errWrite.Close()
 	<-drained

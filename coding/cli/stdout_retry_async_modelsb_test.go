@@ -3,7 +3,6 @@ package cli
 // pi: packages/coding-agent/src/core/output-guard.ts
 
 import (
-	"errors"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -39,8 +38,8 @@ func TestStdoutQueueOverRawWriterReportsAClosedReader(t *testing.T) {
 	if reports.Load() != 1 {
 		t.Fatalf("failure reported %d times, want once", reports.Load())
 	}
-	if err, _ := errs.Load().(error); err == nil || !errors.Is(err, syscall.EPIPE) {
-		t.Fatalf("reported %v, want EPIPE", err)
+	if err, _ := errs.Load().(error); err == nil || !isClosedPipeWriteError(err) {
+		t.Fatalf("reported %v, want closed-pipe write error", err)
 	}
 }
 
