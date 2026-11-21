@@ -157,10 +157,23 @@ func (s *Session) Clone() (*Session, error) {
 	if ref := s.resourceLoader.Load(); ref != nil {
 		bound := &resourceLoaderRef{loader: ref.loader, promptFromLoader: ref.promptFromLoader}
 		if ref.owned != nil {
-			if !ref.owned.acquire() {
-				return nil, fmt.Errorf("coding: clone: session is closed")
+			if ref.owned.acquire() {
+				bound.owned = ref.owned
+			} else {
+				// The source's owned loader is already closed: construct a fresh loader of its own so Clone keeps working without leaking (D19).
+				fresh, err := resolveResourceLoader(s.services, nil)
+				if err != nil {
+					return nil, fmt.Errorf("coding: clone: %w", err)
+				}
+				if overlay, ok := ref.loader.(promptResourcesOverlay); ok {
+					fresh.loader = promptResourcesOverlay{ResourceLoader: fresh.loader, static: overlay.static}
+				}
+				fresh.promptFromLoader = ref.promptFromLoader
+				bound = fresh
+				opts.ResourceLoader = fresh.loader
+				opts.Runner = nil
+				opts.runnerShared = false
 			}
-			bound.owned = ref.owned
 		}
 		opts.boundResourceLoader = bound
 	}
