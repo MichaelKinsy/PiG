@@ -12,15 +12,19 @@ import (
 // \h<uint32>\<count>.s under a \pig socket directory) stays within the 107 bytes a sun_path holds on Windows.
 const maxShortTempDirBytes = 70
 
+// tempRootEnv overrides the non-Windows /tmp base of MkdirShortTemp and ShortTempDir without resolving symbolic links in it,
+// so a Linux gate job can place the test temp root behind a symbolic link (mirroring macOS's /tmp -> /private/tmp).
+const tempRootEnv = "PIG_TEST_TEMP_ROOT"
+
 // ShortTempDir creates a directory for the test whose path leaves room for
 // Unix-domain socket names below it: sun_path holds 104 bytes on macOS and 108
 // on Linux and Windows, and t.TempDir's name holds the test's name. It is in
-// /tmp outside Windows, since macOS's TMPDIR is long. On Windows it is in
-// os.TempDir, or in %LOCALAPPDATA%\pig\s, the directory the extension Host
-// falls back to, when os.TempDir is too long to leave that room. Its name
-// starts with prefix. Cleanup removes it. On Windows the removal retries for
-// two seconds while another process still holds a file, as t.TempDir's cleanup
-// does.
+// /tmp outside Windows (or $PIG_TEST_TEMP_ROOT when set, unresolved), since
+// macOS's TMPDIR is long. On Windows it is in os.TempDir, or in
+// %LOCALAPPDATA%\pig\s, the directory the extension Host falls back to, when
+// os.TempDir is too long to leave that room. Its name starts with prefix.
+// Cleanup removes it. On Windows the removal retries for two seconds while
+// another process still holds a file, as t.TempDir's cleanup does.
 func ShortTempDir(t testing.TB, prefix string) string {
 	t.Helper()
 	dir, err := MkdirShortTemp(prefix)
@@ -45,11 +49,17 @@ func ShortTempDir(t testing.TB, prefix string) string {
 }
 
 // MkdirShortTemp creates the directory ShortTempDir returns, with no test to remove it: a package's TestMain makes its scoped root with it, scopes the process temporary directory to
-// it with ScopeTempDir, and removes it after m.Run. The root is then directly in /tmp outside Windows whatever TMPDIR names, so every t.TempDir and b.TempDir of the package is
-// <root>/<test>/001 at the same depth on every machine. Code that walks the ancestors of its working directory (a reload's context files, the skills of a project, the resolution
-// of a path one component at a time) allocates per level, and the allocs/op of a benchmark that runs in a fixture below TMPDIR follows the depth of the TMPDIR of whoever runs it.
+// it with ScopeTempDir, and removes it after m.Run. The root is then directly in /tmp outside Windows whatever TMPDIR names (or in $PIG_TEST_TEMP_ROOT when set, without resolving
+// symbolic links in it), so every t.TempDir and b.TempDir of the package is <root>/<test>/001 at the same depth on every machine. Code that walks the ancestors of its working directory
+// (a reload's context files, the skills of a project, the resolution of a path one component at a time) allocates per level, and the allocs/op of a benchmark that runs in a fixture below
+// TMPDIR follows the depth of the TMPDIR of whoever runs it.
 func MkdirShortTemp(prefix string) (string, error) {
 	base := shortTempBase(runtime.GOOS, os.TempDir(), os.Getenv("LOCALAPPDATA"), prefix)
+	if runtime.GOOS != "windows" {
+		if root := os.Getenv(tempRootEnv); root != "" {
+			base = filepath.Clean(root)
+		}
+	}
 	if err := os.MkdirAll(base, 0o700); err != nil {
 		return "", err
 	}
