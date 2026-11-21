@@ -26045,14 +26045,14 @@
     {
       "id": "BF-649bef3",
       "title": "Closing a `coding.Session` constructed without a supplied `ResourceLoader` (or over `AgentSessionServices`…",
-      "symptom": "Closing a `coding.Session` constructed without a supplied `ResourceLoader` (or over `AgentSessionServices` created without `ResourceLoaderOptions`) now shuts down the `DefaultResourceLoader` Extension Host (D19) it created, and a failed `NewSession` closes that loader before returning; previously its extension subprocesses outlived `Session.Close` and blocked directory cleanup on Windows.",
+      "symptom": "Closing a `coding.Session` constructed without a supplied `ResourceLoader` (or over `AgentSessionServices` created without `ResourceLoaderOptions`) now shuts down the `DefaultResourceLoader` Extension Host (D19) it created when the last Session sharing it closes, and a failed `NewSession` closes that loader before returning; previously its extension subprocesses outlived `Session.Close` and blocked directory cleanup on Windows.",
       "rootCause": "resolveResourceLoader constructed a DefaultResourceLoader for Sessions without a supplied or Services-owned loader, and neither Session.Close nor NewSession error paths ever closed it, leaking its Extension Host subprocesses.",
       "rootCauseSource": "release note",
       "userImpact": "An operation failed or was rejected",
       "platform": "Windows",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "Closing a `coding.Session` constructed without a supplied `ResourceLoader` (or over `AgentSessionServices` created without `ResourceLoaderOptions`) now shuts down the `DefaultResourceLoader` Extension Host (D19) it created, and a failed `NewSession` closes that loader before returning; previously its extension subprocesses outlived `Session.Close` and blocked directory cleanup on Windows.",
+      "releaseNote": "Closing a `coding.Session` constructed without a supplied `ResourceLoader` (or over `AgentSessionServices` created without `ResourceLoaderOptions`) now shuts down the `DefaultResourceLoader` Extension Host (D19) it created when the last Session sharing it closes, and a failed `NewSession` closes that loader before returning; previously its extension subprocesses outlived `Session.Close` and blocked directory cleanup on Windows.",
       "origin": "release note",
       "commits": [
         {
@@ -60556,6 +60556,27 @@
       "tests": [
         "ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchOracleProviderData",
         "ai/catalog_oracle_data_test.go::TestGeneratedCatalogsMatchOraclePi"
+      ]
+    },
+    {
+      "id": "BF-e509719",
+      "title": "fix(coding): reference-count owned DefaultResourceLoader across shared Sessions",
+      "symptom": "fix(coding): reference-count owned DefaultResourceLoader across shared Sessions",
+      "rootCause": "resourceLoaderRef held a raw pointer to the owned DefaultResourceLoader and Session.Close closed it unconditionally on the source Session, while Clone shared the loader without a reference count, shutting down the Extension Host under surviving clones or successors.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "e509719a18",
+          "date": "2026-11-21"
+        }
+      ],
+      "tests": [
+        "coding/session_owned_loader_close_unix_test.go::TestSessionCloseShutsDownOwnedResourceLoader"
       ]
     },
     {

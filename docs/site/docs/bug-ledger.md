@@ -2179,6 +2179,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e4b5861](#bf-e4b5861) | fix(view): a second size of an image is a placement only while its first placement is not drawn | PiG's own defect | All platforms | Unreleased |
 | [BF-e4b9bd5](#bf-e4b9bd5) | A Node extension's `ctx.getContextUsage()` returned the value of the host's last dispatch, so a timer between… | PiG's own defect | All platforms | Unreleased |
 | [BF-e4f8e35](#bf-e4f8e35) | OpenRouter's `~anthropic/claude-*-latest` aliases (`~anthropic/claude-fable-latest`, `-haiku-`, `-opus-` and… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
+| [BF-e509719](#bf-e509719) | fix(coding): reference-count owned DefaultResourceLoader across shared Sessions | PiG's own defect | All platforms | Unreleased |
 | [BF-e516ccd](#bf-e516ccd) | An extension that stopped reading its connection while its component was being invalidated could hold the… | PiG's own defect | All platforms | Unreleased |
 | [BF-e51bb37](#bf-e51bb37) | OpenAI Responses streams follow Pi's `processResponsesStream` on malformed and edge events, checked against… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e54c2a7](#bf-e54c2a7) | `openai-decisions` writes the image input's user message, text part and image parts with their members in… | PiG's own defect | All platforms | 0.5.0 |
@@ -15741,14 +15742,14 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 **Closing a `coding.Session` constructed without a supplied `ResourceLoader` (or over `AgentSessionServices`…**
 
 - **Source:** PiG's own defect
-- **Symptom:** Closing a `coding.Session` constructed without a supplied `ResourceLoader` (or over `AgentSessionServices` created without `ResourceLoaderOptions`) now shuts down the `DefaultResourceLoader` Extension Host (D19) it created, and a failed `NewSession` closes that loader before returning; previously its extension subprocesses outlived `Session.Close` and blocked directory cleanup on Windows.
+- **Symptom:** Closing a `coding.Session` constructed without a supplied `ResourceLoader` (or over `AgentSessionServices` created without `ResourceLoaderOptions`) now shuts down the `DefaultResourceLoader` Extension Host (D19) it created when the last Session sharing it closes, and a failed `NewSession` closes that loader before returning; previously its extension subprocesses outlived `Session.Close` and blocked directory cleanup on Windows.
 - **Root cause:** resolveResourceLoader constructed a DefaultResourceLoader for Sessions without a supplied or Services-owned loader, and neither Session.Close nor NewSession error paths ever closed it, leaking its Extension Host subprocesses.
 - **User impact:** An operation failed or was rejected
 - **Platform:** Windows
 - **Fixed in:** Unreleased
 - **Fix commits:** `649bef3ed6` (2026-11-21)
 - **Tests:** `coding/session_owned_loader_close_unix_test.go::TestSessionCloseShutsDownOwnedResourceLoader`
-- **Release note:** Closing a `coding.Session` constructed without a supplied `ResourceLoader` (or over `AgentSessionServices` created without `ResourceLoaderOptions`) now shuts down the `DefaultResourceLoader` Extension Host (D19) it created, and a failed `NewSession` closes that loader before returning; previously its extension subprocesses outlived `Session.Close` and blocked directory cleanup on Windows.
+- **Release note:** Closing a `coding.Session` constructed without a supplied `ResourceLoader` (or over `AgentSessionServices` created without `ResourceLoaderOptions`) now shuts down the `DefaultResourceLoader` Extension Host (D19) it created when the last Session sharing it closes, and a failed `NewSession` closes that loader before returning; previously its extension subprocesses outlived `Session.Close` and blocked directory cleanup on Windows.
 
 ### BF-65411f7
 
@@ -32410,6 +32411,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `e4f8e35773` (2026-10-30, #9534)
 - **Tests:** `ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchOracleProviderData`, `ai/catalog_oracle_data_test.go::TestGeneratedCatalogsMatchOraclePi`
 - **Release note:** OpenRouter's `~anthropic/claude-*-latest` aliases (`~anthropic/claude-fable-latest`, `-haiku-`, `-opus-` and `-sonnet-latest`) no longer lose Claude's earlier thinking after each tool call. They used the Chat Completions API, where the thinking signature was dropped and OpenRouter then ignored the unsigned thinking; they now use the Anthropic Messages API with adaptive thinking, like the versioned Claude models. Carried forward from Pi 44f6851b (earendil-works/pi#9534), past the 1.4.0+b3a29f11 pin.
+
+### BF-e509719
+
+**fix(coding): reference-count owned DefaultResourceLoader across shared Sessions**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(coding): reference-count owned DefaultResourceLoader across shared Sessions
+- **Root cause:** resourceLoaderRef held a raw pointer to the owned DefaultResourceLoader and Session.Close closed it unconditionally on the source Session, while Clone shared the loader without a reference count, shutting down the Extension Host under surviving clones or successors.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e509719a18` (2026-11-21)
+- **Tests:** `coding/session_owned_loader_close_unix_test.go::TestSessionCloseShutsDownOwnedResourceLoader`
 
 ### BF-e516ccd
 
