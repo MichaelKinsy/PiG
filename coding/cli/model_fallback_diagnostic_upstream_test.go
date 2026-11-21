@@ -295,7 +295,7 @@ func TestNoModelsAvailableIsReportedOnceAsAWarning(t *testing.T) {
 }
 
 // docsRootRE matches a documentation path line of the guidance; the root differs by distribution (D2/D22), the file names do not.
-var docsRootRE = regexp.MustCompile(`(?m)^  \S*/docs/(?:bundle-[0-9a-f]+/)?(providers|models)\.md$`)
+var docsRootRE = regexp.MustCompile(`(?m)^  [^\r\n]*[/\\]docs[/\\](?:bundle-[0-9a-f]+[/\\])?(providers|models)\.md$`)
 
 // cutDocsRoot replaces the root of the two documentation paths of the guidance and nothing else.
 func cutDocsRoot(s string) string { return docsRootRE.ReplaceAllString(s, "  <DOCS>/$1.md") }
@@ -445,6 +445,54 @@ func TestRuntimeDiagnosticsEndWithTheNoModelsWarningForTheShapesPiGivesNoModel(t
 			}
 			if want := map[bool]int{true: 1, false: 0}[shape.warns]; warnings != want {
 				t.Fatalf("no-models warnings = %d, want %d: %v", warnings, want, diagnostics)
+			}
+		})
+	}
+}
+
+func TestCutDocsRootAcceptsWindowsAndPOSIXPaths(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{
+			name: "posix bundle path",
+			in: "Warning: No models available. Use /login to log into a provider via OAuth or API key. See:\n" +
+				"  /tmp/pig-cmd-123/agent/docs/bundle-cba86a845e86d8eb/providers.md\n" +
+				"  /tmp/pig-cmd-123/agent/docs/bundle-cba86a845e86d8eb/models.md\n",
+			want: noModelsWarningCut,
+		},
+		{
+			name: "windows bundle path",
+			in: "Warning: No models available. Use /login to log into a provider via OAuth or API key. See:\n" +
+				"  C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\pig-cmd-123\\pig\\docs\\bundle-cba86a845e86d8eb\\providers.md\n" +
+				"  C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\pig-cmd-123\\pig\\docs\\bundle-cba86a845e86d8eb\\models.md\n",
+			want: noModelsWarningCut,
+		},
+		{
+			name: "windows path with spaces and no bundle dir",
+			in: "Warning: No models available. Use /login to log into a provider via OAuth or API key. See:\n" +
+				"  C:\\Users\\Jane Doe\\.pig\\docs\\providers.md\n" +
+				"  C:\\Users\\Jane Doe\\.pig\\docs\\models.md\n",
+			want: noModelsWarningCut,
+		},
+		{
+			name: "unrelated lines preserved",
+			in: "Error: Failed to load extension \"C:\\tmp\\missing.ts\"\n" +
+				"Warning: No models available. Use /login to log into a provider via OAuth or API key. See:\n" +
+				"  C:\\tmp\\docs\\bundle-0123456789abcdef\\providers.md\n" +
+				"  C:\\tmp\\docs\\bundle-0123456789abcdef\\models.md\n" +
+				"Hint: Start without extensions using \"pig -ne\".\n",
+			want: "Error: Failed to load extension \"C:\\tmp\\missing.ts\"\n" +
+				noModelsWarningCut +
+				"Hint: Start without extensions using \"pig -ne\".\n",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := cutDocsRoot(tc.in); got != tc.want {
+				t.Fatalf("cutDocsRoot() =\n%q\nwant:\n%q", got, tc.want)
 			}
 		})
 	}
