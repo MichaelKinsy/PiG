@@ -19093,6 +19093,28 @@
       "tests": []
     },
     {
+      "id": "BF-52310a4",
+      "title": "Bedrock: with `HTTPS_PROXY` or `HTTP_PROXY` set, an AWS SSO / IAM Identity Center profile could not fetch…",
+      "symptom": "Bedrock: with `HTTPS_PROXY` or `HTTP_PROXY` set, an AWS SSO / IAM Identity Center profile could not fetch role credentials (`GetRoleCredentials`) or refresh an `sso_session` token (`CreateToken`), because both calls bypassed the proxy and went direct.",
+      "rootCause": "loadBedrockConfig passed a proxy-free HTTP client into awsconfig.LoadDefaultConfig and only overrode the STS client with runtimeHTTPClient, leaving SSO and SSO OIDC on the direct client (matching Pi before be269f57b1b707399edd86f5f718d1a907ffea8b / #12365)",
+      "rootCauseSource": "release note",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Bedrock: with `HTTPS_PROXY` or `HTTP_PROXY` set, an AWS SSO / IAM Identity Center profile could not fetch role credentials (`GetRoleCredentials`) or refresh an `sso_session` token (`CreateToken`), because both calls bypassed the proxy and went direct. Bedrock now routes SSO and SSO OIDC credential calls through the same proxy resolved for the Bedrock endpoint, alongside the Bedrock runtime and STS (`AssumeRole` / `AssumeRoleWithWebIdentity`) calls, while IMDS, container credentials, `credential_process`, bearer tokens, `AWS_BEDROCK_SKIP_AUTH`, and static environment keys keep their existing direct behavior. Affects v0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "52310a4748",
+          "date": "2026-11-21"
+        }
+      ],
+      "tests": [
+        "ai/providers/bedrock/bedrock_proxy_scope_test.go::TestBedrockProxyIsTheBaseURLsAndOnlyTheRuntimeAndSTSUseIt"
+      ]
+    },
+    {
       "id": "BF-5260e5c",
       "title": "The Rust SDK's `get_model_info()` reads Pi's `maxTokens` and `cost` (it reported 0 for the output limit and…",
       "symptom": "The Rust SDK's `get_model_info()` reads Pi's `maxTokens` and `cost` (it reported 0 for the output limit and every price) and returns an error for a field of the wrong type, as the Go SDK's `ModelInfo` does.",

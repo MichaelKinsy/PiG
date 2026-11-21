@@ -69125,6 +69125,28 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#bedrockProxiedSSO",
+      "package": "github.com/MichaelKinsy/PiG/ai/providers/bedrock",
+      "name": "bedrockProxiedSSO",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "bedrockProxiedSSO"
+      },
+      "shapeHash": "sha256:dad3f8d858806a7504122f1fe898985bdccc3e3db33067f3cc94073c37f28138"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#bedrockProxiedSSO.GetRoleCredentials",
+      "package": "github.com/MichaelKinsy/PiG/ai/providers/bedrock",
+      "name": "bedrockProxiedSSO.GetRoleCredentials",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context, input *github.com/MichaelKinsy/PiG/third_party/awssdk/service/sso.GetRoleCredentialsInput, optFns ...func(*github.com/MichaelKinsy/PiG/third_party/awssdk/service/sso.Options)) (*github.com/MichaelKinsy/PiG/third_party/awssdk/service/sso.GetRoleCredentialsOutput, error)"
+      },
+      "shapeHash": "sha256:22fb8de87879e40714e45fb99072407cbb13cfc78104692e85e656feab95fd36"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#bedrockProxiedSTS",
       "package": "github.com/MichaelKinsy/PiG/ai/providers/bedrock",
       "name": "bedrockProxiedSTS",
