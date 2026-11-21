@@ -53,9 +53,9 @@ and never merges it to a branch that still pins the earlier Pi.
 3. Close each row by its reason, and only from evidence:
    - `child-gap`: close the member rows it names; the parent closes with them.
    - `undecidable`: the detector cannot compare the two shapes. When Go matches Pi and a passing test proves it,
-     add a reviewed entry to `test/parity/interface-closure/autobind/reviewed-types.json` (the Go symbol, and a
+     add a reviewed entry to `test/parity/interface-closure/autobind/reviewed/reviewed-types.json` (the Go symbol, and a
      reason that cites the Pi file and line and the test that proves it). Otherwise treat the row as a mismatch.
-   - `no-go-symbol`: find the Go symbol (add a rename to `autobind/renames.json`), or port the behavior test-first
+   - `no-go-symbol`: find the Go symbol (add a rename to `autobind/reviewed/renames.json`), or port the behavior test-first
      against the pinned Pi executable. A surface Pig does not ship is `BLOCKED`.
    - `type-mismatch`, `member-missing`, `signature-mismatch`: Go differs from Pi. Fix Go test-first; do not edit a
      reviewed entry to make the detector agree.

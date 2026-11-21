@@ -40,13 +40,13 @@ import (
 )
 
 const (
-	renamesFile         = "test/parity/interface-closure/autobind/renames.json"
+	renamesFile         = "test/parity/interface-closure/autobind/reviewed/renames.json"
 	reviewedRenamesFile = "test/parity/interface-closure/autobind/renames-reviewed.json"
 	placementsFile      = "test/parity/interface-closure/autobind/placements-reviewed.json"
 	representationsFile = "test/parity/interface-closure/autobind/representations.json"
 	structuralFile      = "test/parity/interface-closure/autobind/structural-reviewed.json"
 	holdsFile           = "test/parity/interface-closure/autobind/holds.json"
-	reviewedTypesFile   = "test/parity/interface-closure/autobind/reviewed-types.json"
+	reviewedTypesFile   = "test/parity/interface-closure/autobind/reviewed/reviewed-types.json"
 	reviewedGapsFile    = "test/parity/interface-closure/autobind/reviewed-gaps.json"
 	baselineFile        = "test/parity/interface-closure/gaps/interface-gaps-v%s.tsv"
 )

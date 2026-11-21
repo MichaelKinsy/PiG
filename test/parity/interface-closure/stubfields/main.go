@@ -76,8 +76,12 @@ func main() {
 // documentedRenames reads the detector's rename tables.
 func documentedRenames(root string) (map[string]string, error) {
 	out := map[string]string{}
-	for _, name := range []string{"renames.json", "renames-reviewed.json"} {
-		raw, err := os.ReadFile(filepath.Join(root, "test/parity/interface-closure/autobind", name))
+	for _, rel := range []string{
+		"test/parity/interface-closure/autobind/reviewed/renames.json",
+		"test/parity/interface-closure/autobind/renames-reviewed.json",
+	} {
+		name := filepath.Base(rel)
+		raw, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
 		if err != nil {
 			return nil, err
 		}

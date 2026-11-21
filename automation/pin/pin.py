@@ -197,7 +197,7 @@ RULES: list[tuple[str, object, str | None]] = [
     ("extensions/sdk-ts/README.md", lambda p, t: sub(r"(pi-coding-agent@)\S+", rf"\g<1>{p.package_version}", sub(r"(API from Pi )\S+?(?=\. It contains)", rf"\g<1>{p.package_version}", t, "README"), "README"), None),
     ("test/parity/known-gaps.toml", regex_rule(r'^(pi_version = ")[^"]+(")', r'\g<1>{v}\g<2>'), None),
     ("test/parity/behavior-contracts.toml", regex_rule(r'^(upstream_version = ")[^"]+(")', r'\g<1>{v}\g<2>'), None),
-    ("test/parity/async-contracts.toml", regex_rule(r'\A(version = ")[^"]+(")', r'\g<1>{v}\g<2>'), None),
+    ("test/parity/ledgers/async-contracts.toml", regex_rule(r'\A(version = ")[^"]+(")', r'\g<1>{v}\g<2>'), None),
     ("automation/images/ci-parity/Dockerfile", lambda p, t: ci_commit(p, regex_rule(r"^(ARG PI_VERSION=)\S+", r"\g<1>{v}", "package_version")(p, t)), None),
     ("automation/images/ci-parity/metadata.env", lambda p, t: ci_tag(p, t), None),
     ("automation/images/ci-parity/package.json", package_deps(ORACLE_PACKAGES), "automation/images/ci-parity"),
@@ -269,7 +269,7 @@ def cmd_sync(args: argparse.Namespace) -> None:
 
 # Ledgers that one file holds for the committed pin only. A bump archives the outgoing pin's copy and restores
 # the incoming pin's archived copy when it has one, so moving the pin back reproduces the earlier pin's ledgers.
-PIN_LEDGERS = ["test/parity/known-gaps.toml", "test/parity/behavior-contracts.toml", "test/parity/async-contracts.toml"]
+PIN_LEDGERS = ["test/parity/known-gaps.toml", "test/parity/behavior-contracts.toml", "test/parity/ledgers/async-contracts.toml"]
 ARCHIVE = "test/parity/pin-ledgers"
 
 
@@ -303,7 +303,7 @@ def cmd_bump(args: argparse.Namespace) -> None:
 VERSION_FIELDS = {
     "test/parity/known-gaps.toml": "pi_version",
     "test/parity/behavior-contracts.toml": "upstream_version",
-    "test/parity/async-contracts.toml": "version",
+    "test/parity/ledgers/async-contracts.toml": "version",
 }
 
 
@@ -365,9 +365,9 @@ INTERFACES = "test/parity/interfaces"
 
 @contextlib.contextmanager
 def committed_exceptions_kept(pin: Pin):
-    """The prune of an earlier pin's reviewed exceptions (autobind/reviewed-types.json) that `make ledger-update` writes belongs to the pin
+    """The prune of an earlier pin's reviewed exceptions (autobind/reviewed/reviewed-types.json) that `make ledger-update` writes belongs to the pin
     that is committed: under a PI_UPSTREAM_REF override the file is restored when the block ends."""
-    reviewed = ROOT / "test/parity/interface-closure/autobind/reviewed-types.json"
+    reviewed = ROOT / "test/parity/interface-closure/autobind/reviewed/reviewed-types.json"
     snapshot = reviewed.read_bytes() if reviewed.exists() else None
     try:
         yield

@@ -50,7 +50,7 @@ var allowedContracts = map[string]struct{}{
 }
 
 func main() {
-	manifestPath := flag.String("manifest", "test/parity/async-contracts.toml", "async contract manifest")
+	manifestPath := flag.String("manifest", "test/parity/ledgers/async-contracts.toml", "async contract manifest")
 	upstreamRoot := flag.String("upstream", ".upstream/current", "current upstream mirror")
 	repoRoot := flag.String("repo-root", ".", "repository root used to validate evidence")
 	generate := flag.Bool("generate", false, "print a pending manifest for the current mirror")

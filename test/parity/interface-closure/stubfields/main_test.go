@@ -51,7 +51,7 @@ type Wrapper struct {
 
 func (Config) Method() {}
 `)
-	write("test/parity/interface-closure/autobind/renames.json", `{"pkg:x/.#Options::property:renamed": "opts/opts.go#Config"}`)
+	write("test/parity/interface-closure/autobind/reviewed/renames.json", `{"pkg:x/.#Options::property:renamed": "opts/opts.go#Config"}`)
 	write("test/parity/interface-closure/autobind/renames-reviewed.json", `{}`)
 	inv := []map[string]any{
 		{"id": "pkg:x/.#Options", "kind": "interface", "name": "Options", "shape": map[string]any{}},

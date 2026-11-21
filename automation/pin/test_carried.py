@@ -268,7 +268,7 @@ FILES = ["Makefile", ".github/workflows/ci.yml", "automation/pin/carried_guard.p
          "docs/parity/upstream-pin.md", "durable/codemode/codemode_pi_oracle_test.go", "durable/codemode/describe_pi_oracle_test.go",
          "durable/harness/submissions_pi_oracle_test.go", "durable/harness/suspendable_oracle_test.go", "durable/harness/wake_memos_pi_oracle_test.go",
          "durable/interop/carried_oracle_test.go", "durable/interop/interop_test.go", "durable/interop/unawaited_job_test.go", "internal/pioracle/source.go",
-         "test/parity/interface-closure/autobind/mirror_guard_test.go", "test/parity/interface-closure/autobind/reviewed-decisions.json"]
+         "test/parity/interface-closure/autobind/mirror_guard_test.go", "test/parity/interface-closure/autobind/reviewed/reviewed-decisions.json"]
 # Where a retired name may stay: the release history, the sync ledger of the pin that carried the work, and the tool that retires the next one.
 HISTORY = ("changelog.d/", "CHANGELOG.md", "docs/bug-ledger.json", "docs/site/docs/bug-ledger.md", "test/parity/upstream-sync/", "automation/pin/carried.py", "automation/pin/test_carried.py")
 OTHER = "c" * 40
@@ -334,7 +334,7 @@ class CarriedOracleTests(unittest.TestCase):
         for rel in ("internal/pioracle/source.go", "automation/pin/vendor.py"):
             self.assertIn("override", left[rel].decode().lower(), f"{rel}: the tooling of a run at another Pi commit stays")
         self.assertIn("func SkipAtPin(", left["internal/pioracle/source.go"].decode())
-        decisions = json.loads(left["test/parity/interface-closure/autobind/reviewed-decisions.json"])
+        decisions = json.loads(left["test/parity/interface-closure/autobind/reviewed/reviewed-decisions.json"])
         self.assertFalse([k for k, v in decisions.items() if "Carried ahead of the pin" in json.dumps(v)])
         self.assertEqual(sorted(p.name for p in (root / "automation/pin/frozen").iterdir()), [f"{OTHER}.closure.json.gz"])
         self.assertIn(f"automation/pin/frozen/{ref}.closure.json.gz", changed)
