@@ -108834,8 +108834,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/intl_drift_test.go#TestNumbersMatchNode",
-        "test:chord/next/surfaces/intl_root_test.go#TestAnUnavailableTagTakesThePlatformLocaleWhenItHasData",
-        "test:chord/next/surfaces/intl_root_test.go#TestCompoundLegacyAliasesAreCanonicalizedBeforeTheLookup"
+        "test:chord/next/surfaces/intl_platform_tag_test.go#TestWindowsLocaleTagIsWhatICUMakesOfTheUsersLocaleName",
+        "test:chord/next/surfaces/intl_root_test.go#TestAnUnavailableTagTakesThePlatformLocaleWhenItHasData"
       ]
     },
     {
@@ -190731,7 +190731,7 @@
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiSelectsAlternateRendererOnlyWhenRequested",
         "test:internal/codingagent/interactive_tui_wheel_upstream_test.go#TestInteractiveTuiWheelScrollLinesFromSettingsUpstream",
-        "test:internal/codingagent/auth_warnings_test.go#TestRegisteredOAuthLoginReceivesSettingsDeviceID"
+        "test:internal/codingagent/crash_log_test.go#TestForwardRenderCrashReraisesOverflowOnOwnerLoop"
       ]
     },
     {
@@ -305768,7 +305768,7 @@
       "evidence": [
         "test:internal/codingagent/dead_terminal_shutdown_unix_test.go#TestDeadTerminalShutdownChild",
         "test:internal/codingagent/dead_terminal_write_unix_test.go#TestDeadTerminalWriteChild",
-        "test:tui/screen_writer_log_off_test.go#TestScreenWriterLogWritesNoFileWithTheWriterOff"
+        "test:tui/screen_writer_log_linux_test.go#TestScreenWriterLogClosesFileDescriptorAfterAppend"
       ]
     },
     {
@@ -305790,7 +305790,7 @@
       "evidence": [
         "test:internal/codingagent/dead_terminal_shutdown_unix_test.go#TestDeadTerminalShutdownChild",
         "test:internal/codingagent/dead_terminal_write_unix_test.go#TestDeadTerminalWriteChild",
-        "test:tui/screen_writer_log_off_test.go#TestScreenWriterLogWritesNoFileWithTheWriterOff"
+        "test:tui/screen_writer_log_linux_test.go#TestScreenWriterLogClosesFileDescriptorAfterAppend"
       ]
     },
     {
