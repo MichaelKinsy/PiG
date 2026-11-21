@@ -65131,6 +65131,29 @@
       "tests": []
     },
     {
+      "id": "BF-f4ed81b",
+      "title": "When `TerminateHostProcesses` ends extension processes whose output pipe stays open past the five-second…",
+      "symptom": "When `TerminateHostProcesses` ends extension processes whose output pipe stays open past the five-second drain bound, a process whose own `cmd.WaitDelay` timer fired just before the shared termination timer woke could close its exit channel first and be omitted from the dropped-output count on stderr.",
+      "rootCause": "Not present in 0.7.0, which did not join extension output at exit.",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "When `TerminateHostProcesses` ends extension processes whose output pipe stays open past the five-second drain bound, a process whose own `cmd.WaitDelay` timer fired just before the shared termination timer woke could close its exit channel first and be omitted from the dropped-output count on stderr. Each extension process reaper now records its reap time before closing its exit channel, and `awaitReaped` counts every process whose channel is still open or whose reap time is after the shared deadline (including when all channels closed before the timer ran). Not present in 0.7.0, which did not join extension output at exit.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f4ed81b362",
+          "date": "2026-11-21"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/terminate_shared_bound_test.go::TestAwaitReapedCountsProcessesReapedAfterDeadline",
+        "coding/extension/host/subprocess/terminate_shared_bound_test.go::TestTerminateProcessesOfSeveralHostsSharesOneBound"
+      ]
+    },
+    {
       "id": "BF-f51de47",
       "title": "ai: a non-strict Anthropic tool schema keeps its root `additionalProperties` (false, true or a schema), so…",
       "symptom": "ai: a non-strict Anthropic tool schema keeps its root `additionalProperties` (false, true or a schema), so Claude is told whether extra arguments are allowed; root `anyOf`, `oneOf` and `allOf` stay out (Pi aa47cedce, #12100).",
