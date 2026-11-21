@@ -77,6 +77,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-07151d0](#bf-07151d0) | In print and JSON mode, Node extensions in separate processes now keep Pi's order when a later extension's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0749ea1](#bf-0749ea1) | `pig extension preview-login` did not enable editor views or `TuiAltScreen`, so an editor in a view of the… | PiG's own defect | All platforms | Unreleased |
 | [BF-0790d5e](#bf-0790d5e) | `String.prototype.trim` vs `strings.TrimSpace`: four Pi `.trim()` sites used Go's `strings.TrimSpace`, which… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-07a1115](#bf-07a1115) | A Gemini 3 or later model addressed by a prefixed ID (such as `google/gemini-3-pro`, `models/gemini-3-flash`… | PiG's own defect | All platforms | Unreleased |
 | [BF-07d55d4](#bf-07d55d4) | Print, JSON and RPC modes: a stdout write that fails with ENOBUFS, EAGAIN or EWOULDBLOCK (a slow or… | PiG's own defect | All platforms | Unreleased |
 | [BF-07da4ea](#bf-07da4ea) | A configured package or `-e` source that cannot be installed no longer ends startup | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-07f4072](#bf-07f4072) | A Durable session on a Chord store no longer races the host's loop when a commit is published: the… | PiG's own defect | All platforms | Unreleased |
@@ -3252,6 +3253,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0790d5eae8` (2026-10-11)
 - **Tests:** `agent/js_trim_test.go::TestReplayAndProxyLinesTrimLikeJavaScript`, `tui/js_trim_test.go::TestAssistantMessageComponentTrimsRunsLikeJavaScript`, `tui/js_trim_test.go::TestTextBlankCheckTrimsLikeJavaScript`
 - **Release note:** `String.prototype.trim` vs `strings.TrimSpace`: four Pi `.trim()` sites used Go's `strings.TrimSpace`, which trims U+0085 and not U+FEFF where JavaScript trims U+FEFF and not U+0085 (`jsstring.Trim` is the JS rule, already used in 100 other places). Fixed where the difference is observable: `Text` blank check (`tui/text.go`, text.ts:57), assistant-message text/thinking runs (`tui/assistant_message_block.go`, assistant-message.ts:110-125: a leading BOM is now trimmed before the markdown renders, U+0085 is kept), replayed empty-thinking filter (`agent/transform.go`, transform-messages.ts:111) and the proxy `data:` line (`agent/proxy.go`, proxy.ts:181). Regressions `TestTextBlankCheckTrimsLikeJavaScript`, `TestAssistantMessageComponentTrimsRunsLikeJavaScript`, `TestReplayAndProxyLinesTrimLikeJavaScript` (each red with the old call, 3 sites checked by swapping the call back). `parseStreamingJsonValue`'s guard (`ai/streaming_json.go`) was probed and left: the result is the same either way. Left for owners: `stripThinkingSignatures` (`ai/anthropic.go`, PiG's own D37 recovery, no Pi counterpart), the Pi `.trim()` sites in other providers if any still use `TrimSpace`. `./tui -race` (1,219 s) failed only the flaky `TestSurfaceRendersAnEditorBeforeAnythingAsksForItsTerminal` (race in `tui_surface_program_status_test.go:213`, passes alone) and `./agent` only `TestAgentClassMatchesPi`/`TestAgentLoopMatchesPi` (the oracle cannot import `@earendil-works/pi-ai` from `durable/interop`, a missing node_modules in this worktree).
+
+### BF-07a1115
+
+**A Gemini 3 or later model addressed by a prefixed ID (such as `google/gemini-3-pro`, `models/gemini-3-flash`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Gemini 3 or later model addressed by a prefixed ID (such as `google/gemini-3-pro`, `models/gemini-3-flash`, `publishers/google/models/gemini-3.1-pro`, or `randomprefix-gemini-4-argon`, as through a gateway) now gets tool-call IDs, strict tool sampling (`VALIDATED` mode), and nested multimodal function responses like the unprefixed ID, while prefixed Gemini 2.x IDs keep separate user turns for tool-result images; a custom Google Generative AI or Vertex model can also declare `compat.supportsStrictMode` to override version-based strict-tool detection.
+- **Root cause:** c318b7716369e00310092c987a9243c9a8d4a1a3; Pi fe8a6f5dc741e9214a20f70f359c68c72b494d1e (#12371)
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `07a11152c4` (2026-11-21)
+- **Tests:** `ai/google_contract_0861_test.go::TestSupportsMultimodalFunctionResponseMatchesGoogleMajorVersion`, `ai/google_convert_tools_upstream_test.go::TestGoogleSharedConvertToolsUpstream`, `ai/google_history_upstream_test.go::TestGoogleUnsignedToolCallsUpstream`, `ai/google_prefixed_ids_test.go::TestGeminiPrefixedModelIDHelpers`, `ai/google_prefixed_ids_test.go::TestGeminiPrefixedModelIDRequestBoundaryBothAPIs`, `internal/codingagent/configschema/compat_schema_exports_test.go::TestCompatSchemaExportsMatchPi`
+- **Release note:** A Gemini 3 or later model addressed by a prefixed ID (such as `google/gemini-3-pro`, `models/gemini-3-flash`, `publishers/google/models/gemini-3.1-pro`, or `randomprefix-gemini-4-argon`, as through a gateway) now gets tool-call IDs, strict tool sampling (`VALIDATED` mode), and nested multimodal function responses like the unprefixed ID, while prefixed Gemini 2.x IDs keep separate user turns for tool-result images; a custom Google Generative AI or Vertex model can also declare `compat.supportsStrictMode` to override version-based strict-tool detection. Affects v0.2.0 through v0.7.0.
 
 ### BF-07d55d4
 
