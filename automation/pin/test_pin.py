@@ -15,7 +15,8 @@ import tempfile
 import threading
 import time
 import unittest
-from pathlib import Path
+import tarfile
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -711,6 +712,55 @@ class SharedStoreTests(unittest.TestCase):
             (root / "responses.tar.gz").write_bytes(b"archive")
             (root / "pi-overlay" / "file.ts").write_text("overlay!")
             self.assertNotEqual(oracle.catalog_digest(COMMIT), digest, "a changed overlay file is another oracle")
+
+    def test_catalog_generator_command_passes_replay_as_a_file_url(self):
+        # On Windows Node rejects a bare drive-letter path (D:\...) passed to --import with
+        # ERR_UNSUPPORTED_ESM_URL_SCHEME ("Received protocol 'd:'"); --import must receive a file:// URL.
+        win_replay = PureWindowsPath(r"D:\a\PiG\PiG\x.mjs")
+        self.assertEqual(oracle.node_import_specifier(win_replay), "file:///D:/a/PiG/PiG/x.mjs")
+        self.assertEqual(
+            oracle.node_import_specifier(PureWindowsPath(r"D:\a\PiG with spaces\café\x.mjs")),
+            "file:///D:/a/PiG%20with%20spaces/caf%C3%A9/x.mjs",
+        )
+        self.assertEqual(
+            oracle.node_import_specifier(PurePosixPath("/tmp/a b/café/x.mjs")),
+            "file:///tmp/a%20b/caf%C3%A9/x.mjs",
+        )
+
+        # Exercise generate_catalog_data itself with a Windows-shaped CATALOG_REPLAY and verify
+        # the argv passed to subprocess.run uses the file:// URL rather than D:\...
+        root = self.store / "catalog-cmd-recording"
+        (root / "pi-overlay").mkdir(parents=True)
+        (root / "meta.json").write_text(json.dumps({"fetchedAt": "2026-01-01T00:00:00.000Z", "piCommit": COMMIT.commit}))
+        with tarfile.open(root / "responses.tar.gz", "w:gz"):
+            pass
+        source = self.store / "catalog-cmd-src"
+        ai = source / "packages" / "ai"
+        (ai / "catalog").mkdir(parents=True)
+        (ai / "scripts").mkdir(parents=True)
+        (ai / "src" / "providers" / "data").mkdir(parents=True)
+        (ai / "package.json").write_text("{}")
+
+        commands = []
+
+        def fake_run(cmd, *, cwd, **kwargs):
+            commands.append(cmd)
+            out = Path(cwd) / "src" / "providers" / "data"
+            out.mkdir(parents=True, exist_ok=True)
+            (out / "openai.json").write_text("{}")
+            return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+        with (
+            mock.patch.object(oracle, "CATALOG_SOURCE", root),
+            mock.patch.object(oracle, "CATALOG_OVERLAY", root / "pi-overlay"),
+            mock.patch.object(oracle, "CATALOG_REPLAY", win_replay),
+            mock.patch.object(oracle.shutil, "which", lambda _name: "node"),
+            mock.patch.object(oracle.subprocess, "run", fake_run),
+        ):
+            oracle.generate_catalog_data(source, self.store / "catalog-cmd-work")
+
+        self.assertEqual(len(commands), 1)
+        self.assertEqual(commands[0], ["node", "--import", "file:///D:/a/PiG/PiG/x.mjs", "catalog/generate.ts", "--strict"])
 
     def test_a_recording_made_for_another_pin_stops_the_build(self):
         self.carries_backports()
