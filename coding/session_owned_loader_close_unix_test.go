@@ -300,6 +300,9 @@ func TestSessionCloseShutsDownOwnedResourceLoader(t *testing.T) {
 		}
 		assertExtensionResponsive(t, clone, filepath.Join(root, "clone.probe"), pid)
 		assertExtensionToolRunsInPID(t, clone, pid)
+		if clone.toolRegistry.usesDefaultTools != source.toolRegistry.usesDefaultTools {
+			t.Fatalf("live clone usesDefaultTools = %v, want %v", clone.toolRegistry.usesDefaultTools, source.toolRegistry.usesDefaultTools)
+		}
 
 		if err := clone.Close(); err != nil {
 			t.Fatalf("clone.Close: %v", err)
@@ -461,13 +464,26 @@ func TestSessionCloseShutsDownOwnedResourceLoader(t *testing.T) {
 		wg.Wait()
 
 		if cloneErr != nil {
-			t.Fatalf("concurrent Clone failed: %v", cloneErr)
+			if clone != nil {
+				t.Fatalf("concurrent Clone returned non-nil Session with error: %v", cloneErr)
+			}
+			if cloneErr.Error() != "coding: clone: session is closed" {
+				t.Fatalf("concurrent Clone error = %q, want %q", cloneErr.Error(), "coding: clone: session is closed")
+			}
+			if gotPID := readPID(t, pidFile); gotPID != sourcePID {
+				t.Fatalf("failed concurrent Clone started a new extension process: pid=%d, want %d", gotPID, sourcePID)
+			}
+			if processAlive(sourcePID) {
+				t.Fatalf("source extension process %d leaked after concurrent Clone and Close", sourcePID)
+			}
+			return
 		}
 		clonePID := readPID(t, pidFile)
 		if !processAlive(clonePID) {
 			t.Fatalf("concurrent Clone succeeded but extension process %d is already dead", clonePID)
 		}
 		assertExtensionResponsive(t, clone, filepath.Join(root, "race.probe"), clonePID)
+		assertExtensionToolRunsInPID(t, clone, clonePID)
 		if err := clone.Close(); err != nil {
 			t.Fatalf("clone.Close: %v", err)
 		}
@@ -479,42 +495,7 @@ func TestSessionCloseShutsDownOwnedResourceLoader(t *testing.T) {
 		}
 	})
 
-	t.Run("Clone after source Close constructs a fresh owned loader", func(t *testing.T) {
-		root, pidFile, source := newOwnedSession(t)
-		oldPID := readPID(t, pidFile)
-		if err := source.Close(); err != nil {
-			t.Fatal(err)
-		}
-		if processAlive(oldPID) {
-			t.Fatalf("extension process %d still alive after source.Close", oldPID)
-		}
-		cloned, err := source.Clone()
-		if err != nil {
-			t.Fatalf("Clone on closed Session: %v", err)
-		}
-		newPID := readPID(t, pidFile)
-		if newPID == oldPID {
-			t.Fatalf("Clone on closed Session reused old pid %d", oldPID)
-		}
-		if processAlive(oldPID) {
-			t.Fatalf("old extension process %d unexpectedly alive", oldPID)
-		}
-		if !processAlive(newPID) {
-			t.Fatalf("clone extension process %d not alive", newPID)
-		}
-		assertExtensionResponsive(t, cloned, filepath.Join(root, "closed-clone.probe"), newPID)
-		if err := cloned.Close(); err != nil {
-			t.Fatalf("cloned.Close: %v", err)
-		}
-		if processAlive(newPID) {
-			t.Fatalf("clone extension process %d still alive after cloned.Close", newPID)
-		}
-		if processAlive(oldPID) {
-			t.Fatalf("old extension process %d unexpectedly alive after cloned.Close", oldPID)
-		}
-	})
-
-	t.Run("Clone after source Close lists and executes extension tool on fresh host", func(t *testing.T) {
+	t.Run("Clone after source Close returns closed error without starting an extension host", func(t *testing.T) {
 		_, pidFile, source := newOwnedSession(t)
 		oldPID := readPID(t, pidFile)
 		if err := source.Close(); err != nil {
@@ -523,27 +504,33 @@ func TestSessionCloseShutsDownOwnedResourceLoader(t *testing.T) {
 		if processAlive(oldPID) {
 			t.Fatalf("extension process %d still alive after source.Close", oldPID)
 		}
-		cloned, err := source.Clone()
+		pidStatBefore, err := os.Stat(pidFile)
 		if err != nil {
-			t.Fatalf("Clone on closed Session: %v", err)
+			t.Fatalf("stat pid file before Clone: %v", err)
 		}
-		t.Cleanup(func() { _ = cloned.Close() })
-		newPID := readPID(t, pidFile)
-		if newPID == oldPID {
-			t.Fatalf("Clone on closed Session reused old pid %d", oldPID)
+		cloned, err := source.Clone()
+		if cloned != nil {
+			_ = cloned.Close()
+			t.Fatalf("Clone on closed Session returned non-nil Session (err=%v)", err)
+		}
+		if err == nil {
+			t.Fatalf("Clone on closed Session succeeded, want error %q", "coding: clone: session is closed")
+		}
+		if err.Error() != "coding: clone: session is closed" {
+			t.Fatalf("Clone on closed Session error = %q, want %q", err.Error(), "coding: clone: session is closed")
+		}
+		pidStatAfter, err := os.Stat(pidFile)
+		if err != nil {
+			t.Fatalf("stat pid file after Clone: %v", err)
+		}
+		if !pidStatAfter.ModTime().Equal(pidStatBefore.ModTime()) {
+			t.Fatalf("failed Clone modified pid file: before=%v after=%v", pidStatBefore.ModTime(), pidStatAfter.ModTime())
+		}
+		if gotPID := readPID(t, pidFile); gotPID != oldPID {
+			t.Fatalf("failed Clone changed pid file from %d to %d", oldPID, gotPID)
 		}
 		if processAlive(oldPID) {
-			t.Fatalf("old extension process %d unexpectedly alive", oldPID)
-		}
-		if !processAlive(newPID) {
-			t.Fatalf("clone extension process %d not alive", newPID)
-		}
-		assertExtensionToolRunsInPID(t, cloned, newPID)
-		if err := cloned.Close(); err != nil {
-			t.Fatalf("cloned.Close: %v", err)
-		}
-		if processAlive(newPID) {
-			t.Fatalf("clone extension process %d still alive after cloned.Close", newPID)
+			t.Fatalf("old extension process %d unexpectedly alive after failed Clone", oldPID)
 		}
 	})
 

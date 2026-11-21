@@ -112,7 +112,7 @@ func (s *Session) CloneInPlace() error {
 	return nil
 }
 
-// Clone snapshots the current path-to-leaf as a new session JSONL on disk, dropping orphan branches and recording the source as parentSession. File-backed Sessions must already be saved. The original Session is unchanged; the caller owns closing the returned Session. If the source Session owned its resource loader and has already been closed, Clone constructs a fresh resource loader and Extension Host for the returned Session.
+// Clone snapshots the current path-to-leaf as a new session JSONL on disk, dropping orphan branches and recording the source as parentSession. File-backed Sessions must already be saved. The original Session is unchanged; the caller owns closing the returned Session. If the source Session built its own resource loader and has already been closed, Clone returns an error because that owned loader is closed with the Session; a Session with a supplied loader still clones onto the caller's loader.
 func (s *Session) Clone() (*Session, error) {
 	in := s.inner.Load()
 	leaf := in.GetLeafID()
@@ -157,29 +157,10 @@ func (s *Session) Clone() (*Session, error) {
 	if ref := s.resourceLoader.Load(); ref != nil {
 		bound := &resourceLoaderRef{loader: ref.loader, promptFromLoader: ref.promptFromLoader}
 		if ref.owned != nil {
-			if ref.owned.acquire() {
-				bound.owned = ref.owned
-			} else {
-				// The source's owned loader is already closed: construct a fresh loader of its own so Clone keeps working without leaking (D19).
-				fresh, err := resolveResourceLoader(s.services, nil)
-				if err != nil {
-					return nil, fmt.Errorf("coding: clone: %w", err)
-				}
-				if overlay, ok := ref.loader.(promptResourcesOverlay); ok {
-					fresh.loader = promptResourcesOverlay{ResourceLoader: fresh.loader, static: overlay.static}
-				}
-				fresh.promptFromLoader = ref.promptFromLoader
-				bound = fresh
-				opts.ResourceLoader = fresh.loader
-				opts.Runner = nil
-				opts.runnerShared = false
-				opts.toolRegistry = nil
-				opts.Tools = nil
-				opts.SkipBuiltinTools = len(s.toolRegistry.base) == 0
-				for _, entry := range s.toolRegistry.custom {
-					opts.Tools = append(opts.Tools, entry.tool)
-				}
+			if !ref.owned.acquire() {
+				return nil, fmt.Errorf("coding: clone: session is closed")
 			}
+			bound.owned = ref.owned
 		}
 		opts.boundResourceLoader = bound
 	}
