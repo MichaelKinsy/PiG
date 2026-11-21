@@ -19,5 +19,5 @@ const out = { sessions: sessions.map(({ entries, prices }) => {
   const stats = AgentSession.prototype.getSessionStats.call(stub);
   delete stats.contextUsage;
   return { stats, breakdown: getUsageCostBreakdown(entries), waste: computeCacheWaste(entries, models) };
-}), numbers: numbers.map((n) => ({ locale: n.toLocaleString(), tokens: formatTokens(n) })) };
+}), numbers: numbers.map((n) => ({ locale: n.toLocaleString("en-US"), tokens: formatTokens(n) })) };
 process.stdout.write(JSON.stringify(out), () => process.exit(0));

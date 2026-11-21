@@ -10,8 +10,6 @@ import (
 	"testing"
 	"time"
 	_ "time/tzdata" // the zone rules the comparison needs, whatever the host provides
-
-	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
 // zoneProbeInstants are instants from 1850 to 2100 at an irregular step, so every month, hour and weekday pairing occurs, plus the edges of V8's equivalent-year range.
@@ -48,7 +46,7 @@ func TestDateStringMatchesNode(t *testing.T) {
 		probes = append(probes, probe{z.id, instants})
 	}
 	var want [][]string
-	pioracle.Run(t, `
+	runEnUSOracle(t, `
 emit(input.map(({ zone, ms }) => { process.env.TZ = zone; return ms.map((m) => new Date(m).toString()); }));`, probes, &want)
 	bad, compared := 0, 0
 	for i, p := range probes {
@@ -83,7 +81,7 @@ func TestDateStringOffsetsMatchNode(t *testing.T) {
 		probes = append(probes, probe{z, ms})
 	}
 	var want [][]string
-	pioracle.Run(t, `
+	runEnUSOracle(t, `
 emit(input.map(({ zone, ms }) => { process.env.TZ = zone; return ms.map((m) => new Date(m).toString()); }));`, probes, &want)
 	for i, p := range probes {
 		loc, err := time.LoadLocation(p.Zone)
@@ -277,7 +275,7 @@ func TestWindowsZoneNamesMatchNode(t *testing.T) {
 		probes = append(probes, probe{windowsZoneID(k, ""), ms})
 	}
 	var want [][]string
-	pioracle.Run(t, `
+	runEnUSOracle(t, `
 emit(input.map(({ zone, ms }) => { process.env.TZ = zone; return ms.map((m) => new Date(m).toString()); }));`, probes, &want)
 	for i, p := range probes {
 		for j, at := range p.Ms {

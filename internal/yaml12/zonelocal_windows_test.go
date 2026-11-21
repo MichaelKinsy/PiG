@@ -5,15 +5,13 @@ import (
 	"regexp"
 	"testing"
 	"time"
-
-	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
 // nodeDateStrings asks the Node on this host for Date.prototype.toString of each instant. Node starts with the test process's environment, so the TZ of the test is the TZ Node sees.
 func nodeDateStrings(t *testing.T, ms []int64) []string {
 	t.Helper()
 	var out []string
-	pioracle.Run(t, `emit(input.map((m) => new Date(m).toString()));`, ms, &out)
+	runEnUSOracle(t, `emit(input.map((m) => new Date(m).toString()));`, ms, &out)
 	return out
 }
 
