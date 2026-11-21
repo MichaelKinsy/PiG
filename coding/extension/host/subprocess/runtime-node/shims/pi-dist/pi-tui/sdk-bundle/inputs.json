@@ -27,7 +27,7 @@
     },
     {
       "path": "pi-dist/pi-tui/components/editor.js",
-      "sha256": "391cb368ce625726e38157902b90ffc200d79e0e94222617421f6bfcbcb63538"
+      "sha256": "a04489fe3aa3d150545d844b9e2602f3aeebde9d6cb088488546976c34afbfed"
     },
     {
       "path": "pi-dist/pi-tui/components/h-stack.js",

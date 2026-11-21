@@ -1547,6 +1547,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9d2095f](#bf-9d2095f) | fix(durable/core): fewer TinyGo heap sites for deferred commits; a read or host operation that stores held… | PiG's own defect | All platforms | Unreleased |
 | [BF-9d25f73](#bf-9d25f73) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-9d4fe9c](#bf-9d4fe9c) | Selecting a model or cycling models with Ctrl+P no longer freezes the interactive mode when an extension's… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-9d587e8](#bf-9d587e8) | A prompt you submit again, or one restored when you switch branches (`/tree`, `/fork`, `/clone`, `/resume`)… | PiG's own defect | All platforms | Unreleased |
 | [BF-9d64980](#bf-9d64980) | fix(coding): provider order and availability of virtual models follow Pi | PiG's own defect | All platforms | Unreleased |
 | [BF-9dc3adc](#bf-9dc3adc) | fix(chord/nextnode/plugins): the proxies' requests to Go and the callbacks' calls have names of their own on… | PiG's own defect | All platforms | Unreleased |
 | [BF-9df8c5c](#bf-9df8c5c) | `--session <id>` and `--fork <id>` with an exact session ID now read only the session headers of the… | PiG's own defect | All platforms | 0.7.0 |
@@ -23621,6 +23622,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `34f7594aa5` (2026-10-11), `71d96b9841` (2026-10-12), `778d3b9398` (2026-10-12), `9d4fe9ce3d` (2026-10-12), `c21b118fc8` (2026-10-12), `f059079215` (2026-10-12)
 - **Tests:** `coding/session_model_extension_order_test.go::TestBeginModelCycleOnMainDefersNotificationsToTheCompletion`, `coding/session_model_extension_order_test.go::TestModelChangeOnMainNotificationsEndWithTheirContext`, `coding/session_model_owner_test.go::TestSetModelOnMainDispatchesAllStateBeforeNotifications`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestAwaitedExtensionPhaseWithoutShutdownReturnsItsResult`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestNewSessionEndedByShutdownIsNotAFatalRuntimeError`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestShutdownDuringAwaitedExtensionPhaseDoesNotWaitForAHandlerThatIgnoresCancellation`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestShutdownDuringAwaitedExtensionPhaseEndsThePhase`, `internal/codingagent/interactive_model_input_live_test.go::TestInteractiveModelChangeKeepsInputLive` and 6 more in docs/bug-ledger.json
 - **Release note:** Selecting a model or cycling models with Ctrl+P no longer freezes the interactive mode when an extension's `model_select` handler registers a tool. As in Pi, the mode no longer waits for the handlers, whether the change comes from Ctrl+P, the model selector or a typed `/model`. The new model applies at once, and keys typed while the handlers run reach the focused component: the model selector, which stays open until the change settles (Escape closes it at once), or the editor. A prompt submitted meanwhile starts at once on the new model. A second change applies its model at once, and its handlers run alongside the first change's. An extension dialog opened meanwhile closes the selector, so later keys reach the editor. Quitting while a handler still runs no longer waits for it, and a failed model switch shows the error's message, as Pi does.
+
+### BF-9d587e8
+
+**A prompt you submit again, or one restored when you switch branches (`/tree`, `/fork`, `/clone`, `/resume`)…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A prompt you submit again, or one restored when you switch branches (`/tree`, `/fork`, `/clone`, `/resume`), no longer appears twice in the up-arrow history; it moves to the front instead of duplicating older entries and pushing history past the 100-entry limit.
+- **Root cause:** Editor.AddToHistory skipped only a consecutive repeat (inputHistory[0] == trimmed), matching Pi before commit 06a20368a7 (#12370), so re-adding an older prompt appended a duplicate.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9d587e873d` (2026-11-21)
+- **Tests:** `internal/codingagent/resume_editor_history_test.go::TestInitialRenderPopulatesTheEditorHistory`, `tui/editor_handle_input_contract_test.go::TestEditorHandleInputBoundariesMatchPi`, `tui/editor_history_test.go::TestEditorHistoryDoesNotGrowWhenPromptsAreReAdded`, `tui/editor_history_test.go::TestEditorHistoryMovesNonConsecutiveDuplicateToFront`
+- **Release note:** A prompt you submit again, or one restored when you switch branches (`/tree`, `/fork`, `/clone`, `/resume`), no longer appears twice in the up-arrow history; it moves to the front instead of duplicating older entries and pushing history past the 100-entry limit. Affects v0.2.0 through v0.7.0.
 
 ### BF-9d64980
 
