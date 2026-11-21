@@ -7,12 +7,14 @@ import (
 	"encoding/json"
 	"math/rand"
 	"os/exec"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/testenv"
+	"github.com/MichaelKinsy/PiG/internal/upstreammirror"
 )
 
 type googleModelIDResult struct {
@@ -32,7 +34,7 @@ func googleModelIDProbes() []string {
 	versions := []string{"1", "1.5", "2", "2.0", "2.5", "3", "3.0", "3.1", "3.8", "3.10", "4", "4.5", "10", "007", "0", "99999999999999999999", "123456789012345678901234567890", "3.", "3.x", "٣", "３"}
 	kinds := []string{"-pro", "-flash", "-flash-lite", "-pro-preview", "-flash-preview-05-20", "-FLASH", "-Pro", "-fla\u017fh", "-flaſh", "-\u212ero", "-pro\u212a", "-ultra", "", "-4", "4", "-4-it", "4-it", "-latest", "-flash-latest", "-flash-lite-latest"}
 	// A version past float64's range is Infinity for parseInt, which still compares as at least 3.
-	ids := []string{"gemini-" + strings.Repeat("9", 400) + "-pro", "gemini-live-" + strings.Repeat("1", 320), "", "gemini-flash-latest", "gemini-flash-lite-latest", "GEMINI-FLASH-LATEST", "gemini-flash-latest\u017f", "gemma4", "gemma-4", "gemma--4", "gemma 4", "claude-3-5-sonnet", "gpt-oss-120b", "gemini-live-2.5-flash", "gemini-3-flash-preview", "gemini-3.1-pro-preview"}
+	ids := []string{"gemini-" + strings.Repeat("9", 400) + "-pro", "gemini-live-" + strings.Repeat("1", 320), "", "gemini-flash-latest", "gemini-flash-lite-latest", "GEMINI-FLASH-LATEST", "gemini-flash-latest\u017f", "gemma4", "gemma-4", "gemma--4", "gemma 4", "claude-3-5-sonnet", "gpt-oss-120b", "gemini-live-2.5-flash", "gemini-3-flash-preview", "gemini-3.1-pro-preview", "google/gemini-3-pro", "models/gemini-3-flash", "publishers/google/models/gemini-3.1-pro", "randomprefix-gemini-4-argon", "vendor-gemini-2.5-flash"}
 	for range 4500 {
 		ids = append(ids, prefixes[random.Intn(len(prefixes))]+families[random.Intn(len(families))]+versions[random.Intn(len(versions))]+kinds[random.Intn(len(kinds))])
 	}
@@ -47,7 +49,14 @@ func TestGoogleModelIDHelpersMatchPi(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	source := filepath.Join(testenv.ModuleRoot(t), ".upstream", "current", "packages", "ai", "src", "api", "google-shared.ts")
+	sourceBytes, err := upstreammirror.ReadPicked(testenv.ModuleRoot(t), "packages/ai/src/api/google-shared.ts")
+	if err != nil {
+		t.Fatalf("Pi mirror google-shared.ts: %v", err)
+	}
+	source := filepath.Join(t.TempDir(), "google-shared.ts")
+	if err := os.WriteFile(source, sourceBytes, 0o600); err != nil {
+		t.Fatal(err)
+	}
 	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/google_model_ids.mjs", source)
 	cmd.Stdin = bytes.NewReader(payload)
 	var stderr bytes.Buffer
@@ -69,7 +78,7 @@ func TestGoogleModelIDHelpersMatchPi(t *testing.T) {
 			ThinkingLevel: UsesGoogleThinkingLevel(&Model{ID: id}),
 			ToolCallID:    requiresToolCallId(id),
 			Multimodal:    supportsMultimodalFunctionResponse(id),
-			Strict:        supportsGoogleStrictToolSampling(id),
+			Strict:        supportsGoogleStrictToolSampling(&Model{ID: id}),
 		}
 		if major, ok := getGeminiMajorVersion(id); ok {
 			text := strconv.FormatFloat(major, 'f', -1, 64)

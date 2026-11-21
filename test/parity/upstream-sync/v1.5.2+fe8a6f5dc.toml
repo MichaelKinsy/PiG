@@ -1,0 +1,94 @@
+from = "1.5.2"
+to = "1.5.2+fe8a6f5dc"
+
+# Pi fe8a6f5dc741e9214a20f70f359c68c72b494d1e (#12371, closes #12321):
+# Unanchor getGeminiMajorVersion so prefixed Gemini 3+ and 2.x IDs (such as
+# randomprefix-gemini-4-argon, google/gemini-3-pro, models/gemini-3-flash,
+# publishers/google/models/gemini-3.1-pro, vendor-gemini-2.5-flash) match like
+# usesGoogleThinkingLevel; add compat.supportsStrictMode for google-generative-ai
+# and google-vertex.
+
+[[files]]
+path = "packages/ai/src/api/google-shared.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/google_prefixed_ids_test.go#TestGeminiPrefixedModelIDHelpers", "test:ai/google_model_ids_oracle_test.go#TestGoogleModelIDHelpersMatchPi"]
+rationale = "fe8a6f5dc (#12371): unanchor getGeminiMajorVersion to /gemini(?:-live)?-(\\d+)/; rewrite usesGoogleThinkingLevel's Gemini 4+ arm as (getGeminiMajorVersion(id) ?? 0) >= 4; change supportsGoogleStrictToolSampling to accept model and honor model.compat?.supportsStrictMode ?? (majorVersion !== undefined && majorVersion >= 3). Ported in ai/google.go; carried in automation/gen/pi-post-release-backports.mjs (fe8a6f5dc) for both compiled pi-ai/api/google-shared.js and mirrorSource packages/ai/src/api/google-shared.ts."
+
+[[files]]
+path = "packages/ai/src/api/google-generative-ai.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/google_prefixed_ids_test.go#TestGeminiPrefixedModelIDRequestBoundaryBothAPIs"]
+rationale = "fe8a6f5dc (#12371): pass model (not model.id) to supportsGoogleStrictToolSampling in buildParams. Ported in ai/google.go Stream; carried in automation/gen/pi-post-release-backports.mjs (fe8a6f5dc) as packageFile for the installed Pi oracle."
+
+[[files]]
+path = "packages/ai/src/api/google-vertex.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/google_prefixed_ids_test.go#TestGeminiPrefixedModelIDRequestBoundaryBothAPIs"]
+rationale = "fe8a6f5dc (#12371): pass model (not model.id) to supportsGoogleStrictToolSampling in buildParams. Ported in ai/google.go Stream (shared by ai/google_vertex.go); carried in automation/gen/pi-post-release-backports.mjs (fe8a6f5dc) as packageFile for the installed Pi oracle."
+
+[[files]]
+path = "packages/ai/src/providers/compat-schema.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/compat_schema_exports_test.go#TestCompatSchemaExportsMatchPi"]
+rationale = "fe8a6f5dc (#12371): add GoogleCompatSchema (supportsStrictMode) for google-generative-ai and google-vertex, merge into ProviderCompatProperties. Ported in internal/codingagent/configschema/compat_b.go; carried in automation/gen/pi-post-release-backports.mjs (fe8a6f5dc) for pi-ai/providers/compat-schema.js. schemas/models.schema.json is unchanged because ProviderCompatSchema already has supportsStrictMode via ProviderCompatPropertyOverrides."
+
+[[files]]
+path = "packages/ai/src/types.ts"
+change = "modified"
+disposition = "ported"
+oracle = "not carried: TypeScript type union only; compiled JS has no runtime representation for GoogleCompat"
+evidence = ["test:ai/google_prefixed_ids_test.go#TestGeminiPrefixedModelIDRequestBoundaryBothAPIs"]
+rationale = "fe8a6f5dc (#12371): Model<\"google-generative-ai\" | \"google-vertex\"> gets compat?: GoogleCompat. In PiG, ai.Model.ProviderMeta.Compat is the shared *ModelCompat which already carries SupportsStrictMode *bool."
+
+[[files]]
+path = "packages/coding-agent/docs/models-configuration.md"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/references_test.go#TestModelsConfigurationReferenceMatchesThePinnedPiPage", "test:internal/codingagent/configschema/references_test.go#TestModelsConfigurationReferenceMatchesTheCommittedPage"]
+rationale = "fe8a6f5dc (#12371): regenerated models-configuration.md adds the google-generative-ai / google-vertex compat table with supportsStrictMode. Regenerated into docs/site/docs/models-configuration.md by make generate-schemas and carried in automation/gen/pi-post-release-backports.mjs (fe8a6f5dc)."
+
+[[files]]
+path = "packages/ai/test/google-shared-convert-tools.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/google_convert_tools_upstream_test.go#TestGoogleSharedConvertToolsUpstream", "test:ai/google_prefixed_ids_test.go#TestGeminiPrefixedModelIDHelpers", "test:ai/google_prefixed_ids_test.go#TestGeminiPrefixedModelIDRequestBoundaryBothAPIs"]
+rationale = "fe8a6f5dc (#12371): strict tool sampling detection for prefixed Gemini 3+/4+ IDs, compat.supportsStrictMode overrides both ways, and VALIDATED request payload checks for both google-generative-ai and google-vertex."
+
+[[files]]
+path = "packages/ai/test/google-shared-gemini3-unsigned-tool-call.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/google_history_upstream_test.go#TestGoogleUnsignedToolCallsUpstream", "test:ai/google_prefixed_ids_test.go#TestGeminiPrefixedModelIDHelpers"]
+rationale = "fe8a6f5dc (#12371): requiresToolCallId rows for randomprefix-gemini-4-argon (true) and vendor-gemini-2.5-flash (false)."
+
+[[files]]
+path = "packages/ai/test/google-shared-image-tool-result-routing.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/google_prefixed_ids_test.go#TestGeminiPrefixedModelIDRequestBoundaryBothAPIs"]
+rationale = "fe8a6f5dc (#12371): image tool results nest in functionResponse.parts for prefixed Gemini 3+/4+ IDs (randomprefix-gemini-4-argon) and route to a separate user turn for prefixed Gemini 2.5 IDs."
+
+[[files]]
+path = "packages/ai/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "fe8a6f5dc (#12371): Pi's npm package README; PiG documents model compatibility in docs/site/docs/models-configuration.md."
+
+[[files]]
+path = "packages/ai/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "fe8a6f5dc (#12371): Pi's own changelog entry; PiG records the fix in changelog.d."
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "fe8a6f5dc (#12371): Pi's own changelog entry; PiG records the fix in changelog.d."

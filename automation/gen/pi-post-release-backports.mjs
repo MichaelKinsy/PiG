@@ -2862,6 +2862,149 @@ patch("9a7cfba47", "pi-tui/components/editor.js", [
 ]);
 // END backport 9a7cfba47
 
+// BEGIN backport fe8a6f5dc
+// fe8a6f5dc (#12371, closes #12321): unanchor getGeminiMajorVersion for prefixed Gemini IDs, reuse it for >= 4 in usesGoogleThinkingLevel, and let compat.supportsStrictMode override supportsGoogleStrictToolSampling.
+// not carried: packages/ai/src/types.ts (TypeScript type union only; compiled JS has no runtime representation for GoogleCompat).
+// not carried: packages/ai/README.md, packages/ai/CHANGELOG.md, packages/coding-agent/CHANGELOG.md (package docs/changelogs not read by runtime or oracle tests).
+// not carried: packages/ai/test/google-shared-convert-tools.test.ts, packages/ai/test/google-shared-gemini3-unsigned-tool-call.test.ts, packages/ai/test/google-shared-image-tool-result-routing.test.ts (TypeScript tests; the package ships none).
+packageFile("fe8a6f5dc", "pi-ai/api/google-shared.js", [
+    [`        // Match Gemini 4 and later, such as gemini-4-argon (#10890).
+        /gemini-(?:[4-9]|[1-9]\\d)/.test(id) ||
+`, `        ${note("fe8a6f5dc").trim()}
+        // Match Gemini 4 and later, such as gemini-4-argon (#10890).
+        (getGeminiMajorVersion(id) ?? 0) >= 4 ||
+`],
+    [`function getGeminiMajorVersion(modelId) {
+    const match = modelId.toLowerCase().match(/^gemini(?:-live)?-(\\d+)/);
+`, `function getGeminiMajorVersion(modelId) {
+    ${note("fe8a6f5dc").trim()}
+    // Unanchored like usesGoogleThinkingLevel: some hosts prefix the ID, e.g. randomprefix-gemini-4-argon (#12321).
+    const match = modelId.toLowerCase().match(/gemini(?:-live)?-(\\d+)/);
+`],
+    [`/** Gemini 3+ enforces required function parameters in validated tool-calling modes. */
+export function supportsGoogleStrictToolSampling(modelId) {
+    const majorVersion = getGeminiMajorVersion(modelId);
+    return majorVersion !== undefined && majorVersion >= 3;
+}`, `${note("fe8a6f5dc").trim()}
+/**
+ * Gemini 3+ enforces required function parameters in validated tool-calling modes.
+ * \`compat.supportsStrictMode\` overrides the model ID detection, e.g. for Gemini models served under IDs without the version.
+ */
+export function supportsGoogleStrictToolSampling(model) {
+    const majorVersion = getGeminiMajorVersion(model.id);
+    return model.compat?.supportsStrictMode ?? (majorVersion !== undefined && majorVersion >= 3);
+}`],
+]);
+// END backport fe8a6f5dc
+
+// BEGIN backport fe8a6f5dc
+// fe8a6f5dc (#12371): pass model (not model.id) to supportsGoogleStrictToolSampling in google-generative-ai.js.
+// PiG's vendored runtime carries pi-ai's google-generative-ai.js as a bridge stub that runs in PiG's host (ai/google.go), so this patches the installed Pi oracle only.
+packageFile("fe8a6f5dc", "pi-ai/api/google-generative-ai.js", [
+    [`    const supportsStrictMode = supportsGoogleStrictToolSampling(model.id);
+`, `    ${note("fe8a6f5dc").trim()}
+    const supportsStrictMode = supportsGoogleStrictToolSampling(model);
+`],
+]);
+// END backport fe8a6f5dc
+
+// BEGIN backport fe8a6f5dc
+// fe8a6f5dc (#12371): pass model (not model.id) to supportsGoogleStrictToolSampling in google-vertex.js.
+// PiG's vendored runtime carries pi-ai's google-vertex.js as a bridge stub that runs in PiG's host (ai/google_vertex.go), so this patches the installed Pi oracle only.
+packageFile("fe8a6f5dc", "pi-ai/api/google-vertex.js", [
+    [`    const supportsStrictMode = supportsGoogleStrictToolSampling(model.id);
+`, `    ${note("fe8a6f5dc").trim()}
+    const supportsStrictMode = supportsGoogleStrictToolSampling(model);
+`],
+]);
+// END backport fe8a6f5dc
+
+// BEGIN backport fe8a6f5dc
+// fe8a6f5dc (#12371): add GoogleCompatSchema for google-generative-ai and google-vertex in compat-schema.js.
+patch("fe8a6f5dc", "pi-ai/providers/compat-schema.js", [
+    [`export const MistralConversationsCompatSchema = openObject(MistralConversationsCompatProperties, {
+    description: "Compatibility settings for the Mistral chat API.",
+    additionalProperties: true,
+});
+`, `export const MistralConversationsCompatSchema = openObject(MistralConversationsCompatProperties, {
+    description: "Compatibility settings for the Mistral chat API.",
+    additionalProperties: true,
+});
+${note("fe8a6f5dc").trim()}
+const GoogleCompatProperties = {
+    supportsStrictMode: optionalCompatBoolean({
+        description: "Whether the model enforces strict tools through Gemini's VALIDATED function-calling mode. Default: true for model IDs containing gemini-3 or a later version, such as gemini-3-pro or vendor-gemini-4-argon, false otherwise. Set true for Gemini 3+ models served under IDs without the version.",
+    }),
+};
+export const GoogleCompatSchema = openObject(GoogleCompatProperties, {
+    description: "Compatibility settings for the Google Generative AI and Vertex APIs.",
+    additionalProperties: true,
+});
+`],
+    [`    "mistral-conversations": MistralConversationsCompatSchema,
+    "typesafe-system-one": SystemOneCompatSchema,
+`, `    "mistral-conversations": MistralConversationsCompatSchema,
+    "google-generative-ai": GoogleCompatSchema,
+    "google-vertex": GoogleCompatSchema,
+    "typesafe-system-one": SystemOneCompatSchema,
+`],
+    [`    MistralConversationsCompatProperties,
+    SystemOneCompatProperties,
+`, `    MistralConversationsCompatProperties,
+    GoogleCompatProperties,
+    SystemOneCompatProperties,
+`],
+]);
+// END backport fe8a6f5dc
+
+// BEGIN backport fe8a6f5dc
+// fe8a6f5dc (#12371): models-configuration.md gains the google-generative-ai / google-vertex compat section.
+patch("fe8a6f5dc", "pi-coding-agent/docs/models-configuration.md", [
+    [`| \`supportsStrictMode\` | boolean | \`false\` | Whether the model supports strict (schema-constrained) function tools. |
+
+### \`typesafe-system-one\``, `| \`supportsStrictMode\` | boolean | \`false\` | Whether the model supports strict (schema-constrained) function tools. |
+
+### \`google-generative-ai\`
+
+Also applies to \`google-vertex\`.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| \`supportsStrictMode\` | boolean |  | Whether the model enforces strict tools through Gemini's VALIDATED function-calling mode. Default: true for model IDs containing gemini-3 or a later version, such as gemini-3-pro or vendor-gemini-4-argon, false otherwise. Set true for Gemini 3+ models served under IDs without the version. |
+
+### \`typesafe-system-one\``],
+]);
+// END backport fe8a6f5dc
+
+// BEGIN backport fe8a6f5dc
+// fe8a6f5dc (#12371): mirrorSource for packages/ai/src/api/google-shared.ts, read by ai/google_model_ids_oracle_test.go through ReadPicked.
+mirrorSource("fe8a6f5dc", "packages/ai/src/api/google-shared.ts", [
+    [`		// Match Gemini 4 and later, such as gemini-4-argon (#10890).
+		/gemini-(?:[4-9]|[1-9]\\d)/.test(id) ||
+`, `		// Match Gemini 4 and later, such as gemini-4-argon (#10890).
+		(getGeminiMajorVersion(id) ?? 0) >= 4 ||
+`],
+    [`function getGeminiMajorVersion(modelId: string): number | undefined {
+	const match = modelId.toLowerCase().match(/^gemini(?:-live)?-(\\d+)/);
+`, `function getGeminiMajorVersion(modelId: string): number | undefined {
+	// Unanchored like usesGoogleThinkingLevel: some hosts prefix the ID, e.g. randomprefix-gemini-4-argon (#12321).
+	const match = modelId.toLowerCase().match(/gemini(?:-live)?-(\\d+)/);
+`],
+    [`/** Gemini 3+ enforces required function parameters in validated tool-calling modes. */
+export function supportsGoogleStrictToolSampling(modelId: string): boolean {
+	const majorVersion = getGeminiMajorVersion(modelId);
+	return majorVersion !== undefined && majorVersion >= 3;
+}`, `/**
+ * Gemini 3+ enforces required function parameters in validated tool-calling modes.
+ * \`compat.supportsStrictMode\` overrides the model ID detection, e.g. for Gemini models served under IDs without the version.
+ */
+export function supportsGoogleStrictToolSampling<T extends GoogleApiType>(model: Model<T>): boolean {
+	const majorVersion = getGeminiMajorVersion(model.id);
+	return model.compat?.supportsStrictMode ?? (majorVersion !== undefined && majorVersion >= 3);
+}`],
+]);
+// END backport fe8a6f5dc
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 // Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.

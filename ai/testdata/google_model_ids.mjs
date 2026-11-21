@@ -24,7 +24,7 @@ process.stdout.write(
 				major: major === undefined ? null : String(major),
 				toolCallId: fns.requiresToolCallId(id),
 				multimodal: fns.supportsMultimodalFunctionResponse(id),
-				strict: fns.supportsGoogleStrictToolSampling(id),
+				strict: fns.supportsGoogleStrictToolSampling({ id }),
 			};
 		}),
 	),
