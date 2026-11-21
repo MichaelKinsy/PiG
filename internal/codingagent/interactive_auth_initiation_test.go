@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 type initiationCaptureOAuthProvider struct {
@@ -28,11 +29,11 @@ func (p *initiationCaptureOAuthProvider) Login(callbacks ai.OAuthLoginCallbacks)
 // release the ordered call lane after dialog installation, not after the user
 // eventually answers.
 func TestRegisteredOAuthUsesInitiationAwareCallbacks(t *testing.T) {
+	m := newPostLoginTestMode(t)
+	m.layout = tui.NewContainer(m.chatContainer, m.editorContainer)
 	provider := &initiationCaptureOAuthProvider{callbacks: make(chan ai.OAuthLoginCallbacks, 1)}
-	mode := NewInteractiveMode(nil, InteractiveModeOptions{AgentDir: t.TempDir()})
-	if err := mode.runLoginRegisteredOAuth(t.Context(), provider, testOAuthLoginName(provider), ""); err != nil {
-		t.Fatal(err)
-	}
+	done := make(chan error, 1)
+	go func() { done <- m.runLoginRegisteredOAuth(t.Context(), provider, testOAuthLoginName(provider), "") }()
 	callbacks := <-provider.callbacks
 	if callbacks.OnPromptContext == nil {
 		t.Error("registered OAuth prompt has no initiation-aware callback")
@@ -42,5 +43,8 @@ func TestRegisteredOAuthUsesInitiationAwareCallbacks(t *testing.T) {
 	}
 	if callbacks.OnSelectContext == nil {
 		t.Error("registered OAuth selection has no initiation-aware callback")
+	}
+	if err := <-done; err == nil || err.Error() != "Failed to login to "+testOAuthLoginName(provider)+": stop after callback capture" {
+		t.Fatalf("rejected login err = %v", err)
 	}
 }

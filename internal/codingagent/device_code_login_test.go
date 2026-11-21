@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 const (
@@ -35,11 +36,16 @@ func TestDeviceCodeLoginOpensNoBrowser(t *testing.T) {
 	var launches []string
 	openBrowser = func(url string) error { launches = append(launches, url); return nil }
 	completed := make(chan struct{})
-	mode := NewInteractiveMode(nil, InteractiveModeOptions{AgentDir: t.TempDir()})
-	if err := mode.runLoginRegisteredOAuth(t.Context(), deviceCodeOAuthProvider{done: completed}, "Device Code Probe", ""); err != nil {
-		t.Fatal(err)
-	}
+	m := newPostLoginTestMode(t)
+	m.layout = tui.NewContainer(m.chatContainer, m.editorContainer)
+	done := make(chan error, 1)
+	go func() {
+		done <- m.runLoginRegisteredOAuth(t.Context(), deviceCodeOAuthProvider{done: completed}, "Device Code Probe", "")
+	}()
 	<-completed
+	if err := <-done; err == nil || err.Error() != "Failed to login to Device Code Probe: stop after the probe callbacks" {
+		t.Fatalf("rejected login err = %v", err)
+	}
 	if len(launches) != 1 || launches[0] != authProbeURL {
 		t.Fatalf("browser launches = %q, want only the auth URL %s", launches, authProbeURL)
 	}

@@ -141,18 +141,23 @@ func TestInteractiveLoginDeviceIDComesFromSettings(t *testing.T) {
 // Both interactive login paths hand the provider the settings manager's device ID (#146): a registered provider and
 // the OpenAI Codex flow.
 func TestRegisteredOAuthLoginReceivesSettingsDeviceID(t *testing.T) {
+	m := newPostLoginTestMode(t)
+	m.layout = tui.NewContainer(m.chatContainer, m.editorContainer)
 	sm := NewSettingsManager(t.TempDir(), t.TempDir())
+	m.opts.SettingsManager = sm
 	provider := &initiationCaptureOAuthProvider{callbacks: make(chan ai.OAuthLoginCallbacks, 1)}
-	mode := NewInteractiveMode(nil, InteractiveModeOptions{AgentDir: t.TempDir(), SettingsManager: sm})
-	if err := mode.runLoginRegisteredOAuth(t.Context(), provider, testOAuthLoginName(provider), ""); err != nil {
-		t.Fatal(err)
-	}
+	done := make(chan error, 1)
+	go func() { done <- m.runLoginRegisteredOAuth(t.Context(), provider, testOAuthLoginName(provider), "") }()
 	callbacks := <-provider.callbacks
 	if callbacks.GetDeviceID == nil {
 		t.Fatal("registered OAuth login has no GetDeviceID callback")
 	}
 	if got, want := callbacks.GetDeviceID(), sm.GetOrCreateDeviceID(); want == "" || got != want {
 		t.Fatalf("device ID = %q, settings = %q", got, want)
+	}
+	// The stub's error rejects the login, which closes the dialog (interactive-mode.ts:6564) and is reported by the caller.
+	if err := <-done; err == nil || err.Error() != "Failed to login to "+testOAuthLoginName(provider)+": stop after callback capture" {
+		t.Fatalf("rejected login err = %v", err)
 	}
 }
 
