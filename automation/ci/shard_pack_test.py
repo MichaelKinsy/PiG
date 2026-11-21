@@ -78,6 +78,101 @@ class ShardPackTest(unittest.TestCase):
         self.assertEqual(lines[:2], ["package ./pkg", "shards 2"])
         self.assertEqual(sorted(l.split()[1] for l in lines[2:]), ["TestA1", "TestA2", "TestA3", "TestA4", "TestP2", "TestP3", "TestP4"])
 
+    def test_reads_timestamped_go_test_v_logs_with_timeout_and_fallback(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fallback = os.path.join(tmp, "linux.json")
+            with open(fallback, "w", encoding="utf-8") as handle:
+                json.dump(
+                    {
+                        "package": "./pkg",
+                        "shards": {"1": 100.0},
+                        "tests": {
+                            "TestSer1": [1, 20.0, 0.0, 0],
+                            "TestPar1": [1, 10.0, 10.0, 1],
+                            "TestSer2": [1, 15.0, 0.0, 0],
+                            "TestPar2": [1, 20.0, 20.0, 1],
+                            "TestUnfinished": [1, 30.0, 30.0, 1],
+                        },
+                    },
+                    handle,
+                )
+            # Two finished shards (one with a serial parent whose parallel subtests hide behind 0.00s) and one timed-out shard.
+            log1 = "\n".join(
+                [
+                    "2026-11-21T06:00:00.0000000Z \x1b[36;1mgo test -v -timeout 30m -run $env:SHARD_RUN ./pkg\x1b[0m",
+                    "2026-11-21T06:00:00.1000000Z   SHARD_RUN: ^(TestSer1|TestPar1|TestSerSub)$",
+                    "2026-11-21T06:01:00.0000000Z === RUN   TestSer1",
+                    "2026-11-21T06:01:40.0000000Z --- PASS: TestSer1 (40.00s)",
+                    "2026-11-21T06:01:40.0000000Z === RUN   TestSerSub",
+                    "2026-11-21T06:01:40.0000000Z === RUN   TestSerSub/a",
+                    "2026-11-21T06:02:10.0000000Z --- PASS: TestSerSub (0.00s)",
+                    "2026-11-21T06:02:10.0000000Z     --- PASS: TestSerSub/a (30.00s)",
+                    "2026-11-21T06:02:10.0000000Z === RUN   TestPar1",
+                    "2026-11-21T06:02:10.0000000Z === PAUSE TestPar1",
+                    "2026-11-21T06:02:10.0000000Z === CONT  TestPar1",
+                    "2026-11-21T06:02:30.0000000Z --- PASS: TestPar1 (40.00s)",
+                    "2026-11-21T06:02:30.0000000Z ok  \texample.com/pkg\t150.000s",
+                ]
+            )
+            log2 = "\n".join(
+                [
+                    "2026-11-21T06:00:00.0000000Z go test -v -timeout 30m -run $env:SHARD_RUN ./pkg",
+                    "2026-11-21T06:00:00.1000000Z   SHARD_RUN: ^(TestSer2|TestPar2)$",
+                    "2026-11-21T06:01:00.0000000Z === RUN   TestSer2",
+                    "2026-11-21T06:01:30.0000000Z --- PASS: TestSer2 (30.00s)",
+                    "2026-11-21T06:01:30.0000000Z === RUN   TestPar2",
+                    "2026-11-21T06:01:30.0000000Z === PAUSE TestPar2",
+                    "2026-11-21T06:01:30.0000000Z === CONT  TestPar2",
+                    "2026-11-21T06:02:10.0000000Z --- PASS: TestPar2 (80.00s)",
+                    "2026-11-21T06:02:10.0000000Z ok  \texample.com/pkg\t130.000s",
+                ]
+            )
+            log3 = "\n".join(
+                [
+                    "2026-11-21T06:00:00.0000000Z go test -v -timeout 30m -run $env:SHARD_RUN ./pkg",
+                    "2026-11-21T06:00:00.1000000Z   SHARD_RUN: ^(TestUnfinished|TestUnknownRunning)$",
+                    "2026-11-21T06:01:00.0000000Z === RUN   TestUnfinished",
+                    "2026-11-21T06:01:00.0000000Z === PAUSE TestUnfinished",
+                    "2026-11-21T06:01:00.0000000Z panic: test timed out after 29m0s",
+                    "2026-11-21T06:01:00.0000000Z \trunning tests:",
+                    "2026-11-21T06:01:00.0000000Z \t\tTestUnknownRunning (1m40s)",
+                    "2026-11-21T06:01:00.0000000Z FAIL\texample.com/pkg\t1800.100s",
+                ]
+            )
+            logdir = os.path.join(tmp, "logs")
+            os.makedirs(logdir)
+            for idx, body in enumerate((log1, log2, log3), 1):
+                with open(os.path.join(logdir, "conformance-%d.log" % idx), "w", encoding="utf-8") as handle:
+                    handle.write(body + "\n")
+            tests, shard_walls, shard_of, walls, warms, estimated = shard_pack.read_timings([logdir], "./pkg", fallback)
+            self.assertEqual(estimated, 2)
+            # Timed-out shard 3 must not enter the wall model fit.
+            self.assertEqual(sorted(walls), [1, 2])
+            self.assertEqual(len(shard_walls), 2)
+            # Serial parent with parallel subtests uses wall time (30s), not reported 0.00s.
+            self.assertAlmostEqual(tests["TestSerSub"]["elapsed"], 30.0, places=1)
+            # Fallback scaling: parallel ratio is 4.0 (TestPar1 40/10, TestPar2 80/20), so TestUnfinished (30s) -> 120s.
+            self.assertTrue(tests["TestUnfinished"]["parallel"])
+            self.assertAlmostEqual(tests["TestUnfinished"]["elapsed"], 120.0, places=1)
+            # Unknown running test (100s) gets at least its running time with headroom.
+            self.assertGreaterEqual(tests["TestUnknownRunning"]["elapsed"], 135.0)
+            # Round-trip through compact table preserves overhead and model.
+            compact = os.path.join(tmp, "compact.json")
+            ov = round(sum(warms) / len(warms), 2)
+            shard_pack.write_compact(compact, "./pkg", tests, shard_of, walls, overhead=ov)
+            again = shard_pack.read_timings([compact], "./pkg")
+            self.assertEqual(again[0], tests)
+            self.assertEqual(again[3], walls)
+            self.assertEqual(again[4], [ov])
+            res = subprocess.run(
+                ["python3", os.path.join(HERE, "shard-pack.py"), "--package", "./pkg", "--shards", "2", "--limit", "1800", "--dry-run", compact],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            self.assertIn("shard  1:", res.stdout)
+            self.assertIn("shard  2:", res.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

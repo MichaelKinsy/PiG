@@ -53,6 +53,10 @@ windows | extension-conformance-1 | queue
 windows | extension-conformance-3 | queue
 windows | extension-conformance-5 | queue
 windows | extension-conformance-6 | queue
+windows | extension-conformance-7 | queue
+windows | extension-conformance-8 | queue
+windows | extension-conformance-9 | queue
+windows | extension-conformance-10 | queue
 windows | extension-host-1 | queue
 windows | native-4 | queue
 windows | extension-host-2 | queue

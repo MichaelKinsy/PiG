@@ -1228,13 +1228,16 @@ jobs:
         with:
           persist-credentials: false
       # GitHub's hosted Windows images put RUNNER_TEMP on the D: drive, which handles many small files faster than C:; the
-      # step prints the drives to show it. The Go build cache and the Pi oracle store live there. Go's temporary directories
-      # stay on the system drive: tests run their binaries and temporary trees there, as a user's would.
+      # step prints the drives to show it. The Go build cache, the Pi oracle store, and the shared extension cell cache
+      # (testenv.SharedCellCacheDir, which otherwise lands under C:\Users\...\AppData\Local\pig-dev\cell-cache and slows
+      # every Node runtime materialization on Windows) live there. Go's temporary directories stay on the system drive:
+      # tests run their binaries and temporary trees there, as a user's would.
       - name: Keep Go and oracle scratch under RUNNER_TEMP
         shell: pwsh
         run: |
           "GOCACHE=$(Join-Path $env:RUNNER_TEMP 'go-build')" >> $env:GITHUB_ENV
           "PIG_PI_BUILD_STORE=$(Join-Path $env:RUNNER_TEMP 'pi-builds')" >> $env:GITHUB_ENV
+          "PIG_TEST_CELL_CACHE=$(Join-Path $env:RUNNER_TEMP 'cell-cache')" >> $env:GITHUB_ENV
           Write-Output "RUNNER_TEMP=$env:RUNNER_TEMP"
           Get-PSDrive -PSProvider FileSystem | Format-Table Name, Used, Free
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -1403,7 +1406,7 @@ jobs:
           set -euo pipefail
           case "$EXTENSION_SHARD" in
             extension-host-*) package=./coding/extension/host/subprocess shards=5 ;;
-            extension-conformance-*) package=./test/extension-conformance shards=6 ;;
+            extension-conformance-*) package=./test/extension-conformance shards=10 ;;
             *) echo "unexpected shard $EXTENSION_SHARD" >&2; exit 1 ;;
           esac
           run=$(automation/ci/test-shard-pattern.sh "${EXTENSION_SHARD##*-}" "$shards" "$package")
