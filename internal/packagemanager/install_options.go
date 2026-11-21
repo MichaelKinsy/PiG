@@ -9,6 +9,7 @@ type installOptions struct {
 	output        CommandOutput
 }
 
+// Ports packages/coding-agent/src/core/package-manager.ts (PackageCommandOutput, PackageManagerOptions.commandOutput).
 // CommandOutput is where git and npm output goes while packages are installed, updated or refreshed (package-manager.ts PackageCommandOutput).
 type CommandOutput string
 
