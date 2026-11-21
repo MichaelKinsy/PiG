@@ -1,6 +1,7 @@
 package pigletbuild
 
 import (
+	"encoding/json"
 	"errors"
 	"os"
 	"os/exec"
@@ -343,7 +344,7 @@ func TestPigletBinaryRepairWarnsOnStderrAndLeavesStdoutAlone(t *testing.T) {
 				if code != 0 {
 					t.Fatalf("exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
 				}
-				return strings.ReplaceAll(out, work, "<work>"), errOut
+				return replaceWorkPath(out, work), errOut
 			}
 			run() // extracts
 			clean, cleanErr := run()
@@ -368,6 +369,38 @@ func TestPigletBinaryRepairWarnsOnStderrAndLeavesStdoutAlone(t *testing.T) {
 				t.Fatalf("standard output differs between a clean and a repaired start\nclean:\n%s\nrepaired:\n%s", clean, repaired)
 			}
 		})
+	}
+}
+
+// replaceWorkPath replaces every encoding of the run's working directory in stdout: raw, JSON-escaped (Windows
+// backslashes doubled inside JSON strings) and forward-slash normalized (Windows paths inside the system prompt's
+// <cwd> block).
+func replaceWorkPath(out, work string) string {
+	if encoded, err := json.Marshal(work); err == nil && len(encoded) >= 2 {
+		out = strings.ReplaceAll(out, string(encoded[1:len(encoded)-1]), "<work>")
+	}
+	if slash := strings.ReplaceAll(work, "\\", "/"); slash != work {
+		out = strings.ReplaceAll(out, slash, "<work>")
+	}
+	return strings.ReplaceAll(out, work, "<work>")
+}
+
+// TestReplaceWorkPathNormalizesWindowsEncodings proves replaceWorkPath matches the three forms JSON mode emits for a
+// Windows working directory (JSON-escaped, slash-normalized, and raw) while leaving any unrelated output intact.
+func TestReplaceWorkPathNormalizesWindowsEncodings(t *testing.T) {
+	cleanWork := `C:\Users\RUNNER~1\AppData\Local\Temp\pig-plb\003`
+	repairedWork := `C:\Users\RUNNER~1\AppData\Local\Temp\pig-plb\004`
+	clean := `{"type":"session","id":"a","timestamp":"2026-11-21T06:11:13.022Z","cwd":"C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\pig-plb\\003"}` + "\n" +
+		`{"type":"message_start","message":{"sections":{"cwd":"<cwd>\nC:/Users/RUNNER~1/AppData/Local/Temp/pig-plb/003\n</cwd>"},"timestamp":1795241473088}}`
+	repaired := `{"type":"session","id":"b","timestamp":"2026-11-21T06:11:13.556Z","cwd":"C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\pig-plb\\004"}` + "\n" +
+		`{"type":"message_start","message":{"sections":{"cwd":"<cwd>\nC:/Users/RUNNER~1/AppData/Local/Temp/pig-plb/004\n</cwd>"},"timestamp":1795241473613}}`
+	if gotC, gotR := normalizeRunOutput(replaceWorkPath(clean, cleanWork)), normalizeRunOutput(replaceWorkPath(repaired, repairedWork)); gotC != gotR {
+		t.Fatalf("normalized Windows JSON outputs still differ:\nclean:\n%s\nrepaired:\n%s", gotC, gotR)
+	}
+	// A warning leaked to stdout must still fail the equality check.
+	leaked := "pig: warning: extracted them again\n" + repaired
+	if normalizeRunOutput(replaceWorkPath(leaked, repairedWork)) == normalizeRunOutput(replaceWorkPath(clean, cleanWork)) {
+		t.Fatal("leaked warning on stdout was masked")
 	}
 }
 

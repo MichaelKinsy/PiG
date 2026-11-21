@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // loginVariantExpectedRed lists known violations open on this branch, keyed by
@@ -123,11 +124,16 @@ func TestRegisteredOAuthLoginHandlesEveryCallbackVariant(t *testing.T) {
 			// A prompt callback without a context blocks on the user with no way to cancel it; the host bridge prefers the Context form.
 		}
 	}}
-	mode := NewInteractiveMode(nil, InteractiveModeOptions{AgentDir: t.TempDir()})
-	if err := mode.runLoginRegisteredOAuth(t.Context(), provider, testOAuthLoginName(provider), ""); err != nil {
-		t.Fatal(err)
-	}
+	m := newPostLoginTestMode(t)
+	m.layout = tui.NewContainer(m.chatContainer, m.editorContainer)
+	done := make(chan error, 1)
+	go func() {
+		done <- m.runLoginRegisteredOAuth(t.Context(), provider, testOAuthLoginName(provider), "")
+	}()
 	<-provider.done
+	if err := <-done; err == nil || err.Error() != "Failed to login to "+testOAuthLoginName(provider)+": probe complete" {
+		t.Fatalf("rejected login err = %v", err)
+	}
 	for _, name := range slices.Sorted(maps.Keys(found)) {
 		problem := found[name]
 		switch {

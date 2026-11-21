@@ -912,3 +912,22 @@ func TestCloseDoesNotWaitForAClientThatDoesNotRead(t *testing.T) {
 	for stalled.next() != nil {
 	}
 }
+
+// pig additive (D614): repeated binds whose listener fails emit the failure notice once after the worker settles,
+// matching the unsupported-system notice contract tested by TestNoSocketIsServedOnThisSystem.
+func TestFailedBindNotifiesOnceAfterSettle(t *testing.T) {
+	parent := filepath.Join(shortDir(t), strings.Repeat("d", 120))
+	if err := os.Mkdir(parent, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	f := newFixtureAt(t, filepath.Join(parent, "view-endpoint"))
+	for range 3 {
+		f.e.Bind(f.h)
+		f.e.Unbind()
+	}
+	f.settle()
+	f.e.Close()
+	if got := f.notices(); len(got) != 1 || !strings.Contains(got[0], "no view endpoint is served") {
+		t.Fatalf("notices = %q, want one failed-bind notice", got)
+	}
+}
