@@ -1,3 +1,0 @@
-### Fixed
-
-- `chord/nextnode/plugins`: the Node host driver (`FramedPort`) now writes each frame's 5-byte length-and-kind header and payload in a single `socket.write` call instead of two (affected released version: v0.7.0). On Windows named pipes, libuv's `uv_try_write` always returns `UV_EAGAIN`, leaving the first write asynchronous in Node's `Writable` and buffering the payload write in JS memory until the header completes; a `process.exit()` right after a send delivered only the 5-byte header and the Go reader hit `io.ErrUnexpectedEOF` and silently dropped the frame. <!-- fix: 95274a3c73 -->
