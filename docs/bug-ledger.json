@@ -39771,6 +39771,28 @@
       ]
     },
     {
+      "id": "BF-95274a3",
+      "title": "`chord/nextnode/plugins`: the Node host driver (`FramedPort`) now writes each frame's 5-byte length-and-kind…",
+      "symptom": "`chord/nextnode/plugins`: the Node host driver (`FramedPort`) now writes each frame's 5-byte length-and-kind header and payload in a single `socket.write` call instead of two (affected released version: v0.7.0).",
+      "rootCause": "FramedPort.#write in the Chord plugins Node driver wrote each frame as two socket.write calls (a 5-byte length+kind header, then the payload). On Unix sockets libuv uv_try_write writes the header synchronously into the kernel buffer so Writable clears kWriting and hands the payload to the kernel too. On Windows named pipes libuv uv_try_write unconditionally returns UV_EAGAIN (src/win/stream.c), so the header write stays asynchronous in Writable and the payload write is buffered in JS memory until the header completes; a process.exit() right after a send then delivers only the 5-byte header, and the Go reader hits io.ErrUnexpectedEOF and silently drops the frame.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`chord/nextnode/plugins`: the Node host driver (`FramedPort`) now writes each frame's 5-byte length-and-kind header and payload in a single `socket.write` call instead of two (affected released version: v0.7.0). On Windows named pipes, libuv's `uv_try_write` always returns `UV_EAGAIN`, leaving the first write asynchronous in Node's `Writable` and buffering the payload write in JS memory until the header completes; a `process.exit()` right after a send delivered only the 5-byte header and the Go reader hit `io.ErrUnexpectedEOF` and silently dropped the frame.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "95274a3c73",
+          "date": "2026-11-21"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_node_frame_test.go::TestFramedPortWritesEachFrameInOneSocketWrite"
+      ]
+    },
+    {
       "id": "BF-958e80d",
       "title": "A tool call whose arguments hold a number out of float64 range (`1e999`, `-1e999`) no longer ends the session…",
       "symptom": "Pi reads such a number as an infinity, keeps it in the call's arguments, and writes `null` wherever it serializes them (events, the session file, requests); PiG now does the same, for a streamed argument text, a tool call a Go caller or the faux provider supplies, and an Anthropic `content_block_start` input, which used to end the turn with a decode error.",
