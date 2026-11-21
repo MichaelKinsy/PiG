@@ -24,6 +24,38 @@ var (
 // the tests run. A package that names a target there and is missing from test-warm.sh compiles its dependencies inside the
 // go test deadline of its own run: coding/extension/host/runtimecell did, and a cold cargo build there outlasted the
 // 10-minute package timeout (https://github.com/MichaelKinsy/PiG/actions/runs/40963676052).
+func TestWarmScriptBuildsEverySharedCargoTarget(t *testing.T) {
+	root := repoRoot(t)
+	used, _ := sharedCargoTargetCallers(t, root)
+	script, err := os.ReadFile(repoScript(t, "automation/ci/test-warm.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	warmed := map[string]bool{}
+	loop := warmPackageLoop.FindSubmatch(script)
+	if loop == nil {
+		t.Fatal("automation/ci/test-warm.sh has no `for pkg in ...; do` loop over the packages that build Rust cells")
+	}
+	for pkg := range strings.FieldsSeq(string(loop[1])) {
+		warmed[pkg] = true
+	}
+	for _, match := range warmCargotargetCall.FindAllSubmatch(script, -1) {
+		if target := string(match[1]); target != `"$pkg"` {
+			warmed[target] = true
+		}
+	}
+	for _, pkg := range slices.Sorted(maps.Keys(used)) {
+		if !warmed[pkg] {
+			t.Errorf("%s takes the Cargo target %q from testenv.SharedCargoTargetDir, but automation/ci/test-warm.sh does not build it: CI would compile the Rust SDK dependencies cold inside that package's go test deadline", used[pkg], pkg)
+		}
+	}
+	for _, pkg := range slices.Sorted(maps.Keys(warmed)) {
+		if _, ok := used[pkg]; !ok {
+			t.Errorf("automation/ci/test-warm.sh builds the Cargo target %q, which no test names in testenv.SharedCargoTargetDir", pkg)
+		}
+	}
+}
+
 var pinnedSharedCargoTargets = map[string]string{
 	"cli":         "coding/cli",
 	"conformance": "test/extension-conformance",
@@ -72,38 +104,6 @@ func sharedCargoTargetCallers(t *testing.T, root string) (files map[string]strin
 		t.Fatal("no test calls testenv.SharedCargoTargetDir; the pattern in this test is stale")
 	}
 	return files, packages
-}
-
-func TestWarmScriptBuildsEverySharedCargoTarget(t *testing.T) {
-	root := repoRoot(t)
-	used, _ := sharedCargoTargetCallers(t, root)
-	script, err := os.ReadFile(repoScript(t, "automation/ci/test-warm.sh"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	warmed := map[string]bool{}
-	loop := warmPackageLoop.FindSubmatch(script)
-	if loop == nil {
-		t.Fatal("automation/ci/test-warm.sh has no `for pkg in ...; do` loop over the packages that build Rust cells")
-	}
-	for pkg := range strings.FieldsSeq(string(loop[1])) {
-		warmed[pkg] = true
-	}
-	for _, match := range warmCargotargetCall.FindAllSubmatch(script, -1) {
-		if target := string(match[1]); target != `"$pkg"` {
-			warmed[target] = true
-		}
-	}
-	for _, pkg := range slices.Sorted(maps.Keys(used)) {
-		if !warmed[pkg] {
-			t.Errorf("%s takes the Cargo target %q from testenv.SharedCargoTargetDir, but automation/ci/test-warm.sh does not build it: CI would compile the Rust SDK dependencies cold inside that package's go test deadline", used[pkg], pkg)
-		}
-	}
-	for _, pkg := range slices.Sorted(maps.Keys(warmed)) {
-		if _, ok := used[pkg]; !ok {
-			t.Errorf("automation/ci/test-warm.sh builds the Cargo target %q, which no test names in testenv.SharedCargoTargetDir", pkg)
-		}
-	}
 }
 
 // actions/cache saves a cache only when its key missed. The set of targets under the cached directory comes from
