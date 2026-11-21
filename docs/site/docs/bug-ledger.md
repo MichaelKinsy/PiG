@@ -979,6 +979,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-648ff3e-97](#bf-648ff3e-97) | Fixed a chord link closed with a reason reporting "peer closed" to its close handlers instead when the peer… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-648ff3e-98](#bf-648ff3e-98) | A Go or Rust extension edited while it was being built could be cached under the hash of the source from… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-648ff3e-99](#bf-648ff3e-99) | A Node extension that registers or unregisters a provider through `ctx.modelRegistry` (or… | PiG's own defect | All platforms | 0.5.2 |
+| [BF-649bef3](#bf-649bef3) | Closing a `coding.Session` constructed without a supplied `ResourceLoader` (or over `AgentSessionServices`… | PiG's own defect | Windows | Unreleased |
 | [BF-65411f7](#bf-65411f7) | fix(chord/next/documents): a transaction releases the line and tells its staged changes in one section, as… | PiG's own defect | All platforms | Unreleased |
 | [BF-65426f3](#bf-65426f3) | fix(rpc): pipelined set_models apply in input order, after the batch's synchronous responses | PiG's own defect | All platforms | Unreleased |
 | [BF-65932e6](#bf-65932e6) | fix(extensions): run a tick call after the tool_execution_end of the tool call that queued its callback… | PiG's own defect | All platforms | Unreleased |
@@ -15734,6 +15735,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `648ff3e2b0` (2026-10-22, #288)
 - **Tests:** None recorded.
 - **Release note:** A Node extension that registers or unregisters a provider through `ctx.modelRegistry` (or `pi.registerProvider`/`unregisterProvider`) sees the write on the next line, as Pi does: `find`, `getAll`, `getAvailable`, `hasConfiguredAuth`, `getProviderAuthStatus` and `isUsingOAuth` read the registry the registration left, and an unregistration removes the provider's models (a built-in provider keeps its own). The runtime keeps its own writes over the host's registry snapshot until the host answers the call, so a publication that predates the write cannot undo it.
+
+### BF-649bef3
+
+**Closing a `coding.Session` constructed without a supplied `ResourceLoader` (or over `AgentSessionServices`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Closing a `coding.Session` constructed without a supplied `ResourceLoader` (or over `AgentSessionServices` created without `ResourceLoaderOptions`) now shuts down the `DefaultResourceLoader` Extension Host (D19) it created, and a failed `NewSession` closes that loader before returning; previously its extension subprocesses outlived `Session.Close` and blocked directory cleanup on Windows.
+- **Root cause:** resolveResourceLoader constructed a DefaultResourceLoader for Sessions without a supplied or Services-owned loader, and neither Session.Close nor NewSession error paths ever closed it, leaking its Extension Host subprocesses.
+- **User impact:** An operation failed or was rejected
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `649bef3ed6` (2026-11-21)
+- **Tests:** `coding/session_owned_loader_close_unix_test.go::TestSessionCloseShutsDownOwnedResourceLoader`
+- **Release note:** Closing a `coding.Session` constructed without a supplied `ResourceLoader` (or over `AgentSessionServices` created without `ResourceLoaderOptions`) now shuts down the `DefaultResourceLoader` Extension Host (D19) it created, and a failed `NewSession` closes that loader before returning; previously its extension subprocesses outlived `Session.Close` and blocked directory cleanup on Windows.
 
 ### BF-65411f7
 
