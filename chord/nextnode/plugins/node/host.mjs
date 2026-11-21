@@ -22,7 +22,6 @@
 // attaches to its host with a route of the host's kind or `accept`): the control request `attach`, which has no answer. A
 // link silent for the heartbeat (30 s) is closed by this host, and the process exits with it; the heartbeat starts with the
 // link, so a host nothing attaches has none.
-import { EventEmitter } from "node:events";
 import { createReadStream, createWriteStream } from "node:fs";
 import { enableCompileCache, flushCompileCache } from "node:module";
 import { connect } from "node:net";
@@ -33,6 +32,7 @@ import * as callbacks from "./callbacks.mjs";
 import { importGoPackage } from "./gopackage.mjs";
 import { openHostStore } from "./store.mjs";
 import { createTelemetry } from "./telemetry.mjs";
+import { FramedPort } from "./port.mjs";
 import { inspect } from "node:util";
 
 // V8's code cache for the modules below (Pi's vendored closure, type-stripped on import), kept in the extracted tree: a
@@ -58,74 +58,6 @@ const [chordNext, { ipcLink }, { createPluginRuntime, PluginError }, { mapStack 
 const { createHost, decodeJsonl, encodeJsonl, isChordError } = chordNext;
 // host.ts's `Destination` (resolve.mjs): already loaded by the import of the host above.
 const { setParentServes, forgetParentServes } = await import("./destination.mjs");
-
-const KIND_LINK = 0;
-const KIND_CONTROL = 1;
-
-/** A framed socket as the IPC channel `ipcLink` takes: Uint8Array messages are the link's, anything else the app's. */
-class FramedPort extends EventEmitter {
-	#socket;
-	#buffer = Buffer.alloc(0);
-	/** The frames whose write has not completed, and whether `disconnect` waits for them to end the socket. */
-	#writing = 0;
-	#ending = false;
-	connected = true;
-
-	constructor(socket) {
-		super();
-		this.#socket = socket;
-		socket.on("data", (chunk) => this.#read(chunk));
-		const ended = () => {
-			if (!this.connected) return;
-			this.connected = false;
-			this.emit("disconnect");
-		};
-		socket.on("close", ended);
-		socket.on("error", ended);
-	}
-
-	#read(chunk) {
-		this.#buffer = this.#buffer.length === 0 ? chunk : Buffer.concat([this.#buffer, chunk]);
-		for (;;) {
-			if (this.#buffer.length < 4) return;
-			const length = this.#buffer.readUInt32BE(0);
-			if (this.#buffer.length < 4 + length) return;
-			const kind = this.#buffer[4];
-			const payload = this.#buffer.subarray(5, 4 + length);
-			this.#buffer = this.#buffer.subarray(4 + length);
-			if (kind === KIND_LINK) this.emit("message", new Uint8Array(payload));
-			else if (kind === KIND_CONTROL) this.emit("message", JSON.parse(payload.toString("utf8")));
-		}
-	}
-
-	#write(kind, payload, callback) {
-		const header = Buffer.allocUnsafe(5);
-		header.writeUInt32BE(1 + payload.length, 0);
-		header[4] = kind;
-		this.#socket.write(header);
-		this.#writing++;
-		return this.#socket.write(payload, (error) => {
-			this.#writing--;
-			if (this.#ending && this.#writing === 0) this.#socket.end();
-			callback(error ?? null);
-		});
-	}
-
-	send(message, callback) {
-		return this.#write(KIND_LINK, message, callback);
-	}
-
-	control(message, callback = () => {}) {
-		return this.#write(KIND_CONTROL, Buffer.from(JSON.stringify(message)), callback);
-	}
-
-	/** Ends the writing side once every frame written is out: an `end()` while a write is in flight loses it (Windows). */
-	disconnect() {
-		this.connected = false;
-		this.#ending = true;
-		if (this.#writing === 0) this.#socket.end();
-	}
-}
 
 /**
  * An error as it crosses to the Go side: its message, its stack mapped through the plugin scripts' source maps, and its
