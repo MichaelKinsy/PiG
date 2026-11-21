@@ -167,9 +167,11 @@ func formatClock(lang *Language, at time.Time, options *TimeOptions) (string, er
 		return "", fmt.Errorf("%w: no table for these options", ErrOption)
 	}
 	// ICU's root locale (no data for the tag or the platform's locale): the row of the platform locale's region, digits 0-9.
-	locale := timeLocale{row: rootTimeRow(), zero: '0'}
+	var locale timeLocale
 	if li >= 0 {
 		locale = intlTimeLocaleData[li]
+	} else {
+		locale = timeLocale{row: rootTimeRow(), zero: '0'}
 	}
 	pattern := &intlTimePatterns[intlTimeRows[locale.row][column]]
 	// `format(new Date(ms))` throws a RangeError for a time value outside the Date range (D465).
