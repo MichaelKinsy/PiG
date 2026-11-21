@@ -52,7 +52,7 @@ func TestChildSessionNoResourcesCloseEndsChildExtensionHost(t *testing.T) {
 			t.Fatalf("read pid log: %v", err)
 		}
 		var pids []int
-		for _, line := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
+		for line := range strings.SplitSeq(strings.TrimSpace(string(raw)), "\n") {
 			if line == "" {
 				continue
 			}
