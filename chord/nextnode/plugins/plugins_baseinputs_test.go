@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strconv"
+	"sync"
 	"testing"
 
 	"github.com/evanw/esbuild/pkg/api"
@@ -69,19 +70,37 @@ func TestBaseInputsRecordedSourcesLoadEveryFileWithEsbuildsOwnLoaderAndRecordEac
 		}
 		return texts
 	}
-	plain := built()
+	// Observe the exact paths esbuild resolves and hands to OnLoad in a plain build (returning an empty
+	// OnLoadResult so esbuild still runs its own loader). On Unix behind a linked temp root esbuild resolves
+	// symlinks; on Windows it keeps 8.3 short names (C:\Users\RUNNER~1\...) as given.
+	var wantMu sync.Mutex
+	wantByName := make(map[string]string, len(files))
+	observe := api.Plugin{
+		Name: "observe-esbuild-paths",
+		Setup: func(pb api.PluginBuild) {
+			pb.OnLoad(api.OnLoadOptions{Filter: ".*"}, func(args api.OnLoadArgs) (api.OnLoadResult, error) {
+				if args.Namespace == "file" {
+					wantMu.Lock()
+					wantByName[filepath.Base(args.Path)] = args.Path
+					wantMu.Unlock()
+				}
+				return api.OnLoadResult{}, nil
+			})
+		},
+	}
+	plain := built(observe)
 	recorder := build.NewRecorder()
 	if recorded := built(recorder.Plugin()); !slices.Equal(recorded, plain) {
 		t.Fatalf("recorded outputs differ from plain ones:\n%q\n%q", recorded, plain)
 	}
-	realDir, err := filepath.EvalSymlinks(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
 	inputs := recorder.Inputs()
 	var got, want []string
 	for name := range files {
-		want = append(want, filepath.Join(realDir, name))
+		abs, ok := wantByName[name]
+		if !ok {
+			t.Fatalf("esbuild did not load %s (%v)", name, wantByName)
+		}
+		want = append(want, abs)
 	}
 	got = slices.Sorted(maps.Keys(inputs))
 	slices.Sort(want)
@@ -89,8 +108,9 @@ func TestBaseInputsRecordedSourcesLoadEveryFileWithEsbuildsOwnLoaderAndRecordEac
 		t.Fatalf("inputs = %v, want %v", got, want)
 	}
 	for name, text := range files {
-		if inputs[filepath.Join(realDir, name)] != sha256Hex(text) {
-			t.Errorf("%s: hash = %s", name, inputs[filepath.Join(realDir, name)])
+		abs := wantByName[name]
+		if inputs[abs] != sha256Hex(text) {
+			t.Errorf("%s: hash = %s", name, inputs[abs])
 		}
 	}
 }
