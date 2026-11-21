@@ -168,7 +168,7 @@ func TestScanBatchesReportALoadError(t *testing.T) {
 // orderedLedger is an async-contracts ledger that lists the upstream file ledgerModule ports as ordering-sensitive.
 const orderedLedger = "version = \"1\"\n\n[[files]]\npath = \"packages/agent/src/agent-loop.ts\"\ncontracts = [\"microtask-ordering\"]\n"
 
-// ledgerModule writes a module whose one file ports an upstream file and hands off to a goroutine with no join, with the ledger at test/parity/async-contracts.toml unless present is false.
+// ledgerModule writes a module whose one file ports an upstream file and hands off to a goroutine with no join, with the ledger at test/parity/ledgers/async-contracts.toml unless present is false.
 func ledgerModule(t *testing.T, ledger string, present bool) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -177,7 +177,7 @@ func ledgerModule(t *testing.T, ledger string, present bool) string {
 		"m.go":   "// Ports packages/agent/src/agent-loop.ts\npackage m\n\nfunc Run(f func()) {\n\tgo f()\n}\n",
 	}
 	if present {
-		files["test/parity/async-contracts.toml"] = ledger
+		files["test/parity/ledgers/async-contracts.toml"] = ledger
 	}
 	for name, content := range files {
 		path := filepath.Join(dir, filepath.FromSlash(name))

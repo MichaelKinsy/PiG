@@ -18,7 +18,7 @@ Source of truth:
   are Foundation gates. PORT_MAP remains the file navigation roll-up until
   Foundation I finishes generating its statuses from these ledgers.
 - `test/parity/upstream-sync/v<version>.toml` accounts for every changed tracked source file in a version leap.
-- `test/parity/async-contracts.toml` accounts for Promise/async semantics across the complete pinned upstream source tree.
+- `test/parity/ledgers/async-contracts.toml` accounts for Promise/async semantics across the complete pinned upstream source tree.
 - `test/parity/generated/coverage.md` and the generated block below report verification.
 - `docs/parity/DIVERGENCES.md` records intentional differences.
 

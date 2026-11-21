@@ -136,7 +136,7 @@ func TestInputKeyTracksEveryInput(t *testing.T) {
 	}
 	for _, rel := range []string{
 		"lib/lib_test.go", "lib/extra.go", "go.mod", "docs/parity/PORT_MAP.md", "test/parity/behavior-contracts.toml",
-		"test/parity/interfaces/upstream-v0.0.0.json", "test/parity/interface-closure/autobind/renames.json",
+		"test/parity/interfaces/upstream-v0.0.0.json", "test/parity/interface-closure/autobind/reviewed/renames.json",
 		"test/parity/interface-closure/autobind/holds.json", ".upstream/current/packages/fx/src/types.ts",
 	} {
 		before := key()

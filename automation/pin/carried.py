@@ -302,7 +302,7 @@ def retire_carried_oracle(root: Path = ROOT, *, keep_frozen: bool = False) -> li
         out = re.sub(r",\n\}", "\n}", out)
         json.loads(out)
         return out
-    plan.edit("test/parity/interface-closure/autobind/reviewed-decisions.json", "a reviewed decision whose rationale starts 'Carried ahead of the pin:'", decisions_edit)
+    plan.edit("test/parity/interface-closure/autobind/reviewed/reviewed-decisions.json", "a reviewed decision whose rationale starts 'Carried ahead of the pin:'", decisions_edit)
 
     # The tooling of a run at another Pi commit stays; its comments and the documentation stop naming the retired target.
     named = "the mention of make test-carried-oracles"

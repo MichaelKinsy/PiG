@@ -38,7 +38,7 @@ func (p *Pass) portedSources(pos token.Pos) []string {
 }
 
 // asyncContractsFile is the ledger of the upstream async contracts, relative to the repository root.
-const asyncContractsFile = "test/parity/async-contracts.toml"
+const asyncContractsFile = "test/parity/ledgers/async-contracts.toml"
 
 // orderingLedger is the ordering-sensitive upstream files of one ledger file, or the reason it could not be read.
 type orderingLedger struct {

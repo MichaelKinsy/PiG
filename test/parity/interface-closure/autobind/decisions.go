@@ -14,7 +14,7 @@ import (
 // from it, so a merge or a regeneration of the mapping cannot reset a reviewed decision: the file is an input, never a field the
 // regeneration rewrites. A decision carries the row's upstreamShapeHash and applies only while the upstream shape is unchanged; a changed
 // shape makes the row pending again and its decision awaits re-review.
-const reviewedDecisionsFile = "test/parity/interface-closure/autobind/reviewed-decisions.json"
+const reviewedDecisionsFile = "test/parity/interface-closure/autobind/reviewed/reviewed-decisions.json"
 
 // reviewedDecisions maps an interface ID to its mapping row without the id key.
 type reviewedDecisions map[string]orderedRow

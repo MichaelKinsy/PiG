@@ -221,3 +221,47 @@ func TestGeneratedParityLedgersLiveOutsideTheRootModule(t *testing.T) {
 		}
 	}
 }
+
+// TestCuratedParityLedgersLiveOutsideTheRootModule keeps the moved curated parity ledgers in their data-only directories so they stay out of the root module zip and no writer recreates them at their old paths.
+func TestCuratedParityLedgersLiveOutsideTheRootModule(t *testing.T) {
+	root := filepath.Join("..", "..", "..")
+	files, err := modulehash.TrackedFiles(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		dir    string
+		oldDir string
+		names  []string
+	}{
+		{
+			dir:    "test/parity/ledgers",
+			oldDir: "test/parity",
+			names:  []string{"async-contracts.toml"},
+		},
+		{
+			dir:    "test/parity/interface-closure/autobind/reviewed",
+			oldDir: "test/parity/interface-closure/autobind",
+			names:  []string{"reviewed-decisions.json", "reviewed-types.json", "renames.json"},
+		},
+	}
+	for _, tc := range cases {
+		mod, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(tc.dir), "go.mod"))
+		if err != nil || !strings.HasPrefix(string(mod), dataOnlyMark) {
+			t.Fatalf("%s/go.mod must exist and open with %q (err %v)", tc.dir, dataOnlyMark, err)
+		}
+		for _, name := range tc.names {
+			old := tc.oldDir + "/" + name
+			cur := tc.dir + "/" + name
+			if slices.Contains(files, old) {
+				t.Errorf("%s is tracked: moved to %s", old, cur)
+			}
+			if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(old))); err == nil {
+				t.Errorf("%s exists on disk: moved to %s", old, cur)
+			}
+			if !slices.Contains(files, cur) {
+				t.Errorf("%s is not tracked", cur)
+			}
+		}
+	}
+}

@@ -115,7 +115,7 @@ class RepositoryTests(unittest.TestCase):
             "docs/site/docs/index.md",
             "test/parity/known-gaps.toml",
             "test/parity/behavior-contracts.toml",
-            "test/parity/async-contracts.toml",
+            "test/parity/ledgers/async-contracts.toml",
             "automation/images/ci-parity/Dockerfile",
             "automation/images/ci-parity/metadata.env",
         ):
@@ -1387,9 +1387,9 @@ class LedgerInstallTests(unittest.TestCase):
 
     def test_a_bump_to_a_new_pin_makes_the_generated_ledgers_active(self):
         root = self.run_ledgers(COMMIT)
-        self.assertIn('reviewed = "pending"', (root / "test/parity/async-contracts.toml").read_text())
+        self.assertIn('reviewed = "pending"', (root / "test/parity/ledgers/async-contracts.toml").read_text())
         archived = root / pin_tool.ARCHIVE / ("v" + COMMIT.version) / "async-contracts.toml"
-        self.assertEqual(archived.read_text(), (root / "test/parity/async-contracts.toml").read_text())
+        self.assertEqual(archived.read_text(), (root / "test/parity/ledgers/async-contracts.toml").read_text())
 
     def test_the_fake_test_pin_leaves_the_source_tree_unchanged(self):
         root = self.run_ledgers(COMMIT)
@@ -1399,7 +1399,7 @@ class LedgerInstallTests(unittest.TestCase):
 
     def test_an_override_leaves_the_committed_pins_ledgers_active(self):
         root = self.run_ledgers(TAG)
-        self.assertIn('reviewed = "earlier pin"', (root / "test/parity/async-contracts.toml").read_text())
+        self.assertIn('reviewed = "earlier pin"', (root / "test/parity/ledgers/async-contracts.toml").read_text())
 
 
 class CarryTests(unittest.TestCase):
@@ -1420,7 +1420,7 @@ class CarryTests(unittest.TestCase):
 
     def carry(self, committed, force=False):
         calls = self.calls
-        reviewed = self.root / "test/parity/interface-closure/autobind/reviewed-types.json"
+        reviewed = self.root / "test/parity/interface-closure/autobind/reviewed/reviewed-types.json"
         reviewed.parent.mkdir(parents=True, exist_ok=True)
         reviewed.write_text("original")
 
@@ -1462,7 +1462,7 @@ class CarryTests(unittest.TestCase):
 
     def gaps(self, committed):
         calls = self.calls
-        reviewed = self.root / "test/parity/interface-closure/autobind/reviewed-types.json"
+        reviewed = self.root / "test/parity/interface-closure/autobind/reviewed/reviewed-types.json"
         reviewed.parent.mkdir(parents=True, exist_ok=True)
         reviewed.write_text("stale")
 

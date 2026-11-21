@@ -91,7 +91,7 @@ func currentDenominatorSources() ([]jsonDenominatorSource, []tomlDenominatorSour
 		{dataset: "behavior-input-mapping", path: "test/parity/interfaces/behavior-input-mapping-v" + version + ".json", lists: []jsonList{{key: "mappings", subjectField: "id", statusField: "disposition"}, {key: "renderMappings", subjectField: "id", statusField: "disposition"}}, metadata: []string{"upstreamVersion"}, resolution: "observed"},
 	}
 	tomlSources := []tomlDenominatorSource{
-		{dataset: "async-contract", path: "test/parity/async-contracts.toml", listKey: "files", subjectField: "path", statusField: "disposition", metadata: []string{"version"}, resolution: "observed"},
+		{dataset: "async-contract", path: "test/parity/ledgers/async-contracts.toml", listKey: "files", subjectField: "path", statusField: "disposition", metadata: []string{"version"}, resolution: "observed"},
 		{dataset: "upstream-sync", path: "test/parity/upstream-sync/v" + version + ".toml", listKey: "files", subjectField: "path", statusField: "disposition", metadata: []string{"from", "to"}, resolution: "observed"},
 		{dataset: "behavior-contract", path: "test/parity/behavior-contracts.toml", listKey: "contract", subjectField: "id", statusField: "status", metadata: []string{"upstream_version"}, resolution: "observed"},
 		{dataset: "format-version", path: "test/parity/format-versions.toml", listKey: "fields", subjectField: "id", resolution: "resolved"},
