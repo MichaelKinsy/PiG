@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -39,7 +40,7 @@ func TestStartupMakesTheDirectoryOfANewSessionBeforeAnythingElse(t *testing.T) {
 let message = "ok";
 try { const { SessionManager } = await load("pi-coding-agent/core/session-manager.js"); SessionManager.create(input.cwd, undefined); } catch (error) { message = error.message; }
 emit(message);`, map[string]string{"cwd": cwd}, &want, "PI_CODING_AGENT_DIR="+agentDir)
-	if !strings.HasPrefix(want, "ENOTDIR: not a directory, mkdir '"+agentDir+"/sessions/") {
+	if !strings.HasPrefix(want, "ENOTDIR: not a directory, mkdir '"+filepath.Join(agentDir, "sessions")+string(filepath.Separator)) {
 		t.Fatalf("Pi's SessionManager.create = %q, want ENOTDIR for the session directory under the agent directory", want)
 	}
 	selection, err := resolveStartupSessionSelectionIn(Args{}, cwd, "")
@@ -51,7 +52,7 @@ emit(message);`, map[string]string{"cwd": cwd}, &want, "PI_CODING_AGENT_DIR="+ag
 	if _, err := resolveStartupSessionSelectionIn(Args{}, cwd, explicit); err != nil {
 		t.Fatal(err)
 	}
-	if info, err := os.Stat(explicit); err != nil || info.Mode().Perm() != 0o700 {
+	if info, err := os.Stat(explicit); err != nil || (runtime.GOOS != "windows" && info.Mode().Perm() != 0o700) {
 		t.Fatalf("explicit session directory = %v, %v; want it made with mode 0700", info, err)
 	}
 	if _, err := resolveStartupSessionSelectionIn(Args{NoSession: true}, cwd, ""); err != nil {
@@ -98,7 +99,7 @@ func TestPrintAndRPCModeEndWithNodesMkdirErrorWhereTheAgentDirectoryCannotBeMade
 			want  string
 		}{
 			"no session":              {[]string{"--no-session"}, "ENOTDIR: not a directory, mkdir '<agent>'"},
-			"default session manager": {nil, "ENOTDIR: not a directory, mkdir '<agent>/sessions/--"},
+			"default session manager": {nil, "ENOTDIR: not a directory, mkdir '" + filepath.Join("<agent>", "sessions", "--")},
 		} {
 			t.Run(mode+"/"+name, func(t *testing.T) {
 				stdout, stderr, code := runPigWithUnmakeableAgentDir(t, bin, `{"id":"state","type":"get_state"}`+"\n", append(append([]string{}, row.extra...), args...)...)
