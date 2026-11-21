@@ -91,13 +91,17 @@ func TestNodeExecBetweenLoadAndRegister(t *testing.T) {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
 	cwd := t.TempDir()
+	wantCwd, err := filepath.EvalSymlinks(cwd)
+	if err != nil {
+		t.Fatalf("EvalSymlinks(%q): %v", cwd, err)
+	}
 	for _, packed := range []bool{false, true} {
 		name := "subprocess-node"
 		if packed {
 			name += "-packed"
 		}
 		t.Run(name, func(t *testing.T) {
-			if got, want := runNodeExecProbe(t, cwd, "node-exec-after-load-fixture", "exec-after-load-probe", packed), "resolved:0:after-load:"+cwd; got != want {
+			if got, want := runNodeExecProbe(t, cwd, "node-exec-after-load-fixture", "exec-after-load-probe", packed), "resolved:0:after-load:"+wantCwd; got != want {
 				t.Errorf("exec after load = %q, want %q", got, want)
 			}
 		})
