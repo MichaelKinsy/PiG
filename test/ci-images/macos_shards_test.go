@@ -22,8 +22,10 @@ import (
 // fsnotify gaps) next to the native smoke run: every cmd/pig shard that make
 // test-cli runs on Linux, every extension host shard that make test-subprocess
 // runs on Linux, and the other
-// packages. GitHub runs at most five macOS jobs at a time, so the units share
-// at most five jobs; each unit still runs in its own go test process.
+// packages. GitHub runs at most five macOS jobs at a time, so the units are
+// packed into at most seven jobs (native plus six grouped jobs) so every job
+// stays within 60% of the 40-minute limit on warm caches; each unit still runs
+// in its own go test process.
 func TestMacOSShardsTestTheMacOSSensitivePackages(t *testing.T) {
 	job, ok := verificationJobs(t)["macos"]
 	if !ok {
@@ -49,8 +51,8 @@ func TestMacOSShardsTestTheMacOSSensitivePackages(t *testing.T) {
 	if !slices.Equal(gotUnits, wantUnits) {
 		t.Fatalf("macos units = %v, want each of %v exactly once", gotUnits, wantUnits)
 	}
-	if n := len(planFor(t, "merge_group", "").shards("macos")); n > 5 {
-		t.Errorf("macos has %d jobs; GitHub runs at most 5 macOS jobs at a time", n)
+	if n := len(planFor(t, "merge_group", "").shards("macos")); n > 7 {
+		t.Errorf("macos has %d jobs; want at most 7 (native plus six grouped jobs)", n)
 	}
 	if job.Strategy.FailFast == nil || *job.Strategy.FailFast {
 		t.Error("macos shards must all run when one fails")
@@ -232,22 +234,24 @@ func TestMacOSJobsRunEveryTestOfEveryUnitExactlyOnce(t *testing.T) {
 	}
 }
 
-// macosUnitSeconds is what go test itself took for each unit: the longest of its times in runs 43592372203, 43594615087, 43599788980 and 43599786195 (pull requests of 2026-11-14 on macos-15). extension-host-3 took 1323 s in run
-// 43302835411 (2026-11-12), where these units were first measured; it takes 408 to 445 s now. The three units of "macOS cli-2 cli-8 extension-host-2" took 903, 517 and (cancelled) more than 760 s in run 43599786195, 1.8 to 3 times
-// their other runs (451 to 513, 166 to 198, 287 to 332): a slow runner, left out here. macosJobSetupSeconds is what a job spent besides its units, the checkout, the toolchains, the oracle and compiling: 267 to 272 s in the same runs.
-// The five extension host units are an estimate, not a measurement: 470, 332 and 445 s were measured with three host shards (1247 s together) and five shards hold the same tests, 250 s each if they split evenly. The first full run with five prints the real times to replace these with.
-// Every unit prints its ten slowest tests and the time of each package, so a later full run gives the numbers to replace these with. native is not a unit of macos-units.sh: its job is the smoke run, 13 minutes whole in run 39510928254.
+// macosUnitSeconds is what go test itself takes for each unit on a normal-speed macos-15 runner.
+// extension-host-1 to extension-host-5 and packages are measured from runs 44864086404 (release/v0.8.0) and 44870314130 (canary/win-oracle-080) of 2026-11-21,
+// excluding the slow runner of 44870314130 job 136751895303 (2.1 to 2.8x slower across every step).
+// cli-1 to cli-8 are modelled for the repacked pins in automation/ci/test-shard-weights.txt from the two runs' normal-speed coding/cli total (3845 s across the eight
+// shards, fitted against automation/ci/test-shard-timings/cli.json as 1.79*portable_linux_load + 164 s first-unit Cargo build, split evenly across each pair) and will be
+// replaced by the next full macOS run's report. macosJobSetupSeconds is the warm-cache setup and compile overhead (190 to 272 s measured on main run 44690207820 and
+// 2026-11-14 runs); cold-cache runs add about 200 to 255 s more (sbcl and pi-oracle misses), which stays under 70% of the 40-minute limit when warm jobs stay at or under 60%.
+// native is not a unit of macos-units.sh: its job is the smoke run (15 minutes warm, 19 to 20 minutes cold).
 var macosUnitSeconds = map[string]int{
-	"cli-1": 507, "cli-2": 513, "cli-3": 498, "cli-4": 460, "cli-5": 276, "cli-6": 217, "cli-7": 229, "cli-8": 198,
-	"extension-host-1": 250, "extension-host-2": 250, "extension-host-3": 250, "extension-host-4": 250, "extension-host-5": 250,
-	"packages": 163,
+	"cli-1": 464, "cli-2": 517, "cli-3": 516, "cli-4": 516, "cli-5": 519, "cli-6": 411, "cli-7": 517, "cli-8": 493,
+	"extension-host-1": 364, "extension-host-2": 379, "extension-host-3": 279, "extension-host-4": 343, "extension-host-5": 274,
+	"packages": 123,
 }
 
 const macosJobSetupSeconds = 300
 
-// A macOS job that reaches its limit is cancelled with no failing test, and the run is red for a reason no log names: "macOS cli-1 extension-host-3 packages" held 2086 s of tests under a 40-minute limit when extension-host-3 took 1323 s.
-// So at the measured times every job of the plan keeps a quarter of its limit free. A slow runner is not covered: the cancelled job of run 43599786195 ran its units 1.8 to 3 times slower than the other runs did, and no packing keeps a job
-// under the limit at that factor; this test keeps the plan from being packed past the times it was measured at.
+// A macOS job that reaches its 40-minute limit is cancelled with no failing test (run 44864086404 cli-4 cli-7 extension-host-1; run 44870314130 cli-1 extension-host-3 packages).
+// So at warm-cache times every grouped job of the plan stays at or under 60% of its limit (1440 s of 2400 s), leaving 40% headroom for cold caches and ordinary runner variance.
 func TestMacOSJobsKeepAQuarterOfTheirLimit(t *testing.T) {
 	limit := verificationJobs(t)["macos"].Timeout * 60
 	for _, entry := range planFor(t, "merge_group", "").shards("macos") {
@@ -262,8 +266,8 @@ func TestMacOSJobsKeepAQuarterOfTheirLimit(t *testing.T) {
 			}
 			total += seconds
 		}
-		if total*4 > limit*3 {
-			t.Errorf("macos job %q takes %d s at the measured times (%d s of them setup), more than three quarters of its %d s limit: move a unit to another job in automation/ci/ci-tiers.txt", entry, total, macosJobSetupSeconds, limit)
+		if total*5 > limit*3 {
+			t.Errorf("macos job %q takes %d s at warm-cache times (%d s of them setup), more than 60%% of its %d s limit: move a unit to another job in automation/ci/ci-tiers.txt", entry, total, macosJobSetupSeconds, limit)
 		}
 	}
 }

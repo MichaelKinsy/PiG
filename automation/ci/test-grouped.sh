@@ -393,7 +393,7 @@ case "$MODE" in
       conformance) selected=./test/extension-conformance ;;
     esac
     selected=$(go list "$selected")
-    # subprocess|conformance [<first> <last>]: CI runs the conformance shards in two jobs; make test-conformance runs all of them.
+    # subprocess|conformance [<first> <last>]: CI runs the conformance shards in four jobs; make test-conformance runs all of them.
     if shard_count_get "$selected" >/dev/null; then
       run_sharded_pkg sharded "$SUBPROCESS_PARALLEL" "$selected" "$(shard_count_get "$selected")" "${2:-1}" "${3:-$(shard_count_get "$selected")}"
     elif [[ $# -gt 1 ]]; then
