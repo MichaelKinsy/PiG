@@ -10,6 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
+// Ports packages/coding-agent/src/core/package-manager.ts (NETWORK_TIMEOUT_MS, isOfflineModeEnabled).
 // Network timeout for update checks. Mirrors upstream NETWORK_TIMEOUT_MS
 // (package-manager.ts).
 const UpdateCheckNetworkTimeout = 10 * time.Second
