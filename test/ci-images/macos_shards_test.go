@@ -234,19 +234,18 @@ func TestMacOSJobsRunEveryTestOfEveryUnitExactlyOnce(t *testing.T) {
 	}
 }
 
-// macosUnitSeconds is what go test itself takes for each unit on a normal-speed macos-15 runner after the pre-test Rust warm step has built SharedCargoTargetDir.
+// macosUnitSeconds is what go test itself takes for each unit on a normal-speed macos-15 runner.
 // extension-host-1 to extension-host-5 and packages are measured from runs 44864086404 (release/v0.8.0) and 44870314130 (canary/win-oracle-080) of 2026-11-21,
 // excluding the slow runner of 44870314130 job 136751895303 (2.1 to 2.8x slower across every step).
 // cli-1 to cli-8 are modelled for the repacked pins in automation/ci/test-shard-weights.txt from the two runs' normal-speed coding/cli total (3845 s across the eight
-// shards, fitted against automation/ci/test-shard-timings/cli.json as 1.79*portable_linux_load, with the 164 s single-core first-unit Cargo build removed because the
-// pre-test warm step now builds SharedCargoTargetDir before go test starts; that build moves into macosRustWarmSeconds below). No unit pays a cold Rust SDK Cargo build:
-// automation/ci/test-warm.sh --rust-only warms each distinct target the job uses (cli, subprocess, env-oracle) at default Cargo parallelism before any unit runs (measured
-// 26 s cold on 8-core Linux; budgeted at 60 s per target on macos-15, 84 s at the 1.4x slow-pool factor).
+// shards, fitted against automation/ci/test-shard-timings/cli.json as 1.79*portable_linux_load + 164 s first-unit Cargo build, split evenly across each pair) and will be
+// replaced by the next full macOS run's report. The pre-test warm step (macosRustWarmSeconds below) is expected to remove the 164 s first-unit build, and the model will
+// follow the first macOS run's measurement.
 // macosJobSetupSeconds is the warm-cache setup and compile overhead (190 to 272 s measured on main run 44690207820 and
-// 2026-11-14 runs); cold-cache runs add about 200 to 255 s more (sbcl and pi-oracle misses), which stays under the 40-minute limit even on the 1.4x slow pool when warm jobs
-// stay at or under 60%. native is not a unit of macos-units.sh: its job is the smoke run (15 minutes warm, 19 to 20 minutes cold).
+// 2026-11-14 runs); cold-cache runs add about 200 to 255 s more (sbcl and pi-oracle misses), which stays under 70% of the 40-minute limit when warm jobs stay at or under 60%.
+// native is not a unit of macos-units.sh: its job is the smoke run (15 minutes warm, 19 to 20 minutes cold).
 var macosUnitSeconds = map[string]int{
-	"cli-1": 382, "cli-2": 435, "cli-3": 434, "cli-4": 434, "cli-5": 437, "cli-6": 329, "cli-7": 435, "cli-8": 411,
+	"cli-1": 464, "cli-2": 517, "cli-3": 516, "cli-4": 516, "cli-5": 519, "cli-6": 411, "cli-7": 517, "cli-8": 493,
 	"extension-host-1": 364, "extension-host-2": 379, "extension-host-3": 279, "extension-host-4": 343, "extension-host-5": 274,
 	"packages": 123,
 }

@@ -8,6 +8,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
 )
@@ -17,7 +18,12 @@ func main() {
 		fmt.Fprintln(os.Stderr, "usage: cargocell <sdk-rs dir> <output dir>")
 		os.Exit(2)
 	}
-	if err := runtimecell.WriteRustWarmCell(os.Args[2], os.Args[1]); err != nil {
+	sdk, err := filepath.Abs(os.Args[1])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	if err := runtimecell.WriteRustWarmCell(os.Args[2], sdk); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
