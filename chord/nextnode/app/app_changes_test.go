@@ -100,7 +100,7 @@ func TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer(t *tes
 	}
 	defer served.Release()
 	editEcho(t, s.root, "changed")
-	untilMarks(t, s.app, "the dirty mark", func(m plugins.PluginsState) bool { return len(m.Dirty) == 1 && m.Dirty[0] == "@test/echo" })
+	untilDirty(t, s.app, "@test/echo")
 	result, err := s.app.ApplyChanges(background)
 	if err != nil {
 		t.Fatal(err)
@@ -162,7 +162,7 @@ func TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed(t *testin
 		return rollout(steps, result, ctx)
 	}
 	editEcho(t, s.root, "v2")
-	untilMarks(t, s.app, "the first edit", func(m plugins.PluginsState) bool { return len(m.Dirty) == 1 })
+	untilDirty(t, s.app, "@test/echo")
 	errs := make(chan error, 2)
 	apply := func() {
 		go func() {
