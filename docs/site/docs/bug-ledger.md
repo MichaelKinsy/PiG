@@ -27,6 +27,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-00933e5](#bf-00933e5) | `mcp.json` files that start with a UTF-8 BOM, which Windows PowerShell 5.1 adds when it rewrites a file, load… | PiG's own defect | Windows | 0.5.2 |
 | [BF-00d9a1f](#bf-00d9a1f) | fix(tools): the streamed read pools its chunk buffer; guards for grep allocations and the read fuzz; an… | PiG's own defect | All platforms | Unreleased |
 | [BF-016a19a](#bf-016a19a) | A Chord derive that returns a value no JSON has (a channel, a function) now fails its delivery, which the… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-016ee5f](#bf-016ee5f) | fix(ai): zero-alloc getGeminiMajorVersion, strip build tag on Vertex test, and goimports | PiG's own defect | All platforms | Unreleased |
 | [BF-018a05a](#bf-018a05a) | fix(chord): NetBSD and OpenBSD identities carry their birth time; D540 narrows to DragonFly, Solaris and AIX… | PiG's own defect | macOS | Unreleased |
 | [BF-01a63b9](#bf-01a63b9) | The `/tree` search line now shows a cursor while the selector is focused (Pi #9157, D248) | PiG's own defect | All platforms | Unreleased |
 | [BF-01c9e0b](#bf-01c9e0b) | The frame that the exit key itself asks for is painted inside the exit's drain now, as Pi paints it, not… | PiG's own defect | All platforms | Unreleased |
@@ -2565,6 +2566,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `016a19ac68` (2026-11-02)
 - **Tests:** `chord/next/host/host_batch_test.go::TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit`
 - **Release note:** A Chord derive that returns a value no JSON has (a channel, a function) now fails its delivery, which the host reports as `delivery_failed` while the later frames of the commit are still delivered, as Pi's batch does when diffing throws. The derive's watchers used to receive the non-JSON frame without any report.
+
+### BF-016ee5f
+
+**fix(ai): zero-alloc getGeminiMajorVersion, strip build tag on Vertex test, and goimports**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(ai): zero-alloc getGeminiMajorVersion, strip build tag on Vertex test, and goimports
+- **Root cause:** Avoids 1 allocation in getGeminiMajorVersion so TestHookedRequestHoldsThePayloadOrderWithoutAllocating stays within its ceiling; adds !pig_strip_google_vertex build tag to ai/google_prefixed_ids_test.go; formats with gofmt/goimports and updates pig-go.json (make interface-go).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `016ee5f7d0` (2026-11-21)
+- **Tests:** `ai/google_prefixed_ids_test.go::TestGeminiPrefixedModelIDHelpers`
 
 ### BF-018a05a
 

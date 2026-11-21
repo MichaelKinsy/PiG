@@ -206,6 +206,27 @@
       ]
     },
     {
+      "id": "BF-016ee5f",
+      "title": "fix(ai): zero-alloc getGeminiMajorVersion, strip build tag on Vertex test, and goimports",
+      "symptom": "fix(ai): zero-alloc getGeminiMajorVersion, strip build tag on Vertex test, and goimports",
+      "rootCause": "Avoids 1 allocation in getGeminiMajorVersion so TestHookedRequestHoldsThePayloadOrderWithoutAllocating stays within its ceiling; adds !pig_strip_google_vertex build tag to ai/google_prefixed_ids_test.go; formats with gofmt/goimports and updates pig-go.json (make interface-go).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "016ee5f7d0",
+          "date": "2026-11-21"
+        }
+      ],
+      "tests": [
+        "ai/google_prefixed_ids_test.go::TestGeminiPrefixedModelIDHelpers"
+      ]
+    },
+    {
       "id": "BF-018a05a",
       "title": "fix(chord): NetBSD and OpenBSD identities carry their birth time; D540 narrows to DragonFly, Solaris and AIX…",
       "symptom": "fix(chord): NetBSD and OpenBSD identities carry their birth time; D540 narrows to DragonFly, Solaris and AIX; macOS unit runs the watcher tests",
