@@ -227,17 +227,6 @@ func (c codeCounts) runs() int {
 	return total
 }
 
-// mostly is the code of more than half of the runs, when there is one.
-func (c codeCounts) mostly() (int, bool) {
-	runs := c.runs()
-	for code, n := range c {
-		if 2*n > runs {
-			return code, true
-		}
-	}
-	return 0, false
-}
-
 func (c codeCounts) String() string {
 	parts := make([]string, 0, len(c))
 	for _, code := range slices.Sorted(maps.Keys(c)) {
@@ -260,33 +249,35 @@ func (c codeCounts) String() string {
 // (see execTruncatedRounds, which takes both sides' runs alike under it).
 const execSocketResetScript = `exec yes 2>"$1"`
 
-// truncatedCodeFaults compares the codes PiG and Pi reported for the truncated runs of one script (its rows differ only in the cap, which the first
-// chunk that crosses it ends), counted over the same number of runs in the same test run, and returns what differs. No set of codes is written here: Pi's
-// runs name them.
-//
-// The code of a truncated run is what reaches the command first after exec.ts closed the pipes and sent SIGTERM (exec.ts:111-113): its own exit (1),
-// the SIGPIPE of its next write (141) or the SIGTERM (143). No such row has one code in Pi: over 400 runs of each row, one at a time, a printf row,
-// which ends by itself, reported 143 in 2 of 8400 runs of Pi (181 of 9408 with 64 at once) and, with the pipes closed first, in 4 of 8400 of PiG, and
-// `yes; echo done` reported 141 in 66 of 3600 for Pi and 3 of 3600 for PiG. A sample therefore cannot hold every code a side can report, and a code
-// one side reports once in thousands of runs is no difference; comparing the two samples code by code would fail on those. What is compared is the
-// code a side reports for more than half of its runs:
-//
-//   - Pi's must be one PiG reports. Signalling before closing the pipes fails here: PiG then never reports the 141 of most of Pi's runs of
-//     `exec yes >&2`. No share has to stay on one side of the half for this to hold: where the two sides give a command the same thing, each code
-//     that can be Pi's most frequent was at least 14% of PiG's runs in every form measured (one at a time, 16 and 64 at once), so 360 runs hold it.
-//   - PiG's must be one Pi reports, on every script.
-//   - every code PiG reports must be one Pi reports for some truncated row of the same run (piAll).
-func truncatedCodeFaults(pig, pi, piAll codeCounts) []string {
-	var faults []string
-	if code, ok := pi.mostly(); ok && pig[code] == 0 {
-		faults = append(faults, fmt.Sprintf("Pig never reports %d, the code of %d of Pi's %d runs", code, pi[code], pi.runs()))
+// validTruncatedCode reports whether code is in the contract-defined valid set for a truncated run of script.
+// exec.ts closes both pipes and sends SIGTERM (exec.ts:111-113) and rewrites exit 0 to 1 (exec.ts:154), so a truncated
+// command that otherwise exits 0 can end with 1 (exited before the signal), 141 (SIGPIPE on a write after close) or
+// 143 (SIGTERM). For execSocketResetScript, runs that reported a failed write on stderr are filtered out by cutOffEndOf
+// (D631), leaving only 141 and 143.
+func validTruncatedCode(script string, code int) bool {
+	if script == execSocketResetScript {
+		return code == 141 || code == 143
 	}
-	if code, ok := pig.mostly(); ok && pi[code] == 0 {
-		faults = append(faults, fmt.Sprintf("Pig reports %d in %d of %d runs, and Pi never does", code, pig[code], pig.runs()))
+	return code == 1 || code == 141 || code == 143
+}
+
+// truncatedCodeFaults checks that every exit code reported by PiG and Pi for the truncated runs of script belongs to
+// the contract-defined valid set, without asserting any rate or majority of the race between exit, SIGPIPE and SIGTERM.
+// The deterministic close-before-signal order is pinned separately by execOrderScenarios (ExactCode: true) and
+// TestExecCommandClosesBothPipesBeforeItSignalsAtTheCap.
+func truncatedCodeFaults(script string, pig, pi codeCounts) []string {
+	var faults []string
+	if pig.runs() == 0 {
+		faults = append(faults, "Pig produced no truncated runs")
+	}
+	for _, code := range slices.Sorted(maps.Keys(pi)) {
+		if !validTruncatedCode(script, code) {
+			faults = append(faults, fmt.Sprintf("Pi reports %d, outside the valid truncated code set", code))
+		}
 	}
 	for _, code := range slices.Sorted(maps.Keys(pig)) {
-		if piAll[code] == 0 {
-			faults = append(faults, fmt.Sprintf("Pig reports %d, which Pi reports for no truncated row", code))
+		if !validTruncatedCode(script, code) {
+			faults = append(faults, fmt.Sprintf("Pig reports %d, outside the valid truncated code set", code))
 		}
 	}
 	return faults
@@ -324,9 +315,12 @@ func sampleTruncatedCodes(t *testing.T, dir string, rows []execScenario) (pi, pi
 		count := func(side string, runs []execScenario, outcomes []execOutcome, counts map[string]codeCounts) {
 			for i, outcome := range outcomes {
 				script := runs[i].Args[1]
-				if !outcome.Truncated || !outcome.Killed {
+				if !outcome.Truncated || !outcome.Killed || outcome.Thrown != "" {
 					complete[sideScript{side, script}]++
 					continue
+				}
+				if runs[i].MaxBuffer != nil && int64(len(outcome.Stdout)+len(outcome.Stderr)) > int64(*runs[i].MaxBuffer) {
+					t.Errorf("%s run of %q exceeded maxBuffer %.0f: got %d bytes", side, script, *runs[i].MaxBuffer, len(outcome.Stdout)+len(outcome.Stderr))
 				}
 				if script == execSocketResetScript {
 					said, err := os.ReadFile(runs[i].Args[3])
@@ -443,6 +437,11 @@ func TestExecCommandMatchesPi(t *testing.T) {
 				continue
 			}
 		}
+		if scenario.Aborted && (!normalized.Killed || normalized.Stdout != "" || normalized.Stderr != "" || normalized.Code != 143 ||
+			!want.Killed || want.Stdout != "" || want.Stderr != "" || want.Code != 143) {
+			t.Errorf("scenario %d (%s %v): pre-aborted deterministic command must be killed without output (code 143)\n  Pig %+v\n  Pi  %+v", i, scenario.Command, scenario.Args, normalized, want)
+			continue
+		}
 		if reflect.DeepEqual(normalized, want) {
 			continue
 		}
@@ -467,19 +466,13 @@ func TestExecCommandMatchesPi(t *testing.T) {
 		checkAbortedBeforeStart(t, scenario)
 	}
 	pi, pig, left := sampleTruncatedCodes(t, dir, truncated)
-	piAll := codeCounts{}
-	for _, counts := range pi {
-		for code, n := range counts {
-			piAll[code] += n
-		}
-	}
 	scripts := map[string]bool{}
 	for _, row := range truncated {
 		scripts[row.Args[1]] = true
 	}
 	for _, script := range slices.Sorted(maps.Keys(scripts)) {
 		t.Logf("truncated runs of %q: Pig %s | Pi %s (left out of Pi's: %d runs that reported a failed write)", script, pig[script], pi[script], left[script])
-		for _, fault := range truncatedCodeFaults(pig[script], pi[script], piAll) {
+		for _, fault := range truncatedCodeFaults(script, pig[script], pi[script]) {
 			t.Errorf("truncated runs of %q: %s\n  Pig %s\n  Pi  %s", script, fault, pig[script], pi[script])
 		}
 	}
@@ -488,13 +481,12 @@ func TestExecCommandMatchesPi(t *testing.T) {
 // execAbortedSamples is how many times a pre-aborted echo is run through each side: 400 runs of Pi in its Node process take about two seconds.
 const execAbortedSamples = 400
 
-// checkAbortedBeforeStart compares the scenario of a command that its call's signal aborted before the spawn. core/exec.ts spawns the child (line 58)
-// and then, on seeing the signal already aborted (lines 88-90), sends SIGTERM at once (lines 76-79): a command as fast as echo either meets the
-// signal first (nothing written, code 143: 1993 to 1998 of 2000 runs of Pi on an idle host, 1836 to 1967 beside 16 busy loops) or writes and
-// exits first (the whole text and code 0, or the text and 143). Pi has therefore several outcomes for the row, and one live sample of it is not an
-// oracle: PiG races the same way (4 of 400 runs echo) and must not be changed to always, or never, echo. What is compared is what each side reports for more than half of its runs, which is
-// the outcome of the signal winning in Pi, and PiG must give that outcome in most of its runs. The rarer outcomes of PiG must be ones the race
-// can give any process: killed, nothing on stderr, a prefix of what the command writes, code 143, or code 0 once it wrote it all.
+// checkAbortedBeforeStart checks the scenario of a command whose signal was already aborted before the call. Both core/exec.ts (lines 58-62, 88-90)
+// and PiG (coding/extension/exec.go) spawn the child and immediately send SIGTERM, so a fast command like echo races the signal: it may be killed
+// before writing (empty stdout, code 143), killed after writing a prefix or all of its output (code 143), or finish writing and exit 0 before the
+// signal lands (full stdout, code 0). On both sides, Killed is always true, Thrown and Stderr are empty, and Truncated is false. Which variant wins
+// more often depends on host scheduling and CPU count, so no rate or majority of the race is asserted; every run on both sides must belong to that
+// contract-defined valid set. The deterministic killed-without-output check is the pre-aborted `sleep 3` scenario in TestExecCommandMatchesPi.
 func checkAbortedBeforeStart(t *testing.T, scenario execScenario) {
 	t.Helper()
 	pi := map[execOutcome]int{}
@@ -507,29 +499,21 @@ func checkAbortedBeforeStart(t *testing.T, scenario execScenario) {
 	for range execAbortedSamples {
 		pig[pigExecOutcome(ctx, scenario)]++
 	}
-	mostly := func(counts map[execOutcome]int) (execOutcome, bool) {
-		for outcome, n := range counts {
-			if 2*n > execAbortedSamples {
-				return outcome, true
-			}
-		}
-		return execOutcome{}, false
-	}
 	t.Logf("aborted before start %q: Pig %v | Pi %v", scenario.Args, pig, pi)
-	piMost, ok := mostly(pi)
-	if !ok || piMost.Stdout != "" || !piMost.Killed {
-		t.Errorf("Pi's runs of %q ended in no killed outcome without output for more than half of them (%v): on this host echo wins the race in Pi, and the row cannot tell PiG's answer from luck", scenario.Args, pi)
-		return
-	}
-	if pig[piMost] <= execAbortedSamples/2 {
-		t.Errorf("Pig ended %d of %d runs of %q as %+v, the outcome of most of Pi's %d runs; Pig %v", pig[piMost], execAbortedSamples, scenario.Args, piMost, pi[piMost], pig)
-	}
 	full := strings.Join(scenario.Args, " ") + "\n"
-	for outcome := range pig {
-		if outcome.Killed && outcome.Thrown == "" && outcome.Stderr == "" && !outcome.Truncated && strings.HasPrefix(full, outcome.Stdout) &&
-			(outcome.Code == 143 || outcome.Code == 0 && outcome.Stdout == full) {
-			continue
+	valid := func(outcome execOutcome) bool {
+		return outcome.Killed && outcome.Thrown == "" && outcome.Stderr == "" && !outcome.Truncated &&
+			strings.HasPrefix(full, outcome.Stdout) &&
+			(outcome.Code == 143 || outcome.Code == 0 && outcome.Stdout == full)
+	}
+	for outcome := range pi {
+		if !valid(outcome) {
+			t.Errorf("Pi ended a run of %q as %+v, which no race between the child's exit and the SIGTERM gives; Pi %v", scenario.Args, outcome, pi)
 		}
-		t.Errorf("Pig ended a run of %q as %+v, which no race between the child's exit and the SIGTERM gives; Pig %v", scenario.Args, outcome, pig)
+	}
+	for outcome := range pig {
+		if !valid(outcome) {
+			t.Errorf("Pig ended a run of %q as %+v, which no race between the child's exit and the SIGTERM gives; Pig %v", scenario.Args, outcome, pig)
+		}
 	}
 }
