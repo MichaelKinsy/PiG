@@ -215,8 +215,8 @@ var impactRules = []impactRule{
 	{wholeWords(`sorted`, `(re)?order(s|ed|ing)?`, `(un)?escaped`, `wrong(ly)?`, `incorrect(ly)?`, `instead of`), "Wrong output or ordering"},
 }
 
-// classifiedText returns the user-facing portion of a note for impact and platform classification, with HTML comments (<!-- ... -->, including multi-line) stripped outside Markdown code spans. Code spans are kept whole so literal comment examples remain part of the classified text, and an unterminated <!-- fails open and keeps the remaining text.
-func classifiedText(note string) string {
+// stripHTMLComments removes HTML comments (<!-- ... -->, including multi-line) outside Markdown code spans. Code spans are kept whole so literal comment examples remain user text, and an unterminated <!-- fails open and keeps the remaining text.
+func stripHTMLComments(note string) string {
 	if !strings.Contains(note, "<!--") {
 		return note
 	}
@@ -268,7 +268,7 @@ func classifiedText(note string) string {
 }
 
 func impactOf(note string) string {
-	text := classifiedText(note)
+	text := stripHTMLComments(note)
 	for _, r := range impactRules {
 		if r.re.MatchString(text) {
 			return r.label
@@ -290,7 +290,7 @@ var platformWords = []struct {
 }
 
 func platformOf(note string) string {
-	text := classifiedText(note)
+	text := stripHTMLComments(note)
 	var names []string
 	for _, p := range platformWords {
 		if p.re.MatchString(text) {

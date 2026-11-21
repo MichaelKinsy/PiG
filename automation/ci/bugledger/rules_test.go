@@ -624,3 +624,25 @@ func TestClassifyIgnoresHTMLComments(t *testing.T) {
 		t.Errorf("platformOf(%q) = %q, want %q", unterminated, got, "Windows, macOS")
 	}
 }
+
+// Non-marker HTML comments in a changelog bullet (such as <!-- evidence: ... -->) must be dropped from the published releaseNote while keeping code spans whole and failing open on unterminated <!--.
+func TestPublishedReleaseNoteDropsHTMLComments(t *testing.T) {
+	text := "### Fixed\n\n" +
+		"- On Windows, X was lost. <!-- fix: 1234567890 --> <!-- evidence: proven red on Linux by T -->\n" +
+		"- On macOS, a line with `<!-- fix: abc -->` typed in a prompt was dropped. <!-- evidence: checked on Linux -->\n" +
+		"- On Windows, an unclosed <!-- comment mentions macOS.\n"
+	bs := fixedBullets(text, "0.4.1", true)
+	if len(bs) != 3 {
+		t.Fatalf("len(bs) = %d, want 3", len(bs))
+	}
+	want := []string{
+		"On Windows, X was lost.",
+		"On macOS, a line with `<!-- fix: abc -->` typed in a prompt was dropped.",
+		"On Windows, an unclosed <!-- comment mentions macOS.",
+	}
+	for i, w := range want {
+		if bs[i].Text != w {
+			t.Errorf("bs[%d].Text = %q, want %q", i, bs[i].Text, w)
+		}
+	}
+}

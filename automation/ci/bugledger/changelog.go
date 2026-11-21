@@ -44,26 +44,74 @@ var (
 	testsMarker = regexp.MustCompile(`\s*<!--\s*tests:\s*(.+?)\s*-->`)
 )
 
-// splitFixMarker removes every fix marker from a bullet and returns the commits they name.
-func splitFixMarker(s string) (string, []string) {
-	var fix []string
-	for _, m := range fixMarker.FindAllStringSubmatch(s, -1) {
-		for h := range strings.FieldsFuncSeq(m[1], func(r rune) bool { return r == ',' || r == ' ' }) {
-			fix = append(fix, h)
+// replaceOutsideCodeSpans applies fn to each segment of s outside Markdown code spans, keeping code spans verbatim.
+func replaceOutsideCodeSpans(s string, fn func(string) string) string {
+	if !strings.Contains(s, "`") {
+		return fn(s)
+	}
+	var b strings.Builder
+	b.Grow(len(s))
+	plain := 0
+	for i := 0; i < len(s); {
+		if s[i] != '`' {
+			i++
+			continue
+		}
+		start := i
+		for i < len(s) && s[i] == '`' {
+			i++
+		}
+		delim := i - start
+		for j := i; j < len(s); {
+			if s[j] != '`' {
+				j++
+				continue
+			}
+			k := j
+			for k < len(s) && s[k] == '`' {
+				k++
+			}
+			if k-j == delim {
+				b.WriteString(fn(s[plain:start]))
+				b.WriteString(s[start:k])
+				i, plain = k, k
+				break
+			}
+			j = k
 		}
 	}
-	return fixMarker.ReplaceAllString(s, ""), fix
+	b.WriteString(fn(s[plain:]))
+	return b.String()
 }
 
-// splitStated removes the cause and tests markers from a bullet and returns what they state. Of several cause markers the first counts.
+// splitFixMarker removes every fix marker from a bullet outside Markdown code spans and returns the commits they name.
+func splitFixMarker(s string) (string, []string) {
+	var fix []string
+	out := replaceOutsideCodeSpans(s, func(seg string) string {
+		for _, m := range fixMarker.FindAllStringSubmatch(seg, -1) {
+			for h := range strings.FieldsFuncSeq(m[1], func(r rune) bool { return r == ',' || r == ' ' }) {
+				fix = append(fix, h)
+			}
+		}
+		return fixMarker.ReplaceAllString(seg, "")
+	})
+	return out, fix
+}
+
+// splitStated removes the cause and tests markers from a bullet outside Markdown code spans and returns what they state. Of several cause markers the first counts.
 func splitStated(s string) (text, cause string, tests []string) {
-	if m := causeMarker.FindStringSubmatch(s); m != nil {
-		cause = normalizeBullet(m[1])
-	}
-	for _, m := range testsMarker.FindAllStringSubmatch(s, -1) {
-		tests = append(tests, testList(m[1])...)
-	}
-	return testsMarker.ReplaceAllString(causeMarker.ReplaceAllString(s, ""), ""), cause, tests
+	out := replaceOutsideCodeSpans(s, func(seg string) string {
+		if cause == "" {
+			if m := causeMarker.FindStringSubmatch(seg); m != nil {
+				cause = normalizeBullet(m[1])
+			}
+		}
+		for _, m := range testsMarker.FindAllStringSubmatch(seg, -1) {
+			tests = append(tests, testList(m[1])...)
+		}
+		return testsMarker.ReplaceAllString(causeMarker.ReplaceAllString(seg, ""), "")
+	})
+	return out, cause, tests
 }
 
 func normalizeBullet(s string) string { return strings.TrimSpace(spaceRun.ReplaceAllString(s, " ")) }
@@ -126,6 +174,7 @@ func (s *scanner) flush() {
 	if s.cur != nil {
 		text, fix := splitFixMarker(s.cur.String())
 		text, cause, tests := splitStated(text)
+		text = stripHTMLComments(text)
 		s.out = append(s.out, bullet{Text: normalizeBullet(text), Fix: fix, Cause: cause, Tests: tests, Version: s.curVer, Added: s.curAdd, Section: s.curSec})
 		s.cur = nil
 	}
