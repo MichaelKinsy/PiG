@@ -1,6 +1,7 @@
 package tui
 
 // pi: packages/coding-agent/src/modes/interactive/components/tool-execution.ts
+// pi: packages/coding-agent/src/core/tools/renderers/index.ts
 
 import (
 	"encoding/json"
