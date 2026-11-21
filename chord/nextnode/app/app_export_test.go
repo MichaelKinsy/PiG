@@ -7,8 +7,10 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -145,32 +147,185 @@ func TestAppExportsWithoutAWorkerUnderItsLockAHoldArrivingMeanwhileStartsTheWork
 	if status := workerStatus(t, found, "project|p1"); status != "" {
 		t.Fatalf("status before the export = %q", status)
 	}
-	var before atomic.Bool
+	lockName := workerLock(s.app.options.Name, s.dataDir, address.Key)
+	// Prove by construction that a worker waits on the address's process lock before starting: hold p1's lock directly, start a
+	// hold on p1, and concurrently start and reach `running` on unlocked sibling addresses p2 and p3 (no sleep or arbitrary wait).
+	// While p1's lock is held, p1 must remain `starting` and never reach `running` even after p2 and p3 have booted to `running`;
+	// once p1's lock is released, p1 finishes starting.
+	directLock, err := acquireProcessLock(lockName, background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var directHeld atomic.Bool
+	directHeld.Store(true)
+	var releaseDirect sync.Once
+	releaseDirectLock := func() error {
+		var releaseErr error
+		releaseDirect.Do(func() {
+			directHeld.Store(false)
+			releaseErr = releaseProcessLock(directLock)
+		})
+		return releaseErr
+	}
 	done := make(chan struct{})
-	starting, running, watching := observe(t, found, "project|p1", done)
-	archive := filepath.Join(t.TempDir(), "p1.tar")
-	exported := make(chan error, 1)
+	var ranWhileDirectLocked atomic.Bool
+	starting, running, watching := observe(t, found, "project|p1", done, func(status string) {
+		if status == "running" && directHeld.Load() {
+			ranWhileDirectLocked.Store(true)
+		}
+	})
+	heldDirect := make(chan *host.Reference, 1)
+	heldDirectDone := make(chan struct{})
 	go func() {
-		err := s.app.ExportData(address, archive, background)
-		// What the worker did while the export ran is what the watcher has seen by now.
-		before.Store(running.Load())
-		exported <- err
+		defer close(heldDirectDone)
+		reference, err := s.app.Host.Get(background, notes, delta.JsonObjectOf("id", "p1"), host.GetOptions{})
+		if err != nil {
+			t.Error(err)
+		}
+		heldDirect <- reference
 	}()
-	held := make(chan *host.Reference, 1)
+	// Cleanup runs LIFO: releaseDirectLock runs before waiting for heldDirectDone so an early failure never deadlocks.
+	t.Cleanup(func() {
+		<-heldDirectDone
+		select {
+		case ref := <-heldDirect:
+			if ref != nil {
+				ref.Release()
+			}
+		default:
+		}
+	})
+	t.Cleanup(func() { _ = releaseDirectLock() })
+	awaitStatus(t, found, "project|p1", func(status string) bool { return status == "starting" || status == "running" })
+	if workerStatus(t, found, "project|p1") == "starting" {
+		starting.Store(true)
+	}
+	// Boot two unlocked sibling workers (p2, p3) sequentially to `running` while p1's lock is held: a worker that skipped
+	// ProcessLock boots concurrently with p2 and p3 and reaches `running` / resolves heldDirect well before both finish.
+	for _, sibling := range []string{"p2", "p3"} {
+		other := holdNotes(t, s, sibling)
+		awaitStatus(t, found, "project|"+sibling, func(status string) bool { return status == "running" })
+		write(t, other, "sibling")
+		other.Release()
+		if err := found.Stop(project.Address(delta.JsonObjectOf("id", sibling)), background); err != nil {
+			t.Fatal(err)
+		}
+		if err := found.Retry(project.Address(delta.JsonObjectOf("id", sibling)), background); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Verify p1's Host.Get has not resolved while directLock is held, and its status is still `starting`, not `running`.
+	select {
+	case ref := <-heldDirect:
+		if ref != nil {
+			ref.Release()
+		}
+		t.Fatal("the worker ran while its lock was held")
+	default:
+	}
+	if workerStatus(t, found, "project|p1") == "running" || ranWhileDirectLocked.Load() {
+		t.Fatal("the worker ran while its lock was held")
+	}
+	if err := releaseDirectLock(); err != nil {
+		t.Fatal(err)
+	}
+	refDirect := <-heldDirect
+	if refDirect == nil {
+		return
+	}
+	if got := member(t, refDirect, "text"); got != "one" {
+		refDirect.Release()
+		t.Fatalf("text = %v", got)
+	}
+	refDirect.Release()
+	awaitStatus(t, found, "project|p1", func(status string) bool { return status == "running" })
+	close(done)
+	<-watching
+	if ranWhileDirectLocked.Load() {
+		t.Fatal("the worker ran while its lock was held")
+	}
+	if !starting.Load() || !running.Load() {
+		t.Fatalf("direct-lock hold: worker was starting %v, running %v", starting.Load(), running.Load())
+	}
+	// Stop and clear the worker again, then run the full ExportData + concurrent Host.Get scenario: ExportData holds the same
+	// process lock across PackData, and a hold arriving once the export holds the lock enters `starting` and reaches `running`
+	// only after PackData has placed the archive and ExportData has released the lock.
+	if err := found.Stop(address, background); err != nil {
+		t.Fatal(err)
+	}
+	if err := found.Retry(address, background); err != nil {
+		t.Fatal(err)
+	}
+	if status := workerStatus(t, found, "project|p1"); status != "" {
+		t.Fatalf("status before the export = %q", status)
+	}
+	archiveDir := t.TempDir()
+	archive := filepath.Join(archiveDir, "p1.tar")
+	doneExport := make(chan struct{})
+	var ranWhileExportLocked atomic.Bool
+	// PackData renames archive into place strictly before exportWorker calls lock.Release(); seeing `running` while archive does
+	// not yet exist means the worker ran while the export still held its lock. Re-checking os.Stat(archive) after seeing `running`
+	// avoids the post-release race where ExportData releases the lock and the worker becomes `running` before ExportData returns.
+	startingExport, runningExport, watchingExport := observe(t, found, "project|p1", doneExport, func(status string) {
+		if status == "running" {
+			if _, err := os.Stat(archive); errors.Is(err, os.ErrNotExist) {
+				ranWhileExportLocked.Store(true)
+			}
+		}
+	})
+	exported := make(chan error, 1)
+	exportedDone := make(chan struct{})
 	go func() {
+		defer close(exportedDone)
+		exported <- s.app.ExportData(address, archive, background)
+	}()
+	t.Cleanup(func() { <-exportedDone })
+	// Wait until PackData has entered packStores (creating its ".chord-export-*" staging directory inside archiveDir), which only
+	// happens after exportWorker acquires the address's process lock. Unlike a ProcessLock loop, this never contends with
+	// ExportData for the lock. Once packing is under way, probe the lock once to prove ExportData holds it.
+	awaitExportPacking(t, archiveDir, archive, exported)
+	probeCtx, cancelProbe := context.WithTimeout(background, 20*time.Millisecond)
+	probeLock, probeErr := acquireProcessLock(lockName, probeCtx)
+	cancelProbe()
+	if probeErr == nil {
+		_ = releaseProcessLock(probeLock)
+		if _, statErr := os.Stat(archive); errors.Is(statErr, os.ErrNotExist) {
+			t.Fatal("export started packing without holding its worker lock")
+		}
+	} else if probeCtx.Err() == nil {
+		t.Fatalf("probing worker lock: %v", probeErr)
+	}
+	held := make(chan *host.Reference, 1)
+	heldDone := make(chan struct{})
+	go func() {
+		defer close(heldDone)
 		reference, err := s.app.Host.Get(background, notes, delta.JsonObjectOf("id", "p1"), host.GetOptions{})
 		if err != nil {
 			t.Error(err)
 		}
 		held <- reference
 	}()
-	// The hold starts the worker only after the export released the lock: the worker was `starting` (waiting for the lock), never
-	// `running`, while the export ran.
+	t.Cleanup(func() {
+		<-heldDone
+		select {
+		case ref := <-held:
+			if ref != nil {
+				ref.Release()
+			}
+		default:
+		}
+	})
+	awaitStatus(t, found, "project|p1", func(status string) bool { return status == "starting" || status == "running" })
+	switch workerStatus(t, found, "project|p1") {
+	case "starting":
+		startingExport.Store(true)
+	case "running":
+		if _, err := os.Stat(archive); errors.Is(err, os.ErrNotExist) {
+			ranWhileExportLocked.Store(true)
+		}
+	}
 	if err := <-exported; err != nil {
 		t.Fatal(err)
-	}
-	if before.Load() {
-		t.Fatal("the worker ran while the export held its lock")
 	}
 	reference := <-held
 	if reference == nil {
@@ -180,18 +335,55 @@ func TestAppExportsWithoutAWorkerUnderItsLockAHoldArrivingMeanwhileStartsTheWork
 	if got := member(t, reference, "text"); got != "one" {
 		t.Fatalf("text = %v", got)
 	}
-	close(done)
-	<-watching
-	// The hold starts the worker (`starting`) while the export holds its lock; it runs only after it released it: the hold's reference
-	// is live now, so the worker ran once the export was done.
-	if !starting.Load() || !running.Load() {
-		t.Fatalf("the worker was starting %v, running %v", starting.Load(), running.Load())
+	awaitStatus(t, found, "project|p1", func(status string) bool { return status == "running" })
+	close(doneExport)
+	<-watchingExport
+	if ranWhileExportLocked.Load() {
+		t.Fatal("the worker ran while the export held its lock")
+	}
+	if !startingExport.Load() || !runningExport.Load() {
+		t.Fatalf("the worker was starting %v, running %v", startingExport.Load(), runningExport.Load())
 	}
 }
 
-// observe watches the status of the worker at key until done is closed: whether it was ever `starting` and `running`. The first
-// `running` frame must come after the export finished; the caller checks that through the order of its own steps.
-func observe(t *testing.T, found *workers.Workers, key string, done <-chan struct{}) (starting, running *atomic.Bool, finished <-chan struct{}) {
+func acquireProcessLock(name string, ctx context.Context) (*workers.ProcessLockHandle, error) {
+	return workers.ProcessLock(name, ctx)
+}
+
+func releaseProcessLock(lock *workers.ProcessLockHandle) error {
+	return lock.Release()
+}
+
+// awaitExportPacking waits until PackData has entered packStores (creating its ".chord-export-*" staging directory inside
+// archiveDir), which only happens after exportWorker acquires the address's process lock.
+func awaitExportPacking(t *testing.T, archiveDir, archive string, exported <-chan error) {
+	t.Helper()
+	deadline := time.Now().Add(30 * time.Second)
+	for time.Now().Before(deadline) {
+		entries, err := os.ReadDir(archiveDir)
+		if err == nil {
+			for _, entry := range entries {
+				if strings.HasPrefix(entry.Name(), ".chord-export-") {
+					return
+				}
+			}
+		}
+		if _, err := os.Stat(archive); err == nil {
+			t.Fatal("export finished without holding its worker lock")
+		}
+		select {
+		case exportErr := <-exported:
+			t.Fatalf("export ended before packing: %v", exportErr)
+		default:
+		}
+		runtime.Gosched()
+	}
+	t.Fatal("timed out waiting for export to start packing")
+}
+
+// observe watches the status of the worker at key until done is closed: whether it was ever `starting` and `running`. Optional
+// hooks run on each observed status in the watcher goroutine.
+func observe(t *testing.T, found *workers.Workers, key string, done <-chan struct{}, hooks ...func(string)) (starting, running *atomic.Bool, finished <-chan struct{}) {
 	t.Helper()
 	starting, running = new(atomic.Bool), new(atomic.Bool)
 	changed := make(chan struct{}, 1)
@@ -216,16 +408,24 @@ func observe(t *testing.T, found *workers.Workers, key string, done <-chan struc
 	go func() {
 		defer close(ended)
 		defer func() { _, _ = handle.Stop() }()
-		for {
-			switch workerStatus(t, found, key) {
+		record := func() {
+			status := workerStatus(t, found, key)
+			switch status {
 			case "starting":
 				starting.Store(true)
 			case "running":
 				running.Store(true)
 			}
+			for _, hook := range hooks {
+				hook(status)
+			}
+		}
+		for {
+			record()
 			select {
 			case <-changed:
 			case <-done:
+				record()
 				return
 			case <-halt:
 				return
