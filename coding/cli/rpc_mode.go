@@ -31,6 +31,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/rpcclient"
 	json "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/handleryield"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 	"github.com/MichaelKinsy/PiG/internal/viewcarrier"
@@ -470,6 +471,10 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 				return
 			}
 			terminateProcesses()
+			// Pi rpc-mode.ts:743-745 (31b407dc63, #11889) kills tracked detached shells right before process.exit:
+			// dispose() only cancels a running `bash` command asynchronously, which races os.Exit and leaves the
+			// shell and its descendants running.
+			tools.KillTrackedDetachedChildren()
 			stopGCPolicy()
 			// PIG_PROFILE files are written here because os.Exit skips main's deferred stop; unset, this is a no-op.
 			stopProfiles()

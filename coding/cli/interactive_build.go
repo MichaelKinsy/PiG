@@ -7,6 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 )
 
 // interactiveRuntime adapts *coding.Runtime to the Session replacement contract of InteractiveMode.
@@ -61,6 +62,9 @@ func exitAtDrainedQuit(session *coding.Session) {
 		if host := session.ExtensionHost(); host != nil {
 			host.TerminateProcesses()
 		}
+		// Pi interactive-mode.ts:4569-4571 (31b407dc63, #11889) kills tracked detached shells right before process.exit:
+		// a drained quit skips InteractiveMode.Stop, so a running `!` command would otherwise outlive exitProcess(0).
+		tools.KillTrackedDetachedChildren()
 		exitProcess(0)
 	}()
 }

@@ -52,9 +52,7 @@ func KillTrackedDetachedChildren() {
 	clear(trackedDetachedChildren.processes)
 	trackedDetachedChildren.mu.Unlock()
 	trackedDetachedChildren.spawning.Unlock()
-	for _, process := range processes {
-		_ = killProcessGroup(process)
-	}
+	killTrackedProcessGroups(processes)
 	for _, cleanup := range exitCleanups() {
 		cleanup()
 	}

@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -63,5 +64,22 @@ func TestTaskkillSpawnFailurePort(t *testing.T) {
 			}
 			fmt.Printf("TASKKILL %s\n", data)
 		})
+	}
+}
+
+// TestTaskkillCommandContextAllPIDs verifies the multi-PID System32 taskkill
+// invocation used by the Windows exit path (Pi 31b407dc63, #11889).
+func TestTaskkillCommandContextAllPIDs(t *testing.T) {
+	t.Setenv("SystemRoot", `D:\CustomWindows`)
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	command := newTaskkillCommandContext(ctx, 1234, 5678)
+	wantPath := filepath.Join(`D:\CustomWindows`, "System32", "taskkill.exe")
+	wantArgs := []string{wantPath, "/F", "/T", "/PID", "1234", "/PID", "5678"}
+	if command.Path != wantPath || !slices.Equal(command.Args, wantArgs) {
+		t.Fatalf("command = %q %q, want %q %q", command.Path, command.Args, wantPath, wantArgs)
+	}
+	if command.Stdin != nil || command.Stdout != nil || command.Stderr != nil {
+		t.Fatal("taskkill does not ignore stdio")
 	}
 }
