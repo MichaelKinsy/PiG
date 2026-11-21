@@ -1,0 +1,56 @@
+from = "1.5.2"
+to = "1.5.2+be269f57"
+# Pi be269f57b1b707399edd86f5f718d1a907ffea8b (2026-11-20): fix(ai): resolve Bedrock SSO credentials through HTTPS_PROXY (#12365, fixes #12353).
+
+[[files]]
+path = "packages/ai/src/api/bedrock-converse-stream.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/providers/bedrock/bedrock_proxy_scope_test.go#TestBedrockProxyIsTheBaseURLsAndOnlyTheRuntimeAndSTSUseIt"]
+rationale = "be269f57b1 (#12365, fixes #12353): when a proxy is resolved for model.baseUrl, Bedrock now also routes AWS SSO (GetRoleCredentials) and SSO OIDC (CreateToken) credential requests through the runtime proxy handler, matching Pi's credentialDefaultProvider clientConfig.requestHandler. In loadBedrockConfig (ai/providers/bedrock/bedrock.go), awsconfig.WithSSOProviderOptions wraps the SSO client with bedrockProxiedSSO and awsconfig.WithSSOTokenProviderOptions attaches runtimeHTTPClient to ssooidc.Options, while IMDS, container credentials, credential_process, bearer tokens, AWS_BEDROCK_SKIP_AUTH, and static/env keys keep their direct/unproxied behavior."
+oracle = "carried: be269f57b1: packageFile backport in automation/gen/pi-post-release-backports.mjs patches pi-ai/api/bedrock-converse-stream.js in the installed oracle."
+
+[[files]]
+path = "packages/ai/test/bedrock-proxy-credentials.test.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:ai/providers/bedrock/bedrock_proxy_scope_test.go#TestBedrockProxyIsTheBaseURLsAndOnlyTheRuntimeAndSTSUseIt"]
+rationale = "be269f57b1 (#12365): ported as subtests in TestBedrockProxyIsTheBaseURLsAndOnlyTheRuntimeAndSTSUseIt covering both legacy SSO GetRoleCredentials and sso_session OIDC CreateToken refresh through a local proxy with unresolvable AWS_ENDPOINT_URL_SSO and AWS_ENDPOINT_URL_SSO_OIDC, plus NO_PROXY direct checks."
+
+[[files]]
+path = "packages/ai/test/bedrock-credentials.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/providers/bedrock/bedrock_proxy_scope_test.go#TestBedrockProxyIsTheBaseURLsAndOnlyTheRuntimeAndSTSUseIt"]
+rationale = "be269f57b1 (#12365): explicit ambient AWS access keys keep precedence when a proxy is set; in PiG loadBedrockConfig sets StaticCredentialsProvider for ambient access keys before LoadDefaultConfig resolves profiles."
+
+[[files]]
+path = "packages/ai/package.json"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "be269f57b1 (#12365): promotes @aws-sdk/credential-provider-node from transitive dependency of @aws-sdk/client-bedrock-runtime to a direct dependency of pi-ai. PiG uses the vendored Go AWS SDK and has no npm dependency."
+oracle = "not carried: the oracle's frozen closure already installs @aws-sdk/credential-provider-node (3.972.95) in pi-coding-agent/node_modules, and published manifests follow the pin until the re-pin."
+
+[[files]]
+path = "package-lock.json"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "be269f57b1 (#12365): workspace lock update for the direct @aws-sdk/credential-provider-node dependency. PiG's Go module has no npm workspace lock."
+oracle = "not carried: the oracle's frozen closure already installs @aws-sdk/credential-provider-node (3.972.95) in pi-coding-agent/node_modules."
+
+[[files]]
+path = "packages/coding-agent/install-lock/package-lock.json"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "be269f57b1 (#12365): install lock update for the direct @aws-sdk/credential-provider-node dependency. PiG ships no npm install lock."
+oracle = "not carried: the oracle installs its frozen closure, which already contains @aws-sdk/credential-provider-node (3.972.95)."
+
+[[files]]
+path = "packages/ai/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "be269f57b1 (#12365): Pi's package changelog entry. PiG's user-visible change is its own changelog.d fragment."

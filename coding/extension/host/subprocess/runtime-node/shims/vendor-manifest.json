@@ -7252,7 +7252,7 @@
         "integrity": "sha512-2tWPSnV3qzfiDIY3aWluBag3vC++Vs+VsXt/UquSU5onPMohPih72FUhIhaqmDdMYubOgB3Byl9uF4Vk40JLvQ=="
       },
       "source": "dist/api/bedrock-converse-stream.js",
-      "sourceSha256": "c71b8b3e960702a13a380c5d33c260b346c584a97290ab498498371c2d2ab433",
+      "sourceSha256": "89bea7d02e33aa2fb630fe270702b7d7519a1f43f6b1f6af79dabdb09b3e8a9d",
       "sha256": "fe555f99450a9e6125a45a978d049ecfca265f9f3ae4bcd6b9088173a5253e90",
       "rewrite": "D74 host API leaf"
     },

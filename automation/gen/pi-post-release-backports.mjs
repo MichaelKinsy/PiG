@@ -2862,6 +2862,42 @@ patch("9a7cfba47", "pi-tui/components/editor.js", [
 ]);
 // END backport 9a7cfba47
 
+// BEGIN backport be269f57b1
+// be269f57b1 (#12365, fixes #12353): resolve Bedrock SSO and SSO OIDC credentials through the Bedrock proxy handler.
+// PiG's vendored runtime carries pi-ai's bedrock-converse-stream as a bridge stub that runs in PiG's host (ai/providers/bedrock/bedrock.go, which carries the fix), so the compiled file is the installed Pi's only.
+// not carried: packages/ai/package.json, package-lock.json, packages/coding-agent/install-lock/package-lock.json (promote @aws-sdk/credential-provider-node from transitive dependency of @aws-sdk/client-bedrock-runtime to direct dependency of pi-ai): the oracle's frozen closure already installs @aws-sdk/credential-provider-node (3.972.95) in pi-coding-agent/node_modules, and published manifests follow the pin until the re-pin.
+// not carried: packages/ai/src/api/bedrock-converse-stream.ts (TypeScript source): the compiled output below carries the change for the oracle.
+// not carried: packages/ai/CHANGELOG.md: Pi's package changelog entry; PiG's user-visible change is its own changelog.d fragment.
+packageFile("be269f57b1", "pi-ai/api/bedrock-converse-stream.js", [
+    [`import { BedrockRuntimeClient, BedrockRuntimeServiceException, StopReason as BedrockStopReason, CachePointType, CacheTTL, ConversationRole, ConverseStreamCommand, ImageFormat, ToolResultStatus, } from "@aws-sdk/client-bedrock-runtime";
+import { NodeHttpHandler } from "@smithy/node-http-handler";
+`, `import { BedrockRuntimeClient, BedrockRuntimeServiceException, StopReason as BedrockStopReason, CachePointType, CacheTTL, ConversationRole, ConverseStreamCommand, ImageFormat, ToolResultStatus, } from "@aws-sdk/client-bedrock-runtime";
+${note("be269f57b1").trim()}
+import { defaultProvider } from "@aws-sdk/credential-provider-node";
+import { NodeHttpHandler } from "@smithy/node-http-handler";
+`],
+    [`                config.requestHandler = new NodeHttpHandler({
+                    httpAgent: new HttpProxyAgent(proxyUrl),
+                    httpsAgent: new HttpsProxyAgent(proxyUrl),
+                });
+            }
+`, `                ${note("be269f57b1").trim()}
+                const requestHandler = new NodeHttpHandler({
+                    httpAgent: new HttpProxyAgent(proxyUrl),
+                    httpsAgent: new HttpsProxyAgent(proxyUrl),
+                });
+                config.requestHandler = requestHandler;
+                // The default credential chain builds its own SSO and SSO OIDC clients, which do
+                // not inherit the Bedrock client's request handler (#12353). The SDK uses this
+                // chain only when \`credentials\` is unset, so explicit keys keep their precedence.
+                // Those are static (env keys, skip-auth dummies) and make no requests, so they
+                // need no proxy.
+                config.credentialDefaultProvider = (init) => defaultProvider({ ...init, clientConfig: { ...init.clientConfig, requestHandler } });
+            }
+`],
+]);
+// END backport be269f57b1
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 // Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.
