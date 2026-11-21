@@ -309,7 +309,7 @@ def retire_carried_oracle(root: Path = ROOT, *, keep_frozen: bool = False) -> li
     plan.edit("automation/pin/vendor.py", named, swap(" for a run that compares with it (make test-carried-oracles).\n", " for a run that compares with it.\n"))
     plan.edit("internal/pioracle/source.go", named, swap(" make test-carried-oracles sets it for the\n", " A run at another Pi commit sets it for the\n"))
     plan.edit("durable/interop/interop_test.go", named, swap(" (pioracle.OverrideTreeEnv,\n// `make test-carried-oracles`), a ", " (pioracle.OverrideTreeEnv),\n// a "))
-    plan.edit("test/parity/interface-closure/autobind/mirror_guard_test.go", named, swap(": make test-carried-oracles left\n", ": a run at another Pi once left\n"))
+    plan.edit("test/parity/interface-closure/autobind/mirror_guard_test.go", named, swap("(for example left by\n// make test-carried-oracles)", "(for example left by\n// a run at another Pi commit)"))
     plan.edit(PIN_DOCUMENT, "the paragraph 'The carried run at this pin'", drop(r"^- The carried run at this pin: .*?\n"))
 
     if not keep_frozen:
