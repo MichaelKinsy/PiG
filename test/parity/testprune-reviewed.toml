@@ -1495,3 +1495,10 @@ commit = "4a70929057a5089b7aaecf8722d881c458889f41"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "The SIGUSR1 row of the exit-and-signal table expects the entry to end with code 0 and nothing on stderr (the entry before the supervisor, which the row compares by status only, opens Node's inspector and writes its notice), and the new pin expects the entry to end with code 0 and nothing on stderr for each signal Node does not die from, because the entry no longer raises SIGUSR1, SIGPIPE or SIGXFSZ on itself. Pi's entry is the agent itself: it has no wrapper process that ends as its binary ended, so no Pi line governs the expectation. The runtime digest file changes only because the embedded pack was regenerated for the new entry. Reviewer's acceptance: \"ACCEPTED: the SIGUSR1 row expects exit 0 and empty stderr because the entry no longer re-raises a signal Node survives; PiG-only; the removed notice is Node's inspector, not a contract.\""
+
+[[entry]]
+path = "test/parity/interface-closure/autobind/mirror_guard_test.go"
+commit = "94660e2125fc9a083d68962d6d0f384c1fedd4f9"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "TestAFailedCheckNamesAMirrorThatIsNotThePinnedBuild is a PiG autobind tool guard test, not a Pi behavior test. Read-only autobind runs now share upstreammirror.Check(root, o.version) before doing any work, so -check over another Pi mirror fails fast without deriving a ledger or printing the removed late \"this verdict is not the pin's\" wrapper; no Pi source line governs this expectation."
