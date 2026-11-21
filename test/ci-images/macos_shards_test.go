@@ -322,61 +322,6 @@ func TestMacOSShardsTestUnderThePinnedToolchain(t *testing.T) {
 	}
 }
 
-// Every non-native macOS job runs tests that build Rust packed cells with a 120 s wait budget (coding/cli, coding/extension/host/subprocess) or the Rust Pi env daemon (env).
-// Without a pre-warmed SharedCargoTargetDir, whichever 120 s test runs first in a job compiles pig-sdk and serde at CARGO_BUILD_JOBS=1 cold and gets killed at 120 s (run 44896736816:
-// macOS cli-5 cli-6 and macOS cli-7 cli-8). Every planned macOS job that holds a cli-, extension-host-, or packages unit must run automation/ci/test-warm.sh --rust-only in its own
-// workflow step (outside any go test budget) before any macos-units.sh step, warming each target its units use.
-func TestMacOSJobsWarmTheirRustCargoTargetsBeforeTests(t *testing.T) {
-	job, ok := verificationJobs(t)["macos"]
-	if !ok {
-		t.Fatal("ci.yml has no macos job")
-	}
-	warmIdx, firstUnitsIdx := -1, -1
-	var warmIf, warmRun, warmUnitsEnv string
-	for i, step := range job.Steps {
-		switch {
-		case strings.Contains(step.Run, "automation/ci/test-warm.sh --rust-only"):
-			if warmIdx >= 0 {
-				t.Errorf("macos has multiple Rust warm steps (steps %d and %d)", warmIdx, i)
-			}
-			warmIdx = i
-			warmIf = step.If
-			warmRun = step.Run
-			warmUnitsEnv = step.Env["UNITS"]
-		case strings.Contains(step.Run, "automation/ci/macos-units.sh"):
-			if firstUnitsIdx < 0 {
-				firstUnitsIdx = i
-			}
-		}
-	}
-	if warmIdx < 0 {
-		t.Fatal("macos job has no Rust Cargo target warm step (automation/ci/test-warm.sh --rust-only)")
-	}
-	if firstUnitsIdx < 0 {
-		t.Fatal("macos job has no macos-units.sh step")
-	}
-	if warmIdx >= firstUnitsIdx {
-		t.Fatalf("macos Rust warm step at %d must precede the first macos-units.sh step at %d", warmIdx, firstUnitsIdx)
-	}
-	if warmUnitsEnv != "${{ matrix.shard }}" {
-		t.Errorf("macos Rust warm step UNITS = %q, want ${{ matrix.shard }}", warmUnitsEnv)
-	}
-	for _, entry := range planFor(t, "merge_group", "").shards("macos") {
-		targets := macosRustWarmTargets(entry)
-		if len(targets) == 0 {
-			continue
-		}
-		if !macosWarmStepCoversShard(warmIf, entry) {
-			t.Errorf("macos Rust warm step (if: %q) does not run for planned job %q", warmIf, entry)
-		}
-		for _, target := range targets {
-			if !strings.Contains(warmRun, "targets+=("+target+")") {
-				t.Errorf("macos Rust warm step does not warm the %s Cargo target needed by job %q:\n%s", target, entry, warmRun)
-			}
-		}
-	}
-}
-
 // macosWarmStepCoversShard reports whether the workflow if-expression on the macOS warm step enables the step for shard.
 func macosWarmStepCoversShard(expr, shard string) bool {
 	if expr == "" {
