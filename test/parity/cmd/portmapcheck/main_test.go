@@ -454,10 +454,13 @@ func TestMarkerMutantIsKilledWhenRootIsBehindASymbolicLink(t *testing.T) {
 	const marked = "package lib\n\nimport \"testing\"\n\n// pi: packages/fx/src/widget.ts\nfunc TestWidget(t *testing.T) {\n\tif (Widget{Name: \"a\"}).Hello() != \"hello a\" {\n\t\tt.Fatal(\"hello\")\n\t}\n}\n"
 	const killer = `{"packages/fx/src/widget.ts":[{"file":"lib/widget.go","old":"\"hello \" + w.Name","new":"\"bye \" + w.Name"}]}`
 	realRoot := markerFixture(t, marked, killer)
-	linkRoot := filepath.Join(t.TempDir(), "linked-root")
-	if err := os.Symlink(realRoot, linkRoot); err != nil {
+	// Place a symlinked parent directory in front of the fixture root (mirroring TMPDIR=/tmp/L -> /tmp/R
+	// and macOS /tmp -> /private/tmp) so root itself is a directory whose ancestor is a symbolic link.
+	linkParent := filepath.Join(t.TempDir(), "linked-parent")
+	if err := os.Symlink(filepath.Dir(realRoot), linkParent); err != nil {
 		t.Skipf("symlink: %v", err)
 	}
+	linkRoot := filepath.Join(linkParent, filepath.Base(realRoot))
 	res, err := checkWith(linkRoot, true)
 	if err != nil {
 		t.Fatalf("checkWith(linkRoot): %v", err)
