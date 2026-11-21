@@ -70,9 +70,14 @@ func TestBaseInputsRecordedSourcesLoadEveryFileWithEsbuildsOwnLoaderAndRecordEac
 		}
 		return texts
 	}
-	// Observe the exact paths esbuild resolves and hands to OnLoad in a plain build (returning an empty
-	// OnLoadResult so esbuild still runs its own loader). On Unix behind a linked temp root esbuild resolves
-	// symlinks; on Windows it keeps 8.3 short names (C:\Users\RUNNER~1\...) as given.
+	plain := built()
+	recorder := build.NewRecorder()
+	if recorded := built(recorder.Plugin()); !slices.Equal(recorded, plain) {
+		t.Fatalf("recorded outputs differ from plain ones:\n%q\n%q", recorded, plain)
+	}
+	// Observe the exact paths esbuild resolves and hands to OnLoad in a separate third build so plain stays
+	// plugin-free. On Unix behind a linked temp root esbuild resolves symlinks; on Windows it keeps 8.3 short
+	// names (C:\Users\RUNNER~1\...) as given.
 	var wantMu sync.Mutex
 	wantByName := make(map[string]string, len(files))
 	observe := api.Plugin{
@@ -88,11 +93,7 @@ func TestBaseInputsRecordedSourcesLoadEveryFileWithEsbuildsOwnLoaderAndRecordEac
 			})
 		},
 	}
-	plain := built(observe)
-	recorder := build.NewRecorder()
-	if recorded := built(recorder.Plugin()); !slices.Equal(recorded, plain) {
-		t.Fatalf("recorded outputs differ from plain ones:\n%q\n%q", recorded, plain)
-	}
+	built(observe)
 	inputs := recorder.Inputs()
 	var got, want []string
 	for name := range files {
