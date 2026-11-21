@@ -122145,6 +122145,17 @@
       "shapeHash": "sha256:757366f347b77fab18c96d624ec5206676e19d18aa9ceb4a88a9343171f303d5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#stopOnTruncationOrder",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "stopOnTruncationOrder",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(killBeforeClose bool, closeStdout func(), closeStderr func(), kill func())"
+      },
+      "shapeHash": "sha256:27bb81aac5b39891c5c1e994161fc4f29322397261de47ddd9043ed7c467a292"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#stringField",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "stringField",

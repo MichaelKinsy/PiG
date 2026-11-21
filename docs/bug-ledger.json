@@ -21140,7 +21140,7 @@
       "platform": "Windows",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A Pi extension that starts the harness again (`process.execPath process.argv[1] ...`) and ends it with SIGKILL no longer leaves the PiG binary running, which 0.7.0 always did: the harness entry cannot forward SIGKILL, so it starts a small supervisor that runs the binary and kills it when its channel to the entry closes. The binary exists only as the supervisor's child, so no instant has a binary without something to end it: a SIGKILL right after the binary starts, and a SIGTERM, SIGINT or SIGHUP before the entry has installed its handlers, end it as well. Signals sent to the entry still reach the binary, and stdio, process group, environment and exit status are unchanged; a harness-launched binary starts about 40 ms later. Windows ends the binary by its handle and is untested. When the binary ends by SIGUSR1 the entry ends with code 0 without raising the signal on itself, so it no longer opens Node's inspector and writes no inspector notice.",
+      "releaseNote": "A Pi extension that starts the harness again (`process.execPath process.argv[1] ...`) and ends it with SIGKILL no longer leaves the PiG binary running, which 0.7.0 always did: the harness entry cannot forward SIGKILL, so it starts a small supervisor that runs the binary and kills it when its channel to the entry closes. The binary exists only as the supervisor's child, so no instant has a binary without something to end it: a SIGKILL right after the binary starts, and a SIGTERM, SIGINT or SIGHUP before the entry has installed its handlers, end it as well. Signals sent to the entry still reach the binary, and stdio, process group, environment and exit status are unchanged; a harness-launched binary starts about 40 ms later. Windows ends the binary by its handle. Two limits remain: a supervisor process that is itself killed directly leaves its binary running, and processes that the binary started are not ended by the kill, which ends the binary only (the same on Unix, where the signal goes to the one process). When the binary ends by SIGUSR1 the entry ends with code 0 without raising the signal on itself, so it no longer opens Node's inspector and writes no inspector notice.",
       "origin": "release note",
       "commits": [
         {
@@ -69281,7 +69281,7 @@
   "exemptCommits": {
     "Failure found by the integration build of unreleased work": 2,
     "Fix reverted before release": 2,
-    "Follow-up to unreleased work": 36,
+    "Follow-up to unreleased work": 37,
     "Repair of a merge between development branches": 9,
     "Review follow-up to unreleased work": 4,
     "test-only": 1
