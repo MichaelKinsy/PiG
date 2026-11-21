@@ -476,9 +476,7 @@ func TestCreateProviderCatalogConcurrentReadsDuringRefresh(t *testing.T) {
 
 	var wg sync.WaitGroup
 	for range 4 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for ctx.Err() == nil {
 				chat, err := provider.GetModels()
 				if err != nil || len(chat) == 0 {
@@ -512,7 +510,7 @@ func TestCreateProviderCatalogConcurrentReadsDuringRefresh(t *testing.T) {
 					return
 				}
 			}
-		}()
+		})
 	}
 	for range 25 {
 		if res := models.Refresh(t.Context()); len(res.Errors) != 0 {

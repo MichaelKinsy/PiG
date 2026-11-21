@@ -135,7 +135,7 @@ snippet = "return AssistantImages{API: model.API, Provider: model.Provider, Mode
 check = "clock"
 file = "ai/models_provider.go"
 func = "CreateProvider"
-snippet = "_, err = refresh.Publish(ModelsPublication{Persist: &ModelsStoreEntry{Models: models, CheckedAt: new(float64(time.Now().UnixMilli()))}, Update: func() { mu.Lock(); dynamic = models; mu.Unlock() }})"
+snippet = "_, err = refresh.Publish(ModelsPublication{Persist: &ModelsStoreEntry{Models: models, CheckedAt: new(float64(time.Now().UnixMilli()))}, Update: func() { setDynamicModels(models) }})"
 
 [[hit]]
 check = "clock"
