@@ -6275,6 +6275,27 @@
       ]
     },
     {
+      "id": "BF-1d62f7b",
+      "title": "fix(chord): FormatTime reads the platform locale only when the tag has no table entry",
+      "symptom": "fix(chord): FormatTime reads the platform locale only when the tag has no table entry",
+      "rootCause": "locale was initialized with timeLocale{row: rootTimeRow(), zero: '0'} unconditionally before the li \u003e= 0 branch instead of in the else branch.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "1d62f7b26e",
+          "date": "2026-11-21"
+        }
+      ],
+      "tests": [
+        "chord/next/surfaces/intl_root_test.go::TestFormatTimeReadsPlatformLocaleOnlyWhenNeeded"
+      ]
+    },
+    {
       "id": "BF-1dcaef7",
       "title": "Durable: a JSONL line that starts with a byte order mark now opens, as in Pi, instead of failing with…",
       "symptom": "Durable: a JSONL line that starts with a byte order mark now opens, as in Pi, instead of failing with \"Malformed complete ... line N\".",
