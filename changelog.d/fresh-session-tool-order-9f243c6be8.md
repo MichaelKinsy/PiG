@@ -1,0 +1,3 @@
+### Fixed
+
+- Fresh sessions built with both caller-supplied custom tools (`SessionOptions.Tools`, `SessionOptions.CustomTools`, or `SessionStartOptions.ExtraTools`) and extension-registered tools now declare tools to the model in Pi's order (`[built-ins, extension tools, caller custom tools]`), matching `Session.Clone` and post-reload sessions so provider prompt caches no longer see a tool-prefix mismatch between a fresh session and its clone. `Session.Clone` also seeds the cloned session with the source session's active tool order. Affects 0.3.0, 0.3.1, 0.4.0, 0.4.1, 0.5.0, 0.5.1, 0.5.2, 0.5.3, and 0.7.0. <!-- fix: coding/session_tool_registry.go, coding/session_ops.go --> <!-- cause: f144ac89d5 -->

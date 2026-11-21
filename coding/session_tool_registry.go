@@ -228,6 +228,9 @@ func createSessionToolRegistry(services *AgentSessionServices, opts SessionOptio
 		registry.allowed = maps.Clone(registry.allowed)
 		registry.excluded = maps.Clone(registry.excluded)
 		registry.filter = registry.compileFilter()
+		if opts.InitialActiveToolNames != nil {
+			return registry, registry.selectTools(opts.InitialActiveToolNames), nil
+		}
 		return registry, registry.tools(), nil
 	}
 	// upstream: sdk.ts:280-281; the tools option that changes the default selection is DefaultToolModifiers here.
@@ -305,6 +308,7 @@ func createSessionToolRegistry(services *AgentSessionServices, opts SessionOptio
 			activeNames = icodingagent.ApplyToolModifiers(services.SettingsManager().ResolvedDefaultTools(), opts.DefaultToolModifiers)
 		}
 	}
+	var customActiveNames []string
 	for _, tool := range opts.Tools {
 		definition, err := toolDefinition(tool)
 		if err != nil {
@@ -315,7 +319,7 @@ func createSessionToolRegistry(services *AgentSessionServices, opts SessionOptio
 			definition.PromptGuidelines = nil
 		}
 		registry.custom = append(registry.custom, sessionToolEntry{tool: tool, registration: extension.RegisteredTool{Definition: definition, SourceInfo: syntheticToolSource(tool.Name(), "sdk")}})
-		activeNames = append(activeNames, tool.Name())
+		customActiveNames = append(customActiveNames, tool.Name())
 	}
 	for _, definition := range opts.CustomTools {
 		registration := extension.RegisteredTool{Definition: definition, SourceInfo: syntheticToolSource(definition.Name, "sdk")}
@@ -324,11 +328,12 @@ func createSessionToolRegistry(services *AgentSessionServices, opts SessionOptio
 			return registry, nil, err
 		}
 		registry.custom = append(registry.custom, sessionToolEntry{tool: tool, registration: registration})
-		activeNames = append(activeNames, definition.Name)
+		customActiveNames = append(customActiveNames, definition.Name)
 	}
 	if err := registry.refresh(opts.Runner); err != nil {
 		return registry, nil, err
 	}
+	// upstream: agent-session.ts:3660-3666, 3702, 3733-3736: extension-registered tools precede caller custom tools.
 	if opts.Runner != nil && !registry.skipExtensions {
 		for _, tool := range opts.Runner.Tools() {
 			if ExtensionToolStartsActive(tool.Definition, registry.allowed) {
@@ -336,6 +341,7 @@ func createSessionToolRegistry(services *AgentSessionServices, opts SessionOptio
 			}
 		}
 	}
+	activeNames = append(activeNames, customActiveNames...)
 	return registry, registry.selectTools(activeNames), nil
 }
 

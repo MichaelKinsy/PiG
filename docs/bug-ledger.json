@@ -50726,6 +50726,21 @@
       ]
     },
     {
+      "id": "BF-c39002b",
+      "title": "Fresh sessions built with both caller-supplied custom tools (`SessionOptions.Tools`…",
+      "symptom": "Fresh sessions built with both caller-supplied custom tools (`SessionOptions.Tools`, `SessionOptions.CustomTools`, or `SessionStartOptions.ExtraTools`) and extension-registered tools now declare tools to the model in Pi's order (`[built-ins, extension tools, caller custom tools]`), matching `Session.Clone` and post-reload sessions so provider prompt caches no longer see a tool-prefix mismatch between a fresh session and its clone.",
+      "rootCause": "f144ac89d5",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Fresh sessions built with both caller-supplied custom tools (`SessionOptions.Tools`, `SessionOptions.CustomTools`, or `SessionStartOptions.ExtraTools`) and extension-registered tools now declare tools to the model in Pi's order (`[built-ins, extension tools, caller custom tools]`), matching `Session.Clone` and post-reload sessions so provider prompt caches no longer see a tool-prefix mismatch between a fresh session and its clone. `Session.Clone` also seeds the cloned session with the source session's active tool order. Affects 0.3.0, 0.3.1, 0.4.0, 0.4.1, 0.5.0, 0.5.1, 0.5.2, 0.5.3, and 0.7.0. \u003c!-- fix: coding/session_tool_registry.go, coding/session_ops.go --\u003e",
+      "origin": "release note",
+      "commits": [],
+      "tests": []
+    },
+    {
       "id": "BF-c3a6eca",
       "title": "Markdown rendering follows Pi for lines made only of Unicode spaces (U+00A0, U+3000, U+2003 and the others…",
       "symptom": "Markdown rendering follows Pi for lines made only of Unicode spaces (U+00A0, U+3000, U+2003 and the others JavaScript's trim removes) in and after lists, a list item whose first line is one such space, a heading line holding U+2028 or U+2029, a table whose last line is such a space at a narrow width, and a `$$` or `\\[` block whose text is only whitespace.",

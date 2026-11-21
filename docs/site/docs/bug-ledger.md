@@ -1862,6 +1862,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c35e392](#bf-c35e392) | fix(chord): followers ignore a cancelled ctx before their pick watch starts; a panicking delivery leaves the… | PiG's own defect | All platforms | Unreleased |
 | [BF-c3656e5](#bf-c3656e5) | Files ending in `.dart`, `.nix`, `.groovy` and `.gradle` are now syntax highlighted in the read and write… | PiG's own defect | All platforms | Unreleased |
 | [BF-c371a13](#bf-c371a13) | OpenAI Responses requests keep the prompt cache across tool changes (Pi #11142) | PiG's own defect | All platforms | 0.5.2 |
+| [BF-c39002b](#bf-c39002b) | Fresh sessions built with both caller-supplied custom tools (`SessionOptions.Tools`… | PiG's own defect | All platforms | Unreleased |
 | [BF-c3a6eca](#bf-c3a6eca) | Markdown rendering follows Pi for lines made only of Unicode spaces (U+00A0, U+3000, U+2003 and the others… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c416945](#bf-c416945) | fix(ai): tool-argument member order keeps a key with an escaped lone surrogate | PiG's own defect | All platforms | Unreleased |
 | [BF-c462888](#bf-c462888) | Interactive mode follows Pi's agent events more closely: `agent_end` removes a message that is still… | PiG's own defect | All platforms | Unreleased |
@@ -28019,6 +28020,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `c371a134cc` (2026-10-20)
 - **Tests:** `ai/transcript_tool_changes_test.go::TestResolveTranscriptToolsBoundaryPerTransport`, `ai/transcript_tool_changes_test.go::TestTranscriptToolChangesKimiPrefixAcrossLoadsAfterARemoval`, `ai/transcript_tool_changes_test.go::TestTranscriptToolChangesOpenAIResponsesDoesNotListAToolAsUnavailableBeforeItsRemovalIsAnnounced`, `ai/transcript_tool_changes_test.go::TestTranscriptToolChangesOpenAIResponsesKeepsPrefixAcrossRemovalAndLoads`, `ai/transcript_tool_changes_test.go::TestTranscriptToolChangesOpenAIResponsesRedefinitionIsNotARemoval`, `ai/transcript_tool_changes_test.go::TestTranscriptToolChangesOpenAIResponsesStopsListingAToolAsUnavailableOnceDeclaredAgain`, `ai/transcript_tool_changes_test.go::TestTranscriptToolChangesOpenAIResponsesToolSearchPrefixAcrossLoadsAfterARemoval`
 - **Release note:** OpenAI Responses requests keep the prompt cache across tool changes (Pi #11142). Every tool is declared in `additional_tools` items from the head of the input, a removal is announced as text with the still-unavailable tools restated, and synthetic tool search and Kimi tool messages move the top-level tool list only at the last removal or redefinition, so a later tool load no longer rewrites the cached prefix. Applies to `openai-responses`, `azure-openai-responses`, `openai-codex-responses` and Kimi on `openai-completions`.
+
+### BF-c39002b
+
+**Fresh sessions built with both caller-supplied custom tools (`SessionOptions.Tools`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fresh sessions built with both caller-supplied custom tools (`SessionOptions.Tools`, `SessionOptions.CustomTools`, or `SessionStartOptions.ExtraTools`) and extension-registered tools now declare tools to the model in Pi's order (`[built-ins, extension tools, caller custom tools]`), matching `Session.Clone` and post-reload sessions so provider prompt caches no longer see a tool-prefix mismatch between a fresh session and its clone.
+- **Root cause:** f144ac89d5
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** Not yet committed.
+- **Tests:** None recorded.
+- **Release note:** Fresh sessions built with both caller-supplied custom tools (`SessionOptions.Tools`, `SessionOptions.CustomTools`, or `SessionStartOptions.ExtraTools`) and extension-registered tools now declare tools to the model in Pi's order (`[built-ins, extension tools, caller custom tools]`), matching `Session.Clone` and post-reload sessions so provider prompt caches no longer see a tool-prefix mismatch between a fresh session and its clone. `Session.Clone` also seeds the cloned session with the source session's active tool order. Affects 0.3.0, 0.3.1, 0.4.0, 0.4.1, 0.5.0, 0.5.1, 0.5.2, 0.5.3, and 0.7.0. <!-- fix: coding/session_tool_registry.go, coding/session_ops.go -->
 
 ### BF-c3a6eca
 
