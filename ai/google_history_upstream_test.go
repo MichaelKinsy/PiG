@@ -197,7 +197,7 @@ func TestGoogleUnsignedToolCallsUpstream(t *testing.T) {
 	for _, tc := range []struct {
 		model string
 		want  bool
-	}{{"gemini-2.5-flash", false}, {"gemini-3.6-flash", true}, {"claude-sonnet-4-5", true}, {"gpt-oss-120b", true}} {
+	}{{"gemini-2.5-flash", false}, {"gemini-3.6-flash", true}, {"randomprefix-gemini-4-argon", true}, {"vendor-gemini-2.5-flash", false}, {"claude-sonnet-4-5", true}, {"gpt-oss-120b", true}} {
 		t.Run("requiresToolCallId/"+tc.model, func(t *testing.T) {
 			if got := requiresToolCallId(tc.model); got != tc.want {
 				t.Fatalf("got %v; want %v", got, tc.want)

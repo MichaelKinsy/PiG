@@ -443,8 +443,6 @@ type geminiUsageMetadata struct {
 var (
 	gemini3ProRe   = lazyregexp.New(`gemini-3(?:\.\d+)?-pro`)
 	gemini3FlashRe = lazyregexp.New(`gemini-3(?:\.\d+)?-flash`)
-	// Gemini 4 and later, such as gemini-4-argon (Pi 1692bba6, #10890).
-	gemini4PlusRe = lazyregexp.New(`gemini-(?:[4-9]|[1-9]\d)`)
 	gemma4Re      = lazyregexp.New(`gemma-?4`)
 )
 
@@ -454,9 +452,11 @@ func isGemma4(modelID string) bool       { return gemma4Re.MatchString(modelID) 
 
 // UsesGoogleThinkingLevel reports whether the model takes Gemini's discrete thinkingLevel control instead of the token-based thinkingBudget control. The levels a model supports come from its thinking-level map; this only selects the Google wire format.
 // Mirrors upstream usesGoogleThinkingLevel (google-shared.ts), which lowercases the id before every comparison.
+// upstream: packages/ai/src/api/google-shared.ts:usesGoogleThinkingLevel (Pi fe8a6f5dc, #12371)
 func UsesGoogleThinkingLevel(model *Model) bool {
 	id := jsstring.ToLower(model.ID)
-	return isGemini3Pro(id) || isGemini3Flash(id) || gemini4PlusRe.MatchString(id) || isGemma4(id) || id == "gemini-flash-latest" || id == "gemini-flash-lite-latest"
+	major, ok := getGeminiMajorVersion(id)
+	return isGemini3Pro(id) || isGemini3Flash(id) || (ok && major >= 4) || isGemma4(id) || id == "gemini-flash-latest" || id == "gemini-flash-lite-latest"
 }
 
 // ─── Message conversion ──────────────────────────────────────────────────────
@@ -496,10 +496,11 @@ func isValidThoughtSignature(sig string) bool {
 	return pad <= 2 && pad < len(sig)
 }
 
-var geminiMajorVersionRE = lazyregexp.New(`^gemini(?:-live)?-(\d+)`)
+// upstream: packages/ai/src/api/google-shared.ts:getGeminiMajorVersion (Pi fe8a6f5dc, #12371)
+var geminiMajorVersionRE = lazyregexp.New(`gemini(?:-live)?-(\d+)`)
 
-// getGeminiMajorVersion parses the leading major version from a Gemini model id
-// (^gemini(-live)?-N...). Mirrors google-shared.ts getGeminiMajorVersion.
+// getGeminiMajorVersion parses the major version from a Gemini model id
+// (unanchored gemini(-live)?-N..., matching usesGoogleThinkingLevel). Mirrors google-shared.ts getGeminiMajorVersion.
 func getGeminiMajorVersion(modelID string) (float64, bool) {
 	m := geminiMajorVersionRE.FindStringSubmatch(jsstring.ToLower(modelID))
 	if m == nil {
@@ -853,8 +854,17 @@ func resolveGoogleFunctionCallingMode(tools []ToolSchema, toolChoice string, sup
 	return "", nil
 }
 
-func supportsGoogleStrictToolSampling(modelID string) bool {
-	major, ok := getGeminiMajorVersion(modelID)
+// supportsGoogleStrictToolSampling reports whether the model enforces required function parameters in VALIDATED tool-calling mode.
+// compat.supportsStrictMode overrides the model ID detection for Gemini models served under IDs without the version.
+// upstream: packages/ai/src/api/google-shared.ts:supportsGoogleStrictToolSampling (Pi fe8a6f5dc, #12371)
+func supportsGoogleStrictToolSampling(model *Model) bool {
+	if model != nil && model.ProviderMeta.Compat != nil && model.ProviderMeta.Compat.SupportsStrictMode != nil {
+		return *model.ProviderMeta.Compat.SupportsStrictMode
+	}
+	if model == nil {
+		return false
+	}
+	major, ok := getGeminiMajorVersion(model.ID)
 	return ok && major >= 3
 }
 
@@ -1008,13 +1018,14 @@ func (p *googleProvider) Stream(ctx context.Context, transcript TranscriptContex
 
 	tools := borrowedCurrentTools(messages)
 	if len(tools) > 0 {
-		convertedTools, err := geminiConvertTools(tools, false, supportsGoogleStrictToolSampling(model.ID))
+		supportsStrictMode := supportsGoogleStrictToolSampling(&conversionModel)
+		convertedTools, err := geminiConvertTools(tools, false, supportsStrictMode)
 		if err != nil {
 			return nil, fmt.Errorf("google: convert tools: %w", err)
 		}
 		req.Tools = convertedTools
 		choice, _ := toolChoiceName(opts.ToolChoice)
-		mode, err := resolveGoogleFunctionCallingMode(tools, choice, supportsGoogleStrictToolSampling(model.ID))
+		mode, err := resolveGoogleFunctionCallingMode(tools, choice, supportsStrictMode)
 		if err != nil {
 			return nil, fmt.Errorf("google: convert tools: %w", err)
 		}

@@ -68,7 +68,7 @@ func TestGoogleSharedConvertToolsUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/ai/test/google-shared-convert-tools.test.ts:187
 	t.Run("uses validated function calling for strict tools on Gemini 3", func(t *testing.T) {
 		tool := ToolSchema{Name: "test_tool", Description: "A test tool", Parameters: JsonObject{"type": "object", "properties": JsonObject{}}, ConstrainedSampling: &ConstrainedSamplingConfig{Type: "json_schema", Strict: "require"}}
-		if !supportsGoogleStrictToolSampling("gemini-3.1-pro-preview") || supportsGoogleStrictToolSampling("gemini-2.5-pro") {
+		if !supportsGoogleStrictToolSampling(&Model{ID: "gemini-3.1-pro-preview"}) || supportsGoogleStrictToolSampling(&Model{ID: "gemini-2.5-pro"}) {
 			t.Fatal("strict model support mismatch")
 		}
 		if mode, err := resolveGoogleFunctionCallingMode([]ToolSchema{tool}, "", true); err != nil || mode != "VALIDATED" {
