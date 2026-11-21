@@ -4,8 +4,10 @@ package atomicfile
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"syscall"
 )
@@ -51,37 +53,54 @@ func SetInPlaceReporter(report func(path string, cause error)) {
 // A file the caller may not write (a read-only file) is refused as an in-place write would refuse it, and a write that fails for a real reason (a
 // full disk, an I/O error) is an error, in place or not. On Windows a rename another process's open handle refuses is retried for
 // [fsretry.RenameBudget] before its error is returned, and a rename that fails is never turned into an in-place write there; a replacement that left
-// other access than the file had is undone from the backup and is an error.
+// other access than the file had is undone from the backup and is an error. Any [*fs.PathError] naming the resolved target or its temporary sibling
+// reports path as given, as os.WriteFile and Node's writeFileSync do.
 func WriteFile(path string, data []byte, perm os.FileMode) error {
 	// pig divergence (D651): replaced through a private temporary file and a rename, in place where that is refused; Pi writes the file in place.
-	path, err := followLinks(path)
+	given := path
+	target, err := followLinks(given)
 	if err != nil {
 		return err
 	}
 	mode := perm.Perm()
 	var existing os.FileInfo
 	//perf:ok one stat and one open per credential write, which already syncs a file
-	if info, statErr := os.Stat(path); statErr == nil {
+	if info, statErr := os.Stat(target); statErr == nil {
 		// A device or a named pipe is written, not replaced: a rename would put an ordinary file where the node was, with the node's mode, and the bytes would never reach it.
 		if !info.Mode().IsRegular() {
-			return writeInPlace(path, data, perm, fmt.Errorf("the file is a %s, which a replacement would remove", info.Mode().Type()))
+			return writeInPlace(given, data, perm, fmt.Errorf("the file is a %s, which a replacement would remove", info.Mode().Type()))
 		}
 		existing = info
 		mode = info.Mode().Perm()
 		// Replacing a read-only file by rename would succeed where writing it fails.
-		probe, openErr := os.OpenFile(path, os.O_WRONLY, 0)
+		probe, openErr := os.OpenFile(target, os.O_WRONLY, 0)
 		if openErr != nil {
-			return openErr
+			return withGivenPath(openErr, given, target)
 		}
 		links := linkCount(probe, info)
 		_ = probe.Close()
 		if links > 1 {
-			return writeInPlace(path, data, perm, fmt.Errorf("the file has %d hard links, which a replacement would break", links))
+			return writeInPlace(given, data, perm, fmt.Errorf("the file has %d hard links, which a replacement would break", links))
 		}
 	}
-	refusal, err := replaceThroughTemp(path, data, mode, existing)
+	refusal, err := replaceThroughTemp(target, data, mode, existing)
 	if refusal != nil {
-		return writeInPlace(path, data, perm, refusal)
+		return writeInPlace(given, data, perm, refusal)
+	}
+	return withGivenPath(err, given, target)
+}
+
+// withGivenPath returns a fresh *fs.PathError naming given when err is an *fs.PathError for target or its temporary sibling beside target.
+func withGivenPath(err error, given, target string) error {
+	pathErr, ok := errors.AsType[*fs.PathError](err)
+	if !ok {
+		return err
+	}
+	if pathErr.Path == given {
+		return err
+	}
+	if pathErr.Path == target || (filepath.Dir(pathErr.Path) == filepath.Dir(target) && strings.HasPrefix(pathErr.Path, target+".tmp-")) {
+		return &fs.PathError{Op: pathErr.Op, Path: given, Err: pathErr.Err}
 	}
 	return err
 }

@@ -8,7 +8,7 @@ import (
 	"syscall"
 )
 
-// createNewFollowingLinks creates the file at path with create (an exclusive create) and, when path is a symlink whose target does not exist yet, creates the target. Exclusive creation reports "exists" for a dangling link and never creates its target, but Pi's ensureFileExists is writeFileSync(path, "{}"), which follows the link and creates it (auth-storage.ts:63-67). The agent directory of #11655 is such a link to a shared file that is not there yet. Other errors, and a file that exists, are create's own.
+// createNewFollowingLinks creates the file at path with create (an exclusive create) and, when path is a symlink whose target does not exist yet, creates the target. Exclusive creation reports "exists" for a dangling link and never creates its target, but Pi's ensureFileExists is writeFileSync(path, "{}"), which follows the link and creates it (auth-storage.ts:63-67). The agent directory of #11655 is such a link to a shared file that is not there yet. Other errors, and a file that exists, are create's own; a *fs.PathError naming the resolved target reports path as given, as writeFileSync does.
 func createNewFollowingLinks(path string, create func(string) (*os.File, error)) (*os.File, error) {
 	file, err := create(path)
 	if !errors.Is(err, fs.ErrExist) || pathExists(path) {
@@ -44,5 +44,9 @@ func createNewFollowingLinks(path string, create func(string) (*os.File, error))
 	if target == path {
 		return nil, err
 	}
-	return create(target)
+	file, createErr := create(target)
+	if pathErr, ok := errors.AsType[*fs.PathError](createErr); ok && pathErr.Path == target {
+		return file, &fs.PathError{Op: pathErr.Op, Path: path, Err: pathErr.Err}
+	}
+	return file, createErr
 }
