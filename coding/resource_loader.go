@@ -704,12 +704,42 @@ func cloneCollection[T any](collection []T) []T {
 // NoResources is a ResourceLoader with no resources. A caller that expands resources and builds its system prompt itself supplies it so the Session neither discovers, expands nor renders any.
 var NoResources ResourceLoader = &staticResourceLoader{}
 
+// ownedResourceLoader reference-counts a DefaultResourceLoader constructed by resolveResourceLoader so its Extension Host closes once the last Session sharing it closes.
+type ownedResourceLoader struct {
+	loader *DefaultResourceLoader
+	refs   atomic.Int32
+}
+
+func newOwnedResourceLoader(loader *DefaultResourceLoader) *ownedResourceLoader {
+	o := &ownedResourceLoader{loader: loader}
+	o.refs.Store(1)
+	return o
+}
+
+func (o *ownedResourceLoader) acquire() bool {
+	for {
+		n := o.refs.Load()
+		if n <= 0 {
+			return false
+		}
+		if o.refs.CompareAndSwap(n, n+1) {
+			return true
+		}
+	}
+}
+
+func (o *ownedResourceLoader) release() {
+	if o.refs.Add(-1) == 0 {
+		o.loader.Close()
+	}
+}
+
 // resourceLoaderRef is the loader a Session is bound to. promptFromLoader reports that the Session builds its default system prompt from the loader (agent-session.ts _rebuildSystemPrompt); a Session bound to NoResources leaves the prompt to its caller.
 type resourceLoaderRef struct {
 	loader           ResourceLoader
 	promptFromLoader bool
-	// owned is non-nil only when resolveResourceLoader constructed loader for this Session (not caller-supplied, borrowed from Services, or shared by Clone). Session.Close shuts down its Extension Host (D19).
-	owned *DefaultResourceLoader
+	// owned is non-nil when resolveResourceLoader constructed the underlying DefaultResourceLoader; each Session sharing it holds one reference and releases it in Close (D19).
+	owned *ownedResourceLoader
 }
 
 // resolveResourceLoader returns the supplied loader, or a DefaultResourceLoader over the Services' cwd, agent directory and settings that has reloaded when none is supplied (sdk.ts createAgentSession awaits resourceLoader.reload()). The reload rereads the Services' settings and drops the transient overrides applied to them.
@@ -727,7 +757,7 @@ func resolveResourceLoader(svcs *AgentSessionServices, supplied ResourceLoader) 
 		return nil, err
 	}
 	timings.Time("resourceLoader.reload")
-	return &resourceLoaderRef{loader: loader, promptFromLoader: true, owned: loader}, nil
+	return &resourceLoaderRef{loader: loader, promptFromLoader: true, owned: newOwnedResourceLoader(loader)}, nil
 }
 
 // loaderOperation is a Reload, LoadProjectTrustExtensions, ExtendResources or Close in progress, which holds its loader's opMu. goroutine is the one it runs on.

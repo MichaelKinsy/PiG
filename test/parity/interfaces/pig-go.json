@@ -86769,6 +86769,17 @@
       "shapeHash": "sha256:22eccc7bd1b788d358c081d65977540e1b1b02738fee733faf922596323dcd80"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#newOwnedResourceLoader",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "newOwnedResourceLoader",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(loader *DefaultResourceLoader) *ownedResourceLoader"
+      },
+      "shapeHash": "sha256:43b1d7790fa9829a60db3f2e7b2fdb11a657beb51a68aaa75337633b50a6ec44"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#newRequestOptionsProvider",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "newRequestOptionsProvider",
@@ -86877,6 +86888,39 @@
         "type": "func[T any](store *virtualModelStore, models []T, identity func(T) (string, string), of func(*github.com/MichaelKinsy/PiG/ai.Model) T) []T"
       },
       "shapeHash": "sha256:4fe780bd9bbb31b968c338f865bcb9023696e2caf58ea30977f8baf64a408539"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#ownedResourceLoader",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "ownedResourceLoader",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "ownedResourceLoader"
+      },
+      "shapeHash": "sha256:01d290e50a715a44b9a78ae5a5f0075041464ddc4c50bca72a221782466b6766"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#ownedResourceLoader.acquire",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "ownedResourceLoader.acquire",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#ownedResourceLoader.release",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "ownedResourceLoader.release",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#parseConstrainedSampling",

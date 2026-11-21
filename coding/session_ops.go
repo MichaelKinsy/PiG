@@ -155,7 +155,14 @@ func (s *Session) Clone() (*Session, error) {
 		extensionHost:      s.extensionHost,
 	}
 	if ref := s.resourceLoader.Load(); ref != nil {
-		opts.boundResourceLoader = &resourceLoaderRef{loader: ref.loader, promptFromLoader: ref.promptFromLoader}
+		bound := &resourceLoaderRef{loader: ref.loader, promptFromLoader: ref.promptFromLoader}
+		if ref.owned != nil {
+			if !ref.owned.acquire() {
+				return nil, fmt.Errorf("coding: clone: session is closed")
+			}
+			bound.owned = ref.owned
+		}
+		opts.boundResourceLoader = bound
 	}
 	opts.SystemPromptResources = s.systemPromptResources.Load()
 	// A Session that builds its default prompt keeps building it from its tools and loader, as a replacement AgentSession does (agent-session.ts _rebuildSystemPrompt); any other prompt is the caller's and is copied.

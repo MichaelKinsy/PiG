@@ -144,7 +144,8 @@ type Session struct {
 	// runState is the active run's streaming, abort, and idle state.
 	runState sessionRunState
 
-	resourceLoader atomic.Pointer[resourceLoaderRef]
+	resourceLoader  atomic.Pointer[resourceLoaderRef]
+	ownedLoaderOnce sync.Once
 	// extensionBindings are the mode bindings the last BindExtensions call supplied; a reload applies them to the rebuilt runner.
 	extensionBindings atomic.Pointer[ExtensionBindings]
 	// extensionsBound is set by BindExtensions, with any bindings: a reload restarts the extensions only for a host that bound them (agent-session.ts _extensionsBound).
@@ -473,11 +474,11 @@ func NewSession(svcs *AgentSessionServices, opts SessionOptions) (*Session, erro
 			return nil, err
 		}
 	}
-	// If NewSession returns an error after resolveResourceLoader built a loader, shut down its Extension Host so its subprocesses do not leak (D19).
+	// If NewSession returns an error after acquiring an owned loader reference, release it so its Extension Host does not leak (D19).
 	var constructed *Session
 	defer func() {
 		if constructed == nil && resourceLoader.owned != nil {
-			resourceLoader.owned.Close()
+			resourceLoader.owned.release()
 		}
 	}()
 	if opts.Runner == nil {
@@ -1656,10 +1657,12 @@ func (s *Session) Close() error {
 	if !s.successorOwnsResources.Load() {
 		_ = ai.CleanupSessionResources(s.ID())
 	}
-	// Close the DefaultResourceLoader this Session constructed (if any) last, after runner invalidation and run drain, so extensions stay reachable during shutdown and no subprocess Extension Host leaks (D19). Idempotent on repeated Close.
-	if ref := s.resourceLoader.Load(); ref != nil && ref.owned != nil {
-		ref.owned.Close()
-	}
+	// Release this Session's reference to an owned DefaultResourceLoader last, after runner invalidation and run drain, so extensions stay reachable during shutdown and close once the last sharer closes (D19).
+	s.ownedLoaderOnce.Do(func() {
+		if ref := s.resourceLoader.Load(); ref != nil && ref.owned != nil {
+			ref.owned.release()
+		}
+	})
 	if s.ownedServices != nil {
 		s.ownedServices.Close()
 	}
