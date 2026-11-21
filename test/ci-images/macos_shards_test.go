@@ -239,7 +239,9 @@ func TestMacOSJobsRunEveryTestOfEveryUnitExactlyOnce(t *testing.T) {
 // excluding the slow runner of 44870314130 job 136751895303 (2.1 to 2.8x slower across every step).
 // cli-1 to cli-8 are modelled for the repacked pins in automation/ci/test-shard-weights.txt from the two runs' normal-speed coding/cli total (3845 s across the eight
 // shards, fitted against automation/ci/test-shard-timings/cli.json as 1.79*portable_linux_load + 164 s first-unit Cargo build, split evenly across each pair) and will be
-// replaced by the next full macOS run's report. macosJobSetupSeconds is the warm-cache setup and compile overhead (190 to 272 s measured on main run 44690207820 and
+// replaced by the next full macOS run's report. The pre-test warm step (macosRustWarmSeconds below) is expected to remove the 164 s first-unit build, and the model will
+// follow the first macOS run's measurement.
+// macosJobSetupSeconds is the warm-cache setup and compile overhead (190 to 272 s measured on main run 44690207820 and
 // 2026-11-14 runs); cold-cache runs add about 200 to 255 s more (sbcl and pi-oracle misses), which stays under 70% of the 40-minute limit when warm jobs stay at or under 60%.
 // native is not a unit of macos-units.sh: its job is the smoke run (15 minutes warm, 19 to 20 minutes cold).
 var macosUnitSeconds = map[string]int{
@@ -248,17 +250,39 @@ var macosUnitSeconds = map[string]int{
 	"packages": 123,
 }
 
-const macosJobSetupSeconds = 300
+const (
+	macosJobSetupSeconds = 300
+	// macosRustWarmSeconds is the cold-build budget for one Rust Cargo target (cli, subprocess, or env-oracle) warmed by
+	// automation/ci/test-warm.sh --rust-only before go test starts (default Cargo parallelism, not CARGO_BUILD_JOBS=1).
+	macosRustWarmSeconds = 60
+)
+
+func macosRustWarmTargets(entry string) []string {
+	var targets []string
+	padded := " " + entry + " "
+	if strings.Contains(padded, " cli-") {
+		targets = append(targets, "cli")
+	}
+	if strings.Contains(padded, " extension-host-") {
+		targets = append(targets, "subprocess")
+	}
+	if strings.Contains(padded, " packages ") {
+		targets = append(targets, "env-oracle")
+	}
+	return targets
+}
 
 // A macOS job that reaches its 40-minute limit is cancelled with no failing test (run 44864086404 cli-4 cli-7 extension-host-1; run 44870314130 cli-1 extension-host-3 packages).
-// So at warm-cache times every grouped job of the plan stays at or under 60% of its limit (1440 s of 2400 s), leaving 40% headroom for cold caches and ordinary runner variance.
+// So at warm-cache times (including the cold Rust SDK warm-up step, since macOS keeps no Cargo cache in 0.8.0) every grouped job of the plan stays at or under 60% of its limit
+// (1440 s of 2400 s), leaving 40% headroom (1.4x slow-pool factor plus cold sbcl/pi-oracle misses) inside the 40-minute limit.
 func TestMacOSJobsKeepAQuarterOfTheirLimit(t *testing.T) {
 	limit := verificationJobs(t)["macos"].Timeout * 60
 	for _, entry := range planFor(t, "merge_group", "").shards("macos") {
 		if entry == "native" {
 			continue
 		}
-		total := macosJobSetupSeconds
+		warm := len(macosRustWarmTargets(entry)) * macosRustWarmSeconds
+		total := macosJobSetupSeconds + warm
 		for unit := range strings.FieldsSeq(entry) {
 			seconds, ok := macosUnitSeconds[unit]
 			if !ok {
@@ -267,7 +291,7 @@ func TestMacOSJobsKeepAQuarterOfTheirLimit(t *testing.T) {
 			total += seconds
 		}
 		if total*5 > limit*3 {
-			t.Errorf("macos job %q takes %d s at warm-cache times (%d s of them setup), more than 60%% of its %d s limit: move a unit to another job in automation/ci/ci-tiers.txt", entry, total, macosJobSetupSeconds, limit)
+			t.Errorf("macos job %q takes %d s at warm-cache times (%d s setup + %d s Rust warm-up), more than 60%% of its %d s limit: move a unit to another job in automation/ci/ci-tiers.txt", entry, total, macosJobSetupSeconds, warm, limit)
 		}
 	}
 }
@@ -296,4 +320,24 @@ func TestMacOSShardsTestUnderThePinnedToolchain(t *testing.T) {
 	if check < 0 || check < lastPathChange || firstTest < 0 || check > firstTest {
 		t.Fatalf("macos toolchain check at step %d, last PATH change at step %d, first test at step %d: the check must follow every PATH change and precede every test", check, lastPathChange, firstTest)
 	}
+}
+
+// macosWarmStepCoversShard reports whether the workflow if-expression on the macOS warm step enables the step for shard.
+func macosWarmStepCoversShard(expr, shard string) bool {
+	if expr == "" {
+		return true
+	}
+	if strings.Contains(expr, "matrix.shard != 'native'") && shard != "native" {
+		// Reject an expression that also excludes this specific shard.
+		if strings.Contains(expr, "matrix.shard != '"+shard+"'") {
+			return false
+		}
+		return true
+	}
+	for _, marker := range []string{"cli-", "extension-host-", "packages"} {
+		if strings.Contains(shard, marker) && strings.Contains(expr, "contains(matrix.shard, '"+marker+"')") {
+			return true
+		}
+	}
+	return false
 }

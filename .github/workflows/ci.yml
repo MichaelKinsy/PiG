@@ -1412,6 +1412,22 @@ jobs:
         if: startsWith(matrix.shard, 'extension-') || startsWith(matrix.shard, 'cli-')
         shell: pwsh
         run: ./automation/ci/install-sbcl.ps1 -GithubEnv
+      - name: Warm the Rust SDK Cargo target
+        # Builds pig-sdk and its dependencies into the job's SharedCargoTargetDir before go test starts, so no test compiles the Rust SDK cold inside its 120 s wait budget.
+        if: startsWith(matrix.shard, 'cli-') || startsWith(matrix.shard, 'extension-')
+        shell: bash
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          set -euo pipefail
+          case "$SHARD" in
+            cli-*) targets=(cli) ;;
+            extension-host-1) targets=(runtimecell subprocess) ;;
+            extension-host-*) targets=(subprocess) ;;
+            extension-conformance-*) targets=(conformance) ;;
+            *) echo "unexpected shard $SHARD" >&2; exit 1 ;;
+          esac
+          ./automation/ci/test-warm.sh --rust-only "${targets[@]}"
       - name: Test every package with Windows tests
         # The extension-host shard runs the extension host packages, and the
         # cli-N shards run cmd/pig in shards. The package
@@ -1548,9 +1564,12 @@ jobs:
         # caches and keeps over 30% margin even on cold caches. Each unit still runs in its own go test process and timeout.
         # Measured in runs 44864086404 and 44870314130 (2026-11-21 on macos-15): extension-host-1 364, extension-host-2 379,
         # extension-host-3 279, extension-host-4 343, extension-host-5 274, packages 123; coding/cli repacked in
-        # test-shard-weights.txt (modelled 411 to 519 s per unit from those runs' 3845 s total). The six grouped jobs hold
-        # 866 to 1032 s of tests (19 to 22 minutes with warm setup, 23 to 26 minutes cold).
-        # test/ci-images holds these times and fails when a job's units and warm setup pass 60% of the limit.
+        # test-shard-weights.txt (modelled 411 to 519 s per unit from those runs' 3845 s total; the pre-test warm step is
+        # expected to remove the 164 s first-unit build, and the model will follow the first macOS run's measurement).
+        # Warm the Rust SDK Cargo targets builds each needed target before go test starts (budgeted at 60 s per target,
+        # added on top). The six grouped jobs hold 866 to 1032 s of tests plus 300 s warm setup and 60 to 120 s Rust
+        # warm-up (20.9 to 23.2 minutes warm, 25 to 27 minutes cold).
+        # test/ci-images holds these times and fails when a job's units, warm setup, and Rust warm-up pass 60% of the limit.
         # native: the smoke run of the packages with macOS-specific code.
         # cli-1 to cli-8: the eight cmd/pig shards that make test-cli runs on Linux (automation/ci/test-shard-pattern.sh).
         # extension-host-1 to extension-host-5: the subprocess extension host tests, in the five shards of make test-subprocess.
@@ -1665,6 +1684,27 @@ jobs:
           test "$(node --version)" = "v$(cat .node-version)"
           test "$(npm --version)" = "$NPM_VERSION"
           python3 automation/pin/pin.py check-oracle
+      - name: Warm the Rust SDK Cargo targets
+        # Builds pig-sdk and its dependencies into each unit's SharedCargoTargetDir before go test starts, so no test compiles the Rust SDK cold inside its 120 s wait budget.
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' && matrix.shard != 'native' }}
+        shell: bash
+        env:
+          UNITS: ${{ matrix.shard }}
+        run: |
+          set -euo pipefail
+          targets=()
+          case " $UNITS " in
+            *" cli-"*) targets+=(cli) ;;
+          esac
+          case " $UNITS " in
+            *" extension-host-"*) targets+=(subprocess) ;;
+          esac
+          case " $UNITS " in
+            *" packages "*) targets+=(env-oracle) ;;
+          esac
+          if [ "${#targets[@]}" -gt 0 ]; then
+            ./automation/ci/test-warm.sh --rust-only "${targets[@]}"
+          fi
       - name: Build and test native macOS paths
         if: matrix.shard == 'native'
         run: |
