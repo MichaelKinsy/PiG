@@ -140,7 +140,7 @@ func TestWindowsShardsTestEverySelectedPackage(t *testing.T) {
 		wantUnits = append(wantUnits, "cli-"+strconv.Itoa(shard))
 	}
 	wantUnits = append(wantUnits, hostUnits(t)...)
-	wantUnits = append(wantUnits, "extension-conformance-1", "extension-conformance-2", "extension-conformance-3", "extension-conformance-4", "extension-conformance-5", "extension-conformance-6")
+	wantUnits = append(wantUnits, "extension-conformance-1", "extension-conformance-2", "extension-conformance-3", "extension-conformance-4", "extension-conformance-5", "extension-conformance-6", "extension-conformance-7", "extension-conformance-8", "extension-conformance-9", "extension-conformance-10")
 	var gotUnits []string
 	for _, entry := range planFor(t, "merge_group", "").shards("windows") {
 		units := strings.Fields(entry)
@@ -235,7 +235,7 @@ func TestWindowsShardsTestEverySelectedPackage(t *testing.T) {
 	}
 	// The jobs of each extension package split its tests with test-shard-pattern.sh, so each test runs once.
 	hostCount, hostPkg := hostShards(t)
-	for _, want := range []string{`extension-host-*) package=` + hostPkg + ` shards=` + strconv.Itoa(hostCount), `extension-conformance-*) package=./test/extension-conformance shards=6`, `test-shard-pattern.sh "${EXTENSION_SHARD##*-}" "$shards" "$package"`} {
+	for _, want := range []string{`extension-host-*) package=` + hostPkg + ` shards=` + strconv.Itoa(hostCount), `extension-conformance-*) package=./test/extension-conformance shards=10`, `test-shard-pattern.sh "${EXTENSION_SHARD##*-}" "$shards" "$package"`} {
 		found := false
 		for _, step := range job.Steps {
 			if strings.Contains(step.Run, want) && step.If == "startsWith(matrix.shard, 'extension-')" {
@@ -253,6 +253,34 @@ func TestWindowsShardsTestEverySelectedPackage(t *testing.T) {
 	}
 	if conformanceRun.MatchString(extensionRuns) {
 		t.Errorf("extension-host shard also tests %s, so the shards do not split the extension work", conformancePkg)
+	}
+	// The shared extension cell cache (testenv.SharedCellCacheDir) must live under RUNNER_TEMP (D:), not C:\Users\...\AppData\Local:
+	// every Node runtime materialization creates ~1,890 hard links and C: is several times slower for many small files on hosted Windows runners.
+	cellCacheOnTemp := false
+	for _, step := range job.Steps {
+		if strings.Contains(step.Run, "PIG_TEST_CELL_CACHE=") && strings.Contains(step.Run, "RUNNER_TEMP") {
+			cellCacheOnTemp = true
+		}
+	}
+	if !cellCacheOnTemp {
+		t.Errorf("windows job does not place PIG_TEST_CELL_CACHE under RUNNER_TEMP")
+	}
+	// The Windows extension-conformance weights section must match the workflow's 10 shards and pin tests to every shard.
+	weights, err := os.ReadFile(filepath.Join(repoRoot(t), "automation", "ci", "test-shard-weights.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	winConf := regexp.MustCompile(`(?m)^package \./test/extension-conformance\nshards 10\n((?:[0-9]+ \S+\n)*)`).FindSubmatch(weights)
+	if winConf == nil {
+		t.Fatalf("test-shard-weights.txt has no section for ./test/extension-conformance shards 10")
+	}
+	pinned := map[string]bool{}
+	for line := range strings.Lines(string(winConf[1])) {
+		shard, _, _ := strings.Cut(line, " ")
+		pinned[shard] = true
+	}
+	if len(pinned) != 10 {
+		t.Errorf("test-shard-weights.txt pins Windows extension-conformance tests to %d of 10 shards", len(pinned))
 	}
 }
 
