@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	sourceref "github.com/MichaelKinsy/PiG/coding/source"
+	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
@@ -39,7 +40,8 @@ func TestRefreshTemporaryGitSourceReportsPullAroundTheAwaitedUpdate(t *testing.T
 			testenv.IsolateGit(t)
 			t.Setenv("PI_OFFLINE", "")
 			t.Setenv("PIG_OFFLINE", "")
-			_, sm := trustedSettings(t)
+			// ShortTempDir keeps the temporary git checkout and its .git/objects/pack/*.keep path under Windows MAX_PATH.
+			sm := codingagent.NewSettingsManager(testenv.ShortTempDir(t, "pm-"), testenv.ShortTempDir(t, "pm-"))
 			origin := testenv.NewSubdirectoryOrigin(t, "temporary")
 			source := "git:" + origin.URL
 			ref, err := sourceref.Parse(source, sourceref.Options{Bare: sourceref.BareReject})

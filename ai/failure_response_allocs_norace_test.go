@@ -2,7 +2,10 @@
 
 package ai
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
 // failedRequestAllocs is what one failed HTTP request allocates with this test's transport and no decider: every allocation of the process while the request is made and
 // its failed message read (testing.AllocsPerRun counts them all, the stream's goroutine included), as the floor of the mean over 200 requests. The failure response and its
@@ -16,14 +19,20 @@ import "testing"
 // The race detector's instrumentation changes the count, so the test runs without it.
 var failedRequestAllocs = map[string]float64{"openai-completions": 212, "openai-responses": 224, "anthropic": 219, "google": 219}
 
+// failedRequestEnvLookups is the number of process environment lookups each provider's failed-request path makes
+// (os.Getenv allocates 0 on Unix and 2 on Windows for UTF-16 conversion).
+var failedRequestEnvLookups = map[string]float64{"openai-completions": 2, "openai-responses": 1, "anthropic": 2, "google": 0}
+
 func TestFailedRequestAllocationsWithoutDeciderMatchTheLineBeforeTheSeam(t *testing.T) {
+	envLookupAllocs := testing.AllocsPerRun(100, func() { _ = os.Getenv("PI_CACHE_RETENTION") })
 	for _, tc := range failedRequestProviders {
 		t.Run(tc.name, func(t *testing.T) {
 			provider := tc.build()
 			transport := rateLimitedTransport()
 			got := testing.AllocsPerRun(200, func() { runFailedRequest(t, provider, transport, false) })
-			t.Logf("allocs/op %s = %v", tc.name, got)
-			if want := failedRequestAllocs[tc.name]; got != want {
+			want := failedRequestAllocs[tc.name] + failedRequestEnvLookups[tc.name]*envLookupAllocs
+			t.Logf("allocs/op %s = %v (want %v; envLookupAllocs=%v)", tc.name, got, want, envLookupAllocs)
+			if got != want {
 				t.Fatalf("allocs/op = %v, want %v (the line before the seam)", got, want)
 			}
 		})

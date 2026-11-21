@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -96,8 +97,13 @@ func TestFirstCredentialWriteMakesTheDirectoryPrivateAndWritesAtomically(t *test
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := info.Mode().Perm(); got != check.want {
-			t.Errorf("%s mode = %o, want %o", check.path, got, check.want)
+		// Windows file modes carry no group/other bits (Go reports 0777/0666, as Node's
+		// mkdirSync/writeFileSync mode options are no-ops on win32), so POSIX mode bits
+		// are asserted only outside Windows.
+		if runtime.GOOS != "windows" {
+			if got := info.Mode().Perm(); got != check.want {
+				t.Errorf("%s mode = %o, want %o", check.path, got, check.want)
+			}
 		}
 	}
 }

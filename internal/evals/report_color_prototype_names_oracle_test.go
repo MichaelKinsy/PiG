@@ -1,6 +1,7 @@
 package evals
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/pioracle"
@@ -40,7 +41,13 @@ emit(input.map((env) => tty.WriteStream.prototype.getColorDepth.call({}, env) > 
 			value, ok := c.env[name]
 			return value, ok
 		}
-		if node[i] != c.node {
+		if runtime.GOOS == "windows" {
+			// Node's getColorDepth takes the win32 branch before consulting TERM_ENVS,
+			// returning >= 16 colors on every supported Windows release; verify PiG's windows branch matches live Node.
+			if wantWin := nodeColorDepthAboveTwo(lookup, "windows"); node[i] != wantWin {
+				t.Errorf("getColorDepth(%v) > 2 on windows: Node answers %v, PiG answers %v", c.env, node[i], wantWin)
+			}
+		} else if node[i] != c.node {
 			t.Errorf("getColorDepth(%v) > 2: Node answers %v, the record says %v", c.env, node[i], c.node)
 		}
 		if got := nodeColorDepthAboveTwo(lookup, "linux"); got != c.pig {
