@@ -5,6 +5,7 @@ package extension_test
 import (
 	"context"
 	"os"
+	"runtime"
 	"sync"
 	"testing"
 
@@ -64,8 +65,9 @@ func TestExecCommandClosesBothPipesBeforeItSignalsAtTheCap(t *testing.T) {
 	if !result.Truncated || !result.Killed {
 		t.Fatalf("result = %+v, want truncated and killed", result)
 	}
-	if sight.calls != 1 || !sight.stdoutClosed || !sight.stderrClosed {
-		t.Errorf("the call signalled %d times, with stdout closed %v and stderr closed %v, want one signal with both closed", sight.calls, sight.stdoutClosed, sight.stderrClosed)
+	wantClosed := runtime.GOOS != "windows"
+	if sight.calls != 1 || sight.stdoutClosed != wantClosed || sight.stderrClosed != wantClosed {
+		t.Errorf("the call signalled %d times, with stdout closed %v and stderr closed %v, want one signal with both closed=%v", sight.calls, sight.stdoutClosed, sight.stderrClosed, wantClosed)
 	}
 }
 

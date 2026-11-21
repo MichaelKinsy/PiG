@@ -16,6 +16,7 @@ import (
 	"math"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -270,9 +271,8 @@ func ExecCommand(ctx context.Context, cwd, command string, args []string, opts *
 			// SIGTERM lands first (143); a command that had already exited keeps its own code (1 once truncated). Signalling first ends every
 			// such command by SIGTERM and never reports 141, which most of Pi's runs of an endless writer report. Close returns once the reader
 			// of the other pipe has left its wait, so both descriptors are closed when the signal goes.
-			_ = stdoutRead.Close()
-			_ = stderrRead.Close()
-			killProcess()
+			// On Windows, Close on a pipe blocks behind the sibling overlapped reader goroutine; closing before killProcess lets MSYS2 sh observe a broken pipe and exit with 1 or raw status 3328 (13 << 8) before TerminateProcess runs. Kill first on Windows, then close both pipes.
+			stopOnTruncationOrder(runtime.GOOS == "windows", func() { _ = stdoutRead.Close() }, func() { _ = stderrRead.Close() }, killProcess)
 			chunk = chunk[:max(remaining, 0)]
 		}
 		outputBytes += int64(len(chunk))
@@ -348,4 +348,19 @@ func NodeTimerDelay(ms float64) time.Duration {
 	}
 	//portlint:allow numbers ms is within [1, 2147483647] here (NaN and out-of-range returned above), so int64(ms) is the truncation Node applies and cannot overflow
 	return time.Duration(int64(ms)) * time.Millisecond
+}
+
+// stopOnTruncationOrder runs the pipe closes and process kill in the platform order on maxBuffer overflow.
+// On Unix it closes both pipes before signalling (matching exec.ts:111-113 so a writer meets SIGPIPE before SIGTERM);
+// on Windows it kills before closing so a blocking overlapped Close cannot let MSYS2 sh exit on broken pipe first.
+func stopOnTruncationOrder(killBeforeClose bool, closeStdout, closeStderr, kill func()) {
+	if killBeforeClose {
+		kill()
+		closeStdout()
+		closeStderr()
+		return
+	}
+	closeStdout()
+	closeStderr()
+	kill()
 }
