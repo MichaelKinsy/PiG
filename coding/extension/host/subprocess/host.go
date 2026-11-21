@@ -2718,7 +2718,7 @@ func (h *Host) EndInput() {
 // pig additive (D19): the process exits right after this returns, and an extension's console output the host has not yet copied to the terminal and the extension's log would be lost with it; Pi writes it inside its own process, so a write made before its exit is never lost. The wait is bounded by processWaitDelay for all processes together: a process that does not end, or a descendant that keeps an output pipe open, loses the rest of its output after one line on stderr says so.
 func (h *Host) TerminateProcesses() { TerminateHostProcesses(h) }
 
-// TerminateHostProcesses is TerminateProcesses for every host of one exiting process: it kills the processes of all hosts first, then waits for them against ONE bound that starts before the first kill, so hosts with a stuck pipe hold the exit for one bound in all, and the dropped-output line comes once with the total count. pig additive (D19).
+// TerminateHostProcesses is TerminateProcesses for every host of one exiting process: it kills the processes of all hosts first, then waits for them against ONE bound that starts before the first kill, so hosts with a stuck pipe hold the exit for one bound in all, and the dropped-output line comes once with the total count. pig additive (D19). Every Host of a process has the same drain bound in production (processWaitDelay, D56; waitDelay is a test override), so no process is ended by a shorter bound than the shared one.
 func TerminateHostProcesses(hosts ...*Host) {
 	var bound time.Duration
 	for _, h := range hosts {
@@ -2766,7 +2766,7 @@ func (h *Host) removeSockRuntimeDir() {
 // reapedProcess is one hosted process that TerminateHostProcesses waits to finish ending.
 type reapedProcess struct {
 	done     <-chan struct{}
-	reapedAt func() time.Time // Valid once done is closed: when the process finished ending.
+	reapedAt func() time.Time // Valid once done is closed: when the process finished ending. The two reaper paths (host.go exitedCh and packed_go.go waitDone) always set reapedAt before closing done; a zero time means the process never ran.
 }
 
 // killProcesses kills the processes of h and returns the processes to wait for and the stderr logs of the processes it killed.
