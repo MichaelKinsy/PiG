@@ -26084,6 +26084,45 @@
       "tests": []
     },
     {
+      "id": "BF-649bef3",
+      "title": "Closing a `coding.Session` that built its own `DefaultResourceLoader` now shuts down its Extension Host (D19)…",
+      "symptom": "Previously, child sessions created by an extension with no resources of their own (one Extension Host process per child stayed until the parent exited) and Go SDK embedders who create a Session without a loader leaked extension subprocesses past `Session.Close`, blocking directory cleanup on Windows.",
+      "rootCause": "resolveResourceLoader constructed a DefaultResourceLoader for Sessions without a supplied or Services-owned loader, and neither Session.Close nor NewSession error paths ever closed it, leaking its Extension Host subprocesses.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Closing a `coding.Session` that built its own `DefaultResourceLoader` now shuts down its Extension Host (D19) when the last Session sharing it closes, and a failed `NewSession` closes that loader before returning. Previously, child sessions created by an extension with no resources of their own (one Extension Host process per child stayed until the parent exited) and Go SDK embedders who create a Session without a loader leaked extension subprocesses past `Session.Close`, blocking directory cleanup on Windows. A `Clone` of a Session that was already closed and had built its own resource loader now returns an error (previously it returned a clone that ran on the closed Session's leaked Extension Host); clone before closing, or supply a loader (a Session with a supplied loader still clones onto the caller's open loader). Affects 0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "649bef3ed6",
+          "date": "2026-11-21"
+        },
+        {
+          "hash": "791a02dc55",
+          "date": "2026-11-21"
+        },
+        {
+          "hash": "7d12dea47a",
+          "date": "2026-11-21"
+        },
+        {
+          "hash": "8378518ec6",
+          "date": "2026-11-21"
+        },
+        {
+          "hash": "e509719a18",
+          "date": "2026-11-21"
+        }
+      ],
+      "tests": [
+        "coding/cli/child_session_owned_loader_close_unix_test.go::TestChildSessionNoResourcesCloseEndsChildExtensionHost",
+        "coding/session_owned_loader_close_unix_test.go::TestSessionCloseShutsDownOwnedResourceLoader"
+      ]
+    },
+    {
       "id": "BF-65411f7",
       "title": "fix(chord/next/documents): a transaction releases the line and tells its staged changes in one section, as…",
       "symptom": "fix(chord/next/documents): a transaction releases the line and tells its staged changes in one section, as Pi's finally does",

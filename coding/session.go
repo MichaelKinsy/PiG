@@ -144,7 +144,8 @@ type Session struct {
 	// runState is the active run's streaming, abort, and idle state.
 	runState sessionRunState
 
-	resourceLoader atomic.Pointer[resourceLoaderRef]
+	resourceLoader  atomic.Pointer[resourceLoaderRef]
+	ownedLoaderOnce sync.Once
 	// extensionBindings are the mode bindings the last BindExtensions call supplied; a reload applies them to the rebuilt runner.
 	extensionBindings atomic.Pointer[ExtensionBindings]
 	// extensionsBound is set by BindExtensions, with any bindings: a reload restarts the extensions only for a host that bound them (agent-session.ts _extensionsBound).
@@ -473,6 +474,13 @@ func NewSession(svcs *AgentSessionServices, opts SessionOptions) (*Session, erro
 			return nil, err
 		}
 	}
+	// If NewSession returns an error after acquiring an owned loader reference, release it so its Extension Host does not leak (D19).
+	var constructed *Session
+	defer func() {
+		if constructed == nil && resourceLoader.owned != nil {
+			resourceLoader.owned.release()
+		}
+	}()
 	if opts.Runner == nil {
 		// upstream: agent-session.ts _buildRuntime builds the ExtensionRunner over resourceLoader.getExtensions().
 		loaded := resourceLoader.loader.GetExtensions()
@@ -823,6 +831,7 @@ func NewSession(svcs *AgentSessionServices, opts SessionOptions) (*Session, erro
 	sess.installCacheWarmer(inner, opts.CacheWarmer)
 	//portlint:allow asyncorder forwardAgentEvents is the Session's event executor: rawEvents is a FIFO and the ordering point, as agent.subscribe(_handleAgentEvent) (agent-session.ts:546, 1164) runs its listeners in emission order; it ends by closing events once the Session closes
 	go sess.forwardAgentEvents()
+	constructed = sess
 	return sess, nil
 }
 
@@ -1648,6 +1657,12 @@ func (s *Session) Close() error {
 	if !s.successorOwnsResources.Load() {
 		_ = ai.CleanupSessionResources(s.ID())
 	}
+	// Release this Session's reference to an owned DefaultResourceLoader last, after runner invalidation and run drain, so extensions stay reachable during shutdown and close once the last sharer closes (D19).
+	s.ownedLoaderOnce.Do(func() {
+		if ref := s.resourceLoader.Load(); ref != nil && ref.owned != nil {
+			ref.owned.release()
+		}
+	})
 	if s.ownedServices != nil {
 		s.ownedServices.Close()
 	}

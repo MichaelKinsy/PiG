@@ -166769,7 +166769,7 @@
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
         "test:coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream",
-        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackAppliesANativeProvidersFilter"
+        "test:coding/cli/child_session_owned_loader_close_unix_test.go#TestChildSessionNoResourcesCloseEndsChildExtensionHost"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -166792,7 +166792,7 @@
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
         "test:coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream",
-        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackAppliesANativeProvidersFilter"
+        "test:coding/cli/child_session_owned_loader_close_unix_test.go#TestChildSessionNoResourcesCloseEndsChildExtensionHost"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -166815,7 +166815,7 @@
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
         "test:coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream",
-        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackAppliesANativeProvidersFilter"
+        "test:coding/cli/child_session_owned_loader_close_unix_test.go#TestChildSessionNoResourcesCloseEndsChildExtensionHost"
       ]
     },
     {
@@ -166943,7 +166943,7 @@
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
         "test:coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream",
-        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackAppliesANativeProvidersFilter"
+        "test:coding/cli/child_session_owned_loader_close_unix_test.go#TestChildSessionNoResourcesCloseEndsChildExtensionHost"
       ]
     },
     {
@@ -167351,7 +167351,7 @@
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
         "test:coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream",
-        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackAppliesANativeProvidersFilter"
+        "test:coding/cli/child_session_owned_loader_close_unix_test.go#TestChildSessionNoResourcesCloseEndsChildExtensionHost"
       ]
     },
     {
@@ -167372,7 +167372,8 @@
       ],
       "evidence": [
         "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions",
-        "test:coding/create_agent_session_test.go#TestCreateAgentSessionReturnsTheLoadersExtensionsResult"
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionReturnsTheLoadersExtensionsResult",
+        "test:coding/session_owned_loader_close_unix_test.go#TestSessionCloseShutsDownOwnedResourceLoader"
       ]
     },
     {
@@ -167416,7 +167417,7 @@
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
         "test:coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream",
-        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackAppliesANativeProvidersFilter"
+        "test:coding/cli/child_session_owned_loader_close_unix_test.go#TestChildSessionNoResourcesCloseEndsChildExtensionHost"
       ]
     },
     {
@@ -167568,6 +167569,7 @@
         "call:coding/cli/cli_session_factory.go#cliSessionFactory.create"
       ],
       "evidence": [
+        "test:coding/session_owned_loader_close_unix_test.go#TestSessionCloseShutsDownOwnedResourceLoader",
         "test:coding/session_runtime_result_extends_test.go#TestNewAgentSessionRuntimeCarriesTheSessionsExtensionsResult",
         "test:coding/session_runtime_result_extends_test.go#TestRuntimeKeepsTheCreatedResultMembers"
       ]
@@ -167611,8 +167613,8 @@
       ],
       "evidence": [
         "test:coding/session_fork_active_upstream_test.go#TestAgentSessionRuntimeKeepsTheSessionStartEventUpstream",
-        "test:coding/session_runtime_diagnostics_test.go#TestRuntimeKeepsDiagnosticsAndModelFallbackOfTheCurrentConstruction",
-        "test:coding/session_runtime_dispose_test.go#TestRuntimeRequestsCapturedResourceRetirementAfterLogicalDisposal"
+        "test:coding/session_owned_loader_close_unix_test.go#TestSessionCloseShutsDownOwnedResourceLoader",
+        "test:coding/session_runtime_diagnostics_test.go#TestRuntimeKeepsDiagnosticsAndModelFallbackOfTheCurrentConstruction"
       ]
     },
     {
@@ -167633,8 +167635,8 @@
       ],
       "evidence": [
         "test:coding/session_fork_active_upstream_test.go#TestAgentSessionRuntimeKeepsTheSessionStartEventUpstream",
-        "test:coding/session_runtime_diagnostics_test.go#TestRuntimeKeepsDiagnosticsAndModelFallbackOfTheCurrentConstruction",
-        "test:coding/session_runtime_dispose_test.go#TestRuntimeRequestsCapturedResourceRetirementAfterLogicalDisposal"
+        "test:coding/session_owned_loader_close_unix_test.go#TestSessionCloseShutsDownOwnedResourceLoader",
+        "test:coding/session_runtime_diagnostics_test.go#TestRuntimeKeepsDiagnosticsAndModelFallbackOfTheCurrentConstruction"
       ]
     },
     {
@@ -182015,8 +182017,8 @@
       ],
       "evidence": [
         "test:coding/runner_model_registry_upstream_test.go#TestNewExtensionRunnerBindsItsConstructorArguments",
-        "test:coding/extension/host/inproc/coding_extension_runner_test.go#TestNewExtensionRunnerBindsItsRuntimeCwdAndSessionManager",
-        "test:coding/extension/host/inproc/coding_new_extension_runner_test.go#TestCodingNewExtensionRunnerBindsTheRuntimeCwdAndAbsentSessionManager"
+        "test:coding/cli/child_session_owned_loader_close_unix_test.go#TestChildSessionNoResourcesCloseEndsChildExtensionHost",
+        "test:coding/extension/host/inproc/coding_extension_runner_test.go#TestNewExtensionRunnerBindsItsRuntimeCwdAndSessionManager"
       ]
     },
     {
@@ -192823,7 +192825,7 @@
       "evidence": [
         "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
         "test:coding/session_reload_upstream_test.go#TestSessionReloadRebuildsTheRunnerFromTheResourceLoader",
-        "test:coding/discover_extensions_node_test.go#TestDiscoverAndLoadExtensionsLoadsWhatItDiscoversAndReportsFailures"
+        "test:coding/cli/child_session_owned_loader_close_unix_test.go#TestChildSessionNoResourcesCloseEndsChildExtensionHost"
       ]
     },
     {
@@ -192844,8 +192846,8 @@
       ],
       "evidence": [
         "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
-        "test:coding/discover_extensions_node_test.go#TestDiscoverAndLoadExtensionsLoadsWhatItDiscoversAndReportsFailures",
-        "test:coding/discover_extensions_node_test.go#TestDiscoverAndLoadExtensionsReturnsTheRuntimeTheExtensionsShare"
+        "test:coding/cli/child_session_owned_loader_close_unix_test.go#TestChildSessionNoResourcesCloseEndsChildExtensionHost",
+        "test:coding/discover_extensions_node_test.go#TestDiscoverAndLoadExtensionsLoadsWhatItDiscoversAndReportsFailures"
       ]
     },
     {
@@ -206523,6 +206525,7 @@
         "call:coding/cli/cli_session_factory.go#cliSessionFactory.create"
       ],
       "evidence": [
+        "test:coding/cli/child_session_owned_loader_close_unix_test.go#TestChildSessionNoResourcesCloseEndsChildExtensionHost",
         "test:coding/resource_loader_extend_test.go#TestResourceLoaderInterfaceExtendsAndReloads",
         "test:coding/resource_loader_packages_test.go#TestDefaultLoaderInstallsMissingNPMPackages"
       ]
@@ -206544,6 +206547,7 @@
         "call:coding/cli/cli_session_factory.go#cliSessionFactory.create"
       ],
       "evidence": [
+        "test:coding/cli/child_session_owned_loader_close_unix_test.go#TestChildSessionNoResourcesCloseEndsChildExtensionHost",
         "test:coding/resource_loader_extend_test.go#TestResourceLoaderInterfaceExtendsAndReloads",
         "test:coding/resource_loader_packages_test.go#TestDefaultLoaderInstallsMissingNPMPackages"
       ]
