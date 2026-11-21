@@ -42494,17 +42494,6 @@
       "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#gemini4PlusRe",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "gemini4PlusRe",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "*github.com/MichaelKinsy/PiG/internal/lazyregexp.Regexp"
-      },
-      "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#geminiAPIWire",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "geminiAPIWire",
@@ -64522,9 +64511,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(modelID string) bool"
+        "type": "func(model *Model) bool"
       },
-      "shapeHash": "sha256:a7e13c780f6b0d936cdf69e4aa97bdb34fe581c9b84e2282a1c731008880c9a9"
+      "shapeHash": "sha256:f42fbf46069dd7fae0656b38f4e7805c657f52677c4b0e90ccd5688200c3e50b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#supportsMultimodalFunctionResponse",
@@ -335961,6 +335950,17 @@
         "type": "Definition"
       },
       "shapeHash": "sha256:f1a434f542cf14dac85c50a3275eeecdcb8862f7aa32216f82ea8c343170c8ec"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#GoogleCompatSchema",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+      "name": "GoogleCompatSchema",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *Schema"
+      },
+      "shapeHash": "sha256:85b7a9cb76af224a912e703674404e5d443dabe176e1118e6fb666c8f1f3a7d7"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#Integer",

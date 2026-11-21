@@ -40,8 +40,9 @@ export function usesGoogleThinkingLevel(model) {
     // Match Gemini 3 Pro/Flash IDs with or without a minor version, such as
     // gemini-3-flash-preview, gemini-3.1-pro-preview, and gemini-3.8-flash.
     /gemini-3(?:\.\d+)?-(?:pro|flash)/.test(id) ||
+        // Pi fe8a6f5dc (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         // Match Gemini 4 and later, such as gemini-4-argon (#10890).
-        /gemini-(?:[4-9]|[1-9]\d)/.test(id) ||
+        (getGeminiMajorVersion(id) ?? 0) >= 4 ||
         id === "gemini-flash-latest" ||
         id === "gemini-flash-lite-latest" ||
         // Match both hosted Gemma 4 naming forms: gemma-4-* and gemma4-*.
@@ -129,7 +130,9 @@ export function requiresToolCallId(modelId) {
         (geminiMajorVersion !== undefined && geminiMajorVersion >= 3));
 }
 function getGeminiMajorVersion(modelId) {
-    const match = modelId.toLowerCase().match(/^gemini(?:-live)?-(\d+)/);
+    // Pi fe8a6f5dc (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+    // Unanchored like usesGoogleThinkingLevel: some hosts prefix the ID, e.g. randomprefix-gemini-4-argon (#12321).
+    const match = modelId.toLowerCase().match(/gemini(?:-live)?-(\d+)/);
     if (!match)
         return undefined;
     return Number.parseInt(match[1], 10);
@@ -406,10 +409,14 @@ export function convertTools(tools, useParameters = false, supportsStrictMode = 
         },
     ];
 }
-/** Gemini 3+ enforces required function parameters in validated tool-calling modes. */
-export function supportsGoogleStrictToolSampling(modelId) {
-    const majorVersion = getGeminiMajorVersion(modelId);
-    return majorVersion !== undefined && majorVersion >= 3;
+// Pi fe8a6f5dc (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+/**
+ * Gemini 3+ enforces required function parameters in validated tool-calling modes.
+ * `compat.supportsStrictMode` overrides the model ID detection, e.g. for Gemini models served under IDs without the version.
+ */
+export function supportsGoogleStrictToolSampling(model) {
+    const majorVersion = getGeminiMajorVersion(model.id);
+    return model.compat?.supportsStrictMode ?? (majorVersion !== undefined && majorVersion >= 3);
 }
 /** Map tool choice string to Gemini FunctionCallingConfigMode. */
 export function mapToolChoice(choice) {

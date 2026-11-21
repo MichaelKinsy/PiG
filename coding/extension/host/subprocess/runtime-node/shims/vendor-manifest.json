@@ -7352,7 +7352,7 @@
         "integrity": "sha512-2tWPSnV3qzfiDIY3aWluBag3vC++Vs+VsXt/UquSU5onPMohPih72FUhIhaqmDdMYubOgB3Byl9uF4Vk40JLvQ=="
       },
       "source": "dist/api/google-generative-ai.js",
-      "sourceSha256": "417cd31d5d16eb75199c854bd0db120d2a35b104a8afa77599720c2be3afd77e",
+      "sourceSha256": "be51f47d114b81e4a70ea560c989037d13bdf494a93c28f477727cb7e636bff1",
       "sha256": "d6386e6305951cc59951f285dd2fa6928c07b7db1b18dc4137b03a9fecd21080",
       "rewrite": "D74 host API leaf"
     },
@@ -7375,8 +7375,8 @@
         "integrity": "sha512-2tWPSnV3qzfiDIY3aWluBag3vC++Vs+VsXt/UquSU5onPMohPih72FUhIhaqmDdMYubOgB3Byl9uF4Vk40JLvQ=="
       },
       "source": "dist/api/google-shared.js",
-      "sourceSha256": "ef423c1093c672796e87e3ac0f4d3797ebb57e6550c48c01f2d4ed164052719b",
-      "sha256": "d30ab2b0c214e856c5869e18cae25d21b2fca10ba1fd7a591cc60e7959492f58",
+      "sourceSha256": "13b3fbad5a4d10b8f45a42c53093dc74ed769deedef65f8f85bc5649a2a545f1",
+      "sha256": "96fee08a9716530121740becb29fcdae552a8eb9e650b329031ef6c127366988",
       "rewrite": "D74 the module's one SDK import replaced (automation/gen/vendor-pi-ai-apis.mjs)"
     },
     {
@@ -7387,7 +7387,7 @@
         "integrity": "sha512-2tWPSnV3qzfiDIY3aWluBag3vC++Vs+VsXt/UquSU5onPMohPih72FUhIhaqmDdMYubOgB3Byl9uF4Vk40JLvQ=="
       },
       "source": "dist/api/google-vertex.js",
-      "sourceSha256": "74ce0353f43f12e4a7bd8c947e84afd833a6b5a084e4aed01795b2a6780a5de4",
+      "sourceSha256": "359a3c402107173392bc94a4eace2ace9e17505282aeccf41da5c922b2b579eb",
       "sha256": "994129aa12e78966f965d01a32452cd5e4a18aea14517bc4083d519023409b3a",
       "rewrite": "D74 host API leaf"
     },
@@ -8405,8 +8405,8 @@
         "integrity": "sha512-2tWPSnV3qzfiDIY3aWluBag3vC++Vs+VsXt/UquSU5onPMohPih72FUhIhaqmDdMYubOgB3Byl9uF4Vk40JLvQ=="
       },
       "source": "dist/providers/compat-schema.js",
-      "sourceSha256": "125fd870521a5db01f623a3756b460af386a9079a9890124841d9b27c9e78b7e",
-      "sha256": "a0046651e74454e58712c6c8b95360f039723fd50f66e6e6cb523a3d9d1e944f",
+      "sourceSha256": "c50f89713b17c24c585842bcf13a17eca015010e368e2f5bfaeaf0f342d9e51f",
+      "sha256": "66edd470ab4cffefc16f9c8b026465ecd7fbea38c5bb95a67b40a8ba60be1c9d",
       "rewrite": "module specifiers"
     },
     {
@@ -12164,8 +12164,8 @@
         "integrity": "sha512-mUWI04rqF1Vd/m1q+Ps1XeWsTXEVvRUnsmRa83I3Dzua0Tx5bYS93imeqtIfrXf7PkkaR6ERz+AuQhIJlom5yA=="
       },
       "source": "docs/models-configuration.md",
-      "sourceSha256": "0170b8f1ad02be49cd629a6cf65875d5f8ddd637970d82a4d032181916aa39ef",
-      "sha256": "0170b8f1ad02be49cd629a6cf65875d5f8ddd637970d82a4d032181916aa39ef"
+      "sourceSha256": "addebcc67935b666d6dea3fef534d7ee72e5b47e1468c2f5d533aa344c8db318",
+      "sha256": "addebcc67935b666d6dea3fef534d7ee72e5b47e1468c2f5d533aa344c8db318"
     },
     {
       "path": "pi-dist/pi-coding-agent/docs/models.md",
