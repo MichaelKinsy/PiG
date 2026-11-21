@@ -2337,6 +2337,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f4cc20b](#bf-f4cc20b) | The pi-env daemon ended by SIGTERM, SIGINT or SIGHUP could end with status 1 and a stray `pi-env: read… | PiG's own defect | macOS | Unreleased |
 | [BF-f4d85f8](#bf-f4d85f8) | A large file written through a tool call no longer slows down as it streams: each streamed piece of the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f4daf25](#bf-f4daf25) | fix(chord): drop principal_same.go: follow/pi-main ported samePrincipal into principal.go | PiG's own defect | All platforms | Unreleased |
+| [BF-f4ed81b](#bf-f4ed81b) | When `pig` exits while extension processes still hold their output open (for example, when a descendant keeps… | PiG's own defect | All platforms | Unreleased |
 | [BF-f51de47](#bf-f51de47) | ai: a non-strict Anthropic tool schema keeps its root `additionalProperties` (false, true or a schema), so… | PiG's own defect | All platforms | Unreleased |
 | [BF-f56733c](#bf-f56733c) | The provider id `ollama` no longer has a base URL of its own | PiG's own defect | All platforms | Unreleased |
 | [BF-f589900](#bf-f589900) | fix(tui): delete D155; PageUp and PageDown paging follows Pi | PiG's own defect | All platforms | Unreleased |
@@ -34604,6 +34605,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `f4daf25b83` (2026-11-07)
 - **Tests:** None recorded.
+
+### BF-f4ed81b
+
+**When `pig` exits while extension processes still hold their output open (for example, when a descendant keeps…**
+
+- **Source:** PiG's own defect
+- **Symptom:** When `pig` exits while extension processes still hold their output open (for example, when a descendant keeps the pipe open), `pig` waits one five-second bound and prints on stderr how many extension processes did not finish ending; under load that count could be too small, or the line could be missing.
+- **Root cause:** each process's own five-second drain timer (cmd.WaitDelay) could close its exit channel after the shared deadline before the shared termination timer woke awaitReaped, so checking only open channels omitted those processes
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f4ed81b362` (2026-11-21)
+- **Tests:** `coding/extension/host/subprocess/terminate_shared_bound_test.go::TestAwaitReapedCountsProcessesReapedAfterDeadline`, `coding/extension/host/subprocess/terminate_shared_bound_test.go::TestTerminateProcessesOfSeveralHostsSharesOneBound`
+- **Release note:** When `pig` exits while extension processes still hold their output open (for example, when a descendant keeps the pipe open), `pig` waits one five-second bound and prints on stderr how many extension processes did not finish ending; under load that count could be too small, or the line could be missing. Every such process is now counted. Not present in 0.7.0, which did not join extension output at exit.
 
 ### BF-f51de47
 

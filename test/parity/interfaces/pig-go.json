@@ -140631,9 +140631,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func() ([]\u003c-chan struct{}, []*processStderrLog)"
+        "type": "func() ([]reapedProcess, []*processStderrLog)"
       },
-      "shapeHash": "sha256:756ec6e7d7f6175dc2235c928c602df7685cda0ef4d5cfec4390a2ee8a9a9ef6"
+      "shapeHash": "sha256:8c44c96852e3cc9dc0a11eb359414fd47eb689571d1dd067d54ac727d57e25c2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.lingerRemoved",
@@ -150487,9 +150487,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(reaped []\u003c-chan struct{}, timer *time.Timer, bound time.Duration)"
+        "type": "func(reaped []reapedProcess, timer *time.Timer, deadline time.Time, bound time.Duration)"
       },
-      "shapeHash": "sha256:563780f64a7a87a5dc87dec0f6290ff8cf1a505c63e4050df455cfca8ccf4dc4"
+      "shapeHash": "sha256:cab13dd7ea950905efaf73aead0c0b9315e23a469692cd7885c2d7f3fd39af5e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#awaitReplyDispatch",
@@ -157840,6 +157840,17 @@
       "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#managedExt.exitReapedAt",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "managedExt.exitReapedAt",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() time.Time"
+      },
+      "shapeHash": "sha256:2e22bffc678f9368aec638f9e5c41c11f2326f6894a601fde6fd2616a093ec7b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#managedExt.exited",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "managedExt.exited",
@@ -161382,6 +161393,17 @@
       "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#packedProcessState.exitReapedAt",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "packedProcessState.exitReapedAt",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() time.Time"
+      },
+      "shapeHash": "sha256:2e22bffc678f9368aec638f9e5c41c11f2326f6894a601fde6fd2616a093ec7b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#packedProcessState.heldByOthers",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "packedProcessState.heldByOthers",
@@ -162744,6 +162766,17 @@
         "type": "func() bool"
       },
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#reapedProcess",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "reapedProcess",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "reapedProcess"
+      },
+      "shapeHash": "sha256:3b4345994b39656f7e0a285a25a0b948b231c9fece438067548f6cc5388788b8"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#reasonFor",

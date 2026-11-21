@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
@@ -64,6 +65,7 @@ type packedProcessState struct {
 	waitOnce        sync.Once
 	waitDone        chan struct{}
 	waitErr         error
+	reapedAt        time.Time
 	processTree     *processTree
 	lease           *runtimecell.UsageLease
 	releaseLease    sync.Once
@@ -300,6 +302,7 @@ func (p *packedProcessState) startWait() <-chan struct{} {
 			p.releaseLease.Do(func() { _ = p.lease.Release() })
 			// The log of a process that outlived a state goes here, once: no released state waits for the process (letGo).
 			p.stderrLog.processExited()
+			p.reapedAt = time.Now()
 			close(p.waitDone)
 			p.exitMu.Lock()
 			hooks := p.exitHooks
@@ -313,7 +316,8 @@ func (p *packedProcessState) startWait() <-chan struct{} {
 	return p.waitDone
 }
 
-func (p *packedProcessState) exitErr() error { return p.spawner().waitErr }
+func (p *packedProcessState) exitErr() error          { return p.spawner().waitErr }
+func (p *packedProcessState) exitReapedAt() time.Time { return p.spawner().reapedAt }
 
 // releaseUsageLease releases the usage lease of a state that started no process, and the state's hold on its recovery lifetime. A started process's lease is released when the process is reaped.
 func (p *packedProcessState) releaseUsageLease() {

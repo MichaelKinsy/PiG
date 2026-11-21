@@ -701,6 +701,7 @@ type managedExt struct {
 	nodeRuntime bool
 	nodeRealm   bool
 	waitErr     error                // Process exit status; read only after <-exitedCh (channel close synchronizes)
+	reapedAt    time.Time            // When the reaper finished; read only after <-exitedCh (channel close synchronizes)
 	ext         *extension.Extension // Set by the first registration, under Host.mu, before the extension is published; a restart adopts into it (adoptRestartedExtension) and never stores it again
 	// registered is the registration the extension's process last sent. Every adoption replaces it whole (setRegistration); readers go through registration.
 	registered atomic.Pointer[registeredState]
@@ -2717,7 +2718,7 @@ func (h *Host) EndInput() {
 // pig additive (D19): the process exits right after this returns, and an extension's console output the host has not yet copied to the terminal and the extension's log would be lost with it; Pi writes it inside its own process, so a write made before its exit is never lost. The wait is bounded by processWaitDelay for all processes together: a process that does not end, or a descendant that keeps an output pipe open, loses the rest of its output after one line on stderr says so.
 func (h *Host) TerminateProcesses() { TerminateHostProcesses(h) }
 
-// TerminateHostProcesses is TerminateProcesses for every host of one exiting process: it kills the processes of all hosts first, then waits for them against ONE bound that starts before the first kill, so hosts with a stuck pipe hold the exit for one bound in all, and the dropped-output line comes once with the total count. pig additive (D19).
+// TerminateHostProcesses is TerminateProcesses for every host of one exiting process: it kills the processes of all hosts first, then waits for them against ONE bound that starts before the first kill, so hosts with a stuck pipe hold the exit for one bound in all, and the dropped-output line comes once with the total count. pig additive (D19). Every Host of a process has the same drain bound in production (processWaitDelay, D56; waitDelay is a test override), so no process is ended by a shorter bound than the shared one.
 func TerminateHostProcesses(hosts ...*Host) {
 	var bound time.Duration
 	for _, h := range hosts {
@@ -2726,15 +2727,17 @@ func TerminateHostProcesses(hosts ...*Host) {
 	if len(hosts) == 0 {
 		return
 	}
+	start := time.Now()
 	timer := time.NewTimer(bound)
-	var reaped []<-chan struct{}
+	deadline := start.Add(bound)
+	var reaped []reapedProcess
 	var logs []*processStderrLog
 	for _, h := range hosts {
 		hostReaped, hostLogs := h.killProcesses()
 		reaped = append(reaped, hostReaped...)
 		logs = append(logs, hostLogs...)
 	}
-	awaitReaped(reaped, timer, bound)
+	awaitReaped(reaped, timer, deadline, bound)
 	// The host process ends right after this: a log is kept only for a failure that was reported, and this exit is not one. The
 	// processes are ended, so nothing writes to the files, and no goroutine is left to remove them that the exit would outrun.
 	for _, log := range logs {
@@ -2760,13 +2763,19 @@ func (h *Host) removeSockRuntimeDir() {
 	}
 }
 
-// killProcesses kills the processes of h and returns the channels that close once each is reaped, and the stderr logs of the processes it killed.
-func (h *Host) killProcesses() ([]<-chan struct{}, []*processStderrLog) {
+// reapedProcess is one hosted process that TerminateHostProcesses waits to finish ending.
+type reapedProcess struct {
+	done     <-chan struct{}
+	reapedAt func() time.Time // Valid once done is closed: when the process finished ending. The two reaper paths (host.go exitedCh and packed_go.go waitDone) always set reapedAt before closing done; a zero time means the process never ran.
+}
+
+// killProcesses kills the processes of h and returns the processes to wait for and the stderr logs of the processes it killed.
+func (h *Host) killProcesses() ([]reapedProcess, []*processStderrLog) {
 	h.shuttingDown.Store(true)
 	h.mu.Lock()
 	processes := make(map[*os.Process]struct{})
 	trees := make(map[*processTree]struct{})
-	var reaped []<-chan struct{}
+	var reaped []reapedProcess
 	for _, me := range h.exts {
 		if conn := me.connection(); conn != nil {
 			conn.terminating.Store(true)
@@ -2777,7 +2786,7 @@ func (h *Host) killProcesses() ([]<-chan struct{}, []*processStderrLog) {
 			processes[proc] = struct{}{}
 		}
 		if exited := me.exited(); exited != nil {
-			reaped = append(reaped, exited)
+			reaped = append(reaped, reapedProcess{done: exited, reapedAt: me.exitReapedAt})
 		}
 	}
 	logs := make(map[*processStderrLog]struct{})
@@ -2796,7 +2805,7 @@ func (h *Host) killProcesses() ([]<-chan struct{}, []*processStderrLog) {
 			processes[process.cmd.Process] = struct{}{}
 		}
 		if process.cmd != nil && process.cmd.Process != nil {
-			reaped = append(reaped, process.startWait())
+			reaped = append(reaped, reapedProcess{done: process.startWait(), reapedAt: process.exitReapedAt})
 		}
 		if process.stderrLog != nil {
 			logs[process.stderrLog] = struct{}{}
@@ -2812,27 +2821,34 @@ func (h *Host) killProcesses() ([]<-chan struct{}, []*processStderrLog) {
 	return reaped, slices.Collect(maps.Keys(logs))
 }
 
-// awaitReaped waits until every channel in reaped closed or timer fired, and says on stderr when the bound ended the wait with processes unfinished. The timer starts before the first kill, so it fires before the WaitDelay of a process the kill ended can.
-func awaitReaped(reaped []<-chan struct{}, timer *time.Timer, bound time.Duration) {
+// awaitReaped waits until every process in reaped has been reaped or timer fired, and says on stderr when any process did not finish ending before deadline. Comparing reapedAt against deadline counts a process whose own drain timer closed done after deadline before timer.C woke this goroutine, including when every channel had already closed.
+func awaitReaped(reaped []reapedProcess, timer *time.Timer, deadline time.Time, bound time.Duration) {
 	defer timer.Stop()
-	for _, done := range reaped {
-		select {
-		case <-done:
-		case <-timer.C:
-			pending := 0
-			for _, rest := range reaped {
-				select {
-				case <-rest:
-				default:
+	report := func() {
+		pending := 0
+		for _, proc := range reaped {
+			select {
+			case <-proc.done:
+				if proc.reapedAt != nil && proc.reapedAt().After(deadline) {
 					pending++
 				}
+			default:
+				pending++
 			}
-			if pending > 0 {
-				fmt.Fprintf(os.Stderr, "pig: %d extension process(es) did not finish ending within %s; the output they have not yet delivered is dropped\n", pending, bound)
-			}
+		}
+		if pending > 0 {
+			fmt.Fprintf(os.Stderr, "pig: %d extension process(es) did not finish ending within %s; the output they have not yet delivered is dropped\n", pending, bound)
+		}
+	}
+	for _, proc := range reaped {
+		select {
+		case <-proc.done:
+		case <-timer.C:
+			report()
 			return
 		}
 	}
+	report()
 }
 
 // processWaitDelay is how long the output pipes of a stopped extension process get to drain before they are closed (cmd.WaitDelay), and how long TerminateProcesses waits for the processes it killed.
@@ -3720,6 +3736,7 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 			_ = me.cacheLease.Release()
 			me.cacheLease = nil
 		}
+		me.reapedAt = time.Now()
 		close(exitedCh)
 	}()
 	// The share becomes claimable by concurrent starts only once every process field it exposes is set.
@@ -3766,6 +3783,14 @@ func (me *managedExt) exitErr() error {
 		return owner.waitErr
 	}
 	return me.waitErr
+}
+
+// exitReapedAt is when the extension's process finished ending, valid once it has exited.
+func (me *managedExt) exitReapedAt() time.Time {
+	if owner := me.processOwner(); owner != nil {
+		return owner.reapedAt
+	}
+	return me.reapedAt
 }
 
 // acceptExtConn waits for the extension to connect. Upstream awaits the extension factory
