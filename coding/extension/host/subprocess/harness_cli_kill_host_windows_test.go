@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"testing"
 	"time"
 
@@ -98,4 +99,23 @@ func TestHarnessEntryKillAcrossIsolationModesWindows(t *testing.T) {
 			})
 		}
 	}
+}
+
+// harnessRespawnExtensionSource returns a portable Node extension module that
+// spawns the harness entry (`process.execPath process.argv[1] ...`) and writes
+// the spawned entry's PID atomically to entryPIDFile.
+func harnessRespawnExtensionSource(entryPIDFile string, extraArgs ...string) string {
+	argsJSON, err := json.Marshal(extraArgs)
+	if err != nil {
+		panic(err)
+	}
+	tmpPath := entryPIDFile + ".tmp"
+	return `import { spawn } from "node:child_process";
+import { renameSync, writeFileSync } from "node:fs";
+export default function (pi) {
+  const child = spawn(process.execPath, [process.argv[1], ...` + string(argsJSON) + `], { stdio: "ignore" });
+  writeFileSync(` + strconv.Quote(tmpPath) + `, String(child.pid));
+  renameSync(` + strconv.Quote(tmpPath) + `, ` + strconv.Quote(entryPIDFile) + `);
+}
+`
 }

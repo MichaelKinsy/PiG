@@ -151,66 +151,11 @@ func waitHarnessChildPID(t *testing.T, pidFile string) int {
 	})
 }
 
-// waitHarnessStubPID waits for the pid a stub binary published with echo: $ROOT/pid and the inner binary's inner.pid.
-func waitHarnessStubPID(t *testing.T, pidFile string) int {
-	t.Helper()
-	return waitHarnessPID(t, pidFile, harnessPublishedPID)
-}
-
-func awaitHarnessFile(t *testing.T, path string) {
-	t.Helper()
-	deadline := time.Now().Add(testbudget.Wait(t))
-	for time.Now().Before(deadline) {
-		if _, err := os.Stat(path); err == nil {
-			return
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
-	t.Fatalf("%s never appeared", path)
-}
-
 // harnessEntryEnds starts waiting for cmd in the background: the channel receives the entry's wait status once it ended.
 func harnessEntryEnds(cmd *exec.Cmd) <-chan error {
 	ended := make(chan error, 1)
 	go func() { ended <- cmd.Wait() }()
 	return ended
-}
-
-// awaitHarnessFileWhileEntryLives waits for path and fails, naming the entry's wait status, if the entry ends first.
-func awaitHarnessFileWhileEntryLives(t *testing.T, path string, ended <-chan error, why string) {
-	t.Helper()
-	deadline := time.Now().Add(testbudget.Wait(t))
-	for time.Now().Before(deadline) {
-		select {
-		case err := <-ended:
-			t.Fatalf("the entry ended (%v) before %s", err, why)
-		default:
-		}
-		if _, err := os.Stat(path); err == nil {
-			return
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
-	t.Fatalf("%s never appeared, so %s did not happen", path, why)
-}
-
-// harnessWinRespawnExtensionSource returns a portable Node extension module that
-// spawns the harness entry (`process.execPath process.argv[1] ...`) and writes
-// the spawned entry's PID atomically to entryPIDFile.
-func harnessRespawnExtensionSource(entryPIDFile string, extraArgs ...string) string {
-	argsJSON, err := json.Marshal(extraArgs)
-	if err != nil {
-		panic(err)
-	}
-	tmpPath := entryPIDFile + ".tmp"
-	return `import { spawn } from "node:child_process";
-import { renameSync, writeFileSync } from "node:fs";
-export default function (pi) {
-  const child = spawn(process.execPath, [process.argv[1], ...` + string(argsJSON) + `], { stdio: "ignore" });
-  writeFileSync(` + strconv.Quote(tmpPath) + `, String(child.pid));
-  renameSync(` + strconv.Quote(tmpPath) + `, ` + strconv.Quote(entryPIDFile) + `);
-}
-`
 }
 
 // harnessSelfBinaryPath returns the current test binary's absolute path for use

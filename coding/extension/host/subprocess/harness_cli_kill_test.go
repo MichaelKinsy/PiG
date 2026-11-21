@@ -73,6 +73,24 @@ func newHarnessEntry(t *testing.T, spec harnessEntrySpec) (cmd *exec.Cmd, root s
 	return cmd, root
 }
 
+// waitHarnessStubPID waits for the pid a stub binary published with echo: $ROOT/pid and the inner binary's inner.pid.
+func waitHarnessStubPID(t *testing.T, pidFile string) int {
+	t.Helper()
+	return waitHarnessPID(t, pidFile, harnessPublishedPID)
+}
+
+func awaitHarnessFile(t *testing.T, path string) {
+	t.Helper()
+	deadline := time.Now().Add(testbudget.Wait(t))
+	for time.Now().Before(deadline) {
+		if _, err := os.Stat(path); err == nil {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("%s never appeared", path)
+}
+
 // awaitHarnessEnd waits for pid to end: its exit is the event, and the budget only fails a hang.
 func awaitHarnessEnd(t *testing.T, pid int, what string) {
 	t.Helper()
@@ -114,6 +132,24 @@ func awaitHarnessBinaryEnd(t *testing.T, binary, supervisor int) {
 		time.Sleep(20 * time.Millisecond)
 	}
 	t.Logf("the binary ended %s after its entry was killed", time.Since(start).Round(time.Millisecond))
+}
+
+// awaitHarnessFileWhileEntryLives waits for path and fails, naming the entry's wait status, if the entry ends first.
+func awaitHarnessFileWhileEntryLives(t *testing.T, path string, ended <-chan error, why string) {
+	t.Helper()
+	deadline := time.Now().Add(testbudget.Wait(t))
+	for time.Now().Before(deadline) {
+		select {
+		case err := <-ended:
+			t.Fatalf("the entry ended (%v) before %s", err, why)
+		default:
+		}
+		if _, err := os.Stat(path); err == nil {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("%s never appeared, so %s did not happen", path, why)
 }
 
 // Pi's subagent example ends a spawned child with TERM and then KILL; in Pi the child is pi, so KILL ends it. Here the child is the entry, whose binary cannot be sent the KILL the entry receives: the binary's own supervisor ends it.
