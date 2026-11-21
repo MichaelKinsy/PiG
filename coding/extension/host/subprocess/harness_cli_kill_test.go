@@ -591,9 +591,39 @@ func TestHarnessEntryNests(t *testing.T) {
 // harnessEntryEnd is how an entry ended and what it wrote to stderr, as a stub binary's end shows it to the process that ran the entry.
 type harnessEntryEnd struct{ status, stderr string }
 
-// harnessRunToEnd runs cmd to its end with its stderr captured and returns how it ended. The budget only fails a hang: a process that never ends is the failure, not a slow one.
+// harnessCoreFiles names the core files in dir: what a process that dumps core leaves in its working directory (core, or core.<pid>).
+func harnessCoreFiles(dir string) map[string]bool {
+	found := map[string]bool{}
+	for _, pattern := range []string{"core", "core.*"} {
+		names, _ := filepath.Glob(filepath.Join(dir, pattern))
+		for _, name := range names {
+			found[name] = true
+		}
+	}
+	return found
+}
+
+// harnessNoCoreWritten fails t for every core file in dir that was not there in before, and removes it. A signal that ends a process by its default action dumps core (QUIT, ILL, TRAP, ABRT, BUS, FPE, SEGV, SYS, XCPU, XFSZ),
+// and the stubs and the Node processes of these tests end by every such signal: without the limit core_limit_unix_test.go sets, each run leaves one core file per process in its working directory, which these tests start
+// in the package directory (the stub of harnessStubNotEndedBy and the probe of the Node pin) and in a temporary directory (the entry and the oracle).
+func harnessNoCoreWritten(t *testing.T, dir string, before map[string]bool) {
+	t.Helper()
+	for name := range harnessCoreFiles(dir) {
+		if !before[name] {
+			_ = os.Remove(name)
+			t.Errorf("a process this test started wrote the core file %s: the tests of this package run with RLIMIT_CORE 0 (core_limit_unix_test.go), so a core file is a process that was started with the limit raised", name)
+		}
+	}
+}
+
+// harnessRunToEnd runs cmd to its end with its stderr captured and returns how it ended. The budget only fails a hang: a process that never ends is the failure, not a slow one. No process may write a core file into its working directory.
 func harnessRunToEnd(t *testing.T, cmd *exec.Cmd) harnessEntryEnd {
 	t.Helper()
+	dir := cmd.Dir
+	if dir == "" {
+		dir = "."
+	}
+	cores := harnessCoreFiles(dir)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Start(); err != nil {
@@ -609,6 +639,7 @@ func harnessRunToEnd(t *testing.T, cmd *exec.Cmd) harnessEntryEnd {
 		<-ended
 		t.Fatalf("%s never ended: it was still running %s (stderr %q)", strings.Join(cmd.Args[:2], " "), budget, stderr.String())
 	}
+	harnessNoCoreWritten(t, dir, cores)
 	status := "exit " + strconv.Itoa(cmd.ProcessState.ExitCode())
 	if ws, ok := cmd.ProcessState.Sys().(syscall.WaitStatus); ok && ws.Signaled() {
 		status = "signal " + strconv.Itoa(int(ws.Signal()))
@@ -646,6 +677,7 @@ func harnessRaise(sig syscall.Signal) string {
 // harnessStubNotEndedBy tells why /bin/sh does not end by sig when it raises it on itself: it stops, or it survives. It returns "" when sig ends it. A stopped stub is killed.
 func harnessStubNotEndedBy(t *testing.T, sig syscall.Signal) string {
 	t.Helper()
+	cores := harnessCoreFiles(".")
 	own := exec.Command("/bin/sh", "-c", harnessRaise(sig))
 	if err := own.Start(); err != nil {
 		t.Fatal(err)
@@ -654,6 +686,7 @@ func harnessStubNotEndedBy(t *testing.T, sig syscall.Signal) string {
 	if _, err := syscall.Wait4(own.Process.Pid, &ws, syscall.WUNTRACED, nil); err != nil {
 		t.Fatal(err)
 	}
+	harnessNoCoreWritten(t, ".", cores)
 	if ws.Stopped() {
 		_ = own.Process.Kill()
 		_, _ = syscall.Wait4(own.Process.Pid, &ws, 0, nil)
