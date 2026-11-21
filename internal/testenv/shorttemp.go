@@ -66,6 +66,18 @@ func MkdirShortTemp(prefix string) (string, error) {
 	return os.MkdirTemp(base, prefix)
 }
 
+// EvalSymlinks returns path with every symbolic link resolved (filepath.EvalSymlinks), failing t on error. Tests use it to build
+// expectations for paths that the product, kernel or Pi legitimately canonicalize (os.Getwd, pwd, realpath, os.Executable, esbuild)
+// when the test temporary root lies behind a symbolic link (macOS /tmp -> /private/tmp, or Linux PIG_TEST_TEMP_ROOT).
+func EvalSymlinks(t testing.TB, path string) string {
+	t.Helper()
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		t.Fatalf("resolve %q: %v", path, err)
+	}
+	return resolved
+}
+
 // shortTempBase returns the directory ShortTempDir creates its directory in.
 func shortTempBase(goos, tempDir, localAppData, prefix string) string {
 	if goos != "windows" {

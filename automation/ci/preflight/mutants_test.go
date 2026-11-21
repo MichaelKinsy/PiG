@@ -445,7 +445,11 @@ func TestScannerEdges(t *testing.T) {
 	if err := os.MkdirAll(ws.head, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	fakeTool(t, ws.bin, "where", `[ "$PWD" = "`+ws.head+`" ] || { echo "x:1: ran in $PWD"; exit 1; }; for i in 1 2 3 4 5 6; do echo "f$i:1: m"; done; exit 1`)
+	realHead, err := filepath.EvalSymlinks(ws.head)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fakeTool(t, ws.bin, "where", `[ "$PWD" = "`+realHead+`" ] || { echo "x:1: ran in $PWD"; exit 1; }; for i in 1 2 3 4 5 6; do echo "f$i:1: m"; done; exit 1`)
 	s := scanSpec{Input: inputAdded, Run: []string{"where"}, Dir: "{head}", Exit: exitCodes{Clean: []int{0}, Findings: []int{1}}, Report: reportSpec{In: "stdout", Format: "lines", Pattern: `^(?P<file>[^:]+):(?P<line>\d+): (?P<message>.+)$`}}
 	o := runScan(context.Background(), scanCheck(t, s), &data{}, ws, io.Discard)
 	if !strings.Contains(o.reason, "6 finding(s)") || !strings.Contains(o.reason, "(and 1 more)") || strings.Contains(o.reason, "ran in") {

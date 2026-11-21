@@ -74,10 +74,14 @@ func TestBaseInputsRecordedSourcesLoadEveryFileWithEsbuildsOwnLoaderAndRecordEac
 	if recorded := built(recorder.Plugin()); !slices.Equal(recorded, plain) {
 		t.Fatalf("recorded outputs differ from plain ones:\n%q\n%q", recorded, plain)
 	}
+	realDir, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
 	inputs := recorder.Inputs()
 	var got, want []string
 	for name := range files {
-		want = append(want, filepath.Join(dir, name))
+		want = append(want, filepath.Join(realDir, name))
 	}
 	got = slices.Sorted(maps.Keys(inputs))
 	slices.Sort(want)
@@ -85,8 +89,8 @@ func TestBaseInputsRecordedSourcesLoadEveryFileWithEsbuildsOwnLoaderAndRecordEac
 		t.Fatalf("inputs = %v, want %v", got, want)
 	}
 	for name, text := range files {
-		if inputs[filepath.Join(dir, name)] != sha256Hex(text) {
-			t.Errorf("%s: hash = %s", name, inputs[filepath.Join(dir, name)])
+		if inputs[filepath.Join(realDir, name)] != sha256Hex(text) {
+			t.Errorf("%s: hash = %s", name, inputs[filepath.Join(realDir, name)])
 		}
 	}
 }

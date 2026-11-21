@@ -292,7 +292,7 @@ func TestAttachingAFileNeverWaitsOnAFIFOOpenedWithoutBlockingRefusedAsNoRegularF
 	if runtime.GOOS == "windows" {
 		t.Skip("mkfifo")
 	}
-	dir := t.TempDir()
+	dir := testenv.EvalSymlinks(t, t.TempDir())
 	fifo := filepath.Join(dir, "fifo")
 	if err := exec.Command("mkfifo", fifo).Run(); err != nil {
 		t.Skipf("mkfifo: %v", err)

@@ -7,15 +7,19 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/resolvepath"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // Ports packages/coding-agent/test/trust-manager.test.ts "ignores the user .agents/skills dir when HOME differs only by case on Windows" (Pi 1be312b4, #10488).
 func TestHasTrustRequiringProjectResourcesIgnoresTheUserSkillsDirWhenHomeDiffersOnlyByCaseOnWindows(t *testing.T) {
-	mixedCaseHome := filepath.Join(t.TempDir(), "Home")
+	// Resolve the temp root first so a symlinked temp root with upper-case letters (e.g. /tmp/L.7 -> /tmp/R.x)
+	// does not turn the lower-cased path into a nonexistent path on a case-sensitive Linux FS; on real Windows
+	// the FS is case-insensitive so realpath resolves any casing.
+	base := testenv.EvalSymlinks(t, t.TempDir())
+	mixedCaseHome := filepath.Join(base, "Home")
 	project := filepath.Join(mixedCaseHome, "project")
 	if err := os.MkdirAll(filepath.Join(mixedCaseHome, ".agents", "skills"), 0o755); err != nil {
 		t.Fatal(err)
@@ -23,7 +27,7 @@ func TestHasTrustRequiringProjectResourcesIgnoresTheUserSkillsDirWhenHomeDiffers
 	if err := os.MkdirAll(project, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("HOME", strings.ToLower(mixedCaseHome))
+	t.Setenv("HOME", filepath.Join(base, "home"))
 	t.Cleanup(resolvepath.OverridePlatform("windows"))
 	if HasTrustRequiringProjectResources(project) {
 		t.Fatal("the user's .agents/skills counted as a project resource because HOME differs from the working directory in casing")
@@ -33,7 +37,8 @@ func TestHasTrustRequiringProjectResourcesIgnoresTheUserSkillsDirWhenHomeDiffers
 // "matches saved decisions regardless of casing on Windows".
 func TestProjectTrustStoreMatchesSavedDecisionsRegardlessOfCasingOnWindows(t *testing.T) {
 	agentDir := t.TempDir()
-	project := filepath.Join(t.TempDir(), "Project-Mixed")
+	base := testenv.EvalSymlinks(t, t.TempDir())
+	project := filepath.Join(base, "Project-Mixed")
 	if err := os.MkdirAll(project, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +47,7 @@ func TestProjectTrustStoreMatchesSavedDecisionsRegardlessOfCasingOnWindows(t *te
 		t.Fatal(err)
 	}
 	t.Cleanup(resolvepath.OverridePlatform("windows"))
-	lower := strings.ToLower(project)
+	lower := filepath.Join(base, "project-mixed")
 	if got, err := store.Get(lower); err != nil || got == nil || !*got {
 		t.Fatalf("Get(%q) = %v, %v; want the saved true", lower, got, err)
 	}

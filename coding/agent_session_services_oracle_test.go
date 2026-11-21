@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 type servicesProbe struct {
@@ -79,7 +80,12 @@ func TestAgentSessionServicesResolvePathsMatchPi(t *testing.T) {
 		}
 		return strings.ReplaceAll(*s, "{S}", pigSandbox)
 	}
-	strip := func(s string) *string { v := strings.ReplaceAll(s, pigSandbox, "{S}"); return &v }
+	realPigSandbox := testenv.EvalSymlinks(t, pigSandbox)
+	strip := func(s string) *string {
+		v := strings.ReplaceAll(s, pigSandbox, "{S}")
+		v = strings.ReplaceAll(v, realPigSandbox, "{S}")
+		return &v
+	}
 	for i, probe := range probes {
 		var got servicesOut
 		services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: fill(probe.CWD), AgentDir: fill(probe.AgentDir)})

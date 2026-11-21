@@ -222,7 +222,11 @@ func startUnbuilt(t testing.TB, plugins map[string]map[string]string, edit func(
 	})
 	var port int
 	_, _ = fmt.Sscanf(app.OwnerLink(), "http://127.0.0.1:%d/", &port)
-	return started{app: app, errors: errs, dataDir: options.DataDir, root: options.Root, port: port}
+	resolvedDataDir, err := filepath.EvalSymlinks(options.DataDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return started{app: app, errors: errs, dataDir: resolvedDataDir, root: options.Root, port: port}
 }
 
 // writePlugin writes the plugin dir of root: its package.json and files.

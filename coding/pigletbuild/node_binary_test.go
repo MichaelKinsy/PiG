@@ -376,13 +376,20 @@ func TestPigletBinaryRepairWarnsOnStderrAndLeavesStdoutAlone(t *testing.T) {
 // backslashes doubled inside JSON strings) and forward-slash normalized (Windows paths inside the system prompt's
 // <cwd> block).
 func replaceWorkPath(out, work string) string {
-	if encoded, err := json.Marshal(work); err == nil && len(encoded) >= 2 {
-		out = strings.ReplaceAll(out, string(encoded[1:len(encoded)-1]), "<work>")
+	forms := []string{work}
+	if resolved, err := filepath.EvalSymlinks(work); err == nil && resolved != work {
+		forms = append(forms, resolved)
 	}
-	if slash := strings.ReplaceAll(work, "\\", "/"); slash != work {
-		out = strings.ReplaceAll(out, slash, "<work>")
+	for _, w := range forms {
+		if encoded, err := json.Marshal(w); err == nil && len(encoded) >= 2 {
+			out = strings.ReplaceAll(out, string(encoded[1:len(encoded)-1]), "<work>")
+		}
+		if slash := strings.ReplaceAll(w, "\\", "/"); slash != w {
+			out = strings.ReplaceAll(out, slash, "<work>")
+		}
+		out = strings.ReplaceAll(out, w, "<work>")
 	}
-	return strings.ReplaceAll(out, work, "<work>")
+	return out
 }
 
 // TestReplaceWorkPathNormalizesWindowsEncodings proves replaceWorkPath matches the three forms JSON mode emits for a

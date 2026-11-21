@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // upstream: packages/coding-agent/test/tool-system-prompt-contributions.test.ts:26-34 (keeps the bash tool definition aligned with its contribution)
@@ -71,7 +72,8 @@ func TestBashToolDefinitionRunsInTheInvocationContextCWD(t *testing.T) {
 		}
 		return
 	}
-	if !strings.Contains(text, dir) {
-		t.Fatalf("output %q does not contain the context cwd %q", text, dir)
+	wantDir := testenv.EvalSymlinks(t, dir)
+	if !strings.Contains(text, wantDir) {
+		t.Fatalf("output %q does not contain the context cwd %q", text, wantDir)
 	}
 }
