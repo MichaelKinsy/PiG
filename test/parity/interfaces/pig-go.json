@@ -42714,17 +42714,6 @@
       "shapeHash": "sha256:4a7c126e2596ef37fe6e2b670d8642e70627c3e6aca477dd4131ae272a1b7dc5"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#geminiMajorVersionRE",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "geminiMajorVersionRE",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "*github.com/MichaelKinsy/PiG/internal/lazyregexp.Regexp"
-      },
-      "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#geminiMirroredSDKVersion",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "geminiMirroredSDKVersion",

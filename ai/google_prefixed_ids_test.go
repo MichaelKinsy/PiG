@@ -1,3 +1,5 @@
+//go:build !pig_strip_google_vertex
+
 package ai
 
 import (
@@ -13,9 +15,9 @@ import (
 func TestGeminiPrefixedModelIDHelpers(t *testing.T) {
 	t.Run("getGeminiMajorVersion", func(t *testing.T) {
 		for _, tc := range []struct {
-			id      string
-			want    float64
-			wantOK  bool
+			id     string
+			want   float64
+			wantOK bool
 		}{
 			{"gemini-3-pro", 3, true},
 			{"google/gemini-3-pro", 3, true},

@@ -443,7 +443,7 @@ type geminiUsageMetadata struct {
 var (
 	gemini3ProRe   = lazyregexp.New(`gemini-3(?:\.\d+)?-pro`)
 	gemini3FlashRe = lazyregexp.New(`gemini-3(?:\.\d+)?-flash`)
-	gemma4Re      = lazyregexp.New(`gemma-?4`)
+	gemma4Re       = lazyregexp.New(`gemma-?4`)
 )
 
 func isGemini3Pro(modelID string) bool   { return gemini3ProRe.MatchString(modelID) }
@@ -496,22 +496,34 @@ func isValidThoughtSignature(sig string) bool {
 	return pad <= 2 && pad < len(sig)
 }
 
-// upstream: packages/ai/src/api/google-shared.ts:getGeminiMajorVersion (Pi fe8a6f5dc, #12371)
-var geminiMajorVersionRE = lazyregexp.New(`gemini(?:-live)?-(\d+)`)
-
 // getGeminiMajorVersion parses the major version from a Gemini model id
-// (unanchored gemini(-live)?-N..., matching usesGoogleThinkingLevel). Mirrors google-shared.ts getGeminiMajorVersion.
+// (unanchored gemini(?:-live)?-(\d+), matching usesGoogleThinkingLevel).
+// upstream: packages/ai/src/api/google-shared.ts:getGeminiMajorVersion (Pi fe8a6f5dc, #12371)
 func getGeminiMajorVersion(modelID string) (float64, bool) {
-	m := geminiMajorVersionRE.FindStringSubmatch(jsstring.ToLower(modelID))
-	if m == nil {
-		return 0, false
+	lower := jsstring.ToLower(modelID)
+	for offset := 0; ; {
+		idx := strings.Index(lower[offset:], "gemini-")
+		if idx < 0 {
+			return 0, false
+		}
+		pos := offset + idx + len("gemini-")
+		if strings.HasPrefix(lower[pos:], "live-") {
+			pos += len("live-")
+		}
+		end := pos
+		for end < len(lower) && lower[end] >= '0' && lower[end] <= '9' {
+			end++
+		}
+		if end > pos {
+			// Number.parseInt: a version longer than a float64 integer stays a large float, and one past float64's range is +Inf (ParseFloat's range error), so both still compare as at least 3.
+			n, err := strconv.ParseFloat(lower[pos:end], 64)
+			if err != nil && !errors.Is(err, strconv.ErrRange) {
+				return 0, false
+			}
+			return n, true
+		}
+		offset += idx + len("gemini-")
 	}
-	// Number.parseInt: a version longer than a float64 integer stays a large float, and one past float64's range is +Inf (ParseFloat's range error), so both still compare as at least 3.
-	n, err := strconv.ParseFloat(m[1], 64)
-	if err != nil && !errors.Is(err, strconv.ErrRange) {
-		return 0, false
-	}
-	return n, true
 }
 
 // requiresToolCallId reports whether a model reached via the Google APIs needs
