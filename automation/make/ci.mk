@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: MIT
 
 # Hosted Linux jobs (the preflight job and the Linux shards) partition make check. test/ci-images checks this against the current prerequisite graph so adding a gate cannot silently omit it from CI.
-# ci-preflight is the compile gate the Windows, macOS and Node loader jobs wait for, so a change that does not build or vet fails before they spend their minutes.
-ci-preflight: build vet
+# ci-preflight ci-preflight-platforms vet-native vet-platforms is the compile gate the Windows, macOS and Node loader jobs wait for, so a change that does not build or vet fails before they spend their minutes.
+ci-preflight: build vet-native
+ci-preflight-platforms: vet-platforms
 autofix-check: ## Unit-test the derived-file autofix tool that the bookkeeping job and the autofix workflow share
 	@python3 -B -m unittest discover -s automation/ci -p test_autofix.py
 

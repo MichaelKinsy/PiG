@@ -70,7 +70,7 @@ func gateLeaves(t *testing.T) func(string) []string {
 	var leaves func(string) []string
 	leaves = func(name string) []string {
 		switch name {
-		case "check", "check-core", "check-contracts-fast":
+		case "check", "check-core", "check-contracts-fast", "vet":
 		case "test":
 			// CI runs test-fast and test-cli in halves (fast-parallel and fast-sharded; two cmd/pig shard ranges) and conformance in four shard ranges, which together are make test.
 			return []string{"test-fast-parallel", "test-fast-sharded-1", "test-fast-sharded-2", "test-cli-1", "test-cli-2", "test-subprocess", "test-conformance-1", "test-conformance-2", "test-conformance-3", "test-conformance-4"}
@@ -150,6 +150,20 @@ func TestLinuxShardsRetainEveryCheck(t *testing.T) {
 		t.Fatal("the preflight job does not run make ci-preflight")
 	}
 	got = append(got, leaves("ci-preflight")...)
+	preflightPlatforms, ok := jobs["preflight-platforms"]
+	if !ok {
+		t.Fatal("ci.yml has no preflight-platforms job")
+	}
+	runsPreflightPlatforms := false
+	for _, step := range preflightPlatforms.Steps {
+		if strings.TrimSpace(step.Run) == "make ci-preflight-platforms" {
+			runsPreflightPlatforms = true
+		}
+	}
+	if !runsPreflightPlatforms {
+		t.Fatal("the preflight-platforms job does not run make ci-preflight-platforms")
+	}
+	got = append(got, leaves("ci-preflight-platforms")...)
 	// The bookkeeping job runs the fail-fast gates every spending job waits for; they count once, there.
 	bookkeeping, ok := jobs["bookkeeping"]
 	if !ok {
@@ -165,7 +179,7 @@ func TestLinuxShardsRetainEveryCheck(t *testing.T) {
 		t.Fatal("the bookkeeping job does not run make ci-bookkeeping")
 	}
 	got = append(got, leaves("ci-bookkeeping")...)
-	for _, waiting := range []string{"preflight", "linux", "node-runtime", "chord", "durable-cf-host", "durable-contract", "android"} {
+	for _, waiting := range []string{"preflight", "preflight-platforms", "linux", "node-runtime", "chord", "durable-cf-host", "durable-contract", "android"} {
 		if !slices.Contains(jobs[waiting].Needs, "bookkeeping") {
 			t.Errorf("%s does not wait for the bookkeeping job, so a bookkeeping failure would not stop it", waiting)
 		}
@@ -173,6 +187,9 @@ func TestLinuxShardsRetainEveryCheck(t *testing.T) {
 	for _, gated := range []string{"windows", "macos", "node-loader"} {
 		if !slices.Contains(jobs[gated].Needs, "preflight") {
 			t.Errorf("%s does not wait for the preflight job", gated)
+		}
+		if !slices.Contains(jobs[gated].Needs, "preflight-platforms") {
+			t.Errorf("%s does not wait for the preflight-platforms job", gated)
 		}
 	}
 	slices.Sort(want)
@@ -999,16 +1016,17 @@ func TestFastAndDefaultModesRunTheFaultGroupWithItsTag(t *testing.T) {
 func TestOSParallelJobsKeepTheCheapFirstOrderOnMain(t *testing.T) {
 	jobs := verificationJobs(t)
 	gate := map[string]string{
-		"preflight":        "bookkeeping",
-		"linux":            "bookkeeping",
-		"node-runtime":     "bookkeeping",
-		"chord":            "bookkeeping",
-		"durable-cf-host":  "bookkeeping",
-		"durable-contract": "bookkeeping",
-		"android":          "bookkeeping",
-		"windows":          "preflight",
-		"macos":            "preflight",
-		"node-loader":      "preflight",
+		"preflight":           "bookkeeping",
+		"preflight-platforms": "bookkeeping",
+		"linux":               "bookkeeping",
+		"node-runtime":        "bookkeeping",
+		"chord":               "bookkeeping",
+		"durable-cf-host":     "bookkeeping",
+		"durable-contract":    "bookkeeping",
+		"android":             "bookkeeping",
+		"windows":             "preflight",
+		"macos":               "preflight",
+		"node-loader":         "preflight",
 	}
 	for name, need := range gate {
 		job, ok := jobs[name]

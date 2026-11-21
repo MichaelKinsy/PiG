@@ -296,12 +296,16 @@ sdk-bundles-drift: ## Fail when a packed SDK bundle differs from its sources (re
 
 ##@ Test and lint
 
-vet: ## Run go vet on every package: natively, once for each platform and once with every build tag the tree declares (automation/ci/vet-tags.txt; vet-tags.sh check fails on a tag or an operating system without a row)
+vet-native: ## Run native go vet, vet-tags checks, and tagged go vet
 	./automation/ci/go-vet.sh
 	./automation/ci/vet-tags.sh check
 	python3 -B -m unittest discover -s automation/ci -p test_vet_tags.py
-	./automation/ci/vet-tags.sh platforms | while read -r vars; do env $$vars ./automation/ci/go-vet.sh || exit 1; done
 	./automation/ci/go-vet.sh -tags "$$(./automation/ci/vet-tags.sh tags)"
+
+vet-platforms: ## Run cross-platform go vet for every platform declared in automation/ci/vet-tags.txt
+	./automation/ci/vet-tags.sh platforms | while read -r vars; do env $$vars ./automation/ci/go-vet.sh || exit 1; done
+
+vet: vet-native vet-platforms ## Run go vet on every package: natively, once for each platform and once with every build tag the tree declares (automation/ci/vet-tags.txt; vet-tags.sh check fails on a tag or an operating system without a row)
 
 LINT_BASE ?= main
 

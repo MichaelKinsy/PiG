@@ -453,11 +453,11 @@ func TestLightPullRequestRunKeepsTheFastGatesUnderTheSameNames(t *testing.T) {
 
 	// The gates the light run keeps: compile and vet (the preflight job), lint of the changed files, the drift and contract gates,
 	// the sharded unit tests and one parity shard. The gates it leaves to the queue are the expensive suites.
-	lightGates := append(leaves("ci-preflight"), leaves("ci-bookkeeping")...)
+	lightGates := append(append(leaves("ci-preflight"), leaves("ci-preflight-platforms")...), leaves("ci-bookkeeping")...)
 	for _, entry := range light.Matrix["linux"] {
 		lightGates = append(lightGates, leaves(entry.Target)...)
 	}
-	for _, gate := range []string{"build", "vet", "lint-changed", "go-fix-clean", "race-coverage", "model-data-check", "fixture-guard", "source-hygiene", "node-runtime-drift", "vendor-pi-dist-drift", "lint-scenarios", "port-map-drift", "correspondence-check", "interface-gaps", "test-changed", "test-fast-sharded-1", "test-fast-sharded-2", "test-cli-1", "test-cli-2", "test-subprocess", "parity-fast-1"} {
+	for _, gate := range []string{"build", "vet-native", "vet-platforms", "lint-changed", "go-fix-clean", "race-coverage", "model-data-check", "fixture-guard", "source-hygiene", "node-runtime-drift", "vendor-pi-dist-drift", "lint-scenarios", "port-map-drift", "correspondence-check", "interface-gaps", "test-changed", "test-fast-sharded-1", "test-fast-sharded-2", "test-cli-1", "test-cli-2", "test-subprocess", "parity-fast-1"} {
 		if !slices.Contains(lightGates, gate) {
 			t.Errorf("the light run does not run %s", gate)
 		}
@@ -468,7 +468,7 @@ func TestLightPullRequestRunKeepsTheFastGatesUnderTheSameNames(t *testing.T) {
 		}
 	}
 	// Whatever the light run leaves out, the full run runs: nothing is dropped from what runs before a change lands.
-	fullGates := append(leaves("ci-preflight"), leaves("ci-bookkeeping")...)
+	fullGates := append(append(leaves("ci-preflight"), leaves("ci-preflight-platforms")...), leaves("ci-bookkeeping")...)
 	for _, entry := range full.Matrix["linux"] {
 		fullGates = append(fullGates, leaves(entry.Target)...)
 	}
@@ -582,7 +582,7 @@ func ciResultRun(t *testing.T, set map[string]string, liveHead string) (string, 
 		"RUN_NODE_RUNTIME": "true", "RUN_CHORD": "true", "RUN_NODE_LOADER": "true", "RUN_ANDROID": "true", "RUN_DURABLE_CF_HOST": "true", "RUN_DURABLE_CONTRACT": "true",
 		"CHANGES": "success", "DOCS": "skipped", "BOOKKEEPING": "success", "VERIFY": "success", "NODE_RUNTIME": "success", "CHORD": "success",
 		"WINDOWS": "success", "MACOS": "success", "ANDROID": "success", "NODE_LOADER": "success",
-		"DURABLE_CF_HOST": "success", "DURABLE_CONTRACT": "success", "PREFLIGHT": "success",
+		"DURABLE_CF_HOST": "success", "DURABLE_CONTRACT": "success", "PREFLIGHT": "success", "PREFLIGHT_PLATFORMS": "success",
 		"VERDICT": "success", "WINDOWS_PLANNED": "true", "MACOS_PLANNED": "true",
 	}
 	for name := range declared {
@@ -639,7 +639,7 @@ func TestCIResultRequiresEveryPlannedJob(t *testing.T) {
 		{"light pull request behind a merge queue", merge(pullRequest, lightPlanResults), true},
 		{"light pull request skipped fast job", merge(pullRequest, lightPlanResults, map[string]string{"ANDROID": "skipped"}), false},
 		{"light pull request whose bookkeeping failed", merge(pullRequest, lightPlanResults, map[string]string{"BOOKKEEPING": "failure"}), false},
-		{"full pull request whose bookkeeping failed and stopped the jobs behind it", merge(pullRequest, map[string]string{"BOOKKEEPING": "failure", "PREFLIGHT": "skipped", "VERIFY": "failure", "WINDOWS": "skipped", "MACOS": "skipped"}), false},
+		{"full pull request whose bookkeeping failed and stopped the jobs behind it", merge(pullRequest, map[string]string{"BOOKKEEPING": "failure", "PREFLIGHT": "skipped", "PREFLIGHT_PLATFORMS": "skipped", "VERIFY": "failure", "WINDOWS": "skipped", "MACOS": "skipped"}), false},
 		{"merge group whose bookkeeping was skipped", map[string]string{"BOOKKEEPING": "skipped"}, false},
 		{"pull request the pre-flight rejected", merge(pullRequest, map[string]string{"VERDICT": "failure", "BOOKKEEPING": "skipped"}), false},
 		{"pull request the pre-flight never judged", merge(pullRequest, map[string]string{"VERDICT": "skipped"}), false},
@@ -653,7 +653,7 @@ func TestCIResultRequiresEveryPlannedJob(t *testing.T) {
 		{"full pull request that planned Windows but skipped it", merge(pullRequest, map[string]string{"WINDOWS": "skipped"}), false},
 		{"full pull request that planned macOS but skipped it", merge(pullRequest, map[string]string{"MACOS": "skipped"}), false},
 		{"light pull request whose planned-away Windows job ran and failed", merge(pullRequest, lightPlanResults, map[string]string{"WINDOWS": "failure"}), false},
-		{"docs-only merge group", map[string]string{"PRODUCT": "false", "DOCS": "success", "PREFLIGHT": "skipped", "NODE_RUNTIME": "skipped", "CHORD": "skipped", "WINDOWS": "skipped", "MACOS": "skipped", "ANDROID": "skipped", "NODE_LOADER": "skipped", "DURABLE_CF_HOST": "skipped", "DURABLE_CONTRACT": "skipped"}, true},
+		{"docs-only merge group", map[string]string{"PRODUCT": "false", "DOCS": "success", "PREFLIGHT": "skipped", "PREFLIGHT_PLATFORMS": "skipped", "NODE_RUNTIME": "skipped", "CHORD": "skipped", "WINDOWS": "skipped", "MACOS": "skipped", "ANDROID": "skipped", "NODE_LOADER": "skipped", "DURABLE_CF_HOST": "skipped", "DURABLE_CONTRACT": "skipped"}, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			output, err := ciResultRun(t, tc.set, "")
@@ -689,7 +689,7 @@ func TestLightRunCannotSatisfyCIResultWithoutAMergeQueue(t *testing.T) {
 	if output, err := ciResultRun(t, labelPR, "aaaa"); err != nil {
 		t.Errorf("the full run on the pull request's head failed CI result: %v\n%s", err, output)
 	}
-	docsOnly := merge(labelPR, lightPlanResults, map[string]string{"PRODUCT": "false", "DOCS": "success", "PREFLIGHT": "skipped", "VERIFY": "success", "WINDOWS": "skipped", "MACOS": "skipped", "ANDROID": "skipped", "NODE_LOADER": "skipped", "RUN_ANDROID": "false", "RUN_NODE_LOADER": "false"})
+	docsOnly := merge(labelPR, lightPlanResults, map[string]string{"PRODUCT": "false", "DOCS": "success", "PREFLIGHT": "skipped", "PREFLIGHT_PLATFORMS": "skipped", "VERIFY": "success", "WINDOWS": "skipped", "MACOS": "skipped", "ANDROID": "skipped", "NODE_LOADER": "skipped", "RUN_ANDROID": "false", "RUN_NODE_LOADER": "false"})
 	if output, err := ciResultRun(t, docsOnly, "aaaa"); err != nil {
 		t.Errorf("a docs-only light run needed the full label: %v\n%s", err, output)
 	}
