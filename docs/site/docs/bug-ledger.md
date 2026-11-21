@@ -12007,14 +12007,14 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 **Bedrock: with `HTTPS_PROXY` or `HTTP_PROXY` set, an AWS SSO / IAM Identity Center profile could not fetch…**
 
 - **Source:** PiG's own defect
-- **Symptom:** Bedrock: with `HTTPS_PROXY` or `HTTP_PROXY` set, an AWS SSO / IAM Identity Center profile could not fetch role credentials (`GetRoleCredentials`) or refresh an `sso_session` token (`CreateToken`), because both calls bypassed the proxy and went direct.
-- **Root cause:** loadBedrockConfig passed a proxy-free HTTP client into awsconfig.LoadDefaultConfig and only overrode the STS client with runtimeHTTPClient, leaving SSO and SSO OIDC on the direct client (matching Pi before be269f57b1b707399edd86f5f718d1a907ffea8b / #12365)
+- **Symptom:** Bedrock: with `HTTPS_PROXY` or `HTTP_PROXY` set, an AWS SSO / IAM Identity Center profile could not fetch role credentials (`GetRoleCredentials`) or refresh an `sso_session` token (`CreateToken`), and an `aws login` / `login_session` profile could not refresh its Signin token (`CreateOAuth2Token`), because those calls bypassed the proxy and went direct.
+- **Root cause:** loadBedrockConfig passed a proxy-free HTTP client into awsconfig.LoadDefaultConfig and only overrode the STS client with runtimeHTTPClient, leaving SSO, SSO OIDC, and login_session Signin on the direct client (matching Pi before be269f57b1b707399edd86f5f718d1a907ffea8b / #12365)
 - **User impact:** Credential or permission exposure
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `52310a4748` (2026-11-21)
+- **Fix commits:** `52310a4748` (2026-11-21), `c014a03de2` (2026-11-21)
 - **Tests:** `ai/providers/bedrock/bedrock_proxy_scope_test.go::TestBedrockProxyIsTheBaseURLsAndOnlyTheRuntimeAndSTSUseIt`
-- **Release note:** Bedrock: with `HTTPS_PROXY` or `HTTP_PROXY` set, an AWS SSO / IAM Identity Center profile could not fetch role credentials (`GetRoleCredentials`) or refresh an `sso_session` token (`CreateToken`), because both calls bypassed the proxy and went direct. Bedrock now routes SSO and SSO OIDC credential calls through the same proxy resolved for the Bedrock endpoint, alongside the Bedrock runtime and STS (`AssumeRole` / `AssumeRoleWithWebIdentity`) calls, while IMDS, container credentials, `credential_process`, bearer tokens, `AWS_BEDROCK_SKIP_AUTH`, and static environment keys keep their existing direct behavior. Affects v0.7.0.
+- **Release note:** Bedrock: with `HTTPS_PROXY` or `HTTP_PROXY` set, an AWS SSO / IAM Identity Center profile could not fetch role credentials (`GetRoleCredentials`) or refresh an `sso_session` token (`CreateToken`), and an `aws login` / `login_session` profile could not refresh its Signin token (`CreateOAuth2Token`), because those calls bypassed the proxy and went direct. Bedrock now routes SSO, SSO OIDC, and `login_session` Signin credential calls through the same proxy resolved for the Bedrock endpoint, alongside the Bedrock runtime and STS (`AssumeRole` / `AssumeRoleWithWebIdentity`) calls, while IMDS, container credentials, `credential_process`, bearer tokens, `AWS_BEDROCK_SKIP_AUTH`, and static environment keys keep their existing direct behavior. Affects v0.7.0.
 
 ### BF-5260e5c
 
