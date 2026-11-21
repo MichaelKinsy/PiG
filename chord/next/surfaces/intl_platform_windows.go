@@ -18,7 +18,7 @@ var procGetLocaleInfoEx = windows.NewLazySystemDLL("kernel32.dll").NewProc("GetL
 var readWindowsLocaleName = func() string {
 	var name [localeNameMaxLength]uint16
 	// LOCALE_NAME_USER_DEFAULT is a null name.
-	length, _, _ := procGetLocaleInfoEx.Call(0, localeSName, uintptr(unsafe.Pointer(&name[0])), localeNameMaxLength)
+	length, _, _ := procGetLocaleInfoEx.Call(0, localeSName, uintptr(unsafe.Pointer(&name[0])), localeNameMaxLength) //nolint:gosec // G103: GetLocaleInfoEx writes into the caller's UTF-16 buffer, which the syscall takes as a uintptr.
 	if length == 0 {
 		// putil.cpp:1808: "If length is 0, then the GetLocaleInfoEx failed": no locale ICU agrees on is en_US (:1861-1863).
 		return ""
