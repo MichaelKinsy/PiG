@@ -473,6 +473,13 @@ func NewSession(svcs *AgentSessionServices, opts SessionOptions) (*Session, erro
 			return nil, err
 		}
 	}
+	// If NewSession returns an error after resolveResourceLoader built a loader, shut down its Extension Host so its subprocesses do not leak (D19).
+	var constructed *Session
+	defer func() {
+		if constructed == nil && resourceLoader.owned != nil {
+			resourceLoader.owned.Close()
+		}
+	}()
 	if opts.Runner == nil {
 		// upstream: agent-session.ts _buildRuntime builds the ExtensionRunner over resourceLoader.getExtensions().
 		loaded := resourceLoader.loader.GetExtensions()
@@ -823,6 +830,7 @@ func NewSession(svcs *AgentSessionServices, opts SessionOptions) (*Session, erro
 	sess.installCacheWarmer(inner, opts.CacheWarmer)
 	//portlint:allow asyncorder forwardAgentEvents is the Session's event executor: rawEvents is a FIFO and the ordering point, as agent.subscribe(_handleAgentEvent) (agent-session.ts:546, 1164) runs its listeners in emission order; it ends by closing events once the Session closes
 	go sess.forwardAgentEvents()
+	constructed = sess
 	return sess, nil
 }
 
@@ -1647,6 +1655,10 @@ func (s *Session) Close() error {
 	// Upstream dispose cancels warming before provider cleanup. Join refreshes first so late provider completion cannot recreate resources after cleanup.
 	if !s.successorOwnsResources.Load() {
 		_ = ai.CleanupSessionResources(s.ID())
+	}
+	// Close the DefaultResourceLoader this Session constructed (if any) last, after runner invalidation and run drain, so extensions stay reachable during shutdown and no subprocess Extension Host leaks (D19). Idempotent on repeated Close.
+	if ref := s.resourceLoader.Load(); ref != nil && ref.owned != nil {
+		ref.owned.Close()
 	}
 	if s.ownedServices != nil {
 		s.ownedServices.Close()

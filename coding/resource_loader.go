@@ -708,6 +708,8 @@ var NoResources ResourceLoader = &staticResourceLoader{}
 type resourceLoaderRef struct {
 	loader           ResourceLoader
 	promptFromLoader bool
+	// owned is non-nil only when resolveResourceLoader constructed loader for this Session (not caller-supplied, borrowed from Services, or shared by Clone). Session.Close shuts down its Extension Host (D19).
+	owned *DefaultResourceLoader
 }
 
 // resolveResourceLoader returns the supplied loader, or a DefaultResourceLoader over the Services' cwd, agent directory and settings that has reloaded when none is supplied (sdk.ts createAgentSession awaits resourceLoader.reload()). The reload rereads the Services' settings and drops the transient overrides applied to them.
@@ -721,10 +723,11 @@ func resolveResourceLoader(svcs *AgentSessionServices, supplied ResourceLoader) 
 	}
 	loader := NewDefaultResourceLoader(DefaultResourceLoaderOptions{CWD: svcs.CWD(), AgentDir: svcs.AgentDir(), SettingsManager: svcs.SettingsManager()})
 	if err := loader.Reload(); err != nil {
+		loader.Close()
 		return nil, err
 	}
 	timings.Time("resourceLoader.reload")
-	return &resourceLoaderRef{loader: loader, promptFromLoader: true}, nil
+	return &resourceLoaderRef{loader: loader, promptFromLoader: true, owned: loader}, nil
 }
 
 // loaderOperation is a Reload, LoadProjectTrustExtensions, ExtendResources or Close in progress, which holds its loader's opMu. goroutine is the one it runs on.

@@ -36,7 +36,7 @@ func (s *Session) SetPromptResources(templates []PromptTemplate, skills []*Skill
 		ref = &resourceLoaderRef{loader: NoResources}
 	}
 	overlay := promptResourcesOverlay{ResourceLoader: ref.loader, static: &staticResourceLoader{templates: slices.Clone(templates), skills: slices.Clone(skills)}}
-	s.resourceLoader.Store(&resourceLoaderRef{loader: overlay, promptFromLoader: ref.promptFromLoader})
+	s.resourceLoader.Store(&resourceLoaderRef{loader: overlay, promptFromLoader: ref.promptFromLoader, owned: ref.owned})
 }
 
 func (s *Session) expandPromptText(text string) string {
