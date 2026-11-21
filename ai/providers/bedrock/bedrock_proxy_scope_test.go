@@ -5,17 +5,16 @@ package bedrock
 import (
 	"github.com/MichaelKinsy/PiG/ai"
 
-	"crypto/sha1"
-	"encoding/hex"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"testing"
 
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
+
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/credentials/ssocreds"
 )
 
 // Pi resolves the Bedrock proxy once, from model.baseUrl, and gives that handler to the runtime client and the default credential chain's clientConfig
@@ -152,12 +151,15 @@ func TestBedrockProxyIsTheBaseURLsAndOnlyTheRuntimeAndSTSUseIt(t *testing.T) {
 	// The SSO and SSO OIDC endpoints do not resolve, so credentials and refreshed tokens arrive only through the proxy.
 	writeCachedSSOToken := func(t *testing.T, homeDir, cacheKey, body string) {
 		t.Helper()
-		cacheDir := filepath.Join(homeDir, ".aws", "sso", "cache")
-		if err := os.MkdirAll(cacheDir, 0o700); err != nil {
+		t.Setenv("HOME", homeDir)
+		t.Setenv("USERPROFILE", homeDir)
+		path, err := ssocreds.StandardCachedTokenFilepath(cacheKey)
+		if err != nil {
 			t.Fatal(err)
 		}
-		sum := sha1.Sum([]byte(cacheKey))
-		path := filepath.Join(cacheDir, strings.ToLower(hex.EncodeToString(sum[:]))+".json")
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			t.Fatal(err)
+		}
 		if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 			t.Fatal(err)
 		}
