@@ -1,9 +1,12 @@
 package coding
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"os"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -148,6 +151,192 @@ func TestFreshAndCloneToolOrderMatchesPi(t *testing.T) {
 		reloadGot := captureToolNames(t, session, "reload")
 		if !slices.Equal(reloadGot, want) {
 			t.Errorf("reload request tools = %v, want %v", reloadGot, want)
+		}
+		// Clone after a prompt under the cure: the clone replays the source's recorded
+		// transcript tools, keeping Pi's order.
+		clonedAfterPrompt, err := session.Clone()
+		if err != nil {
+			t.Fatalf("Clone after prompt: %v", err)
+		}
+		defer func() { _ = clonedAfterPrompt.Close() }()
+		cloneAfterPromptGot := captureToolNames(t, clonedAfterPrompt, "clone-after-prompt")
+		if !slices.Equal(cloneAfterPromptGot, want) {
+			t.Errorf("clone-after-prompt request tools = %v, want %v", cloneAfterPromptGot, want)
+		}
+	})
+
+	// 3. Resumed session whose persisted transcript recorded the pre-cure order
+	// [read, bash, edit, write, caller_probe, ext_probe], and a clone made after
+	// prompting that resumed session.
+	// Rule: resuming an existing session keeps its recorded tool order on provider
+	// requests, writes no ToolsAdded/ToolsRemoved churn record, keeps the request's
+	// serialized tool prefix byte-equal, and cloning it after a prompt replays that
+	// recorded order.
+	t.Run("resumed old-order transcript preserves order and prefix", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: dir, AgentDir: dir})
+		if err != nil {
+			t.Fatalf("CreateAgentSessionServices: %v", err)
+		}
+		configureFauxAuth(t, services)
+		defer services.Close()
+
+		oldOrder := []string{"read", "bash", "edit", "write", "caller_probe", "ext_probe"}
+
+		newCaptureProvider := func() (*scriptedProvider, *[][]string, *[][]byte) {
+			var namesLog [][]string
+			var prefixLog [][]byte
+			p := &scriptedProvider{
+				wrap: true,
+				responses: []scriptedResponse{
+					func(messages []ai.Message) *ai.AssistantMessage {
+						schemas := ai.GetCurrentTools(ai.TranscriptMessages[ai.Message](messages))
+						names := make([]string, len(schemas))
+						for i, s := range schemas {
+							names[i] = s.Name
+						}
+						raw, err := json.Marshal(schemas)
+						if err != nil {
+							t.Errorf("marshal tool schemas: %v", err)
+						}
+						namesLog = append(namesLog, names)
+						prefixLog = append(prefixLog, raw)
+						return &ai.AssistantMessage{
+							Provider:   "faux",
+							Model:      "faux-1",
+							Content:    []ai.AssistantContentBlock{ai.TextContent{Text: "ok"}},
+							StopReason: ai.StopReasonStop,
+						}
+					},
+				},
+			}
+			return p, &namesLog, &prefixLog
+		}
+
+		// Produce the persisted transcript with the pre-cure order using the existing
+		// InitialActiveToolNames seam, which writes the exact same toolsAdded JSONL
+		// record that 0.7.0 / pre-cure code wrote.
+		preProvider, preNames, prePrefixes := newCaptureProvider()
+		preRunner := inproc.NewRunner([]extension.Extension{
+			{Name: "probe-ext", ToolOrder: []string{"ext_probe"}, Tools: map[string]extension.RegisteredTool{"ext_probe": extTool}},
+		}, dir)
+		preSession, err := NewSession(services, SessionOptions{
+			Model:                  &ai.Model{ID: "faux-1", Provider: preProvider},
+			Runner:                 preRunner,
+			CustomTools:            []extension.ToolDefinition{callerTool},
+			InitialActiveToolNames: oldOrder,
+			SessionDir:             dir,
+		})
+		if err != nil {
+			t.Fatalf("NewSession (pre-cure fixture): %v", err)
+		}
+		if err := preSession.Prompt(context.Background(), "pre-upgrade"); err != nil {
+			t.Fatalf("pre-upgrade Prompt: %v", err)
+		}
+		sessionPath := preSession.Path()
+		if err := preSession.Close(); err != nil {
+			t.Fatalf("pre-upgrade Close: %v", err)
+		}
+		if len(*preNames) != 1 || !slices.Equal((*preNames)[0], oldOrder) {
+			t.Fatalf("pre-upgrade request tools = %v, want %v", *preNames, oldOrder)
+		}
+
+		countToolDeltaRecords := func(data []byte) (added, removed int) {
+			for line := range strings.SplitSeq(strings.TrimSpace(string(data)), "\n") {
+				if strings.TrimSpace(line) == "" {
+					continue
+				}
+				var entry struct {
+					Type    string `json:"type"`
+					Message struct {
+						Role         string             `json:"role"`
+						ToolsAdded   []ai.ToolSchema    `json:"toolsAdded"`
+						ToolsRemoved []ai.ToolReference `json:"toolsRemoved"`
+					} `json:"message"`
+				}
+				if err := json.Unmarshal([]byte(line), &entry); err != nil {
+					continue
+				}
+				if entry.Type == "message" && entry.Message.Role == "system" {
+					if len(entry.Message.ToolsAdded) > 0 {
+						added++
+					}
+					if len(entry.Message.ToolsRemoved) > 0 {
+						removed++
+					}
+				}
+			}
+			return added, removed
+		}
+
+		beforeBytes, err := os.ReadFile(sessionPath)
+		if err != nil {
+			t.Fatalf("ReadFile before resume: %v", err)
+		}
+		addedBefore, removedBefore := countToolDeltaRecords(beforeBytes)
+		if addedBefore != 1 || removedBefore != 0 {
+			t.Fatalf("before resume tool delta records: added=%d removed=%d, want 1/0", addedBefore, removedBefore)
+		}
+
+		// Resume under the cured code with the same caller and extension tools (no InitialActiveToolNames).
+		resumedProvider, resumedNames, resumedPrefixes := newCaptureProvider()
+		resumedRunner := inproc.NewRunner([]extension.Extension{
+			{Name: "probe-ext", ToolOrder: []string{"ext_probe"}, Tools: map[string]extension.RegisteredTool{"ext_probe": extTool}},
+		}, dir)
+		resumed, err := NewSession(services, SessionOptions{
+			Model:       &ai.Model{ID: "faux-1", Provider: resumedProvider},
+			Runner:      resumedRunner,
+			CustomTools: []extension.ToolDefinition{callerTool},
+			ResumePath:  sessionPath,
+			SessionDir:  dir,
+		})
+		if err != nil {
+			t.Fatalf("NewSession (resumed): %v", err)
+		}
+		defer func() { _ = resumed.Close() }()
+
+		if err := resumed.Prompt(context.Background(), "post-upgrade"); err != nil {
+			t.Fatalf("resumed Prompt: %v", err)
+		}
+		if len(*resumedNames) != 1 {
+			t.Fatalf("expected 1 resumed provider request, got %d", len(*resumedNames))
+		}
+		// (i) Provider request keeps the transcript's recorded old order.
+		if !slices.Equal((*resumedNames)[0], oldOrder) {
+			t.Errorf("resumed request tools = %v, want old order %v", (*resumedNames)[0], oldOrder)
+		}
+		// (ii) Transcript gained no ToolsAdded / ToolsRemoved churn record on resume.
+		afterBytes, err := os.ReadFile(sessionPath)
+		if err != nil {
+			t.Fatalf("ReadFile after resume: %v", err)
+		}
+		addedAfter, removedAfter := countToolDeltaRecords(afterBytes)
+		if addedAfter != addedBefore || removedAfter != removedBefore {
+			t.Errorf("resumed transcript tool delta records changed: added %d->%d, removed %d->%d", addedBefore, addedAfter, removedBefore, removedAfter)
+		}
+		// (iii) Serialized tool prefix is byte-equal before and after the cure.
+		if !bytes.Equal((*prePrefixes)[0], (*resumedPrefixes)[0]) {
+			t.Errorf("resumed tool prefix bytes differ from pre-cure request (len %d vs %d)", len((*resumedPrefixes)[0]), len((*prePrefixes)[0]))
+		}
+
+		// Clone made after prompting the resumed old-order session replays the recorded old order.
+		clonedOld, err := resumed.Clone()
+		if err != nil {
+			t.Fatalf("Clone of resumed old-order session: %v", err)
+		}
+		defer func() { _ = clonedOld.Close() }()
+		if err := clonedOld.Prompt(context.Background(), "clone-of-old-order"); err != nil {
+			t.Fatalf("clonedOld Prompt: %v", err)
+		}
+		if len(*resumedNames) != 2 {
+			t.Fatalf("expected 2 provider requests after cloning resumed session, got %d", len(*resumedNames))
+		}
+		if !slices.Equal((*resumedNames)[1], oldOrder) {
+			t.Errorf("clone-after-prompt of old-order session tools = %v, want %v", (*resumedNames)[1], oldOrder)
+		}
+		if !bytes.Equal((*prePrefixes)[0], (*resumedPrefixes)[1]) {
+			t.Errorf("clone-after-prompt of old-order session tool prefix bytes differ from pre-cure request")
 		}
 	})
 }
