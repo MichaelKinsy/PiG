@@ -16886,6 +16886,28 @@
       ]
     },
     {
+      "id": "BF-48530e8",
+      "title": "On Windows, a Chord worker sending its last message (such as `fatal`) before exiting no longer blocks when…",
+      "symptom": "On Windows, a Chord worker sending its last message (such as `fatal`) before exiting no longer blocks when the parent's reader is busy, which could leave the worker hanging until a timeout killed it without receiving the error.",
+      "rootCause": "prepareChannel in workers_channel_windows.go created the named pipe with zero InputBufferSize and OutputBufferSize, so CreateNamedPipe blocked every write until the peer read it; a worker exiting in sendControlThen's write callback stalled whenever the parent reader was busy running message listeners",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Windows, a Chord worker sending its last message (such as `fatal`) before exiting no longer blocks when the parent's reader is busy, which could leave the worker hanging until a timeout killed it without receiving the error. The worker IPC pipe now buffers 64 KiB in each direction, matching Unix socketpairs and the Chord plugin listener. Affects 0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "48530e80f6",
+          "date": "2026-11-21"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_channel_windows_test.go::TestPrepareChannelAWriteCompletesWhileThePeerDoesNotRead"
+      ]
+    },
+    {
       "id": "BF-486aee5",
       "title": "fix(sdk): the Go SDK ends the connection on a frame it cannot decode",
       "symptom": "fix(sdk): the Go SDK ends the connection on a frame it cannot decode",
@@ -18658,9 +18680,7 @@
           "date": "2026-11-07"
         }
       ],
-      "tests": [
-        "chord/nextnode/workers/workers_channel_windows_test.go::TestOpenProcessChannelWaitsForAParentThatAcceptsLate"
-      ]
+      "tests": []
     },
     {
       "id": "BF-4ff1a44",
@@ -39768,6 +39788,33 @@
       ],
       "tests": [
         "env/process_test.go::TestOpenProcessDeliversOutputLeftInThePipeWhenTheProgramExitsWhileTheLinkIsBackedUp"
+      ]
+    },
+    {
+      "id": "BF-95274a3",
+      "title": "On Windows, a message a Chord plugin or worker sent just before its Node process exited was lost: the Go side…",
+      "symptom": "On Windows, a message a Chord plugin or worker sent just before its Node process exited was lost: the Go side dropped the cut frame without an error.",
+      "rootCause": "on Windows named pipes libuv's uv_try_write always returns UV_EAGAIN so the first socket.write (the 5-byte header) stayed asynchronous in Node's Writable and buffered the second socket.write (the payload) in JS memory until the first completed; process.exit() abandoned the buffered payload, delivering only the 5-byte header so Go framedPort.read hit io.ErrUnexpectedEOF and silently ended the channel",
+      "rootCauseSource": "release note",
+      "userImpact": "Lost or altered data",
+      "platform": "Windows, Linux",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Windows, a message a Chord plugin or worker sent just before its Node process exited was lost: the Go side dropped the cut frame without an error. Each frame is now written in a single `socket.write` call, as Pi's transports send it. A frame larger than the pipe's free buffer (64 KiB per direction), or one sent while an earlier write is still pending, can still be lost if the process calls `process.exit()` without waiting for the write's callback. Affects 0.7.0. \u003c!-- evidence: mechanism proven red on Linux by TestFramedPortWritesEachFrameInOneSocketWrite (a socket that completes no write synchronously); loss observed on Windows twice through example 76's old step (a report sent just before exit never arrived: runs 44880357753 and 44884991326); Windows-run tests TestFramedPortDeliversAFrameSentRightBeforeProcessExit and TestFramedPortWritesEachFrameInOneSocketWrite have not been seen red on Windows (red and green there are not the same test) --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8b53e7c413",
+          "date": "2026-11-21"
+        },
+        {
+          "hash": "95274a3c73",
+          "date": "2026-11-21"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_node_exit_frame_test.go::TestFramedPortDeliversAFrameSentRightBeforeProcessExit",
+        "chord/nextnode/plugins/plugins_node_frame_test.go::TestFramedPortWritesEachFrameInOneSocketWrite"
       ]
     },
     {

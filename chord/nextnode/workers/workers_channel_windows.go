@@ -19,10 +19,16 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/chord/winpipe"
 )
 
+// pipeBuffer is the size of the buffer of each direction of the pipe.
+const pipeBuffer = 64 << 10
+
 // prepareChannel makes the parent's end of cmd's IPC channel: a named pipe with a random name that only this user can open,
 // listening before the child starts (so the child's open never finds the name without an instance), whose one connection
 // the child opens from its environment. Go's os/exec cannot hand a child a handle by descriptor number, so the name goes
-// in the environment instead. afterStart does nothing; fail closes the pipe when the command never started.
+// in the environment instead. The pipe buffers pipeBuffer bytes each way: a pipe with no buffer completes a write only
+// when the peer reads it, so a worker that wrote its last frame (a `fatal`) and exits in the write's callback would block
+// while the parent's reader is busy, as a unix socketpair does not. afterStart does nothing; fail closes the pipe when
+// the command never started.
 func prepareChannel(cmd *exec.Cmd) (parent *channel, afterStart func(), fail func(), err error) {
 	var random [16]byte
 	if _, err := rand.Read(random[:]); err != nil {
@@ -33,7 +39,11 @@ func prepareChannel(cmd *exec.Cmd) (parent *channel, afterStart func(), fail fun
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	listener, err := winpipe.Listen(name, &winio.PipeConfig{SecurityDescriptor: "D:P(A;;GA;;;" + user.User.Sid.String() + ")"})
+	listener, err := winpipe.Listen(name, &winio.PipeConfig{
+		SecurityDescriptor: "D:P(A;;GA;;;" + user.User.Sid.String() + ")",
+		InputBufferSize:    pipeBuffer,
+		OutputBufferSize:   pipeBuffer,
+	})
 	if err != nil {
 		return nil, nil, nil, err
 	}
