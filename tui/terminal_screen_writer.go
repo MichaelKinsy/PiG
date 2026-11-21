@@ -138,28 +138,19 @@ func buildTerminalScreenWriter(t *ProcessTerminal, getenv func(string) string) *
 	return writer
 }
 
-// screenWriterLog appends the screen writer's records to a file, one write a record. The file is opened by the first record, so a
-// writer that reads no write leaves no file.
+// screenWriterLog appends the screen writer's records to a file, one write a record. Each append opens, writes, and closes the file
+// (appendLogFile, as PI_TUI_WRITE_LOG does), so a writer that reads no write leaves no file and no open descriptor outlives a write.
 type screenWriterLog struct {
-	mu     sync.Mutex
-	path   string
-	file   *os.File
-	failed bool
-	buf    []byte
+	mu   sync.Mutex
+	path string
+	buf  []byte
 }
 
 func (l *screenWriterLog) append(kind byte, in, out string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if l.file == nil && !l.failed {
-		file, err := os.OpenFile(l.path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
-		l.file, l.failed = file, err != nil
-	}
-	if l.file == nil {
-		return
-	}
 	l.buf = screenwriter.AppendRecord(l.buf[:0], kind, in, out)
-	_, _ = l.file.Write(l.buf)
+	appendLogFile(l.path, 0o600, l.buf)
 }
 
 // ScreenWriterActive reports whether the terminal's frames pass through the screen writer (D624) now: the terminal has one, it was
