@@ -552,6 +552,15 @@ jobs:
         if: matrix.shard == 'toolchains'
         shell: bash
         run: echo "PIG_SDK_PY_311=${{ steps.python311.outputs.python-path }}" >> "$GITHUB_ENV"
+      # make lint-sdk-py (ci-sdk in the toolchains shard, and sdk-vectors-changed in the light run's test-fast shard)
+      # runs ruff, which is hash-pinned in automation/ci/security-tools.txt (the same requirement file security.yml uses).
+      - name: Install Python SDK lint tools
+        if: matrix.shard == 'toolchains' || matrix.target == 'ci-test-changed'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --require-hashes \
+            -r automation/ci/security-tools.txt
       # make test-term-engines builds libvterm, the Rust engine runners and the pyte venv under $PIG_CACHE_HOME/pig-term-engines (~/.cache here), each
       # in a directory named for the lock or pin that produced it, so this key changes exactly when something there would be rebuilt.
       - name: Restore the terminal-engine builds
