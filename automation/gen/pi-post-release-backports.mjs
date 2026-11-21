@@ -2862,6 +2862,74 @@ patch("9a7cfba47", "pi-tui/components/editor.js", [
 ]);
 // END backport 9a7cfba47
 
+// BEGIN backport 073b0bae8
+// 073b0bae8 (#12366, closes #12311): createProvider merges the dynamic catalog once per published refresh (stored restore and network refresh) via a type+id Map, caching both allModels and chatModels instead of re-merging on every getModels()/getAllModels() read.
+// not carried: packages/ai/test/models-runtime.test.ts (regression test): the package ships no tests; ai/models_provider_catalog_merge_test.go is the Go pin.
+// not carried: packages/ai/CHANGELOG.md (changelog entry): PiG carries its own changelog.d fragment.
+patch("073b0bae8", "pi-ai/models.js", [
+    [`    const baselineModels = input.models;
+    let dynamicModels = [];
+    const fetchModels = input.fetchModels;
+    const currentModels = () => {
+        const merged = [...baselineModels];
+        for (const model of dynamicModels) {
+            const index = merged.findIndex((entry) => getModelType(entry) === getModelType(model) && entry.id === model.id);
+            if (index >= 0)
+                merged[index] = model;
+            else
+                merged.push(model);
+        }
+        return merged;
+    };
+`, `    const baselineModels = input.models;
+    const fetchModels = input.fetchModels;
+    ${note("073b0bae8").trim()}
+    const chatModelsOf = (models) => models.filter((model) => isModelType(model, "chat"));
+    // Merged once per publish, not per read: getModels() is on hot paths such as Models.getModel() (#12311).
+    let allModels = baselineModels;
+    let chatModels = chatModelsOf(allModels);
+    const setDynamicModels = (dynamicModels) => {
+        const merged = [...baselineModels];
+        const indexByKey = new Map();
+        const keyOf = (model) => \`\${getModelType(model)}\\0\${model.id}\`;
+        merged.forEach((model, index) => {
+            const key = keyOf(model);
+            if (!indexByKey.has(key))
+                indexByKey.set(key, index);
+        });
+        for (const model of dynamicModels) {
+            const key = keyOf(model);
+            const index = indexByKey.get(key);
+            if (index !== undefined) {
+                merged[index] = model;
+            }
+            else {
+                indexByKey.set(key, merged.length);
+                merged.push(model);
+            }
+        }
+        allModels = merged;
+        chatModels = chatModelsOf(merged);
+    };
+`],
+    [`        getModels: () => currentModels().filter((model) => isModelType(model, "chat")),
+        getAllModels: currentModels,
+`, `        getModels: () => chatModels,
+        getAllModels: () => allModels,
+`],
+    [`                        update: () => {
+                            dynamicModels = restored;
+                        },
+`, `                        update: () => setDynamicModels(restored),
+`],
+    [`                    update: () => {
+                        dynamicModels = refreshed;
+                    },
+`, `                    update: () => setDynamicModels(refreshed),
+`],
+]);
+// END backport 073b0bae8
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 // Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.

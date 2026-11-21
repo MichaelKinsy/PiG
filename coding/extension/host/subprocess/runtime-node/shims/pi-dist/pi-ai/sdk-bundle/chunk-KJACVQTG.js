@@ -5,7 +5,7 @@ import {
 import {
   createProvider,
   isModelType
-} from "./chunk-TDDSYJUL.js";
+} from "./chunk-XXMZSYZB.js";
 import {
   __name
 } from "./chunk-SHUYVCID.js";
@@ -16,7 +16,7 @@ var anthropicMessagesApi = /* @__PURE__ */ __name(() => lazyApi(() => import("./
 
 // pi-dist/pi-ai/api/openai-completions.lazy.js
 import { lazyApi as lazyApi2 } from "../api/lazy.js";
-var openAICompletionsApi = /* @__PURE__ */ __name(() => lazyApi2(() => import("./chunk-S3JHZMNA.js")), "openAICompletionsApi");
+var openAICompletionsApi = /* @__PURE__ */ __name(() => lazyApi2(() => import("./chunk-T3ERHYI7.js")), "openAICompletionsApi");
 
 // pi-dist/pi-ai/api/openrouter-images.lazy.js
 var openrouterImagesApi = /* @__PURE__ */ __name(() => ({
@@ -25,7 +25,7 @@ var openrouterImagesApi = /* @__PURE__ */ __name(() => ({
 
 // pi-dist/pi-ai/api/typesafe-system-one.lazy.js
 var typesafeSystemOneApi = /* @__PURE__ */ __name(() => ({
-  classify: /* @__PURE__ */ __name(async (model, context, options) => (await import("./chunk-IUW3JYH5.js")).classify(model, context, options), "classify")
+  classify: /* @__PURE__ */ __name(async (model, context, options) => (await import("./chunk-6IOZWI6Y.js")).classify(model, context, options), "classify")
 }), "typesafeSystemOneApi");
 
 // pi-dist/pi-ai/providers/openrouter.js
