@@ -2,6 +2,22 @@
 
 package codingagent
 
+// pi: packages/coding-agent/src/core/tools/renderers/read.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/write.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/edit.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/bash.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/grep.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/find.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/ls.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/index.ts
+
 import (
 	"fmt"
 	"math/rand"

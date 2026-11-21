@@ -2,6 +2,10 @@
 
 package codingagent
 
+// pi: packages/coding-agent/src/modes/interactive/interactive-mode.ts getRegisteredToolDefinition
+
+// pi: packages/coding-agent/src/core/tools/renderers/index.ts
+
 import (
 	"fmt"
 	"slices"

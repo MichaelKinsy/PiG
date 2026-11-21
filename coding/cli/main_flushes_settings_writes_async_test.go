@@ -91,6 +91,8 @@ func mainFlushHelperBody(t *testing.T, failure error, path string) {
 	for _, recorded := range manager.DrainErrors() {
 		appendTrace("recorded " + recorded.Scope + ": " + recorded.Error.Error())
 	}
+	// Exit before the testing package prints PASS and coverage lines into the captured output.
+	os.Exit(0)
 }
 
 // A settings write that a setter on another goroutine is performing when Main returns is finished first, as a Node process does not end while writeQueue has work (settings-manager.ts:576-588, flush :670-672): Main's deferred FlushSettingsWrites (main.go) waits for it. The write is released 700 ms after Main has started, long after a faux print run is done, so a Main that does not wait returns before it.
@@ -127,8 +129,7 @@ func TestMainFlushOfAFailedSettingsWriteRecordsItAndPrintsNothing(t *testing.T) 
 	if want := "main returned\nrecorded global: EACCES: permission denied, mkdir '/agent'\n"; trace != want {
 		t.Fatalf("trace = %q, want %q", trace, want)
 	}
-	// The test binary adds its own "PASS" line after the print run's reply.
-	if string(output) != "ok\nPASS\n" {
+	if string(output) != "ok\n" {
 		t.Fatalf("output = %q, want the reply of the print run and nothing about the failed write", output)
 	}
 }
