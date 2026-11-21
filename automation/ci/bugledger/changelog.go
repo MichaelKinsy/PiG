@@ -18,6 +18,8 @@ type bullet struct {
 	Cause string
 	// Tests are the regression tests a "<!-- tests: <test>[, <test>...] -->" marker names. They are the entry's tests, whatever the fix commits add or name.
 	Tests []string
+	// Evidence is the verification note a "<!-- evidence: <text> -->" marker states.
+	Evidence string
 	// File is the file that holds the bullet, relative to the repository root: CHANGELOG.md or a fragment of changelog.d.
 	File string
 	// Section is the changelog heading the bullet sits under.
@@ -41,7 +43,8 @@ var pinConstRE = regexp.MustCompile(`(?m)^const UpstreamVersion = "([^"]+)"`)
 var (
 	fixMarker   = regexp.MustCompile(`\s*<!--\s*fix:\s*([0-9a-f][0-9a-f ,]*?)\s*-->`)
 	causeMarker = regexp.MustCompile(`\s*<!--\s*cause:\s*(.+?)\s*-->`)
-	testsMarker = regexp.MustCompile(`\s*<!--\s*tests:\s*(.+?)\s*-->`)
+	testsMarker    = regexp.MustCompile(`\s*<!--\s*tests:\s*(.+?)\s*-->`)
+	evidenceMarker = regexp.MustCompile(`(?s)\s*<!--\s*evidence:\s*(.+?)\s*-->`)
 )
 
 // replaceOutsideCodeSpans applies fn to each segment of s outside Markdown code spans, keeping code spans verbatim.
@@ -98,8 +101,8 @@ func splitFixMarker(s string) (string, []string) {
 	return out, fix
 }
 
-// splitStated removes the cause and tests markers from a bullet outside Markdown code spans and returns what they state. Of several cause markers the first counts.
-func splitStated(s string) (text, cause string, tests []string) {
+// splitStated removes the cause, tests and evidence markers from a bullet outside Markdown code spans and returns what they state. Of several cause or evidence markers the first counts.
+func splitStated(s string) (text, cause string, tests []string, evidence string) {
 	out := replaceOutsideCodeSpans(s, func(seg string) string {
 		if cause == "" {
 			if m := causeMarker.FindStringSubmatch(seg); m != nil {
@@ -109,9 +112,16 @@ func splitStated(s string) (text, cause string, tests []string) {
 		for _, m := range testsMarker.FindAllStringSubmatch(seg, -1) {
 			tests = append(tests, testList(m[1])...)
 		}
-		return testsMarker.ReplaceAllString(causeMarker.ReplaceAllString(seg, ""), "")
+		if evidence == "" {
+			if m := evidenceMarker.FindStringSubmatch(seg); m != nil {
+				evidence = normalizeBullet(m[1])
+			}
+		}
+		seg = causeMarker.ReplaceAllString(seg, "")
+		seg = testsMarker.ReplaceAllString(seg, "")
+		return evidenceMarker.ReplaceAllString(seg, "")
 	})
-	return out, cause, tests
+	return out, cause, tests, evidence
 }
 
 func normalizeBullet(s string) string { return strings.TrimSpace(spaceRun.ReplaceAllString(s, " ")) }
@@ -173,9 +183,9 @@ func (s *scanner) wants(section string) bool {
 func (s *scanner) flush() {
 	if s.cur != nil {
 		text, fix := splitFixMarker(s.cur.String())
-		text, cause, tests := splitStated(text)
+		text, cause, tests, evidence := splitStated(text)
 		text = stripHTMLComments(text)
-		s.out = append(s.out, bullet{Text: normalizeBullet(text), Fix: fix, Cause: cause, Tests: tests, Version: s.curVer, Added: s.curAdd, Section: s.curSec})
+		s.out = append(s.out, bullet{Text: normalizeBullet(text), Fix: fix, Cause: cause, Tests: tests, Evidence: evidence, Version: s.curVer, Added: s.curAdd, Section: s.curSec})
 		s.cur = nil
 	}
 }

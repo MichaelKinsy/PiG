@@ -646,3 +646,47 @@ func TestPublishedReleaseNoteDropsHTMLComments(t *testing.T) {
 		}
 	}
 }
+
+// An <!-- evidence: ... --> marker is parsed out of the releaseNote, stored in Entry.Evidence and rendered on the bug ledger page.
+func TestEvidenceMarkerStoredAndRendered(t *testing.T) {
+	text := "### Fixed\n\n" +
+		"- On Windows, X was lost. <!-- fix: 1234567890 --> <!-- evidence: proven red on Linux by TestX; loss observed on Windows -->\n" +
+		"- On macOS, a literal `<!-- evidence: example -->` stays in the note. <!-- evidence: verified on macOS -->\n"
+	bs := fixedBullets(text, "0.4.1", true)
+	if len(bs) != 2 {
+		t.Fatalf("len(bs) = %d, want 2", len(bs))
+	}
+	if bs[0].Text != "On Windows, X was lost." {
+		t.Errorf("bs[0].Text = %q, want %q", bs[0].Text, "On Windows, X was lost.")
+	}
+	if bs[0].Evidence != "proven red on Linux by TestX; loss observed on Windows" {
+		t.Errorf("bs[0].Evidence = %q", bs[0].Evidence)
+	}
+	if bs[1].Text != "On macOS, a literal `<!-- evidence: example -->` stays in the note." {
+		t.Errorf("bs[1].Text = %q", bs[1].Text)
+	}
+	if bs[1].Evidence != "verified on macOS" {
+		t.Errorf("bs[1].Evidence = %q", bs[1].Evidence)
+	}
+	page := renderMarkdown(&Ledger{
+		Since: "0.4.1",
+		Entries: []Entry{{
+			ID:        "BF-1234567",
+			Title:     "On Windows, X was lost.",
+			Symptom:   "On Windows, X was lost.",
+			RootCause: "dropped frame",
+			Impact:    "Lost or altered data",
+			Platform:  "Windows",
+			Class:     ClassOwn,
+			FixedIn:   "Unreleased",
+			Evidence:  bs[0].Evidence,
+			Note:      bs[0].Text,
+		}},
+	})
+	if !strings.Contains(page, "- **Evidence:** proven red on Linux by TestX; loss observed on Windows\n") {
+		t.Errorf("rendered page missing Evidence line:\n%s", page)
+	}
+	if strings.Contains(page, "<!-- evidence:") {
+		t.Errorf("rendered page leaked raw evidence comment")
+	}
+}
