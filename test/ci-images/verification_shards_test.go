@@ -297,12 +297,39 @@ func TestPortmapShardsFitTheirBudget(t *testing.T) {
 
 // TestBookkeepingKeepsAutofixGatesAndMovesHeavyNonAutofixToBuild guards against Bookkeeping (timeout-minutes: 15)
 // hitting 96.4% of its limit (14.5 m on westus3 in run 44880357753) while preserving every autofix gate in Bookkeeping
-// and every moved non-autofix gate in both ci-build and ci-build-pr (so nothing disappears from the light PR run).
+// and pinning every one of the 25 pre-move ci-bookkeeping targets in exactly one job in both the full and light plans.
 func TestBookkeepingKeepsAutofixGatesAndMovesHeavyNonAutofixToBuild(t *testing.T) {
 	leaves := gateLeaves(t)
-	bk := leaves("ci-bookkeeping")
-	buildFull := leaves("ci-build")
-	buildPR := leaves("ci-build-pr")
+	preMove := []string{
+		"autofix-check",
+		"divergences-drift",
+		"piglet-strip-ids-drift",
+		"sdk-bundles-drift",
+		"node-runtime-drift",
+		"vendor-pi-dist-drift",
+		"known-gaps-drift",
+		"custom-factory-ledger-drift",
+		"lint-scenarios",
+		"port-map-drift",
+		"coverage-drift",
+		"divergence-consistency",
+		"divergence-quality",
+		"divergence-guard",
+		"gui-import-guard",
+		"source-hygiene",
+		"fixture-guard",
+		"module-pins",
+		"test-provenance",
+		"docs-drift",
+		"bug-ledger-check",
+		"model-data-check",
+		"race-coverage",
+		"perf-scoreboard-check",
+		"go-fix-clean",
+	}
+	if len(preMove) != 25 {
+		t.Fatalf("preMove has %d targets, want 25", len(preMove))
+	}
 	moved := []string{
 		"go-fix-clean",
 		"race-coverage",
@@ -312,6 +339,9 @@ func TestBookkeepingKeepsAutofixGatesAndMovesHeavyNonAutofixToBuild(t *testing.T
 		"node-runtime-drift",
 		"vendor-pi-dist-drift",
 	}
+	bk := leaves("ci-bookkeeping")
+	buildFull := leaves("ci-build")
+	buildPR := leaves("ci-build-pr")
 	for _, gate := range moved {
 		if slices.Contains(bk, gate) {
 			t.Errorf("ci-bookkeeping still contains heavy non-autofix gate %s; keep it in ci-build and ci-build-pr", gate)
@@ -323,6 +353,36 @@ func TestBookkeepingKeepsAutofixGatesAndMovesHeavyNonAutofixToBuild(t *testing.T
 			t.Errorf("ci-build-pr is missing moved gate %s (would disappear from the light PR run)", gate)
 		}
 	}
+	checkPlan := func(planName string, p ciPlan) {
+		jobTargets := map[string][]string{
+			"bookkeeping":         leaves("ci-bookkeeping"),
+			"preflight":           leaves("ci-preflight"),
+			"preflight-platforms": leaves("ci-preflight-platforms"),
+		}
+		for _, entry := range p.Matrix["linux"] {
+			jobTargets["linux/"+entry.Shard] = leaves(entry.Target)
+		}
+		for _, gate := range preMove {
+			var owners []string
+			for job, targets := range jobTargets {
+				for _, target := range targets {
+					if target == gate {
+						owners = append(owners, job)
+					}
+				}
+			}
+			slices.Sort(owners)
+			wantOwner := "bookkeeping"
+			if slices.Contains(moved, gate) {
+				wantOwner = "linux/build"
+			}
+			if len(owners) != 1 || owners[0] != wantOwner {
+				t.Errorf("%s plan: pre-move bookkeeping gate %s runs in %v (count %d), want exactly [%s]", planName, gate, owners, len(owners), wantOwner)
+			}
+		}
+	}
+	checkPlan("full", planFor(t, "merge_group", ""))
+	checkPlan("light", planFor(t, "pull_request", "queue"))
 }
 
 func TestLinuxAggregateRejectsUnsuccessfulShards(t *testing.T) {
