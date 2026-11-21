@@ -7,8 +7,9 @@ import type { CodemodeRemote, CodemodeRemoteExchange, CodemodeRemoteRequest } fr
 import { type CodemodeServeOptions, serveCodemodeRemote } from "../src/codemode/serve.ts"
 import { codemodeModules } from "./codemode-helpers.ts"
 import { readFileSync } from "node:fs"
+import { join } from "node:path"
 import { MAX_OUTPUT_CHARS, MAX_OUTPUT_ITEMS, MAX_STORE_TOTAL_CHARS, MAX_STORE_VALUE_CHARS } from "../src/codemode/limits.ts"
-import { quickjsWasmPath } from "./codemode-helpers.ts"
+import { root } from "./helpers.ts"
 import { describe, expect, it } from "./vitest-shim.ts"
 
 const modules = codemodeModules();
@@ -162,13 +163,16 @@ describe("RemoteCodemodeSandbox", () => {
 describe("limits.ts", () => {
 	// The prelude inside the VM enforces these; the Go constants of codemode/assets.go and src/codemode/limits.ts must be the same numbers.
 	it("holds the Go constants MaxStoreValueChars, MaxStoreTotalChars, MaxOutputChars and MaxOutputItems", () => {
-		const go = readFileSync(quickjsWasmPath.replace(/assets\/quickjs\.wasm$/, "assets.go"), "utf8")
-		const value = (name: string) => Function(`return ${new RegExp(`\\b${name} = ([0-9_ *]+)`).exec(go)?.[1]}`)()
-		expect([value("MaxStoreValueChars"), value("MaxStoreTotalChars"), value("MaxOutputChars"), value("MaxOutputItems")]).toEqual([
-			MAX_STORE_VALUE_CHARS,
-			MAX_STORE_TOTAL_CHARS,
-			MAX_OUTPUT_CHARS,
-			MAX_OUTPUT_ITEMS,
-		])
+		const assetsGoPath = join(root, "..", "..", "..", "..", "codemode", "assets.go")
+		const go = readFileSync(assetsGoPath, "utf8")
+		const value = (name: string) => {
+			const match = new RegExp(`\\b${name}\\s*=\\s*([0-9_ *]+)`).exec(go)
+			if (!match) throw new Error(`constant ${name} not found in ${assetsGoPath}`)
+			return Function(`return ${match[1]}`)() as number
+		}
+		expect(value("MaxStoreValueChars"), "MaxStoreValueChars").toBe(MAX_STORE_VALUE_CHARS)
+		expect(value("MaxStoreTotalChars"), "MaxStoreTotalChars").toBe(MAX_STORE_TOTAL_CHARS)
+		expect(value("MaxOutputChars"), "MaxOutputChars").toBe(MAX_OUTPUT_CHARS)
+		expect(value("MaxOutputItems"), "MaxOutputItems").toBe(MAX_OUTPUT_ITEMS)
 	})
 })
