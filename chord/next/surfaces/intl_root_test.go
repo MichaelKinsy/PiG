@@ -152,3 +152,42 @@ func TestFormatsAllocateOnlyTheResultForCanonicalTags(t *testing.T) {
 		t.Errorf("FormatTime(nil) allocates %v times, want at most %v", n, 5+envAllocs)
 	}
 }
+
+// FormatTime must not consult platformLocale (which calls GetLocaleInfoEx on Windows) when lang resolves in the table;
+// it reads platformLocale once when lang is nil or falls back to the platform default.
+func TestFormatTimeReadsPlatformLocaleOnlyWhenNeeded(t *testing.T) {
+	at := time.Date(2026, time.November, 3, 14, 5, 7, 0, time.Local)
+	calls := 0
+	saved := platformLocale
+	platformLocale = func() string {
+		calls++
+		return "de-DE"
+	}
+	t.Cleanup(func() { platformLocale = saved })
+
+	for _, locale := range []string{"de-CH", "zh-Hant-TW", "en", "EN-us", "sh-RS", "de-DE-1996", "iw"} {
+		calls = 0
+		if _, err := FormatTime(&Language{Locale: locale}, at, nil); err != nil {
+			t.Fatalf("FormatTime(%s): %v", locale, err)
+		}
+		if calls != 0 {
+			t.Errorf("FormatTime(%s) called platformLocale %d times, want 0", locale, calls)
+		}
+	}
+
+	calls = 0
+	if got, err := FormatTime(nil, at, nil); err != nil || got != "14:05" {
+		t.Fatalf("FormatTime(nil) = %q, %v; want 14:05", got, err)
+	}
+	if calls != 1 {
+		t.Errorf("FormatTime(nil) called platformLocale %d times, want 1", calls)
+	}
+
+	calls = 0
+	if got, err := FormatTime(&Language{Locale: "qaa"}, at, nil); err != nil || got != "14:05" {
+		t.Fatalf("FormatTime(qaa) = %q, %v; want 14:05", got, err)
+	}
+	if calls != 1 {
+		t.Errorf("FormatTime(qaa) called platformLocale %d times, want 1", calls)
+	}
+}
