@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // fixture writes a small repository: one Pi file (packages/fx/src/widget.ts) with two exported members, and the PORT_MAP row for it.
@@ -457,9 +458,7 @@ func TestMarkerMutantIsKilledWhenRootIsBehindASymbolicLink(t *testing.T) {
 	// Place a symlinked parent directory in front of the fixture root (mirroring TMPDIR=/tmp/L -> /tmp/R
 	// and macOS /tmp -> /private/tmp) so root itself is a directory whose ancestor is a symbolic link.
 	linkParent := filepath.Join(t.TempDir(), "linked-parent")
-	if err := os.Symlink(filepath.Dir(realRoot), linkParent); err != nil {
-		t.Skipf("symlink: %v", err)
-	}
+	testenv.RequireDirectoryLink(t, filepath.Dir(realRoot), linkParent)
 	linkRoot := filepath.Join(linkParent, filepath.Base(realRoot))
 	res, err := checkWith(linkRoot, true)
 	if err != nil {
