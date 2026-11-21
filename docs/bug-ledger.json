@@ -16886,6 +16886,28 @@
       ]
     },
     {
+      "id": "BF-48530e8",
+      "title": "On Windows, a Chord worker sending its last message (such as `fatal`) before exiting no longer blocks when…",
+      "symptom": "On Windows, a Chord worker sending its last message (such as `fatal`) before exiting no longer blocks when the parent's reader is busy, which could leave the worker hanging until a timeout killed it without receiving the error.",
+      "rootCause": "prepareChannel in workers_channel_windows.go created the named pipe with zero InputBufferSize and OutputBufferSize, so CreateNamedPipe blocked every write until the peer read it; a worker exiting in sendControlThen's write callback stalled whenever the parent reader was busy running message listeners",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Windows, a Chord worker sending its last message (such as `fatal`) before exiting no longer blocks when the parent's reader is busy, which could leave the worker hanging until a timeout killed it without receiving the error. The worker IPC pipe now buffers 64 KiB in each direction, matching Unix socketpairs and the Chord plugin listener. Affects 0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "48530e80f6",
+          "date": "2026-11-21"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_channel_windows_test.go::TestPrepareChannelAWriteCompletesWhileThePeerDoesNotRead"
+      ]
+    },
+    {
       "id": "BF-486aee5",
       "title": "fix(sdk): the Go SDK ends the connection on a frame it cannot decode",
       "symptom": "fix(sdk): the Go SDK ends the connection on a frame it cannot decode",
@@ -18658,9 +18680,7 @@
           "date": "2026-11-07"
         }
       ],
-      "tests": [
-        "chord/nextnode/workers/workers_channel_windows_test.go::TestOpenProcessChannelWaitsForAParentThatAcceptsLate"
-      ]
+      "tests": []
     },
     {
       "id": "BF-4ff1a44",

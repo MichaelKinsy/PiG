@@ -630,6 +630,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-482fdb2](#bf-482fdb2) | A context an extension keeps past a Session replacement or reload now fails the theme, the terminal size… | PiG's own defect | All platforms | Unreleased |
 | [BF-48318eb](#bf-48318eb) | fix(hljs): a resumed run counts the scan iterations before its checkpoint | PiG's own defect | All platforms | Unreleased |
 | [BF-48435cd](#bf-48435cd) | A parsed http, https, ws, wss or ftp URL reports its fragment percent-encoded, as Node's `url.hash` does | PiG's own defect | All platforms | 0.5.0 |
+| [BF-48530e8](#bf-48530e8) | On Windows, a Chord worker sending its last message (such as `fatal`) before exiting no longer blocks when… | PiG's own defect | Windows | Unreleased |
 | [BF-486aee5](#bf-486aee5) | fix(sdk): the Go SDK ends the connection on a frame it cannot decode | PiG's own defect | All platforms | Unreleased |
 | [BF-488a47a](#bf-488a47a) | `chord/host`: `ProcessLock` no longer fails with `invalid argument` on macOS and the BSDs when the temporary… | PiG's own defect | macOS | 0.5.0 |
 | [BF-48a28fe](#bf-48a28fe) | Models an extension's provider object returns keep the member order the extension wrote them in, as Pi keeps… | PiG's own defect | All platforms | 0.5.0 |
@@ -10895,6 +10896,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/nodeurl/url_hash_test.go::TestParseURLHashIsTheEncodedFragment`
 - **Release note:** A parsed http, https, ws, wss or ftp URL reports its fragment percent-encoded, as Node's `url.hash` does.
 
+### BF-48530e8
+
+**On Windows, a Chord worker sending its last message (such as `fatal`) before exiting no longer blocks when…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On Windows, a Chord worker sending its last message (such as `fatal`) before exiting no longer blocks when the parent's reader is busy, which could leave the worker hanging until a timeout killed it without receiving the error.
+- **Root cause:** prepareChannel in workers_channel_windows.go created the named pipe with zero InputBufferSize and OutputBufferSize, so CreateNamedPipe blocked every write until the peer read it; a worker exiting in sendControlThen's write callback stalled whenever the parent reader was busy running message listeners
+- **User impact:** Crash, hang or runaway process
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `48530e80f6` (2026-11-21)
+- **Tests:** `chord/nextnode/workers/workers_channel_windows_test.go::TestPrepareChannelAWriteCompletesWhileThePeerDoesNotRead`
+- **Release note:** On Windows, a Chord worker sending its last message (such as `fatal`) before exiting no longer blocks when the parent's reader is busy, which could leave the worker hanging until a timeout killed it without receiving the error. The worker IPC pipe now buffers 64 KiB in each direction, matching Unix socketpairs and the Chord plugin listener. Affects 0.7.0.
+
 ### BF-486aee5
 
 **fix(sdk): the Go SDK ends the connection on a frame it cannot decode**
@@ -11791,7 +11806,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** Windows
 - **Fixed in:** Unreleased
 - **Fix commits:** `4feaeb9e8e` (2026-11-07)
-- **Tests:** `chord/nextnode/workers/workers_channel_windows_test.go::TestOpenProcessChannelWaitsForAParentThatAcceptsLate`
+- **Tests:** None recorded.
 - **Release note:** Windows: a Chord worker process now waits for its parent to accept the connection on its IPC pipe instead of giving up after go-winio's default 2 s dial deadline. A parent that started many workers at once, or a loaded machine, could accept later than that; the worker then had no parent, exited, and its start failed.
 
 ### BF-4ff1a44
