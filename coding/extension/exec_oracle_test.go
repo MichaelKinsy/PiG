@@ -408,6 +408,13 @@ func TestExecCommandMatchesPi(t *testing.T) {
 	dir := t.TempDir()
 	scenarios := execScenarios(dir)
 	expected := piExecOutcomes(t, scenarios)
+	// Clear files created in dir during the Pi batch (e.g. "said" from execSocketResetScript)
+	// so PiG runs in the same empty working directory (on Windows MSYS echo expands "*" to leftover files).
+	if entries, err := os.ReadDir(dir); err == nil {
+		for _, e := range entries {
+			_ = os.RemoveAll(filepath.Join(dir, e.Name()))
+		}
+	}
 	failures := 0
 	// The rows whose output both sides truncated: their codes are compared over execTruncatedRuns runs below, everything else here.
 	var truncated []execScenario
