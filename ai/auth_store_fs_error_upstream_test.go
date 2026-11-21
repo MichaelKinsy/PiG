@@ -2,6 +2,7 @@ package ai
 
 import (
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -21,8 +22,8 @@ func fileWhereDirectory(t *testing.T, dir string) {
 	}
 }
 
-// linkedReadOnlyStore creates a read-only file named name under a linked parent directory (link -> real) and returns the path through the link.
-func linkedParentReadOnlyStore(t *testing.T, name string) string {
+// linkedParentReadOnlyStore creates a read-only file named name under a linked parent directory (link -> real) and returns the path through the link and the resolved target.
+func linkedParentReadOnlyStore(t *testing.T, name string) (given, target string) {
 	t.Helper()
 	root := t.TempDir()
 	realDir := filepath.Join(root, "real")
@@ -31,35 +32,51 @@ func linkedParentReadOnlyStore(t *testing.T, name string) string {
 		t.Fatal(err)
 	}
 	testenv.RequireDirectoryLink(t, realDir, linkDir)
-	target := filepath.Join(realDir, name)
+	target = filepath.Join(realDir, name)
 	if err := os.WriteFile(target, []byte("{}"), 0o400); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chmod(target, 0o600) })
-	return filepath.Join(linkDir, name)
+	return filepath.Join(linkDir, name), target
 }
 
-// symlinkedReadOnlyStore creates a symlink named name pointing to a read-only target file and returns the symlink path.
-func symlinkedReadOnlyStore(t *testing.T, name string) string {
+// symlinkedReadOnlyStore creates a symlink named name pointing to a read-only target file and returns the symlink path and the resolved target.
+func symlinkedReadOnlyStore(t *testing.T, name string) (given, target string) {
 	t.Helper()
 	root := t.TempDir()
-	target := filepath.Join(root, "target-"+name)
+	target = filepath.Join(root, "target-"+name)
 	if err := os.WriteFile(target, []byte("{}"), 0o400); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chmod(target, 0o600) })
 	link := filepath.Join(root, name)
 	testenv.Symlink(t, target, link)
-	return link
+	return link, target
 }
 
-// danglingStoreInMissingDir creates a symlink named name pointing into a non-existent directory and returns the symlink path.
-func danglingStoreInMissingDir(t *testing.T, name string) string {
+// danglingStoreInMissingDir creates a symlink named name pointing into a non-existent directory and returns the symlink path and the missing target.
+func danglingStoreInMissingDir(t *testing.T, name string) (given, target string) {
 	t.Helper()
 	root := t.TempDir()
+	target = filepath.Join(root, "missing", name)
 	link := filepath.Join(root, name)
-	testenv.Symlink(t, filepath.Join(root, "missing", name), link)
-	return link
+	testenv.Symlink(t, target, link)
+	return link, target
+}
+
+// referenceOpenErrno performs the same open/create on target that the store performs through the link and returns the kernel errno it yields.
+func referenceOpenErrno(t *testing.T, target string, flag int) syscall.Errno {
+	t.Helper()
+	f, err := os.OpenFile(target, flag, 0o600)
+	if err == nil {
+		_ = f.Close()
+		t.Fatalf("reference OpenFile(%q, %d) unexpectedly succeeded", target, flag)
+	}
+	errno, ok := errors.AsType[syscall.Errno](err)
+	if !ok {
+		t.Fatalf("reference OpenFile(%q) error %T (%v) has no syscall.Errno", target, err, err)
+	}
+	return errno
 }
 
 // FileAuthStorageBackend creates the store's directory with mkdirSync(dir, {recursive: true}) and the store with writeFileSync when existsSync finds neither, reads the store with readFileSync, and rethrows their errors as Node reports them (auth-storage.ts:55-68,181). A directory path that is a file therefore fails at the store's open, and a store that is a directory at its read, which Node reports without a path. PiG's auth store returns the same messages, without its "auth: create" and "auth: read" prefixes. Each row runs Pi's own store on the same state first.
@@ -100,24 +117,26 @@ func TestAuthStorageFSErrorsAreNodeErrorsUpstream(t *testing.T) {
 			t.Fatalf("Modify error = %v, want Pi's %q", err, want)
 		}
 	})
-	// Pi passes this.authPath unresolved to writeFileSync (auth-storage.ts:77,108,189), so a failed write or create names the given path even when a parent directory or the store itself is a symbolic link.
+	// Pi passes this.authPath unresolved to writeFileSync (auth-storage.ts:77,108,189), so a failed write or create names the given path even when a parent directory or the store itself is a symbolic link. Node errors carry only .code; PiG's Go error chain additionally promises that the returned error wraps the kernel's errno and matches fs.ErrPermission / fs.ErrNotExist across platforms.
 	for _, tc := range []struct {
 		name     string
-		setup    func(*testing.T) string
+		setup    func(*testing.T) (given, target string)
 		wantErr  error
+		refFlag  int
 		mayWrite bool
 	}{
-		{"write a read-only store under a linked parent directory", func(t *testing.T) string { return linkedParentReadOnlyStore(t, "auth.json") }, syscall.EACCES, true},
-		{"write a read-only symlinked store", func(t *testing.T) string { return symlinkedReadOnlyStore(t, "auth.json") }, syscall.EACCES, true},
-		{"create a dangling store symlink whose target directory is missing", func(t *testing.T) string { return danglingStoreInMissingDir(t, "auth.json") }, syscall.ENOENT, false},
+		{"write a read-only store under a linked parent directory", func(t *testing.T) (string, string) { return linkedParentReadOnlyStore(t, "auth.json") }, fs.ErrPermission, os.O_WRONLY, true},
+		{"write a read-only symlinked store", func(t *testing.T) (string, string) { return symlinkedReadOnlyStore(t, "auth.json") }, fs.ErrPermission, os.O_WRONLY, true},
+		{"create a dangling store symlink whose target directory is missing", func(t *testing.T) (string, string) { return danglingStoreInMissingDir(t, "auth.json") }, fs.ErrNotExist, os.O_WRONLY | os.O_CREATE | os.O_EXCL, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			path := tc.setup(t)
+			path, target := tc.setup(t)
 			wantAsync := runPiLockedStore(t, "auth-async", path)
 			wantSync := runPiLockedStore(t, "auth-sync", path)
 			if tc.mayWrite && (wantAsync == "ok" || wantSync == "ok") {
 				t.Skip("this user can write a read-only file")
 			}
+			wantErrno := referenceOpenErrno(t, target, tc.refFlag)
 			storage, err := NewAuthStorage(path)
 			if err != nil {
 				t.Fatal(err)
@@ -131,12 +150,18 @@ func TestAuthStorageFSErrorsAreNodeErrorsUpstream(t *testing.T) {
 			if !errors.Is(err, tc.wantErr) {
 				t.Fatalf("Modify error %v does not wrap %v", err, tc.wantErr)
 			}
+			if !errors.Is(err, wantErrno) {
+				t.Fatalf("Modify error %v does not wrap kernel errno %d (%v)", err, wantErrno, wantErrno)
+			}
 			err = storage.Set("openai", Credential{Type: CredentialAPIKey, Key: "new"})
 			if err == nil || err.Error() != wantSync {
 				t.Fatalf("Set error = %v, want Pi's %q", err, wantSync)
 			}
 			if !errors.Is(err, tc.wantErr) {
 				t.Fatalf("Set error %v does not wrap %v", err, tc.wantErr)
+			}
+			if !errors.Is(err, wantErrno) {
+				t.Fatalf("Set error %v does not wrap kernel errno %d (%v)", err, wantErrno, wantErrno)
 			}
 		})
 	}
@@ -197,26 +222,31 @@ func TestFileModelsStoreFSErrorsAreNodeErrorsUpstream(t *testing.T) {
 	})
 	for _, tc := range []struct {
 		name     string
-		setup    func(*testing.T) string
+		setup    func(*testing.T) (given, target string)
 		wantErr  error
+		refFlag  int
 		mayWrite bool
 	}{
-		{"write a read-only store under a linked parent directory", func(t *testing.T) string { return linkedParentReadOnlyStore(t, "models-store.json") }, syscall.EACCES, true},
-		{"write a read-only symlinked store", func(t *testing.T) string { return symlinkedReadOnlyStore(t, "models-store.json") }, syscall.EACCES, true},
-		{"create a dangling store symlink whose target directory is missing", func(t *testing.T) string { return danglingStoreInMissingDir(t, "models-store.json") }, syscall.ENOENT, false},
+		{"write a read-only store under a linked parent directory", func(t *testing.T) (string, string) { return linkedParentReadOnlyStore(t, "models-store.json") }, fs.ErrPermission, os.O_WRONLY, true},
+		{"write a read-only symlinked store", func(t *testing.T) (string, string) { return symlinkedReadOnlyStore(t, "models-store.json") }, fs.ErrPermission, os.O_WRONLY, true},
+		{"create a dangling store symlink whose target directory is missing", func(t *testing.T) (string, string) { return danglingStoreInMissingDir(t, "models-store.json") }, fs.ErrNotExist, os.O_WRONLY | os.O_CREATE | os.O_EXCL, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			path := tc.setup(t)
+			path, target := tc.setup(t)
 			want := runPiLockedStore(t, "models-write", path)
 			if tc.mayWrite && want == "ok" {
 				t.Skip("this user can write a read-only file")
 			}
+			wantErrno := referenceOpenErrno(t, target, tc.refFlag)
 			err := NewFileModelsStore(path).Write(t.Context(), "probe", ModelsStoreEntry{Models: []AnyModel{}})
 			if err == nil || err.Error() != want {
 				t.Fatalf("Write error = %v, want Pi's %q", err, want)
 			}
 			if !errors.Is(err, tc.wantErr) {
 				t.Fatalf("Write error %v does not wrap %v", err, tc.wantErr)
+			}
+			if !errors.Is(err, wantErrno) {
+				t.Fatalf("Write error %v does not wrap kernel errno %d (%v)", err, wantErrno, wantErrno)
 			}
 		})
 	}
