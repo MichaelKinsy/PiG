@@ -60,6 +60,7 @@ func TestMkdirShortTempIgnoresTMPDIR(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Windows keeps the host temp directory")
 	}
+	t.Setenv("PIG_TEST_TEMP_ROOT", "")
 	t.Setenv("TMPDIR", filepath.Join(t.TempDir(), "a", "b", "c", "d"))
 	root, err := MkdirShortTemp("pig-depth-")
 	if err != nil {
@@ -68,5 +69,42 @@ func TestMkdirShortTempIgnoresTMPDIR(t *testing.T) {
 	t.Cleanup(func() { _ = os.RemoveAll(root) })
 	if filepath.Dir(root) != "/tmp" || !strings.HasPrefix(filepath.Base(root), "pig-depth-") {
 		t.Errorf("MkdirShortTemp = %q, want a directory named pig-depth-* directly in /tmp", root)
+	}
+}
+
+// Setting PIG_TEST_TEMP_ROOT moves MkdirShortTemp (and ShortTempDir) under that directory without resolving symbolic links in it, so a gate job on Linux can exercise the macOS /tmp -> /private/tmp path shape. Unset keeps /tmp.
+func TestMkdirShortTempRespectsTempRootSwitch(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("PIG_TEST_TEMP_ROOT overrides the non-Windows /tmp base")
+	}
+	realDir := filepath.Join(t.TempDir(), "real")
+	if err := os.Mkdir(realDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	linkDir := filepath.Join(t.TempDir(), "link")
+	RequireSymlink(t, realDir, linkDir)
+
+	t.Setenv("PIG_TEST_TEMP_ROOT", linkDir)
+	got, err := MkdirShortTemp("pig-link-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(got) })
+	if filepath.Dir(got) != linkDir || !strings.HasPrefix(filepath.Base(got), "pig-link-") {
+		t.Errorf("MkdirShortTemp with PIG_TEST_TEMP_ROOT=%q = %q, want a directory named pig-link-* directly in %q (unresolved)", linkDir, got, linkDir)
+	}
+	short := ShortTempDir(t, "pig-short-")
+	if filepath.Dir(short) != linkDir || !strings.HasPrefix(filepath.Base(short), "pig-short-") {
+		t.Errorf("ShortTempDir with PIG_TEST_TEMP_ROOT=%q = %q, want a directory named pig-short-* directly in %q (unresolved)", linkDir, short, linkDir)
+	}
+
+	t.Setenv("PIG_TEST_TEMP_ROOT", "")
+	unset, err := MkdirShortTemp("pig-unset-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(unset) })
+	if filepath.Dir(unset) != "/tmp" || !strings.HasPrefix(filepath.Base(unset), "pig-unset-") {
+		t.Errorf("MkdirShortTemp with unset PIG_TEST_TEMP_ROOT = %q, want a directory named pig-unset-* directly in /tmp", unset)
 	}
 }
