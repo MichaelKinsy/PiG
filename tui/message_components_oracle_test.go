@@ -3,6 +3,7 @@ package tui
 import (
 	"bytes"
 	"encoding/json"
+	"os"
 	"os/exec"
 	"reflect"
 	"slices"
@@ -56,6 +57,7 @@ func TestSummaryAndSkillMessageComponentsMatchPi(t *testing.T) {
 		t.Fatal(err)
 	}
 	cmd := exec.CommandContext(t.Context(), "node", "testdata/message_components.mjs", pigversion.UpstreamPackageVersion)
+	cmd.Env = pinEnUSLocaleEnv(os.Environ())
 	cmd.Stdin = bytes.NewReader(input)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -124,4 +126,20 @@ func TestSummaryAndSkillMessageComponentsMatchPi(t *testing.T) {
 	if failures > 4 {
 		t.Errorf("%d of %d probes differ from Pi", failures, len(probes))
 	}
+}
+
+// pinEnUSLocaleEnv returns a copy of env with LC_ALL=en_US.UTF-8 and LANG, LC_MESSAGES, LANGUAGE removed,
+// so Node/ICU formats numbers in en-US on Unix/macOS regardless of the host locale.
+func pinEnUSLocaleEnv(env []string) []string {
+	out := make([]string, 0, len(env)+1)
+	for _, entry := range env {
+		if strings.HasPrefix(entry, "LC_ALL=") ||
+			strings.HasPrefix(entry, "LANG=") ||
+			strings.HasPrefix(entry, "LC_MESSAGES=") ||
+			strings.HasPrefix(entry, "LANGUAGE=") {
+			continue
+		}
+		out = append(out, entry)
+	}
+	return append(out, "LC_ALL=en_US.UTF-8")
 }
