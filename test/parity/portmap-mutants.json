@@ -5109,9 +5109,9 @@
    "new": "return FormatFindHeader(args)"
   },
   {
-   "file": "internal/codingagent/tool_render.go",
-   "old": "case \"grep\", \"find\", \"ls\":",
-   "new": "case \"grep\", \"find\":"
+   "file": "internal/codingagent/tool_builtin_renderers.go",
+   "old": "return lsRenderCall, listRenderResult(\"ls\")",
+   "new": "return lsRenderCall, listRenderResult(\"find\")"
   }
  ],
  "packages/coding-agent/src/core/tools/renderers/ls.ts": [
