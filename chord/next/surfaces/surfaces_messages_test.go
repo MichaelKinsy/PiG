@@ -335,6 +335,10 @@ func TestAMessageWithNoArgumentsHasEmptyParamsAndRenders(t *testing.T) {
 // returns, fails or panics, and nothing of either outlives them. Go's scope is the explicit `lang` argument, so the guard
 // is that nesting `other.In(fr)` inside a message function never changes what the outer function's own `lang` formats.
 func TestANestedRenderInAnotherLanguageLeavesTheOuterRenderInItsOwnEvenWhenTheNestedOneFailsOrPanics(t *testing.T) {
+	// Pin the platform default locale to en-US (distinct from de and fr) so a German or French host locale does not collide
+	// with the nested renders when checking that outer.In(nil) falls back to the platform default rather than leaking de or fr.
+	useEnvironmentLocale(t)
+	t.Setenv("LC_ALL", "en_US.UTF-8")
 	var reports []MessagesReport
 	de, fr := languageOf(t, "de", &reports), languageOf(t, "fr", &reports)
 	inner := mustMessages(t, "inner",
@@ -385,9 +389,16 @@ func TestANestedRenderInAnotherLanguageLeavesTheOuterRenderInItsOwnEvenWhenTheNe
 	if nestedErrors[0] == nil || nestedErrors[1] == nil {
 		t.Fatalf("nested errors = %v, want the failure and the panic as errors", nestedErrors)
 	}
-	// Nothing of the nested renders outlives them: a render with no language is the source language again.
-	if text, err := outer.In(nil).T("after"); err != nil || text == inDe || text == inFr {
-		t.Fatalf("a render in no language = %q, %v, want the root locale's own formatting", text, err)
+	// Nothing of the nested renders outlives them: a render with no language formats in the platform default locale again.
+	inDefault, err := FormatNumber(nil, 1234.5, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if inDefault == inDe || inDefault == inFr {
+		t.Fatalf("default locale formats 1234.5 like de (%q) or fr (%q): %q", inDe, inFr, inDefault)
+	}
+	if text, err := outer.In(nil).T("after"); err != nil || text != inDefault {
+		t.Fatalf("a render in no language = %q, %v, want the platform default locale's formatting %q", text, err, inDefault)
 	}
 	if text, err := outer.In(de).T("after"); err != nil || text != inDe {
 		t.Fatalf("a later render in de = %q, %v, want %q", text, err, inDe)

@@ -12,21 +12,10 @@ import (
 
 // The default locale of Pi's `Intl` on Windows is the user's (ICU's `uprv_getDefaultLocaleID`, Windows branch, putil.cpp:1796:
 // `GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT, LOCALE_SNAME)`; no environment variable is read), so a format with no language
-// follows it. On CI the user's culture is set to de-DE for the test (and put back); a fresh Node and a fresh process of this test
-// binary (the culture is read when a process starts) print a number and a time with the default locale; they must be the same.
-// On a developer's machine it compares under the user's current culture and changes nothing. It runs in the Windows CI job (Node of
-// .node-version is on its PATH).
-
-const windowsLocaleHelper = "PIG_INTL_WINDOWS_LOCALE_HELPER"
-
-func powershell(t *testing.T, script string) string {
-	t.Helper()
-	out, err := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", script).CombinedOutput()
-	if err != nil {
-		t.Fatalf("powershell %q: %v\n%s", script, err, out)
-	}
-	return strings.TrimSpace(string(out))
-}
+// follows it. This test never mutates the machine's or user's Windows culture (no `Set-Culture` or registry write): it checks
+// read-only that PiG's platform locale and nil-language formats match a live Node on the current Windows account (ignoring any
+// POSIX locale environment variables), and exercises non-English / sort-order / fallback Windows locale names through the
+// readWindowsLocaleName seam against the same Node.
 
 // withoutPOSIXLocale is the environment without the variables PiG's other systems read, which a Windows user does not have.
 func withoutPOSIXLocale(extra ...string) []string {
@@ -42,31 +31,17 @@ func withoutPOSIXLocale(extra ...string) []string {
 }
 
 func TestWindowsDefaultLocaleIsTheUsersAsNodeTakesIt(t *testing.T) {
-	if os.Getenv(windowsLocaleHelper) != "" {
-		number, err := FormatNumber(nil, 1234567.891, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		clock, err := formatClock(nil, time.Date(2026, time.June, 15, 14, 5, 7, 0, time.UTC), nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		os.Stdout.WriteString("RESULT " + number + "|" + clock + "\n")
-		return
-	}
 	node := driftNode(t)
-	// A test does not change a developer's Windows account: only on a CI runner (a throwaway machine) is the culture set.
-	culture := powershell(t, "(Get-Culture).Name")
-	ci := os.Getenv("GITHUB_ACTIONS") == "true"
-	if ci {
-		t.Cleanup(func() { powershell(t, "Set-Culture "+culture) })
-		powershell(t, "Set-Culture de-DE")
-		culture = "de-DE"
-	}
-	t.Logf("comparing under the user culture %s (set by the test: %v)", culture, ci)
+	// Confirm read-only that Windows ignores POSIX locale env vars and agrees with Node on this account's real culture.
+	t.Setenv("LC_ALL", "fr_FR.UTF-8")
+	t.Setenv("LC_MESSAGES", "fr_FR.UTF-8")
+	t.Setenv("LANG", "fr_FR.UTF-8")
 
-	script := `const at = new Date(Date.UTC(2026, 5, 15, 14, 5, 7));
-process.stdout.write("RESULT " + new Intl.NumberFormat().format(1234567.891) + "|" + new Intl.DateTimeFormat(undefined, { timeStyle: "short", timeZone: "UTC" }).format(at) + "\n");`
+	const script = `const at = new Date(Date.UTC(2026, 5, 15, 14, 5, 7));
+const loc = new Intl.DateTimeFormat().resolvedOptions().locale;
+const num = new Intl.NumberFormat().format(1234567.891);
+const clock = new Intl.DateTimeFormat(undefined, { timeStyle: "short", timeZone: "UTC" }).format(at);
+process.stdout.write("RESULT " + loc + "|" + num + "|" + clock + "\n");`
 	cmd := exec.Command(node, "-e", script)
 	cmd.Env = withoutPOSIXLocale()
 	nodeOut, err := cmd.Output()
@@ -74,18 +49,71 @@ process.stdout.write("RESULT " + new Intl.NumberFormat().format(1234567.891) + "
 		t.Fatalf("node: %v", err)
 	}
 	want := resultLine(t, string(nodeOut))
-	if ci && !strings.HasPrefix(want, "1.234.567,891|") {
-		t.Fatalf("Node printed %q after Set-Culture de-DE: this runner's processes do not take the user's culture change, so the test proves nothing", want)
+
+	at := time.Date(2026, time.June, 15, 14, 5, 7, 0, time.UTC)
+	number, err := FormatNumber(nil, 1234567.891, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	clock, err := formatClock(nil, at, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Resolve PlatformLocale through Node's canonicalization form by comparing both the locale name and formatted output.
+	got := PlatformLocale() + "|" + number + "|" + clock
+	t.Logf("read-only Windows user locale comparison: pig=%q node=%q", got, want)
+	wantParts := strings.SplitN(want, "|", 2)
+	gotParts := strings.SplitN(got, "|", 2)
+	if gotParts[1] != wantParts[1] {
+		t.Fatalf("a format with no language is %q (PlatformLocale=%q), Node's is %q (locale=%q)", gotParts[1], gotParts[0], wantParts[1], wantParts[0])
+	}
+	if !strings.EqualFold(gotParts[0], wantParts[0]) {
+		t.Fatalf("PlatformLocale() = %q, Node resolvedOptions().locale = %q", gotParts[0], wantParts[0])
 	}
 
-	helper := exec.Command(os.Args[0], "-test.run=^TestWindowsDefaultLocaleIsTheUsersAsNodeTakesIt$")
-	helper.Env = withoutPOSIXLocale(windowsLocaleHelper + "=1")
-	pigOut, err := helper.Output()
-	if err != nil {
-		t.Fatalf("helper: %v\n%s", err, pigOut)
+	// Seam check: exercise userLocale() across Windows LOCALE_SNAME shapes (including non-English, script, sort suffix, and
+	// failure) without changing the Windows account's culture, comparing the resulting nil-language formats against Node.
+	saved := readWindowsLocaleName
+	t.Cleanup(func() { readWindowsLocaleName = saved })
+	cases := []struct {
+		sname   string
+		wantTag string
+		nodeTag string
+	}{
+		{"de-DE", "de-DE", "de-DE"},
+		{"de-CH", "de-CH", "de-CH"},
+		{"zh-Hant-TW", "zh-Hant-TW", "zh-Hant-TW"},
+		{"de-DE_phoneb", "de-DE-phoneb", "de-DE"},
+		{"", "en-US", "en-US"},
 	}
-	if got := resultLine(t, string(pigOut)); got != want {
-		t.Fatalf("a format with no language is %q, Node's is %q", got, want)
+	for _, tc := range cases {
+		t.Run(tc.sname, func(t *testing.T) {
+			readWindowsLocaleName = func() string { return tc.sname }
+			if gotTag := PlatformLocale(); gotTag != tc.wantTag {
+				t.Fatalf("PlatformLocale() for LOCALE_SNAME %q = %q, want %q", tc.sname, gotTag, tc.wantTag)
+			}
+			gotNum, err := FormatNumber(nil, 1234567.891, nil)
+			if err != nil {
+				t.Fatalf("FormatNumber(nil) for %q: %v", tc.sname, err)
+			}
+			gotClock, err := formatClock(nil, at, nil)
+			if err != nil {
+				t.Fatalf("formatClock(nil) for %q: %v", tc.sname, err)
+			}
+			nodeScript := `const at = new Date(Date.UTC(2026, 5, 15, 14, 5, 7));
+const tag = process.argv[1];
+process.stdout.write("RESULT " + new Intl.NumberFormat(tag).format(1234567.891) + "|" + new Intl.DateTimeFormat(tag, { timeStyle: "short", timeZone: "UTC" }).format(at) + "\n");`
+			c := exec.Command(node, "-e", nodeScript, tc.nodeTag)
+			c.Env = withoutPOSIXLocale()
+			out, err := c.Output()
+			if err != nil {
+				t.Fatalf("node(%s): %v", tc.nodeTag, err)
+			}
+			wantFmt := resultLine(t, string(out))
+			if gotFmt := gotNum + "|" + gotClock; gotFmt != wantFmt {
+				t.Fatalf("LOCALE_SNAME %q formatted %q, Node(%s) formatted %q", tc.sname, gotFmt, tc.nodeTag, wantFmt)
+			}
+		})
 	}
 }
 

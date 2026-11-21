@@ -37,7 +37,7 @@ func TestCrashNoticeTimeMatchesToLocaleString(t *testing.T) {
 			t.Fatal(err)
 		}
 		var want [][]string
-		pioracle.Run(t, `emit(input.map((ms) => { const d = new Date(ms); return [d.toISOString(), d.toLocaleString()]; }));`, instants, &want, "TZ="+zone)
+		pioracle.Run(t, `emit(input.map((ms) => { const d = new Date(ms); return [d.toISOString(), d.toLocaleString("en-US")]; }));`, instants, &want, "TZ="+zone)
 		for i, pair := range want {
 			notice := crashNoticeIn(CrashRecord{Timestamp: pair[0], Message: "m"}, location)
 			got := strings.TrimSuffix(strings.TrimPrefix(notice, AppName+" crashed on "), " (m). Run /bug to report it; the crash details are attached automatically.")

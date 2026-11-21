@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
-	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
 // canonValue renders a parsed value the way the JavaScript side of the oracle does, so -0, NaN and Infinity survive JSON. A collection that contains itself renders as ["cycle", depth of the enclosing occurrence].
@@ -129,7 +128,7 @@ emit(input.map((src) => {
 func compareParseWithLibrary(t *testing.T, corpus []string) {
 	t.Helper()
 	var want []parseOutcome
-	pioracle.Run(t, parseLibraryScript, corpus, &want)
+	runEnUSOracle(t, parseLibraryScript, corpus, &want)
 	for i, src := range corpus {
 		v, err := Parse(src)
 		got := parseOutcome{Ok: err == nil}
