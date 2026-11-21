@@ -580,3 +580,47 @@ func TestAFixThatCommitsTheLedgerOfAnEarlierFixKeepsItsOwnEntry(t *testing.T) {
 		t.Fatalf("entries = %+v, want the note under %s and the second fix under %s", l.Entries, first[:10], second[:10])
 	}
 }
+
+// Maintainer HTML comments inside a release note (such as <!-- evidence: ... -->) are not user-facing text and must not affect the published platform or impact. Comments inside Markdown code spans are user text and stay, and an unterminated <!-- fails open and keeps the text.
+func TestClassifyIgnoresHTMLComments(t *testing.T) {
+	note := "On Windows, X was lost. <!-- evidence: proven red on Linux by T -->"
+	if got := platformOf(note); got != "Windows" {
+		t.Errorf("platformOf(%q) = %q, want %q", note, got, "Windows")
+	}
+
+	multiline := "On Windows, X was lost. <!-- evidence:\nproven red on Linux\nand checked on macOS\n-->"
+	if got := platformOf(multiline); got != "Windows" {
+		t.Errorf("platformOf(multiline) = %q, want %q", got, "Windows")
+	}
+
+	// A comment naming a crash or error word must not override impactOf.
+	impactNote := "A value is kept. <!-- evidence: did not crash or fail on Linux -->"
+	if got := impactOf(impactNote); got != "Behavior differed from Pi" {
+		t.Errorf("impactOf(%q) = %q, want %q", impactNote, got, "Behavior differed from Pi")
+	}
+
+	// A literal comment inside a Markdown code span is user text and is kept whole.
+	codeSpan := "On macOS, a line with `<!-- fix: abc -->` typed in a prompt was dropped."
+	if got := platformOf(codeSpan); got != "macOS" {
+		t.Errorf("platformOf(%q) = %q, want %q", codeSpan, got, "macOS")
+	}
+	codeSpanKeywords := "On macOS, a line with `<!-- Windows crash -->` typed in a prompt is kept."
+	if got := platformOf(codeSpanKeywords); got != "Windows, macOS" {
+		t.Errorf("platformOf(%q) = %q, want %q", codeSpanKeywords, got, "Windows, macOS")
+	}
+	if got := impactOf(codeSpanKeywords); got != "Crash, hang or runaway process" {
+		t.Errorf("impactOf(%q) = %q, want %q", codeSpanKeywords, got, "Crash, hang or runaway process")
+	}
+
+	// A real trailing comment after a code span is stripped while the code span stays.
+	codeSpanThenComment := "On macOS, a line with `<!-- Windows -->` typed in a prompt is kept. <!-- evidence: proven red on Linux -->"
+	if got := platformOf(codeSpanThenComment); got != "Windows, macOS" {
+		t.Errorf("platformOf(%q) = %q, want %q", codeSpanThenComment, got, "Windows, macOS")
+	}
+
+	// An unterminated <!-- fails open and keeps the user text.
+	unterminated := "On Windows, an unclosed <!-- comment mentions macOS."
+	if got := platformOf(unterminated); got != "Windows, macOS" {
+		t.Errorf("platformOf(%q) = %q, want %q", unterminated, got, "Windows, macOS")
+	}
+}
