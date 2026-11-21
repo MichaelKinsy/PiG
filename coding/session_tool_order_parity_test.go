@@ -163,6 +163,31 @@ func TestFreshAndCloneToolOrderMatchesPi(t *testing.T) {
 		if !slices.Equal(cloneAfterPromptGot, want) {
 			t.Errorf("clone-after-prompt request tools = %v, want %v", cloneAfterPromptGot, want)
 		}
+
+		// Clone before any prompt after reordering the active tool list on the source:
+		// Session.Clone must seed the clone with s.ActiveToolNames() so the clone does
+		// not fall back to the registry's default order.
+		customOrder := []string{"read", "bash", "edit", "write", "caller_probe", "ext_probe"}
+		customSession, err := NewSession(services, SessionOptions{
+			Model:                  &ai.Model{ID: "faux-1", Provider: provider},
+			Runner:                 inproc.NewRunner([]extension.Extension{{Name: "probe-ext", ToolOrder: []string{"ext_probe"}, Tools: map[string]extension.RegisteredTool{"ext_probe": extTool}}}, dir),
+			CustomTools:            []extension.ToolDefinition{callerTool},
+			InitialActiveToolNames: customOrder,
+			NoSession:              true,
+		})
+		if err != nil {
+			t.Fatalf("NewSession (custom active order): %v", err)
+		}
+		defer func() { _ = customSession.Close() }()
+		customClone, err := customSession.Clone()
+		if err != nil {
+			t.Fatalf("Clone (custom active order): %v", err)
+		}
+		defer func() { _ = customClone.Close() }()
+		customCloneGot := captureToolNames(t, customClone, "clone-custom-active-order")
+		if !slices.Equal(customCloneGot, customOrder) {
+			t.Errorf("clone-before-prompt with custom active order = %v, want %v", customCloneGot, customOrder)
+		}
 	})
 
 	// 3. Resumed session whose persisted transcript recorded the pre-cure order
