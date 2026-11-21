@@ -41,6 +41,8 @@ type pacedReplay struct {
 	// shown is when each frame began that sent the terminal something; quietFrames are the frames that sent it nothing. Both under owner.
 	shown       []time.Time
 	quietFrames int
+	// at is the manual clock when a stream steps deterministically instead of sleeping on the wall clock; zero means wall clock. Under owner.
+	at time.Time
 	// settled are the screens at the settle points, on every width model, and settledAt the version each shows.
 	settled   [][]*gridterm.Terminal
 	settledAt []int
@@ -284,10 +286,79 @@ func TestAdaptivePacingShowsTheSameSettledScreens(t *testing.T) {
 	t.Logf("%d streams, %d steps, %d settle points, %d frames paced, %d settled screens that differ", streams, steps, points, pacedFrames, differences)
 }
 
-// runPacedStream asks for a frame every pacedStepGap, steps times, and changes what the screen shows at every changeEvery-th of them (never when it is 0), as a stream does whose deltas mostly change nothing on the screen. It returns the replay and the bytes the terminal was sent after the first screen.
+// runDueManual draws any frame due at r.at on the manual clock, updating r's counters the same way loop does. Caller holds owner and ui uses r.at.
+func (r *pacedReplay) runDueManual() {
+	for {
+		r.ui.mu.Lock()
+		due := !r.ui.frameDue.IsZero() && !r.at.Before(r.ui.frameDue)
+		paced := due && !r.ui.forceRedraw && !r.ui.lastRenderAt.IsZero() && r.at.Sub(r.ui.lastRenderAt) < minRenderInterval-time.Millisecond
+		r.ui.mu.Unlock()
+		if !due {
+			return
+		}
+		r.frames++
+		if paced {
+			r.paced++
+		}
+		began, sent := r.at, r.screen.term.writesSent()
+		r.ui.RunDueRender()
+		if r.screen.term.writesSent() != sent {
+			r.shown = append(r.shown, began)
+		} else {
+			r.quietFrames++
+		}
+	}
+}
+
+// advanceManual advances r.at to target, running any frame deadlines that fall at or before target in chronological order. Caller holds owner.
+func (r *pacedReplay) advanceManual(target time.Time) {
+	for {
+		r.ui.mu.Lock()
+		next := r.ui.frameDue
+		r.ui.mu.Unlock()
+		if next.IsZero() || next.After(target) {
+			r.at = target
+			return
+		}
+		if next.After(r.at) {
+			r.at = next
+		}
+		r.runDueManual()
+	}
+}
+
+// runPacedStream asks for a frame every pacedStepGap, steps times, and changes what the screen shows at every changeEvery-th of them (never when it is 0), as a stream does whose deltas mostly change nothing on the screen. It drives the real fullscreen renderer, ProcessTerminal, screen writer and SetRenderDeadline/RunDueRender path on a deterministic manual clock so frame counts and visible-change gaps measure the pacing policy rather than host sleep jitter. It returns the replay and the bytes the terminal was sent after the first screen.
 func runPacedStream(t *testing.T, adaptive bool, steps, changeEvery int) (*pacedReplay, int) {
 	t.Helper()
-	r, text, _ := startPacedReplay(t, termScenario{cols: 80, rows: 24}, adaptive)
+	for name, value := range map[string]string{"TERM": "xterm-256color", "ALACRITTY_WINDOW_ID": "1", "TERM_PROGRAM": "", "TERM_PROGRAM_VERSION": "", "TMUX": "", "STY": "", "ZELLIJ": "", "HERDR_ENV": "", "PIG_TUI_SCROLL_ROWS": ""} {
+		t.Setenv(name, value)
+	}
+	SetCapabilities(TerminalCapabilities{TrueColor: true})
+	t.Cleanup(ResetCapabilitiesCache)
+	r := &pacedReplay{t: t, at: time.Unix(1_000_000, 0)}
+	r.screen = newSWScreen(t, true, 80, 24, 4096, 0)
+	r.ui = NewTuiAltScreen(r.screen.term, nil, "")
+	r.ui.now = func() time.Time { return r.at }
+	if adaptive {
+		gate := new(atomic.Bool)
+		gate.Store(true)
+		pacing := NewAdaptiveFramePacing(gate)
+		if !pacing.terminalTrusted {
+			t.Fatal("the declared terminal is not trusted with synchronized updates: no frame would be paced")
+		}
+		r.ui.SetFramePacing(pacing)
+	}
+	r.ui.SetRenderDeadline(func(time.Time) {})
+	text := &termLines{}
+	r.ui.Add(pacedContent{text, r})
+	r.ui.Start()
+	t.Cleanup(r.ui.Stop)
+	if !r.screen.term.ScreenWriterActive() {
+		t.Fatal("the screen writer is not active on the alternate screen: no frame would be paced")
+	}
+	r.screen.settle()
+	// Start after the initial screen has settled long enough that the first stream step is not throttled against Start's frame, matching a wall-clock settle.
+	r.at = r.at.Add(time.Second)
 	before, frames := len(r.screen.transcript()), r.frames
 	r.shown, r.quietFrames = nil, 0
 	for i := range steps {
@@ -296,13 +367,23 @@ func runPacedStream(t *testing.T, adaptive bool, steps, changeEvery int) (*paced
 		}
 		r.version++
 		r.ui.requestRender(false)
-		r.owner.Unlock()
-		time.Sleep(pacedStepGap)
-		r.owner.Lock()
+		r.runDueManual()
+		r.advanceManual(r.at.Add(pacedStepGap))
 	}
-	r.quiet()
+	// Flush any final pending frame due after the last step.
+	for {
+		r.ui.mu.Lock()
+		next := r.ui.frameDue
+		r.ui.mu.Unlock()
+		if next.IsZero() {
+			break
+		}
+		r.advanceManual(next)
+	}
+	if r.drawn != r.version {
+		t.Fatalf("stream ended at version %d, last drawn %d", r.version, r.drawn)
+	}
 	r.frames -= frames
-	r.owner.Unlock()
 	r.screen.settle()
 	return r, len(r.screen.transcript()) - before
 }
