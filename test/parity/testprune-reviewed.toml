@@ -1481,3 +1481,17 @@ commit = "6d4e10cfcf11fad2b41f16c3ac1b82bcbb860b28"
 class = "CITE"
 cite = "packages/chord/src/host/query-reader.ts:123"
 reason = "Pi's query reader registers a read's query when `read` is called, in call order (query-reader.ts:123, `void this.#reading.read(target, context)` in #moved), so the Go reader opens each read in the section of the move and keeps one pending load behind the running one: the fake Reading now counts opens (one per move) and loads separately, and the queue test expects 2 loads and 3 opens where it expected 2 reads."
+
+[[entry]]
+path = "coding/extension/host/subprocess/harness_cli_kill_test.go"
+commit = "f5af42b5534289b5b6d90af9e516db62cb5fb077"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The kill tests' expected values move with PiG's own harness entry design: the entry started the binary and a watchdog after it, and now starts a supervisor that starts the binary and kills it when its channel to the entry closes, so TestHarnessEntryKillEndsItsBinary waits on the observed exit of the binary where it waited a fixed 5 s, and the neighbouring tests expect the supervisor's steps. Pi's entry is the agent itself, so SIGKILL of it ends the agent and Pi has no wrapper, watchdog or supervisor process: no Pi line governs the expectation. The runtime digest file changes only because the embedded pack was regenerated for the new entry. Reviewer's acceptance: \"ACCEPTED: the kill test's expected values move with PiG's own supervisor design in the harness entry; PiG-only code, no Pi counterpart.\""
+
+[[entry]]
+path = "coding/extension/host/subprocess/harness_cli_kill_test.go"
+commit = "4a70929057a5089b7aaecf8722d881c458889f41"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The SIGUSR1 row of the exit-and-signal table expects the entry to end with code 0 and nothing on stderr (the entry before the supervisor, which the row compares by status only, opens Node's inspector and writes its notice), and the new pin expects the entry to end with code 0 and nothing on stderr for each signal Node does not die from, because the entry no longer raises SIGUSR1, SIGPIPE or SIGXFSZ on itself. Pi's entry is the agent itself: it has no wrapper process that ends as its binary ended, so no Pi line governs the expectation. The runtime digest file changes only because the embedded pack was regenerated for the new entry. Reviewer's acceptance: \"ACCEPTED: the SIGUSR1 row expects exit 0 and empty stderr because the entry no longer re-raises a signal Node survives; PiG-only; the removed notice is Node's inspector, not a contract.\""
