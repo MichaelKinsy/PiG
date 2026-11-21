@@ -395484,6 +395484,17 @@
       "shapeHash": "sha256:bd7557171f17860454369b2dea6959933a119faa66d256dbeef6b14799719089"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#appendLogFile",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "appendLogFile",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string, perm os.FileMode, data []byte)"
+      },
+      "shapeHash": "sha256:38b65788788ebb95abcb01ee3b049933d2e5a20ae722ce456df2793f5d7a3622"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#appendModifiedFinal",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "appendModifiedFinal",

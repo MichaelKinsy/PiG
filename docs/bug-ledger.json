@@ -60266,6 +60266,28 @@
       ]
     },
     {
+      "id": "BF-e37521f",
+      "title": "fix(tui): close PIG_TUI_SCREEN_WRITER_LOG file on each append",
+      "symptom": "fix(tui): close PIG_TUI_SCREEN_WRITER_LOG file on each append",
+      "rootCause": "screenWriterLog opened l.file lazily on its first record and kept the *os.File open with no close path, leaking a file descriptor on every platform and blocking Windows TempDir removal whenever a test set PIG_TUI_SCREEN_WRITER_LOG.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "e37521f30c",
+          "date": "2026-11-21"
+        }
+      ],
+      "tests": [
+        "tui/screen_writer_log_linux_test.go::TestScreenWriterLogClosesFileDescriptorAfterAppend",
+        "tui/screen_writer_log_test.go::TestScreenWriterLogRecordsEveryWrite"
+      ]
+    },
+    {
       "id": "BF-e38ea7c",
       "title": "A code block that begins like an earlier streamed block and then differs, such as a file rewritten with its…",
       "symptom": "A code block that begins like an earlier streamed block and then differs, such as a file rewritten with its last lines changed or a second fence that repeats the start of the first, is highlighted as a whole run highlights it, in every language.",

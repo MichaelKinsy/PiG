@@ -15,11 +15,16 @@ import (
 // appendFileSync does, and a logging failure never reaches the terminal.
 type terminalWriteLog struct{ path string }
 
-func (l *terminalWriteLog) append(data []byte) {
-	if file, err := os.OpenFile(l.path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o666); err == nil {
+// appendLogFile opens path for append, writes data, and closes it on every call so no diagnostic log keeps a file descriptor open.
+func appendLogFile(path string, perm os.FileMode, data []byte) {
+	if file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, perm); err == nil {
 		_, _ = file.Write(data)
 		_ = file.Close()
 	}
+}
+
+func (l *terminalWriteLog) append(data []byte) {
+	appendLogFile(l.path, 0o666, data)
 }
 
 // loggingWriter writes to the terminal and then to the log, as upstream's ProcessTerminal.write does.

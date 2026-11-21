@@ -2166,6 +2166,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e32c60c](#bf-e32c60c) | A Piglet or Package installed under a symlinked agent directory keeps the origin integrity recorded in its… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e33dbb0](#bf-e33dbb0) | fix(chord/delta): textTails remembers buffers weakly so a released text costs nothing | PiG's own defect | All platforms | Unreleased |
 | [BF-e35933e](#bf-e35933e) | A WebSocket that receives an oversized frame is left closing while its handlers run, as Pi's is, so the peer… | PiG's own defect | All platforms | Unreleased |
+| [BF-e37521f](#bf-e37521f) | fix(tui): close PIG_TUI_SCREEN_WRITER_LOG file on each append | PiG's own defect | All platforms | Unreleased |
 | [BF-e38ea7c](#bf-e38ea7c) | A code block that begins like an earlier streamed block and then differs, such as a file rewritten with its… | PiG's own defect | All platforms | Unreleased |
 | [BF-e3b5d44](#bf-e3b5d44) | fix(chord/nextnode/workers): a worker forks a private copy of the entry made at creation, removed on close | PiG's own defect | All platforms | Unreleased |
 | [BF-e3bc5f0](#bf-e3bc5f0) | A codemode script that makes a tool call at the moment its execution ends (an abort, a timeout… | PiG's own defect | All platforms | Unreleased |
@@ -32232,6 +32233,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `e35933ead2` (2026-11-09)
 - **Tests:** `chord/nextnode/http/upgrades_test.go::TestPluginSocketsAnOversizedFrameLeavesTheSocketClosingTheServerReports1006AndThePeer1009`
 - **Release note:** A WebSocket that receives an oversized frame is left closing while its handlers run, as Pi's is, so the peer receives its 1009 close frame; the server side reports close code 1006, as Pi does.
+
+### BF-e37521f
+
+**fix(tui): close PIG_TUI_SCREEN_WRITER_LOG file on each append**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(tui): close PIG_TUI_SCREEN_WRITER_LOG file on each append
+- **Root cause:** screenWriterLog opened l.file lazily on its first record and kept the *os.File open with no close path, leaking a file descriptor on every platform and blocking Windows TempDir removal whenever a test set PIG_TUI_SCREEN_WRITER_LOG.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e37521f30c` (2026-11-21)
+- **Tests:** `tui/screen_writer_log_linux_test.go::TestScreenWriterLogClosesFileDescriptorAfterAppend`, `tui/screen_writer_log_test.go::TestScreenWriterLogRecordsEveryWrite`
 
 ### BF-e38ea7c
 
