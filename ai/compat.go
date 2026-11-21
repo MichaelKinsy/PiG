@@ -220,7 +220,7 @@ func builtinProviderForModel(model *Model) *ModelsProvider {
 	if provider == nil || provider.GetModels == nil {
 		return nil
 	}
-	models, err := provider.GetModels()
+	models, err := provider.cachedChatModels()
 	if err != nil || !slices.ContainsFunc(models, func(candidate *Model) bool { return candidate.ProviderMeta.API == model.ProviderMeta.API }) {
 		return nil
 	}

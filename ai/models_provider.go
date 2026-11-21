@@ -3,8 +3,9 @@ package ai
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"slices"
-	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -76,9 +77,74 @@ func chatModels(models []AnyModel) []*Model {
 	return out
 }
 
-// sameProviderModel reports whether two models are the same entry within a provider: ids are unique per model type.
-func sameProviderModel(a, b AnyModel) bool {
-	return GetModelType(a) == GetModelType(b) && a.ModelID() == b.ModelID()
+// providerCatalogSnapshot is an immutable published model catalog for a CreateProvider instance.
+// Each publish builds fresh slices and swaps the pointer atomically; published slices are never mutated again.
+type providerCatalogSnapshot struct {
+	all  []AnyModel
+	chat []*Model
+}
+
+type providerCatalogCache struct {
+	snapshot   atomic.Pointer[providerCatalogSnapshot]
+	getModels  uintptr
+	getAll     uintptr
+	mergeCount atomic.Int64
+}
+
+// providerModelKey identifies one model within a provider: ids are unique per model type.
+type providerModelKey struct {
+	modelType ModelType
+	id        string
+}
+
+// mergeProviderCatalog merges dynamic models over baseline in baseline order, replacing matching (type, id)
+// entries in place and appending new dynamic entries in their order (upstream: packages/ai/src/models.ts createProvider, Pi 073b0bae8).
+func mergeProviderCatalog(baseline, dynamic []AnyModel) *providerCatalogSnapshot {
+	merged := make([]AnyModel, len(baseline), len(baseline)+len(dynamic))
+	copy(merged, baseline)
+	if len(dynamic) > 0 {
+		indexByKey := make(map[providerModelKey]int, len(merged)+len(dynamic))
+		for i, model := range merged {
+			key := providerModelKey{modelType: GetModelType(model), id: model.ModelID()}
+			if _, exists := indexByKey[key]; !exists {
+				indexByKey[key] = i
+			}
+		}
+		for _, model := range dynamic {
+			key := providerModelKey{modelType: GetModelType(model), id: model.ModelID()}
+			if i, exists := indexByKey[key]; exists {
+				merged[i] = model
+			} else {
+				indexByKey[key] = len(merged)
+				merged = append(merged, model)
+			}
+		}
+	}
+	return &providerCatalogSnapshot{all: merged, chat: chatModels(merged)}
+}
+
+// cachedChatModels returns the immutable published chat slice without copying when p is an unmodified CreateProvider instance.
+func (p *ModelsProvider) cachedChatModels() ([]*Model, error) {
+	if p.catalog != nil && p.GetModels != nil && reflect.ValueOf(p.GetModels).Pointer() == p.catalog.getModels {
+		return p.catalog.snapshot.Load().chat, nil
+	}
+	return p.GetModels()
+}
+
+// cachedAllModels returns the immutable published full model slice without copying when p is an unmodified CreateProvider instance.
+func (p *ModelsProvider) cachedAllModels() ([]AnyModel, error) {
+	if p.catalog != nil && p.GetAllModels != nil && reflect.ValueOf(p.GetAllModels).Pointer() == p.catalog.getAll {
+		return p.catalog.snapshot.Load().all, nil
+	}
+	return providerAllModels(p)
+}
+
+// catalogMergeCount returns how many publish-time catalog merges p has performed (0 before any publish).
+func (p *ModelsProvider) catalogMergeCount() int64 {
+	if p == nil || p.catalog == nil {
+		return 0
+	}
+	return p.catalog.mergeCount.Load()
 }
 
 // CreateProvider merges a dynamic overlay over its baseline and routes each request through the model's API implementation.
@@ -113,25 +179,28 @@ func CreateProvider(input CreateProviderOptions) *ModelsProvider {
 		name = *input.Name
 	}
 	baseline := slices.Clone(input.Models)
-	var dynamic []AnyModel
-	var mu sync.Mutex
-	provider := &ModelsProvider{ID: input.ID, Name: name, BaseURL: input.BaseURL, Headers: input.Headers, Auth: input.Auth, FilterModels: input.FilterModels, FilterAllModels: input.FilterAllModels}
-	currentModels := func() []AnyModel {
-		mu.Lock()
-		defer mu.Unlock()
-		merged := append([]AnyModel{}, baseline...)
-		for _, model := range dynamic {
-			index := slices.IndexFunc(merged, func(candidate AnyModel) bool { return sameProviderModel(candidate, model) })
-			if index < 0 {
-				merged = append(merged, model)
-			} else {
-				merged[index] = model
-			}
-		}
-		return merged
+	cache := &providerCatalogCache{}
+	cache.snapshot.Store(mergeProviderCatalog(baseline, nil))
+	setDynamicModels := func(dynamic []AnyModel) {
+		// Merged once per publish, not per read: GetModels() is on hot paths such as Models.GetModel() (upstream: packages/ai/src/models.ts, Pi 073b0bae8 / #12311).
+		cache.mergeCount.Add(1)
+		cache.snapshot.Store(mergeProviderCatalog(baseline, dynamic))
 	}
-	provider.GetModels = func() ([]*Model, error) { return chatModels(currentModels()), nil }
-	provider.GetAllModels = func() ([]AnyModel, error) { return currentModels(), nil }
+	provider := &ModelsProvider{ID: input.ID, Name: name, BaseURL: input.BaseURL, Headers: input.Headers, Auth: input.Auth, FilterModels: input.FilterModels, FilterAllModels: input.FilterAllModels, catalog: cache}
+	provider.GetModels = func() ([]*Model, error) {
+		chat := cache.snapshot.Load().chat
+		out := make([]*Model, len(chat))
+		copy(out, chat)
+		return out, nil
+	}
+	provider.GetAllModels = func() ([]AnyModel, error) {
+		all := cache.snapshot.Load().all
+		out := make([]AnyModel, len(all))
+		copy(out, all)
+		return out, nil
+	}
+	cache.getModels = reflect.ValueOf(provider.GetModels).Pointer()
+	cache.getAll = reflect.ValueOf(provider.GetAllModels).Pointer()
 	if input.FetchModels != nil {
 		provider.RefreshModels = func(refresh RefreshModelsContext) error {
 			if refresh.Stored != nil {
@@ -139,7 +208,7 @@ func CreateProvider(input CreateProviderOptions) *ModelsProvider {
 				if err != nil {
 					return err
 				}
-				published, err := refresh.Publish(ModelsPublication{Update: func() { mu.Lock(); dynamic = restored; mu.Unlock() }})
+				published, err := refresh.Publish(ModelsPublication{Update: func() { setDynamicModels(restored) }})
 				if err != nil || !published {
 					return err
 				}
@@ -155,7 +224,7 @@ func CreateProvider(input CreateProviderOptions) *ModelsProvider {
 			if refresh.Signal.Err() != nil {
 				return nil
 			}
-			_, err = refresh.Publish(ModelsPublication{Persist: &ModelsStoreEntry{Models: models, CheckedAt: new(float64(time.Now().UnixMilli()))}, Update: func() { mu.Lock(); dynamic = models; mu.Unlock() }})
+			_, err = refresh.Publish(ModelsPublication{Persist: &ModelsStoreEntry{Models: models, CheckedAt: new(float64(time.Now().UnixMilli()))}, Update: func() { setDynamicModels(models) }})
 			return err
 		}
 	}

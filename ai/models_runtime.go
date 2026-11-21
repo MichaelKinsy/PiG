@@ -43,6 +43,8 @@ type ModelsProvider struct {
 	StreamSimple   ModelsStreamFunction
 	FetchDeferred  func(context.Context, *Model, DeferredHandle, DeferredFetchOptions) (*AssistantMessageEventStream, error)
 	CancelDeferred func(context.Context, *Model, DeferredHandle, DeferredCancelOptions) error
+	// catalog holds the immutable published snapshot cache when built by CreateProvider; package-private lookups read it without copying.
+	catalog *providerCatalogCache
 }
 
 type ModelsStreamFunction func(context.Context, *Model, TranscriptContext, StreamOptions) (*AssistantMessageEventStream, error)
