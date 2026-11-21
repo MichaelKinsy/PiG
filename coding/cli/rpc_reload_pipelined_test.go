@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"syscall"
@@ -336,6 +337,9 @@ func TestRPCReloadHoldEnds(t *testing.T) {
 	})
 	// A termination signal during the reload ends the process with the signal's status; the reload's hold does not keep the shutdown waiting.
 	t.Run("SIGTERM during the reload", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("a termination signal cannot be delivered to a child on windows")
+		}
 		eachReloadSDK(t, func(t *testing.T, sdk string) {
 			f := startReloadRPC(t, sdk, "RL_LOAD=await")
 			f.p.send(f.prompt("b", "/rl"))
