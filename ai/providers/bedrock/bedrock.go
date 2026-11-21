@@ -38,9 +38,12 @@ import (
 
 	awsconfig "github.com/MichaelKinsy/PiG/third_party/awssdk/config"
 	"github.com/MichaelKinsy/PiG/third_party/awssdk/credentials"
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/credentials/ssocreds"
 	"github.com/MichaelKinsy/PiG/third_party/awssdk/credentials/stscreds"
 	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime"
 	btypes "github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime/types"
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/sso"
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/ssooidc"
 	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/sts"
 )
 
@@ -346,10 +349,10 @@ func bedrockClientOptions(cfg aws.Config, httpClient bedrockruntime.HTTPClient) 
 
 // loadBedrockConfig preserves explicit/scoped profile ownership, ambient key precedence, and ARN region precedence. A configured region or ambient profile unpins standard AWS endpoints; caller-supplied custom endpoints remain fixed.
 //
-// The proxy follows bedrock-converse-stream.ts: resolveHttpProxyUrlForTarget(model.baseUrl) is resolved once, and only the runtime client's
-// requestHandler carries it. The credential clients keep the SDK's own handlers, which use no proxy: IMDS and the container provider call node:http
-// directly, and the SSO client takes only the logger from its parent. The STS client inherits the parent's requestHandler only when that handler
-// is not HTTP/2, which is when the proxy was found, so STS uses the runtime client's proxy and nothing else.
+// The proxy follows packages/ai/src/api/bedrock-converse-stream.ts:242-253 (Pi commit be269f57b1b707399edd86f5f718d1a907ffea8b / #12365):
+// resolveHttpProxyUrlForTarget(model.baseUrl) is resolved once and given to the runtime client and the default credential chain's clientConfig.
+// That proxies the runtime client, STS (AssumeRole and AssumeRoleWithWebIdentity), SSO (GetRoleCredentials), and SSO OIDC (CreateToken);
+// IMDS, the container provider, credential_process, bearer tokens, AWS_BEDROCK_SKIP_AUTH, and static/env keys do not use the proxy.
 func loadBedrockConfig(ctx context.Context, baseURL, modelID string, options ai.StreamOptions) (aws.Config, *awshttp.BuildableClient, error) {
 	env := options.Env
 	proxyURL, proxyErr := ai.ResolveHTTPProxyURLForTarget(baseURL, env)
@@ -367,6 +370,16 @@ func loadBedrockConfig(ctx context.Context, baseURL, modelID string, options ai.
 				if client, ok := o.Client.(*sts.Client); ok {
 					o.Client = bedrockProxiedSTS{client: client, httpClient: runtimeHTTPClient}
 				}
+			}),
+			awsconfig.WithSSOProviderOptions(func(o *ssocreds.Options) {
+				if client, ok := o.Client.(*sso.Client); ok {
+					o.Client = bedrockProxiedSSO{client: client, httpClient: runtimeHTTPClient}
+				}
+			}),
+			awsconfig.WithSSOTokenProviderOptions(func(o *ssocreds.SSOTokenProviderOptions) {
+				o.ClientOptions = append(o.ClientOptions, func(opt *ssooidc.Options) {
+					opt.HTTPClient = runtimeHTTPClient
+				})
 			}),
 		)
 	}
@@ -444,6 +457,16 @@ func (c bedrockProxiedSTS) AssumeRole(ctx context.Context, input *sts.AssumeRole
 
 func (c bedrockProxiedSTS) AssumeRoleWithWebIdentity(ctx context.Context, input *sts.AssumeRoleWithWebIdentityInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleWithWebIdentityOutput, error) {
 	return c.client.AssumeRoleWithWebIdentity(ctx, input, append(optFns, c.useHTTPClient)...)
+}
+
+// bedrockProxiedSSO sends SSO GetRoleCredentials calls through the runtime client's proxy.
+type bedrockProxiedSSO struct {
+	client     *sso.Client
+	httpClient sso.HTTPClient
+}
+
+func (c bedrockProxiedSSO) GetRoleCredentials(ctx context.Context, input *sso.GetRoleCredentialsInput, optFns ...func(*sso.Options)) (*sso.GetRoleCredentialsOutput, error) {
+	return c.client.GetRoleCredentials(ctx, input, append(optFns, func(options *sso.Options) { options.HTTPClient = c.httpClient })...)
 }
 
 // bedrockARNRegionRE extracts the region embedded in an inference-profile ARN
