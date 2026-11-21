@@ -2862,6 +2862,31 @@ patch("9a7cfba47", "pi-tui/components/editor.js", [
 ]);
 // END backport 9a7cfba47
 
+// BEGIN backport 06a20368a7
+// 06a20368a7 (#12370, fixes #12279): addToHistory moves an existing entry to the front instead of skipping only consecutive duplicates.
+patch("06a20368a7", "pi-tui/components/editor.js", [
+    [`    addToHistory(text) {
+        const trimmed = text.trim();
+        if (!trimmed)
+            return;
+        // Don't add consecutive duplicates
+        if (this.history.length > 0 && this.history[0] === trimmed)
+            return;
+        this.history.unshift(trimmed);
+`, `    addToHistory(text) {
+        ${note("06a20368a7").trim()}
+        const trimmed = text.trim();
+        if (!trimmed)
+            return;
+        // Callers re-add prompts when re-rendering a session (tree navigation, fork, resume).
+        const existing = this.history.indexOf(trimmed);
+        if (existing !== -1)
+            this.history.splice(existing, 1);
+        this.history.unshift(trimmed);
+`],
+]);
+// END backport 06a20368a7
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 // Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.
