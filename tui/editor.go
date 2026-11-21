@@ -446,7 +446,9 @@ func (e *Editor) ClearPastes() {
 	e.pasteCounter = 0
 }
 
-// AddToHistory trims JavaScript whitespace and adds a submitted prompt for Up/Down navigation. It skips empty strings and consecutive duplicates and retains at most 100 entries.
+// AddToHistory trims JavaScript whitespace and adds a submitted prompt for Up/Down navigation.
+// A prompt already in history moves to the most recent position instead of being added twice; it skips empty strings and retains at most 100 entries.
+// upstream: packages/tui/src/components/editor.ts::addToHistory (Pi 06a20368a7, #12370).
 func (e *Editor) AddToHistory(text string) {
 	if e.forwards() {
 		e.remote.remote.AddToHistory(text)
@@ -456,8 +458,9 @@ func (e *Editor) AddToHistory(text string) {
 	if trimmed == "" {
 		return
 	}
-	if len(e.inputHistory) > 0 && e.inputHistory[0] == trimmed {
-		return // no consecutive duplicates
+	// Callers re-add prompts when re-rendering a session (tree navigation, fork, resume).
+	if existing := slices.Index(e.inputHistory, trimmed); existing != -1 {
+		e.inputHistory = slices.Delete(e.inputHistory, existing, existing+1)
 	}
 	e.inputHistory = append([]string{trimmed}, e.inputHistory...)
 	if len(e.inputHistory) > 100 {

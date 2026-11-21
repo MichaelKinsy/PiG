@@ -404,7 +404,7 @@ func TestEditorHandleInputBoundariesMatchPi(t *testing.T) {
 	add(nil, keys("ab cd", killEnd, yank, yankPop), keys("\x1f", "\x1f", "\x1f", "\x1f"))
 	add(nil, keys(yank, yankPop, "\x1f", killEnd, killWord))
 	// History browsing and the first and last line.
-	histories := [][]string{{"one"}, {"one", "two\nlines", "three"}}
+	histories := [][]string{{"one"}, {"one", "two\nlines", "three"}, {"first", "second", "first"}}
 	for _, history := range histories {
 		add(history, keys(up, up, up, up, down, down, down, down, down))
 		add(history, keys(up, end, up, home, up, down, right, down, down))

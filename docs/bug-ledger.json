@@ -41672,6 +41672,31 @@
       ]
     },
     {
+      "id": "BF-9d587e8",
+      "title": "A prompt you submit again, or one restored when you switch branches (`/tree`, `/fork`, `/clone`, `/resume`)…",
+      "symptom": "A prompt you submit again, or one restored when you switch branches (`/tree`, `/fork`, `/clone`, `/resume`), no longer appears twice in the up-arrow history; it moves to the front instead of duplicating older entries and pushing history past the 100-entry limit.",
+      "rootCause": "Editor.AddToHistory skipped only a consecutive repeat (inputHistory[0] == trimmed), matching Pi before commit 06a20368a7 (#12370), so re-adding an older prompt appended a duplicate.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A prompt you submit again, or one restored when you switch branches (`/tree`, `/fork`, `/clone`, `/resume`), no longer appears twice in the up-arrow history; it moves to the front instead of duplicating older entries and pushing history past the 100-entry limit. Affects v0.2.0 through v0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9d587e873d",
+          "date": "2026-11-21"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/resume_editor_history_test.go::TestInitialRenderPopulatesTheEditorHistory",
+        "tui/editor_handle_input_contract_test.go::TestEditorHandleInputBoundariesMatchPi",
+        "tui/editor_history_test.go::TestEditorHistoryDoesNotGrowWhenPromptsAreReAdded",
+        "tui/editor_history_test.go::TestEditorHistoryMovesNonConsecutiveDuplicateToFront"
+      ]
+    },
+    {
       "id": "BF-9d64980",
       "title": "fix(coding): provider order and availability of virtual models follow Pi",
       "symptom": "fix(coding): provider order and availability of virtual models follow Pi",

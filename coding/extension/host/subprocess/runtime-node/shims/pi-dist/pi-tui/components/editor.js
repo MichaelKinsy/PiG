@@ -310,12 +310,14 @@ export class Editor {
      * Called after successful submission.
      */
     addToHistory(text) {
+        // Pi 06a20368a7 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         const trimmed = text.trim();
         if (!trimmed)
             return;
-        // Don't add consecutive duplicates
-        if (this.history.length > 0 && this.history[0] === trimmed)
-            return;
+        // Callers re-add prompts when re-rendering a session (tree navigation, fork, resume).
+        const existing = this.history.indexOf(trimmed);
+        if (existing !== -1)
+            this.history.splice(existing, 1);
         this.history.unshift(trimmed);
         // Limit history size
         if (this.history.length > 100) {

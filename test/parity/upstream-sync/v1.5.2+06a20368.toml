@@ -1,0 +1,31 @@
+from = "1.5.2+9a7cfba4"
+to = "1.5.2+06a20368"
+
+[[files]]
+path = "packages/tui/src/components/editor.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/editor_history_test.go#TestEditorHistoryMovesNonConsecutiveDuplicateToFront", "test:tui/editor_history_test.go#TestEditorHistoryDoesNotGrowWhenPromptsAreReAdded", "test:tui/editor_handle_input_contract_test.go#TestEditorHandleInputBoundariesMatchPi", "test:internal/codingagent/resume_editor_history_test.go#TestInitialRenderPopulatesTheEditorHistory"]
+rationale = "06a20368a7 (#12370, fixes #12279): Editor.addToHistory only skipped a consecutive duplicate, so re-rendering a session branch (populateHistory on /tree, /fork, /clone, /resume) or re-submitting a recalled older prompt appended duplicates and pushed older entries past the 100-entry cap. addToHistory now removes any existing occurrence of trimmed from history before prepending it at index 0. Editor.AddToHistory in tui/editor.go does the same."
+oracle = "carried: 06a20368a7 (pi-tui/components/editor.js: addToHistory)"
+
+[[files]]
+path = "packages/tui/test/editor.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/editor_history_test.go#TestEditorHistoryMovesNonConsecutiveDuplicateToFront", "test:tui/editor_history_test.go#TestEditorHistoryDoesNotGrowWhenPromptsAreReAdded"]
+rationale = "06a20368a7: the replaced case 'moves a non-consecutive duplicate to the most recent position' and the new case 'does not grow when the same prompts are re-added' are ported with Pi's inputs and expectations."
+
+[[files]]
+path = "packages/tui/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "06a20368a7: the Unreleased entry of Pi's tui changelog. PiG's user-visible change is its own changelog.d fragment."
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "06a20368a7: the Unreleased entry of Pi's coding-agent changelog. PiG's user-visible change is its own changelog.d fragment."

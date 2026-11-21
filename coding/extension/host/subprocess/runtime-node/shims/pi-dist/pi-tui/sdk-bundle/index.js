@@ -2081,8 +2081,9 @@ var Editor = class {
     const trimmed = text.trim();
     if (!trimmed)
       return;
-    if (this.history.length > 0 && this.history[0] === trimmed)
-      return;
+    const existing = this.history.indexOf(trimmed);
+    if (existing !== -1)
+      this.history.splice(existing, 1);
     this.history.unshift(trimmed);
     if (this.history.length > 100) {
       this.history.pop();

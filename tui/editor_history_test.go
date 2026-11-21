@@ -141,13 +141,29 @@ func TestEditorHistorySkipsConsecutiveDuplicates(t *testing.T) {
 	assertEditorText(t, e, "same")
 }
 
-// .upstream/v0.87.1/packages/tui/test/editor.test.ts:185 — allows non-consecutive duplicates in history.
-func TestEditorHistoryKeepsNonConsecutiveDuplicates(t *testing.T) {
+// .upstream/v0.87.1/packages/tui/test/editor.test.ts:185 (updated in Pi 06a20368a7, #12370) — moves a non-consecutive duplicate to the most recent position.
+func TestEditorHistoryMovesNonConsecutiveDuplicateToFront(t *testing.T) {
 	e := NewEditor()
 	e.AddToHistory("first")
 	e.AddToHistory("second")
 	e.AddToHistory("first")
-	for _, want := range []string{"first", "second", "first"} {
+	for _, want := range []string{"first", "second", "second"} {
+		e.HandleInput(historyUp)
+		assertEditorText(t, e, want)
+	}
+}
+
+// Ports packages/tui/test/editor.test.ts "does not grow when the same prompts are re-added" (Pi 06a20368a7, #12370 / #12279).
+func TestEditorHistoryDoesNotGrowWhenPromptsAreReAdded(t *testing.T) {
+	e := NewEditor()
+	for _, prompt := range []string{"p1", "p2", "p3", "p4", "p5"} {
+		e.AddToHistory(prompt)
+	}
+	// Navigating back to p4 re-renders the branch p1..p3.
+	for _, prompt := range []string{"p1", "p2", "p3"} {
+		e.AddToHistory(prompt)
+	}
+	for _, want := range []string{"p3", "p2", "p1", "p5", "p4", "p4"} {
 		e.HandleInput(historyUp)
 		assertEditorText(t, e, want)
 	}
