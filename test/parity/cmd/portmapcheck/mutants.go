@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // mutant is a reviewed one-site edit of a cited Go file: Old occurs exactly once in File and New replaces it. A test that carries a
@@ -33,7 +34,7 @@ func onlyMarkerReason(res result) bool {
 //
 // The third result is what the replay that killed the mutant showed besides the failed assertions (the test binary also crashed), or "":
 // the kill stands, and the caller reports it beside the verdict.
-func mutantProblem(root string, res result, mutants []mutant, replays *replayCaches) (why, infra, alsoShowed string) {
+func mutantProblem(root string, res result, mutants []mutant, replays *replayCaches, dirTook map[string]time.Duration) (why, infra, alsoShowed string) {
 	if len(mutants) == 0 {
 		return "MARKER-UNPROVEN: portmap-mutants.json names no mutant of a cited file for this row", "", ""
 	}
@@ -47,7 +48,7 @@ func mutantProblem(root string, res result, mutants []mutant, replays *replayCac
 			// Editing the evidence itself (an assertion turned into t.Fatal) fails the tests without touching the ported code.
 			return "MARKER-UNPROVEN: mutant file " + mu.File + " is a test file; a mutant must edit the cited implementation", "", ""
 		}
-		k, infra, note := killed(root, res, mu, replays)
+		k, infra, note := killed(root, res, mu, replays, dirTook)
 		if infra != "" {
 			return "", "replaying the mutant of " + mu.File + ": " + infra, ""
 		}
@@ -105,7 +106,7 @@ func infraFailure(out string, err error) string {
 
 // killed replays one mutant: the old text must occur once, and a marker test must fail by an assertion (see classifyReplay). A replay
 // that killed the mutant and also crashed the test binary still kills it: the crash is returned in note, to be reported beside the verdict.
-func killed(root string, res result, mu mutant, replays *replayCaches) (dead bool, infra, note string) {
+func killed(root string, res result, mu mutant, replays *replayCaches, dirTook map[string]time.Duration) (dead bool, infra, note string) {
 	mutantReplays.Add(1)
 	// `go test -overlay` keys Replace entries on the canonical path of the working directory; resolve symlinks
 	// in root once so overlays apply when the repository root lies behind a symbolic link (e.g. macOS /tmp).
@@ -140,7 +141,7 @@ func killed(root string, res result, mu mutant, replays *replayCaches) (dead boo
 	}
 	for d, names := range byDir {
 		slices.Sort(names)
-		cmd := replayCommand(root, d, overlayFile, names)
+		cmd := replayCommand(root, d, overlayFile, names, dirTook[d])
 		cmd.Env = evidenceEnv(dir)
 		add, release, err := replays.acquire(cmd.Env)
 		if err != nil {
@@ -195,6 +196,9 @@ func classifyReplay(out string, err error) replayVerdict {
 		}
 		return replayVerdict{note: "the mutant did not build: " + lines[0]}
 	case len(failedAssertions(out)) > 0:
+		if strings.Contains(out, "panic: test timed out") {
+			return replayVerdict{killed: true, note: "the replay hit its timeout after failed assertions: " + crash}
+		}
 		if crash != "" {
 			return replayVerdict{killed: true, note: "the mutant also panicked: " + crash}
 		}
@@ -293,13 +297,36 @@ func crashSite(out string) string {
 	return ""
 }
 
+const (
+	// replayTimeoutDefault matches go test's 10-minute default as the floor for every mutant replay (including unmeasured cached runs).
+	// Because a bare timeout does not kill a mutant, keeping the floor at 10 minutes prevents a replay panic from racing a test's own
+	// wait budget before its failing assertion runs.
+	replayTimeoutDefault = 10 * time.Minute
+	replayTimeoutFactor  = 4
+)
+
+// replayTimeout derives the `-timeout` budget for a mutant replay from the unmutated evidence run's duration:
+// max(replayTimeoutDefault, replayTimeoutFactor*took), capped at evidenceTimeoutDuration.
+func replayTimeout(took time.Duration) time.Duration {
+	d := took * replayTimeoutFactor
+	if d < replayTimeoutDefault {
+		return replayTimeoutDefault
+	}
+	if d > evidenceTimeoutDuration {
+		return evidenceTimeoutDuration
+	}
+	return d.Round(time.Second)
+}
+
 // replayCommand is the `go test` of one replay of a mutant: the named tests of package directory d (relative to root), compiled with
-// the overlay. classifyReplay reads the plain output of go test, where a failed test's header comes before the lines it reported, so
-// the command line fixes the two flags that change that shape and the caller's GOFLAGS, which go test reads first, must not: -v=true
-// prints every reported line as it happens, before the "--- FAIL:" header, and -json prints no text at all.
-func replayCommand(root, d, overlayFile string, names []string) *exec.Cmd {
+// the overlay and bounded by a -timeout derived from unmutatedTook. classifyReplay reads the plain output of go test, where a failed
+// test's header comes before the lines it reported, so the command line fixes the two flags that change that shape and the caller's
+// GOFLAGS, which go test reads first, must not: -v=true prints every reported line as it happens, before the "--- FAIL:" header, and
+// -json prints no text at all.
+func replayCommand(root, d, overlayFile string, names []string, unmutatedTook time.Duration) *exec.Cmd {
+	timeout := replayTimeout(unmutatedTook).String()
 	//nolint:gosec // G204 (class a): program is literal go; args are literal flags, a temp -overlay file, -run regex built from tool-generated test names, and "./"+dir.
-	cmd := exec.Command("go", "test", "-count=1", "-v=false", "-json=false", "-overlay="+overlayFile, "-run", "^("+strings.Join(names, "|")+")$", "./"+d)
+	cmd := exec.Command("go", "test", "-count=1", "-timeout="+timeout, "-v=false", "-json=false", "-overlay="+overlayFile, "-run", "^("+strings.Join(names, "|")+")$", "./"+d)
 	cmd.Dir = root
 	return cmd
 }

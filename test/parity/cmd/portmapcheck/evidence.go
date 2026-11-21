@@ -33,9 +33,12 @@ var evidenceBuilds, mutantReplays atomic.Int64
 //
 // Each run is `<binary> -test.run ^(names)$`, the same selection and the same coverage profile `go test -run -coverprofile` produced.
 
-// evidenceTimeout bounds one evidence run: every test a row names, in one binary. The extension-conformance row names 104 tests that
-// run sequentially, 11 to 13 minutes unloaded, so the budget is 30 minutes.
-const evidenceTimeout = "30m0s"
+// evidenceTimeoutDuration bounds one evidence run: every test a row names, in one binary. The extension-conformance row names 104 tests
+// that run sequentially, 11 to 13 minutes unloaded, so the budget is 30 minutes.
+const evidenceTimeoutDuration = 30 * time.Minute
+
+// evidenceTimeout is the `-test.timeout` flag value derived from evidenceTimeoutDuration.
+var evidenceTimeout = evidenceTimeoutDuration.String()
 
 // cachedEntry returns the green record cached under digest, if any.
 func cachedEntry(root, digest string) (coverageEntry, bool) {
@@ -64,10 +67,11 @@ func storeEntry(root string, e coverageEntry) {
 
 // evidenceUnit is one proven row awaiting its coverage verdict.
 type evidenceUnit struct {
-	row    int
-	digest string
-	entry  coverageEntry
-	cached bool
+	row     int
+	digest  string
+	entry   coverageEntry
+	cached  bool
+	dirTook map[string]time.Duration
 }
 
 // proveByEvidence applies rule 3 (and the red-proof of a marker row) to every proven row of this shard: a row stays proven only with a
@@ -113,7 +117,7 @@ func proveByEvidence(root string, res []result, mutants map[string][]mutant) err
 			}
 			slots <- struct{}{}
 			t0 := time.Now()
-			why, broke, also := mutantProblem(root, *r, mutants[r.Row.Pi], replays)
+			why, broke, also := mutantProblem(root, *r, mutants[r.Row.Pi], replays, u.dirTook)
 			<-slots
 			mu.Lock()
 			mutantTime += time.Since(t0)
@@ -344,9 +348,11 @@ func runMissing(root string, res []result, units []*evidenceUnit) *evidenceStats
 	wg.Wait()
 	for _, n := range needs {
 		e := coverageEntry{Digest: n.u.digest, Covered: map[string]int{}}
+		dirTook := make(map[string]time.Duration, len(n.byDir))
 		files := coverageFiles(res[n.u.row])
 		for dir, names := range n.byDir {
 			g := jobs[dir].groups[strings.Join(names, "|")]
+			dirTook[dir] = g.took
 			if g.failed {
 				e.Failed = dir
 				continue
@@ -355,6 +361,7 @@ func runMissing(root string, res []result, units []*evidenceUnit) *evidenceStats
 				e.Covered[f] += g.covered[f]
 			}
 		}
+		n.u.dirTook = dirTook
 		n.u.entry = e
 		storeEntry(root, e)
 	}

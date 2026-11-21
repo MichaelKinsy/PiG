@@ -672,7 +672,7 @@ func TestReplayHelperProcess(t *testing.T) {
 	root := markerFixture(t, "package lib\n\nimport \"testing\"\n\n// pi: packages/fx/src/widget.ts\nfunc TestWidget(t *testing.T) { _ = Widget{} }\n", `{}`)
 	res := result{Cited: []string{"lib/widget.go"}, Tests: []string{"lib#TestWidget"}}
 	mu := mutant{File: "lib/widget.go", Old: "\"hello \" + w.Name", New: "\"bye \" + w.Name"}
-	killed(root, res, mu, newReplayCaches())
+	killed(root, res, mu, newReplayCaches(), nil)
 	os.Exit(0)
 }
 
@@ -758,7 +758,7 @@ func TestARealReplayHitsTheUsersCache(t *testing.T) {
 	res := result{Cited: []string{"lib/widget.go"}, Tests: []string{"lib#TestWidget"}}
 	mu := mutant{File: "lib/widget.go", Old: "\"hello \" + w.Name", New: "\"bye \" + w.Name"}
 	c := newReplayCaches()
-	dead, infra, note := killed(root, res, mu, c)
+	dead, infra, note := killed(root, res, mu, c, nil)
 	c.close()
 	if !dead || infra != "" {
 		t.Fatalf("the mutant must be killed through the cache server: dead=%v infra=%q note=%q", dead, infra, note)
