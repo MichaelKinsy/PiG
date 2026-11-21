@@ -189,7 +189,7 @@ func TestResolveMatchesPiOnRandomFixtures(t *testing.T) {
 		manager := NewPackageManager(PackageManagerOptions{CWD: cwd, AgentDir: agentDir, SettingsManager: settings, BuiltinExtensions: f.Builtin})
 		got, gerr := manager.Resolve(nil)
 		rel := func(p string) string {
-			return configDirSuffix.ReplaceAllString(strings.ReplaceAll(p, dir, "$D"), "/.pi$1")
+			return normalizeConfigDirPath(p, dir)
 		}
 		if errText, ok := want[i]["error"]; ok {
 			if gerr == nil {
@@ -229,5 +229,25 @@ func TestResolveMatchesPiOnRandomFixtures(t *testing.T) {
 	}
 }
 
-// configDirSuffix matches PiG's project configuration directory name as a path component.
-var configDirSuffix = regexp.MustCompile(`/` + regexp.QuoteMeta(codingagent.ConfigDirName()) + `(/|$)`)
+// configDirSuffix matches PiG's project configuration directory name as a path component with either path separator.
+var configDirSuffix = regexp.MustCompile(`([/\\])` + regexp.QuoteMeta(codingagent.ConfigDirName()) + `([/\\]|$)`)
+
+func normalizeConfigDirPath(p, dir string) string {
+	return configDirSuffix.ReplaceAllString(strings.ReplaceAll(p, dir, "$D"), "${1}.pi${2}")
+}
+
+func TestNormalizeConfigDirPath(t *testing.T) {
+	cfg := codingagent.ConfigDirName()
+	for _, tc := range []struct {
+		name, dir, in, want string
+	}{
+		{"posix nested", "/tmp/0", "/tmp/0/work/proj/" + cfg + "/prompts/p1.md", "$D/work/proj/.pi/prompts/p1.md"},
+		{"posix baseDir", "/tmp/0", "/tmp/0/work/proj/" + cfg, "$D/work/proj/.pi"},
+		{"windows nested", `C:\tmp\0`, `C:\tmp\0\work\proj\` + cfg + `\prompts\p1.md`, `$D\work\proj\.pi\prompts\p1.md`},
+		{"windows baseDir", `C:\tmp\0`, `C:\tmp\0\work\proj\` + cfg, `$D\work\proj\.pi`},
+	} {
+		if got := normalizeConfigDirPath(tc.in, tc.dir); got != tc.want {
+			t.Errorf("%s: normalizeConfigDirPath(%q) = %q, want %q", tc.name, tc.in, got, tc.want)
+		}
+	}
+}

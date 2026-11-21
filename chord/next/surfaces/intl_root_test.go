@@ -143,10 +143,12 @@ func TestFormatsAllocateOnlyTheResultForCanonicalTags(t *testing.T) {
 		}
 	}
 	platform(t, nil, nil, new("de_DE.UTF-8"))
-	if n := testing.AllocsPerRun(100, func() { _, _ = FormatNumber(nil, 1234567.891, nil) }); n > 6 {
-		t.Errorf("FormatNumber(nil) allocates %v times, want at most 6", n)
+	// posixLocale calls os.LookupEnv, which allocates on Windows (UTF-16 conversion); derive the ceiling from its measured cost in this run.
+	envAllocs := testing.AllocsPerRun(100, func() { _ = posixLocale() })
+	if n := testing.AllocsPerRun(100, func() { _, _ = FormatNumber(nil, 1234567.891, nil) }); n > 5+envAllocs {
+		t.Errorf("FormatNumber(nil) allocates %v times, want at most %v", n, 5+envAllocs)
 	}
-	if n := testing.AllocsPerRun(100, func() { _, _ = FormatTime(nil, at, nil) }); n > 6 {
-		t.Errorf("FormatTime(nil) allocates %v times, want at most 6", n)
+	if n := testing.AllocsPerRun(100, func() { _, _ = FormatTime(nil, at, nil) }); n > 5+envAllocs {
+		t.Errorf("FormatTime(nil) allocates %v times, want at most %v", n, 5+envAllocs)
 	}
 }

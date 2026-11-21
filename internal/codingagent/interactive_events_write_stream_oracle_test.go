@@ -21,7 +21,11 @@ func checkStreamedWriteCardAgainstPi(t *testing.T, path, content string, expande
 	if err := encoder.Encode(content); err != nil {
 		t.Fatal(err)
 	}
-	text := `{"path":"` + path + `","content":` + strings.TrimSuffix(encoded.String(), "\n") + `}`
+	encodedPath, err := json.Marshal(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := `{"path":` + string(encodedPath) + `,"content":` + strings.TrimSuffix(encoded.String(), "\n") + `}`
 	// prefixes are byte offsets into text; piPrefixes are the same offsets in UTF-16 code units, as JavaScript slices.
 	var prefixes, piPrefixes []int
 	chars, units := 0, 0

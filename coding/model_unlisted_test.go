@@ -117,8 +117,18 @@ func TestRestoreOfAStoreOnlyModelAndAPoisonedLevel(t *testing.T) {
 		file := func(t *testing.T) string {
 			ts := "2026-11-14T03:00:00.000Z"
 			usage := `"usage":{"input":1,"output":1,"cacheRead":0,"cacheWrite":0,"totalTokens":2,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}}`
+			header, err := json.Marshal(struct {
+				Type      string `json:"type"`
+				Version   int    `json:"version"`
+				ID        string `json:"id"`
+				Timestamp string `json:"timestamp"`
+				CWD       string `json:"cwd"`
+			}{"session", 3, "0190a000-0000-7000-8000-000000000001", ts, t.TempDir()})
+			if err != nil {
+				t.Fatal(err)
+			}
 			lines := []string{
-				`{"type":"session","version":3,"id":"0190a000-0000-7000-8000-000000000001","timestamp":"` + ts + `","cwd":"` + t.TempDir() + `"}`,
+				string(header),
 				`{"type":"model_change","id":"a1","parentId":null,"timestamp":"` + ts + `","provider":"` + sh.provider + `","modelId":"` + sh.storeOnlyID + `"}`,
 				`{"type":"thinking_level_change","id":"a2","parentId":"a1","timestamp":"` + ts + `","thinkingLevel":"high"}`,
 				`{"type":"thinking_level_change","id":"a3","parentId":"a2","timestamp":"` + ts + `","thinkingLevel":"off"}`,
