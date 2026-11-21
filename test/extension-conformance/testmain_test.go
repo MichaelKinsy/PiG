@@ -26,11 +26,8 @@ var sharedSources string
 var busBuildRoot string
 
 func TestMain(m *testing.M) {
-	parent := ""
-	if runtime.GOOS != "windows" {
-		parent = "/tmp" // Unix socket paths must also fit macOS's 104-byte limit.
-	}
-	testRoot, err := os.MkdirTemp(parent, "pig-conf-")
+	// Unix socket paths must also fit macOS's 104-byte limit.
+	testRoot, err := testenv.MkdirShortTemp("pig-conf-")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "create isolated test home:", err)
 		os.Exit(2)
