@@ -30,6 +30,9 @@ var fixtureRoot, fixtureSourceRoot string
 // TestMain isolates the config root and points the SDK roots at this tree.
 func TestMain(m *testing.M) {
 	testenv.GrabTerminalIfRequested()
+	if mode := os.Getenv(processExitHelperEnv); mode != "" {
+		runProcessExitHelper(mode)
+	}
 	coding.EnableTestFauxProvider()
 	switch os.Getenv(execEchoHelperEnv) {
 	case "1":
