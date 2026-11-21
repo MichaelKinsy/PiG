@@ -15746,9 +15746,9 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **User impact:** An operation failed or was rejected
 - **Platform:** Windows
 - **Fixed in:** Unreleased
-- **Fix commits:** `649bef3ed6` (2026-11-21)
-- **Tests:** `coding/session_owned_loader_close_unix_test.go::TestSessionCloseShutsDownOwnedResourceLoader`
-- **Release note:** Closing a `coding.Session` that built its own `DefaultResourceLoader` now shuts down its Extension Host (D19) when the last Session sharing it closes, and a failed `NewSession` closes that loader before returning. Previously, child sessions created by an extension with no resources of their own (one Extension Host process per child stayed until the parent exited) and Go SDK embedders who create a Session without a loader leaked extension subprocesses past `Session.Close`, blocking directory cleanup on Windows. Affects 0.7.0.
+- **Fix commits:** `649bef3ed6` (2026-11-21), `7d12dea47a` (2026-11-21), `8378518ec6` (2026-11-21), `e509719a18` (2026-11-21)
+- **Tests:** `coding/cli/child_session_owned_loader_close_unix_test.go::TestChildSessionNoResourcesCloseEndsChildExtensionHost`, `coding/session_owned_loader_close_unix_test.go::TestSessionCloseShutsDownOwnedResourceLoader`
+- **Release note:** Closing a `coding.Session` that built its own `DefaultResourceLoader` now shuts down its Extension Host (D19) when the last Session sharing it closes, and a failed `NewSession` closes that loader before returning. Previously, child sessions created by an extension with no resources of their own (one Extension Host process per child stayed until the parent exited) and Go SDK embedders who create a Session without a loader leaked extension subprocesses past `Session.Close`, blocking directory cleanup on Windows. A `Clone` of a Session that was already closed now constructs a fresh resource loader and Extension Host of its own (previously it ran on the closed Session's leaked one), which an embedder can observe as a new extension process. Affects 0.7.0.
 
 ### BF-65411f7
 
