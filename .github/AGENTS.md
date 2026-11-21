@@ -79,7 +79,7 @@ The flow in `label` mode: push; the light run reports `CI result` red with the m
 | Android build | pr | 5 | |
 | Node loader / ubuntu-24.04, windows-latest, macos-15 | queue | 9 | |
 | Linux / parity-2 | queue | 12 | The other hermetic parity hash shard |
-| Linux / portmap-1, portmap-2, portmap-3, portmap-4, portmap-5, portmap-6, portmap-7, portmap-8 | queue | 45 | |
+| Linux / portmap-1, portmap-2, portmap-3, portmap-4, portmap-5, portmap-6, portmap-7, portmap-8, portmap-9, portmap-10, portmap-11, portmap-12 | queue | 45 | |
 | Linux / test-conformance-1, test-conformance-2, test-conformance-3, test-conformance-4 | queue | 115 | Conformance of every SDK, in four jobs of five shards (twenty in all, each its own go test process under the 10-minute package limit; the cells are built once per job and shared; 26 to 30 minutes warm, 36 to 43 minutes cold, predicted from runs 44864086404 and 44880357753 so every job stays <= 60% of the 60-minute limit warm and well under it cold); the totals below keep run 39510928254 until measured |
 | Linux / toolchains | queue | 7 | Race, integration, SDK (including `make lint-rust`) and extension corpus gates |
 | Node extensions | queue | 11 | |

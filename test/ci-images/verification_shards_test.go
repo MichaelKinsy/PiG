@@ -248,6 +248,36 @@ func TestPortmapShardsAreWiredEndToEnd(t *testing.T) {
 	}
 }
 
+// TestPortmapShardsFitTheirBudget guards against regressions like runs 44870314130 and 44880357753 where
+// Linux / portmap-1 (55.5 m, 92.5% of 60 m on southcentralus) and Linux / portmap-3 (51.8 m, 86.4% on westus)
+// exceeded the 70% slow-pool budget at PORTMAP_SHARDS=8. Scaling the worst observed 8-shard work linearly to
+// PORTMAP_SHARDS must keep every shard <= 60% of the 60-minute limit on the fast pool and <= 85% on the slow pool.
+func TestPortmapShardsFitTheirBudget(t *testing.T) {
+	limit := verificationJobs(t)["linux"].Timeout * 60
+	if limit <= 0 || limit > 3600 {
+		t.Fatalf("linux timeout = %d s, want 1..3600", limit)
+	}
+	total := portmapShards(t)
+	// Measured on run 44880357753 (portmap-1 at 8 shards): 3113 s shard work + 218 s setup on southcentralus (slow pool),
+	// and run 44870314130 (portmap-1 at 8 shards): 2430 s shard work + 216 s setup on us-west-2 (fast pool).
+	const (
+		baseShards      = 8
+		fastSetupSec    = 220
+		fastWork8Sec    = 2430
+		slowSetupSec    = 240
+		slowWork8Sec    = 3113
+		slowMarginRatio = 85 // <= 85% of limit (at least 15% margin)
+	)
+	fastProjected := fastSetupSec + (fastWork8Sec*baseShards+total-1)/total
+	slowProjected := slowSetupSec + (slowWork8Sec*baseShards+total-1)/total
+	if fastProjected*5 > limit*3 {
+		t.Errorf("PORTMAP_SHARDS=%d projects %d s fast-pool wall (> 60%% of %d s limit)", total, fastProjected, limit)
+	}
+	if slowProjected*100 > limit*slowMarginRatio {
+		t.Errorf("PORTMAP_SHARDS=%d projects %d s slow-pool wall (> %d%% of %d s limit)", total, slowProjected, slowMarginRatio, limit)
+	}
+}
+
 func TestLinuxAggregateRejectsUnsuccessfulShards(t *testing.T) {
 	job := verificationJobs(t)["verify"]
 	if !slices.Contains(job.Needs, "linux") || !strings.Contains(job.If, "always()") {

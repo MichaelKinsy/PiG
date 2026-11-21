@@ -61,7 +61,7 @@ ci-durable-contract: durable-core-host-deps durable-contract
 # caches each green row in build/portmap-coverage, but a cold run is still about 170 minutes of 4-CPU runner time (run 41987378567: three shards took 44, 49 and more than 58
 # minutes, the third until the job's 60-minute limit cancelled it), so CI runs it as PORTMAP_SHARDS parallel jobs; every shard computes the same plan, judges its own rows and skips the rest, and the Linux verification
 # job requires all of them.
-PORTMAP_SHARDS := 8
+PORTMAP_SHARDS := 12
 ci-portmap-1: portmap-check-1
 ci-portmap-2: portmap-check-2
 ci-portmap-3: portmap-check-3
@@ -70,6 +70,10 @@ ci-portmap-5: portmap-check-5
 ci-portmap-6: portmap-check-6
 ci-portmap-7: portmap-check-7
 ci-portmap-8: portmap-check-8
+ci-portmap-9: portmap-check-9
+ci-portmap-10: portmap-check-10
+ci-portmap-11: portmap-check-11
+ci-portmap-12: portmap-check-12
 portmap-check-1:
 	@$(MAKE) -s portmap-check PORTMAP_SHARD=1/$(PORTMAP_SHARDS)
 portmap-check-2:
@@ -86,6 +90,14 @@ portmap-check-7:
 	@$(MAKE) -s portmap-check PORTMAP_SHARD=7/$(PORTMAP_SHARDS)
 portmap-check-8:
 	@$(MAKE) -s portmap-check PORTMAP_SHARD=8/$(PORTMAP_SHARDS)
+portmap-check-9:
+	@$(MAKE) -s portmap-check PORTMAP_SHARD=9/$(PORTMAP_SHARDS)
+portmap-check-10:
+	@$(MAKE) -s portmap-check PORTMAP_SHARD=10/$(PORTMAP_SHARDS)
+portmap-check-11:
+	@$(MAKE) -s portmap-check PORTMAP_SHARD=11/$(PORTMAP_SHARDS)
+portmap-check-12:
+	@$(MAKE) -s portmap-check PORTMAP_SHARD=12/$(PORTMAP_SHARDS)
 
 # Run after upstream-mirror under each selected Node runtime. Do not reinstall
 # npm dependencies here: the qualified npm requires a newer Node than Pi does.
@@ -168,4 +180,4 @@ test-expectation-lint: ## Fail on test expectations edited with their code and n
 
 TEST_EXPECT_BASE ?= main
 
-.PHONY: sdk-vectors-changed ci-durable-contract test-provenance test-expectation-lint ci-preflight ci-test-changed ci-bookkeeping autofix-check ci-startup ci-build ci-build-pr ci-checks ci-checks-pr ci-toolchains ci-test-fast ci-test-fast-sharded ci-test-cli-1 ci-test-cli-2 ci-test-subprocess ci-test-conformance-1 ci-test-conformance-2 ci-test-conformance-3 ci-test-conformance-4 ci-sdk ci-extensions ci-race ci-term-engines ci-integration ci-parity ci-parity-1 ci-parity-2 parity-fast-1 parity-fast-2 ci-drift ci-drift-pr ci-contracts ci-portmap-1 ci-portmap-2 ci-portmap-3 portmap-check-1 portmap-check-2 portmap-check-3 ci-closure test-fast test-fast-parallel test-fast-sharded test-cli test-cli-1 test-cli-2 test-subprocess test-conformance test-conformance-1 test-conformance-2 test-conformance-3 test-conformance-4
+.PHONY: sdk-vectors-changed ci-durable-contract test-provenance test-expectation-lint ci-preflight ci-test-changed ci-bookkeeping autofix-check ci-startup ci-build ci-build-pr ci-checks ci-checks-pr ci-toolchains ci-test-fast ci-test-fast-sharded ci-test-cli-1 ci-test-cli-2 ci-test-subprocess ci-test-conformance-1 ci-test-conformance-2 ci-test-conformance-3 ci-test-conformance-4 ci-sdk ci-extensions ci-race ci-term-engines ci-integration ci-parity ci-parity-1 ci-parity-2 parity-fast-1 parity-fast-2 ci-drift ci-drift-pr ci-contracts ci-portmap-1 ci-portmap-2 ci-portmap-3 ci-portmap-4 ci-portmap-5 ci-portmap-6 ci-portmap-7 ci-portmap-8 ci-portmap-9 ci-portmap-10 ci-portmap-11 ci-portmap-12 portmap-check-1 portmap-check-2 portmap-check-3 portmap-check-4 portmap-check-5 portmap-check-6 portmap-check-7 portmap-check-8 portmap-check-9 portmap-check-10 portmap-check-11 portmap-check-12 ci-closure test-fast test-fast-parallel test-fast-sharded test-cli test-cli-1 test-cli-2 test-subprocess test-conformance test-conformance-1 test-conformance-2 test-conformance-3 test-conformance-4
