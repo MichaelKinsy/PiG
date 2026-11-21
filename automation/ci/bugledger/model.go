@@ -51,8 +51,8 @@ type Entry struct {
 
 // stated records the file that holds the changelog bullet of an entry and which of the entry's fields the bullet states with a marker. A stated field is the entry's as written: no committed entry and no commit message overrides it.
 type stated struct {
-	file  string
-	cause bool
+	file     string
+	cause    bool
 	tests    bool
 	evidence bool
 }

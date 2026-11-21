@@ -41,8 +41,8 @@ var pinConstRE = regexp.MustCompile(`(?m)^const UpstreamVersion = "([^"]+)"`)
 
 // The markers a bullet may end with. They are HTML comments, so the rendered changelog does not show them, and the bullet's text is the same with and without them.
 var (
-	fixMarker   = regexp.MustCompile(`\s*<!--\s*fix:\s*([0-9a-f][0-9a-f ,]*?)\s*-->`)
-	causeMarker = regexp.MustCompile(`\s*<!--\s*cause:\s*(.+?)\s*-->`)
+	fixMarker      = regexp.MustCompile(`\s*<!--\s*fix:\s*([0-9a-f][0-9a-f ,]*?)\s*-->`)
+	causeMarker    = regexp.MustCompile(`\s*<!--\s*cause:\s*(.+?)\s*-->`)
 	testsMarker    = regexp.MustCompile(`\s*<!--\s*tests:\s*(.+?)\s*-->`)
 	evidenceMarker = regexp.MustCompile(`(?s)\s*<!--\s*evidence:\s*(.+?)\s*-->`)
 )
