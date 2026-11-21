@@ -383,9 +383,6 @@ func fixtureOutput(port *countingPort) func(stream plugins.NodeStream, chunk []b
 	}
 }
 
-// holdsChannel is what HoldsChannel does (the Unix tests set it): a process of the worker's tree inherits the channel.
-var holdsChannel func(port *channel) error
-
 // holdNodeGate is the file HoldNodeStart names, once the worker knows its behaviour.
 var holdNodeGate atomic.Pointer[string]
 
@@ -481,7 +478,7 @@ func runWorkerFixture() {
 			return nil, sleep(ctx, 1_000_000_000*time.Millisecond)
 		}
 		if behaviour.HoldsChannel {
-			if err := holdsChannel(port.processPort.(*channel)); err != nil {
+			if err := holdChannel(port.processPort.(*channel)); err != nil {
 				return nil, err
 			}
 		}
