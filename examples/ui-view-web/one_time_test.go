@@ -19,6 +19,8 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/browsertest"
+
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 )
 
 // The address of the bridge is good for one load. It holds a one-time code in its fragment; the page posts the code to
@@ -195,7 +197,7 @@ func startHooked(t *testing.T, env []string, args ...string) (bridge, *rawBridge
 	home := t.TempDir()
 	env = append([]string{"PIG_TEST_FAUX=1", "PIG_HOME=" + filepath.Join(home, "home"), "PI_HOME=" + filepath.Join(home, "pihome"),
 		"PIG_CODING_AGENT_DIR=" + filepath.Join(home, "agent"), "PI_CODING_AGENT_DIR=" + filepath.Join(home, "piagent")}, env...)
-	r := startRaw(t, []string{"--import", hook}, env, args)
+	r := startRaw(t, []string{"--import", nodeurl.PathToFileURL(hook, runtime.GOOS == "windows")}, env, args)
 	// The pigs the bridge started end with it.
 	t.Cleanup(func() {
 		if !r.ended {

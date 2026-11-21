@@ -218,7 +218,7 @@ func TestNodeRenderRequestAfterReadyIsAnsweredBeforeTheHighlightRegistration(t *
 	if err != nil {
 		t.Skipf("node unavailable: %v", err)
 	}
-	root := testenv.ShortTempDir(t, "pig-node-highlight-gate-")
+	root := testenv.ShortTempDir(t, "pig-hl-gate-")
 	entry := filepath.Join(root, "highlight_gate.mjs")
 	if err := os.WriteFile(entry, []byte(highlightGateFixture), 0o600); err != nil {
 		t.Fatal(err)

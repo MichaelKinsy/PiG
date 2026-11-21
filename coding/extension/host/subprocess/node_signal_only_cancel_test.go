@@ -43,7 +43,7 @@ func startSignalOnlyRuntime(t *testing.T) net.Conn {
 	if err != nil {
 		t.Skipf("node unavailable: %v", err)
 	}
-	root := testenv.ShortTempDir(t, "pig-node-signal-only-")
+	root := testenv.ShortTempDir(t, "pig-sigonly-")
 	entry := filepath.Join(root, "signal_only.mjs")
 	if err := os.WriteFile(entry, []byte(signalOnlyFixture), 0o600); err != nil {
 		t.Fatal(err)

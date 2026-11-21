@@ -140,6 +140,30 @@ func writeAt(t testing.TB, root, name, content string, mtime time.Time) {
 	}
 }
 
+// filesystemTimeStep returns the smallest modification-time step that the filesystem holding root preserves above base (1 ns on ext4/APFS, 100 ns on NTFS).
+func filesystemTimeStep(t testing.TB, root string, base time.Time) time.Duration {
+	t.Helper()
+	probe := filepath.Join(t.TempDir(), "mtime-step")
+	if err := os.WriteFile(probe, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, step := range []time.Duration{time.Nanosecond, 100 * time.Nanosecond, time.Microsecond, time.Millisecond, time.Second} {
+		target := base.Add(step)
+		if err := os.Chtimes(probe, target, target); err != nil {
+			t.Fatal(err)
+		}
+		info, err := os.Stat(probe)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.ModTime().UnixNano() != base.UnixNano() {
+			return step
+		}
+	}
+	t.Fatalf("filesystem at %s did not preserve any modification-time step up to 1s above %v", root, base)
+	return 0
+}
+
 // longAgo is the time of the files of the fixtures: well before the window in which the memo does not trust a file. It is the same time at every
 // call, to the second, so an edit that gives a file back this time restores exactly the time the memo stamped.
 var longAgo = sync.OnceValue(func() time.Time { return time.Now().Add(-time.Hour).Truncate(time.Second) })
@@ -318,8 +342,10 @@ func TestStagedSDKHashFollowsEveryChangeOfASizeATimeOrTheFiles(t *testing.T) {
 		{"a file of the same size, an earlier time", func(t *testing.T, root string) {
 			writeAt(t, root, "sdk.go", "package sdk\n\nconst Protocol = 2\n", then.Add(-30*time.Minute))
 		}},
-		{"a file of the same size, a time a nanosecond later", func(t *testing.T, root string) {
-			writeAt(t, root, "sdk.go", "package sdk\n\nconst Protocol = 2\n", then.Add(time.Nanosecond))
+		{"a file of the same size, a time one filesystem tick later", func(t *testing.T, root string) {
+			// NTFS stores modification times in 100 ns units (FILETIME), so a 1 ns step rounds back to the same mtime;
+			// probe the smallest step this filesystem preserves so the subtest proves sub-second mtime sensitivity on every OS.
+			writeAt(t, root, "sdk.go", "package sdk\n\nconst Protocol = 2\n", then.Add(filesystemTimeStep(t, root, then)))
 		}},
 		{"a file in a package below the root", func(t *testing.T, root string) {
 			writeAt(t, root, "internal/util/util.go", "package util\n\nvar X = 1\n", then)

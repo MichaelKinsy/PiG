@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -16,6 +17,8 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
 	"github.com/MichaelKinsy/PiG/durable/core/rec"
 	"github.com/MichaelKinsy/PiG/durable/core/store"
+
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 )
 
 // J builds an ordered JSON object from alternating keys and values.
@@ -150,7 +153,8 @@ func runOracle(t testing.TB, script *commitScript, args ...string) (string, erro
 	if err := os.WriteFile(scriptPath, []byte(script.text()), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	argv := []string{"--no-warnings", "--import", filepath.Join(root, "durable/contract/hooks/register.mjs"),
+	registerURL := nodeurl.PathToFileURL(filepath.Join(root, "durable/contract/hooks/register.mjs"), runtime.GOOS == "windows")
+	argv := []string{"--no-warnings", "--import", registerURL,
 		filepath.Join(root, "durable/core/store/testdata/oracle.mjs"), args[0], scriptPath}
 	cmd := exec.Command("node", append(argv, args[1:]...)...)
 	cmd.Env = append(os.Environ(), "CONTRACT_PI_SOURCE="+piSource(t), "CONTRACT_TRACE="+filepath.Join(dir, "trace.jsonl"), "ORACLE_DIR="+dir)

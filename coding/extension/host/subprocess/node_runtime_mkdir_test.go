@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -129,7 +130,8 @@ func TestExtractRuntimeArchiveMakesNestedDirectories(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if info.Mode().Perm() != 0o644&^umaskForTest(t) {
+		// Windows does not preserve POSIX group/other permission bits (files read back 0666).
+		if runtime.GOOS != "windows" && info.Mode().Perm() != 0o644&^umaskForTest(t) {
 			t.Errorf("%s mode %v", name, info.Mode())
 		}
 		data, err := os.ReadFile(path)
@@ -139,7 +141,8 @@ func TestExtractRuntimeArchiveMakesNestedDirectories(t *testing.T) {
 	}
 	for _, dir := range []string{"shims", "shims/x", "shims/x/deep", "shims/x/deep/er", "shims/y"} {
 		info, err := os.Lstat(filepath.Join(dst, filepath.FromSlash(dir)))
-		if err != nil || !info.IsDir() || info.Mode().Perm() != 0o755&^umaskForTest(t) {
+		// Windows does not preserve POSIX group/other permission bits (directories read back 0777).
+		if err != nil || !info.IsDir() || (runtime.GOOS != "windows" && info.Mode().Perm() != 0o755&^umaskForTest(t)) {
 			t.Errorf("%s: %v, %v", dir, info, err)
 		}
 	}
