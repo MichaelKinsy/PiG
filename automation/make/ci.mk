@@ -18,7 +18,8 @@ ci-checks-pr: ci-startup ci-drift-pr ci-closure
 ci-toolchains: ci-race ci-integration ci-sdk ci-extensions ci-term-engines
 # CI runs test-fast and test-cli in halves on separate jobs; each pair together is the whole target.
 ci-test-fast: test-fast-parallel
-ci-test-fast-sharded: test-fast-sharded
+ci-test-fast-sharded: test-fast-sharded-1
+ci-test-fast-sharded-2: test-fast-sharded-2
 # The light pull-request run's test-fast shard (automation/ci/ci-tiers.txt): the fast-parallel packages the change affects (TEST_BASE names the pull request's base), no -race so it runs what the full run does, and the whole ci-test-fast when the change touches go.mod, go.sum, go.work or go.work.sum or a file no package test reads.
 ci-test-changed: export TEST_CHANGED_FOR := fast-parallel
 ci-test-changed: export TEST_CHANGED_RACE := none
@@ -144,6 +145,12 @@ test-fast-parallel: test-prereqs interface-deps parity-deps durable-interop-deps
 test-fast-sharded: test-prereqs interface-deps parity-deps durable-interop-deps
 	@./automation/ci/test-grouped.sh fast-sharded
 
+test-fast-sharded-1: test-prereqs interface-deps parity-deps durable-interop-deps
+	@./automation/ci/test-grouped.sh fast-sharded 1 2
+
+test-fast-sharded-2: test-prereqs interface-deps parity-deps durable-interop-deps
+	@./automation/ci/test-grouped.sh fast-sharded 2 2
+
 test-cli-1: test-prereqs interface-deps parity-deps durable-interop-deps
 	@./automation/ci/test-grouped.sh cli 1 4
 
@@ -180,4 +187,4 @@ test-expectation-lint: ## Fail on test expectations edited with their code and n
 
 TEST_EXPECT_BASE ?= main
 
-.PHONY: sdk-vectors-changed ci-durable-contract test-provenance test-expectation-lint ci-preflight ci-test-changed ci-bookkeeping autofix-check ci-startup ci-build ci-build-pr ci-checks ci-checks-pr ci-toolchains ci-test-fast ci-test-fast-sharded ci-test-cli-1 ci-test-cli-2 ci-test-subprocess ci-test-conformance-1 ci-test-conformance-2 ci-test-conformance-3 ci-test-conformance-4 ci-sdk ci-extensions ci-race ci-term-engines ci-integration ci-parity ci-parity-1 ci-parity-2 parity-fast-1 parity-fast-2 ci-drift ci-drift-pr ci-contracts ci-portmap-1 ci-portmap-2 ci-portmap-3 ci-portmap-4 ci-portmap-5 ci-portmap-6 ci-portmap-7 ci-portmap-8 ci-portmap-9 ci-portmap-10 ci-portmap-11 ci-portmap-12 portmap-check-1 portmap-check-2 portmap-check-3 portmap-check-4 portmap-check-5 portmap-check-6 portmap-check-7 portmap-check-8 portmap-check-9 portmap-check-10 portmap-check-11 portmap-check-12 ci-closure test-fast test-fast-parallel test-fast-sharded test-cli test-cli-1 test-cli-2 test-subprocess test-conformance test-conformance-1 test-conformance-2 test-conformance-3 test-conformance-4
+.PHONY: sdk-vectors-changed ci-durable-contract test-provenance test-expectation-lint ci-preflight ci-test-changed ci-bookkeeping autofix-check ci-startup ci-build ci-build-pr ci-checks ci-checks-pr ci-toolchains ci-test-fast ci-test-fast-sharded test-fast-sharded-1 test-fast-sharded-2 ci-test-fast-sharded-2 ci-test-cli-1 ci-test-cli-2 ci-test-subprocess ci-test-conformance-1 ci-test-conformance-2 ci-test-conformance-3 ci-test-conformance-4 ci-sdk ci-extensions ci-race ci-term-engines ci-integration ci-parity ci-parity-1 ci-parity-2 parity-fast-1 parity-fast-2 ci-drift ci-drift-pr ci-contracts ci-portmap-1 ci-portmap-2 ci-portmap-3 ci-portmap-4 ci-portmap-5 ci-portmap-6 ci-portmap-7 ci-portmap-8 ci-portmap-9 ci-portmap-10 ci-portmap-11 ci-portmap-12 portmap-check-1 portmap-check-2 portmap-check-3 portmap-check-4 portmap-check-5 portmap-check-6 portmap-check-7 portmap-check-8 portmap-check-9 portmap-check-10 portmap-check-11 portmap-check-12 ci-closure test-fast test-fast-parallel test-fast-sharded test-cli test-cli-1 test-cli-2 test-subprocess test-conformance test-conformance-1 test-conformance-2 test-conformance-3 test-conformance-4

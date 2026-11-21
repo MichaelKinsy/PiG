@@ -457,7 +457,7 @@ func TestLightPullRequestRunKeepsTheFastGatesUnderTheSameNames(t *testing.T) {
 	for _, entry := range light.Matrix["linux"] {
 		lightGates = append(lightGates, leaves(entry.Target)...)
 	}
-	for _, gate := range []string{"build", "vet", "lint-changed", "lint-scenarios", "port-map-drift", "correspondence-check", "interface-gaps", "test-changed", "test-fast-sharded", "test-cli-1", "test-cli-2", "test-subprocess", "parity-fast-1"} {
+	for _, gate := range []string{"build", "vet", "lint-changed", "lint-scenarios", "port-map-drift", "correspondence-check", "interface-gaps", "test-changed", "test-fast-sharded-1", "test-fast-sharded-2", "test-cli-1", "test-cli-2", "test-subprocess", "parity-fast-1"} {
 		if !slices.Contains(lightGates, gate) {
 			t.Errorf("the light run does not run %s", gate)
 		}

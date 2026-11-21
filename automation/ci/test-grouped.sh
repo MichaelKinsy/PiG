@@ -364,8 +364,9 @@ case "$MODE" in
     run_group serial-exclusive "$SERIAL_PARALLEL" ${SERIAL_PKGS[@]+"${SERIAL_PKGS[@]}"}
     ;;
   fast|fast-parallel|fast-sharded)
-    # fast is fast-parallel and fast-sharded in one run. CI runs the two halves on separate jobs, because together they
-    # were the run's longest job.
+    # fast is fast-parallel and fast-sharded in one run. CI runs fast-parallel on one job and splits fast-sharded
+    # into two halves (fast-sharded 1 2 and fast-sharded 2 2) so each stays within 60% of the 60-minute limit fast
+    # and under 85% on the slow pool. make test-fast-sharded runs all fast-sharded packages (no range).
     # Every group runs even when an earlier one failed, so one run reports all the failing groups: a failure in the parallel group must not hide one in the serial packages.
     status=0
     if [[ "$MODE" != fast-sharded ]]; then
@@ -375,6 +376,28 @@ case "$MODE" in
       # Every sharded package but the extension host and the conformance suite, which test-subprocess and test-conformance run.
       fast_sharded=()
       for pkg in ${SHARD_COUNT_PKGS[@]+"${SHARD_COUNT_PKGS[@]}"}; do [[ "$pkg" == "$SUBPROCESS_PKG" || "$pkg" == "$CONFORMANCE_PKG" ]] || fast_sharded+=("$pkg"); done
+      if [[ "$MODE" == fast-sharded && $# -gt 1 ]]; then
+        half_idx="${2:-}"
+        half_total="${3:-}"
+        if ! [[ "$half_idx" =~ ^[0-9]+$ && "$half_total" =~ ^[0-9]+$ ]] || (( half_total != 2 || half_idx < 1 || half_idx > half_total )); then
+          echo "[test-grouped] fast-sharded: slice $half_idx/$half_total is not 1/2 or 2/2" >&2
+          exit 2
+        fi
+        # Partition the fast-sharded packages into two balanced halves by measured CI wall time (run 44880357753):
+        # half 1: ./ai, ./tui, ./tui/internal/hljs (~17.7 m tests); half 2: every other fast-sharded package (~15.5 m tests).
+        # Any newly added SHARDED_SPEC package lands in half 2 automatically so the union always equals fast_sharded.
+        selected_sharded=()
+        for pkg in ${fast_sharded[@]+"${fast_sharded[@]}"}; do
+          case "$pkg" in
+            */ai|*/tui|*/tui/internal/hljs) pkg_half=1 ;;
+            *) pkg_half=2 ;;
+          esac
+          if (( pkg_half == half_idx )); then
+            selected_sharded+=("$pkg")
+          fi
+        done
+        fast_sharded=("${selected_sharded[@]}")
+      fi
       [[ ${#fast_sharded[@]} -eq 0 ]] || run_sharded "$SUBPROCESS_PARALLEL" "${fast_sharded[@]}" || status=$?
     fi
     if [[ "$MODE" != fast-sharded ]]; then
@@ -473,7 +496,7 @@ case "$MODE" in
     if [[ ${#SERIAL_PKGS[@]} -eq 0 ]]; then echo '  (none)'; else printf '  %s\n' "${SERIAL_PKGS[@]}"; fi
     ;;
   *)
-    echo "usage: $0 [default|fast|fast-parallel|fast-sharded|cli [<first> <last>]|subprocess [<first> <last>]|conformance [<first> <last>]|changed|stress|report]" >&2
+    echo "usage: $0 [default|fast|fast-parallel|fast-sharded [<part> <total>]|cli [<first> <last>]|subprocess [<first> <last>]|conformance [<first> <last>]|changed|stress|report]" >&2
     exit 2
     ;;
 esac
