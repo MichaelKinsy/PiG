@@ -5,10 +5,10 @@ import {
   openBrowser,
   questionTerminal,
   removeMcpServerConfig
-} from "./chunk-KBAOTQS2.js";
+} from "./chunk-TQI2362R.js";
 import {
   ModelRuntime
-} from "./chunk-HU4A3ZE6.js";
+} from "./chunk-LWMW44S6.js";
 import "./chunk-PNTN457B.js";
 import {
   McpOAuthCredentialStore,
@@ -17,12 +17,12 @@ import {
   McpSignInCancelledError,
   createDefaultTransport,
   signInMcpServer
-} from "./chunk-VMY4OGAJ.js";
+} from "./chunk-CQW3CA27.js";
 import {
   getMcpToolExposure,
   validateMcpServerConfig
-} from "./chunk-H3JRSATQ.js";
-import "./chunk-BXLOEZ7M.js";
+} from "./chunk-4Q37KZ2Z.js";
+import "./chunk-RWSVZTAH.js";
 import {
   APP_NAME,
   CONFIG_DIR_NAME

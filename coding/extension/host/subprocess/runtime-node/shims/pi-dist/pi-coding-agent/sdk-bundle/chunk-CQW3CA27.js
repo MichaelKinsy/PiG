@@ -3,10 +3,10 @@ import {
   isClientMetadataDocumentCallback,
   resolveConfigValueOrThrow,
   resolveHeadersOrThrow
-} from "./chunk-H3JRSATQ.js";
+} from "./chunk-4Q37KZ2Z.js";
 import {
   sliceTail
-} from "./chunk-BXLOEZ7M.js";
+} from "./chunk-RWSVZTAH.js";
 import {
   APP_NAME,
   VERSION,

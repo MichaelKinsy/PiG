@@ -33,10 +33,8 @@ export async function runPrintMode(runtimeHost, options) {
         return disposing;
     };
     const registerSignalHandlers = () => {
-        const signals = ["SIGTERM"];
-        if (process.platform !== "win32") {
-            signals.push("SIGHUP");
-        }
+        // Pi 31b407dc63 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+        const signals = ["SIGTERM", "SIGHUP"];
         for (const signal of signals) {
             const exitCode = signal === "SIGHUP" ? 129 : 143;
             const handler = () => {

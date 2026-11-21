@@ -12,7 +12,7 @@ import {
   raceWithAbortSignal,
   resolveConfigValueOrThrow,
   resolveHeadersOrThrow
-} from "./chunk-H3JRSATQ.js";
+} from "./chunk-4Q37KZ2Z.js";
 import {
   VERSION,
   getAgentDir,

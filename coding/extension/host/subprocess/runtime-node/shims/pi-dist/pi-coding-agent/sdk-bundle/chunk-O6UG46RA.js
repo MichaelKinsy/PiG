@@ -5,12 +5,12 @@ import {
   getBranchSelection,
   getVirtualModelState,
   isVirtualModel
-} from "./chunk-HU4A3ZE6.js";
+} from "./chunk-LWMW44S6.js";
 import {
   createAllToolDefinitions,
   createLocalBashOperations,
   processImage
-} from "./chunk-LH44ZUZH.js";
+} from "./chunk-QHFOACPC.js";
 import {
   getPiUserAgent
 } from "./chunk-PNTN457B.js";
@@ -26,7 +26,7 @@ import {
   splitIncompleteAnsiSuffix,
   stripAnsi,
   wrapToolDefinition
-} from "./chunk-PZKKWCBI.js";
+} from "./chunk-QSKV7LUU.js";
 import {
   FS_WATCH_RETRY_DELAY_MS,
   closeWatcher,
@@ -44,13 +44,13 @@ import {
   createToolNameMatcher,
   isMcpToolName,
   validateMcpServerConfig
-} from "./chunk-H3JRSATQ.js";
+} from "./chunk-4Q37KZ2Z.js";
 import {
   DEFAULT_MAX_BYTES,
   sanitizeBinaryOutput,
   sliceHead,
   truncateTail
-} from "./chunk-BXLOEZ7M.js";
+} from "./chunk-RWSVZTAH.js";
 import {
   APP_NAME,
   CONFIG_DIR_NAME,

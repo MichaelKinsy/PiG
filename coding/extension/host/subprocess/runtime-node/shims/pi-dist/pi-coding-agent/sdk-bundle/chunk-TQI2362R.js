@@ -1,6 +1,6 @@
 import {
   validateMcpServerConfig
-} from "./chunk-H3JRSATQ.js";
+} from "./chunk-4Q37KZ2Z.js";
 import {
   CONFIG_DIR_NAME,
   canonicalizePath,

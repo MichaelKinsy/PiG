@@ -347073,6 +347073,17 @@
       "shapeHash": "sha256:6cea17bb4a834f24a5a63baa6d9eb109c6eab6da370bbc4b3d9b9ce0fc72503e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#killTrackedProcessGroups",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "killTrackedProcessGroups",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(processes []*os.Process)"
+      },
+      "shapeHash": "sha256:0993649b5e3b060c23a2d2d4abaad99beb4bfef1c97a1997aabd00c7d3f4bc98"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#latestReleaseTagVersion",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
       "name": "latestReleaseTagVersion",
@@ -347346,6 +347357,17 @@
         "type": "func(pid int) *os/exec.Cmd"
       },
       "shapeHash": "sha256:2334ba920b3abfa75a5c93fa9d0f3c8d913395a4576f2aa45f64b129c97320df"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#newTaskkillCommandContext",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "newTaskkillCommandContext",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, pids ...int) *os/exec.Cmd"
+      },
+      "shapeHash": "sha256:e06a0e0ecc04df0fe66ab1dc2e0005546ef99236b79accb66e3b882ca4bf1405"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#newTimeoutTimer",
@@ -348622,6 +348644,17 @@
         "type": "func(tool string, config systemToolConfig) string"
       },
       "shapeHash": "sha256:c65c05f09c393d61b115f8e59745a064b8f961d9228f58b3ad010fe194c4a212"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#taskkillExePath",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "taskkillExePath",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#termuxPackages",

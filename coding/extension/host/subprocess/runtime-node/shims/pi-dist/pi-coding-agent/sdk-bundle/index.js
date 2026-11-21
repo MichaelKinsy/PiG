@@ -7,7 +7,7 @@ import {
   openBrowser,
   questionTerminal,
   updateMcpServerConfig
-} from "./chunk-KBAOTQS2.js";
+} from "./chunk-TQI2362R.js";
 import {
   ArminComponent
 } from "./chunk-3MYHF4IX.js";
@@ -123,13 +123,13 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-FUDLI7FO.js";
+} from "./chunk-O6UG46RA.js";
 import {
   CredentialSynchronizationError,
   InMemoryCodingAgentModelsStore,
   ModelRuntime,
   VIRTUAL_MODEL_STATE_ENTRY
-} from "./chunk-HU4A3ZE6.js";
+} from "./chunk-LWMW44S6.js";
 import {
   convertToPng,
   createBashToolDefinition,
@@ -162,7 +162,7 @@ import {
   resolveReadPath,
   withFileMutationQueue,
   writeRenderers
-} from "./chunk-LH44ZUZH.js";
+} from "./chunk-QHFOACPC.js";
 import {
   fetchWithRetry,
   getPiUserAgent
@@ -172,7 +172,7 @@ import {
   TOOL_SEARCH_TOOL_NAME,
   createCodemodeToolDefinition,
   createToolSearchToolDefinition
-} from "./chunk-UNRIEWAN.js";
+} from "./chunk-UFH337D2.js";
 import {
   SETTINGS_DEFAULTS,
   addUsageToTotals,
@@ -188,7 +188,7 @@ import {
   stripAnsi,
   truncateToVisualLines,
   writeOutputFile
-} from "./chunk-PZKKWCBI.js";
+} from "./chunk-QSKV7LUU.js";
 import {
   SYSTEM_THEME_NAME,
   THEME_TOKENS,
@@ -232,7 +232,7 @@ import {
   getMcpToolExposure,
   raceWithAbortSignal,
   readStoredCredential
-} from "./chunk-H3JRSATQ.js";
+} from "./chunk-4Q37KZ2Z.js";
 import {
   DEFAULT_MAX_BYTES,
   DEFAULT_MAX_LINES,
@@ -244,7 +244,7 @@ import {
   truncateHead,
   truncateLine,
   truncateTail
-} from "./chunk-BXLOEZ7M.js";
+} from "./chunk-RWSVZTAH.js";
 import {
   APP_NAME,
   APP_TITLE,
@@ -799,7 +799,7 @@ function createMcpResourceToolDefinitions(options) {
 __name(createMcpResourceToolDefinitions, "createMcpResourceToolDefinitions");
 
 // pi-dist/pi-coding-agent/extensions/mcp/runtime.lazy.js
-var loadMcpRuntime = /* @__PURE__ */ __name(() => import("./chunk-JDQCQVD5.js"), "loadMcpRuntime");
+var loadMcpRuntime = /* @__PURE__ */ __name(() => import("./chunk-ZPUZVG2F.js"), "loadMcpRuntime");
 
 // pi-dist/pi-coding-agent/extensions/mcp/ui.js
 import { Container as Container3, Input, SelectList, Spacer as Spacer2, Text as Text3, truncateToWidth, visibleWidth } from "../../../pi-tui.mjs";
@@ -6648,7 +6648,7 @@ var builtInExtensions = [
 ];
 
 // pi-dist/pi-coding-agent/extensions/mcp/cli.lazy.js
-var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-4E2HV3LO.js"), "loadMcpCommand");
+var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-KRQWQAEI.js"), "loadMcpCommand");
 
 // pi-dist/pi-coding-agent/migrations.js
 import chalk5 from "../../../chalk/source/index.js";
@@ -16817,6 +16817,7 @@ ${message}`, ["Yes", "No"], opts, {
       this.themeController.disableAutoSync();
       await this.ui.terminal.drainInput(1e3);
       this.stop();
+      killTrackedDetachedChildren();
       process.exit(0);
     }
     this.themeController.disableAutoSync();
@@ -16828,6 +16829,7 @@ ${message}`, ["Yes", "No"], opts, {
       process.stdout.write(`${chalk6.dim("To resume this session:")} ${resumeCommand}
 `);
     }
+    killTrackedDetachedChildren();
     process.exit(0);
   }
   emergencyTerminalExit() {
@@ -16889,10 +16891,7 @@ ${this.crashReportInstructions()}`);
   }
   registerSignalHandlers() {
     this.unregisterSignalHandlers();
-    const signals = ["SIGTERM"];
-    if (process.platform !== "win32") {
-      signals.push("SIGHUP");
-    }
+    const signals = ["SIGTERM", "SIGHUP"];
     for (const signal of signals) {
       const handler = /* @__PURE__ */ __name(() => {
         killTrackedDetachedChildren();
@@ -19156,10 +19155,7 @@ async function runPrintMode(runtimeHost, options) {
     return disposing;
   }, "disposeRuntime");
   const registerSignalHandlers = /* @__PURE__ */ __name(() => {
-    const signals = ["SIGTERM"];
-    if (process.platform !== "win32") {
-      signals.push("SIGHUP");
-    }
+    const signals = ["SIGTERM", "SIGHUP"];
     for (const signal of signals) {
       const exitCode2 = signal === "SIGHUP" ? 129 : 143;
       const handler = /* @__PURE__ */ __name(() => {
@@ -20028,10 +20024,7 @@ async function runRpcMode(runtimeHost) {
     });
   }, "rebindSession");
   const registerSignalHandlers = /* @__PURE__ */ __name(() => {
-    const signals = ["SIGTERM"];
-    if (process.platform !== "win32") {
-      signals.push("SIGHUP");
-    }
+    const signals = ["SIGTERM", "SIGHUP"];
     for (const signal of signals) {
       const exitCode = signal === "SIGHUP" ? 129 : 143;
       process.on(signal, () => {
@@ -20331,6 +20324,7 @@ async function runRpcMode(runtimeHost) {
     if (signal !== "SIGTERM") {
       await flushRawStdout();
     }
+    killTrackedDetachedChildren();
     process.exit(exitCode);
   }
   __name(shutdown, "shutdown");
