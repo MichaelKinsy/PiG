@@ -80,7 +80,7 @@ The flow in `label` mode: push; the light run reports `CI result` red with the m
 | Node loader / ubuntu-24.04, windows-latest, macos-15 | queue | 9 | |
 | Linux / parity-2 | queue | 12 | The other hermetic parity hash shard |
 | Linux / portmap-1, portmap-2, portmap-3, portmap-4, portmap-5, portmap-6, portmap-7, portmap-8 | queue | 45 | |
-| Linux / test-conformance-1, test-conformance-2 | queue | 30 | Conformance of every SDK, in two halves of ten shards (twenty in all, each its own go test process under the 10-minute package limit; the cells are built once per job and shared) |
+| Linux / test-conformance-1, test-conformance-2, test-conformance-3, test-conformance-4 | queue | 115 | Conformance of every SDK, in four jobs of five shards (twenty in all, each its own go test process under the 10-minute package limit; the cells are built once per job and shared; 26 to 30 minutes warm, 36 to 43 minutes cold, predicted from runs 44864086404 and 44880357753 so every job stays <= 60% of the 60-minute limit warm and well under it cold); the totals below keep run 39510928254 until measured |
 | Linux / toolchains | queue | 7 | Race, integration, SDK (including `make lint-rust`) and extension corpus gates |
 | Node extensions | queue | 11 | |
 | Chord surfaces | queue | 20 | The terminal surface's tests under current Node and the web surface's in the runner's Chrome (`make ci-chord-tui`, `make ci-chord-web`), each failing, not skipping, without its Node or browser. They were the last two steps of Node extensions and have their own job as in Pi (aca89cfe14). The limit is the job's, not yet a measured run time, and the job is not in the totals below |

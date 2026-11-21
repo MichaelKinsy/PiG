@@ -463,7 +463,7 @@ shards 10
 10 TestTypeEngineVectorsThroughTheHost
 10 TestUIStateBarriersAcrossSDKs
 
-# The two Linux test-conformance jobs run these twenty shards, ten each, one after another, each its own go test process under go test's 10-minute package
+# The four Linux test-conformance jobs run these twenty shards, five each, one after another, each its own go test process under go test's 10-minute package
 # timeout. Every shard process shares the extension cells (testenv.SharedCellCacheDir, built in TestMain), so a shard's wall is its tests' own time plus about
 # 14 s of process overhead.
 # The weights are generated, not tuned by hand, and can be checked: automation/ci/test-shard-timings/extension-conformance.json holds the timings they come
