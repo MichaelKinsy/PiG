@@ -19,34 +19,27 @@ import (
 	modzip "golang.org/x/mod/zip"
 )
 
-// TrackedFiles lists Git-tracked paths relative to dir. Outside a Git checkout,
-// it lists all files: a release source archive is already tracked-only.
+// TrackedFiles lists Git-tracked paths relative to dir.
+// It requires a Git checkout and a working git binary; failing to run git
+// returns an error naming dir and git's output rather than falling back to
+// walking untracked files.
 func TrackedFiles(dir string) ([]string, error) {
-	//nolint:gosec // G204 (class a): program is literal git; args are -C of a computed module directory and fixed rev-parse --show-toplevel.
-	if err := exec.Command("git", "-C", dir, "rev-parse", "--show-toplevel").Run(); err == nil {
-		//nolint:gosec // G204 (class a): program is literal git; args are -C of the same computed module directory and fixed ls-files -z -- .
-		out, err := exec.Command("git", "-C", dir, "ls-files", "-z", "--", ".").Output()
-		if err != nil {
-			return nil, fmt.Errorf("list tracked files: %w", err)
+	//nolint:gosec // G204 (class a): program is literal git; args are -C of a computed module directory and fixed ls-files -z -- .
+	cmd := exec.Command("git", "-C", dir, "ls-files", "-z", "--", ".")
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		msg := strings.TrimSpace(stderr.String())
+		if msg != "" {
+			return nil, fmt.Errorf("list tracked files in %s: %w (%s)", dir, err, msg)
 		}
-		if len(out) == 0 {
-			return nil, nil
-		}
-		return strings.Split(strings.TrimSuffix(string(out), "\x00"), "\x00"), nil
+		return nil, fmt.Errorf("list tracked files in %s: %w", dir, err)
 	}
-	var files []string
-	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return err
-		}
-		rel, err := filepath.Rel(dir, path)
-		if err != nil {
-			return err
-		}
-		files = append(files, filepath.ToSlash(rel))
-		return nil
-	})
-	return files, err
+	if len(out) == 0 {
+		return nil, nil
+	}
+	return strings.Split(strings.TrimSuffix(string(out), "\x00"), "\x00"), nil
 }
 
 type diskFile struct {

@@ -99,12 +99,16 @@ func run(o options) error {
 	if err != nil {
 		return err
 	}
-	// The rules read Pi's source under .upstream/current. Without it, rows a rule closes from that source fall back to hand decisions
-	// the run cannot find; with another Pi's mirror, rows reopen and the run succeeds. A run that writes stops first, before it writes
-	// anything.
+	// The rules read Pi's source under .upstream/current. Without it, a detector cannot derive anything and would report false gaps
+	// and stale reviewed entries; with another Pi's mirror, a writing run would reopen rows and exit 0. Stop before doing any work.
 	if o.writes() {
 		if err := upstreammirror.Check(root, o.version); err != nil {
 			return fmt.Errorf("refusing to rewrite the ledger: %w", err)
+		}
+	} else if o.writeReach == "" {
+		mirrorDir := filepath.Join(root, ".upstream", "current")
+		if _, err := os.Stat(filepath.Join(mirrorDir, "packages")); err != nil {
+			return fmt.Errorf("the Pi mirror is missing at %s: run `make upstream-mirror` (%w)", mirrorDir, err)
 		}
 	}
 	// Parts of the engine find the repository from the working directory (the PORT_MAP placement rule), so the working directory is the root.
