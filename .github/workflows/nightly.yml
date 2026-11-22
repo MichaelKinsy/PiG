@@ -27,7 +27,7 @@ jobs:
   race:
     name: Race / ${{ matrix.os }} / ${{ matrix.group }}${{ matrix.shard && format(' / {0}', matrix.shard) || '' }}
     runs-on: ${{ matrix.os }}
-    # automation/ci/race-packages.txt names the packages of each group. The cli group is one package whose whole -race run took 38 minutes on a 56-core slice, so it runs as seven shards of its tests (PIG_RACE_SHARD): every shard's -run pattern must stay under automation/ci/test-shard-pattern.sh's 24,000-character limit with room for growth (at seven shards the longest pattern is 14,421 characters; recompute by measuring automation/ci/test-shard-pattern.sh k n ./coding/cli for each shard k of n). The parity and conformance groups run on Linux only (conformance is test/extension-conformance in four shards, PIG_RACE_SHARD): the parity group holds the long parity-tool test packages (closure 483 s and sdksurface 1406 s under -race on 8 CPUs). The shared group holds the packages that use sync, atomic, channels or context cancellation without starting a goroutine themselves (race-packages.txt) and runs on both Linux and macOS.
+    # automation/ci/race-packages.txt names the packages of each group. The cli group is one package whose whole -race run took 38 minutes on a 56-core slice, so it runs as seven shards of its tests (PIG_RACE_SHARD): every shard's -run pattern must stay under automation/ci/test-shard-pattern.sh's 24,000-character limit with room for growth (at seven shards the longest pattern is 14,421 characters; recompute by measuring automation/ci/test-shard-pattern.sh k n ./coding/cli for each shard k of n). The tui and codingagent groups are single packages whose whole -race runs exceeded or approached Go's 60-minute per-package timeout on macOS (tui timed out at 1h0m0s; internal/codingagent took 3,274 s) and exceeded half an hour on Linux (tui 1,880 s, internal/codingagent 1,818 s), so both run sharded via PIG_RACE_SHARD on both Linux and macOS: tui in 8 shards (max pattern 17,081 chars, matching automation/ci/test-shard-weights.txt; recompute with automation/ci/test-shard-pattern.sh k 8 ./tui) and codingagent in 12 shards (max pattern 17,098 chars; recompute with automation/ci/test-shard-pattern.sh k 12 ./internal/codingagent). The parity and conformance groups run on Linux only (conformance is test/extension-conformance in four shards, PIG_RACE_SHARD): the parity group holds the long parity-tool test packages (closure 483 s and sdksurface 1406 s under -race on 8 CPUs). The shared group holds the packages that use sync, atomic, channels or context cancellation without starting a goroutine themselves (race-packages.txt) and runs on both Linux and macOS.
     timeout-minutes: 90
     strategy:
       fail-fast: false
@@ -56,6 +56,46 @@ jobs:
           - {os: macos-15, group: cli, shard: 5/7}
           - {os: macos-15, group: cli, shard: 6/7}
           - {os: macos-15, group: cli, shard: 7/7}
+          - {os: ubuntu-24.04, group: tui, shard: 1/8}
+          - {os: ubuntu-24.04, group: tui, shard: 2/8}
+          - {os: ubuntu-24.04, group: tui, shard: 3/8}
+          - {os: ubuntu-24.04, group: tui, shard: 4/8}
+          - {os: ubuntu-24.04, group: tui, shard: 5/8}
+          - {os: ubuntu-24.04, group: tui, shard: 6/8}
+          - {os: ubuntu-24.04, group: tui, shard: 7/8}
+          - {os: ubuntu-24.04, group: tui, shard: 8/8}
+          - {os: macos-15, group: tui, shard: 1/8}
+          - {os: macos-15, group: tui, shard: 2/8}
+          - {os: macos-15, group: tui, shard: 3/8}
+          - {os: macos-15, group: tui, shard: 4/8}
+          - {os: macos-15, group: tui, shard: 5/8}
+          - {os: macos-15, group: tui, shard: 6/8}
+          - {os: macos-15, group: tui, shard: 7/8}
+          - {os: macos-15, group: tui, shard: 8/8}
+          - {os: ubuntu-24.04, group: codingagent, shard: 1/12}
+          - {os: ubuntu-24.04, group: codingagent, shard: 2/12}
+          - {os: ubuntu-24.04, group: codingagent, shard: 3/12}
+          - {os: ubuntu-24.04, group: codingagent, shard: 4/12}
+          - {os: ubuntu-24.04, group: codingagent, shard: 5/12}
+          - {os: ubuntu-24.04, group: codingagent, shard: 6/12}
+          - {os: ubuntu-24.04, group: codingagent, shard: 7/12}
+          - {os: ubuntu-24.04, group: codingagent, shard: 8/12}
+          - {os: ubuntu-24.04, group: codingagent, shard: 9/12}
+          - {os: ubuntu-24.04, group: codingagent, shard: 10/12}
+          - {os: ubuntu-24.04, group: codingagent, shard: 11/12}
+          - {os: ubuntu-24.04, group: codingagent, shard: 12/12}
+          - {os: macos-15, group: codingagent, shard: 1/12}
+          - {os: macos-15, group: codingagent, shard: 2/12}
+          - {os: macos-15, group: codingagent, shard: 3/12}
+          - {os: macos-15, group: codingagent, shard: 4/12}
+          - {os: macos-15, group: codingagent, shard: 5/12}
+          - {os: macos-15, group: codingagent, shard: 6/12}
+          - {os: macos-15, group: codingagent, shard: 7/12}
+          - {os: macos-15, group: codingagent, shard: 8/12}
+          - {os: macos-15, group: codingagent, shard: 9/12}
+          - {os: macos-15, group: codingagent, shard: 10/12}
+          - {os: macos-15, group: codingagent, shard: 11/12}
+          - {os: macos-15, group: codingagent, shard: 12/12}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

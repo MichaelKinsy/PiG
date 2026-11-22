@@ -7,9 +7,9 @@
 ai    ./ai
 ai    ./ai/providers/bedrock
 rest  ./agent
-rest  ./tui
+tui  ./tui
 rest  ./internal/screenwriter
-rest  ./internal/codingagent
+codingagent  ./internal/codingagent
 rest  ./durable/harness
 rest  ./durable/core/driver
 rest  ./durable/core/sqlhost
