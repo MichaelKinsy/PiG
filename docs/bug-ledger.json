@@ -48639,6 +48639,28 @@
       ]
     },
     {
+      "id": "BF-b80d98b",
+      "title": "`make generate` / `make bug-ledger` could fail on a loaded host with a bare `signal: killed` when a git…",
+      "symptom": "`make generate` / `make bug-ledger` could fail on a loaded host with a bare `signal: killed` when a git invocation hit the generator's 120s timeout; the hang guard is now 15m and a timeout names the git subcommand, the bound, and that the host or output reader is slow.",
+      "rootCause": "repo.git and repo.gitLines used a 120s context timeout and formatted every cmd error without checking context.DeadlineExceeded, surfacing timeouts as bare signal: killed",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`make generate` / `make bug-ledger` could fail on a loaded host with a bare `signal: killed` when a git invocation hit the generator's 120s timeout; the hang guard is now 15m and a timeout names the git subcommand, the bound, and that the host or output reader is slow.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b80d98b1f1",
+          "date": "2026-11-21"
+        }
+      ],
+      "tests": [
+        "automation/ci/bugledger/git_timeout_test.go::TestGitTimeoutSaysWhy"
+      ]
+    },
+    {
       "id": "BF-b829321",
       "title": "Extension SDKs: `send_user_message` / `sendUserMessage` with no delivery mode now behaves alike in every SDK…",
       "symptom": "Extension SDKs: `send_user_message` / `sendUserMessage` with no delivery mode now behaves alike in every SDK and as Pi does.",
