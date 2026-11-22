@@ -1,40 +1,19 @@
 package tui
 
 import (
-	"slices"
 	"strings"
 	"testing"
 )
 
-// Ports packages/coding-agent/test/syntax-highlight.test.ts:108-140 (Pi 562da75f9, #12347):
+// Ports packages/coding-agent/test/syntax-highlight.test.ts:130-139 (Pi 562da75f9, #12347, regression for #11092):
 // unscoped highlighted text takes the active theme foreground ("text") instead of the terminal default.
+// (Pi's updated Python docstring case lives in tui/highlight_test.go::TestHighlightCode_ColorsEachLineOfPythonDocstringsIndependently.)
 func TestSyntaxHighlightDefaultTokenUpstream(t *testing.T) {
 	withTrueColor(t, true)
 	orig := ActiveTheme().Name
 	t.Cleanup(func() { SetTheme(orig) })
 	LoadAllHighlightLanguages()
 
-	t.Run("colors each line of Python docstrings independently and trailing plain text with theme text color", func(t *testing.T) {
-		SetTheme("dark")
-		code := "\"\"\"\nline one\n\nline two\n\"\"\"\nafter"
-		ansi := ActiveTheme().GetFgAnsi("syntaxString")
-		expected := []string{
-			ansi + "\"\"\"\x1b[39m",
-			ansi + "line one\x1b[39m",
-			"",
-			ansi + "line two\x1b[39m",
-			ansi + "\"\"\"\x1b[39m",
-			ActiveTheme().GetFgAnsi("text") + "after\x1b[39m",
-		}
-		if got := HighlightCode(code, "python"); !slices.Equal(got, expected) {
-			t.Fatalf("HighlightCode:\n got=%q\nwant=%q", got, expected)
-		}
-		if got := GetMarkdownTheme().HighlightCode(code, "python"); !slices.Equal(got, expected) {
-			t.Fatalf("MarkdownTheme.HighlightCode:\n got=%q\nwant=%q", got, expected)
-		}
-	})
-
-	// Regression for #11092.
 	t.Run("colors unscoped highlighted code with the theme foreground", func(t *testing.T) {
 		SetTheme("light")
 		lines := HighlightCode("plainIdentifier\nconst answer = 42;", "typescript")
