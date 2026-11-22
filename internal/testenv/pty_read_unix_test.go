@@ -3,7 +3,6 @@
 package testenv
 
 import (
-	"io"
 	"os"
 	"strings"
 	"testing"
@@ -49,7 +48,7 @@ func TestReadPTYUntilSentinelSplitAcrossReads(t *testing.T) {
 	finish, cleanup := startPTYReader(t.Context(), maxReadPipe{File: master, max: 5}, slave, 5*time.Second)
 	t.Cleanup(cleanup)
 	const payload = "split-payload-bytes"
-	if _, err := io.WriteString(slave, payload); err != nil {
+	if _, err := slave.WriteString(payload); err != nil {
 		t.Fatal(err)
 	}
 	got, err := finish()
