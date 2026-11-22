@@ -58,7 +58,7 @@ ci-drift-pr: port-lint any-trap perf-lint
 ci-contracts: correspondence-check porter-check interface-inventory interface-inventory-test interface-go-drift interface-recommendations-drift interface-mapping-quality interface-delta interface-gaps behavior-contracts test-inventory-drift test-inventory test-porting-release format-version-inventory sdk-surface-drift sdk-apidiff piglet-strip-build piglet-strip-guard
 ci-closure: closure-check
 # The Durable core conformance gate in CI: the host's npm tree linked to the pinned Pi build first (durable-contract only checks out the reference); the job picks one build with DURABLE_CONTRACT_ARGS="--impls <pi|wasm-tinygo|native> -j 4".
-ci-durable-contract: durable-core-host-deps durable-contract
+ci-durable-contract: durable-core-host-deps durable-contract-cli-test durable-contract
 # portmap-check runs the evidence tests of every proven PORT_MAP row under coverage. It builds each evidence package's test binary once and
 # caches each green row in build/portmap-coverage, but a cold run is still about 170 minutes of 4-CPU runner time (run 41987378567: three shards took 44, 49 and more than 58
 # minutes, the third until the job's 60-minute limit cancelled it), so CI runs it as PORTMAP_SHARDS parallel jobs; every shard computes the same plan, judges its own rows and skips the rest, and the Linux verification
