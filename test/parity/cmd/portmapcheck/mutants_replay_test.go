@@ -35,7 +35,7 @@ func replayOf(t *testing.T, names ...string) func(root string) *exec.Cmd {
 	if err := os.WriteFile(overlay, []byte(`{"Replace":{}}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	return func(root string) *exec.Cmd { return replayCommand(root, ".", overlay, names) }
+	return func(root string) *exec.Cmd { return replayCommand(root, ".", overlay, names, 0) }
 }
 
 // TestReplayReadsPlainOutputWhateverGOFLAGSHolds: a replay classifies the plain output of go test, so its command line must not take

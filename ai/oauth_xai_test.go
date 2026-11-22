@@ -46,17 +46,23 @@ func upstreamXaiProvider(t *testing.T, transport metaRoundTripper) xaiOAuthProvi
 	return p
 }
 
-func assertXaiForm(t *testing.T, r *http.Request, endpoint string, want url.Values) {
+func assertXaiForm(t *testing.T, r *http.Request, endpoint string, want url.Values) error {
 	t.Helper()
 	if r.URL.String() != endpoint {
-		t.Fatalf("request URL = %s, want %s", r.URL, endpoint)
+		err := fmt.Errorf("request URL = %s, want %s", r.URL, endpoint)
+		t.Error(err)
+		return err
 	}
 	if err := r.ParseForm(); err != nil {
-		t.Fatal(err)
+		t.Error(err)
+		return err
 	}
 	if !reflect.DeepEqual(r.PostForm, want) {
-		t.Fatalf("form = %#v, want %#v", r.PostForm, want)
+		err := fmt.Errorf("form = %#v, want %#v", r.PostForm, want)
+		t.Error(err)
+		return err
 	}
+	return nil
 }
 
 // upstream: packages/ai/test/xai-oauth.test.ts:85. The server's slow_down interval owns the subsequent poll schedule.
@@ -74,14 +80,18 @@ func TestXaiOAuthDeviceGrantTimingUpstream(t *testing.T) {
 				var p xaiOAuthProvider
 				p = upstreamXaiProvider(t, func(r *http.Request) (*http.Response, error) {
 					if r.URL.String() == "https://auth.x.ai/oauth2/device/code" {
-						assertXaiForm(t, r, "https://auth.x.ai/oauth2/device/code", url.Values{
+						if err := assertXaiForm(t, r, "https://auth.x.ai/oauth2/device/code", url.Values{
 							"client_id": {"b1a00492-073a-47ea-816f-4c329264a828"}, "scope": {"openid profile email offline_access grok-cli:access api:access"}, "referrer": {pigidentity.XAIReferrer},
-						})
+						}); err != nil {
+							return nil, err
+						}
 						return metaJSONResponse(200, upstreamXaiDeviceCode()), nil
 					}
-					assertXaiForm(t, r, "https://auth.x.ai/oauth2/token", url.Values{
+					if err := assertXaiForm(t, r, "https://auth.x.ai/oauth2/token", url.Values{
 						"grant_type": {"urn:ietf:params:oauth:grant-type:device_code"}, "client_id": {"b1a00492-073a-47ea-816f-4c329264a828"}, "device_code": {"device-code"},
-					})
+					}); err != nil {
+						return nil, err
+					}
 					pollsMu.Lock()
 					polls = append(polls, p.now())
 					pollCount := len(polls)
@@ -94,8 +104,9 @@ func TestXaiOAuthDeviceGrantTimingUpstream(t *testing.T) {
 					case 3:
 						return metaJSONResponse(200, upstreamXaiToken()), nil
 					default:
-						t.Fatal("unexpected token poll")
-						return nil, nil
+						err := fmt.Errorf("unexpected token poll %d", pollCount)
+						t.Error(err)
+						return nil, err
 					}
 				})
 				var devices []OAuthDeviceCodeInfo
@@ -246,7 +257,9 @@ func TestXaiOAuthUpstream(t *testing.T) {
 				body["access_token"] = "newer-access"
 				delete(body, "refresh_token")
 			}
-			assertXaiForm(t, r, "https://auth.x.ai/oauth2/token", url.Values{"grant_type": {"refresh_token"}, "client_id": {"b1a00492-073a-47ea-816f-4c329264a828"}, "refresh_token": {refresh}})
+			if err := assertXaiForm(t, r, "https://auth.x.ai/oauth2/token", url.Values{"grant_type": {"refresh_token"}, "client_id": {"b1a00492-073a-47ea-816f-4c329264a828"}, "refresh_token": {refresh}}); err != nil {
+				return nil, err
+			}
 			return metaJSONResponse(200, body), nil
 		})
 		refresh := oauthRefresh(p)
