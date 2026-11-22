@@ -77,11 +77,11 @@ func (s *scanner) scanHot(owner string, body *ast.BlockStmt) {
 				}
 				return true
 			}
-			p, name := s.callee(n)
+			p, name, isMethod := s.calleeInfo(n)
 			switch {
-			case (p == "time" || p == "context") && name == "AfterFunc":
+			case !isMethod && (p == "time" || p == "context") && name == "AfterFunc":
 				s.add(owner, "chan-hop", p+".AfterFunc", n.Pos())
-			case timerCall(p, name):
+			case !isMethod && timerCall(p, name):
 				s.add(owner, "timer-per-call", p+"."+name, n.Pos())
 			case openCall(p, name):
 				s.add(owner, "open-per-call", "os."+name, n.Pos())
