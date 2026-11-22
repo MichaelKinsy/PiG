@@ -185,8 +185,8 @@ func quantile(xs []float64, p float64) float64 {
 	k := float64(len(s)-1) * p
 	f := int(math.Floor(k))
 	c := min(f+1, len(s)-1)
-	//portlint:allow fusedmuladd benchmark report statistics: no Pi counterpart, and a last-bit difference cannot change a reported row
-	return s[f] + (s[c]-s[f])*(k-float64(f))
+	// Round the product explicitly so that the report's rows are the same on every CPU.
+	return s[f] + float64((s[c]-s[f])*(k-float64(f)))
 }
 
 func median(xs []float64) float64 { return quantile(xs, 0.5) }
