@@ -234,27 +234,31 @@ func TestMacOSJobsRunEveryTestOfEveryUnitExactlyOnce(t *testing.T) {
 	}
 }
 
-// macosUnitSeconds is what go test itself takes for each unit on a normal-speed macos-15 runner.
-// extension-host-1 to extension-host-5 and packages are measured from runs 44864086404 (release/v0.8.0) and 44870314130 (canary/win-oracle-080) of 2026-11-21,
-// excluding the slow runner of 44870314130 job 136751895303 (2.1 to 2.8x slower across every step).
-// cli-1 to cli-8 are modelled for the repacked pins in automation/ci/test-shard-weights.txt from the two runs' normal-speed coding/cli total (3845 s across the eight
-// shards, fitted against automation/ci/test-shard-timings/cli.json as 1.79*portable_linux_load + 164 s first-unit Cargo build, split evenly across each pair) and will be
-// replaced by the next full macOS run's report. The pre-test warm step (macosRustWarmSeconds below) is expected to remove the 164 s first-unit build, and the model will
-// follow the first macOS run's measurement.
-// macosJobSetupSeconds is the warm-cache setup and compile overhead (190 to 272 s measured on main run 44690207820 and
-// 2026-11-14 runs); cold-cache runs add about 200 to 255 s more (sbcl and pi-oracle misses), which stays under 70% of the 40-minute limit when warm jobs stay at or under 60%.
-// native is not a unit of macos-units.sh: its job is the smoke run (15 minutes warm, 19 to 20 minutes cold).
+// macosUnitSeconds is what go test itself takes (package ok seconds, rounded up) for each unit in full run 44985297151 on 2026-11-22 (macos-15).
+// macosJobSetupSeconds is the maximum across the six grouped jobs of (measured job seconds - actual Rust warm seconds - sum of unit ok seconds): 249, 230, 303, 229, 290, 296 s -> 303 s.
+// macosRustWarmSeconds is the maximum across the run's seven warmed targets (cli 37, 53, 60, 80 s; subprocess 60, 66 s; env-oracle 56 s) -> 80 s.
+// native is not a unit of macos-units.sh: its job is the smoke run (1223 s in run 44985297151).
 var macosUnitSeconds = map[string]int{
-	"cli-1": 464, "cli-2": 517, "cli-3": 516, "cli-4": 516, "cli-5": 519, "cli-6": 411, "cli-7": 517, "cli-8": 493,
-	"extension-host-1": 364, "extension-host-2": 379, "extension-host-3": 279, "extension-host-4": 343, "extension-host-5": 274,
-	"packages": 123,
+	"cli-1": 483, "cli-2": 367, "cli-3": 355, "cli-4": 379, "cli-5": 436, "cli-6": 245, "cli-7": 341, "cli-8": 234,
+	"extension-host-1": 346, "extension-host-2": 272, "extension-host-3": 344, "extension-host-4": 320, "extension-host-5": 361,
+	"packages": 148,
+}
+
+// macosMeasuredJobSeconds records the whole-job wall seconds of each grouped macOS job in run 44985297151 (2026-11-22).
+var macosMeasuredJobSeconds = map[string]int{
+	"cli-1 cli-2": 1159,
+	"cli-3 cli-4": 1001,
+	"cli-5 cli-6": 1064,
+	"cli-7 cli-8": 857,
+	"extension-host-1 extension-host-2 packages":         1172,
+	"extension-host-3 extension-host-4 extension-host-5": 1387,
 }
 
 const (
-	macosJobSetupSeconds = 300
-	// macosRustWarmSeconds is the cold-build budget for one Rust Cargo target (cli, subprocess, or env-oracle) warmed by
-	// automation/ci/test-warm.sh --rust-only before go test starts (default Cargo parallelism, not CARGO_BUILD_JOBS=1).
-	macosRustWarmSeconds = 60
+	macosJobSetupSeconds = 303
+	// macosRustWarmSeconds is the maximum measured cold-build time for one Rust Cargo target (cli 37, 53, 60, 80 s;
+	// subprocess 60, 66 s; env-oracle 56 s) in run 44985297151 (2026-11-22).
+	macosRustWarmSeconds = 80
 )
 
 func macosRustWarmTargets(entry string) []string {
@@ -292,6 +296,9 @@ func TestMacOSJobsKeepAQuarterOfTheirLimit(t *testing.T) {
 		}
 		if total*5 > limit*3 {
 			t.Errorf("macos job %q takes %d s at warm-cache times (%d s setup + %d s Rust warm-up), more than 60%% of its %d s limit: move a unit to another job in automation/ci/ci-tiers.txt", entry, total, macosJobSetupSeconds, warm, limit)
+		}
+		if measured, ok := macosMeasuredJobSeconds[entry]; ok && total < measured {
+			t.Errorf("macos job %q planned %d s is below its measured %d s in run 44985297151: update macosJobSetupSeconds or macosUnitSeconds", entry, total, measured)
 		}
 	}
 }

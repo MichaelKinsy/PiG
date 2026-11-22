@@ -1562,13 +1562,12 @@ jobs:
         # GitHub runs at most five macOS jobs at a time, so the units are packed into seven jobs (native plus six
         # grouped jobs, running in two short waves) so every grouped job stays within 60% of the 40-minute limit on warm
         # caches and keeps over 30% margin even on cold caches. Each unit still runs in its own go test process and timeout.
-        # Measured in runs 44864086404 and 44870314130 (2026-11-21 on macos-15): extension-host-1 364, extension-host-2 379,
-        # extension-host-3 279, extension-host-4 343, extension-host-5 274, packages 123; coding/cli repacked in
-        # test-shard-weights.txt (modelled 411 to 519 s per unit from those runs' 3845 s total; the pre-test warm step is
-        # expected to remove the 164 s first-unit build, and the model will follow the first macOS run's measurement).
-        # Warm the Rust SDK Cargo targets builds each needed target before go test starts (budgeted at 60 s per target,
-        # added on top). The six grouped jobs hold 866 to 1032 s of tests plus 300 s warm setup and 60 to 120 s Rust
-        # warm-up (20.9 to 23.2 minutes warm, 25 to 27 minutes cold).
+        # Measured in run 44985297151 (2026-11-22 on macos-15): cli-1 483, cli-2 367, cli-3 355, cli-4 379, cli-5 436,
+        # cli-6 245, cli-7 341, cli-8 234, extension-host-1 346, extension-host-2 272, extension-host-3 344,
+        # extension-host-4 320, extension-host-5 361, packages 148 s (go test package ok seconds, rounded up).
+        # Warm the Rust SDK Cargo targets builds each needed target before go test starts (budgeted at 80 s per target,
+        # the maximum measured across cli, subprocess, and env-oracle in run 44985297151). The six grouped jobs hold
+        # 575 to 1025 s of tests plus 303 s warm setup and 80 to 160 s Rust warm-up (16.0 to 23.5 minutes warm).
         # test/ci-images holds these times and fails when a job's units, warm setup, and Rust warm-up pass 60% of the limit.
         # native: the smoke run of the packages with macOS-specific code.
         # cli-1 to cli-8: the eight cmd/pig shards that make test-cli runs on Linux (automation/ci/test-shard-pattern.sh).
