@@ -1494,7 +1494,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-94f1e6f](#bf-94f1e6f) | fix(coding): a provider of only virtual models is configured with source virtual | PiG's own defect | All platforms | Unreleased |
 | [BF-9515bcb](#bf-9515bcb) | Code mode: a deterministic run's clocks round like `Math.round` (0.49999999999999994 ms read 1 ms), and a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-951b35a](#bf-951b35a) | The pi-env daemon no longer loses the end of a program's output when the program exits while the link is… | PiG's own defect | All platforms | Unreleased |
-| [BF-95274a3](#bf-95274a3) | On Windows, a message a Chord plugin or worker sent just before its Node process exited was lost: the Go side… | PiG's own defect | Windows, Linux | Unreleased |
+| [BF-95274a3](#bf-95274a3) | On Windows, a message a Chord plugin or worker sent just before its Node process exited was lost: the Go side… | PiG's own defect | Windows | Unreleased |
 | [BF-958e80d](#bf-958e80d) | A tool call whose arguments hold a number out of float64 range (`1e999`, `-1e999`) no longer ends the session… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-959646e](#bf-959646e) | Kitty and iTerm2 images no longer cover an overlay drawn over them | PiG's own defect | All platforms | Unreleased |
 | [BF-959a66e](#bf-959a66e) | fix(chord/nextnode/workers): shutdown takes effect before the next message; one signal channel each; no… | PiG's own defect | All platforms | Unreleased |
@@ -22914,11 +22914,12 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Symptom:** On Windows, a message a Chord plugin or worker sent just before its Node process exited was lost: the Go side dropped the cut frame without an error.
 - **Root cause:** on Windows named pipes libuv's uv_try_write always returns UV_EAGAIN so the first socket.write (the 5-byte header) stayed asynchronous in Node's Writable and buffered the second socket.write (the payload) in JS memory until the first completed; process.exit() abandoned the buffered payload, delivering only the 5-byte header so Go framedPort.read hit io.ErrUnexpectedEOF and silently ended the channel
 - **User impact:** Lost or altered data
-- **Platform:** Windows, Linux
+- **Platform:** Windows
 - **Fixed in:** Unreleased
 - **Fix commits:** `8b53e7c413` (2026-11-21), `95274a3c73` (2026-11-21)
 - **Tests:** `chord/nextnode/plugins/plugins_node_exit_frame_test.go::TestFramedPortDeliversAFrameSentRightBeforeProcessExit`, `chord/nextnode/plugins/plugins_node_frame_test.go::TestFramedPortWritesEachFrameInOneSocketWrite`
-- **Release note:** On Windows, a message a Chord plugin or worker sent just before its Node process exited was lost: the Go side dropped the cut frame without an error. Each frame is now written in a single `socket.write` call, as Pi's transports send it. A frame larger than the pipe's free buffer (64 KiB per direction), or one sent while an earlier write is still pending, can still be lost if the process calls `process.exit()` without waiting for the write's callback. Affects 0.7.0. <!-- evidence: mechanism proven red on Linux by TestFramedPortWritesEachFrameInOneSocketWrite (a socket that completes no write synchronously); loss observed on Windows twice through example 76's old step (a report sent just before exit never arrived: runs 44880357753 and 44884991326); Windows-run tests TestFramedPortDeliversAFrameSentRightBeforeProcessExit and TestFramedPortWritesEachFrameInOneSocketWrite have not been seen red on Windows (red and green there are not the same test) -->
+- **Evidence:** mechanism proven red on Linux by TestFramedPortWritesEachFrameInOneSocketWrite (a socket that completes no write synchronously); loss observed on Windows twice through example 76's old step (a report sent just before exit never arrived: runs 44880357753 and 44884991326); Windows-run tests TestFramedPortDeliversAFrameSentRightBeforeProcessExit and TestFramedPortWritesEachFrameInOneSocketWrite have not been seen red on Windows (red and green there are not the same test)
+- **Release note:** On Windows, a message a Chord plugin or worker sent just before its Node process exited was lost: the Go side dropped the cut frame without an error. Each frame is now written in a single `socket.write` call, as Pi's transports send it. A frame larger than the pipe's free buffer (64 KiB per direction), or one sent while an earlier write is still pending, can still be lost if the process calls `process.exit()` without waiting for the write's callback. Affects 0.7.0.
 
 ### BF-958e80d
 
@@ -36575,7 +36576,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 
 - Failure found by the integration build of unreleased work: 2
 - Fix reverted before release: 2
-- Follow-up to unreleased work: 38
+- Follow-up to unreleased work: 39
 - Repair of a merge between development branches: 9
 - Review follow-up to unreleased work: 4
 - test-only: 1
