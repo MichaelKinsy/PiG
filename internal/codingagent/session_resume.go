@@ -798,8 +798,7 @@ func (sm *SessionManager) findMostRecent(filterCwd bool) string {
 		}
 		mod := stat.ModTime()
 		// libuv: st_mtim.tv_sec * 1000 + st_mtim.tv_nsec / 1e6, in doubles.
-		//portlint:allow fusedmuladd tv_sec*1000 is exact, so fusing it into the sum cannot change mtimeMs
-		candidates = append(candidates, candidate{path, float64(mod.Unix())*1000 + float64(mod.Nanosecond())/1e6})
+		candidates = append(candidates, candidate{path, float64(float64(mod.Unix())*1000) + float64(mod.Nanosecond())/1e6})
 	}
 	sortx.Stable(candidates, func(a, b candidate) int { return cmp.Compare(b.mtimeMs, a.mtimeMs) })
 	for _, c := range candidates {
