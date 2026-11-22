@@ -46,10 +46,9 @@ func forceSocketFileLocks(t *testing.T) string {
 
 // A hard kill in the middle of an import on a platform whose process locks are socket files (macOS and the BSDs, forced
 // here via lockseam on Linux) leaves two stale socket files: the server lock and the address's worker lock.
-//
-// 1. The server lock stays fail-closed (Pi 1.5.2 parity): a restart before removing the server lock file is refused.
-// 2. Once the dead server's lock file is removed (as an operator must do on macOS/BSD), the next start resolves the
-//    interrupted intent by clearing the stale address worker lock under the held server lock and undoing the import.
+// First, the server lock stays fail-closed (Pi 1.5.2 parity): a restart before removing the server lock file is refused.
+// Second, once the dead server's lock file is removed (as an operator must do on macOS/BSD), the next start resolves
+// the interrupted intent by clearing the stale address worker lock under the held server lock and undoing the import.
 func TestAKillLeavesAStaleAddressLockFileThatTheNextStartClears(t *testing.T) {
 	forceSocketFileLocks(t)
 
