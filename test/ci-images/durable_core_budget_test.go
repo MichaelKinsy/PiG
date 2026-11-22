@@ -105,7 +105,7 @@ func TestCIRunsTheDurableContractGate(t *testing.T) {
 	if !ok {
 		t.Fatal("ci.yml has no durable-contract job")
 	}
-	for _, want := range []string{"make ci-durable-contract", "DURABLE_CONTRACT_ARGS: --impls ${{ matrix.impl }}", "impl: [pi, wasm-tinygo, native]", "durable/contract/.cache"} {
+	for _, want := range []string{"make ci-durable-contract", "make durable-contract-test", "DURABLE_CONTRACT_ARGS: --impls ${{ matrix.impl }}", "impl: [pi, wasm-tinygo, native, tooling]", "durable/contract/.cache"} {
 		if !strings.Contains(job, want) {
 			t.Errorf("the durable-contract job lacks %q", want)
 		}
