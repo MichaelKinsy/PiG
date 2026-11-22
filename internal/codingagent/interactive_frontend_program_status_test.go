@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"slices"
@@ -20,6 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -79,20 +79,10 @@ func TestFrontendSessionShowsTheProgramStatus(t *testing.T) {
 			if err := cmd.Start(); err != nil {
 				t.Fatal(err)
 			}
-			_ = slave.Close()
-			var captured bytes.Buffer
-			copied := make(chan struct{})
-			go func() {
-				defer close(copied)
-				_, _ = io.Copy(&captured, master)
-			}()
+			finishPTY := testenv.ReadPTYUntilSentinel(t, master, slave, 30*time.Second)
 			waitErr := cmd.Wait()
-			select {
-			case <-copied:
-			case <-time.After(5 * time.Second):
-				_ = master.Close()
-				<-copied
-			}
+			var captured bytes.Buffer
+			captured.Write(finishPTY())
 			if waitErr != nil || !bytes.Contains(captured.Bytes(), []byte("--- PASS: TestFrontendProgramStatusChild")) {
 				t.Fatalf("child: %v\n%s", waitErr, captured.Bytes())
 			}
@@ -286,21 +276,9 @@ func TestProcessTerminalShowsTheProgramStatusOnceNoSessionDraws(t *testing.T) {
 			if err := cmd.Start(); err != nil {
 				t.Fatal(err)
 			}
-			_ = slave.Close()
-			var captured bytes.Buffer
-			copied := make(chan struct{})
-			go func() {
-				defer close(copied)
-				_, _ = io.Copy(&captured, master)
-			}()
+			finishPTY := testenv.ReadPTYUntilSentinel(t, master, slave, 30*time.Second)
 			waitErr := cmd.Wait()
-			select {
-			case <-copied:
-			case <-time.After(5 * time.Second):
-				_ = master.Close()
-				<-copied
-			}
-			output := captured.String()
+			output := string(finishPTY())
 			if waitErr != nil || !strings.Contains(output, "--- PASS: TestProcessTerminalProgramStatusReleaseChild") {
 				t.Fatalf("child: %v\n%q", waitErr, output)
 			}
