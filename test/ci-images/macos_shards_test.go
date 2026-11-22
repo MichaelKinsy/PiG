@@ -237,6 +237,7 @@ func TestMacOSJobsRunEveryTestOfEveryUnitExactlyOnce(t *testing.T) {
 // macosUnitSeconds is what go test itself takes (package ok seconds, rounded up) for each unit in full run 44985297151 on 2026-11-22 (macos-15).
 // macosJobSetupSeconds is the maximum across the six grouped jobs of (measured job seconds - actual Rust warm seconds - sum of unit ok seconds): 249, 230, 303, 229, 290, 296 s -> 303 s.
 // macosRustWarmSeconds is the maximum across the run's seven warmed targets (cli 37, 53, 60, 80 s; subprocess 60, 66 s; env-oracle 56 s) -> 80 s.
+// Cold caches add about 200 to 255 s more (sbcl and pi-oracle misses), measured in the earlier runs 44690207820 and of 2026-11-14 and not measured in run 44985297151; with the highest planned job at 1408 s that is 1663 s = 69.3% of the 40-minute limit, under 70%.
 // native is not a unit of macos-units.sh: its job is the smoke run (1223 s in run 44985297151).
 var macosUnitSeconds = map[string]int{
 	"cli-1": 483, "cli-2": 367, "cli-3": 355, "cli-4": 379, "cli-5": 436, "cli-6": 245, "cli-7": 341, "cli-8": 234,

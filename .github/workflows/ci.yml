@@ -1567,7 +1567,9 @@ jobs:
         # extension-host-4 320, extension-host-5 361, packages 148 s (go test package ok seconds, rounded up).
         # Warm the Rust SDK Cargo targets builds each needed target before go test starts (budgeted at 80 s per target,
         # the maximum measured across cli, subprocess, and env-oracle in run 44985297151). The six grouped jobs hold
-        # 575 to 1025 s of tests plus 303 s warm setup and 80 to 160 s Rust warm-up (16.0 to 23.5 minutes warm).
+        # 575 to 1025 s of tests plus 303 s warm setup and 80 to 160 s Rust warm-up (16.0 to 23.5 minutes warm;
+        # cold: about 200 to 255 s more for sbcl and pi-oracle misses, measured in the earlier runs 44690207820 and of
+        # 2026-11-14, not measured in run 44985297151, putting the highest planned job at 1663 s = 69.3% of 40 minutes).
         # test/ci-images holds these times and fails when a job's units, warm setup, and Rust warm-up pass 60% of the limit.
         # native: the smoke run of the packages with macOS-specific code.
         # cli-1 to cli-8: the eight cmd/pig shards that make test-cli runs on Linux (automation/ci/test-shard-pattern.sh).
