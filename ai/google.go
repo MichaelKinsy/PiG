@@ -19,6 +19,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
@@ -500,29 +501,17 @@ func isValidThoughtSignature(sig string) bool {
 // (unanchored gemini(?:-live)?-(\d+), matching usesGoogleThinkingLevel).
 // upstream: packages/ai/src/api/google-shared.ts:getGeminiMajorVersion (Pi fe8a6f5dc, #12371)
 func getGeminiMajorVersion(modelID string) (float64, bool) {
-	lower := jsstring.ToLower(modelID)
-	for offset := 0; ; {
-		idx := strings.Index(lower[offset:], "gemini-")
-		if idx < 0 {
+	for rest := jsstring.ToLower(modelID); ; {
+		_, after, found := strings.Cut(rest, "gemini-")
+		if !found {
 			return 0, false
 		}
-		pos := offset + idx + len("gemini-")
-		if strings.HasPrefix(lower[pos:], "live-") {
-			pos += len("live-")
+		digits, _ := strings.CutPrefix(after, "live-")
+		if len(digits) > 0 && digits[0] >= '0' && digits[0] <= '9' {
+			// Number.parseInt(digits, 10) reads the leading ASCII digit run as a float64 (overflowing to +Inf).
+			return jsnumber.ParseInt(digits), true
 		}
-		end := pos
-		for end < len(lower) && lower[end] >= '0' && lower[end] <= '9' {
-			end++
-		}
-		if end > pos {
-			// Number.parseInt: a version longer than a float64 integer stays a large float, and one past float64's range is +Inf (ParseFloat's range error), so both still compare as at least 3.
-			n, err := strconv.ParseFloat(lower[pos:end], 64)
-			if err != nil && !errors.Is(err, strconv.ErrRange) {
-				return 0, false
-			}
-			return n, true
-		}
-		offset += idx + len("gemini-")
+		rest = after
 	}
 }
 

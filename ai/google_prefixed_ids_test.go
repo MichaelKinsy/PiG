@@ -4,6 +4,7 @@ package ai
 
 import (
 	"encoding/json"
+	"math"
 	"strings"
 	"testing"
 )
@@ -27,6 +28,9 @@ func TestGeminiPrefixedModelIDHelpers(t *testing.T) {
 			{"vendor-gemini-2.5-flash", 2, true},
 			{"google/gemini-2.5-flash", 2, true},
 			{"prefix-gemini-live-3-flash", 3, true},
+			{"gemini-10-pro", 10, true},
+			{"gemini-12345678901234567890-pro", 12345678901234567000, true},
+			{"gemini-" + strings.Repeat("9", 400) + "-pro", math.Inf(1), true},
 			{"argon-latest", 0, false},
 		} {
 			got, ok := getGeminiMajorVersion(tc.id)
