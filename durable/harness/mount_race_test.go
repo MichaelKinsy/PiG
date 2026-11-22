@@ -9,9 +9,11 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/session"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 )
 
@@ -323,5 +325,123 @@ func TestTaskGraphObserverMayDetachInsideAdvance(t *testing.T) {
 
 	if got := calls.Load(); got != 1 {
 		t.Fatalf("Advance called %d times after self-Detach, want 1", got)
+	}
+}
+
+func TestTaskGraphReasonReadBeforeARefreshIsNotPublishedAfterIt(t *testing.T) {
+	ctx := context.Background()
+	store := storage.NewMemoryStorage()
+	line := session.CreateSession(store)
+	defer func() { _ = line.Close(ctx) }()
+
+	var (
+		installed       atomic.Bool
+		listenerMu      sync.Mutex
+		listener        func()
+		triggerOnce     sync.Once
+		refreshReturned atomic.Bool
+		refreshTimedOut atomic.Bool
+		createdID       atomic.Int64
+	)
+
+	view := NewTaskGraphView(line, TaskGraphBlocking{
+		Blocked: func(subject BlockedSubject) durable.BlockedReason {
+			if subject.Kind == "probe" {
+				triggered := false
+				triggerOnce.Do(func() {
+					triggered = true
+					installed.Store(true)
+					listenerMu.Lock()
+					fn := listener
+					listenerMu.Unlock()
+					done := make(chan struct{})
+					go func() {
+						if fn != nil {
+							fn()
+						}
+						close(done)
+					}()
+					select {
+					case <-done:
+						refreshReturned.Store(true)
+					case <-time.After(5 * time.Second):
+						refreshTimedOut.Store(true)
+					}
+				})
+				if triggered {
+					return durable.BlockedMissingTask
+				}
+			}
+			if !installed.Load() {
+				return durable.BlockedMissingTask
+			}
+			return ""
+		},
+		SubscribeBlocked: func(fn func()) func() {
+			listenerMu.Lock()
+			listener = fn
+			listenerMu.Unlock()
+			return func() {}
+		},
+	})
+
+	var (
+		graphMu sync.Mutex
+		latest  TaskGraph
+	)
+	obs, err := view.Observe(ctx, observerFuncs[TaskGraph]{
+		advance: func(_ context.Context, change chord.WatchCall[TaskGraph]) {
+			graphMu.Lock()
+			latest = change.Value
+			graphMu.Unlock()
+		},
+		end: func(durable.WatchEnd) {},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer obs.Detach()
+
+	_, err = line.CommitWith(ctx, func(tx *session.Transaction) (any, error) {
+		conv, err := tx.CreateConversation(durable.CreateConversationOptions{
+			Ownership: durable.ConversationOwnership{Kind: durable.ConversationOwnerless},
+		})
+		if err != nil {
+			return nil, err
+		}
+		convID := conv.Id
+		id, err := tx.CreateTaskErased(graphProbeTask.Erased(), float64(1), durable.TaskOptions{
+			Ownership:      durable.TaskOwnership{Kind: durable.TaskOwnedByConversation},
+			ConversationId: &convID,
+		})
+		if err != nil {
+			return nil, err
+		}
+		createdID.Store(int64(id))
+		return id, nil
+	}, session.TransactionScope{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, _ = line.ReadOnLine(func(durable.Storage) (any, error) { return nil, nil })
+	line.WaitDeliveries()
+
+	key := taskKey(durable.TaskId(createdID.Load()))
+	graphMu.Lock()
+	node, ok := latest.Tasks[key]
+	graphMu.Unlock()
+	if refreshTimedOut.Load() {
+		t.Fatalf("the refresh could not run between the writer's read of the reason and its publication: it waits for the publication (after drain: present=%v blocked=%q)", ok, node.Blocked)
+	}
+	if !refreshReturned.Load() {
+		t.Fatalf("expected refresh listener to be triggered during writer's Blocked call")
+	}
+
+	if !ok {
+		t.Fatalf("task %s missing from observer's graph", key)
+	}
+	if node.Blocked != "" {
+		t.Fatalf("task %s still shown blocked with stale reason %q after refresh completed", key, node.Blocked)
 	}
 }
