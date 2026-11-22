@@ -5,9 +5,11 @@ package testenv
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -22,7 +24,12 @@ const PTYEOFSentinel = "<<PIG-PTY-EOF-7f3a9c>>"
 // macOS does not discard unread child output when the child closes its slave
 // descriptor on exit. Call finish after the child exits; it writes
 // PTYEOFSentinel into slave, waits up to bound for the reader to reach it,
-// closes both descriptors, and returns the bytes before the sentinel.
+// closes both descriptors, and returns the bytes before the sentinel. If the
+// child was a session leader with a controlling terminal (Setsid+Setctty),
+// macOS revokes the parent slave descriptor on child exit so the sentinel write
+// returns syscall.EIO after the tty output queue has drained; in that case
+// finish waits up to bound for the reader to reach EOF or EIO on master and
+// returns the drained bytes.
 func ReadPTYUntilSentinel(t testing.TB, master, slave *os.File, bound time.Duration) (finish func() []byte) {
 	t.Helper()
 	finishRaw, cleanup := startPTYReader(t.Context(), master, slave, bound)
@@ -77,9 +84,13 @@ func startPTYReader(ctx context.Context, master io.ReadCloser, slave io.WriteClo
 		}
 	}
 	finish = func() ([]byte, error) {
+		revoked := false
 		if _, err := io.WriteString(slave, PTYEOFSentinel); err != nil {
-			res := stop()
-			return res.data, fmt.Errorf("write pty sentinel: %w (collected %q)", err, res.data)
+			if !errors.Is(err, syscall.EIO) {
+				res := stop()
+				return res.data, fmt.Errorf("write pty sentinel: %w (collected %q)", err, res.data)
+			}
+			revoked = true
 		}
 		timer := time.NewTimer(bound)
 		defer timer.Stop()
@@ -89,6 +100,9 @@ func startPTYReader(ctx context.Context, master io.ReadCloser, slave io.WriteClo
 			_ = slave.Close()
 			_ = master.Close()
 			if res.err != nil {
+				if revoked && (errors.Is(res.err, io.EOF) || errors.Is(res.err, syscall.EIO)) {
+					return res.data, nil
+				}
 				return res.data, fmt.Errorf("pty reader ended before sentinel: %w (collected %q)", res.err, res.data)
 			}
 			return res.data, nil
