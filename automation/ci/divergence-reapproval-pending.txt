@@ -6,4 +6,5 @@
 # approval line. A lane that changes the normative text of a record adds it here with a class and a reason and says so in
 # its pull request. Sorted by class: behaviour, scope, remove-when, owner-field, editorial, new. Within a class the
 # generator listed them in reading order: tokens-changed, large-insert, medium, owner-statement-after, small.
+D631 behaviour replace macOS unmeasured guess with macOS 26.7.3 /usr/bin/yes ENOTCONN socketpair probe counts and nightly macos-15 host job counts
 D614 new added on the release line by 633aaa0 (Mount plugin UI views over D107 in every extension SDK (D614)), first merge 19321a064 Merge the plugin UI port fixes (lint, port-lint, embedder docs, regenerated bund
