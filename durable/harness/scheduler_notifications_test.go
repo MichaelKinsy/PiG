@@ -9,9 +9,9 @@
 // observer takes `s.mu`, so what it queues is read by the decision that stands or stays in the set. The Writer publishes
 // parts strictly in order and waits for each publication (writer.go publish), so holding storage commits
 // (`controlledStorage.holdCommits`) in the finalize test below publishes `held`'s last child while pass 1 waits in its
-// region on `other`'s gate: deterministic, one run. The reservation test provokes its case by ending the tasks together,
-// many times. Both pin the outcome and the order, and fail when a pass releases the mutex between its decision and its
-// application.
+// region on `other`'s gate: deterministic, one run. The finalize test fails when a pass takes its round before it waits
+// and clears the set after (Pi's shape before #11892): the check queued meanwhile is erased and `held` stays completing.
+// The reservation test provokes its case by ending the tasks together, many times, and pins the outcome and the order.
 
 package harness
 
