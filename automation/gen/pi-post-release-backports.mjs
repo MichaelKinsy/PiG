@@ -3278,28 +3278,17 @@ import { getDeclaredTools, getInitialSystemMessage, normalizeContext, resolveTra
 `],
     [`    const messages = convertResponsesMessages(model, context, CODEX_TOOL_CALL_PROVIDERS, {
         includeSystemPrompt: false,
-        grammarToolInputProperties,
-        supportsMidConvoSystemMessages: model.compat?.supportsMidConvoSystemMessages ?? false,
-        supportsAdditionalTools,
-        supportsToolSearch,
-        toolOptions: { strict: null, supportsStrictMode, supportsOpenAIGrammarTools },
-    });
-    const initialSystemMessage = getInitialSystemMessage(context.messages);
+        grammarToolInputProperties,`, `    ${note("edfe6b2ef322").trim()}
+    const messages = convertResponsesMessages(model, context, CODEX_TOOL_CALL_PROVIDERS, {
+        grammarToolInputProperties,`],
+    [`    const initialSystemMessage = getInitialSystemMessage(context.messages);
     const instructions = initialSystemMessage ? getSystemMessageText(initialSystemMessage) : "";
     const body = {
         model: model.id,
         store: false,
         stream: true,
         instructions: instructions || "You are a helpful assistant.",
-        input: messages,`, `    ${note("edfe6b2ef322").trim()}
-    const messages = convertResponsesMessages(model, context, CODEX_TOOL_CALL_PROVIDERS, {
-        grammarToolInputProperties,
-        supportsMidConvoSystemMessages: model.compat?.supportsMidConvoSystemMessages ?? false,
-        supportsAdditionalTools,
-        supportsToolSearch,
-        toolOptions: { strict: null, supportsStrictMode, supportsOpenAIGrammarTools },
-    });
-    const body = {
+        input: messages,`, `    const body = {
         model: model.id,
         store: false,
         stream: true,
@@ -3400,11 +3389,9 @@ function resolveReasoningEffort(model, reasoningEffort) {
 }
 function buildRequestBody(model, context, options, cacheSessionId, grammarToolInputProperties, configurationUpdateEffort) {`],
     [`        toolOptions: { strict: null, supportsStrictMode, supportsOpenAIGrammarTools },
-    });
-    const body = {`, `        toolOptions: { strict: null, supportsStrictMode, supportsOpenAIGrammarTools },
+    });`, `        toolOptions: { strict: null, supportsStrictMode, supportsOpenAIGrammarTools },
         configurationUpdateEffort,
-    });
-    const body = {`],
+    });`],
     [`        parallel_tool_calls: true,
     };
     if (options?.temperature !== undefined) {`, `        parallel_tool_calls: true,
