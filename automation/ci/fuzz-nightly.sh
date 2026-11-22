@@ -5,6 +5,8 @@
 # //go:build line is read so build-tagged targets are listed and run with their tag; unsupported build expressions fail
 # loudly. A package whose targets cannot be listed fails the run instead of dropping out of it. A failure leaves its
 # input under the package's testdata/fuzz directory; the workflow uploads it.
+# Budget note: the nightly fuzz job limit stays 90 minutes (108 targets took 70 minutes, leaving about 19 minutes with
+# the 109th); at about 120 targets the job is to be split in two by this script's own grouping rather than given a longer limit.
 set -euo pipefail
 
 list_only=0
