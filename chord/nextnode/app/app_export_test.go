@@ -261,11 +261,50 @@ func TestAppExportsWithoutAWorkerUnderItsLockAHoldArrivingMeanwhileStartsTheWork
 	}
 	archiveDir := t.TempDir()
 	archive := filepath.Join(archiveDir, "p1.tar")
+	const maxAttempts = 5
+	var exported chan error
+	observed := false
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		exported = make(chan error, 1)
+		exportedDone := make(chan struct{})
+		go func(ch chan error, done chan struct{}) {
+			defer close(done)
+			ch <- s.app.ExportData(address, archive, background)
+		}(exported, exportedDone)
+		t.Cleanup(func() { <-exportedDone })
+		// Wait until PackData has entered packStores (creating its ".chord-export-*" staging directory inside archiveDir), which only
+		// happens after exportWorker acquires the address's process lock. Unlike a ProcessLock loop, this never contends with
+		// ExportData for the lock. A stalled runner can miss the whole of packStores between two ReadDirs; retry a missed window
+		// rather than treating it as a lock failure.
+		observedPacking, exportErr, exportReturned := awaitExportPacking(t, archiveDir, archive, exported)
+		if observedPacking {
+			t.Logf("export packing observed on attempt %d", attempt)
+			observed = true
+			break
+		}
+		if !exportReturned {
+			exportErr = <-exported
+		}
+		if exportErr != nil {
+			t.Fatalf("export attempt %d failed: %v", attempt, exportErr)
+		}
+		<-exportedDone
+		if err := os.Remove(archive); err != nil {
+			t.Fatalf("removing missed-window archive: %v", err)
+		}
+		if status := workerStatus(t, found, "project|p1"); status != "" {
+			t.Fatalf("status after missed export attempt %d = %q", attempt, status)
+		}
+	}
+	if !observed {
+		t.Fatalf("the export's packing was not observed in %d attempts", maxAttempts)
+	}
 	doneExport := make(chan struct{})
 	var ranWhileExportLocked atomic.Bool
-	// PackData renames archive into place strictly before exportWorker calls lock.Release(); seeing `running` while archive does
-	// not yet exist means the worker ran while the export still held its lock. Re-checking os.Stat(archive) after seeing `running`
-	// avoids the post-release race where ExportData releases the lock and the worker becomes `running` before ExportData returns.
+	// Start the watcher only for the observed attempt so missed attempts leave no status or hook state behind. PackData renames
+	// archive into place strictly before exportWorker calls lock.Release(); seeing `running` while archive does not yet exist means
+	// the worker ran while the export still held its lock. Re-checking os.Stat(archive) after seeing `running` avoids the
+	// post-release race where ExportData releases the lock and the worker becomes `running` before ExportData returns.
 	startingExport, runningExport, watchingExport := observe(t, found, "project|p1", doneExport, func(status string) {
 		if status == "running" {
 			if _, err := os.Stat(archive); errors.Is(err, os.ErrNotExist) {
@@ -273,28 +312,8 @@ func TestAppExportsWithoutAWorkerUnderItsLockAHoldArrivingMeanwhileStartsTheWork
 			}
 		}
 	})
-	exported := make(chan error, 1)
-	exportedDone := make(chan struct{})
-	go func() {
-		defer close(exportedDone)
-		exported <- s.app.ExportData(address, archive, background)
-	}()
-	t.Cleanup(func() { <-exportedDone })
-	// Wait until PackData has entered packStores (creating its ".chord-export-*" staging directory inside archiveDir), which only
-	// happens after exportWorker acquires the address's process lock. Unlike a ProcessLock loop, this never contends with
-	// ExportData for the lock. Once packing is under way, probe the lock once to prove ExportData holds it.
-	awaitExportPacking(t, archiveDir, archive, exported)
-	probeCtx, cancelProbe := context.WithTimeout(background, 20*time.Millisecond)
-	probeLock, probeErr := acquireProcessLock(lockName, probeCtx)
-	cancelProbe()
-	if probeErr == nil {
-		_ = releaseProcessLock(probeLock)
-		if _, statErr := os.Stat(archive); errors.Is(statErr, os.ErrNotExist) {
-			t.Fatal("export started packing without holding its worker lock")
-		}
-	} else if probeCtx.Err() == nil {
-		t.Fatalf("probing worker lock: %v", probeErr)
-	}
+	// Issue the hold as soon as packing is observed, before the 20 ms lock probe, so the hold arrives while the export still holds
+	// its lock and the worker enters `starting` on that lock while the probe runs.
 	held := make(chan *host.Reference, 1)
 	heldDone := make(chan struct{})
 	go func() {
@@ -315,6 +334,17 @@ func TestAppExportsWithoutAWorkerUnderItsLockAHoldArrivingMeanwhileStartsTheWork
 		default:
 		}
 	})
+	probeCtx, cancelProbe := context.WithTimeout(background, 20*time.Millisecond)
+	probeLock, probeErr := acquireProcessLock(lockName, probeCtx)
+	cancelProbe()
+	if probeErr == nil {
+		_ = releaseProcessLock(probeLock)
+		if _, statErr := os.Stat(archive); errors.Is(statErr, os.ErrNotExist) {
+			t.Fatal("export started packing without holding its worker lock")
+		}
+	} else if probeCtx.Err() == nil {
+		t.Fatalf("probing worker lock: %v", probeErr)
+	}
 	awaitStatus(t, found, "project|p1", func(status string) bool { return status == "starting" || status == "running" })
 	switch workerStatus(t, found, "project|p1") {
 	case "starting":
@@ -355,8 +385,10 @@ func releaseProcessLock(lock *workers.ProcessLockHandle) error {
 }
 
 // awaitExportPacking waits until PackData has entered packStores (creating its ".chord-export-*" staging directory inside
-// archiveDir), which only happens after exportWorker acquires the address's process lock.
-func awaitExportPacking(t *testing.T, archiveDir, archive string, exported <-chan error) {
+// archiveDir), which only happens after exportWorker acquires the address's process lock. It returns observed=true when the
+// staging directory is seen, or observed=false when the archive appears first with no staging directory seen (a missed poll
+// window); returned is true if the export's error was already received from exported.
+func awaitExportPacking(t *testing.T, archiveDir, archive string, exported <-chan error) (observed bool, exportErr error, returned bool) {
 	t.Helper()
 	deadline := time.Now().Add(30 * time.Second)
 	for time.Now().Before(deadline) {
@@ -364,21 +396,27 @@ func awaitExportPacking(t *testing.T, archiveDir, archive string, exported <-cha
 		if err == nil {
 			for _, entry := range entries {
 				if strings.HasPrefix(entry.Name(), ".chord-export-") {
-					return
+					return true, nil, false
 				}
 			}
 		}
 		if _, err := os.Stat(archive); err == nil {
-			t.Fatal("export finished without holding its worker lock")
+			return false, nil, false
 		}
 		select {
-		case exportErr := <-exported:
+		case exportErr = <-exported:
+			if exportErr == nil {
+				if _, err := os.Stat(archive); err == nil {
+					return false, nil, true
+				}
+			}
 			t.Fatalf("export ended before packing: %v", exportErr)
 		default:
 		}
 		runtime.Gosched()
 	}
 	t.Fatal("timed out waiting for export to start packing")
+	return false, nil, false
 }
 
 // observe watches the status of the worker at key until done is closed: whether it was ever `starting` and `running`. Optional
