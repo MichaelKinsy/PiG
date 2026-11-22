@@ -29,7 +29,7 @@ func TestSyntaxHighlightDefaultTokenUpstream(t *testing.T) {
 		if got := HighlightCode(code, "python"); !slices.Equal(got, expected) {
 			t.Fatalf("HighlightCode:\n got=%q\nwant=%q", got, expected)
 		}
-		if got := NewMarkdownTheme().HighlightCode(code, "python"); !slices.Equal(got, expected) {
+		if got := GetMarkdownTheme().HighlightCode(code, "python"); !slices.Equal(got, expected) {
 			t.Fatalf("MarkdownTheme.HighlightCode:\n got=%q\nwant=%q", got, expected)
 		}
 	})
