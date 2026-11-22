@@ -150,24 +150,40 @@ const configurationUpdateRequestEffort = "medium"
 
 // configurationUpdateEffort is upstream getConfigurationUpdateEffort: the mapped effort to send in configuration_update
 // items, or "" to send it as reasoning.effort. It needs the model's supportsMidConvoEffort compat and a requested level;
-// Sign in with ChatGPT rejects the items.
+// Sign in with ChatGPT rejects the items, and Azure does not read it.
 func (p *openAIResponsesProvider) configurationUpdateEffort(compat responsesCompat, opts StreamOptions, apiKey string) string {
-	// Only the openai-responses module reads it; the Azure and Codex modules do not.
-	if p.api() != APIOpenAIResponses || !compat.SupportsMidConvoEffort || p.isChatGPTSignIn(apiKey) {
+	if !compat.SupportsMidConvoEffort {
 		return ""
 	}
-	model := p.resolvedModel()
-	level := ModelThinkingLevel(opts.ReasoningEffort)
-	if level == "" && opts.Thinking != "" {
-		level = ClampThinkingLevel(model, ModelThinkingLevel(opts.Thinking))
-	}
-	if level == "" || level == ThinkingOff {
+	switch p.api() {
+	case APIOpenAIResponses:
+		if p.isChatGPTSignIn(apiKey) {
+			return ""
+		}
+		model := p.resolvedModel()
+		level := ModelThinkingLevel(opts.ReasoningEffort)
+		if level == "" && opts.Thinking != "" {
+			level = ClampThinkingLevel(model, ModelThinkingLevel(opts.Thinking))
+		}
+		if level == "" || level == ThinkingOff {
+			return ""
+		}
+		if mapped, ok := model.ThinkingLevelMap[level]; ok && mapped != nil {
+			return *mapped
+		}
+		return string(level)
+	case APIOpenAICodexResponses:
+		requested := cmp.Or(opts.ReasoningEffort, strings.TrimPrefix(string(opts.Thinking), string(ThinkingOff)))
+		if requested == "" {
+			return ""
+		}
+		if effort := resolveCodexReasoningEffort(p.resolvedModel(), requested); effort != nil {
+			return *effort
+		}
+		return ""
+	default:
 		return ""
 	}
-	if mapped, ok := model.ThinkingLevelMap[level]; ok && mapped != nil {
-		return *mapped
-	}
-	return string(level)
 }
 
 // isChatGPTSignIn reports whether apiKey is a Sign in with ChatGPT access token: OpenAI API keys start with `sk-`, so a different credential sent directly to OpenAI is one.
@@ -623,25 +639,36 @@ func (p *openAIResponsesProvider) resolvedModel() *Model {
 	return model
 }
 
+// resolveCodexReasoningEffort is openai-codex-responses.ts resolveReasoningEffort:
+// provider-native effort for a requested level, or nil when the model takes no reasoning field for it.
+func resolveCodexReasoningEffort(model *Model, requested string) *string {
+	levels := model.ThinkingLevelMap
+	if requested == "none" {
+		if off, ok := levels[ThinkingOff]; ok {
+			return off
+		}
+		return new("none")
+	}
+	if mapped := levels[ModelThinkingLevel(requested)]; mapped != nil {
+		return mapped
+	}
+	return new(requested)
+}
+
 // applyCodexReasoning is openai-codex-responses.ts buildRequestBody's reasoning: a given effort is mapped through the model's levels ("none" through
 // its off entry) and sent unless that maps to null, with the summary defaulting to "auto"; with no effort a reasoning model whose off is not null sends
 // its off effort. A summary alone requests nothing.
-func (p *openAIResponsesProvider) applyCodexReasoning(req *respRequest, opts StreamOptions) {
+func (p *openAIResponsesProvider) applyCodexReasoning(req *respRequest, opts StreamOptions, configurationUpdateEffort string) {
 	model := p.resolvedModel()
 	levels := model.ThinkingLevelMap
 	// streamSimple's reasoning level (already clamped to the model) is the effort unless it is off.
 	requested := cmp.Or(opts.ReasoningEffort, strings.TrimPrefix(string(opts.Thinking), string(ThinkingOff)))
 	if requested != "" {
 		var effort *string
-		if requested == "none" {
-			effort = new("none")
-			if off, ok := levels[ThinkingOff]; ok {
-				effort = off
-			}
-		} else if mapped := levels[ModelThinkingLevel(requested)]; mapped != nil {
-			effort = mapped
+		if configurationUpdateEffort != "" {
+			effort = new(configurationUpdateRequestEffort)
 		} else {
-			effort = new(requested)
+			effort = resolveCodexReasoningEffort(model, requested)
 		}
 		if effort != nil {
 			req.Reasoning = &respReasoning{Effort: *effort, Summary: cmp.Or(opts.ReasoningSummary, "auto")}
@@ -1549,7 +1576,7 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 		req.Tools = convertedTools
 	}
 	omitUnsupportedFields := p.isChatGPTSignIn(apiKey)
-	if !p.cfg.Codex && !omitUnsupportedFields && opts.MaxTokens > 0 && (azure || p.cfg.Compat == nil || p.cfg.Compat.SupportsMaxOutputTokens == nil || *p.cfg.Compat.SupportsMaxOutputTokens) {
+	if !omitUnsupportedFields && opts.MaxTokens > 0 && (azure || p.cfg.Compat == nil || p.cfg.Compat.SupportsMaxOutputTokens == nil || *p.cfg.Compat.SupportsMaxOutputTokens) {
 		// OpenAI Responses rejects max_output_tokens below 16 (earendil-works/pi#6265).
 		req.MaxOutputTokens = max(opts.MaxTokens, openAIResponsesMinOutputTokens)
 	}
@@ -1560,7 +1587,7 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	// An omitted effort remains omitted; the model's off mapping controls the default request.
 	// upstream: packages/ai/src/api/openai-responses.ts:buildParams
 	if p.cfg.Codex {
-		p.applyCodexReasoning(&req, opts)
+		p.applyCodexReasoning(&req, opts, configurationUpdateEffort)
 	} else if p.cfg.IsReasoning || opts.IsReasoning {
 		model := p.resolvedModel()
 		if model.Capabilities.MaxThinking == "" {
@@ -1703,7 +1730,7 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 		if cacheRetention != "none" {
 			cacheSessionID = opts.SessionID
 		}
-		webSocketStream, fallback, err := p.startCodexWebSocket(ctx, endpointURL, body.Bytes(), apiKey, accountID, cacheSessionID, grammarProps, opts)
+		webSocketStream, fallback, err := p.startCodexWebSocket(ctx, endpointURL, body.Bytes(), apiKey, accountID, cacheSessionID, grammarProps, configurationUpdateEffort, opts)
 		if err != nil {
 			return nil, err
 		}

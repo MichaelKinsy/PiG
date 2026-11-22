@@ -93,8 +93,8 @@ func TestOpenAICodexResponses_RequestMatchesCodexProtocol(t *testing.T) {
 	if got := capturedBody["prompt_cache_key"]; got != "sess" {
 		t.Errorf("prompt_cache_key = %v, want sess", got)
 	}
-	if _, ok := capturedBody["max_output_tokens"]; ok {
-		t.Errorf("max_output_tokens = %v, want omitted", capturedBody["max_output_tokens"])
+	if got := capturedBody["max_output_tokens"]; got != float64(1000) {
+		t.Errorf("max_output_tokens = %v, want 1000", got)
 	}
 	input, _ := capturedBody["input"].([]any)
 	if len(input) < 2 {

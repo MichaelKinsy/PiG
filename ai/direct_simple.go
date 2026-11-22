@@ -50,6 +50,19 @@ func streamSimpleAs(ctx context.Context, api API, model *Model, transcript Trans
 		options.PromptMode, options.ReasoningEffort = "", ""
 	}
 	applyOmittedReasoningFor(api, &options)
+	if api == APIOpenAICodexResponses && options.ReasoningEffort == "" {
+		// openai-codex-responses.ts streamSimple: off/omitted is sent as effort "none" on reasoning models
+		// so with configuration_update items switching to off keeps the prompt cache (#12269).
+		clamped := ThinkingOff
+		if options.Thinking != "" {
+			clamped = ClampThinkingLevel(model, ModelThinkingLevel(options.Thinking))
+		}
+		if clamped != ThinkingOff {
+			options.ReasoningEffort = string(clamped)
+		} else if model.ProviderMeta.Reasoning {
+			options.ReasoningEffort = "none"
+		}
+	}
 	if api == APIBedrockConverseStream {
 		// upstream: packages/ai/src/api/bedrock-converse-stream.ts:streamSimple builds BedrockOptions from buildBaseOptions, the tool choice and the reasoning level and budgets only: region, profile, bearer token, thinking display, interleaved thinking and request metadata are dropped, and without a reasoning level so are the budgets.
 		options.Region, options.Profile, options.BearerToken, options.ThinkingDisplay, options.InterleavedThinking, options.RequestMetadata, options.RequestMetadataOrder = "", "", "", "", nil, nil, nil

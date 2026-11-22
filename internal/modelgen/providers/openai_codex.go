@@ -75,6 +75,9 @@ func openaiCodex() ProviderDefinition {
 				MergeCompat(model, compat)
 			}
 			EnableOpenAIMidConvoSystemMessages(model, false)
+			if OpenAIMidConvoEffortModelIDs[id] {
+				MergeCompat(model, O("supportsMidConvoEffort", true))
+			}
 		},
 	}
 }

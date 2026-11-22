@@ -56,7 +56,7 @@ func ProviderCompatSchema() *Schema {
 		optionalCompatBoolean("supportsMidConvoSystemMessages", D("Whether the exact model accepts system or developer messages after the conversation has started. When false, later system messages are folded into the leading system message."), Default(false)),
 		optionalSessionAffinityFormat(D("Session-affinity header format. Defaults are API-specific or auto-detected.")),
 		optionalPromptCacheKeyMode(D("Controls the prompt_cache_key request field for openai-completions and openai-responses: auto keeps each API's default, enabled sends it whenever caching is active, disabled never sends it. Default: auto.")),
-		optionalCompatBoolean("supportsMidConvoEffort", D("Whether thinking level changes are sent inside the conversation instead of changing the request's effort, so a change keeps the prompt cache. Used by the anthropic-messages and openai-responses APIs."), Default(false)),
+		optionalCompatBoolean("supportsMidConvoEffort", D("Whether thinking level changes are sent inside the conversation instead of changing the request's effort, so a change keeps the prompt cache. Used by the anthropic-messages, openai-responses, and openai-codex-responses APIs."), Default(false)),
 		optionalCompatBoolean("supportsLongCacheRetention", D("Whether the provider supports long prompt cache retention. Defaults are API-specific or auto-detected.")),
 		optionalCompatBoolean("supportsStrictMode", D("Whether the provider supports strict tool schemas. Defaults are API-specific.")),
 		optionalCompatBoolean("supportsOpenAIGrammarTools", D("Whether the provider supports OpenAI custom tools with Lark or regex grammar formats. When false, grammar-constrained tools fall back to normal function tools."), Default(false)),
