@@ -31,6 +31,7 @@ type ackHold struct {
 	announced int
 	unapplied int
 	held      bool
+	sealed    bool
 }
 
 type ackHoldKey struct{}
@@ -58,11 +59,23 @@ func (h *ackHold) announce() {
 	h.mu.Unlock()
 }
 
-// sent records a call frame of the request read from the connection, which the host has not applied.
-func (h *ackHold) sent() {
+// seal marks that readLoop has read the request's non-host_call blocked report, so later call frames are not counted for this hold.
+func (h *ackHold) seal() {
 	h.mu.Lock()
+	h.sealed = true
+	h.mu.Unlock()
+}
+
+// sent records a call frame of the request read before the hold was sealed, returning whether it was counted.
+func (h *ackHold) sent() bool {
+	h.mu.Lock()
+	if h.sealed {
+		h.mu.Unlock()
+		return false
+	}
 	h.unapplied++
 	h.mu.Unlock()
+	return true
 }
 
 // applied records that the host applied a call of the request: the call a report announced, or one of the request that no report announced. effect is true for a call
@@ -145,14 +158,14 @@ func (c *Conn) requestAckHold(requestID string) *ackHold {
 	return ackHoldOf(sink.ctx)
 }
 
-// holdAckForCall counts a call frame the read loop read, for the request that made it, until the host applies the call (hostCallApplied). A connection with no
+// holdAckForCall counts a call frame the read loop read before its request's blocked report, until the host applies the call (hostCallApplied). A connection with no
 // request that holds an acknowledgment, the common case, skips the lookup.
-func (c *Conn) holdAckForCall(requestID string) {
-	if requestID == "" || c.ackHolds.Load() == 0 {
+func (c *Conn) holdAckForCall(call *CallPayload) {
+	if call == nil || call.ParentRequestID == "" || c.ackHolds.Load() == 0 {
 		return
 	}
-	if hold := c.requestAckHold(requestID); hold != nil {
-		hold.sent()
+	if hold := c.requestAckHold(call.ParentRequestID); hold != nil {
+		call.ackCounted = hold.sent()
 	}
 }
 

@@ -201,14 +201,18 @@ func (h *Host) queueCall(me *managedExt, conn *Conn, lanes *callLanes, callID st
 // wait for: it holds the acknowledgment until the handler's synchronous part is over (ackHold.applied).
 func (h *Host) queueCallDone(me *managedExt, conn *Conn, lanes *callLanes, callID string, call *CallPayload, done func()) {
 	if startsAsync(call.Method) {
-		conn.hostCallApplied(call.ParentRequestID, false)
+		if call.ackCounted {
+			conn.hostCallApplied(call.ParentRequestID, false)
+		}
 	} else {
 		applied := done
 		done = func() {
 			if applied != nil {
 				applied()
 			}
-			conn.hostCallApplied(call.ParentRequestID, holdsForLoopTurn(call.Method))
+			if call.ackCounted {
+				conn.hostCallApplied(call.ParentRequestID, holdsForLoopTurn(call.Method))
+			}
 		}
 	}
 	if done == nil {

@@ -5432,7 +5432,7 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 			}
 			if env.Type == MsgCall {
 				conn.dropReservedHostCall(env.ID)
-				if env.Call != nil {
+				if env.Call != nil && env.Call.ackCounted {
 					// The read loop counted it for its request's acknowledgment hold (holdAckForCall); the host runs none of it.
 					conn.hostCallApplied(env.Call.ParentRequestID, false)
 				}

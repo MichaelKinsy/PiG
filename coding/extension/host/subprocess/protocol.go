@@ -1618,6 +1618,8 @@ type CallPayload struct {
 	OriginToolCallID string `json:"origin_tool_call_id,omitempty"`
 	// CommandContext marks a call made through a command context: the context of a command handler or of a withSession callback, the only contexts Pi gives newSession, fork, navigateTree, switchSession and reload (runner.ts createCommandContext). The SDK sets it from the kind of the context the call is made through, so a context kept past its request keeps its kind; the host refuses those five calls without it (commandOnlyCall).
 	CommandContext bool `json:"command_context,omitempty"`
+	// ackCounted records that readLoop counted this call in its request's ackHold before sealing.
+	ackCounted bool `json:"-"`
 }
 
 // ── CallResult (host→ext) ────────────────────────────────────────────────────
