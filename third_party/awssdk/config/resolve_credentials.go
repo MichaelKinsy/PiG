@@ -637,10 +637,21 @@ func resolveLoginCredentials(ctx context.Context, cfg *aws.Config, sharedCfg *Sh
 		return err
 	}
 
+	loginCredentialOptionsFn, found, err := getLoginCredentialOptions(ctx, configs)
+	if err != nil {
+		return fmt.Errorf("failed to get LoginCredentialOptions from config sources, %w", err)
+	}
+	optFns := []func(*logincreds.Options){
+		func(o *logincreds.Options) {
+			o.CredentialSources = getCredentialSources(ctx)
+		},
+	}
+	if found {
+		optFns = append(optFns, loginCredentialOptionsFn)
+	}
+
 	svc := signin.NewFromConfig(*cfg)
-	provider := logincreds.New(svc, tokenPath, func(o *logincreds.Options) {
-		o.CredentialSources = getCredentialSources(ctx)
-	})
+	provider := logincreds.New(svc, tokenPath, optFns...)
 	cfg.Credentials, err = wrapWithCredentialsCache(ctx, configs, provider)
 	if err != nil {
 		return err

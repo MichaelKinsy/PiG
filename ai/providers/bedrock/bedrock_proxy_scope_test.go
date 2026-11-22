@@ -5,6 +5,12 @@ package bedrock
 import (
 	"github.com/MichaelKinsy/PiG/ai"
 
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/json"
+	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -13,13 +19,26 @@ import (
 	"testing"
 
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
+
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/credentials/logincreds"
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/credentials/ssocreds"
 )
 
-// Pi resolves the Bedrock proxy once, from model.baseUrl, and gives it only to the runtime client's requestHandler (bedrock-converse-stream.ts:220-231).
-// IMDS and the container provider call node:http directly and SSO takes only the parent's logger, so neither uses a proxy; STS inherits the parent's
-// requestHandler only when that handler is not HTTP/2, which is when Pi found a proxy.
+// Pi resolves the Bedrock proxy once, from model.baseUrl, and gives that handler to the runtime client and the default credential chain's clientConfig
+// (bedrock-converse-stream.ts:242-253, Pi commit be269f57b1b707399edd86f5f718d1a907ffea8b / #12365). That proxies the runtime client, STS
+// (AssumeRole and AssumeRoleWithWebIdentity), SSO (GetRoleCredentials), SSO OIDC (CreateToken), and login_session Signin (CreateOAuth2Token); IMDS, the container provider, credential_process,
+// and static/env keys do not use the proxy.
 func TestBedrockProxyIsTheBaseURLsAndOnlyTheRuntimeAndSTSUseIt(t *testing.T) {
-	for _, name := range []string{"HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "all_proxy", "no_proxy", "AWS_PROFILE", "AWS_REGION", "AWS_DEFAULT_REGION", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "AWS_BEARER_TOKEN_BEDROCK", "AWS_BEDROCK_SKIP_AUTH", "AWS_ENDPOINT_URL", "AWS_ENDPOINT_URL_STS"} {
+	for _, name := range []string{
+		"HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
+		"http_proxy", "https_proxy", "all_proxy", "no_proxy",
+		"AWS_PROFILE", "AWS_REGION", "AWS_DEFAULT_REGION",
+		"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN",
+		"AWS_BEARER_TOKEN_BEDROCK", "AWS_BEDROCK_SKIP_AUTH",
+		"AWS_ENDPOINT_URL", "AWS_ENDPOINT_URL_STS",
+		"AWS_ENDPOINT_URL_SSO", "AWS_ENDPOINT_URL_SSO_OIDC",
+		"AWS_ENDPOINT_URL_SIGNIN", "AWS_LOGIN_CACHE_DIRECTORY",
+	} {
 		t.Setenv(name, "")
 	}
 	east, west := "https://bedrock-runtime.us-east-1.amazonaws.com", "https://bedrock-runtime.us-west-2.amazonaws.com/model/x/converse-stream"
@@ -132,6 +151,223 @@ func TestBedrockProxyIsTheBaseURLsAndOnlyTheRuntimeAndSTSUseIt(t *testing.T) {
 			}
 			if err == nil || len(hosts) != 0 {
 				t.Fatalf("credentials %q, err %v, proxied hosts %q; want a direct STS call that fails to resolve", credentials.AccessKeyID, err, hosts)
+			}
+		})
+	}
+
+	// Regression for Pi #12365 (be269f57b1b707399edd86f5f718d1a907ffea8b):
+	// The SSO and SSO OIDC endpoints do not resolve, so credentials and refreshed tokens arrive only through the proxy.
+	writeCachedSSOToken := func(t *testing.T, homeDir, cacheKey, body string) {
+		t.Helper()
+		t.Setenv("HOME", homeDir)
+		t.Setenv("USERPROFILE", homeDir)
+		path, err := ssocreds.StandardCachedTokenFilepath(cacheKey)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	for _, tc := range []struct {
+		name, noProxy string
+		viaProxy      bool
+	}{
+		{"legacy SSO GetRoleCredentials uses the runtime proxy when baseUrl has one", "", true},
+		{"legacy SSO GetRoleCredentials goes direct when baseUrl has no proxy", "bedrock.test.invalid", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var mu sync.Mutex
+			var hosts []string
+			proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				mu.Lock()
+				hosts = append(hosts, r.Host)
+				mu.Unlock()
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"roleCredentials":{"accessKeyId":"SSOKEY","secretAccessKey":"sso-secret","sessionToken":"sso-token","expiration":4070908800000}}`))
+			}))
+			defer proxy.Close()
+			dir := t.TempDir()
+			const startURL = "https://example.awsapps.com/start"
+			config := filepath.Join(dir, "config")
+			if err := os.WriteFile(config, []byte("[profile sso]\nsso_start_url = "+startURL+"\nsso_region = us-east-1\nsso_account_id = 123456789012\nsso_role_name = Example\nregion = us-east-1\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			writeCachedSSOToken(t, dir, startURL, `{"startUrl":"`+startURL+`","region":"us-east-1","accessToken":"cached-token","expiresAt":"2099-01-01T00:00:00Z"}`)
+			t.Setenv("HOME", dir)
+			t.Setenv("USERPROFILE", dir)
+			t.Setenv("AWS_CONFIG_FILE", config)
+			t.Setenv("AWS_SHARED_CREDENTIALS_FILE", filepath.Join(dir, "credentials"))
+			t.Setenv("AWS_ENDPOINT_URL_SSO", "http://sso.test.invalid")
+			env := ai.ProviderEnv{"HTTP_PROXY": proxy.URL, "HTTPS_PROXY": proxy.URL, "NO_PROXY": tc.noProxy}
+			cfg, _, err := loadBedrockConfig(t.Context(), "http://bedrock.test.invalid", "us.anthropic.claude-opus-4-8", ai.StreamOptions{Env: env, Profile: "sso"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			credentials, err := cfg.Credentials.Retrieve(t.Context())
+			mu.Lock()
+			defer mu.Unlock()
+			if tc.viaProxy {
+				if err != nil || credentials.AccessKeyID != "SSOKEY" || len(hosts) != 1 || hosts[0] != "sso.test.invalid" {
+					t.Fatalf("credentials %q, err %v, proxied hosts %q; want SSO credentials through the proxy", credentials.AccessKeyID, err, hosts)
+				}
+				return
+			}
+			if err == nil || len(hosts) != 0 {
+				t.Fatalf("credentials %q, err %v, proxied hosts %q; want a direct SSO call that fails to resolve", credentials.AccessKeyID, err, hosts)
+			}
+		})
+	}
+
+	for _, tc := range []struct {
+		name, noProxy string
+		viaProxy      bool
+	}{
+		{"sso_session token refresh and GetRoleCredentials use the runtime proxy when baseUrl has one", "", true},
+		{"sso_session token refresh goes direct when baseUrl has no proxy", "bedrock.test.invalid", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var mu sync.Mutex
+			var hosts []string
+			proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				mu.Lock()
+				hosts = append(hosts, r.Host)
+				mu.Unlock()
+				w.Header().Set("Content-Type", "application/json")
+				switch r.Host {
+				case "ssooidc.test.invalid":
+					_, _ = w.Write([]byte(`{"accessToken":"refreshed-token","refreshToken":"next-refresh","expiresIn":3600}`))
+				case "sso.test.invalid":
+					_, _ = w.Write([]byte(`{"roleCredentials":{"accessKeyId":"SSOSESSIONKEY","secretAccessKey":"sso-secret","sessionToken":"sso-token","expiration":4070908800000}}`))
+				default:
+					w.WriteHeader(http.StatusBadGateway)
+				}
+			}))
+			defer proxy.Close()
+			dir := t.TempDir()
+			const startURL = "https://example.awsapps.com/start"
+			const sessionName = "corp"
+			config := filepath.Join(dir, "config")
+			if err := os.WriteFile(config, []byte("[profile sso-session]\nsso_session = "+sessionName+"\nsso_account_id = 123456789012\nsso_role_name = Example\nregion = us-east-1\n\n[sso-session "+sessionName+"]\nsso_start_url = "+startURL+"\nsso_region = us-east-1\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			writeCachedSSOToken(t, dir, sessionName, `{"startUrl":"`+startURL+`","region":"us-east-1","accessToken":"expired-token","expiresAt":"2020-01-01T00:00:00Z","clientId":"cid","clientSecret":"csecret","refreshToken":"rtoken"}`)
+			t.Setenv("HOME", dir)
+			t.Setenv("USERPROFILE", dir)
+			t.Setenv("AWS_CONFIG_FILE", config)
+			t.Setenv("AWS_SHARED_CREDENTIALS_FILE", filepath.Join(dir, "credentials"))
+			t.Setenv("AWS_ENDPOINT_URL_SSO", "http://sso.test.invalid")
+			t.Setenv("AWS_ENDPOINT_URL_SSO_OIDC", "http://ssooidc.test.invalid")
+			env := ai.ProviderEnv{"HTTP_PROXY": proxy.URL, "HTTPS_PROXY": proxy.URL, "NO_PROXY": tc.noProxy}
+			cfg, _, err := loadBedrockConfig(t.Context(), "http://bedrock.test.invalid", "us.anthropic.claude-opus-4-8", ai.StreamOptions{Env: env, Profile: "sso-session"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			credentials, err := cfg.Credentials.Retrieve(t.Context())
+			mu.Lock()
+			defer mu.Unlock()
+			if tc.viaProxy {
+				if err != nil || credentials.AccessKeyID != "SSOSESSIONKEY" || len(hosts) != 2 || hosts[0] != "ssooidc.test.invalid" || hosts[1] != "sso.test.invalid" {
+					t.Fatalf("credentials %q, err %v, proxied hosts %q; want OIDC refresh then SSO role credentials through the proxy", credentials.AccessKeyID, err, hosts)
+				}
+				return
+			}
+			if err == nil || len(hosts) != 0 {
+				t.Fatalf("credentials %q, err %v, proxied hosts %q; want a direct OIDC call that fails to resolve", credentials.AccessKeyID, err, hosts)
+			}
+		})
+	}
+
+	for _, tc := range []struct {
+		name, noProxy string
+		viaProxy      bool
+	}{
+		{"login_session token refresh uses the runtime proxy when baseUrl has one", "", true},
+		{"login_session token refresh goes direct when baseUrl has no proxy", "bedrock.test.invalid", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var mu sync.Mutex
+			var hosts []string
+			proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				mu.Lock()
+				hosts = append(hosts, r.Host)
+				mu.Unlock()
+				w.Header().Set("Content-Type", "application/json")
+				if r.Host != "signin.test.invalid" {
+					w.WriteHeader(http.StatusBadGateway)
+					return
+				}
+				_, _ = w.Write([]byte(`{"accessToken":{"accessKeyId":"LOGINREFRESHKEY","secretAccessKey":"login-secret","sessionToken":"login-token"},"expiresIn":3600,"refreshToken":"next-login-refresh"}`))
+			}))
+			defer proxy.Close()
+			dir := t.TempDir()
+			const loginSession = "arn:aws:iam::123456789012:user/dev"
+			config := filepath.Join(dir, "config")
+			if err := os.WriteFile(config, []byte("[profile login-session]\nlogin_session = "+loginSession+"\nregion = us-east-1\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			cacheDir := filepath.Join(dir, "login-cache")
+			if err := os.MkdirAll(cacheDir, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			tokenPath, err := logincreds.StandardCachedTokenFilepath(loginSession, cacheDir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+			if err != nil {
+				t.Fatal(err)
+			}
+			der, err := x509.MarshalECPrivateKey(key)
+			if err != nil {
+				t.Fatal(err)
+			}
+			dpopPEM := string(pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: der}))
+			tokenJSON, err := json.Marshal(map[string]any{
+				"accessToken": map[string]any{
+					"accessKeyId":     "EXPIREDKEY",
+					"secretAccessKey": "expired-secret",
+					"sessionToken":    "expired-token",
+					"accountId":       "123456789012",
+					"expiresAt":       "2020-01-01T00:00:00Z",
+				},
+				"tokenType":    "aws_sigv4",
+				"refreshToken": "login-refresh-token",
+				"clientId":     "arn:aws:signin::123456789012:client/cli",
+				"dpopKey":      dpopPEM,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(tokenPath, tokenJSON, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv("HOME", dir)
+			t.Setenv("USERPROFILE", dir)
+			t.Setenv("AWS_CONFIG_FILE", config)
+			t.Setenv("AWS_SHARED_CREDENTIALS_FILE", filepath.Join(dir, "credentials"))
+			t.Setenv("AWS_LOGIN_CACHE_DIRECTORY", cacheDir)
+			t.Setenv("AWS_ENDPOINT_URL_SIGNIN", "http://signin.test.invalid")
+			env := ai.ProviderEnv{"HTTP_PROXY": proxy.URL, "HTTPS_PROXY": proxy.URL, "NO_PROXY": tc.noProxy}
+			cfg, _, err := loadBedrockConfig(t.Context(), "http://bedrock.test.invalid", "us.anthropic.claude-opus-4-8", ai.StreamOptions{Env: env, Profile: "login-session"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			credentials, err := cfg.Credentials.Retrieve(t.Context())
+			mu.Lock()
+			defer mu.Unlock()
+			if tc.viaProxy {
+				if err != nil || credentials.AccessKeyID != "LOGINREFRESHKEY" || len(hosts) != 1 || hosts[0] != "signin.test.invalid" {
+					t.Fatalf("credentials %q, err %v, proxied hosts %q; want Signin refresh through the proxy", credentials.AccessKeyID, err, hosts)
+				}
+				return
+			}
+			if err == nil || len(hosts) != 0 {
+				t.Fatalf("credentials %q, err %v, proxied hosts %q; want a direct Signin call that fails to resolve", credentials.AccessKeyID, err, hosts)
 			}
 		})
 	}

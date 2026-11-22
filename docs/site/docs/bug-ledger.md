@@ -711,6 +711,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-51c8f1c](#bf-51c8f1c) | The Rust, Python and Lisp extension SDKs now recognize F1-F12 reported with the Kitty keyboard protocol, as… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-5213cab](#bf-5213cab) | Checking for available package updates now queries at most four npm registries or Git remotes at a time, as… | PiG's own defect | All platforms | Unreleased |
 | [BF-5229b7d](#bf-5229b7d) | fix(durable/core): unloadDocuments with held changes is an api read job, memory notice shares the publish… | PiG's own defect | All platforms | Unreleased |
+| [BF-52310a4](#bf-52310a4) | Bedrock: with `HTTPS_PROXY` or `HTTP_PROXY` set, an AWS SSO / IAM Identity Center profile could not fetch… | PiG's own defect | All platforms | Unreleased |
 | [BF-5260e5c](#bf-5260e5c) | The Rust SDK's `get_model_info()` reads Pi's `maxTokens` and `cost` (it reported 0 for the output limit and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-52858aa](#bf-52858aa) | `setWorkingMessage` with no message restores the default working label and an empty string shows an empty… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5291c92](#bf-5291c92) | A running worker's data export (`HostData.exportTo`) holds both of its stores at one point: the kit's store… | PiG's own defect | All platforms | Unreleased |
@@ -12019,6 +12020,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `5229b7d551` (2026-10-27)
 - **Tests:** None recorded.
+
+### BF-52310a4
+
+**Bedrock: with `HTTPS_PROXY` or `HTTP_PROXY` set, an AWS SSO / IAM Identity Center profile could not fetch…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Bedrock: with `HTTPS_PROXY` or `HTTP_PROXY` set, an AWS SSO / IAM Identity Center profile could not fetch role credentials (`GetRoleCredentials`) or refresh an `sso_session` token (`CreateToken`), and an `aws login` / `login_session` profile could not refresh its Signin token (`CreateOAuth2Token`), because those calls bypassed the proxy and went direct.
+- **Root cause:** loadBedrockConfig passed a proxy-free HTTP client into awsconfig.LoadDefaultConfig and only overrode the STS client with runtimeHTTPClient, leaving SSO, SSO OIDC, and login_session Signin on the direct client (matching Pi before be269f57b1b707399edd86f5f718d1a907ffea8b / #12365)
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `52310a4748` (2026-11-21), `c014a03de2` (2026-11-21)
+- **Tests:** `ai/providers/bedrock/bedrock_proxy_scope_test.go::TestBedrockProxyIsTheBaseURLsAndOnlyTheRuntimeAndSTSUseIt`
+- **Release note:** Bedrock: with `HTTPS_PROXY` or `HTTP_PROXY` set, an AWS SSO / IAM Identity Center profile could not fetch role credentials (`GetRoleCredentials`) or refresh an `sso_session` token (`CreateToken`), and an `aws login` / `login_session` profile could not refresh its Signin token (`CreateOAuth2Token`), because those calls bypassed the proxy and went direct. Bedrock now routes SSO, SSO OIDC, and `login_session` Signin credential calls through the same proxy resolved for the Bedrock endpoint, alongside the Bedrock runtime and STS (`AssumeRole` / `AssumeRoleWithWebIdentity`) calls, while IMDS, container credentials, `credential_process`, bearer tokens, `AWS_BEDROCK_SKIP_AUTH`, and static environment keys keep their existing direct behavior. Affects v0.7.0.
 
 ### BF-5260e5c
 
