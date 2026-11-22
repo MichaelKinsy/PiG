@@ -5,10 +5,12 @@ import (
 	"testing"
 )
 
-// What coreutils' yes writes to stderr when a write to stdout fails, by the error: ECONNRESET and EPIPE.
+// What yes writes to stderr when a write to stdout fails, by the error: GNU coreutils' ECONNRESET and EPIPE on Linux, and macOS /usr/bin/yes
+// (err(1, "stdout")) ENOTCONN on a socket pair whose peer closed. Each is matched whole on exit code 1 (and as a prefix of the whole sentence on 143).
 const (
-	yesResetReport = "yes: standard output: Connection reset by peer\n"
-	yesPipeReport  = "yes: standard output: Broken pipe\n"
+	yesResetReport        = "yes: standard output: Connection reset by peer\n"
+	yesPipeReport         = "yes: standard output: Broken pipe\n"
+	yesNotConnectedReport = "yes: stdout: Socket is not connected\n"
 )
 
 // A cutOffEnd is one way `sh -c "exec yes 2>file"` ends when its first chunk crosses the cap: the code the call resolves and what yes wrote to the
@@ -40,6 +42,9 @@ var cutOffEnds = []cutOffEnd{
 	// instead. A pipe raises SIGPIPE with every EPIPE. Pi: 11 of 20,000 alone (1 in 1) and 3 of 10,000 beside load. With yes's write loop and a
 	// SIGPIPE flag in its place, 33 of Pi's 20,000 runs and none of PiG's 4,000 met EPIPE without the signal.
 	{name: "a broken-pipe report", socket: true, holds: reportEnds(yesPipeReport)},
+	// Measured on macOS 26.7.3 for /usr/bin/yes (err(1, "stdout")) with stdout on one end of a Unix socket pair whose peer read some bytes and closed:
+	// 19 of 80 runs exited 1 with ENOTCONN and this exact sentence (61 of 80 SIGPIPE; 80 of 80 SIGPIPE when closed unread). Matched whole via reportEnds.
+	{name: "a not-connected report", socket: true, holds: reportEnds(yesNotConnectedReport)},
 }
 
 // reportEnds is the rule of an end in which yes reports a failed write: the whole report with yes's own exit code 1, or any beginning of it, the
