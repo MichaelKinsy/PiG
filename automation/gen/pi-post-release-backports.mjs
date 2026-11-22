@@ -3331,7 +3331,7 @@ patch("edfe6b2ef322", "pi-ai/api/openai-responses-shared.js", [
                     for (const name of removed)
                         unavailableTools.add(name);
                 }
-                const text = parts.filter((part) => part.length > 0).join("\n\n");
+                const text = parts.filter((part) => part.length > 0).join("\\n\\n");
                 if (text.length > 0) {
                     messages.push({ role: instructionRole, content: sanitizeSurrogates(text) });
                 }
@@ -3346,7 +3346,7 @@ patch("edfe6b2ef322", "pi-ai/api/openai-responses-shared.js", [
                 for (const name of removed)
                     unavailableTools.add(name);
             }
-            const text = parts.filter((part) => part.length > 0).join("\n\n");
+            const text = parts.filter((part) => part.length > 0).join("\\n\\n");
             if (text.length > 0) {
                 messages.push({ role: instructionRole, content: sanitizeSurrogates(text) });
             }`],
