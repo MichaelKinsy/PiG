@@ -1,0 +1,3 @@
+### Fixed
+
+- Callers waiting for a subprocess extension handler's first suspension no longer stay held for host calls the handler sends after reporting itself blocked on a request with a state channel. `Conn.readLoop` now seals `ackHold` on a non-`host_call` `blocked` report and records `ackCounted` on `CallPayload` so only calls read before the report hold or release the acknowledgment. <!-- fix: ff7b27274e --> <!-- cause: ackHold counted host calls by when Conn.readLoop read them rather than whether the handler sent them before its blocked report, so a post-report call read before stateCh was drained raised unapplied and falsely held the acknowledgment -->
