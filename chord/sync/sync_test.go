@@ -652,20 +652,20 @@ func TestSyncingASessionBetweenDevices(t *testing.T) {
 	})
 }
 
-// countingFiles wraps osFiles to count opened and closed SyncFileReaders.
-type countingFiles struct {
+// bodyCountingFiles wraps osFiles to count opened and closed SyncFileReaders.
+type bodyCountingFiles struct {
 	osFiles
 	opened int
 	closed int
 }
 
-type countingReader struct {
+type bodyCountingReader struct {
 	SyncFileReader
 	closed *int
 	done   bool
 }
 
-func (r *countingReader) Close(ctx context.Context) error {
+func (r *bodyCountingReader) Close(ctx context.Context) error {
 	if !r.done {
 		r.done = true
 		*r.closed++
@@ -673,18 +673,18 @@ func (r *countingReader) Close(ctx context.Context) error {
 	return r.SyncFileReader.Close(ctx)
 }
 
-func (f *countingFiles) OpenBinaryReader(ctx context.Context, path string, options *OpenBinaryReaderOptions) (SyncFileReader, error) {
+func (f *bodyCountingFiles) OpenBinaryReader(ctx context.Context, path string, options *OpenBinaryReaderOptions) (SyncFileReader, error) {
 	reader, err := f.osFiles.OpenBinaryReader(ctx, path, options)
 	if err != nil {
 		return nil, err
 	}
 	f.opened++
-	return &countingReader{SyncFileReader: reader, closed: &f.closed}, nil
+	return &bodyCountingReader{SyncFileReader: reader, closed: &f.closed}, nil
 }
 
 func TestRemoteBodies(t *testing.T) {
 	t.Run("closes a body file at its end, and on Close also before the first read", func(t *testing.T) {
-		files := &countingFiles{}
+		files := &bodyCountingFiles{}
 		remote := NewFileSystemSyncRemote(files, t.TempDir())
 		source := sessionStore(t)
 		commitAll(t, source, seedBatches()[:2]...)
@@ -720,7 +720,7 @@ func TestRemoteBodies(t *testing.T) {
 	})
 
 	t.Run("closes a body a pull read and then refused", func(t *testing.T) {
-		files := &countingFiles{}
+		files := &bodyCountingFiles{}
 		remote := NewFileSystemSyncRemote(files, t.TempDir())
 		laptop := newDevice(t, "laptop", remote)
 		laptop.commit(seedBatches()[:2])
