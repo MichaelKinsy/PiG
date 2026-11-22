@@ -3268,6 +3268,20 @@ patch("073b0bae8", "pi-ai/models.js", [
 ]);
 // END backport 073b0bae8
 
+// BEGIN backport 562da75f9
+// 562da75f9 (#12347, issue #11092): buildCliHighlightTheme sets the default token formatter to t.fg("text", s) so unscoped highlighted text uses the theme foreground.
+// not carried: packages/coding-agent/test/syntax-highlight.test.ts and CHANGELOG.md: the package ships neither.
+patch("562da75f9", "pi-coding-agent/modes/interactive/theme/theme.js", [
+    [`function buildCliHighlightTheme(t) {
+    return {
+        keyword: (s) => t.fg("syntaxKeyword", s),`, `function buildCliHighlightTheme(t) {
+    ${note("562da75f9").trim()}
+    return {
+        default: (s) => t.fg("text", s),
+        keyword: (s) => t.fg("syntaxKeyword", s),`],
+]);
+// END backport 562da75f9
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 // Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.

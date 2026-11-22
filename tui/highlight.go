@@ -384,6 +384,7 @@ func jsParseInt(text string, radix int) float64 {
 
 // cliHighlightTokens are the theme color tokens theme.ts buildCliHighlightTheme gives the highlight.js classes that take a color, in its order.
 var cliHighlightTokens = [...]struct{ class, token string }{
+	{"default", "text"},
 	{"keyword", "syntaxKeyword"},
 	{"built_in", "syntaxType"},
 	{"literal", "syntaxNumber"},
