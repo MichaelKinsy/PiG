@@ -1215,11 +1215,11 @@ jobs:
         env:
           DURABLE_CONTRACT_ARGS: --impls ${{ matrix.impl }} -j 4
         run: automation/ci/with-isolated-pig-home.sh make ci-durable-contract
-      # tooling: run the conformance tooling's own Go and Node tests once (17.4 min at 8 CPUs, ~25-35 min estimated on a 4-CPU runner).
+      # tooling: build the TinyGo and native cores (~1 min at 4 CPUs) and run the conformance tooling's own Go and Node tests once (~19 min at 8 CPUs, ~30 min estimated on a 4-CPU runner).
       - name: Run the Durable conformance tooling tests
         if: ${{ matrix.impl == 'tooling' }}
         shell: bash
-        run: automation/ci/with-isolated-pig-home.sh make durable-contract-test
+        run: automation/ci/with-isolated-pig-home.sh make ci-durable-contract-test
       - name: Save the Go module cache
         if: ${{ env.CACHE_SAVE == 'true' && steps.cache-gomod.outcome == 'success' && steps.cache-gomod.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

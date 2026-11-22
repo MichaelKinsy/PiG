@@ -85,7 +85,7 @@ The flow in `label` mode: push; the light run reports `CI result` red with the m
 | Node extensions | queue | 11 | |
 | Chord surfaces | queue | 20 | The terminal surface's tests under current Node and the web surface's in the runner's Chrome (`make ci-chord-tui`, `make ci-chord-web`), each failing, not skipping, without its Node or browser. They were the last two steps of Node extensions and have their own job as in Pi (aca89cfe14). The limit is the job's, not yet a measured run time, and the job is not in the totals below |
 | Durable Cloudflare host | queue | 25 | |
-| Durable contract / pi, wasm-tinygo, native, tooling | queue | 60 | The Durable core conformance gate (`make ci-durable-contract`), one build of the core per job, plus `tooling` (`make durable-contract-test`); the limit is the job's, not yet a measured run time |
+| Durable contract / pi, wasm-tinygo, native, tooling | queue | 60 | The Durable core conformance gate (`make ci-durable-contract`), one build of the core per job, plus `tooling` (`make ci-durable-contract-test`, ~30 min estimated on a 4-CPU runner); the limit is the job's, not yet a measured run time |
 | Windows cli-2 cli-5, cli-1 cli-3, cli-4 cli-7, cli-6 cli-8 | queue | 96 | |
 | Windows native-2, native-3, native-4 | queue | 56 | |
 | Windows extension-host-1, extension-host-2, extension-host-3, extension-host-4, extension-host-5 | queue | 35 | Five shards, the count of `make test-subprocess` (the `-run` pattern of a third of the package passed the 24000 characters `test-shard-pattern.sh` allows). The 35 minutes are the three shards of run 39510928254; five are not measured, and the totals below count three jobs |

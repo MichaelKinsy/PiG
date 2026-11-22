@@ -105,7 +105,7 @@ func TestCIRunsTheDurableContractGate(t *testing.T) {
 	if !ok {
 		t.Fatal("ci.yml has no durable-contract job")
 	}
-	for _, want := range []string{"make ci-durable-contract", "make durable-contract-test", "DURABLE_CONTRACT_ARGS: --impls ${{ matrix.impl }}", "impl: [pi, wasm-tinygo, native, tooling]", "durable/contract/.cache"} {
+	for _, want := range []string{"make ci-durable-contract", "make ci-durable-contract-test", "DURABLE_CONTRACT_ARGS: --impls ${{ matrix.impl }}", "impl: [pi, wasm-tinygo, native, tooling]", "durable/contract/.cache"} {
 		if !strings.Contains(job, want) {
 			t.Errorf("the durable-contract job lacks %q", want)
 		}
@@ -117,6 +117,15 @@ func TestCIRunsTheDurableContractGate(t *testing.T) {
 	for _, want := range []string{"durable-core-host-deps", "durable-contract"} {
 		if !slices.Contains(prerequisites["ci-durable-contract"], want) {
 			t.Errorf("ci-durable-contract must chain %s, got %v", want, prerequisites["ci-durable-contract"])
+		}
+	}
+	cimk, err := os.ReadFile(filepath.Join(root, "automation/make/ci.mk"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"ci-durable-contract-test:", "DURABLE_CONTRACT_REQUIRE_BUILDS=1"} {
+		if !strings.Contains(string(cimk), want) {
+			t.Errorf("automation/make/ci.mk lacks %q", want)
 		}
 	}
 }
