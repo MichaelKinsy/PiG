@@ -186,11 +186,9 @@ func (l *callLanes) barrierMark() func() {
 	return reached.Wait
 }
 
-// queueCall orders one extension→host call. A Promise-shaped call runs on its
-// own goroutine, and the lane advances once the call has applied its
-// synchronous part (it marks initiation) or has finished, whichever is first.
-// The UI bridge marks initiation; a bare call handler has no initiation point,
-// so its call finishes before the lane advances.
+// queueCall is a test-only wrapper around queueCallDone that passes
+// ackCounted=false and a nil done callback; a call queued through it is not
+// counted by the acknowledgment hold. Production callers use queueCallDone.
 func (h *Host) queueCall(me *managedExt, conn *Conn, lanes *callLanes, callID string, call *CallPayload) {
 	h.queueCallDone(me, conn, lanes, callID, call, false, nil)
 }
