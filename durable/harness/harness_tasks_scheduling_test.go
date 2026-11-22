@@ -334,49 +334,55 @@ func TestTaskRuntime(t *testing.T) {
 		mustClose(t, opened.harness)
 	})
 
-	// harness-tasks.test.ts:654 it("stops a watch whose acquisition finishes after the invocation ended")
+	// harness-tasks.test.ts:691 it("stops a watch whose acquisition finishes after the invocation ended")
 	t.Run("stops a watch whose acquisition finishes after the invocation ended", func(t *testing.T) {
 		notes := tkSessionNotes("test.late-watch")
-		store := newControlledStorage()
 		watching := make(chan error, 1)
-		heldGate := &syncValue[gate]{}
+		releaseLine := &syncValue[func()]{}
 		runtimeValue := &syncValue[stepRuntime]{}
 		var harnessRef atomic.Pointer[Harness]
 		late := tkOneStep("test.late-watch", func(_ context.Context, _ stepRecord, runtime stepRuntime) error {
-			held := store.holdCommits()
-			heldGate.put(held)
+			entered, release := holdLine(t, *harnessRef.Load())
+			releaseLine.put(release)
 			runtimeValue.put(runtime)
-			tkAppendBlocker(*harnessRef.Load(), runtime.ConversationId())
-			// Goroutines queue in no fixed order: return once the commit is in storage, so the step that ends the invocation queues behind it.
-			return held.entered.wait(testContext)
+			// Wait until holdLine owns the Session line, then return so the step that ends the invocation queues behind it.
+			return entered.wait(testContext)
 		})
-		opened := tkOpenRoot(t, []durable.AnyTask{late.Erased()}, tkOptions{storage: store})
+		opened := tkOpenRoot(t, []durable.AnyTask{late.Erased()})
 		harnessRef.Store(&opened.harness)
 		tkSetNotes(t, opened.harness, notes, "x")
+		line := opened.harness.(*harnessImpl).SessionImpl
+		baselineObservers := line.ObserverSubscriptions()
 		id := tkStart(t, opened.root, late.Erased())
 		opened.harness.Resume()
-		eventually(t, heldGate.isSet)
-		held0, _ := heldGate.get()
-		if err := held0.entered.wait(testContext); err != nil {
-			t.Fatal(err)
-		}
+		eventually(t, releaseLine.isSet)
+		// Wait for the held line commit (1) and the ending step (2) to both be admitted on the Session line while the
+		// invocation is still alive (step has not run its callback yet).
+		eventually(t, func() bool { return line.LineJobs() >= 2 })
 		runtime, _ := runtimeValue.get()
-		// Starts after the handler returned, so after the step that ends the invocation.
-		eventually(t, func() bool { return runtime.Signal().Err() != nil })
-		queueOnLineAdmitted(t, func(ctx context.Context) <-chan struct{} {
-			done := make(chan struct{})
-			go func() {
-				defer close(done)
-				_, err := runtime.WatchDocErased(ctx, notes)
-				watching <- err
-			}()
-			return done
-		})
-		held, _ := heldGate.get()
-		held.release()
+		// Start WatchDocErased while the invocation is still alive so it passes runtime.check() and queues behind the ending step.
+		watchAdmitted := make(chan struct{})
+		watchDone := make(chan struct{})
+		go func() {
+			defer close(watchDone)
+			_, err := runtime.WatchDocErased(lineadmission.With(testContext, func() { close(watchAdmitted) }), notes)
+			watching <- err
+		}()
+		select {
+		case <-watchAdmitted:
+		case <-watchDone:
+			t.Fatal("WatchDocErased settled before admission to the Session line (invocation ended before WatchDocErased entered Session.WatchDocErased)")
+		case <-time.After(gcTimeout):
+			t.Fatal("WatchDocErased was neither admitted to the Session line nor settled")
+		}
+		release, _ := releaseLine.get()
+		release()
 		tkContainsError(t, tkWaitErr(t, watching), "invocation has ended")
 		if outcome := tkWaitOutcome(t, opened.harness, id); outcome.Status != durable.OutcomeFaulted {
 			t.Fatalf("outcome %s, want faulted", describeOutcome(outcome))
+		}
+		if got := line.ObserverSubscriptions(); got != baselineObservers {
+			t.Fatalf("observer subscriptions %d after ended watch acquisition, want %d (watch was not stopped)", got, baselineObservers)
 		}
 		mustClose(t, opened.harness)
 	})
