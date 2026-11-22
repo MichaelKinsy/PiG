@@ -243,7 +243,7 @@ func TestCodexWebSocketUpstream(t *testing.T) {
 		if bodies[0].Body["previous_response_id"] != nil || bodies[1].Body["previous_response_id"] != "resp_1" {
 			t.Fatal(bodies)
 		}
-		assertCompletionsJSON(t, bodies[0].Body["input"], `[{"role":"user","content":[{"type":"input_text","text":"Use the tool"}]}]`)
+		assertCompletionsJSON(t, bodies[0].Body["input"], `[{"role":"developer","content":"You are a helpful assistant."},{"role":"user","content":[{"type":"input_text","text":"Use the tool"}]}]`)
 		assertCompletionsJSON(t, bodies[1].Body["input"], `[{"type":"custom_tool_call_output","call_id":"call_1","output":"real result"},{"role":"user","content":[{"type":"input_text","text":"Now finish"}]}]`)
 		stats := GetOpenAICodexWebSocketDebugStats("session-1")
 		if stats == nil || stats.Requests != 2 || stats.ConnectionsCreated != 1 || stats.ConnectionsReused != 1 || stats.CachedContextRequests != 2 || stats.StoreTrueRequests != 0 || stats.FullContextRequests != 1 || stats.DeltaRequests != 1 || stats.LastDeltaInputItems == nil || *stats.LastDeltaInputItems != 2 || stats.LastPreviousResponseId != "resp_1" {
@@ -294,7 +294,7 @@ func TestCodexWebSocketUpstream(t *testing.T) {
 			}
 			assertCompletionsJSON(t, bodies[1].Body["input"], `[{"role":"user","content":[{"type":"input_text","text":"Now finish"}]}]`)
 			full := bodies[2].Body["input"].([]any)
-			if len(full) != 3 {
+			if len(full) != 4 {
 				t.Fatal(full)
 			}
 			assertCompletionsJSON(t, full[len(full)-1], `{"role":"user","content":[{"type":"input_text","text":"Now finish"}]}`)

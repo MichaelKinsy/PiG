@@ -422,8 +422,7 @@ type respRequest struct {
 	ToolChoice           any               `json:"tool_choice,omitempty"`
 	Reasoning            *respReasoning    `json:"reasoning,omitempty"`
 	Include              []string          `json:"include,omitempty"`
-	// Instructions, Text and ParallelToolCalls are Codex members.
-	Instructions      string            `json:"instructions,omitempty"`
+	// Text and ParallelToolCalls are Codex members.
 	Text              map[string]string `json:"text,omitempty"`
 	ParallelToolCalls *bool             `json:"parallel_tool_calls,omitempty"`
 
@@ -446,7 +445,6 @@ func (req respRequest) wire() any {
 		Model                string            `json:"model"`
 		Store                *bool             `json:"store,omitempty"`
 		Stream               bool              `json:"stream"`
-		Instructions         string            `json:"instructions,omitempty"`
 		Input                json.RawMessage   `json:"input"`
 		Text                 map[string]string `json:"text,omitempty"`    //portlint:allow emptydrop always the one-member {verbosity} object (openai-codex-responses.ts:560, openai_responses.go:1295)
 		Include              []string          `json:"include,omitempty"` //portlint:allow emptydrop always ["reasoning.encrypted_content"] (openai-codex-responses.ts:561)
@@ -460,7 +458,7 @@ func (req respRequest) wire() any {
 		MaxOutputTokens      int               `json:"max_output_tokens,omitempty"`
 		PromptCacheRetention string            `json:"prompt_cache_retention,omitempty"`
 		PromptCacheOptions   map[string]string `json:"prompt_cache_options,omitempty"` //portlint:allow emptydrop getPromptCacheOptions returns a non-empty object or undefined (openai-responses.ts:106-112)
-	}{req.Model, req.Store, req.Stream, req.Instructions, req.Input, req.Text, req.Include, req.PromptCacheKey, req.ToolChoice, req.ParallelToolCalls,
+	}{req.Model, req.Store, req.Stream, req.Input, req.Text, req.Include, req.PromptCacheKey, req.ToolChoice, req.ParallelToolCalls,
 		req.Temperature, req.ServiceTier, req.Tools, req.Reasoning, req.MaxOutputTokens, req.PromptCacheRetention, req.PromptCacheOptions}
 }
 
@@ -794,8 +792,6 @@ type responsesOutputText struct {
 
 // ConvertResponsesMessagesOptions mirrors upstream ConvertResponsesMessagesOptions (openai-responses-shared.ts:124).
 type ConvertResponsesMessagesOptions struct {
-	// IncludeSystemPrompt nil is true: the transcript's leading system message becomes the first input item.
-	IncludeSystemPrompt *bool
 	// GrammarToolInputProperties maps a grammar tool's name to the argument property its custom input carries.
 	GrammarToolInputProperties map[string]string
 	// SupportsMidConvoSystemMessages sends later system messages in place; otherwise they fold into the leading prompt.
@@ -1009,14 +1005,13 @@ func (state *responsesToolChanges) systemMessageInstruction(message SystemMessag
 
 // convertMessages converts messages as a whole transcript with every tool declared at the request's top level.
 func (p *openAIResponsesProvider) convertMessages(messages []Message, grammarProps map[string]string) ([]ResponsesInputItem, error) {
-	return p.messageConverter(getResponsesCompat(p.cfg.Compat, p.cfg.StrictModeDefault), grammarProps).convertAnchored(messages, ResolveTranscriptTools(messages, TranscriptToolSupportNone), true)
+	return p.messageConverter(getResponsesCompat(p.cfg.Compat, p.cfg.StrictModeDefault), grammarProps).convertAnchored(messages, ResolveTranscriptTools(messages, TranscriptToolSupportNone))
 }
 
 // convertAnchored converts the whole transcript, the leading system message included. transcriptTools is
 // ResolveTranscriptTools over it: the first FoldedSystemMessages system messages leave their tool changes to the request's
-// tool list, every later one carries its own in place. The leading system message's text is written only with
-// includeSystemPrompt; its tools are declared either way.
-func (c responsesMessageConverter) convertAnchored(messages []Message, transcriptTools TranscriptTools, includeSystemPrompt bool) ([]ResponsesInputItem, error) {
+// tool list, every later one carries its own in place.
+func (c responsesMessageConverter) convertAnchored(messages []Message, transcriptTools TranscriptTools) ([]ResponsesInputItem, error) {
 	items := []ResponsesInputItem{}
 	messageIndex := 0
 	systemIndex := 0
@@ -1037,11 +1032,9 @@ func (c responsesMessageConverter) convertAnchored(messages []Message, transcrip
 				}
 				items = append(items, additions...)
 			}
-			if !isLeadingSystemMessage || includeSystemPrompt {
-				if text := changes.systemMessageInstruction(message, isLeadingSystemMessage, anchorsToolChanges); text != "" {
-					content, _ := json.Marshal(sanitizeSurrogates(text))
-					items = append(items, ResponsesInputItem{Role: c.instructionRole, Content: content})
-				}
+			if text := changes.systemMessageInstruction(message, isLeadingSystemMessage, anchorsToolChanges); text != "" {
+				content, _ := json.Marshal(sanitizeSurrogates(text))
+				items = append(items, ResponsesInputItem{Role: c.instructionRole, Content: content})
 			}
 		case UserMessage:
 			var parts []any
@@ -1226,8 +1219,8 @@ func omitEmptyResponsesCallIDs(messages []Message) []Message {
 	return prepareProviderToolFlow(TranscriptContext{messages: blanked}).messages
 }
 
-// ConvertResponsesMessages converts a transcript to the Responses API "input" array for model: the leading system message (unless
-// options.IncludeSystemPrompt is false), user, assistant and tool-result messages, with tool-call ids normalized for the providers
+// ConvertResponsesMessages converts a transcript to the Responses API "input" array for model: the leading system message,
+// user, assistant and tool-result messages, with tool-call ids normalized for the providers
 // in allowedToolCallProviders. Tools are declared as GetResponsesToolSupport says: in additional_tools items, in synthetic tool
 // search items, or not at all (the request's tool list carries them).
 // Ports packages/ai/src/api/openai-responses-shared.ts convertResponsesMessages.
@@ -1251,7 +1244,7 @@ func ConvertResponsesMessages(model *Model, transcript TranscriptContext, allowe
 		allowedToolCallProviders: allowedToolCallProviders,
 		options:                  options,
 	}
-	return converter.convertAnchored(messages, transcriptTools, options.IncludeSystemPrompt == nil || *options.IncludeSystemPrompt)
+	return converter.convertAnchored(messages, transcriptTools)
 }
 
 // responsesToolCallProviders lists the openai-responses providers whose models
@@ -1498,8 +1491,8 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	configurationUpdateEffort := p.configurationUpdateEffort(compat, opts, apiKey)
 	converter := p.messageConverter(compat, grammarProps)
 	converter.options.ConfigurationUpdateEffort = configurationUpdateEffort
-	// Codex sends the leading system message as `instructions`; its tools stay in the input either way.
-	msgs, err := converter.convertAnchored(messages, transcriptTools, !p.cfg.Codex)
+	// The system prompt goes into a leading developer item, not top-level `instructions`, as in Codex (#12273).
+	msgs, err := converter.convertAnchored(messages, transcriptTools)
 	if err != nil {
 		return nil, err
 	}
@@ -1536,13 +1529,6 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 		req.ServiceTier = opts.ServiceTier
 	}
 	if p.cfg.Codex {
-		req.Instructions = "You are a helpful assistant."
-		// openai-codex-responses.ts buildParams reads the initial system message of the resolved transcript, before transformMessages drops an errored or aborted turn ahead of it.
-		if initial := borrowedInitialSystemMessage(resolvedMessages(transcript, compat.SupportsMidConvoSystemMessages)); initial != nil {
-			if prompt := GetCurrentSystemPrompt([]Message{*initial}); prompt != "" {
-				req.Instructions = prompt
-			}
-		}
 		req.Text = map[string]string{"verbosity": cmp.Or(opts.TextVerbosity, "low")}
 		req.ToolChoice = "auto"
 		parallel := true

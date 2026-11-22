@@ -164,7 +164,6 @@ func TestConvertResponsesMessagesMatchesPi(t *testing.T) {
 	grammarTools := `[{"name":"weather","description":"w","parameters":{"type":"object","properties":{"city":{"type":"string"}}}}]`
 	cases := []responsesSharedCase{
 		{name: "reasoning model, system prompt, full conversation", model: openai, systemPrompt: "be brief", messages: conversation, allowed: allowed},
-		{name: "includeSystemPrompt false drops the leading system message", model: openai, systemPrompt: "be brief", messages: conversation[:1], allowed: allowed, options: ConvertResponsesMessagesOptions{IncludeSystemPrompt: new(false)}, piOptions: `{"includeSystemPrompt":false}`},
 		{name: "non-reasoning model uses the system role and drops images", model: plain, systemPrompt: "be brief", messages: conversation, allowed: allowed},
 		{name: "supportsDeveloperRole false keeps the system role for a reasoning model", model: noDev, systemPrompt: "be brief", messages: conversation[:1], allowed: allowed},
 		{name: "provider outside the allowed set only sanitizes ids", model: plain, messages: conversation, allowed: map[string]bool{}},

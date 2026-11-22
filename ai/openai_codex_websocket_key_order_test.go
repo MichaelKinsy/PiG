@@ -48,10 +48,10 @@ func TestCodexWebSocketFramesKeepPisKeyOrder(t *testing.T) {
 
 	mu.Lock()
 	defer mu.Unlock()
-	const head = `{"type":"response.create","model":"gpt-5.1-codex","store":false,"stream":true,"instructions":"You are a helpful assistant.","input":`
+	const head = `{"type":"response.create","model":"gpt-5.1-codex","store":false,"stream":true,"input":`
 	const tail = `,"text":{"verbosity":"low"},"include":["reasoning.encrypted_content"],"prompt_cache_key":"s-order","tool_choice":"auto","parallel_tool_calls":true`
 	want := []string{
-		head + `[{"role":"user","content":[{"type":"input_text","text":"Say hello"}]}]` + tail + `}`,
+		head + `[{"role":"developer","content":"You are a helpful assistant."},{"role":"user","content":[{"type":"input_text","text":"Say hello"}]}]` + tail + `}`,
 		head + `[{"role":"user","content":[{"type":"input_text","text":"Now finish"}]}]` + tail + `,"previous_response_id":"resp_1"}`,
 	}
 	if len(frames) != 2 || frames[0] != want[0] || frames[1] != want[1] {
