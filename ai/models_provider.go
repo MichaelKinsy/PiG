@@ -124,6 +124,7 @@ func mergeProviderCatalog(baseline, dynamic []AnyModel) *providerCatalogSnapshot
 }
 
 // cachedChatModels returns the immutable published chat slice without copying when p is an unmodified CreateProvider instance.
+// Comparing the GetModels code pointer catches a provider value copied and given its own getter closure (such as the native provider composer and the virtual-model wrapper, which bypass the private read so lookups see the replaced getter), but cannot distinguish a getter closure taken from another CreateProvider instance (same function literal and code pointer; no caller does that).
 func (p *ModelsProvider) cachedChatModels() ([]*Model, error) {
 	if p.catalog != nil && p.GetModels != nil && reflect.ValueOf(p.GetModels).Pointer() == p.catalog.getModels {
 		return p.catalog.snapshot.Load().chat, nil
@@ -132,6 +133,7 @@ func (p *ModelsProvider) cachedChatModels() ([]*Model, error) {
 }
 
 // cachedAllModels returns the immutable published full model slice without copying when p is an unmodified CreateProvider instance.
+// Comparing the GetAllModels code pointer catches a provider value copied and given its own getter closure (such as the native provider composer and the virtual-model wrapper, which bypass the private read so lookups see the replaced getter), but cannot distinguish a getter closure taken from another CreateProvider instance (same function literal and code pointer; no caller does that).
 func (p *ModelsProvider) cachedAllModels() ([]AnyModel, error) {
 	if p.catalog != nil && p.GetAllModels != nil && reflect.ValueOf(p.GetAllModels).Pointer() == p.catalog.getAll {
 		return p.catalog.snapshot.Load().all, nil
