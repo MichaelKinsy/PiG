@@ -56,6 +56,12 @@ export default function(pi) {
 	}
 }
 
+type testReapedTime struct {
+	at time.Time
+}
+
+func (r *testReapedTime) exitReapedAt() time.Time { return r.at }
+
 // Reaping a process after TerminateHostProcesses' shared deadline (for example when its own cmd.WaitDelay of the same length fires and closes its exit channel before awaitReaped runs its count) must still be counted in the dropped-output notice.
 func TestAwaitReapedCountsProcessesReapedAfterDeadline(t *testing.T) {
 	const bound = 600 * time.Millisecond
@@ -63,16 +69,16 @@ func TestAwaitReapedCountsProcessesReapedAfterDeadline(t *testing.T) {
 	const wakeJitter = 5 * time.Millisecond
 	spawnReaper := func(after time.Duration) reapedProcess {
 		done := make(chan struct{})
-		var reapedAt time.Time
+		reaper := &testReapedTime{}
 		go func() {
 			time.Sleep(after)
-			reapedAt = time.Now()
+			reaper.at = time.Now()
 			close(done)
 		}()
-		return reapedProcess{done: done, reapedAt: func() time.Time { return reapedAt }}
+		return reapedProcess{done: done, reaper: reaper}
 	}
 	stuck := func() reapedProcess {
-		return reapedProcess{done: make(chan struct{}), reapedAt: func() time.Time { return time.Time{} }}
+		return reapedProcess{done: make(chan struct{}), reaper: &testReapedTime{}}
 	}
 	t.Run("one_of_three_closes_late_before_count", func(t *testing.T) {
 		collect := swapStd(t)

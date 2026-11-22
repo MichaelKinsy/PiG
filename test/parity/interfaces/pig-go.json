@@ -162845,6 +162845,17 @@
       "shapeHash": "sha256:3b4345994b39656f7e0a285a25a0b948b231c9fece438067548f6cc5388788b8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#reapedTimeSource",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "reapedTimeSource",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "reapedTimeSource"
+      },
+      "shapeHash": "sha256:7655ac07664d8d2de5e491e39af4cdbd38b7826575fdc03f997174e0520a7d3c"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#reasonFor",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "reasonFor",
