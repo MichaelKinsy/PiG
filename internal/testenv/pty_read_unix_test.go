@@ -3,7 +3,6 @@
 package testenv
 
 import (
-	"io"
 	"os"
 	"strings"
 	"syscall"
@@ -108,7 +107,7 @@ func TestReadPTYUntilSentinelDrainsOnRevokedSlaveEIO(t *testing.T) {
 	finish, cleanup := startPTYReader(t.Context(), master, revokedSlave{file: slave}, 5*time.Second)
 	t.Cleanup(cleanup)
 	const payload = "child-output\x1b[?2004l--- PASS: TestChild (0.01s)\r\nPASS\r\n"
-	if _, err := io.WriteString(slave, payload); err != nil {
+	if _, err := slave.WriteString(payload); err != nil {
 		t.Fatal(err)
 	}
 	// Simulate session-leader exit on macOS: the tty output queue drains to master
