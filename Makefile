@@ -628,6 +628,7 @@ perf-lint: ## Fail on performance antipatterns the baseline does not list (ratch
 # race-coverage fails when a package that starts goroutines or timers and has tests is in no nightly -race group of automation/ci/race-packages.txt (and is not exempt there with a reason).
 race-coverage: ## Fail on a concurrency package that no nightly -race group runs
 	@python3 -B -m unittest discover -s automation/ci -p test_race_coverage.py
+	@python3 -B -m unittest discover -s automation/ci -p test_fuzz_nightly.py
 	@./automation/ci/race-coverage.sh
 
 .PHONY: race-coverage
