@@ -3270,6 +3270,57 @@ patch("073b0bae8", "pi-ai/models.js", [
 ]);
 // END backport 073b0bae8
 
+// BEGIN backport 37b74c546921
+// 37b74c546921 (#12246, issue #12245): a query in the /login, /logout, /scoped-models and /resume searches moves the selection to the top row, so the best match is highlighted.
+patch("37b74c546921", "pi-coding-agent/modes/interactive/components/oauth-selector.js", [
+    ["        this.selectedIndex = Math.max(0, Math.min(this.selectedIndex, Math.max(0, this.filteredProviders.length - 1)));\n",
+      `        ${note("37b74c546921").trim()}
+        // A query moves the selection to the top row, so the best match is highlighted.
+        this.selectedIndex = query ? 0 : Math.min(this.selectedIndex, Math.max(0, this.filteredProviders.length - 1));
+`],
+]);
+patch("37b74c546921", "pi-coding-agent/modes/interactive/components/scoped-models-selector.js", [
+    ["        // Pass everything else to search input\n        this.searchInput.handleInput(data);\n        this.refresh();\n",
+      `        ${note("37b74c546921").trim()}
+        // Pass everything else to search input. A query moves the selection to the top row, so the best match is
+        // highlighted; toggles and reorders call refresh() too, so the reset lives here and not there.
+        this.searchInput.handleInput(data);
+        if (this.searchInput.getValue())
+            this.selectedIndex = 0;
+        this.refresh();
+`],
+]);
+patch("37b74c546921", "pi-coding-agent/modes/interactive/components/session-selector.js", [
+    ["            if (this.searchInput.getValue().length > 0) {\n                this.searchInput.handleInput(keyData);\n                this.filterSessions(this.searchInput.getValue());\n                return;\n",
+      `            if (this.searchInput.getValue().length > 0) {
+                ${note("37b74c546921").trim()}
+                this.handleSearchInput(keyData);
+                return;
+`],
+    ["        // Pass everything else to search input\n        else {\n            this.searchInput.handleInput(keyData);\n            this.filterSessions(this.searchInput.getValue());\n        }\n    }\n}\n",
+      `        // Pass everything else to search input
+        else {
+            ${note("37b74c546921").trim()}
+            this.handleSearchInput(keyData);
+        }
+    }
+    /** Applies a key to the search query; a non-empty query selects the top row, the best match. */
+    handleSearchInput(keyData) {
+        this.searchInput.handleInput(keyData);
+        const query = this.searchInput.getValue();
+        this.filterSessions(query);
+        if (!query.trim())
+            return;
+        this.selectedIndex = 0;
+        // Untouched, sessions that are still loading keep the selection on the top row instead of on this session.
+        this.selectionTouched = false;
+        this.pendingSelectedPath = undefined;
+    }
+}
+`],
+]);
+// END backport 37b74c546921
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 // Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.

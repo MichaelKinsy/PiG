@@ -360,8 +360,7 @@ func (s *SessionSelectorComponent) HandleInput(data string) {
 		return
 	case kb.Matches(data, "app.session.deleteNoninvasive"):
 		if s.searchInput.Text() != "" {
-			s.searchInput.HandleInput(data)
-			s.refilter()
+			s.handleSearchInput(data)
 		} else {
 			s.startDeleteConfirmation()
 		}
@@ -390,9 +389,23 @@ func (s *SessionSelectorComponent) HandleInput(data string) {
 			s.list.OnCancel()
 		}
 	default:
-		s.searchInput.HandleInput(data)
-		s.refilter()
+		s.handleSearchInput(data)
 	}
+}
+
+// handleSearchInput is SessionList.handleSearchInput (Pi 37b74c546, #12246): it applies a key to the search query;
+// a non-empty query selects the top row, the best match, and clears selectionTouched and pendingSelectedPath so that
+// sessions still loading keep the selection on the top row.
+func (s *SessionSelectorComponent) handleSearchInput(data string) {
+	s.searchInput.HandleInput(data)
+	query := s.searchInput.Text()
+	s.refilter()
+	if jsTrim(query) == "" {
+		return
+	}
+	s.selected = 0
+	s.selectionTouched = false
+	s.pendingSelectedPath = ""
 }
 
 // highlighted reports whether the selected index names a row: like Pi's selectedIndex it is -1 after a down key over an empty list and stays out of range until a key moves it.

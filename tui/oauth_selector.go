@@ -224,6 +224,12 @@ func (s *OAuthSelectorComponent) applyFilter() {
 		}
 		return p.Name + " " + p.ID + " " + p.AuthType + " " + methodName
 	})
+	// Ports oauth-selector.ts filterProviders (Pi 37b74c546, #12246): a query moves the selection to the top row, so the best
+	// match is highlighted; clearing the query keeps the clamp.
+	if query != "" {
+		s.cursor = 0
+		return
+	}
 	if s.cursor >= len(s.filtered) {
 		s.cursor = len(s.filtered) - 1
 	}

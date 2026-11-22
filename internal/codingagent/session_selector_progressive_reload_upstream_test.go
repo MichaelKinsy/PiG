@@ -200,9 +200,14 @@ func TestResumePickerOverTheSessionListingKeepsTheNextSessionSelectedAcrossTheRe
 // The reload after a delete first holds only s5 while s4, the next session, is awaited; the user then moves the selection or
 // types a search, and the complete list must leave the selection on the row the user is on instead of jumping to s4.
 func TestSessionSelectorMovingOrSearchingDuringAProgressiveReloadGivesUpTheAwaitedSession(t *testing.T) {
-	for _, tc := range []struct{ name, key string }{
-		{"moving the selection", "\x1b[A"},
-		{"typing a search", "h"},
+	// Pi 37b74c546 (#12246): a search selects the top row, the best match, and clears the awaited session, so the complete list
+	// leaves the selection on its first row; moving the selection keeps the row the user is on.
+	for _, tc := range []struct {
+		name, key string
+		want      int
+	}{
+		{"moving the selection", "\x1b[A", 4},
+		{"typing a search", "h", 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			sessions := progressiveReloadSessions(nil)
@@ -234,8 +239,8 @@ func TestSessionSelectorMovingOrSearchingDuringAProgressiveReloadGivesUpTheAwait
 			reload <- sessionLoadResult{sessions: remaining}
 			s.drainLoadUpdates()
 
-			if got := list.GetSelectedSessionPath(); got != sessions[4].Path {
-				t.Fatalf("selected %q after the complete list, want the row the user was on, %q", got, sessions[4].Path)
+			if got := list.GetSelectedSessionPath(); got != sessions[tc.want].Path {
+				t.Fatalf("selected %q after the complete list, want %q", got, sessions[tc.want].Path)
 			}
 		})
 	}

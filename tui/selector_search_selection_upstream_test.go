@@ -258,16 +258,18 @@ func TestSelectorSearchBoundaryTransitions(t *testing.T) {
 		}
 	})
 
-	t.Run("oauth-wraparound-and-cursor-bounds-and-type-after-move", func(t *testing.T) {
+	t.Run("oauth-bounds-and-cursor-bounds-and-type-after-move", func(t *testing.T) {
 		sel := NewOAuthSelectorComponent("login", oauthSelectorProviders("Alpha One", "Alpha Two", "Beta"), nil, nil)
-		// Wraparound: Up from 0 goes to last; Down from last goes to 0.
+		// OAuthSelector clamps Up at 0 and Down at last (oauth-selector.ts Math.max/Math.min).
 		sel.HandleInput(selectorUpKey)
-		if got := sel.SelectedID(); got != "beta" {
-			t.Fatalf("Up from first = %q, want beta", got)
+		if got := sel.SelectedID(); got != "alpha-one" {
+			t.Fatalf("Up from first = %q, want alpha-one", got)
 		}
 		sel.HandleInput(selectorDownKey)
-		if got := sel.SelectedID(); got != "alpha-one" {
-			t.Fatalf("Down from last = %q, want alpha-one", got)
+		sel.HandleInput(selectorDownKey)
+		sel.HandleInput(selectorDownKey)
+		if got := sel.SelectedID(); got != "beta" {
+			t.Fatalf("Down past last = %q, want beta", got)
 		}
 		// Cursor keys at start and end of query keep selection, then typing resets to row 0.
 		typeSelectorQuery(sel, "al")

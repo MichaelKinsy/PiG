@@ -111,7 +111,8 @@ func TestSessionSearchRetainsAndClampsSelection(t *testing.T) {
 			for _, key := range "delta" {
 				sel.HandleInput(string(key))
 			}
-			wantIndex := min(initial, len(tc.Want)-1)
+			// Pi 37b74c546 (#12246): a non-empty query selects the top row, wherever the selection was.
+			wantIndex := 0
 			if sel.selected != wantIndex || sel.filtered[sel.selected].Session.ID != tc.Want[wantIndex] {
 				t.Fatalf("from %d: selected=%d rows=%v", initial, sel.selected, sel.filtered)
 			}
