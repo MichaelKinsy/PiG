@@ -393,12 +393,16 @@ func (s *SessionSelectorComponent) HandleInput(data string) {
 	}
 }
 
-// handleSearchInput is SessionList.handleSearchInput (Pi 37b74c546, #12246): it applies a key to the search query;
-// a non-empty query selects the top row, the best match, and clears selectionTouched and pendingSelectedPath so that
-// sessions still loading keep the selection on the top row.
+// handleSearchInput is SessionList.handleSearchInput (Pi 37b74c546, #12246, and 5bcf370a5, #12334): it applies a key to the
+// search query and re-filters only when the query changed. A changed non-empty query selects the top row, the best match,
+// and clears selectionTouched and pendingSelectedPath so that sessions still loading keep the selection on the top row.
 func (s *SessionSelectorComponent) handleSearchInput(data string) {
+	previousQuery := s.searchInput.Text()
 	s.searchInput.HandleInput(data)
 	query := s.searchInput.Text()
+	if query == previousQuery {
+		return
+	}
 	s.refilter()
 	if jsTrim(query) == "" {
 		return

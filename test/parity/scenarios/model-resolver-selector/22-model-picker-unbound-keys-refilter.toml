@@ -1,27 +1,23 @@
 # Behavior family: model-resolver-selector
-# Surface: keys without a model-selector action reach the search input and reapply the query.
+# Surface: keys without a model-selector action reach the search input; a key that leaves the query unchanged keeps the selection.
 #
-# Upstream evidence (Pi e7a0df27 model-selector.ts handleInput and filterModels):
-# handleInput matches only tui.input.tab, tui.select.up, tui.select.down, the selection page keys,
-# tui.select.confirm, tui.select.cancel and app.models.save. Every other key, including Left, goes to
-# searchInput.handleInput and then filterModels(searchInput.getValue()). filterModels sets selectedIndex to 0
-# whenever the query is non-empty, even when the key left the query unchanged.
+# Upstream evidence (Pi 5bcf370a5, #12334, carried by the oracle: automation/gen/pi-post-release-backports.mjs): handleInput matches only
+# tui.input.tab, tui.select.up, tui.select.down, the selection page keys, tui.select.confirm, tui.select.cancel and app.models.save in that
+# order. Every other key, including Left and Right, goes to searchInput.handleInput, and filterModels runs only when the query text changed.
+# The pinned release (cead615b) ran filterModels after every such key and set selectedIndex to 0 for a non-empty query.
 # With the local two-model fixture:
 #   /model Enter, "model", Down  -> "Model Name: Model One"
-#   Down, Left                   -> "Model Name: Model Two"
-# Pig previously skipped the refilter when the query did not change, so the waits below timed out on Pig.
+#   Right, Left                  -> still "Model Name: Model One" (the screen does not change: wait_stable_milliseconds)
 # Pi e7a0df27 (#7629) handles tui.select.pageUp and tui.select.pageDown in the model selector, so PageDown
 # is no longer an unbound picker key: it moves the selection one page, clamped to the last row, and the
 # fullscreen viewport leaves it to the focused picker (24-fullscreen-model-picker-page-keys-reach-selector).
-# Right is unbound in both modes (it reaches searchInput as cursorRight and leaves the query unchanged),
-# so it carries the same refilter contract: the selection returns to the first match.
 # The last step pins the page key contract: from "Model Name: Model One", the last of two rows, PageDown
 # stays on the last row and Down then wraps to model-two.
 # The first step waits for the background refresh, the settled state that
 # re-anchors the selection on both sides (see 11-model-picker-arrow-wrap).
 
 name = "22-model-picker-unbound-keys-refilter"
-description = "Unbound picker keys reapply the query and select the first match."
+description = "Unbound picker keys that leave the query unchanged keep the selection."
 covers = [
   "packages/coding-agent/src/modes/interactive/components/model-selector.ts",
 ]
@@ -54,7 +50,7 @@ wait_timeout_seconds = 5
 
 [[tmux.steps]]
 keys = ["Right"]
-wait_visible_contains = ["→ ✓ model-two [fixture]", "Model Name: Model Two"]
+wait_stable_milliseconds = 500
 wait_timeout_seconds = 5
 
 [[tmux.steps]]
@@ -64,7 +60,7 @@ wait_timeout_seconds = 5
 
 [[tmux.steps]]
 keys = ["Left"]
-wait_visible_contains = ["→ ✓ model-two [fixture]", "Model Name: Model Two"]
+wait_stable_milliseconds = 500
 wait_timeout_seconds = 5
 
 [[tmux.steps]]

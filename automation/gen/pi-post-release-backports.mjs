@@ -3321,6 +3321,124 @@ patch("37b74c546921", "pi-coding-agent/modes/interactive/components/session-sele
 ]);
 // END backport 37b74c546921
 
+// BEGIN backport 5bcf370a5293
+// 5bcf370a5293 (#12334, issue #12245): the searchable selectors re-run their filter only when the query changed, so Left, Right, Home and End keep the selection.
+patch("5bcf370a5293", "pi-coding-agent/modes/interactive/components/oauth-selector.js", [
+    ["        // Pass everything else to search input\n        else {\n            this.searchInput.handleInput(keyData);\n            this.filterProviders(this.searchInput.getValue());\n        }\n",
+      `        ${note("5bcf370a5293").trim()}
+        // Pass everything else to search input. Cursor keys leave the query as it is and must not move the selection.
+        else {
+            const previousQuery = this.searchInput.getValue();
+            this.searchInput.handleInput(keyData);
+            const query = this.searchInput.getValue();
+            if (query !== previousQuery)
+                this.filterProviders(query);
+        }
+`],
+]);
+patch("5bcf370a5293", "pi-coding-agent/modes/interactive/components/scoped-models-selector.js", [
+    [`        // Pass everything else to search input. A query moves the selection to the top row, so the best match is
+        // highlighted; toggles and reorders call refresh() too, so the reset lives here and not there.
+        this.searchInput.handleInput(data);
+        if (this.searchInput.getValue())
+            this.selectedIndex = 0;
+        this.refresh();
+`, `        ${note("5bcf370a5293").trim()}
+        // Pass everything else to search input. A new query moves the selection to the top row, so the best match is
+        // highlighted; toggles and reorders call refresh() too, so the reset lives here and not there. Cursor keys
+        // leave the query as it is and must not move the selection.
+        const previousQuery = this.searchInput.getValue();
+        this.searchInput.handleInput(data);
+        const query = this.searchInput.getValue();
+        if (query === previousQuery)
+            return;
+        if (query)
+            this.selectedIndex = 0;
+        this.refresh();
+`],
+], "37b74c546921");
+patch("5bcf370a5293", "pi-coding-agent/modes/interactive/components/session-selector.js", [
+    [`    /** Applies a key to the search query; a non-empty query selects the top row, the best match. */
+    handleSearchInput(keyData) {
+        this.searchInput.handleInput(keyData);
+        const query = this.searchInput.getValue();
+        this.filterSessions(query);
+`, `    ${note("5bcf370a5293").trim()}
+    /** Applies a key to the search query; a changed, non-empty query selects the top row, the best match. */
+    handleSearchInput(keyData) {
+        const previousQuery = this.searchInput.getValue();
+        this.searchInput.handleInput(keyData);
+        const query = this.searchInput.getValue();
+        // Cursor keys leave the query as it is and must not move the selection.
+        if (query === previousQuery)
+            return;
+        this.filterSessions(query);
+`],
+], "37b74c546921");
+patch("5bcf370a5293", "pi-coding-agent/modes/interactive/components/config-selector.js", [
+    ["        // Pass to search input\n        this.searchInput.handleInput(data);\n        this.filterItems(this.searchInput.getValue());\n",
+      `        ${note("5bcf370a5293").trim()}
+        // Pass to search input. Cursor keys leave the query as it is and must not move the selection.
+        const previousQuery = this.searchInput.getValue();
+        this.searchInput.handleInput(data);
+        const query = this.searchInput.getValue();
+        if (query !== previousQuery)
+            this.filterItems(query);
+`],
+]);
+patch("5bcf370a5293", "pi-coding-agent/modes/interactive/components/model-selector.js", [
+    ["        // Pass everything else to search input\n        else {\n            this.searchInput.handleInput(keyData);\n            this.filterModels(this.searchInput.getValue());\n        }\n",
+      `        ${note("5bcf370a5293").trim()}
+        // Pass everything else to search input. Cursor keys leave the query as it is and must not move the selection.
+        else {
+            const previousQuery = this.searchInput.getValue();
+            this.searchInput.handleInput(keyData);
+            const query = this.searchInput.getValue();
+            if (query !== previousQuery)
+                this.filterModels(query);
+        }
+`],
+]);
+patch("5bcf370a5293", "pi-coding-agent/modes/interactive/components/settings-submenu.js", [
+    ["            else {\n                this.searchInput.handleInput(data);\n                this.applyFilter(this.searchInput.getValue());\n            }\n",
+      `            else {
+                ${note("5bcf370a5293").trim()}
+                // Cursor keys leave the query as it is and must not move the selection.
+                const previousQuery = this.searchInput.getValue();
+                this.searchInput.handleInput(data);
+                const query = this.searchInput.getValue();
+                if (query !== previousQuery)
+                    this.applyFilter(query);
+            }
+`],
+]);
+patch("5bcf370a5293", "pi-coding-agent/modes/interactive/components/thinking-selector.js", [
+    ["        this.searchInput.handleInput(keyData);\n        this.applyFilter(this.searchInput.getValue());\n    }\n",
+      `        ${note("5bcf370a5293").trim()}
+        // Cursor keys leave the query as it is and must not rebuild the list.
+        const previousQuery = this.searchInput.getValue();
+        this.searchInput.handleInput(keyData);
+        const query = this.searchInput.getValue();
+        if (query !== previousQuery)
+            this.applyFilter(query);
+    }
+`],
+]);
+patch("5bcf370a5293", "pi-tui/components/settings-list.js", [
+    ["        else if (this.searchEnabled && this.searchInput) {\n            this.searchInput.handleInput(data);\n            this.applyFilter(this.searchInput.getValue());\n        }\n",
+      `        else if (this.searchEnabled && this.searchInput) {
+            ${note("5bcf370a5293").trim()}
+            // Cursor keys leave the query as it is and must not move the selection.
+            const previousQuery = this.searchInput.getValue();
+            this.searchInput.handleInput(data);
+            const query = this.searchInput.getValue();
+            if (query !== previousQuery)
+                this.applyFilter(query);
+        }
+`],
+]);
+// END backport 5bcf370a5293
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 // Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.

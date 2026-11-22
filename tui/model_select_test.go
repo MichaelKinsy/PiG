@@ -223,9 +223,10 @@ func TestModelSelectorArrowNavigationWrapsAtBothEnds(t *testing.T) {
 }
 
 // Upstream handleInput passes every other key to the search input and then always calls filterModels, which selects the first row while a query is active, even when the key did not change the query.
-func TestModelSelectorUnchangedQueryKeyReselectsFirstMatch(t *testing.T) {
+// Pi 5bcf370a5 (#12334): a key that leaves the query unchanged does not re-run the filter, so the selection stays.
+func TestModelSelectorUnchangedQueryKeyKeepsTheSelection(t *testing.T) {
 	items := mkItems("fixture/model-two", "fixture/model-one")
-	for _, key := range []string{"\x1b[D", "\x1b[5~", "\x1b[Z"} {
+	for _, key := range []string{"\x1b[D", "\x1b[Z"} {
 		selector := NewStaticModelSelectorComponent("x", nil, items, "fixture/model-two")
 		for _, r := range "model" {
 			selector.HandleInput(string(r))
@@ -235,8 +236,8 @@ func TestModelSelectorUnchangedQueryKeyReselectsFirstMatch(t *testing.T) {
 			t.Fatalf("down selected %d", selector.cursor)
 		}
 		selector.HandleInput(key)
-		if selector.cursor != 0 || selector.searchInput.Text() != "model" {
-			t.Errorf("%q left selection %d with query %q, want 0 with model", key, selector.cursor, selector.searchInput.Text())
+		if selector.cursor != 1 || selector.searchInput.Text() != "model" {
+			t.Errorf("%q left selection %d with query %q, want 1 with model", key, selector.cursor, selector.searchInput.Text())
 		}
 	}
 }

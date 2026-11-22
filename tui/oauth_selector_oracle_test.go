@@ -91,6 +91,10 @@ func TestOAuthSelectorHandleInputMatchesPi(t *testing.T) {
 		{Mode: "login", Providers: providers, Bindings: map[string][]string{KBSelectConfirm: {"ctrl+y"}, KBSelectCancel: {"ctrl+q"}}, Keys: []string{"\x19"}},
 		{Mode: "login", Providers: providers, Bindings: map[string][]string{KBSelectConfirm: {"ctrl+y"}, KBSelectCancel: {"ctrl+q"}}, Keys: []string{"\x11"}},
 		{Mode: "login", Providers: providers, Bindings: map[string][]string{KBSelectUp: {"ctrl+p"}, KBSelectDown: {"ctrl+n"}}, Keys: []string{"\x0e", "\x0e", "\x10", "\r"}},
+		// Pi 37b74c546 (#12246) and 5bcf370a5 (#12334): a query after scrolling selects the first match, and a cursor key keeps the selection.
+		{Mode: "login", Providers: providers, Keys: []string{"\x1b[B", "\x1b[B", "\x1b[B", "o", "p", "e", "n", "a", "i", "\r"}},
+		{Mode: "login", Providers: providers, Keys: []string{"o", "\x1b[B", "\x1b[D", "\x1b[H", "\x1b[C", "\x1b[F", "\r"}},
+		{Mode: "login", Providers: providers, Keys: []string{"o", "\x1b[B", "\x7f", "\x1b[D", "\r"}},
 	}
 	probes = append(probes, randomOAuthProbes()...)
 	// A cursor in the middle of a list longer than the eight visible rows: the window starts four rows above it (oauth-selector.ts startIndex).
@@ -103,6 +107,7 @@ func TestOAuthSelectorHandleInputMatchesPi(t *testing.T) {
 		for n := 5; n <= 9; n++ {
 			probes = append(probes, oauthProbe{Mode: "login", Providers: list, Keys: slices.Repeat([]string{down}, n)})
 		}
+		probes = append(probes, oauthProbe{Mode: "login", Providers: list, Keys: append(slices.Repeat([]string{down}, 5), "1", "\r")})
 	}
 	input, err := json.Marshal(probes)
 	if err != nil {

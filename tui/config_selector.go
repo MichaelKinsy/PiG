@@ -475,10 +475,13 @@ func (cs *ConfigSelectorComponent) HandleInput(data string) {
 			}
 		}
 	default:
-		// config-selector.ts:518-519: every key that reaches the search Input re-filters, so a key that
-		// leaves the query unchanged still resets the selection to the first item.
+		// Ports config-selector.ts ResourceList.handleInput (Pi 5bcf370a5, #12334): a key that reaches the search Input
+		// re-filters only when the query changed, so a cursor key keeps the selection.
+		previousQuery := cs.query()
 		cs.input.HandleInput(data)
-		cs.filterItems()
+		if cs.query() != previousQuery {
+			cs.filterItems()
+		}
 	}
 	cs.Invalidate()
 }

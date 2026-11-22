@@ -426,8 +426,12 @@ func (m *ModelSelectorComponent) HandleInput(data string) {
 			m.callbacks.selected(m.selectedFQ, true)
 		}
 	default:
+		// Ports model-selector.ts handleInput (Pi 5bcf370a5, #12334): the filter runs only when the query changed, so a cursor key keeps the selection.
+		previousQuery := m.searchInput.Text()
 		m.searchInput.HandleInput(data)
-		m.applyFilter()
+		if m.searchInput.Text() != previousQuery {
+			m.applyFilter()
+		}
 	}
 	m.updateList()
 	m.Invalidate()

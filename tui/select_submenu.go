@@ -112,7 +112,12 @@ func (s *SelectSubmenuComponent) HandleInput(data string) {
 		}
 		return
 	}
+	// Ports settings-submenu.ts SelectSubmenu.handleInput (Pi 5bcf370a5, #12334): the filter runs only when the query changed, so a cursor key keeps the selection.
+	previousQuery := s.searchInput.Text()
 	s.searchInput.HandleInput(data)
+	if s.searchInput.Text() == previousQuery {
+		return
+	}
 	items := FuzzyFilter(s.allOptions, s.searchInput.Text(), func(item SelectItem) string { return item.Label + " " + item.Description })
 	s.buildSelectList(s.listTitle, items, "")
 }

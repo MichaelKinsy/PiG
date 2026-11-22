@@ -50,7 +50,8 @@ func TestSettingsListRenderMatchesPi(t *testing.T) {
 	many[3].Description = "The fourth setting has a description that wraps across more than one row at narrow widths."
 	sets["many"] = many
 	// The page scripts move by one visible page with PageDown and PageUp, which settings-list.ts clamps without wrapping.
-	scripts := [][]string{{}, {"\x1b[6~", "\x1b[6~", "\x1b[5~"}, {"\x1b[6~", "\x1b[6~", "\x1b[6~", "\x1b[6~", "\x1b[6~", "\x1b[5~", "\x1b[5~"}, {"\x1b[5~"}, {"\x1b[B"}, {"\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B"}, {"\x1b[A"}, {"\x1b[A", "\x1b[A"}, {"s", "e", "t"}, {"z", "z", "z"}, {"t", "\x7f", "\x7f"}, {"n", "\x1b[B", "\x1b[B", "\x1b[A"}, {"日", "x"}, {"\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B"}}
+	// Pi 5bcf370a5 (#12334): a key that leaves the query unchanged keeps the selection.
+	scripts := [][]string{{}, {"e", "\x1b[B", "\x1b[B", "\x1b[D", "\x1b[H"}, {"e", "\x1b[B", "\x1b[C", "\x1b[F", "\x1b[B"}, {"\x1b[6~", "\x1b[6~", "\x1b[5~"}, {"\x1b[6~", "\x1b[6~", "\x1b[6~", "\x1b[6~", "\x1b[6~", "\x1b[5~", "\x1b[5~"}, {"\x1b[5~"}, {"\x1b[B"}, {"\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B"}, {"\x1b[A"}, {"\x1b[A", "\x1b[A"}, {"s", "e", "t"}, {"z", "z", "z"}, {"t", "\x7f", "\x7f"}, {"n", "\x1b[B", "\x1b[B", "\x1b[A"}, {"日", "x"}, {"\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B"}}
 	var probes []settingsListOracleProbe
 	for _, name := range []string{"empty", "small", "wide", "long", "styled", "many"} {
 		for _, maxVisible := range []int{1, 3, 5, 10} {
