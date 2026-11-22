@@ -1254,10 +1254,8 @@ func TestRouteAdmissionAServersOwnReferenceToAGatedAddressIsWithheldAndAdmittedA
 		g := routeGated(t, relayedOptions{}, nil)
 		defer closeHosts(t, g.Tab, g.Server)
 		// The server acts as itself (kind `server`): its decision is its own, apart from the owner's.
-		own := mustHold(t, g.Server, PlacedNotes, jsonObject("session", "S1"))
-		watch, err := own.State().Watch(background)
-		must(t, err)
-		states := statesOf(t, watch)
+		// Acquire the state watch in the same section as Hold so the admission denial cannot precede Watch.
+		own, states := admHoldStates(t, g.Server, PlacedNotes, jsonObject("session", "S1"))
 		g.settled()
 		wantDenied(t, own)
 		if resolves := g.Resolves(); len(resolves) != 0 {
