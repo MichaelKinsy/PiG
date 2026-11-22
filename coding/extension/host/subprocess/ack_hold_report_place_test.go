@@ -222,4 +222,87 @@ func TestBlockedAcknowledgmentIgnoresCallReadAfterTheReport(t *testing.T) {
 			<-returned
 		})
 	})
+
+	t.Run("post-seal blocked host_call announcement and startsAsync call do not hold acknowledgment", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			h := NewHostWithConfigRoot(t.TempDir(), t.TempDir())
+			dialogEntered := make(chan struct{})
+			releaseDialog := make(chan struct{})
+			h.SetCallHandler(func(_ string, call *CallPayload) (*CallResultPayload, error) {
+				if call.Method == "ui.confirm" {
+					close(dialogEntered)
+					<-releaseDialog
+				}
+				return &CallResultPayload{}, nil
+			})
+			hostSide, extSide := net.Pipe()
+			conn := NewConn("ack-post-seal-announce", hostSide)
+			conn.Start(t.Context())
+			me := withConn(&managedExt{config: ExtConfig{Name: "ack-post-seal-announce"}, host: h}, conn)
+			me.shuttingDown.Store(true)
+			go h.handleIncoming(me, conn)
+			go func() { _, _ = io.Copy(io.Discard, extSide) }()
+			defer func() {
+				close(releaseDialog)
+				_ = conn.Close("test done")
+				_ = extSide.Close()
+			}()
+
+			dispatched := make(chan struct{})
+			conn.onDispatch = func() { close(dispatched) }
+			interject := make(chan func())
+			acknowledged := 0
+			ctx := invocation.WithAcknowledgment(t.Context(), func() { acknowledged++ })
+			ctx = withRequestSuspension(ctx, func(bool) {}, nil)
+			ctx = withRequestInterjections(ctx, interject)
+
+			returned := make(chan struct{})
+			go func() {
+				_, _ = conn.request(ctx, &Envelope{ID: "r1", Type: MsgRequest}, 0, "test")
+				close(returned)
+			}()
+			<-dispatched
+
+			// Hold the request goroutine before it reads stateCh so readLoop reads all four frames first:
+			// blocked(external_io) ; progress ; blocked(host_call) ; call(ui.confirm, startsAsync).
+			inInterject := make(chan struct{})
+			releaseInterject := make(chan struct{})
+			interject <- func() {
+				close(inInterject)
+				<-releaseInterject
+			}
+			<-inInterject
+
+			writeFrame(extSide, Envelope{
+				Type:         MsgRequestState,
+				RequestState: &RequestStatePayload{RequestID: "r1", State: "blocked", Reason: "external_io"},
+			})
+			writeFrame(extSide, Envelope{
+				Type:         MsgRequestState,
+				RequestState: &RequestStatePayload{RequestID: "r1", State: "progress"},
+			})
+			writeFrame(extSide, Envelope{
+				Type:         MsgRequestState,
+				RequestState: &RequestStatePayload{RequestID: "r1", State: "blocked", Reason: "host_call"},
+			})
+			writeFrame(extSide, Envelope{
+				Type: MsgCall,
+				ID:   "c1",
+				Call: &CallPayload{Method: "ui.confirm", ParentRequestID: "r1"},
+			})
+			<-dialogEntered
+			synctest.Wait()
+
+			// Now let the request goroutine drain stateCh (NO further progress frame from the handler).
+			close(releaseInterject)
+			synctest.Wait()
+
+			if acknowledged != 1 {
+				t.Fatalf("post-seal blocked:host_call announcement held acknowledgment until handler progress: acknowledged = %d, want 1", acknowledged)
+			}
+			writeFrame(extSide, Envelope{Type: MsgResponse, ID: "r1", Response: &ResponsePayload{}})
+			synctest.Wait()
+			<-returned
+		})
+	})
 }
