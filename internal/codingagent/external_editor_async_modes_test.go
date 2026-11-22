@@ -5,7 +5,6 @@ package codingagent
 import (
 	"bytes"
 	"context"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,6 +14,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 const (
@@ -54,20 +54,10 @@ func TestExternalEditorHandoffOrdering(t *testing.T) {
 			if err := cmd.Start(); err != nil {
 				t.Fatal(err)
 			}
-			_ = slave.Close()
-			var captured bytes.Buffer
-			copied := make(chan struct{})
-			go func() {
-				defer close(copied)
-				_, _ = io.Copy(&captured, master)
-			}()
+			finishPTY := testenv.ReadPTYUntilSentinel(t, master, slave, 30*time.Second)
 			waitErr := cmd.Wait()
-			select {
-			case <-copied:
-			case <-time.After(5 * time.Second):
-				_ = master.Close()
-				<-copied
-			}
+			var captured bytes.Buffer
+			captured.Write(finishPTY())
 			if waitErr != nil || !bytes.Contains(captured.Bytes(), []byte("--- PASS: TestExternalEditorHandoffChild")) {
 				t.Fatalf("child: %v\n%s", waitErr, captured.Bytes())
 			}
