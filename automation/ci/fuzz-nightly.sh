@@ -95,6 +95,7 @@ mapfile -t sorted_groups < <(printf '%s\n' "${groups[@]}" | sort)
 ran=0
 listed_count=0
 skipped=0
+empty_dirs=0
 failed=()
 declare -A seen_targets=()
 
@@ -114,6 +115,11 @@ for key in "${sorted_groups[@]}"; do
 		continue
 	fi
 	mapfile -t targets < <(grep -E '^Fuzz' <<<"$listed" || true)
+	if [ "${#targets[@]}" -eq 0 ]; then
+		echo "fuzz-nightly: $dir: a fuzz file matched and no target is listed"
+		empty_dirs=$((empty_dirs + 1))
+		continue
+	fi
 	for target in "${targets[@]}"; do
 		target_id="$dir:$target"
 		if [ -n "${seen_targets[$target_id]+x}" ]; then
@@ -139,9 +145,9 @@ for key in "${sorted_groups[@]}"; do
 done
 
 if [ "$list_only" -eq 1 ]; then
-	echo "fuzz-nightly: listed $listed_count targets, skipped $skipped (named above), failed ${#failed[@]}"
+	echo "fuzz-nightly: listed $listed_count targets, skipped $skipped (named above), empty $empty_dirs (named above), failed ${#failed[@]}"
 else
-	echo "fuzz-nightly: ran $ran targets, skipped $skipped (named above), failed ${#failed[@]}"
+	echo "fuzz-nightly: ran $ran targets, skipped $skipped (named above), empty $empty_dirs (named above), failed ${#failed[@]}"
 fi
 
 if [ "${#failed[@]}" -ne 0 ]; then
