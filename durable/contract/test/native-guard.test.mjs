@@ -12,7 +12,12 @@ const exe = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "core", "h
 // A native core that outgrows its bound ends itself with exit 3 and a report on stderr (durable/core/contracttest/guard), which
 // the gate turns into a failed row; it does not run on until the host is out of memory. (A step that never returns is covered by
 // the guard's own Go tests; here the real binary proves the wiring.)
-test("corenative ends itself with a guard report when it is over its memory bound", { skip: !existsSync(exe) && "build it: sh durable/core/budget/build-native.sh" }, async () => {
+test("corenative ends itself with a guard report when it is over its memory bound", async t => {
+	if (!existsSync(exe)) {
+		const msg = "build it: sh durable/core/budget/build-native.sh"
+		if (process.env.DURABLE_CONTRACT_REQUIRE_BUILDS) assert.fail(msg)
+		return t.skip(msg)
+	}
 	const dir = mkdtempSync(join(tmpdir(), "native-guard-"))
 	const req = join(dir, "req"), res = join(dir, "res")
 	execFileSync("mkfifo", [req, res])
