@@ -511,26 +511,18 @@ func advanceView(ctx context.Context, id durable.ConversationId, mount *viewMoun
 	if len(docOps) == 0 && len(appended) == 0 {
 		return
 	}
-	if mu != nil {
-		mu.Lock()
-	}
+	mu.Lock()
 	docs := mount.docs
-	if mu != nil {
-		mu.Unlock()
-	}
+	mu.Unlock()
 	if len(docOps) > 0 {
 		next, err := applyDocOps(docs, docOps)
 		if err != nil {
 			panic(err)
 		}
 		docs = next
-		if mu != nil {
-			mu.Lock()
-		}
+		mu.Lock()
 		mount.docs = docs
-		if mu != nil {
-			mu.Unlock()
-		}
+		mu.Unlock()
 	}
 	frameContext := context.WithoutCancel(ctx)
 	var inserted []any

@@ -2,6 +2,7 @@ package harness
 
 import (
 	"context"
+	"sync"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord"
@@ -89,10 +90,11 @@ func TestAdvanceViewFollowsOnlyTheMountedIncarnation(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			mount := newMount()
+			var mu sync.Mutex
 			var advanced []durable.Op
 			observer := &ViewObserver{Advance: func(_ context.Context, call chord.WatchCall[ConversationView]) { advanced = call.Ops }}
 			windowed := &windowedObserver{min: 50, max: 100, value: ConversationView{Docs: mount.docs}, observer: observer}
-			advanceView(t.Context(), conversation, mount, nil, []*windowedObserver{windowed}, tc.publication, func(err error) { t.Errorf("observer reported %v", err) })
+			advanceView(t.Context(), conversation, mount, &mu, []*windowedObserver{windowed}, tc.publication, func(err error) { t.Errorf("observer reported %v", err) })
 			expectSameJSON(t, advanced, tc.ops)
 			expectSameJSON(t, mount.docs, tc.docs)
 			got, mounted := mount.incarnations[kind]
