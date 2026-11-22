@@ -89,11 +89,15 @@ func TestReadPTYUntilSentinelFailsWithCollectedBytesWhenSentinelNeverArrives(t *
 }
 
 type revokedSlave struct {
-	*os.File
+	file *os.File
 }
 
 func (r revokedSlave) Write([]byte) (int, error) {
-	return 0, &os.PathError{Op: "write", Path: r.File.Name(), Err: syscall.EIO}
+	return 0, &os.PathError{Op: "write", Path: r.file.Name(), Err: syscall.EIO}
+}
+
+func (r revokedSlave) Close() error {
+	return r.file.Close()
 }
 
 func TestReadPTYUntilSentinelDrainsOnRevokedSlaveEIO(t *testing.T) {
@@ -101,7 +105,7 @@ func TestReadPTYUntilSentinelDrainsOnRevokedSlaveEIO(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	finish, cleanup := startPTYReader(t.Context(), master, revokedSlave{File: slave}, 5*time.Second)
+	finish, cleanup := startPTYReader(t.Context(), master, revokedSlave{file: slave}, 5*time.Second)
 	t.Cleanup(cleanup)
 	const payload = "child-output\x1b[?2004l--- PASS: TestChild (0.01s)\r\nPASS\r\n"
 	if _, err := io.WriteString(slave, payload); err != nil {
