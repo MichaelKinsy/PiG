@@ -3,13 +3,11 @@
 // stayed waiting or completing.
 //
 // Go mapping: Pi interposes on `session.touch` to queue a held publication as a microtask that runs between a pass's
-// decision and the continuation that applies it. A Go pass decides and applies under one hold of the scheduler's mutex
-// (scheduler_region.go) and a publication's observer takes that mutex, so the window does not exist: the observer runs
-// before the pass (the decision sees what it queued) or after it (the sets keep it). The Writer publishes parts strictly in
-// order and waits for each publication (writer.go publish), so Pi's `storage.publishing` hold cannot reorder one commit's
-// publication behind the next one's either. What remains to provoke is a pass planning while the next part is published,
-// which the children below do by ending together, many times; the tests pin the outcome and the order, and fail when a pass
-// releases the mutex between its decision and its application (the mutation the report records).
+// decision and the continuation that applies it. In Go, `regionPlainLocked` / `waitGatesLocked` (scheduler_region.go)
+// unlocks `s.mu` whenever a decision region touches a key with an unpublished writer. For the finalize test, `other` owns
+// two gated children and `held` owns one; `controlledStorage.holdCommits` batches `heldChild` ahead of `otherChild2` so
+// pass 1 parks in `waitGatesLocked` on `otherChild2`'s gate while `heldChild` publishes under `s.mu` and queues `held` in
+// `s.finalizeChecks`. (The reservation test below still uses the 25x loop until its own seam is restored.)
 
 package harness
 
@@ -73,49 +71,105 @@ func taskStatusOf(t *testing.T, harness Harness, id durable.TaskId) durable.Task
 	return record.State.Status
 }
 
+// holdsChildrenTask creates all children below itself, then ends while they are live: its outcome is held as `completing`
+// until a finalize pass ends it.
+func holdsChildrenTask(name string, children ...stepTask) stepTask {
+	return durable.DefineTask(durable.TaskDefinition[durable.JsonValue, stepState, durable.JsonValue, any]{
+		Name:    name,
+		Version: 1,
+		Initial: func(durable.JsonValue) stepState { return stepState{Phase: "create"} },
+		Phases: map[string]durable.PhaseHandler[durable.JsonValue, stepState, durable.JsonValue, any]{
+			"create": func(ctx context.Context, task stepRecord, runtime stepRuntime) error {
+				return runtime.Commit(ctx, func(tx durable.Tx, _ stepRecord) (*durable.NextTaskState[stepState, durable.JsonValue], error) {
+					for _, child := range children {
+						if _, err := tx.CreateTaskErased(child.Erased(), nil, durable.TaskOptions{Ownership: scaleOwnedBy(task.Id)}); err != nil {
+							return nil, err
+						}
+					}
+					return &durable.NextTaskState[stepState, durable.JsonValue]{Status: durable.TaskRunning, Checkpoint: &stepState{Phase: "end"}}, nil
+				})
+			},
+			"end": func(ctx context.Context, _ stepRecord, runtime stepRuntime) error { return tkComplete(ctx, runtime) },
+		},
+		Abort: func(ctx context.Context, _ stepRecord, runtime stepRuntime) error {
+			return runtime.Commit(ctx, func(durable.Tx, stepRecord) (*durable.NextTaskState[stepState, durable.JsonValue], error) {
+				return abortedWith[stepState, durable.JsonValue]("test"), nil
+			})
+		},
+	})
+}
+
 // A finalize pass plans while the publication of another holder's last child is observed: the check that publication asks
 // for must stay for the next pass, or the holder stays completing.
 func TestFinalizePassKeepsAHolderCheckPublishedWhilePlanning(t *testing.T) {
-	for run := range 25 {
-		gate := deferred()
-		heldChild := tkGated("test.held-child", gate)
-		otherChild := tkGated("test.other-child", gate)
-		held := holdsChildTask("test.held", heldChild)
-		other := holdsChildTask("test.other", otherChild)
-		store := newControlledStorage()
-		opened := tkOpenRoot(t, []durable.AnyTask{heldChild.Erased(), otherChild.Erased(), held.Erased(), other.Erased()}, tkOptions{storage: store})
-		otherId := tkStart(t, opened.root, other.Erased())
-		heldId := tkStart(t, opened.root, held.Erased())
-		opened.harness.Resume()
-		eventually(t, func() bool {
-			return taskStatusOf(t, opened.harness, otherId) == durable.TaskCompleting && taskStatusOf(t, opened.harness, heldId) == durable.TaskCompleting
-		})
-		flush()
-		// Both children end together: the publication of one asks for a finalize pass over its holder while the other's is
-		// published, and the held child's holder must end whichever order the pass and the publication take.
-		gate.resolve()
-		eventually(t, func() bool { return taskStatusOf(t, opened.harness, heldId) == durable.TaskTerminal })
-		if status := taskStatusOf(t, opened.harness, otherId); status != durable.TaskTerminal {
-			t.Fatalf("run %d: other = %s, want terminal", run, status)
-		}
-		// Ordering: a holder ends after the child it held, never before.
-		for _, pair := range [][2]string{{"test.held-child", "test.held"}, {"test.other-child", "test.other"}} {
-			child, holder := -1, -1
-			for index := range store.commitCount() {
-				writes := store.commitAt(index)
-				if child < 0 && taskEnded(writes, pair[0]) {
-					child = index
-				}
-				if holder < 0 && taskEnded(writes, pair[1]) {
-					holder = index
-				}
-			}
-			if child < 0 || holder < 0 || holder < child {
-				t.Fatalf("run %d: %s ended at commit %d, its child %s at %d", run, pair[1], holder, pair[0], child)
-			}
-		}
-		mustClose(t, opened.harness)
+	otherGate1 := deferred()
+	otherGate2 := deferred()
+	heldGate := deferred()
+	otherChild1 := tkGated("test.other-child-1", otherGate1)
+	otherChild2 := tkGated("test.other-child-2", otherGate2)
+	heldChild := tkGated("test.held-child", heldGate)
+	other := holdsChildrenTask("test.other", otherChild1, otherChild2)
+	held := holdsChildTask("test.held", heldChild)
+	store := newControlledStorage()
+	opened := tkOpenRoot(t, []durable.AnyTask{otherChild1.Erased(), otherChild2.Erased(), heldChild.Erased(), other.Erased(), held.Erased()}, tkOptions{storage: store})
+	otherId := tkStart(t, opened.root, other.Erased())
+	heldId := tkStart(t, opened.root, held.Erased())
+	opened.harness.Resume()
+	eventually(t, func() bool {
+		return taskStatusOf(t, opened.harness, otherId) == durable.TaskCompleting && taskStatusOf(t, opened.harness, heldId) == durable.TaskCompleting
+	})
+	flush()
+	// 1. Hold storage commit 1 and resolve otherChild1 so it is in flight in commit 1.
+	held1 := store.holdCommits()
+	otherGate1.resolve()
+	if err := held1.entered.wait(testContext); err != nil {
+		t.Fatalf("waiting for commit 1 to enter storage: %v", err)
 	}
+	// 2. Resolve heldChild (queued as batch 2 part 0) then otherChild2 (queued as batch 2 part 1, setting unpublished[owned:other]).
+	heldGate.resolve()
+	flush()
+	otherGate2.resolve()
+	flush()
+	// 3. Hold batch 2 and release commit 1: otherChild1 publishes, adds other to finalizeChecks, and starts pass 1,
+	// which touches owned:other and parks in waitGatesLocked (unlocking s.mu) on batch 2 part 1's gate.
+	held2 := store.holdCommits()
+	held1.release()
+	if err := held2.entered.wait(testContext); err != nil {
+		t.Fatalf("waiting for batch 2 to enter storage: %v", err)
+	}
+	flush()
+	// 4. Release batch 2: Writer.publish publishes part 0 (heldChild) while pass 1 is parked on part 1's gate,
+	// adding held to finalizeChecks, then publishes part 1 (otherChild2), waking pass 1.
+	held2.release()
+	// Pass 1 finalizes other; pass 2 must still see held in finalizeChecks and finalize it.
+	eventually(t, func() bool { return taskStatusOf(t, opened.harness, otherId) == durable.TaskTerminal })
+	for range 200 {
+		if taskStatusOf(t, opened.harness, heldId) == durable.TaskTerminal {
+			break
+		}
+		awaitQuiescent(t)
+		flush()
+	}
+	if status := taskStatusOf(t, opened.harness, heldId); status != durable.TaskTerminal {
+		t.Fatalf("held = %s, want terminal (finalize pass erased held check queued while planning)", status)
+	}
+	// Ordering: a holder ends after every child it held, never before.
+	for _, pair := range [][2]string{{"test.held-child", "test.held"}, {"test.other-child-1", "test.other"}, {"test.other-child-2", "test.other"}} {
+		child, holder := -1, -1
+		for index := range store.commitCount() {
+			writes := store.commitAt(index)
+			if child < 0 && taskEnded(writes, pair[0]) {
+				child = index
+			}
+			if holder < 0 && taskEnded(writes, pair[1]) {
+				holder = index
+			}
+		}
+		if child < 0 || holder < 0 || holder < child {
+			t.Fatalf("%s ended at commit %d, its child %s at %d", pair[1], holder, pair[0], child)
+		}
+	}
+	mustClose(t, opened.harness)
 }
 
 // A reservation pass plans while the publication that ended the last task a waiter waits on is observed: the waiter's
