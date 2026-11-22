@@ -3268,6 +3268,91 @@ patch("073b0bae8", "pi-ai/models.js", [
 ]);
 // END backport 073b0bae8
 
+// BEGIN backport edfe6b2ef322
+// edfe6b2ef322 (#12273): Codex sends the system prompt as a leading developer input item instead of top-level instructions, and ConvertResponsesMessagesOptions drops includeSystemPrompt.
+// not carried: packages/ai/test/openai-codex-stream.test.ts and packages/ai/CHANGELOG.md (not shipped in the compiled package).
+packageFile("edfe6b2ef322", "pi-ai/api/openai-codex-responses.js", [
+    [`import { getSystemMessageText } from "../utils/text.js";
+import { getDeclaredTools, getInitialSystemMessage, normalizeContext, resolveTranscript, resolveTranscriptTools, } from "../utils/transcript.js";
+`, `import { getDeclaredTools, normalizeContext, resolveTranscript, resolveTranscriptTools, } from "../utils/transcript.js";
+`],
+    [`    const messages = convertResponsesMessages(model, context, CODEX_TOOL_CALL_PROVIDERS, {
+        includeSystemPrompt: false,
+        grammarToolInputProperties,
+        supportsMidConvoSystemMessages: model.compat?.supportsMidConvoSystemMessages ?? false,
+        supportsAdditionalTools,
+        supportsToolSearch,
+        toolOptions: { strict: null, supportsStrictMode, supportsOpenAIGrammarTools },
+    });
+    const initialSystemMessage = getInitialSystemMessage(context.messages);
+    const instructions = initialSystemMessage ? getSystemMessageText(initialSystemMessage) : "";
+    const body = {
+        model: model.id,
+        store: false,
+        stream: true,
+        instructions: instructions || "You are a helpful assistant.",
+        input: messages,`, `    ${note("edfe6b2ef322").trim()}
+    const messages = convertResponsesMessages(model, context, CODEX_TOOL_CALL_PROVIDERS, {
+        grammarToolInputProperties,
+        supportsMidConvoSystemMessages: model.compat?.supportsMidConvoSystemMessages ?? false,
+        supportsAdditionalTools,
+        supportsToolSearch,
+        toolOptions: { strict: null, supportsStrictMode, supportsOpenAIGrammarTools },
+    });
+    const body = {
+        model: model.id,
+        store: false,
+        stream: true,
+        input: messages,`],
+    [`            const responseItems = convertResponsesMessages(model, normalizeContext({ messages: [output] }), CODEX_TOOL_CALL_PROVIDERS, {
+                includeSystemPrompt: false,
+                grammarToolInputProperties,
+            }).filter((item) => item.type !== "function_call_output" && item.type !== "custom_tool_call_output");`, `            const responseItems = convertResponsesMessages(model, normalizeContext({ messages: [output] }), CODEX_TOOL_CALL_PROVIDERS, {
+                grammarToolInputProperties,
+            }).filter((item) => item.type !== "function_call_output" && item.type !== "custom_tool_call_output");`],
+]);
+// END backport edfe6b2ef322
+
+// BEGIN backport edfe6b2ef322
+// edfe6b2ef322 (#12273): convertResponsesMessages always includes the leading system message (includeSystemPrompt removed).
+patch("edfe6b2ef322", "pi-ai/api/openai-responses-shared.js", [
+    [`    const includeInitialSystemMessage = options?.includeSystemPrompt ?? true;
+    const pushConfigurationUpdate = (effort) => {`, `    ${note("edfe6b2ef322").trim()}
+    const pushConfigurationUpdate = (effort) => {`],
+    [`            if (!isLeadingSystemMessage || includeInitialSystemMessage) {
+                const parts = [isLeadingSystemMessage ? getSystemMessageText(msg) : renderSystemMessageUpdate(msg)];
+                if (anchorsToolChanges) {
+                    // A redefinition is a removal plus an addition of the same name; only true removals are announced.
+                    const added = new Set((msg.toolsAdded ?? []).map((tool) => tool.name));
+                    const removed = (msg.toolsRemoved ?? []).map((tool) => tool.name).filter((name) => !added.has(name));
+                    if (removed.length > 0)
+                        parts.push(renderToolRemovalNotice(removed));
+                    // Recorded after this message's additions, whose notice precedes this removal notice.
+                    for (const name of removed)
+                        unavailableTools.add(name);
+                }
+                const text = parts.filter((part) => part.length > 0).join("\n\n");
+                if (text.length > 0) {
+                    messages.push({ role: instructionRole, content: sanitizeSurrogates(text) });
+                }
+            }`, `            const parts = [isLeadingSystemMessage ? getSystemMessageText(msg) : renderSystemMessageUpdate(msg)];
+            if (anchorsToolChanges) {
+                // A redefinition is a removal plus an addition of the same name; only true removals are announced.
+                const added = new Set((msg.toolsAdded ?? []).map((tool) => tool.name));
+                const removed = (msg.toolsRemoved ?? []).map((tool) => tool.name).filter((name) => !added.has(name));
+                if (removed.length > 0)
+                    parts.push(renderToolRemovalNotice(removed));
+                // Recorded after this message's additions, whose notice precedes this removal notice.
+                for (const name of removed)
+                    unavailableTools.add(name);
+            }
+            const text = parts.filter((part) => part.length > 0).join("\n\n");
+            if (text.length > 0) {
+                messages.push({ role: instructionRole, content: sanitizeSurrogates(text) });
+            }`],
+]);
+// END backport edfe6b2ef322
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 // Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.
