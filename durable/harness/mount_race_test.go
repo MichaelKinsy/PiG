@@ -315,13 +315,23 @@ func TestTaskGraphObserverMayDetachInsideAdvance(t *testing.T) {
 	detachFn = obs.Detach
 	detachMu.Unlock()
 
-	// First commit triggers Advance, which detaches the observer re-entrantly.
-	tkStart(t, opened.root, task.Erased())
-	// Subsequent commits must not reach the detached observer.
-	for range 5 {
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		// First commit triggers Advance, which detaches the observer re-entrantly.
 		tkStart(t, opened.root, task.Erased())
+		// Subsequent commits must not reach the detached observer.
+		for range 5 {
+			tkStart(t, opened.root, task.Erased())
+		}
+		drainTaskGraphMount(opened.harness)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("an observer that detaches itself inside Advance deadlocked the delivery")
 	}
-	drainTaskGraphMount(opened.harness)
 
 	if got := calls.Load(); got != 1 {
 		t.Fatalf("Advance called %d times after self-Detach, want 1", got)
@@ -335,42 +345,57 @@ func TestTaskGraphReasonReadBeforeARefreshIsNotPublishedAfterIt(t *testing.T) {
 	defer func() { _ = line.Close(ctx) }()
 
 	var (
-		installed       atomic.Bool
-		listenerMu      sync.Mutex
-		listener        func()
-		triggerOnce     sync.Once
-		refreshReturned atomic.Bool
-		refreshTimedOut atomic.Bool
-		createdID       atomic.Int64
+		installed        atomic.Bool
+		listenerMu       sync.Mutex
+		listener         func()
+		refreshSeenOnce  sync.Once
+		refreshSeen      = make(chan struct{})
+		refreshDone      = make(chan struct{})
+		refreshTriggered atomic.Bool
+		refreshTimedOut  atomic.Value // string
+		createdID        atomic.Int64
 	)
 
 	view := NewTaskGraphView(line, TaskGraphBlocking{
 		Blocked: func(subject BlockedSubject) durable.BlockedReason {
 			if subject.Kind == "probe" {
-				triggered := false
-				triggerOnce.Do(func() {
-					triggered = true
+				// Only the writer's first call for the new task triggers the refresh and pauses.
+				// Use CompareAndSwap (not sync.Once) so the refresh's concurrent Blocked call
+				// does not block behind the writer's pause. With the guard, the writer computes
+				// again; its second (and every later) call reads installed and returns the fresh
+				// reason without pausing again.
+				if refreshTriggered.CompareAndSwap(false, true) {
 					installed.Store(true)
 					listenerMu.Lock()
 					fn := listener
 					listenerMu.Unlock()
-					done := make(chan struct{})
 					go func() {
+						defer close(refreshDone)
 						if fn != nil {
 							fn()
 						}
-						close(done)
 					}()
+					// Signal (1): wait for the refresh's own Blocked call for this subject so we know
+					// its line job is in and has read the record.
 					select {
-					case <-done:
-						refreshReturned.Store(true)
+					case <-refreshSeen:
 					case <-time.After(5 * time.Second):
-						refreshTimedOut.Store(true)
+						refreshTimedOut.Store("the refresh's job did not read the record within 5 s")
+						return durable.BlockedMissingTask
 					}
-				})
-				if triggered {
+					// Signal (2): wait for the session's line jobs to return to zero so we know
+					// the refresh's job has finished looking at mount.value and left the line.
+					deadline := time.Now().Add(5 * time.Second)
+					for line.LineJobs() != 0 {
+						if time.Now().After(deadline) {
+							refreshTimedOut.Store("the refresh's job did not leave the line within 5 s")
+							return durable.BlockedMissingTask
+						}
+						time.Sleep(time.Millisecond)
+					}
 					return durable.BlockedMissingTask
 				}
+				refreshSeenOnce.Do(func() { close(refreshSeen) })
 			}
 			if !installed.Load() {
 				return durable.BlockedMissingTask
@@ -427,21 +452,26 @@ func TestTaskGraphReasonReadBeforeARefreshIsNotPublishedAfterIt(t *testing.T) {
 	_, _ = line.ReadOnLine(func(durable.Storage) (any, error) { return nil, nil })
 	line.WaitDeliveries()
 
+	if !refreshTriggered.Load() {
+		t.Fatalf("expected refresh listener to be triggered during writer's Blocked call")
+	}
+	select {
+	case <-refreshDone:
+	case <-time.After(5 * time.Second):
+		t.Fatalf("refresh listener did not return after drain within 5 s")
+	}
+	if msg, _ := refreshTimedOut.Load().(string); msg != "" {
+		t.Fatal(msg)
+	}
+
 	key := taskKey(durable.TaskId(createdID.Load()))
 	graphMu.Lock()
 	node, ok := latest.Tasks[key]
 	graphMu.Unlock()
-	if refreshTimedOut.Load() {
-		t.Fatalf("the refresh could not run between the writer's read of the reason and its publication: it waits for the publication (after drain: present=%v blocked=%q)", ok, node.Blocked)
-	}
-	if !refreshReturned.Load() {
-		t.Fatalf("expected refresh listener to be triggered during writer's Blocked call")
-	}
-
 	if !ok {
 		t.Fatalf("task %s missing from observer's graph", key)
 	}
 	if node.Blocked != "" {
-		t.Fatalf("task %s still shown blocked with stale reason %q after refresh completed", key, node.Blocked)
+		t.Fatalf("task %s shown blocked with the stale reason %q", key, node.Blocked)
 	}
 }
