@@ -2763,10 +2763,15 @@ func (h *Host) removeSockRuntimeDir() {
 	}
 }
 
+// reapedTimeSource reports when a hosted process finished ending once its exit channel is closed.
+type reapedTimeSource interface {
+	exitReapedAt() time.Time
+}
+
 // reapedProcess is one hosted process that TerminateHostProcesses waits to finish ending.
 type reapedProcess struct {
-	done     <-chan struct{}
-	reapedAt func() time.Time // Valid once done is closed: when the process finished ending. The two reaper paths (host.go exitedCh and packed_go.go waitDone) always set reapedAt before closing done; a zero time means the process never ran.
+	done   <-chan struct{}
+	reaper reapedTimeSource // Valid once done is closed: when the process finished ending. The two reaper paths (host.go exitedCh and packed_go.go waitDone) always set reapedAt before closing done; a zero time means the process never ran.
 }
 
 // killProcesses kills the processes of h and returns the processes to wait for and the stderr logs of the processes it killed.
@@ -2786,7 +2791,7 @@ func (h *Host) killProcesses() ([]reapedProcess, []*processStderrLog) {
 			processes[proc] = struct{}{}
 		}
 		if exited := me.exited(); exited != nil {
-			reaped = append(reaped, reapedProcess{done: exited, reapedAt: me.exitReapedAt})
+			reaped = append(reaped, reapedProcess{done: exited, reaper: me})
 		}
 	}
 	logs := make(map[*processStderrLog]struct{})
@@ -2805,7 +2810,7 @@ func (h *Host) killProcesses() ([]reapedProcess, []*processStderrLog) {
 			processes[process.cmd.Process] = struct{}{}
 		}
 		if process.cmd != nil && process.cmd.Process != nil {
-			reaped = append(reaped, reapedProcess{done: process.startWait(), reapedAt: process.exitReapedAt})
+			reaped = append(reaped, reapedProcess{done: process.startWait(), reaper: process})
 		}
 		if process.stderrLog != nil {
 			logs[process.stderrLog] = struct{}{}
@@ -2829,7 +2834,7 @@ func awaitReaped(reaped []reapedProcess, timer *time.Timer, deadline time.Time, 
 		for _, proc := range reaped {
 			select {
 			case <-proc.done:
-				if proc.reapedAt != nil && proc.reapedAt().After(deadline) {
+				if proc.reaper != nil && proc.reaper.exitReapedAt().After(deadline) {
 					pending++
 				}
 			default:
