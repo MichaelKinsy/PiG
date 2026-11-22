@@ -79,6 +79,7 @@ func TestInteractiveAnswerEndEmitsNoTrailingFrame(t *testing.T) {
 		CWD: cwd, AgentDir: agentDir, Model: model, SessionHandle: session,
 		SettingsManager: services.SettingsManager(), Settings: services.SettingsManager().Get(), ExtensionRunner: runner,
 	}, nil, out)
+	h.Do(h.OwnFrames)
 	before := len(out.snapshot())
 	h.Do(func() { h.Enter("hello") })
 	h.WaitIdle(t, 10*time.Second)
