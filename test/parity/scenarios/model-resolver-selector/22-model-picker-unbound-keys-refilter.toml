@@ -1,5 +1,6 @@
 # Behavior family: model-resolver-selector
 # Surface: keys without a model-selector action reach the search input; a key that leaves the query unchanged keeps the selection.
+# File name kept as 22-model-picker-unbound-keys-refilter.toml for ledger/coverage stability; behavior now verifies unchanged-query keys keep selection (Pi 5bcf370a5).
 #
 # Upstream evidence (Pi 5bcf370a5, #12334, carried by the oracle: automation/gen/pi-post-release-backports.mjs): handleInput matches only
 # tui.input.tab, tui.select.up, tui.select.down, the selection page keys, tui.select.confirm, tui.select.cancel and app.models.save in that

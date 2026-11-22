@@ -556,7 +556,7 @@ func sessionListInputCases() []sessionContractCase {
 		{name: "search/typing-filters-the-list", fixture: "big", keys: []string{"t", "o", "p", "i", "c", "1"}, check: sessionWantAll(sessionWantRows(5), sessionWantContains("topic1"))},
 		{name: "search/backspace-widens-the-list", fixture: "big", keys: []string{"t", "o", "p", "i", "c", "1", "\x7f"}, check: sessionWantRows(10)},
 		{name: "search/no-match-shows-the-empty-list", fixture: "big", keys: []string{"q", "q", "q", "q"}, check: sessionWantContains("No sessions in current folder. Press Tab to view all.")},
-		{name: "search/clamps-the-selection-to-the-shorter-list", fixture: "big", keys: []string{recent, skPageDn, "t", "o", "p", "i", "c", "1"}, check: sessionWantSelected("named-1 ")},
+		{name: "search/selects-the-top-match", fixture: "big", keys: []string{recent, skPageDn, "t", "o", "p", "i", "c", "1"}, check: sessionWantSelected("named-1 ")},
 		{name: "search/regex-query", fixture: "big", keys: []string{"r", "e", ":", "n", "u", "m", "b", "e", "r", " ", "1", "[0-3]"}, check: sessionWantContains("re:number 1[0-3]")},
 		{name: "search/phrase-query", fixture: "big", keys: []string{"\"", "n", "u", "m", "b", "e", "r", " ", "7", "\""}, check: sessionWantRows(1)},
 		{name: "search/threaded-sort-with-a-query-is-flat", fixture: "big", keys: []string{"t", "o", "p", "i", "c", "1"}, check: sessionWantLacks("└─", "├─")},

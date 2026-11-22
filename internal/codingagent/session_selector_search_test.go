@@ -99,7 +99,7 @@ func TestUpstreamSessionSelectorSearch(t *testing.T) {
 	}
 }
 
-func TestSessionSearchRetainsAndClampsSelection(t *testing.T) {
+func TestSessionSearchSelectsTopRowOnQuery(t *testing.T) {
 	for _, tc := range sessionSearchCases(t) {
 		if tc.Name != "DD1 five named sessions" && tc.Name != "fuzzy beats fixed cost" {
 			continue
