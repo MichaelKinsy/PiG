@@ -1,0 +1,77 @@
+# Behavior family: selectors
+# Surface: /login API-key provider picker search highlights the best match (row 0) even after scrolling down.
+#
+# Upstream evidence (Pi 37b74c546, #12246, closes #12245, carried by the oracle:
+# automation/gen/pi-post-release-backports.mjs): OAuthSelectorComponent.filterProviders
+# previously only clamped selectedIndex to filteredProviders.length - 1, so scrolling down
+# 5 rows and typing "openai" left the highlight on a later row instead of OpenAI.
+# With 37b74c546, a non-empty query resets selectedIndex to 0 so the best match is highlighted,
+# and pressing Left leaves the query unchanged and keeps the selection (Pi 5bcf370a5, #12334).
+
+name = "19-login-search-selects-best-match"
+description = "Typing a query in /login after scrolling highlights the top match and cursor keys keep it."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 25
+capture_start = "Select provider to configure"
+capture_end = "↑↓ navigate"
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["/login", "Enter"]
+wait_contains = ["Select authentication method:", "Sign in with an API key"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Down", "Enter"]
+wait_contains = ["Select provider to configure:", "(1/42)"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Down", "Down", "Down", "Down", "Down"]
+wait_visible_contains = ["(6/42)"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["openai"]
+wait_visible_contains = ["→ OpenAI"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Down"]
+wait_visible_contains = ["(2/"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Left"]
+wait_stable_milliseconds = 500
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+pig = ["OPENAI_API_KEY=x", "PIG_HOME=testdata/pig-home"]
+pi = ["OPENAI_API_KEY=x", "PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = [
+  "Select provider to configure",
+  "OpenAI",
+  "(2/",
+]
+both_not_contain = ["panic:", "goroutine ", "(1/42)"]
+output_equal = true
+runs = 3

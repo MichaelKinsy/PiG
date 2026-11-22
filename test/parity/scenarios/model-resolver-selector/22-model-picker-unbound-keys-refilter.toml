@@ -54,18 +54,8 @@ wait_stable_milliseconds = 500
 wait_timeout_seconds = 5
 
 [[tmux.steps]]
-keys = ["Down"]
-wait_visible_contains = ["Model Name: Model One"]
-wait_timeout_seconds = 5
-
-[[tmux.steps]]
 keys = ["Left"]
 wait_stable_milliseconds = 500
-wait_timeout_seconds = 5
-
-[[tmux.steps]]
-keys = ["Down"]
-wait_visible_contains = ["Model Name: Model One"]
 wait_timeout_seconds = 5
 
 [[tmux.steps]]
