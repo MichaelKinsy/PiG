@@ -91,7 +91,7 @@ libs  ./internal/benchalloc
 libs  ./internal/catalogfixture
 # The highlight.js port shares a Registry behind a mutex and compiled patterns behind package-level caches, and its tests run registries on one worker per CPU. It has its own group because it is CPU-bound under -race: one run of the package takes about 16 minutes on 4 CPUs and 10 on 16.
 hljs  ./tui/internal/hljs
-# The parity, shared and conformance groups run on Linux only; conformance is the one package test/extension-conformance, run as four shards (PIG_RACE_SHARD, the shard weights of the Windows jobs). parity: the parity tool packages whose -race runs are long (test/parity/closure 483 s, test/parity/cmd/sdksurface 1406 s, interface-closure/autobind 850 s and cmd/portmapcheck 678 s alone on 8 CPUs) and the journey harness. shared: every other package whose non-test code uses sync, sync/atomic, a channel or select, or context cancellation (WithCancel, WithTimeout, WithDeadline, AfterFunc, Done) without starting a goroutine itself, so race-coverage.sh's goroutine scan never asked for it (the slowest, internal/photonimage, takes 1296 s on 8 CPUs).
+# The parity and conformance groups run on Linux only; shared and photonimage run on both Linux and macOS (like ai, rest, host, coding, libs, hljs, cli, tui and codingagent). conformance is the one package test/extension-conformance, run as four shards (PIG_RACE_SHARD, the shard weights of the Windows jobs). parity: the parity tool packages whose -race runs are long (test/parity/closure 483 s, test/parity/cmd/sdksurface 1406 s, interface-closure/autobind 850 s and cmd/portmapcheck 678 s alone on 8 CPUs) and the journey harness. shared: every other package whose non-test code uses sync, sync/atomic, a channel or select, or context cancellation (WithCancel, WithTimeout, WithDeadline, AfterFunc, Done) without starting a goroutine itself, so race-coverage.sh's goroutine scan never asked for it. photonimage: internal/photonimage has its own group (1,296 s on 8 Linux CPUs; 1,794 s on macos-15) so macOS shared stays well under the 90-minute job budget.
 parity  ./test/journeys/harness
 parity  ./test/longsession
 parity  ./test/parity/closure
@@ -180,7 +180,7 @@ shared  ./internal/nodehome
 shared  ./internal/nodesemver
 shared  ./internal/nodespawn
 shared  ./internal/perfgate
-shared  ./internal/photonimage
+photonimage  ./internal/photonimage
 shared  ./internal/pigstrip
 shared  ./internal/procpolicy
 shared  ./internal/profiling

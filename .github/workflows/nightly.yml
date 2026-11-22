@@ -33,7 +33,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, macos-15]
-        group: [ai, rest, host, coding, libs, hljs]
+        group: [ai, rest, host, coding, libs, hljs, photonimage]
         include:
           - {os: ubuntu-24.04, group: parity}
           - {os: ubuntu-24.04, group: shared}
@@ -127,7 +127,7 @@ jobs:
           if [ "$RUNNER_OS" = Linux ]; then
             automation/ci/install-native-test-packages.sh
           else
-            brew install fd ripgrep
+            brew install fd ripgrep tmux
           fi
           rust="$(awk '/^  RUST_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
           npm_version="$(awk '/^  NPM_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
