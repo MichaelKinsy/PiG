@@ -72,14 +72,6 @@ func requireModelDataError(t *testing.T, err error, want string) {
 }
 
 func TestModelDataValidationUpstream(t *testing.T) {
-	// .upstream/v0.99.1/packages/ai/test/model-data-validation.test.ts:82
-	t.Run("rejects a missing upstream model from an exact generated allowlist", func(t *testing.T) {
-		requireModelDataError(t, AssertExactModelIds("qwen-token-plan-individual", []string{"model-a", "model-b"}, []string{"model-a"}), "qwen-token-plan-individual model IDs do not match (missing: model-b)")
-	})
-	// .upstream/v0.99.1/packages/ai/test/model-data-validation.test.ts:88
-	t.Run("rejects an unexpected model from an exact generated allowlist", func(t *testing.T) {
-		requireModelDataError(t, AssertExactModelIds("test-provider", []string{"model-a"}, []string{"model-a", "model-b"}), "test-provider model IDs do not match (extra: model-b)")
-	})
 	// .upstream/v0.99.1/packages/ai/test/model-data-validation.test.ts:94
 	t.Run("reads and validates API-grouped model data", func(t *testing.T) {
 		f := newModelDataFixture(t)

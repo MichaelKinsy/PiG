@@ -205,7 +205,8 @@ Move to an earlier entry and press `Enter` to continue from that point in the **
 **`/quit`** exits PiG. It prints the same resume line as `Ctrl+D`:
 
 ```text
-To resume this session: pig --session 01a12bb7-80df-773c-8928-031c941bb0df
+To resume this session:
+pig --session 01a12bb7-80df-773c-8928-031c941bb0df
 ```
 
 ### Choose a model and thinking level

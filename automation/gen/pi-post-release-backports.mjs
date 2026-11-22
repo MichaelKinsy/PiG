@@ -2909,6 +2909,70 @@ import { NodeHttpHandler } from "@smithy/node-http-handler";
 ]);
 // END backport be269f57b1
 
+// BEGIN backport 63dec2621
+// 63dec2621 (#12237): the resume command printed on exit is on its own line after "To resume this session:", so a triple-click selects it. The vendored runtime and the
+// parity oracle run the compiled interactive mode (scenarios interactive-rendering/22 and extensions-runtime/73 compare the exit text).
+patch("63dec2621", "pi-coding-agent/modes/interactive/interactive-mode.js", [
+    ['            process.stdout.write(`${chalk.dim("To resume this session:")} ${resumeCommand}\\n`);\n',
+      `            ${note("63dec2621").trim()}\n` +
+      "            // Own line so the command can be selected with a triple-click (#12237).\n" +
+      '            process.stdout.write(`${chalk.dim("To resume this session:")}\\n${resumeCommand}\\n`);\n'],
+]);
+// END backport 63dec2621
+
+// BEGIN backport 7c05885bc
+// 7c05885bc (#12133): exits wait for stdout to write what is queued before process.exit(), so the resets that stopping a TUI queues (mouse tracking off, Kitty keyboard flags) are not dropped
+// when stdout is a pipe. Pi's new module utils/flush-stdout.ts is added as flushStdout() to the compiled utils/sleep.js (the backport table patches existing files only); the callers
+// are the interactive quit, the crash exit, `pi config` and the startup pickers. PiG writes the terminal synchronously (tui/terminal.go), so the Go side has no queue to flush: see the ledger.
+// not carried: pi-coding-agent/utils/flush-stdout.js (a new file; see above) and its declaration, packages/coding-agent test, fixture and CHANGELOG.md: the package ships none of them.
+patch("7c05885bc", "pi-coding-agent/utils/sleep.js", [
+    ["//# sourceMappingURL=sleep.js.map",
+      "/**\n * Wait until stdout has written everything queued before this call, for at most one second (Pi 7c05885bc, utils/flush-stdout.ts).\n */\nexport function flushStdout() {\n    return new Promise((resolve) => {\n        const finish = (error) => {\n            clearTimeout(timer);\n            if (!error)\n                process.stdout.off(\"error\", finish);\n            resolve();\n        };\n        const timer = setTimeout(finish, 1000);\n        process.stdout.on(\"error\", finish);\n        process.stdout.write(\"\", finish);\n    });\n}\n//# sourceMappingURL=sleep.js.map"],
+]);
+patch("7c05885bc", "pi-coding-agent/cli/config-selector.js", [
+    ["import { initTheme, stopThemeWatcher } from \"../modes/interactive/theme/theme.js\";\n",
+      "import { initTheme, stopThemeWatcher } from \"../modes/interactive/theme/theme.js\";\nimport { flushStdout } from \"../utils/sleep.js\";\n"],
+    ["        let resolved = false;\n        const selector = new ConfigSelectorComponent(",
+      "        let resolved = false;\n        // The caller exits right after; flush the TUI's terminal mode resets first (#12133).\n        const stopUi = () => {\n            ui.stop();\n            stopThemeWatcher();\n            return flushStdout();\n        };\n        const selector = new ConfigSelectorComponent("],
+    ["                resolved = true;\n                ui.stop();\n                stopThemeWatcher();\n                resolve();\n",
+      "                resolved = true;\n                void stopUi().then(resolve);\n"],
+    ["        }, () => {\n            ui.stop();\n            stopThemeWatcher();\n            process.exit(0);\n",
+      "        }, () => {\n            void stopUi().then(() => process.exit(0));\n"],
+]);
+patch("7c05885bc", "pi-coding-agent/cli/session-picker.js", [
+    ["import { createStartupTui, startStartupTui } from \"./startup-ui.js\";\n",
+      "import { flushStdout } from \"../utils/sleep.js\";\nimport { createStartupTui, startStartupTui } from \"./startup-ui.js\";\n"],
+    ["        let resolved = false;\n        const selector = new SessionSelectorComponent(",
+      "        let resolved = false;\n        // Callers may exit right after; flush the TUI's terminal mode resets first (#12133).\n        const stopUi = () => {\n            ui.stop();\n            return flushStdout();\n        };\n        const selector = new SessionSelectorComponent("],
+    ["                resolved = true;\n                ui.stop();\n                resolve(path);\n",
+      "                resolved = true;\n                void stopUi().then(() => resolve(path));\n"],
+    ["                resolved = true;\n                ui.stop();\n                resolve(null);\n",
+      "                resolved = true;\n                void stopUi().then(() => resolve(null));\n"],
+    ["        }, () => {\n            ui.stop();\n            process.exit(0);\n",
+      "        }, () => {\n            void stopUi().then(() => process.exit(0));\n"],
+]);
+patch("7c05885bc", "pi-coding-agent/cli/startup-ui.js", [
+    ["import { requestTerminalColors } from \"../modes/interactive/theme/theme-controller.js\";\n",
+      "import { requestTerminalColors } from \"../modes/interactive/theme/theme-controller.js\";\nimport { flushStdout } from \"../utils/sleep.js\";\n"],
+    ["            settled = true;\n            await clearStartupTui(ui);\n            ui.stop();\n            resolve(result);\n",
+      "            settled = true;\n            await clearStartupTui(ui);\n            ui.stop();\n            await flushStdout();\n            resolve(result);\n"],
+    ["            await clearStartupTui(ui);\n            ui.stop();\n            resolve();\n",
+      "            await clearStartupTui(ui);\n            ui.stop();\n            await flushStdout();\n            resolve();\n"],
+    ["            input.dispose();\n            await clearStartupTui(ui);\n            ui.stop();\n            resolve(result);\n",
+      "            input.dispose();\n            await clearStartupTui(ui);\n            ui.stop();\n            await flushStdout();\n            resolve(result);\n"],
+]);
+patch("7c05885bc", "pi-coding-agent/modes/interactive/interactive-mode.js", [
+    ["import { getCwdRelativePath, shortenHomePath } from \"../../utils/paths.js\";\n",
+      "import { getCwdRelativePath, shortenHomePath } from \"../../utils/paths.js\";\nimport { flushStdout } from \"../../utils/sleep.js\";\n"],
+    ["        this.stop(\"transcript\");\n        process.exit(1);\n",
+      "        this.stop(\"transcript\");\n        await flushStdout();\n        process.exit(1);\n"],
+    ["            await this.ui.terminal.drainInput(1000);\n            this.stop();\n",
+      "            await this.ui.terminal.drainInput(1000);\n            this.stop();\n            await flushStdout();\n"],
+    ['            process.stdout.write(`${chalk.dim("To resume this session:")}\\n${resumeCommand}\\n`);\n        }\n',
+      '            process.stdout.write(`${chalk.dim("To resume this session:")}\\n${resumeCommand}\\n`);\n        }\n        await flushStdout();\n'],
+]);
+// END backport 7c05885bc
+
 // BEGIN backport 31b407dc63
 // 31b407dc63 (#11889): run shutdown cleanup on Windows console close (SIGHUP on win32), wait for one synchronous
 // taskkill (2000 ms timeout) in killTrackedDetachedChildren on win32, and call killTrackedDetachedChildren before
@@ -2992,24 +3056,22 @@ patch("31b407dc63", "pi-coding-agent/modes/rpc/rpc-mode.js", [
         process.exit(exitCode);`],
 ]);
 patch("31b407dc63", "pi-coding-agent/modes/interactive/interactive-mode.js", [
-    [`            await this.ui.terminal.drainInput(1000);
-            this.stop();
-            process.exit(0);`, `            await this.ui.terminal.drainInput(1000);
-            this.stop();
+    [`            await flushStdout();
+            process.exit(0);`, `            await flushStdout();
             ${note("31b407dc63").trim()}
             killTrackedDetachedChildren();
             process.exit(0);`],
-    [`        if (resumeCommand) {
-            process.stdout.write(\`\${chalk.dim("To resume this session:")} \${resumeCommand}\\n\`);
-        }
-        process.exit(0);`, `        if (resumeCommand) {
-            process.stdout.write(\`\${chalk.dim("To resume this session:")} \${resumeCommand}\\n\`);
-        }
+    [`        await flushStdout();
+        process.exit(0);
+    }
+    emergencyTerminalExit() {`, `        await flushStdout();
         ${note("31b407dc63").trim()}
         // dispose() only starts killing a running \`!\` command, which on Windows loses the race with
         // exit. After the last await, so it also catches a shell spawned after the abort.
         killTrackedDetachedChildren();
-        process.exit(0);`],
+        process.exit(0);
+    }
+    emergencyTerminalExit() {`],
     [`    registerSignalHandlers() {
         this.unregisterSignalHandlers();
         const signals = ["SIGTERM"];
@@ -3267,6 +3329,13 @@ patch("073b0bae8", "pi-ai/models.js", [
 `],
 ]);
 // END backport 073b0bae8
+
+// BEGIN backport 1e34c3b4c
+// 1e34c3b4c (#12259): qwen4-max-preview joins INDIVIDUAL_MODEL_IDS of the Qwen Token Plan Individual providers (both regions), and the strict exact-allowlist check of the two provider
+// files and its test go (a model models.dev lacks no longer fails generation). The catalog files catalog/providers/qwen-token-plan-individual.ts and ...-individual-cn.ts (Pi's, at this commit) are in
+// the pi-overlay the oracle's generator runs, and the models.dev row of alibaba-token-plan(-cn)/qwen4-max-preview is merged into the catalog source: no compiled file of the package changes.
+// not carried: packages/ai scripts/model-data.ts (assertExactModelIds is removed from the generator's script), test and CHANGELOG: the package ships none of them.
+// END backport 1e34c3b4c
 
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.

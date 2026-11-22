@@ -36,14 +36,6 @@ func modelDataSHA256(value string) string {
 	return hex.EncodeToString(hash[:])
 }
 
-func AssertExactModelIds(label string, expected, actual []string) error {
-	expected, actual = uniqueModelStrings(expected), uniqueModelStrings(actual)
-	if slices.Equal(expected, actual) {
-		return nil
-	}
-	return fmt.Errorf("%s model IDs do not match (%s)", label, describeSetDifference(expected, actual))
-}
-
 func uniqueModelStrings(values []string) []string {
 	values = slices.Clone(values)
 	sortModelStrings(values)
@@ -276,7 +268,7 @@ func ValidateModelDataDirectory(structure ModelDataStructure, dataDir string) er
 		wantIDs, actualIDs := slices.Collect(maps.Keys(structure[provider])), slices.Collect(maps.Keys(actualModels))
 		sortModelStrings(wantIDs)
 		sortModelStrings(actualIDs)
-		if AssertExactModelIds(filename, wantIDs, actualIDs) != nil {
+		if !slices.Equal(wantIDs, actualIDs) {
 			errs = append(errs, filename+" model IDs do not match the generated catalog ("+describeSetDifference(wantIDs, actualIDs)+")")
 		}
 		for _, id := range sortedModelObjectKeys(structure[provider]) {
