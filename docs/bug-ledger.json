@@ -12701,6 +12701,25 @@
       ]
     },
     {
+      "id": "BF-3800eb3",
+      "title": "fix(gen-models): meta.json and piOverlayCommit name the last packed catalog source again ()",
+      "symptom": "fix(gen-models): meta.json and piOverlayCommit name the last packed catalog source again ()",
+      "rootCause": "The member set both by hand, but meta.json is written by gen-models (packSource: -merge-source, -record-source) and that member adds no new row, so no tool run restamps it. As for the member (), the stamp names the last PACKED source; the next -merge-source run restamps it. The overlay files are Pi at.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "3800eb3212",
+          "date": "2026-11-20"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-3804a5a",
       "title": "The pi-messages and classifier (System One, decisions) requests are sent to the URL as written and a URL with…",
       "symptom": "The pi-messages and classifier (System One, decisions) requests are sent to the URL as written and a URL with credentials is refused as fetch refuses it, where Pig sent the credentials as Basic auth.",

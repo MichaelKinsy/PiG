@@ -63,6 +63,7 @@ import {
   findExactModelReferenceMatch,
   findTurnStartIndex,
   flushRawStdout,
+  flushStdout,
   formatCacheWarmingStatus,
   formatCacheWarmingUsage,
   formatHttpIdleTimeoutMs,
@@ -123,7 +124,7 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-O6UG46RA.js";
+} from "./chunk-55VAQGFG.js";
 import {
   CredentialSynchronizationError,
   InMemoryCodingAgentModelsStore,
@@ -3983,6 +3984,7 @@ async function showStartupSelector(settingsManager, title, options) {
       settled = true;
       await clearStartupTui(ui);
       ui.stop();
+      await flushStdout();
       resolve7(result);
     }, "finish");
     const selector = new ExtensionSelectorComponent(title, options.map((option) => option.label), (option) => void finish(options.find((entry) => entry.label === option)?.value), () => void finish(void 0), { tui: ui });
@@ -4008,6 +4010,7 @@ async function showFirstTimeSetup(settingsManager) {
       }
       await clearStartupTui(ui);
       ui.stop();
+      await flushStdout();
       resolve7();
     }, "finish");
     ui.start();
@@ -4041,6 +4044,7 @@ async function showStartupInput(settingsManager, title, placeholder) {
       input2.dispose();
       await clearStartupTui(ui);
       ui.stop();
+      await flushStdout();
       resolve7(result);
     }, "finish");
     const input2 = new ExtensionInputComponent(title, placeholder, (value) => void finish(value), () => void finish(void 0), {
@@ -5145,21 +5149,22 @@ async function selectSession(currentSessionsLoader, allSessionsLoader, settingsM
     const keybindings = KeybindingsManager.create();
     setKeybindings2(keybindings);
     let resolved = false;
+    const stopUi = /* @__PURE__ */ __name(() => {
+      ui.stop();
+      return flushStdout();
+    }, "stopUi");
     const selector = new SessionSelectorComponent(currentSessionsLoader, allSessionsLoader, (path6) => {
       if (!resolved) {
         resolved = true;
-        ui.stop();
-        resolve7(path6);
+        void stopUi().then(() => resolve7(path6));
       }
     }, () => {
       if (!resolved) {
         resolved = true;
-        ui.stop();
-        resolve7(null);
+        void stopUi().then(() => resolve7(null));
       }
     }, () => {
-      ui.stop();
-      process.exit(0);
+      void stopUi().then(() => process.exit(0));
     }, () => ui.requestRender(), { showRenameHint: false, keybindings });
     ui.addChild(selector);
     ui.setFocus(selector.getSessionList());
@@ -15073,6 +15078,7 @@ ${warningLines()}`, 0, 0));
     }
     stopThemeWatcher();
     this.stop("transcript");
+    await flushStdout();
     process.exit(1);
   }
   getCrashExtensionHint(error) {
@@ -16817,6 +16823,7 @@ ${message}`, ["Yes", "No"], opts, {
       this.themeController.disableAutoSync();
       await this.ui.terminal.drainInput(1e3);
       this.stop();
+      await flushStdout();
       killTrackedDetachedChildren();
       process.exit(0);
     }
@@ -16826,9 +16833,11 @@ ${message}`, ["Yes", "No"], opts, {
     await this.runtimeHost.dispose();
     const resumeCommand = formatResumeCommand(this.sessionManager);
     if (resumeCommand) {
-      process.stdout.write(`${chalk6.dim("To resume this session:")} ${resumeCommand}
+      process.stdout.write(`${chalk6.dim("To resume this session:")}
+${resumeCommand}
 `);
     }
+    await flushStdout();
     killTrackedDetachedChildren();
     process.exit(0);
   }
@@ -21214,17 +21223,18 @@ async function selectConfig(options) {
     const ui = new TuiMainScreen4(new ProcessTerminal3(), options.settingsManager.getShowHardwareCursor(), options.agentDir);
     ui.setClearOnShrink(options.settingsManager.getClearOnShrink());
     let resolved = false;
+    const stopUi = /* @__PURE__ */ __name(() => {
+      ui.stop();
+      stopThemeWatcher();
+      return flushStdout();
+    }, "stopUi");
     const selector = new ConfigSelectorComponent(options.resolvedPaths, options.settingsManager, options.cwd, options.agentDir, () => {
       if (!resolved) {
         resolved = true;
-        ui.stop();
-        stopThemeWatcher();
-        resolve7();
+        void stopUi().then(resolve7);
       }
     }, () => {
-      ui.stop();
-      stopThemeWatcher();
-      process.exit(0);
+      void stopUi().then(() => process.exit(0));
     }, () => ui.requestRender(), ui.terminal.rows, options.writeScope, options.projectModeAvailable);
     ui.addChild(selector);
     ui.setFocus(selector.getResourceList());

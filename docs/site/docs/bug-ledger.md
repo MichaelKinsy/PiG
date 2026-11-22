@@ -479,6 +479,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-37c6264](#bf-37c6264) | A Node extension that draws Pi's `ToolExecutionComponent` for a tool that renders itself (`renderShell… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-37d2daa](#bf-37d2daa) | An extension's `ctx.model` and model lists keep a model's `cost.tiers` when the model's record has it as an… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-37dad58](#bf-37dad58) | Chord: a peer that held and released origins faster than the host tore their objects down could make the host… | PiG's own defect | All platforms | Unreleased |
+| [BF-3800eb3](#bf-3800eb3) | fix(gen-models): meta.json and piOverlayCommit name the last packed catalog source again () | PiG's own defect | All platforms | Unreleased |
 | [BF-3804a5a](#bf-3804a5a) | The pi-messages and classifier (System One, decisions) requests are sent to the URL as written and a URL with… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-380ea0e](#bf-380ea0e) | fix(durable/core): a settled outcome without error detail is no cut-off (Pi) | PiG's own defect | All platforms | Unreleased |
 | [BF-3838d0b](#bf-3838d0b) | Interactive mode is ready to type about 10 ms sooner when the recorded "what's new" version differs from the… | PiG's own defect | All platforms | Unreleased |
@@ -8828,6 +8829,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `37dad5849b` (2026-11-15)
 - **Tests:** `chord/next/host/host_endings_order_test.go::TestEndingsOfOneIdentityTearDownInTheOrderTheyWereMadeOneAtATime`, `chord/next/host/host_pace_test.go::TestPaceBoundsTheEndingsAPeersUnmarkedChurnLeavesPending`, `chord/next/host/host_pace_test.go::TestPaceDoesNotHoldTheReaderForATeardownParkedOnALaterFrame`, `chord/next/host/host_pace_test.go::TestPaceInTheLinkReaderReturnsAtOnceWhenTheHostOrTheLinkCloses`, `chord/next/host/host_pace_test.go::TestPaceTwoHostsChurningToEachOtherOverABlockingTransportBothFinish`, `chord/next/host/host_pace_test.go::TestPaceWakesWhenTheLastRunningPacedTaskParks`
 - **Release note:** Chord: a peer that held and released origins faster than the host tore their objects down could make the host keep one pending teardown (a parked goroutine and the object it pinned) for every release: 14,626 pending tasks and 111 MiB at 20,000 origins of one identity, 73,430 and 568 MiB at 100,000, 294,528 and 2,265 MiB at 400,000. An ending now waits for the identity's previous one as a reaction (no goroutine parked on it), and a link's reader waits, after each frame it read off the transport, until the teardowns that frame started have ended or wait for something outside the host (Pi runs the microtasks an ending queued before its next frame), so the same churn leaves at most 2 pending at every size. A teardown that waits for something only a later frame releases does not stop the reader, and the endings queued behind it still pile up without bound, as in Pi. Reply order, teardown order per identity and abort and close order do not change; the reply to a ping sent after a release now comes after the teardown that release started.
+
+### BF-3800eb3
+
+**fix(gen-models): meta.json and piOverlayCommit name the last packed catalog source again ()**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(gen-models): meta.json and piOverlayCommit name the last packed catalog source again ()
+- **Root cause:** The member set both by hand, but meta.json is written by gen-models (packSource: -merge-source, -record-source) and that member adds no new row, so no tool run restamps it. As for the member (), the stamp names the last PACKED source; the next -merge-source run restamps it. The overlay files are Pi at.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3800eb3212` (2026-11-20)
+- **Tests:** None recorded.
 
 ### BF-3804a5a
 
