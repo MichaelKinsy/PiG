@@ -49,8 +49,8 @@ func (m *Models) GetModelOfType(modelType ModelType, provider, id string) AnyMod
 	if err != nil {
 		return nil
 	}
-	for _, model := range OfferedModels(models) {
-		if IsModelType(model, modelType) && model.ModelID() == id {
+	for _, model := range models {
+		if model != nil && IsModelType(model, modelType) && model.ModelID() == id && modelOffered(model) {
 			return model
 		}
 	}
