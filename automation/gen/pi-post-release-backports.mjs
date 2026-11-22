@@ -35,9 +35,7 @@ const note = (sha) => `// Pi ${sha} (post-v1.5.2), backported by automation/gen/
 const messageThreadsDefault = ["Default: true for provider anthropic with a baseUrl on api.anthropic.com", "Default: true for a baseUrl on api.anthropic.com"];
 
 const blocks = [];
-// `supersedes` (the id of an earlier block of the same key) declares that this block rewrites text the earlier block added (two Pi commits change one function): the
-// verifier then counts this block's added text and not the rewritten one's. It must name an earlier block that is present, and this block must rewrite some of its text.
-const patch = (id, key, patches, supersedes) => blocks.push({ id, key, patches, table: "dist", supersedes });
+const patch = (id, key, patches) => blocks.push({ id, key, patches, table: "dist" });
 // dependency carries a dependency change of a Pi commit: the Pi package `pkg` (pi-ai) pins `dep.name` exactly, at `dep.from` in the pinned build and at `dep.to` from
 // the commit on. `resolved`, `integrity` and `dependencies` are the entry of `dep.to` in Pi's own package-lock.json at the commit (read from the Pi git, never from the
 // registry). The oracle build (automation/pin/oracle.py carried_closure) installs the frozen closure with this lock entry in place of the pinned one, so `npm ci`
@@ -3478,18 +3476,6 @@ export const carriedDependencies = blocks.filter((b) => b.dependency).map((b) =>
 
 const patchesOf = (file) => backportPatches[file] ?? packageFileBackports[file] ?? [];
 
-// supersededAdds: key -> the added texts of earlier blocks that a later block of that key declares it supersedes and rewrites. A declaration whose earlier block is
-// gone (retired with its commit) names nothing; one whose earlier block is present and is not rewritten fails when the script loads.
-export const supersededAdds = {};
-for (const [index, block] of blocks.entries()) {
-  if (block.supersedes === undefined) continue;
-  const earlier = blocks.slice(0, index).find((b) => b.id === block.supersedes && b.key === block.key && b.table === block.table);
-  if (earlier === undefined) continue;
-  const rewritten = earlier.patches.map(([, after]) => after).filter((after) => after !== "" && block.patches.some(([before]) => after.includes(before) || before.includes(after)));
-  if (rewritten.length === 0) throw new Error(`backport block ${block.id} declares it supersedes ${block.supersedes} for ${block.key} and rewrites none of its added text`);
-  for (const after of rewritten) (supersededAdds[block.key] ??= new Set()).add(after);
-}
-
 // patchBackports returns source, the text of file (a key of backportPatches or packageFileBackports), with its backports applied.
 export function patchBackports(file, source) {
   for (const [before, after] of patchesOf(file)) {
@@ -3564,8 +3550,6 @@ export function verifyPackageBackports(packages) {
     if (!(name in packages)) continue;
     const text = readFileSync(join(packages[name], packageLocation(name, rest)), "utf8");
     for (const [before, after] of patchesOf(file)) {
-      // The added text of a patch a later block declares it supersedes is rewritten by that block: the later block's own text is counted.
-      if (supersededAdds[file]?.has(after)) continue;
       // A backport that only removes text leaves nothing to count but the text it removed.
       const [part, want] = after === "" ? [before, 0] : [after, 1];
       const n = count(text, part);
