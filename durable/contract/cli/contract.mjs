@@ -4,7 +4,7 @@
 //   contract run [--strict] [ids...] --impl <name> [--lane L] [--out dir] [--json file] [-j N]
 //                                                  run rows (ids may end in *) against an implementation: pi (the control),
 //                                                  or a candidate from impls.toml; prints per-row status and a per-lane summary
-//   contract all [--impls pi,wasm-tinygo,native | all] [--strict] [--lane L] [--no-diagnose]
+//   contract all [--impls pi,wasm-tinygo,native | all] [--strict] [--lane L] [--no-diagnose] [-j N] [ids...]
 //                                                  the make target: build each candidate, run every row, per-lane table and a totals
 //                                                  line per build. The shipped builds (TinyGo Wasm, native) gate every merge; `all` adds
 //                                                  standard Go Wasm and the bench engine (nightly, before a release). Without wasm-go
@@ -33,12 +33,47 @@ const SHIPPED = "pi,wasm-tinygo,native"
 const EVERY = "pi,wasm-tinygo,wasm-go,native,native-bench"
 
 const [cmd, ...rest] = process.argv.slice(2)
-const opt = (args, name, fallback) => { const i = args.indexOf(`--${name}`); return i < 0 ? fallback : args.splice(i, 2)[1] }
-const has = (args, name) => { const i = args.indexOf(`--${name}`); if (i < 0) return false; args.splice(i, 1); return true }
+const flagOf = (name) => (name.length === 1 ? `-${name}` : `--${name}`)
+const opt = (args, name, fallback) => {
+	const flag = flagOf(name)
+	const i = args.indexOf(flag)
+	if (i < 0) return fallback
+	if (i + 1 >= args.length) { console.error(`missing value for ${flag}`); process.exit(2) }
+	return args.splice(i, 2)[1]
+}
+const has = (args, name) => { const i = args.indexOf(flagOf(name)); if (i < 0) return false; args.splice(i, 1); return true }
+const parseJobs = (args) => {
+	const raw = opt(args, "j", "8")
+	const n = Number(raw)
+	if (!Number.isInteger(n) || n < 1) { console.error(`invalid -j value ${JSON.stringify(raw)}; expected a positive integer`); process.exit(2) }
+	return n
+}
+const failUnknownOptions = (args) => {
+	const unknown = args.filter(a => a.startsWith("-"))
+	if (unknown.length) { console.error(`unknown option(s): ${unknown.join(", ")}`); process.exit(2) }
+}
+const idMatches = (scenarioId, pattern) => scenarioId === pattern || (pattern.endsWith("*") && scenarioId.startsWith(pattern.slice(0, -1)))
+const validateSelection = (args, lane) => {
+	failUnknownOptions(args)
+	if (lane && !LANES.includes(lane)) { console.error(`unknown lane ${lane}; lanes: ${LANES.join(", ")}`); process.exit(2) }
+	const corpus = loadCorpus()
+	if (args.length) {
+		const missing = args.filter(id => !corpus.scenario.some(r => idMatches(r.id, id)))
+		if (missing.length) { console.error(`unknown scenario id(s): ${missing.join(", ")}`); process.exit(2) }
+	}
+	const matched = corpus.scenario.filter(r => (!args.length || args.some(id => idMatches(r.id, id))) && (!lane || r.owner === lane))
+	if (!matched.length) {
+		const detail = [args.length ? `ids=${args.join(",")}` : null, lane ? `lane=${lane}` : null].filter(Boolean).join(" ")
+		console.error(`selection matched zero rows (${detail || "empty corpus"})`)
+		process.exit(1)
+	}
+}
 
 if (cmd === "corpus") {
 	const corpus = loadCorpus()
-	if (has(rest, "check")) {
+	const check = has(rest, "check")
+	if (rest.length) { console.error(`unexpected argument(s) for corpus: ${rest.join(", ")}`); process.exit(2) }
+	if (check) {
 		const problems = [...validateCorpus(corpus), ...validateBaseline(loadBaseline(), corpus), ...driftedSources(corpus).map(d => `${d.id}: source ${d.source} ${d.problem}`)]
 		for (const p of problems) console.log(p)
 		console.log(problems.length ? `${problems.length} problem(s)` : `${corpus.scenario.length} scenarios, sources match the pin`)
@@ -50,13 +85,14 @@ if (cmd === "corpus") {
 	const lane = opt(rest, "lane")
 	const out = opt(rest, "out", mkdtempSync(join(tmpdir(), "contract-run-")))
 	const json = opt(rest, "json")
-	const jobs = Number(opt(rest, "j", "8"))
-	if (lane && !LANES.includes(lane)) { console.error(`unknown lane ${lane}; lanes: ${LANES.join(", ")}`); process.exit(2) }
+	const jobs = parseJobs(rest)
 	const strict = has(rest, "strict")
+	validateSelection(rest, lane)
 	// The row command of the integrator's gate (durable/core/contract/corpus.tsv): build the candidate when its paths are missing.
 	const built = impl === "pi" || impl === "ts" ? undefined : await ensureBuilt(impl)
 	if (built) console.log(`${impl}: ${built}`)
 	const results = await gate({ impl, ids: rest.length ? rest : undefined, lanes: lane ? [lane] : undefined, out, concurrency: jobs, onResult: r => console.log(`${r.status.toUpperCase().padEnd(7)} ${r.id.padEnd(22)} ${r.owner.padEnd(18)} ${String(r.ms).padStart(6)} ms  ${typeof r.detail === "string" ? r.detail : r.status === "fail" ? JSON.stringify(r.detail).slice(0, 300) : ""}`) })
+	if (!results.length) { console.error(`zero rows ran for ${impl}`); await exitAfterFlush(1) }
 	const lanes = summarize(results)
 	console.log(`\nimplementation ${impl}`)
 	console.log(totals(impl, lanes))
@@ -72,10 +108,11 @@ if (cmd === "corpus") {
 	const range = opt(rest, "seeds", "1-64")
 	const profile = opt(rest, "profile", "both")
 	const out = opt(rest, "out", mkdtempSync(join(tmpdir(), "contract-soak-")))
-	const jobs = Number(opt(rest, "j", "8"))
+	const jobs = parseJobs(rest)
 	const shrinkIt = has(rest, "shrink")
 	// --args "<reductions>": run the reduced program a shrink printed (the scenario's own flags, see scenarios/diff-ordering.mjs).
 	const reduction = opt(rest, "args")?.split(" ").filter(Boolean)
+	if (rest.length) { console.error(`unexpected argument(s) for soak: ${rest.join(", ")}`); process.exit(2) }
 	const [from, to = from] = range.split("-").map(Number)
 	if (!Number.isInteger(from) || !Number.isInteger(to) || from < 0 || to < from || !["gate", "node", "both"].includes(profile)) { console.error("usage: contract soak --seeds A-B [--profile gate|node|both] --impl name"); process.exit(2) }
 	const built = impl === "pi" || impl === "ts" ? undefined : await ensureBuilt(impl)
@@ -101,13 +138,15 @@ if (cmd === "corpus") {
 	const impls = (picked === "all" ? EVERY : picked).split(",")
 	const diagnose = !has(rest, "no-diagnose")
 	const out = opt(rest, "out", mkdtempSync(join(tmpdir(), "contract-all-")))
-	const jobs = Number(opt(rest, "j", "8"))
+	const jobs = parseJobs(rest)
 	const strict = has(rest, "strict")
 	const lane = opt(rest, "lane")
+	validateSelection(rest, lane)
 	const all = {}
 	for (const name of impls) {
 		const built = name === "pi" ? undefined : await ensureBuilt(name)
 		const results = await gate({ impl: name, ids: rest.length ? rest : undefined, lanes: lane ? [lane] : undefined, out: join(out, name), concurrency: jobs, onResult: r => { if (r.status === "fail") console.log(`FAIL ${name} ${r.id} (${r.owner}): ${JSON.stringify(r.detail).slice(0, 240)}`) } })
+		if (!results.length) { console.error(`zero rows ran for ${name}`); await exitAfterFlush(1) }
 		all[name] = { built, lanes: summarize(results), results }
 	}
 	// Standard Go Wasm is a diagnostic when it is not a selected build: whenever TinyGo fails a row, those rows run on wasm-go, so the
