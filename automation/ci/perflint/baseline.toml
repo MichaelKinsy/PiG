@@ -876,14 +876,6 @@ count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
-file = "coding/cli/extension_stale_copy.go"
-func = "staleCopyDiagnostics"
-pattern = "timer-per-call"
-detail = "time.After"
-count = 1
-class = "cold: startup diagnostics"
-
-[[hit]]
 file = "coding/cli/extension_upgrade.go"
 func = "extensionUpgrader.upgrade"
 pattern = "loop-format"
@@ -1421,14 +1413,6 @@ class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shr
 
 [[hit]]
 file = "coding/extension/host/runtimecell/cellcache.go"
-func = "gcStaleScratch"
-pattern = "timer-per-call"
-detail = "time.After"
-count = 1
-class = "cold: one scratch-directory sweep"
-
-[[hit]]
-file = "coding/extension/host/runtimecell/cellcache.go"
 func = "publishCellFailure"
 pattern = "env-stat"
 detail = "os.Stat"
@@ -1890,14 +1874,6 @@ pattern = "env-stat"
 detail = "os.Lstat"
 count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
-file = "coding/extension/host/subprocess/supervisor.go"
-func = "Supervisor.RecordCrash"
-pattern = "timer-per-call"
-detail = "time.After"
-count = 1
-class = "cold: once per extension crash"
 
 [[hit]]
 file = "coding/extension/host/subprocess/ts_runtime.go"

@@ -110,6 +110,12 @@ func (s *scanner) add(owner, pattern, detail string, pos token.Pos) {
 
 // callee returns the package path and name of the function or method a call invokes.
 func (s *scanner) callee(call *ast.CallExpr) (string, string) {
+	p, name, _ := s.calleeInfo(call)
+	return p, name
+}
+
+// calleeInfo returns the package path, name, and whether the callee is a method (has a receiver).
+func (s *scanner) calleeInfo(call *ast.CallExpr) (string, string, bool) {
 	var id *ast.Ident
 	switch fun := call.Fun.(type) {
 	case *ast.SelectorExpr:
@@ -125,13 +131,19 @@ func (s *scanner) callee(call *ast.CallExpr) (string, string) {
 		}
 	}
 	if id == nil {
-		return "", ""
+		return "", "", false
 	}
 	obj := s.pkg.TypesInfo.Uses[id]
 	if obj == nil || obj.Pkg() == nil {
-		return "", ""
+		return "", "", false
 	}
-	return obj.Pkg().Path(), obj.Name()
+	isMethod := false
+	if fn, ok := obj.(*types.Func); ok {
+		if sig, ok := fn.Type().(*types.Signature); ok && sig.Recv() != nil {
+			isMethod = true
+		}
+	}
+	return obj.Pkg().Path(), obj.Name(), isMethod
 }
 
 func isMarshal(path, name string) bool {
@@ -245,7 +257,7 @@ func (s *scanner) scanFunc(fn *ast.FuncDecl) {
 				}
 			}
 		case *ast.CallExpr:
-			p, name := s.callee(n)
+			p, name, isMethod := s.calleeInfo(n)
 			if nestedMarshal && (isMarshal(p, name) || name == "MarshalJSON") && len(n.Args) <= 1 {
 				onReceiver := false
 				if len(n.Args) == 1 {
@@ -266,7 +278,7 @@ func (s *scanner) scanFunc(fn *ast.FuncDecl) {
 			if s.isPoolPut(n) && growable(info.TypeOf(n.Args[0]), 0) {
 				puts = append(puts, n)
 			}
-			if s.hot && !fnHot && loopDepth > 0 && timerCall(p, name) {
+			if s.hot && !fnHot && loopDepth > 0 && !isMethod && timerCall(p, name) {
 				s.add(owner, "timer-per-call", p+"."+name, n.Pos())
 			}
 			switch {

@@ -151,6 +151,60 @@ func TestRunFailsOnABaselineThatDoesNotParse(t *testing.T) {
 	}
 }
 
+// (time.Time).After is a timestamp comparison, not a timer allocation; only package-level time.After counts for timer-per-call.
+func TestTimerPerCallIgnoresTimeAfterMethod(t *testing.T) {
+	t.Setenv("GOWORK", "off")
+	sampleHot = true
+	t.Cleanup(func() { sampleHot = false })
+
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module methodafter\n\ngo 1.24\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	src := `package methodafter
+
+import "time"
+
+func CompareInLoop(times []time.Time, deadline time.Time) int {
+	n := 0
+	for _, ts := range times {
+		if ts.After(deadline) {
+			n++
+		}
+	}
+	return n
+}
+
+//perf:hot
+func CompareHot(ts, deadline time.Time) bool {
+	return ts.After(deadline)
+}
+
+func TimerInLoop(n int, d time.Duration) {
+	for range n {
+		<-time.After(d)
+	}
+}
+`
+	if err := os.WriteFile(filepath.Join(dir, "after.go"), []byte(src), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	pkgs, err := load(dir, []string{"./..."}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, f := range scan(dir, pkgs) {
+		for range f.Count {
+			got = append(got, f.Pattern+"|"+f.Func+"|"+f.Detail)
+		}
+	}
+	want := []string{"timer-per-call|TimerInLoop|time.After"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("findings\n got %q\nwant %q", got, want)
+	}
+}
+
 // captureStderr returns what fn writes to os.Stderr.
 func captureStderr(t *testing.T, fn func()) string {
 	t.Helper()
