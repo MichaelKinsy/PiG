@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: MIT
+import ast
 import hashlib
 import json
 import re
@@ -346,6 +347,20 @@ class CarriedOracleTests(unittest.TestCase):
             self.skipTest(f"git grep cannot read the tree: {found.stderr.strip() or 'no match'}")
         stray = [rel for rel in found.stdout.split("\n") if rel and rel not in FILES and not rel.startswith(HISTORY)]
         self.assertEqual(stray, [], "these files name a piece of the carried oracle and retire_carried_oracle does not edit them")
+
+    def test_every_carried_swap_anchor_occurs_once_in_the_tree(self):
+        """Every literal swap anchor in retire_carried_oracle matches its target file in the real tree exactly once."""
+        tree = ast.parse((pinlib.ROOT / "automation/pin/carried.py").read_text(encoding="utf-8"))
+        found = 0
+        for node in ast.walk(tree):
+            if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "edit"
+                    and len(node.args) >= 3 and isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str)
+                    and isinstance(node.args[2], ast.Call) and isinstance(node.args[2].func, ast.Name) and node.args[2].func.id == "swap"
+                    and len(node.args[2].args) >= 1 and isinstance(node.args[2].args[0], ast.Constant) and isinstance(node.args[2].args[0].value, str)):
+                rel, old = node.args[0].value, node.args[2].args[0].value
+                found += 1
+                self.assertEqual((pinlib.ROOT / rel).read_text(encoding="utf-8").count(old), 1, f"{rel}: swap anchor {old!r}")
+        self.assertGreater(found, 0)
 
     @unittest.skipUnless(shutil.which("make"), "make is not installed")
     def test_the_makefile_after_a_retirement_still_plans_make_test_and_has_no_carried_target(self):

@@ -15,8 +15,8 @@
 //	-seed-renames   write renames.json from the hand-closed rows whose Go name the name rules cannot find
 //	-write-reach f  write the reach graph the ledger uses to f and exit (input of audit.py and reproduce.py)
 //
-// A run that writes committed files (-update, -seed-renames, -mutate) first checks that .upstream/current is the mirror of the
-// pinned Pi build (internal/upstreammirror) and exits non-zero, having written nothing, when it is not.
+// Every run that reads Pi's source (all modes except -write-reach) first checks that .upstream/current is the mirror of the
+// pinned Pi build (internal/upstreammirror) and exits non-zero before doing any work when it is not.
 package main
 
 import (
@@ -99,12 +99,14 @@ func run(o options) error {
 	if err != nil {
 		return err
 	}
-	// The rules read Pi's source under .upstream/current. Without it, rows a rule closes from that source fall back to hand decisions
-	// the run cannot find; with another Pi's mirror, rows reopen and the run succeeds. A run that writes stops first, before it writes
-	// anything.
-	if o.writes() {
+	// The rules read Pi's source under .upstream/current. Without it, or with another Pi's mirror, a detector would report false
+	// gaps and stale reviewed entries (and a writing run would reopen rows and exit 0). Stop before doing any work.
+	if o.writeReach == "" {
 		if err := upstreammirror.Check(root, o.version); err != nil {
-			return fmt.Errorf("refusing to rewrite the ledger: %w", err)
+			if o.writes() {
+				return fmt.Errorf("refusing to rewrite the ledger: %w", err)
+			}
+			return err
 		}
 	}
 	// Parts of the engine find the repository from the working directory (the PORT_MAP placement rule), so the working directory is the root.
@@ -239,23 +241,13 @@ func run(o options) error {
 			return err
 		}
 		if err := checkBaseline(baseline, decisions); err != nil {
-			return overAnotherMirror(root, o.version, err)
+			return err
 		}
 		if !bytes.Equal(current, derived) {
-			return overAnotherMirror(root, o.version, fmt.Errorf("the ledger %s is not what the detector derives: run make interface-gaps-update and commit the result", mappingPath))
+			return fmt.Errorf("the ledger %s is not what the detector derives: run make interface-gaps-update and commit the result", mappingPath)
 		}
 	}
 	return nil
-}
-
-// overAnotherMirror adds to the failure of a check that the rules did not read the pinned Pi. A check writes nothing, so it runs over any
-// mirror; over another Pi's (a PI_UPSTREAM_REF run of make upstream-mirror leaves .upstream/current at its commit) rows reopen, and
-// the gaps and the ledger the check reports are that Pi's, not the tree's. Over the pin's mirror the failure reads as before.
-func overAnotherMirror(root, version string, failure error) error {
-	if err := upstreammirror.Check(root, version); err != nil {
-		return fmt.Errorf("%w\nthis verdict is not the pin's: %w", failure, err)
-	}
-	return failure
 }
 
 // derive runs the rules over the ledger: it loads the reach graph, builds the Go index, applies the documented renames and reviewed inputs,
