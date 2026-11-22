@@ -4,7 +4,6 @@ package tui
 
 import (
 	"bytes"
-	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -13,6 +12,8 @@ import (
 	"time"
 
 	"golang.org/x/sys/unix"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 const (
@@ -43,12 +44,7 @@ func runExitRestoreFixture(t *testing.T, mode string, wantStatus int) string {
 	if err := helper.Start(); err != nil {
 		t.Fatal(err)
 	}
-	_ = slave.Close()
-	collected := make(chan []byte, 1)
-	go func() {
-		data, _ := io.ReadAll(master) // ends with EIO once the helper, the last holder of the slave, is gone
-		collected <- data
-	}()
+	finishPTY := testenv.ReadPTYUntilSentinel(t, master, slave, 30*time.Second)
 	waited := make(chan error, 1)
 	go func() { waited <- helper.Wait() }()
 	select {
@@ -60,7 +56,7 @@ func runExitRestoreFixture(t *testing.T, mode string, wantStatus int) string {
 		_ = helper.Process.Kill()
 		t.Fatal("fixture did not exit")
 	}
-	output := string(<-collected)
+	output := string(finishPTY())
 	_, after, ok := strings.Cut(output, exitRestoreReady)
 	if !ok {
 		t.Fatalf("fixture never reached its ready marker; output %q, stderr %s", output, &stderr)
