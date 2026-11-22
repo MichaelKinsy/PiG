@@ -96,6 +96,9 @@ type Envelope struct {
 	// held, when set, marks a frame the read loop did not act on because a report_error notification it read earlier is not applied yet: the loop that reads Incoming acts on it after the report (Conn.applyHeld).
 	held bool
 
+	// ackCounted records that readLoop counted this MsgCall frame in its request's ackHold before sealing.
+	ackCounted bool
+
 	// Common fields
 	ID string `json:"id,omitempty"` // Correlation ID for request/response pairs
 
@@ -1618,8 +1621,6 @@ type CallPayload struct {
 	OriginToolCallID string `json:"origin_tool_call_id,omitempty"`
 	// CommandContext marks a call made through a command context: the context of a command handler or of a withSession callback, the only contexts Pi gives newSession, fork, navigateTree, switchSession and reload (runner.ts createCommandContext). The SDK sets it from the kind of the context the call is made through, so a context kept past its request keeps its kind; the host refuses those five calls without it (commandOnlyCall).
 	CommandContext bool `json:"command_context,omitempty"`
-	// ackCounted records that readLoop counted this call in its request's ackHold before sealing.
-	ackCounted bool `json:"-"`
 }
 
 // ── CallResult (host→ext) ────────────────────────────────────────────────────

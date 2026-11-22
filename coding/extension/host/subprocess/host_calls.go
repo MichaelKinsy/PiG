@@ -192,16 +192,16 @@ func (l *callLanes) barrierMark() func() {
 // The UI bridge marks initiation; a bare call handler has no initiation point,
 // so its call finishes before the lane advances.
 func (h *Host) queueCall(me *managedExt, conn *Conn, lanes *callLanes, callID string, call *CallPayload) {
-	h.queueCallDone(me, conn, lanes, callID, call, nil)
+	h.queueCallDone(me, conn, lanes, callID, call, false, nil)
 }
 
 // queueCallDone is queueCall that calls done, when it is not nil, once the call ran or started: its effect is written. The request that made the call learns
-// that it applied (ackHold). A call that can wait for the session or the user (startsAsync) does not hold the acknowledgment of the handler awaiting it: the
+// that it applied (ackHold) when ackCounted is true (readLoop counted the frame before sealing). A call that can wait for the session or the user (startsAsync) does not hold the acknowledgment of the handler awaiting it: the
 // handler is suspended on it, which is what the acknowledgment reports. A call whose upstream API returns nothing (holdsForLoopTurn) is one the handler does not
 // wait for: it holds the acknowledgment until the handler's synchronous part is over (ackHold.applied).
-func (h *Host) queueCallDone(me *managedExt, conn *Conn, lanes *callLanes, callID string, call *CallPayload, done func()) {
+func (h *Host) queueCallDone(me *managedExt, conn *Conn, lanes *callLanes, callID string, call *CallPayload, ackCounted bool, done func()) {
 	if startsAsync(call.Method) {
-		if call.ackCounted {
+		if ackCounted {
 			conn.hostCallApplied(call.ParentRequestID, false)
 		}
 	} else {
@@ -210,7 +210,7 @@ func (h *Host) queueCallDone(me *managedExt, conn *Conn, lanes *callLanes, callI
 			if applied != nil {
 				applied()
 			}
-			if call.ackCounted {
+			if ackCounted {
 				conn.hostCallApplied(call.ParentRequestID, holdsForLoopTurn(call.Method))
 			}
 		}

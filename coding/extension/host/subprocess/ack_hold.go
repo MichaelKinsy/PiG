@@ -52,10 +52,12 @@ func ackHoldOf(ctx context.Context) *ackHold {
 	return hold
 }
 
-// announce records a blocked-on-a-host-call report read from the connection, whose call follows it.
+// announce records a blocked-on-a-host-call report read before the hold was sealed, whose call follows it.
 func (h *ackHold) announce() {
 	h.mu.Lock()
-	h.announced++
+	if !h.sealed {
+		h.announced++
+	}
 	h.mu.Unlock()
 }
 
@@ -160,12 +162,12 @@ func (c *Conn) requestAckHold(requestID string) *ackHold {
 
 // holdAckForCall counts a call frame the read loop read before its request's blocked report, until the host applies the call (hostCallApplied). A connection with no
 // request that holds an acknowledgment, the common case, skips the lookup.
-func (c *Conn) holdAckForCall(call *CallPayload) {
-	if call == nil || call.ParentRequestID == "" || c.ackHolds.Load() == 0 {
+func (c *Conn) holdAckForCall(env *Envelope) {
+	if env == nil || env.Call == nil || env.Call.ParentRequestID == "" || c.ackHolds.Load() == 0 {
 		return
 	}
-	if hold := c.requestAckHold(call.ParentRequestID); hold != nil {
-		call.ackCounted = hold.sent()
+	if hold := c.requestAckHold(env.Call.ParentRequestID); hold != nil {
+		env.ackCounted = hold.sent()
 	}
 }
 

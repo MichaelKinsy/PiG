@@ -1519,7 +1519,7 @@ func (c *Conn) readLoop(ctx context.Context) {
 			c.clearLoopDrained()
 			if env.Call != nil {
 				// The handler's frames are read in the order it wrote them: a call counted here was sent before any report read after it.
-				c.holdAckForCall(env.Call)
+				c.holdAckForCall(&env)
 			}
 		}
 		// A call frame owns its parent-scoped context from the moment it is read, while the frames before a response are still ahead of it.
