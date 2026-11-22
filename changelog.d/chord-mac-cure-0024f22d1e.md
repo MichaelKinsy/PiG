@@ -1,0 +1,3 @@
+### Fixed
+
+- Chord startup recovery on macOS and the BSDs now clears a stale address worker lock file left by a hard kill during an import or delete before taking that address's lock in `resolveIntent`. Once the dead server's own lock file has been removed (as in Pi), the next start resolves the interrupted operation instead of leaving the address blocked on its stale lock file. <!-- fix: 0024f22d1e --> <!-- cause: startup intent recovery was written and tested where process locks are Linux abstract sockets that disappear when their holder dies, so resolveIntent never cleared a stale socket-file address lock before taking it -->
