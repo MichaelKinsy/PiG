@@ -11,8 +11,8 @@ func TestRequestBodyWritesALoneSurrogateAsItsEscape(t *testing.T) {
 		body any
 		want string
 	}{
-		"codex instructions":     {respRequest{Model: "m", Instructions: lone, codex: true}, `{"model":"m","stream":false,"instructions":"a\ud83db","input":null}`},
-		"responses instructions": {respRequest{Model: "m", Instructions: lone}, ``},
+		"codex prompt cache key":     {respRequest{Model: "m", PromptCacheKey: lone, codex: true}, `{"model":"m","stream":false,"input":null,"prompt_cache_key":"a\ud83db"}`},
+		"responses prompt cache key": {respRequest{Model: "m", PromptCacheKey: lone}, ``},
 		"assistant reasoning":    {oaiMessage{Role: "assistant", ReasoningContent: &reasoning}, `{"role":"assistant","content":null,"reasoning_content":"a\ud83db"}`},
 		"pair is one character":  {oaiMessage{Role: "user", Content: "😀 \u2028 <&>"}, "{\"role\":\"user\",\"content\":\"😀 \u2028 <&>\"}"},
 	} {
