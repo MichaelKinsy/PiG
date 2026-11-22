@@ -23,7 +23,7 @@ ready_pattern_pig = "(auto)"
 ready_pattern_pi = "(auto)"
 ready_timeout_seconds = 25
 capture_start = "Select provider to configure"
-capture_end = "↑↓ navigate"
+capture_end = "(2/17)"
 settle_seconds = 1
 
 [[tmux.steps]]
