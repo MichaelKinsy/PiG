@@ -1,5 +1,5 @@
-3fa717a3c21bf86c8507cef58044e8762a16b949ef00f4a757c9c07a67df3ae6  ./catalog/models.all.json
-a7be18ed30b85882d244adee207b123f2231eecef978051aa5848778847006df  ./catalog/models.json
+8180d9801d10886d8855d197098a2a6ad0dc13ec81241ca0306d6a965e6159cf  ./catalog/models.all.json
+77c190a47068460652dc113d8af42ba0f104664284c8d980fe361946b51dbc89  ./catalog/models.json
 3b68461bec3bc6a720c669b59209be99d7d24a7fe94c65b43e0336c47c0e6ea3  ./catalog/providers.json
 77b89ff841fa437fa5e2196d31af51febc444969ceb95b5a73b333c8a834c5d0  ./catalog/providers/amazon-bedrock.all.json
 654ad741900ee04403c58d9aa5dad1edaf552e9baeff5cf51d021aa6caed6935  ./catalog/providers/amazon-bedrock.json
@@ -21,8 +21,8 @@ b4cdcc18b317566216b7960cf2fb8a397f4b45050a8e0b62d72234be13e63381  ./catalog/prov
 35e121d8237514c8bbbe0938e210f32b340d4e7272b5493eb649c52f4f9da56e  ./catalog/providers/deepseek.json
 ce917637e75300a958fb637f09b2c078261d8bc7c5326695f444a1740672429d  ./catalog/providers/fireworks.all.json
 275526b6002b23e8ee5d8425717a434b0e28358c7e270d88d770b8ea1a5d5ca2  ./catalog/providers/fireworks.json
-2c3dd76ef60738e95421aa1718854874c0b140c4db4d03a167c8e65826c4bdb9  ./catalog/providers/github-copilot.all.json
-6d3e886f5832ee24892b948f3aec19a7ef0ffdc610276231312c1dd41de64346  ./catalog/providers/github-copilot.json
+e74a35202cb6c96749bf993fd47e068fcbe181f4d96cb834735ab8d72c3ffcdf  ./catalog/providers/github-copilot.all.json
+6ee12e972954105e7257f3282df984931a5d97fde1213a48f922946bb6173032  ./catalog/providers/github-copilot.json
 5b187e9d6b3abf88af919054e596250ae129a49ca1bb3954c150cfaef417ae85  ./catalog/providers/google-vertex.all.json
 9fa49bde7545912834eda54246b4329b31f67d14323da0a057566a9442196aee  ./catalog/providers/google-vertex.json
 dd31f061fe6d1dc94e2413f716359fe5a1b3ff88fc770120d7103e5d3720f29d  ./catalog/providers/google.all.json
@@ -93,7 +93,7 @@ f6ef8c78095cf1212b9cd9178b5c6d14f363ba3456410e8a99c211de815fb126  ./data/cloudfl
 856b5677e1947c41d8e1ecc805955cadee13509c27301eb897b0c05c14782f68  ./data/cloudflare-workers-ai.json
 10a296fb3e898f7715c80890c8af0af4f5fd58f22dbcd6612fdc5d762157ccdc  ./data/deepseek.json
 e210b1918cd7cbb965321ceaeed1ec0030a721bd094c9794ca53a5e29b382684  ./data/fireworks.json
-1e7cc6168b1341f7dec8f34ecd0961a57081c50b8d8f923a87c6b1334e0de4ef  ./data/github-copilot.json
+514bf9e8303d75b6665e62065336ccf7cc6c847bafb9bdb973d5a65b5b43a65d  ./data/github-copilot.json
 8c0fb957bcc9618456695bdd10dfefba9109046832f72368a200bbfff3f73e59  ./data/google-vertex.json
 a996c4621a640aff572124eae36fa93a11ca41df11e8df39aa07c75296a4ddde  ./data/google.json
 256043df9ebbc257f5a953584f8d22bf2af90170c5168d7b92e91ae266ba4cf9  ./data/groq.json

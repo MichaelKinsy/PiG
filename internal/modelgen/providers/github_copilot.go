@@ -147,6 +147,7 @@ func githubCopilot() ProviderDefinition {
 		},
 		Classifiers: func(*ProviderContext) ([]*Obj, error) { return []*Obj{githubCopilotMicrosoftDecision1()}, nil },
 		Compat: ApiCompatDefaults{
+			"anthropic-messages": FixedCompat(O("supportsStrictTools", true)),
 			"openai-completions": FixedCompat(O("supportsStrictMode", true)),
 			"openai-responses":   FixedCompat(O("supportsStrictMode", true)),
 		},
