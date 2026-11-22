@@ -149,6 +149,43 @@ console.log(JSON.stringify([backportPatches, packageFileBackports]));'''], captu
             ("aaaaaaaaa", "pi-ai/api/x.js", "carried"), ("bbbbbbbbb", "pi-ai/api/y.js", "carried"), ("ccccccccc", "pi-ai/api/x.js", "carried"),
         ])
 
+    STACKED = '''
+// BEGIN backport aaaaaaaaa
+patch("aaaaaaaaa", "pi-ai/api/x.js", [["go();\\n", "go();\\nif (a) first();\\n"]]);
+// END backport aaaaaaaaa
+// BEGIN backport ccccccccc
+patch("ccccccccc", "pi-ai/api/x.js", [["if (a) first();\\n", "if (b) second();\\n"]]%s);
+// END backport ccccccccc
+'''
+
+    def verify_stacked(self, entries: str, written: str = "go();\n") -> subprocess.CompletedProcess:
+        with tempfile.TemporaryDirectory() as directory:
+            script = self.blocks_script(Path(directory), entries)
+            api = Path(directory) / "pi-ai" / "dist" / "api"
+            api.mkdir(parents=True)
+            (api / "x.js").write_text(written, encoding="utf-8")
+            package = f"pi-ai={Path(directory) / 'pi-ai'}"
+            subprocess.run(["node", str(script), "--packages", package], capture_output=True, text=True, check=True)
+            self.assertEqual((api / "x.js").read_text(encoding="utf-8"), "go();\nif (b) second();\n")
+            return subprocess.run(["node", str(script), "--verify-packages", package], capture_output=True, text=True)
+
+    def test_a_block_that_declares_it_supersedes_the_earlier_one_it_rewrites_verifies(self):
+        self.assertEqual(self.verify_stacked(self.STACKED % ', "aaaaaaaaa"').returncode, 0)
+
+    def test_a_rewritten_block_that_is_not_declared_superseded_fails_verification(self):
+        done = self.verify_stacked(self.STACKED % "")
+        self.assertNotEqual(done.returncode, 0)
+        self.assertIn("pi-ai/api/x.js holds 0 copies of a backport's added text, want 1: go();\nif (a) first();", done.stderr)
+
+    def test_a_declared_supersede_of_a_block_it_does_not_rewrite_fails_when_the_script_loads(self):
+        entries = self.STACKED % ', "aaaaaaaaa"'
+        entries = entries.replace('[["if (a) first();\\n", "if (b) second();\\n"]]', '[["other();\\n", "other(2);\\n"]]')
+        with tempfile.TemporaryDirectory() as directory:
+            script = self.blocks_script(Path(directory), entries)
+            done = subprocess.run(["node", str(script), "--dependencies"], capture_output=True, text=True)
+        self.assertNotEqual(done.returncode, 0)
+        self.assertIn("backport block ccccccccc declares it supersedes aaaaaaaaa for pi-ai/api/x.js and rewrites none of its added text", done.stderr)
+
     def test_two_blocks_that_replace_the_same_text_fail_naming_both(self):
         entries = '''
 // BEGIN backport aaaaaaaaa
