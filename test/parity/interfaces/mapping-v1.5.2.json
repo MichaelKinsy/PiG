@@ -9751,7 +9751,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/mistral.go#mistralProvider.Stream"
+        "call:ai/google.go#supportsGoogleStrictToolSampling"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
@@ -27697,7 +27697,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/mistral.go#mistralProvider.Stream"
+        "call:ai/google.go#supportsGoogleStrictToolSampling"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
@@ -28690,7 +28690,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/mistral.go#mistralProvider.Stream"
+        "call:ai/google.go#supportsGoogleStrictToolSampling"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
@@ -41924,42 +41924,20 @@
     },
     {
       "id": "pkg:ai/api/google-shared#supportsGoogleStrictToolSampling",
-      "disposition": "ported",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:428163c0435c94f2e48479deb3097debb36265e87d3d4e1c3285a81dc7beed09",
-      "rationale": "api/google-shared.ts supportsGoogleStrictToolSampling(modelId) is the unexported Go function of the same name over the same model-id test; the Google stream path calls it to choose strict tool mode.",
+      "rationale": "Carried ahead of the pin: Pi 1.5.2 (packages/ai/src/api/google-shared.ts:463) declares supportsGoogleStrictToolSampling(modelId: string): boolean; Pi fe8a6f5dc741e9214a20f70f359c68c72b494d1e (#12371) changes the parameter to model: Model<T> so compat.supportsStrictMode overrides the version detection. PiG's ai/google.go#supportsGoogleStrictToolSampling takes *Model to match fe8a6f5dc, and automation/gen/pi-post-release-backports.mjs carries the commit in the oracle. The row goes with the next pin bump.",
       "pigTargets": [
         "ai/google.go#supportsGoogleStrictToolSampling"
-      ],
-      "layers": {
-        "shape": "complete",
-        "production": "complete",
-        "behavior": "complete"
-      },
-      "production": [
-        "call:ai/google.go#googleProvider.Stream"
-      ],
-      "evidence": [
-        "test:ai/google_convert_tools_upstream_test.go#TestGoogleSharedConvertToolsUpstream"
       ]
     },
     {
       "id": "pkg:ai/api/google-shared#supportsGoogleStrictToolSampling::call:0",
-      "disposition": "ported",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:2b3b4cce435cc7ec77b9207e9c6b11c9024c07743d2aef67e83a3e596b5c1321",
-      "rationale": "api/google-shared.ts supportsGoogleStrictToolSampling(modelId) is the unexported Go function of the same name over the same model-id test; the Google stream path calls it to choose strict tool mode.",
+      "rationale": "Carried ahead of the pin: Pi 1.5.2 (packages/ai/src/api/google-shared.ts:463) declares supportsGoogleStrictToolSampling(modelId: string): boolean; Pi fe8a6f5dc741e9214a20f70f359c68c72b494d1e (#12371) changes the parameter to model: Model<T> so compat.supportsStrictMode overrides the version detection. PiG's ai/google.go#supportsGoogleStrictToolSampling takes *Model to match fe8a6f5dc, and automation/gen/pi-post-release-backports.mjs carries the commit in the oracle. The row goes with the next pin bump.",
       "pigTargets": [
         "ai/google.go#supportsGoogleStrictToolSampling"
-      ],
-      "layers": {
-        "shape": "complete",
-        "production": "complete",
-        "behavior": "complete"
-      },
-      "production": [
-        "call:ai/google.go#googleProvider.Stream"
-      ],
-      "evidence": [
-        "test:ai/google_convert_tools_upstream_test.go#TestGoogleSharedConvertToolsUpstream"
       ]
     },
     {
@@ -54354,7 +54332,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/mistral.go#mistralProvider.Stream"
+        "call:ai/google.go#supportsGoogleStrictToolSampling"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
@@ -73462,7 +73440,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/mistral.go#mistralProvider.Stream"
+        "call:ai/google.go#supportsGoogleStrictToolSampling"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
@@ -74499,7 +74477,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/mistral.go#mistralProvider.Stream"
+        "call:ai/google.go#supportsGoogleStrictToolSampling"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
@@ -90257,7 +90235,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/mistral.go#mistralProvider.Stream"
+        "call:ai/google.go#supportsGoogleStrictToolSampling"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
@@ -90929,7 +90907,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/mistral.go#mistralProvider.Stream"
+        "call:ai/google.go#supportsGoogleStrictToolSampling"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
@@ -91367,7 +91345,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/mistral.go#mistralProvider.Stream"
+        "call:ai/google.go#supportsGoogleStrictToolSampling"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",

@@ -34,6 +34,13 @@ func MistralConversationsCompatSchema() *Schema {
 	}, D("Compatibility settings for the Mistral chat API."), Opt{"additionalProperties", true})
 }
 
+// GoogleCompatSchema is compat-schema.ts GoogleCompatSchema (Pi fe8a6f5dc, #12371).
+func GoogleCompatSchema() *Schema {
+	return OpenObject([]Prop{
+		optionalCompatBoolean("supportsStrictMode", D("Whether the model enforces strict tools through Gemini's VALIDATED function-calling mode. Default: true for model IDs containing gemini-3 or a later version, such as gemini-3-pro or vendor-gemini-4-argon, false otherwise. Set true for Gemini 3+ models served under IDs without the version.")),
+	}, D("Compatibility settings for the Google Generative AI and Vertex APIs."), Opt{"additionalProperties", true})
+}
+
 // SystemOneCompatSchema is compat-schema.ts SystemOneCompatSchema.
 func SystemOneCompatSchema() *Schema {
 	return OpenObject([]Prop{
@@ -130,6 +137,8 @@ func CompatSchemasByApi() []CompatSchemaEntry {
 		{"anthropic-messages", "AnthropicMessagesCompatSchema"},
 		{"bedrock-converse-stream", "BedrockCompatSchema"},
 		{"mistral-conversations", "MistralConversationsCompatSchema"},
+		{"google-generative-ai", "GoogleCompatSchema"},
+		{"google-vertex", "GoogleCompatSchema"},
 		{"typesafe-system-one", "SystemOneCompatSchema"},
 		{"cloudflare-workers-ai-system-one", "SystemOneCompatSchema"},
 	}
@@ -147,6 +156,8 @@ func compatSchemaNamed(name string) *Schema {
 		return BedrockCompatSchema()
 	case "MistralConversationsCompatSchema":
 		return MistralConversationsCompatSchema()
+	case "GoogleCompatSchema":
+		return GoogleCompatSchema()
 	case "SystemOneCompatSchema":
 		return SystemOneCompatSchema()
 	}

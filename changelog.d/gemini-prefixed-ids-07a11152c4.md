@@ -1,0 +1,3 @@
+### Fixed
+
+- A Gemini 3 or later model addressed by a prefixed ID (such as `google/gemini-3-pro`, `models/gemini-3-flash`, `publishers/google/models/gemini-3.1-pro`, or `randomprefix-gemini-4-argon`, as through a gateway) now gets tool-call IDs, strict tool sampling (`VALIDATED` mode), and nested multimodal function responses like the unprefixed ID, while prefixed Gemini 2.x IDs keep separate user turns for tool-result images; a custom Google Generative AI or Vertex model can also declare `compat.supportsStrictMode` to override version-based strict-tool detection. Affects v0.2.0 through v0.7.0. <!-- fix: 07a11152c4b47c1cbd727c8601900d7cede5bff0 --> <!-- cause: c318b7716369e00310092c987a9243c9a8d4a1a3; Pi fe8a6f5dc741e9214a20f70f359c68c72b494d1e (#12371) -->

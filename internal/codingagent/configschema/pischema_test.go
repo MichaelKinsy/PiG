@@ -74,6 +74,7 @@ func piAISchemaTrees() map[string]*Schema {
 		"AnthropicMessagesCompatSchema":       AnthropicMessagesCompatSchema(),
 		"BedrockCompatSchema":                 BedrockCompatSchema(),
 		"MistralConversationsCompatSchema":    MistralConversationsCompatSchema(),
+		"GoogleCompatSchema":                  GoogleCompatSchema(),
 		"SystemOneCompatSchema":               SystemOneCompatSchema(),
 		"OpenRouterRoutingSchema":             OpenRouterRoutingSchema(),
 		"VercelGatewayRoutingSchema":          VercelGatewayRoutingSchema(),

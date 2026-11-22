@@ -14,7 +14,7 @@ func TestSupportsMultimodalFunctionResponseMatchesGoogleMajorVersion(t *testing.
 		{"gemini-live-3-flash", true},
 		{"gemini-2.5-pro", false},
 		{"claude-sonnet-via-google", true},
-		{"prefix-gemini-2", true},
+		{"prefix-gemini-2", false},
 	}
 	for _, test := range tests {
 		if got := supportsMultimodalFunctionResponse(test.model); got != test.want {

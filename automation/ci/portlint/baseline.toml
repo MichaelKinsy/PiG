@@ -3001,12 +3001,6 @@ snippet = "usage.CacheRead = (common + 3) / 4"
 [[hit]]
 check = "numbers"
 file = "ai/google.go"
-func = "getGeminiMajorVersion"
-snippet = "n, err := strconv.ParseFloat(m[1], 64)"
-
-[[hit]]
-check = "numbers"
-file = "ai/google.go"
 func = "googleRawChunkError"
 snippet = "parsed, err := strconv.ParseFloat(text, 64)"
 

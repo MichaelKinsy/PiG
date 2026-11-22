@@ -206,6 +206,27 @@
       ]
     },
     {
+      "id": "BF-016ee5f",
+      "title": "fix(ai): zero-alloc getGeminiMajorVersion, strip build tag on Vertex test, and goimports",
+      "symptom": "fix(ai): zero-alloc getGeminiMajorVersion, strip build tag on Vertex test, and goimports",
+      "rootCause": "Avoids 1 allocation in getGeminiMajorVersion so TestHookedRequestHoldsThePayloadOrderWithoutAllocating stays within its ceiling; adds !pig_strip_google_vertex build tag to ai/google_prefixed_ids_test.go; formats with gofmt/goimports and updates pig-go.json (make interface-go).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "016ee5f7d0",
+          "date": "2026-11-21"
+        }
+      ],
+      "tests": [
+        "ai/google_prefixed_ids_test.go::TestGeminiPrefixedModelIDHelpers"
+      ]
+    },
+    {
       "id": "BF-018a05a",
       "title": "fix(chord): NetBSD and OpenBSD identities carry their birth time; D540 narrows to DragonFly, Solaris and AIX…",
       "symptom": "fix(chord): NetBSD and OpenBSD identities carry their birth time; D540 narrows to DragonFly, Solaris and AIX; macOS unit runs the watcher tests",
@@ -1475,6 +1496,33 @@
         "agent/js_trim_test.go::TestReplayAndProxyLinesTrimLikeJavaScript",
         "tui/js_trim_test.go::TestAssistantMessageComponentTrimsRunsLikeJavaScript",
         "tui/js_trim_test.go::TestTextBlankCheckTrimsLikeJavaScript"
+      ]
+    },
+    {
+      "id": "BF-07a1115",
+      "title": "A Gemini 3 or later model addressed by a prefixed ID (such as `google/gemini-3-pro`, `models/gemini-3-flash`…",
+      "symptom": "A Gemini 3 or later model addressed by a prefixed ID (such as `google/gemini-3-pro`, `models/gemini-3-flash`, `publishers/google/models/gemini-3.1-pro`, or `randomprefix-gemini-4-argon`, as through a gateway) now gets tool-call IDs, strict tool sampling (`VALIDATED` mode), and nested multimodal function responses like the unprefixed ID, while prefixed Gemini 2.x IDs keep separate user turns for tool-result images; a custom Google Generative AI or Vertex model can also declare `compat.supportsStrictMode` to override version-based strict-tool detection.",
+      "rootCause": "c318b7716369e00310092c987a9243c9a8d4a1a3; Pi fe8a6f5dc741e9214a20f70f359c68c72b494d1e (#12371)",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Gemini 3 or later model addressed by a prefixed ID (such as `google/gemini-3-pro`, `models/gemini-3-flash`, `publishers/google/models/gemini-3.1-pro`, or `randomprefix-gemini-4-argon`, as through a gateway) now gets tool-call IDs, strict tool sampling (`VALIDATED` mode), and nested multimodal function responses like the unprefixed ID, while prefixed Gemini 2.x IDs keep separate user turns for tool-result images; a custom Google Generative AI or Vertex model can also declare `compat.supportsStrictMode` to override version-based strict-tool detection. Affects v0.2.0 through v0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "07a11152c4",
+          "date": "2026-11-21"
+        }
+      ],
+      "tests": [
+        "ai/google_contract_0861_test.go::TestSupportsMultimodalFunctionResponseMatchesGoogleMajorVersion",
+        "ai/google_convert_tools_upstream_test.go::TestGoogleSharedConvertToolsUpstream",
+        "ai/google_history_upstream_test.go::TestGoogleUnsignedToolCallsUpstream",
+        "ai/google_prefixed_ids_test.go::TestGeminiPrefixedModelIDHelpers",
+        "ai/google_prefixed_ids_test.go::TestGeminiPrefixedModelIDRequestBoundaryBothAPIs",
+        "internal/codingagent/configschema/compat_schema_exports_test.go::TestCompatSchemaExportsMatchPi"
       ]
     },
     {
