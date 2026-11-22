@@ -181,8 +181,8 @@ func RemoteHistoryOf(listing RemoteListing, from *Seq) RemoteHistory {
 	// An archive slot is a full state: a restore starts at the newest one. A copy at `from` gets the chain as it is: an
 	// archive slot in it does not apply on top of its store, and `PullSession` refuses it (the host restores fresh).
 	if from == nil || *from == LogStart {
-		for index := len(batches) - 1; index >= 0; index-- {
-			if batches[index].Archive {
+		for index, batch := range slices.Backward(batches) {
+			if batch.Archive {
 				return RemoteHistory{Batches: batches[index:], Head: at}
 			}
 		}
