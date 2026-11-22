@@ -200,7 +200,7 @@ func jsRound(x float64) float64 {
 	return f
 }
 
-func round1(v float64) float64 { return jsRound(v*10) / 10 }
+func round1(v float64) float64 { return jsRound(float64(v*10)) / 10 }
 
 func roundTo(v float64, digits int) float64 {
 	scale := math.Pow(10, float64(digits))
