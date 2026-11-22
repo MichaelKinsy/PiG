@@ -171,6 +171,23 @@ jobs:
           zstd="$(automation/ci/install-zstd.sh)"
           echo "PIG_ZSTD=$zstd" >> "$GITHUB_ENV"
           echo "PIG_REQUIRE_ZSTD=1" >> "$GITHUB_ENV"
+      - name: Warm the Rust SDK Cargo targets
+        # Builds pig-sdk and its dependencies (and Pi's env daemon for libs) into each group's SharedCargoTargetDir before go test starts, so no race test compiles the Rust SDK cold inside its 120 s wait budget.
+        if: matrix.group == 'cli' || matrix.group == 'rest' || matrix.group == 'host' || matrix.group == 'conformance' || matrix.group == 'libs'
+        shell: bash
+        env:
+          PIG_RACE_GROUP: ${{ matrix.group }}
+        run: |
+          set -euo pipefail
+          case "$PIG_RACE_GROUP" in
+            cli) targets=(cli) ;;
+            rest) targets=(subprocess) ;;
+            host) targets=(runtimecell) ;;
+            conformance) targets=(conformance) ;;
+            libs) targets=(env-oracle) ;;
+            *) echo "unexpected race group $PIG_RACE_GROUP" >&2; exit 1 ;;
+          esac
+          ./automation/ci/test-warm.sh --rust-only "${targets[@]}"
       - name: Race and goroutine-leak gate
         env:
           CI: '1'
