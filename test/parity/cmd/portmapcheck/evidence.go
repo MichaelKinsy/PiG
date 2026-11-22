@@ -79,7 +79,7 @@ type evidenceUnit struct {
 //
 // It returns an error when a build, an evidence run or a mutant replay failed for infrastructure reasons (infraFailure): a full disk or a
 // dead compiler says nothing about a row, so it is reported as itself and never as an unproven row.
-func proveByEvidence(root string, res []result, mutants map[string][]mutant) error {
+func proveByEvidence(root string, res []result, mutants map[string][]mutant, noCache bool) error {
 	started := time.Now()
 	dg := newDigester(root)
 	var units []*evidenceUnit
@@ -88,7 +88,9 @@ func proveByEvidence(root string, res []result, mutants map[string][]mutant) err
 			continue
 		}
 		u := &evidenceUnit{row: i, digest: dg.of(res[i], mutants[res[i].Row.Pi])}
-		u.entry, u.cached = cachedEntry(root, u.digest)
+		if !noCache {
+			u.entry, u.cached = cachedEntry(root, u.digest)
+		}
 		units = append(units, u)
 	}
 	stats := runMissing(root, res, units)
