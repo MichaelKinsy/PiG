@@ -4,17 +4,17 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/internal/modelgen"
+	. "github.com/MichaelKinsy/PiG/internal/modelgen"
 )
 
 // Ports Pi fcc33744b (#12269): GPT-6 models on openai-codex set compat.supportsMidConvoEffort: true
 // via the shared OpenAIMidConvoEffortModelIDs set in family_openai.go, while GPT-5.6 models do not.
 func TestOpenAICodexMidConvoEffortCompat(t *testing.T) {
-	models := runProvider(t, openaiCodex(), nil)
-	byID := make(map[string]modelgen.ChatModel, len(models))
-	for _, m := range models {
-		byID[m.Str("id")] = m
+	catalog, err := provBBuild(t, "openai-codex", &CatalogSources{}, false)
+	if err != nil {
+		t.Fatal(err)
 	}
+	byID := provBModelsOf(catalog)
 
 	gpt6 := []string{"gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6.2-astra", "gpt-6.2-sol"}
 	for _, id := range gpt6 {

@@ -61,20 +61,14 @@ func summarizeCodexInput(t *testing.T, body map[string]json.RawMessage) []string
 	return out
 }
 
-func captureCodexSSE(t *testing.T, model *Model, run func(fetch FetchFunc) (*AssistantMessageEventStream, error)) ([]map[string]json.RawMessage, *AssistantMessage) {
+func captureCodexSSE(t *testing.T, model *Model, run func(fetch *http.Client) (*AssistantMessageEventStream, error)) ([]map[string]json.RawMessage, *AssistantMessage) {
 	t.Helper()
 	var bodies []map[string]json.RawMessage
-	fetch := func(_ *http.Request) (*http.Response, error) {
-		return nil, fmt.Errorf("unexpected raw fetch")
-	}
-	_ = fetch
-	rt := codexRoundTripper(func(r *http.Request) (*http.Response, error) {
+	client := &http.Client{Transport: codexRoundTripper(func(r *http.Request) (*http.Response, error) {
 		bodies = append(bodies, codexUpstreamBody(t, r))
 		return codexUpstreamHTTP(codexUpstreamSSE("completed", nil)), nil
-	})
-	stream, err := run(func(req *http.Request) (*http.Response, error) {
-		return rt.RoundTrip(req)
-	})
+	})}
+	stream, err := run(client)
 	if err != nil {
 		t.Fatalf("stream setup: %v", err)
 	}
@@ -111,7 +105,7 @@ func TestCodexSystemPromptAsLeadingDeveloperItemUpstream(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			bodies, _ := captureCodexSSE(t, model, func(fetch FetchFunc) (*AssistantMessageEventStream, error) {
+			bodies, _ := captureCodexSSE(t, model, func(fetch *http.Client) (*AssistantMessageEventStream, error) {
 				return StreamOpenAICodexResponses(t.Context(), model, NormalizeContext(Context{
 					SystemPrompt: tc.systemPrompt,
 					Messages:     []Message{userMsg},
@@ -144,7 +138,7 @@ func TestCodexConfigurationUpdateEffortUpstream(t *testing.T) {
 		model := codexTestModel("gpt-6.2-sol", &OpenAIResponsesCompat{SupportsMidConvoEffort: new(true)}, nil)
 		firstMessages := []Message{UserMessage{Content: UserText("Say hello"), Timestamp: 1}}
 
-		bodies1, first := captureCodexSSE(t, model, func(fetch FetchFunc) (*AssistantMessageEventStream, error) {
+		bodies1, first := captureCodexSSE(t, model, func(fetch *http.Client) (*AssistantMessageEventStream, error) {
 			return StreamOpenAICodexResponses(t.Context(), model, NormalizeContext(Context{Messages: firstMessages}), StreamOptions{
 				APIKey:          token,
 				Transport:       TransportSSE,
@@ -153,7 +147,7 @@ func TestCodexConfigurationUpdateEffortUpstream(t *testing.T) {
 			})
 		})
 		secondMessages := append(append([]Message{}, firstMessages...), *first, UserMessage{Content: UserText("Again"), Timestamp: 2})
-		bodies2, second := captureCodexSSE(t, model, func(fetch FetchFunc) (*AssistantMessageEventStream, error) {
+		bodies2, second := captureCodexSSE(t, model, func(fetch *http.Client) (*AssistantMessageEventStream, error) {
 			return StreamOpenAICodexResponses(t.Context(), model, NormalizeContext(Context{Messages: secondMessages}), StreamOptions{
 				APIKey:          token,
 				Transport:       TransportSSE,
@@ -185,7 +179,7 @@ func TestCodexConfigurationUpdateEffortUpstream(t *testing.T) {
 
 	t.Run("sends the off level (omitted reasoning option) as a configuration_update item", func(t *testing.T) {
 		model := codexTestModel("gpt-6-sol", &OpenAIResponsesCompat{SupportsMidConvoEffort: new(true)}, ThinkingLevelMap{ThinkingOff: new("none")})
-		bodies, result := captureCodexSSE(t, model, func(fetch FetchFunc) (*AssistantMessageEventStream, error) {
+		bodies, result := captureCodexSSE(t, model, func(fetch *http.Client) (*AssistantMessageEventStream, error) {
 			return StreamSimpleOpenAICodexResponses(t.Context(), model, NormalizeContext(Context{
 				Messages: []Message{UserMessage{Content: UserText("Say hello"), Timestamp: 1}},
 			}), StreamOptions{
@@ -209,7 +203,7 @@ func TestCodexConfigurationUpdateEffortUpstream(t *testing.T) {
 
 	t.Run("sends thinking levels as reasoning.effort without supportsMidConvoEffort", func(t *testing.T) {
 		model := codexTestModel("gpt-5.6-sol", nil, nil)
-		bodies, result := captureCodexSSE(t, model, func(fetch FetchFunc) (*AssistantMessageEventStream, error) {
+		bodies, result := captureCodexSSE(t, model, func(fetch *http.Client) (*AssistantMessageEventStream, error) {
 			return StreamOpenAICodexResponses(t.Context(), model, NormalizeContext(Context{
 				Messages: []Message{UserMessage{Content: UserText("Say hello"), Timestamp: 1}},
 			}), StreamOptions{
@@ -241,14 +235,14 @@ func TestCodexConfigurationUpdateEffortUpstream(t *testing.T) {
 			maxTokens int
 			want      *int
 		}{
-			{name: "streamSimple forwards maxTokens", maxTokens: 5000, want: new(5000)},
+			{name: "streamSimple forwards maxTokens", simple: true, maxTokens: 5000, want: new(5000)},
 			{name: "stream clamps small maxTokens to 16", maxTokens: 4, want: new(16)},
 			{name: "supportsMaxOutputTokens false omits max_output_tokens", compat: &OpenAIResponsesCompat{SupportsMaxOutputTokens: new(false)}, maxTokens: 5000, want: nil},
 		}
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
 				model := codexTestModel("gpt-6.2-sol", tc.compat, nil)
-				bodies, _ := captureCodexSSE(t, model, func(fetch FetchFunc) (*AssistantMessageEventStream, error) {
+				bodies, _ := captureCodexSSE(t, model, func(fetch *http.Client) (*AssistantMessageEventStream, error) {
 					opts := StreamOptions{APIKey: token, Transport: TransportSSE, MaxTokens: tc.maxTokens, Fetch: fetch}
 					if tc.simple {
 						return StreamSimpleOpenAICodexResponses(t.Context(), model, ctx, opts)
@@ -288,7 +282,7 @@ func TestCodexConfigurationUpdateEffortUpstream(t *testing.T) {
 			AssistantMessage{API: APIOpenAICodexResponses, Provider: "openai-codex", Model: "gpt-6.2-sol", StopReason: StopReasonStop, ProviderThinkingLevel: "low", Content: []AssistantContentBlock{TextContent{Text: "same model"}}, Timestamp: 6},
 			UserMessage{Content: UserText("u3"), Timestamp: 7},
 		}
-		bodies, result := captureCodexSSE(t, model, func(fetch FetchFunc) (*AssistantMessageEventStream, error) {
+		bodies, result := captureCodexSSE(t, model, func(fetch *http.Client) (*AssistantMessageEventStream, error) {
 			return StreamOpenAICodexResponses(t.Context(), model, NormalizeContext(Context{Messages: history}), StreamOptions{
 				APIKey:          token,
 				Transport:       TransportSSE,
