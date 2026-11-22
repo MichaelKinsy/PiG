@@ -62,13 +62,27 @@ func TestBuiltinProvidersUpstream(t *testing.T) {
 			t.Fatal(radius)
 		}
 	})
-	// .upstream/v0.87.1/packages/ai/test/providers.test.ts:73
+	// .upstream/v0.87.1/packages/ai/test/providers.test.ts:73 (Pi c815a3dfe: Copilot anthropic-messages models declare supportsStrictTools)
 	t.Run("stores native constrained-sampling capabilities in model metadata", func(t *testing.T) {
 		gpt4 := providerModelUpstream(t, "openai", "gpt-4o")
 		gpt5 := providerModelUpstream(t, "openai", "gpt-5.4")
 		anth := providerModelUpstream(t, "anthropic", "claude-haiku-4-5")
 		if gpt4.Compat == nil || gpt4.Compat.SupportsStrictMode == nil || !*gpt4.Compat.SupportsStrictMode || gpt4.Compat.SupportsOpenAIGrammarTools != nil || gpt5.Compat == nil || gpt5.Compat.SupportsStrictMode == nil || !*gpt5.Compat.SupportsStrictMode || gpt5.Compat.SupportsOpenAIGrammarTools == nil || !*gpt5.Compat.SupportsOpenAIGrammarTools || anth.Compat == nil || anth.Compat.SupportsStrictTools == nil || !*anth.Compat.SupportsStrictTools {
 			t.Fatal("incorrect constrained sampling metadata")
+		}
+		copilotClaude := 0
+		for _, model := range ListModels("github-copilot") {
+			if model.API == APIAnthropicMessages {
+				copilotClaude++
+				if model.Compat == nil || model.Compat.SupportsStrictTools == nil || !*model.Compat.SupportsStrictTools {
+					t.Errorf("github-copilot/%s does not declare supportsStrictTools", model.ID)
+				}
+			} else if model.Compat != nil && model.Compat.SupportsStrictTools != nil && *model.Compat.SupportsStrictTools {
+				t.Errorf("github-copilot/%s (%s) unexpectedly declares supportsStrictTools", model.ID, model.API)
+			}
+		}
+		if copilotClaude == 0 {
+			t.Fatal("no github-copilot anthropic-messages models in catalog")
 		}
 	})
 	// .upstream/v0.87.1/packages/ai/test/providers.test.ts:84
