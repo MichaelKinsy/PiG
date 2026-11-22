@@ -117,6 +117,19 @@ jobs:
           echo "PIG_SBCL=$prefix/bin/sbcl" >> "$GITHUB_ENV"
           echo "SBCL_HOME=$prefix/lib/sbcl" >> "$GITHUB_ENV"
           echo "$prefix/bin" >> "$GITHUB_PATH"
+      # Install the pinned zstd (internal/zstdblob.PinnedCLIVersion) into ~/.cache/pig-zstd and cache it by pin. Setting PIG_REQUIRE_ZSTD=1 makes the frame tests fail instead of skipping if the binary is missing.
+      - name: Restore the pinned zstd
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-zstd
+          key: zstd-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-zstd.sh') }}
+      - name: Install the pinned zstd
+        shell: bash
+        run: |
+          set -euo pipefail
+          zstd="$(automation/ci/install-zstd.sh)"
+          echo "PIG_ZSTD=$zstd" >> "$GITHUB_ENV"
+          echo "PIG_REQUIRE_ZSTD=1" >> "$GITHUB_ENV"
       - name: Race and goroutine-leak gate
         env:
           CI: '1'
@@ -299,7 +312,7 @@ jobs:
         with:
           go-version-file: .go-version
           cache: true
-      # The tests of ./coding/... start node (the Pi-oracle tests and the Node extension host) and sbcl (the Lisp SDK rows): the pinned Node and oracle, as in the strip-matrix job, and the pinned SBCL, as in the race job.
+      # The tests of ./coding/... start node (the Pi-oracle tests and the Node extension host), sbcl (the Lisp SDK rows) and the pinned zstd (the frame tests): the pinned Node and oracle, as in the strip-matrix job, and the pinned SBCL and zstd, as in the race job.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
@@ -329,6 +342,19 @@ jobs:
           echo "PIG_SBCL=$prefix/bin/sbcl" >> "$GITHUB_ENV"
           echo "SBCL_HOME=$prefix/lib/sbcl" >> "$GITHUB_ENV"
           echo "$prefix/bin" >> "$GITHUB_PATH"
+      # Install the pinned zstd (internal/zstdblob.PinnedCLIVersion) into ~/.cache/pig-zstd and cache it by pin. Setting PIG_REQUIRE_ZSTD=1 makes the frame tests fail instead of skipping if the binary is missing.
+      - name: Restore the pinned zstd
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-zstd
+          key: zstd-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-zstd.sh') }}
+      - name: Install the pinned zstd
+        shell: bash
+        run: |
+          set -euo pipefail
+          zstd="$(automation/ci/install-zstd.sh)"
+          echo "PIG_ZSTD=$zstd" >> "$GITHUB_ENV"
+          echo "PIG_REQUIRE_ZSTD=1" >> "$GITHUB_ENV"
       - name: Test ./coding/... and ./internal/codingagent/... under the strip tag set
         env:
           CI: '1'
