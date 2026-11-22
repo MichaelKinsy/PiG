@@ -39,89 +39,104 @@ var (
 
 var pinConstRE = regexp.MustCompile(`(?m)^const UpstreamVersion = "([^"]+)"`)
 
-// The markers a bullet may end with. They are HTML comments, so the rendered changelog does not show them, and the bullet's text is the same with and without them.
+// Marker patterns matched against the inner body of an HTML comment (between <!-- and -->).
 var (
-	fixMarker      = regexp.MustCompile(`\s*<!--\s*fix:\s*([0-9a-f][0-9a-f ,]*?)\s*-->`)
-	causeMarker    = regexp.MustCompile(`\s*<!--\s*cause:\s*(.+?)\s*-->`)
-	testsMarker    = regexp.MustCompile(`\s*<!--\s*tests:\s*(.+?)\s*-->`)
-	evidenceMarker = regexp.MustCompile(`(?s)\s*<!--\s*evidence:\s*(.+?)\s*-->`)
+	fixMarker      = regexp.MustCompile(`^\s*fix:\s*([0-9a-f][0-9a-f ,]*?)\s*$`)
+	causeMarker    = regexp.MustCompile(`(?s)^\s*cause:\s*(.+?)\s*$`)
+	testsMarker    = regexp.MustCompile(`(?s)^\s*tests:\s*(.+?)\s*$`)
+	evidenceMarker = regexp.MustCompile(`(?s)^\s*evidence:\s*(.+?)\s*$`)
 )
 
-// replaceOutsideCodeSpans applies fn to each segment of s outside Markdown code spans, keeping code spans verbatim.
-func replaceOutsideCodeSpans(s string, fn func(string) string) string {
-	if !strings.Contains(s, "`") {
-		return fn(s)
+// walkBulletComments scans s once outside Markdown code spans. A code span that opens outside a comment is kept whole in the returned plain text; a "<!--" outside a code span opens a comment running to its "-->" (backticks inside included; an unterminated "<!--" stays plain text to the end). Each comment's inner body is passed to onComment (when non-nil) and omitted from the returned plain text.
+func walkBulletComments(s string, onComment func(body string)) string {
+	if !strings.Contains(s, "<!--") {
+		return s
 	}
 	var b strings.Builder
 	b.Grow(len(s))
 	plain := 0
 	for i := 0; i < len(s); {
-		if s[i] != '`' {
-			i++
+		next := strings.IndexAny(s[i:], "`<")
+		if next < 0 {
+			break
+		}
+		i += next
+		if s[i] == '`' {
+			start := i
+			for i < len(s) && s[i] == '`' {
+				i++
+			}
+			delim := i - start
+			for j := i; j < len(s); {
+				rel := strings.IndexByte(s[j:], '`')
+				if rel < 0 {
+					break
+				}
+				j += rel
+				k := j
+				for k < len(s) && s[k] == '`' {
+					k++
+				}
+				if k-j == delim {
+					i = k
+					break
+				}
+				j = k
+			}
 			continue
 		}
-		start := i
-		for i < len(s) && s[i] == '`' {
-			i++
-		}
-		delim := i - start
-		for j := i; j < len(s); {
-			if s[j] != '`' {
-				j++
+		if strings.HasPrefix(s[i:], "<!--") {
+			if end := strings.Index(s[i+4:], "-->"); end >= 0 {
+				b.WriteString(s[plain:i])
+				if onComment != nil {
+					onComment(s[i+4 : i+4+end])
+				}
+				i += 4 + end + 3
+				plain = i
 				continue
 			}
-			k := j
-			for k < len(s) && s[k] == '`' {
-				k++
-			}
-			if k-j == delim {
-				b.WriteString(fn(s[plain:start]))
-				b.WriteString(s[start:k])
-				i, plain = k, k
-				break
-			}
-			j = k
+			// Unterminated comment: fail open and keep the remaining user text.
+			break
 		}
+		i++
 	}
-	b.WriteString(fn(s[plain:]))
+	if plain == 0 {
+		return s
+	}
+	b.WriteString(s[plain:])
 	return b.String()
 }
 
-// splitFixMarker removes every fix marker from a bullet outside Markdown code spans and returns the commits they name.
-func splitFixMarker(s string) (string, []string) {
-	var fix []string
-	out := replaceOutsideCodeSpans(s, func(seg string) string {
-		for _, m := range fixMarker.FindAllStringSubmatch(seg, -1) {
-			for h := range strings.FieldsFuncSeq(m[1], func(r rune) bool { return r == ',' || r == ' ' }) {
-				fix = append(fix, h)
+// parseBullet strips every HTML comment outside Markdown code spans in one pass and returns the plain text alongside any fix, cause, tests and evidence markers. Of several cause or evidence markers the first counts.
+func parseBullet(s string) (text string, fix []string, cause string, tests []string, evidence string) {
+	text = walkBulletComments(s, func(body string) {
+		trimmed := strings.TrimLeft(body, " \t\n\r")
+		switch {
+		case strings.HasPrefix(trimmed, "fix:"):
+			if m := fixMarker.FindStringSubmatch(body); m != nil {
+				for h := range strings.FieldsFuncSeq(m[1], func(r rune) bool { return r == ',' || r == ' ' }) {
+					fix = append(fix, h)
+				}
+			}
+		case strings.HasPrefix(trimmed, "cause:"):
+			if cause == "" {
+				if m := causeMarker.FindStringSubmatch(body); m != nil {
+					cause = normalizeBullet(m[1])
+				}
+			}
+		case strings.HasPrefix(trimmed, "tests:"):
+			if m := testsMarker.FindStringSubmatch(body); m != nil {
+				tests = append(tests, testList(m[1])...)
+			}
+		case strings.HasPrefix(trimmed, "evidence:"):
+			if evidence == "" {
+				if m := evidenceMarker.FindStringSubmatch(body); m != nil {
+					evidence = normalizeBullet(m[1])
+				}
 			}
 		}
-		return fixMarker.ReplaceAllString(seg, "")
 	})
-	return out, fix
-}
-
-// splitStated removes the cause, tests and evidence markers from a bullet outside Markdown code spans and returns what they state. Of several cause or evidence markers the first counts.
-func splitStated(s string) (text, cause string, tests []string, evidence string) {
-	out := replaceOutsideCodeSpans(s, func(seg string) string {
-		if cause == "" {
-			if m := causeMarker.FindStringSubmatch(seg); m != nil {
-				cause = normalizeBullet(m[1])
-			}
-		}
-		for _, m := range testsMarker.FindAllStringSubmatch(seg, -1) {
-			tests = append(tests, testList(m[1])...)
-		}
-		if evidence == "" {
-			if m := evidenceMarker.FindStringSubmatch(seg); m != nil {
-				evidence = normalizeBullet(m[1])
-			}
-		}
-		seg = causeMarker.ReplaceAllString(seg, "")
-		seg = testsMarker.ReplaceAllString(seg, "")
-		return evidenceMarker.ReplaceAllString(seg, "")
-	})
-	return out, cause, tests, evidence
+	return text, fix, cause, tests, evidence
 }
 
 func normalizeBullet(s string) string { return strings.TrimSpace(spaceRun.ReplaceAllString(s, " ")) }
@@ -182,9 +197,7 @@ func (s *scanner) wants(section string) bool {
 
 func (s *scanner) flush() {
 	if s.cur != nil {
-		text, fix := splitFixMarker(s.cur.String())
-		text, cause, tests, evidence := splitStated(text)
-		text = stripHTMLComments(text)
+		text, fix, cause, tests, evidence := parseBullet(s.cur.String())
 		s.out = append(s.out, bullet{Text: normalizeBullet(text), Fix: fix, Cause: cause, Tests: tests, Evidence: evidence, Version: s.curVer, Added: s.curAdd, Section: s.curSec})
 		s.cur = nil
 	}

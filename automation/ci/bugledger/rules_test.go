@@ -690,3 +690,112 @@ func TestEvidenceMarkerStoredAndRendered(t *testing.T) {
 		t.Errorf("rendered page leaked raw evidence comment")
 	}
 }
+
+// One comment-first walker parses markers that contain code spans whole, keeps backticked literal markers in user text, drops non-marker comments, and fails open on unterminated comments.
+func TestBulletCommentWalker(t *testing.T) {
+	t.Run("code spans inside cause, tests and evidence markers", func(t *testing.T) {
+		cases := []struct {
+			name         string
+			in           string
+			wantText     string
+			wantCause    string
+			wantTests    []string
+			wantEvidence string
+		}{
+			{
+				name:      "cause",
+				in:        "A <!-- cause: x `y` z --> B",
+				wantText:  "A B",
+				wantCause: "x `y` z",
+			},
+			{
+				name:      "tests",
+				in:        "A <!-- tests: TestFoo, `TestBar` --> B",
+				wantText:  "A B",
+				wantTests: []string{"TestFoo", "`TestBar`"},
+			},
+			{
+				name:         "evidence",
+				in:           "A <!-- evidence: ran `go test` on Linux --> B",
+				wantText:     "A B",
+				wantEvidence: "ran `go test` on Linux",
+			},
+		}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				bs := fixedBullets("### Fixed\n\n- "+tc.in+"\n", "0.4.1", true)
+				if len(bs) != 1 {
+					t.Fatalf("len(bs) = %d, want 1", len(bs))
+				}
+				b := bs[0]
+				if b.Text != tc.wantText {
+					t.Errorf("Text = %q, want %q", b.Text, tc.wantText)
+				}
+				if b.Cause != tc.wantCause {
+					t.Errorf("Cause = %q, want %q", b.Cause, tc.wantCause)
+				}
+				if len(b.Tests) != len(tc.wantTests) {
+					t.Errorf("Tests = %q, want %q", b.Tests, tc.wantTests)
+				} else {
+					for i := range tc.wantTests {
+						if b.Tests[i] != tc.wantTests[i] {
+							t.Errorf("Tests[%d] = %q, want %q", i, b.Tests[i], tc.wantTests[i])
+						}
+					}
+				}
+				if b.Evidence != tc.wantEvidence {
+					t.Errorf("Evidence = %q, want %q", b.Evidence, tc.wantEvidence)
+				}
+			})
+		}
+	})
+
+	t.Run("backticked literal marker in user text is kept and not parsed", func(t *testing.T) {
+		in := "On macOS, `<!-- fix: abcdef1 -->` and `<!-- Windows crash -->` stay text."
+		bs := fixedBullets("### Fixed\n\n- "+in+"\n", "0.4.1", true)
+		if len(bs) != 1 {
+			t.Fatalf("len(bs) = %d, want 1", len(bs))
+		}
+		if bs[0].Text != in {
+			t.Errorf("Text = %q, want %q", bs[0].Text, in)
+		}
+		if len(bs[0].Fix) != 0 {
+			t.Errorf("Fix = %v, want empty", bs[0].Fix)
+		}
+		if got := platformOf(bs[0].Text); got != "Windows, macOS" {
+			t.Errorf("platformOf = %q, want %q", got, "Windows, macOS")
+		}
+		if got := impactOf(bs[0].Text); got != "Crash, hang or runaway process" {
+			t.Errorf("impactOf = %q, want %q", got, "Crash, hang or runaway process")
+		}
+	})
+
+	t.Run("unterminated, multi-line, non-marker, after code span, two causes", func(t *testing.T) {
+		text := "### Fixed\n\n" +
+			"- Unterminated <!-- comment stays text.\n" +
+			"- Multi-line note. <!-- cause:\n  first line\n  `second` line\n  --> <!-- non-marker note -->\n" +
+			"- Code `a <!-- fix: 1111111 --> b` then real marker. <!-- fix: 2222222 --> <!-- cause: first `c1` --> <!-- cause: second `c2` -->\n"
+		bs := fixedBullets(text, "0.4.1", true)
+		if len(bs) != 3 {
+			t.Fatalf("len(bs) = %d, want 3", len(bs))
+		}
+		if bs[0].Text != "Unterminated <!-- comment stays text." {
+			t.Errorf("bs[0].Text = %q", bs[0].Text)
+		}
+		if bs[1].Text != "Multi-line note." {
+			t.Errorf("bs[1].Text = %q, want %q", bs[1].Text, "Multi-line note.")
+		}
+		if bs[1].Cause != "first line `second` line" {
+			t.Errorf("bs[1].Cause = %q, want %q", bs[1].Cause, "first line `second` line")
+		}
+		if bs[2].Text != "Code `a <!-- fix: 1111111 --> b` then real marker." {
+			t.Errorf("bs[2].Text = %q", bs[2].Text)
+		}
+		if len(bs[2].Fix) != 1 || bs[2].Fix[0] != "2222222" {
+			t.Errorf("bs[2].Fix = %v, want [2222222]", bs[2].Fix)
+		}
+		if bs[2].Cause != "first `c1`" {
+			t.Errorf("bs[2].Cause = %q, want %q", bs[2].Cause, "first `c1`")
+		}
+	})
+}

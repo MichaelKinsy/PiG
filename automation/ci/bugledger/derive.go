@@ -215,60 +215,8 @@ var impactRules = []impactRule{
 	{wholeWords(`sorted`, `(re)?order(s|ed|ing)?`, `(un)?escaped`, `wrong(ly)?`, `incorrect(ly)?`, `instead of`), "Wrong output or ordering"},
 }
 
-// stripHTMLComments removes HTML comments (<!-- ... -->, including multi-line) outside Markdown code spans. Code spans are kept whole so literal comment examples remain user text, and an unterminated <!-- fails open and keeps the remaining text.
-func stripHTMLComments(note string) string {
-	if !strings.Contains(note, "<!--") {
-		return note
-	}
-	var b strings.Builder
-	b.Grow(len(note))
-	for i := 0; i < len(note); {
-		if note[i] == '`' {
-			start := i
-			for i < len(note) && note[i] == '`' {
-				i++
-			}
-			delim := note[start:i]
-			closed := false
-			for j := i; j < len(note); {
-				if note[j] != '`' {
-					j++
-					continue
-				}
-				k := j
-				for k < len(note) && note[k] == '`' {
-					k++
-				}
-				if k-j == len(delim) {
-					b.WriteString(note[start:k])
-					i = k
-					closed = true
-					break
-				}
-				j = k
-			}
-			if !closed {
-				b.WriteString(delim)
-			}
-			continue
-		}
-		if strings.HasPrefix(note[i:], "<!--") {
-			if end := strings.Index(note[i+4:], "-->"); end >= 0 {
-				i += 4 + end + 3
-				continue
-			}
-			// Unterminated comment: fail open and keep the remaining user text.
-			b.WriteString(note[i:])
-			break
-		}
-		b.WriteByte(note[i])
-		i++
-	}
-	return b.String()
-}
-
 func impactOf(note string) string {
-	text := stripHTMLComments(note)
+	text := walkBulletComments(note, nil)
 	for _, r := range impactRules {
 		if r.re.MatchString(text) {
 			return r.label
@@ -290,7 +238,7 @@ var platformWords = []struct {
 }
 
 func platformOf(note string) string {
-	text := stripHTMLComments(note)
+	text := walkBulletComments(note, nil)
 	var names []string
 	for _, p := range platformWords {
 		if p.re.MatchString(text) {
