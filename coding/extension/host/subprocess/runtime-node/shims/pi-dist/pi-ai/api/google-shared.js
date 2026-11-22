@@ -414,7 +414,8 @@ export function convertTools(tools, useParameters = false, supportsStrictMode = 
  * Gemini 3+ enforces required function parameters in validated tool-calling modes.
  * `compat.supportsStrictMode` overrides the model ID detection, e.g. for Gemini models served under IDs without the version.
  */
-export function supportsGoogleStrictToolSampling(model) {
+export function supportsGoogleStrictToolSampling(modelOrId) {
+    const model = typeof modelOrId === "string" ? { id: modelOrId } : modelOrId;
     const majorVersion = getGeminiMajorVersion(model.id);
     return model.compat?.supportsStrictMode ?? (majorVersion !== undefined && majorVersion >= 3);
 }
