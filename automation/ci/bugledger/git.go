@@ -15,13 +15,17 @@ import (
 	"time"
 )
 
-// gitTimeout bounds every git invocation so a stuck repository cannot hang a gate.
-const gitTimeout = 120 * time.Second
+// gitTimeout is a hang guard for git invocations: on this history, git log -U100000 and git rev-list take seconds on a warm cache, so 15 minutes only fires on a stuck process or consumer.
+const gitTimeout = 15 * time.Minute
 
 type repo struct{ root string }
 
 func (r repo) git(args ...string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), gitTimeout)
+	return r.gitWithTimeout(gitTimeout, args...)
+}
+
+func (r repo) gitWithTimeout(timeout time.Duration, args ...string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	//nolint:gosec // G204 (class a): program is the literal git; args are each caller's subcommand and revisions, and resolve appends ^{commit} to a name taken from a commit trailer, so git rev-parse --verify cannot read it as an option.
 	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", r.root}, args...)...)
@@ -29,14 +33,18 @@ func (r repo) git(args ...string) (string, error) {
 	cmd.Stdout = &out
 	cmd.Stderr = &errb
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(errb.String()))
+		return "", gitCmdError(ctx, args, timeout, err, errb.String())
 	}
 	return out.String(), nil
 }
 
 // gitLines runs git and passes its standard output to fn one line at a time, without the newline, as strings.SplitSeq(out, "\n") would split what git returns (a final line the output does not end in a newline is passed too, and a trailing newline yields no empty last line). Unlike git it never holds the output: a command that prints every revision of a file with its whole text as context, as introductions does, is hundreds of megabytes, and buffering it, then copying it to a string, made the gate peak above 3 GB.
 func (r repo) gitLines(args []string, fn func(line string)) error {
-	ctx, cancel := context.WithTimeout(context.Background(), gitTimeout)
+	return r.gitLinesWithTimeout(gitTimeout, args, fn)
+}
+
+func (r repo) gitLinesWithTimeout(timeout time.Duration, args []string, fn func(line string)) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	//nolint:gosec // G204 (class a): program is the literal git; args are each caller's subcommand and revisions.
 	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", r.root}, args...)...)
@@ -47,7 +55,7 @@ func (r repo) gitLines(args []string, fn func(line string)) error {
 		return fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
 	}
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(errb.String()))
+		return gitCmdError(ctx, args, timeout, err, errb.String())
 	}
 	in := bufio.NewReaderSize(pipe, 1<<16)
 	var readErr error
@@ -64,12 +72,24 @@ func (r repo) gitLines(args []string, fn func(line string)) error {
 		}
 	}
 	if err := cmd.Wait(); err != nil {
-		return fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(errb.String()))
+		return gitCmdError(ctx, args, timeout, err, errb.String())
 	}
 	if readErr != nil {
 		return fmt.Errorf("git %s: %w", strings.Join(args, " "), readErr)
 	}
 	return nil
+}
+
+
+func gitCmdError(ctx context.Context, args []string, timeout time.Duration, err error, stderr string) error {
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		subcmd := ""
+		if len(args) > 0 {
+			subcmd = " " + args[0]
+		}
+		return fmt.Errorf("git%s did not finish in %s: the host is slow or loaded, or the reader of its output is slow: %w", subcmd, timeout, ctx.Err())
+	}
+	return fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(stderr))
 }
 
 func (r repo) resolve(rev string) (string, bool) {
