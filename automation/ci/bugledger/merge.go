@@ -72,6 +72,9 @@ func keepPrior(l *Ledger, prior []Entry, root string, moved movedTests) {
 		if fresh.stated.tests {
 			e.Tests = fresh.Tests
 		}
+		if fresh.stated.evidence {
+			e.Evidence = fresh.Evidence
+		}
 		l.Entries[i], c.taken, kept[i] = e, true, true
 		used[e.ID] = true
 	}

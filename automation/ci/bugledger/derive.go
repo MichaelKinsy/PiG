@@ -216,8 +216,9 @@ var impactRules = []impactRule{
 }
 
 func impactOf(note string) string {
+	text := walkBulletComments(note, nil)
 	for _, r := range impactRules {
-		if r.re.MatchString(note) {
+		if r.re.MatchString(text) {
 			return r.label
 		}
 	}
@@ -237,9 +238,10 @@ var platformWords = []struct {
 }
 
 func platformOf(note string) string {
+	text := walkBulletComments(note, nil)
 	var names []string
 	for _, p := range platformWords {
-		if p.re.MatchString(note) {
+		if p.re.MatchString(text) {
 			names = append(names, p.name)
 		}
 	}

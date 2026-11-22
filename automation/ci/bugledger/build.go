@@ -664,6 +664,9 @@ func (b *builder) applyStated(e *Entry, bl bullet) error {
 	if bl.Cause != "" {
 		e.RootCause, e.CauseFrom, e.stated.cause = bl.Cause, "release note", true
 	}
+	if bl.Evidence != "" {
+		e.Evidence, e.stated.evidence = bl.Evidence, true
+	}
 	if len(bl.Tests) == 0 {
 		return nil
 	}

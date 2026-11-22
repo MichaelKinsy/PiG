@@ -111,6 +111,9 @@ func renderMarkdown(l *Ledger) string {
 			}
 			fmt.Fprintf(&b, "- **Tests:** %s%s\n", strings.Join(ts, ", "), more)
 		}
+		if e.Evidence != "" {
+			fmt.Fprintf(&b, "- **Evidence:** %s\n", e.Evidence)
+		}
 		if e.Note != "" {
 			fmt.Fprintf(&b, "- **Release note:** %s\n", e.Note)
 		}

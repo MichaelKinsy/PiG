@@ -44,15 +44,17 @@ type Entry struct {
 	// CommitsFrom is "release note" when the listed commit wrote the release note and no commit of its work was identified as the fix.
 	CommitsFrom string   `json:"commitsFrom,omitempty"`
 	Tests       []string `json:"tests"`
+	Evidence    string   `json:"evidence,omitempty"`
 	// stated is what the changelog bullet of the entry states outright. It is read from the tree on every run and is not part of the document.
 	stated stated
 }
 
 // stated records the file that holds the changelog bullet of an entry and which of the entry's fields the bullet states with a marker. A stated field is the entry's as written: no committed entry and no commit message overrides it.
 type stated struct {
-	file  string
-	cause bool
-	tests bool
+	file     string
+	cause    bool
+	tests    bool
+	evidence bool
 }
 
 // DivergenceRef accounts for one divergence record added since the baseline release: the ledger entry of a Pi defect it fixes ahead of Pi, or the statement that it is a deliberate difference and no bug fix.

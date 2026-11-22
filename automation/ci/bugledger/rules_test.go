@@ -580,3 +580,222 @@ func TestAFixThatCommitsTheLedgerOfAnEarlierFixKeepsItsOwnEntry(t *testing.T) {
 		t.Fatalf("entries = %+v, want the note under %s and the second fix under %s", l.Entries, first[:10], second[:10])
 	}
 }
+
+// Maintainer HTML comments inside a release note (such as <!-- evidence: ... -->) are not user-facing text and must not affect the published platform or impact. Comments inside Markdown code spans are user text and stay, and an unterminated <!-- fails open and keeps the text.
+func TestClassifyIgnoresHTMLComments(t *testing.T) {
+	note := "On Windows, X was lost. <!-- evidence: proven red on Linux by T -->"
+	if got := platformOf(note); got != "Windows" {
+		t.Errorf("platformOf(%q) = %q, want %q", note, got, "Windows")
+	}
+
+	multiline := "On Windows, X was lost. <!-- evidence:\nproven red on Linux\nand checked on macOS\n-->"
+	if got := platformOf(multiline); got != "Windows" {
+		t.Errorf("platformOf(multiline) = %q, want %q", got, "Windows")
+	}
+
+	// A comment naming a crash or error word must not override impactOf.
+	impactNote := "A value is kept. <!-- evidence: did not crash or fail on Linux -->"
+	if got := impactOf(impactNote); got != "Behavior differed from Pi" {
+		t.Errorf("impactOf(%q) = %q, want %q", impactNote, got, "Behavior differed from Pi")
+	}
+
+	// A literal comment inside a Markdown code span is user text and is kept whole.
+	codeSpan := "On macOS, a line with `<!-- fix: abc -->` typed in a prompt was dropped."
+	if got := platformOf(codeSpan); got != "macOS" {
+		t.Errorf("platformOf(%q) = %q, want %q", codeSpan, got, "macOS")
+	}
+	codeSpanKeywords := "On macOS, a line with `<!-- Windows crash -->` typed in a prompt is kept."
+	if got := platformOf(codeSpanKeywords); got != "Windows, macOS" {
+		t.Errorf("platformOf(%q) = %q, want %q", codeSpanKeywords, got, "Windows, macOS")
+	}
+	if got := impactOf(codeSpanKeywords); got != "Crash, hang or runaway process" {
+		t.Errorf("impactOf(%q) = %q, want %q", codeSpanKeywords, got, "Crash, hang or runaway process")
+	}
+
+	// A real trailing comment after a code span is stripped while the code span stays.
+	codeSpanThenComment := "On macOS, a line with `<!-- Windows -->` typed in a prompt is kept. <!-- evidence: proven red on Linux -->"
+	if got := platformOf(codeSpanThenComment); got != "Windows, macOS" {
+		t.Errorf("platformOf(%q) = %q, want %q", codeSpanThenComment, got, "Windows, macOS")
+	}
+
+	// An unterminated <!-- fails open and keeps the user text.
+	unterminated := "On Windows, an unclosed <!-- comment mentions macOS."
+	if got := platformOf(unterminated); got != "Windows, macOS" {
+		t.Errorf("platformOf(%q) = %q, want %q", unterminated, got, "Windows, macOS")
+	}
+}
+
+// Non-marker HTML comments in a changelog bullet (such as <!-- evidence: ... -->) must be dropped from the published releaseNote while keeping code spans whole and failing open on unterminated <!--.
+func TestPublishedReleaseNoteDropsHTMLComments(t *testing.T) {
+	text := "### Fixed\n\n" +
+		"- On Windows, X was lost. <!-- fix: 1234567890 --> <!-- evidence: proven red on Linux by T -->\n" +
+		"- On macOS, a line with `<!-- fix: abc -->` typed in a prompt was dropped. <!-- evidence: checked on Linux -->\n" +
+		"- On Windows, an unclosed <!-- comment mentions macOS.\n"
+	bs := fixedBullets(text, "0.4.1", true)
+	if len(bs) != 3 {
+		t.Fatalf("len(bs) = %d, want 3", len(bs))
+	}
+	want := []string{
+		"On Windows, X was lost.",
+		"On macOS, a line with `<!-- fix: abc -->` typed in a prompt was dropped.",
+		"On Windows, an unclosed <!-- comment mentions macOS.",
+	}
+	for i, w := range want {
+		if bs[i].Text != w {
+			t.Errorf("bs[%d].Text = %q, want %q", i, bs[i].Text, w)
+		}
+	}
+}
+
+// An <!-- evidence: ... --> marker is parsed out of the releaseNote, stored in Entry.Evidence and rendered on the bug ledger page.
+func TestEvidenceMarkerStoredAndRendered(t *testing.T) {
+	text := "### Fixed\n\n" +
+		"- On Windows, X was lost. <!-- fix: 1234567890 --> <!-- evidence: proven red on Linux by TestX; loss observed on Windows -->\n" +
+		"- On macOS, a literal `<!-- evidence: example -->` stays in the note. <!-- evidence: verified on macOS -->\n"
+	bs := fixedBullets(text, "0.4.1", true)
+	if len(bs) != 2 {
+		t.Fatalf("len(bs) = %d, want 2", len(bs))
+	}
+	if bs[0].Text != "On Windows, X was lost." {
+		t.Errorf("bs[0].Text = %q, want %q", bs[0].Text, "On Windows, X was lost.")
+	}
+	if bs[0].Evidence != "proven red on Linux by TestX; loss observed on Windows" {
+		t.Errorf("bs[0].Evidence = %q", bs[0].Evidence)
+	}
+	if bs[1].Text != "On macOS, a literal `<!-- evidence: example -->` stays in the note." {
+		t.Errorf("bs[1].Text = %q", bs[1].Text)
+	}
+	if bs[1].Evidence != "verified on macOS" {
+		t.Errorf("bs[1].Evidence = %q", bs[1].Evidence)
+	}
+	page := renderMarkdown(&Ledger{
+		Since: "0.4.1",
+		Entries: []Entry{{
+			ID:        "BF-1234567",
+			Title:     "On Windows, X was lost.",
+			Symptom:   "On Windows, X was lost.",
+			RootCause: "dropped frame",
+			Impact:    "Lost or altered data",
+			Platform:  "Windows",
+			Class:     ClassOwn,
+			FixedIn:   "Unreleased",
+			Evidence:  bs[0].Evidence,
+			Note:      bs[0].Text,
+		}},
+	})
+	if !strings.Contains(page, "- **Evidence:** proven red on Linux by TestX; loss observed on Windows\n") {
+		t.Errorf("rendered page missing Evidence line:\n%s", page)
+	}
+	if strings.Contains(page, "<!-- evidence:") {
+		t.Errorf("rendered page leaked raw evidence comment")
+	}
+}
+
+// One comment-first walker parses markers that contain code spans whole, keeps backticked literal markers in user text, drops non-marker comments, and fails open on unterminated comments.
+func TestBulletCommentWalker(t *testing.T) {
+	t.Run("code spans inside cause, tests and evidence markers", func(t *testing.T) {
+		cases := []struct {
+			name         string
+			in           string
+			wantText     string
+			wantCause    string
+			wantTests    []string
+			wantEvidence string
+		}{
+			{
+				name:      "cause",
+				in:        "A <!-- cause: x `y` z --> B",
+				wantText:  "A B",
+				wantCause: "x `y` z",
+			},
+			{
+				name:      "tests",
+				in:        "A <!-- tests: TestFoo, `TestBar` --> B",
+				wantText:  "A B",
+				wantTests: []string{"TestFoo", "`TestBar`"},
+			},
+			{
+				name:         "evidence",
+				in:           "A <!-- evidence: ran `go test` on Linux --> B",
+				wantText:     "A B",
+				wantEvidence: "ran `go test` on Linux",
+			},
+		}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				bs := fixedBullets("### Fixed\n\n- "+tc.in+"\n", "0.4.1", true)
+				if len(bs) != 1 {
+					t.Fatalf("len(bs) = %d, want 1", len(bs))
+				}
+				b := bs[0]
+				if b.Text != tc.wantText {
+					t.Errorf("Text = %q, want %q", b.Text, tc.wantText)
+				}
+				if b.Cause != tc.wantCause {
+					t.Errorf("Cause = %q, want %q", b.Cause, tc.wantCause)
+				}
+				if len(b.Tests) != len(tc.wantTests) {
+					t.Errorf("Tests = %q, want %q", b.Tests, tc.wantTests)
+				} else {
+					for i := range tc.wantTests {
+						if b.Tests[i] != tc.wantTests[i] {
+							t.Errorf("Tests[%d] = %q, want %q", i, b.Tests[i], tc.wantTests[i])
+						}
+					}
+				}
+				if b.Evidence != tc.wantEvidence {
+					t.Errorf("Evidence = %q, want %q", b.Evidence, tc.wantEvidence)
+				}
+			})
+		}
+	})
+
+	t.Run("backticked literal marker in user text is kept and not parsed", func(t *testing.T) {
+		in := "On macOS, `<!-- fix: abcdef1 -->` and `<!-- Windows crash -->` stay text."
+		bs := fixedBullets("### Fixed\n\n- "+in+"\n", "0.4.1", true)
+		if len(bs) != 1 {
+			t.Fatalf("len(bs) = %d, want 1", len(bs))
+		}
+		if bs[0].Text != in {
+			t.Errorf("Text = %q, want %q", bs[0].Text, in)
+		}
+		if len(bs[0].Fix) != 0 {
+			t.Errorf("Fix = %v, want empty", bs[0].Fix)
+		}
+		if got := platformOf(bs[0].Text); got != "Windows, macOS" {
+			t.Errorf("platformOf = %q, want %q", got, "Windows, macOS")
+		}
+		if got := impactOf(bs[0].Text); got != "Crash, hang or runaway process" {
+			t.Errorf("impactOf = %q, want %q", got, "Crash, hang or runaway process")
+		}
+	})
+
+	t.Run("unterminated, multi-line, non-marker, after code span, two causes", func(t *testing.T) {
+		text := "### Fixed\n\n" +
+			"- Unterminated <!-- comment stays text.\n" +
+			"- Multi-line note. <!-- cause:\n  first line\n  `second` line\n  --> <!-- non-marker note -->\n" +
+			"- Code `a <!-- fix: 1111111 --> b` then real marker. <!-- fix: 2222222 --> <!-- cause: first `c1` --> <!-- cause: second `c2` -->\n"
+		bs := fixedBullets(text, "0.4.1", true)
+		if len(bs) != 3 {
+			t.Fatalf("len(bs) = %d, want 3", len(bs))
+		}
+		if bs[0].Text != "Unterminated <!-- comment stays text." {
+			t.Errorf("bs[0].Text = %q", bs[0].Text)
+		}
+		if bs[1].Text != "Multi-line note." {
+			t.Errorf("bs[1].Text = %q, want %q", bs[1].Text, "Multi-line note.")
+		}
+		if bs[1].Cause != "first line `second` line" {
+			t.Errorf("bs[1].Cause = %q, want %q", bs[1].Cause, "first line `second` line")
+		}
+		if bs[2].Text != "Code `a <!-- fix: 1111111 --> b` then real marker." {
+			t.Errorf("bs[2].Text = %q", bs[2].Text)
+		}
+		if len(bs[2].Fix) != 1 || bs[2].Fix[0] != "2222222" {
+			t.Errorf("bs[2].Fix = %v, want [2222222]", bs[2].Fix)
+		}
+		if bs[2].Cause != "first `c1`" {
+			t.Errorf("bs[2].Cause = %q, want %q", bs[2].Cause, "first `c1`")
+		}
+	})
+}
