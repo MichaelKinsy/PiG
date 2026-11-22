@@ -27,8 +27,9 @@ type BatchInfo struct {
 	After  Seq
 	To     Seq
 	Device string
-	// Archive: the body is a store archive at To instead of commits: the first upload of a session whose outbox does not
-	// reach back to its first commit. Only the slot after 0 can be one.
+	// Archive: the body is a store archive at To instead of commits: an upload whose outbox does not reach back to After (a
+	// session's first upload with its outbox turned on late, or one after its outbox was turned off and on again). A
+	// restore starts from the newest one along the chain; a copy behind it restores fresh.
 	Archive bool
 	// Folded: folding dropped its commits into a snapshot; the slot stays taken.
 	Folded bool
@@ -151,8 +152,9 @@ func chainOf(listing RemoteListing) map[Seq]BatchInfo {
 	return chain
 }
 
-// RemoteHistoryOf is the history a copy at `from` applies, or a restore without `from` (nil, or LogStart). The history is
-// a single chain.
+// RemoteHistoryOf is the history a copy at `from` applies, or a restore without `from` (nil, or LogStart). Slots are
+// created once, so at most one batch starts at each sequence and the history is a single chain. A restore starts from
+// the newest full state along it: the newest snapshot or archive slot, whichever ends later.
 func RemoteHistoryOf(listing RemoteListing, from *Seq) RemoteHistory {
 	chain := chainOf(listing)
 	var snapshot *Seq
@@ -175,6 +177,15 @@ func RemoteHistoryOf(listing RemoteListing, from *Seq) RemoteHistory {
 	for next, ok := chain[at]; ok; next, ok = chain[at] {
 		batches = append(batches, next)
 		at = next.To
+	}
+	// An archive slot is a full state: a restore starts at the newest one. A copy at `from` gets the chain as it is: an
+	// archive slot in it does not apply on top of its store, and `PullSession` refuses it (the host restores fresh).
+	if from == nil || *from == LogStart {
+		for index, batch := range slices.Backward(batches) {
+			if batch.Archive {
+				return RemoteHistory{Batches: batches[index:], Head: at}
+			}
+		}
 	}
 	return RemoteHistory{Snapshot: snapshot, Batches: batches, Head: at}
 }
