@@ -467,15 +467,15 @@ func (req respRequest) wire() any {
 		PromptCacheKey       string            `json:"prompt_cache_key,omitempty"`
 		ToolChoice           any               `json:"tool_choice,omitempty"`
 		ParallelToolCalls    *bool             `json:"parallel_tool_calls,omitempty"`
+		MaxOutputTokens      int               `json:"max_output_tokens,omitempty"`
 		Temperature          *float64          `json:"temperature,omitempty"`
 		ServiceTier          string            `json:"service_tier,omitempty"`
 		Tools                []ResponsesTool   `json:"tools,omitempty"` //portlint:allow emptydrop Pi sets tools only when requestTools is non-empty (openai-codex-responses.ts:575-581)
 		Reasoning            *respReasoning    `json:"reasoning,omitempty"`
-		MaxOutputTokens      int               `json:"max_output_tokens,omitempty"`
 		PromptCacheRetention string            `json:"prompt_cache_retention,omitempty"`
 		PromptCacheOptions   map[string]string `json:"prompt_cache_options,omitempty"` //portlint:allow emptydrop getPromptCacheOptions returns a non-empty object or undefined (openai-responses.ts:106-112)
 	}{req.Model, req.Store, req.Stream, req.Input, req.Text, req.Include, req.PromptCacheKey, req.ToolChoice, req.ParallelToolCalls,
-		req.Temperature, req.ServiceTier, req.Tools, req.Reasoning, req.MaxOutputTokens, req.PromptCacheRetention, req.PromptCacheOptions}
+		req.MaxOutputTokens, req.Temperature, req.ServiceTier, req.Tools, req.Reasoning, req.PromptCacheRetention, req.PromptCacheOptions}
 }
 
 // ─── SSE event types ─────────────────────────────────────────────────────────
