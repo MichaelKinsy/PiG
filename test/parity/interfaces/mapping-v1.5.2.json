@@ -35383,7 +35383,7 @@
       "evidence": [
         "test:ai/transcript_messages_upstream_test.go#TestTranscriptMessagesReplayIntoOneLeadingMessageUpstream",
         "test:ai/system_message_replay_test.go#TestSystemMessageReplaySkipsNilMessageEntries",
-        "test:ai/transcript_messages_declared_test.go#TestGetCurrentSystemMessageOverACustomRoleTranscript"
+        "test:coding/session_tool_order_parity_test.go#TestFreshAndCloneToolOrderMatchesPi"
       ]
     },
     {
@@ -82312,7 +82312,7 @@
       "evidence": [
         "test:ai/transcript_messages_upstream_test.go#TestTranscriptMessagesReplayIntoOneLeadingMessageUpstream",
         "test:ai/system_message_replay_test.go#TestSystemMessageReplaySkipsNilMessageEntries",
-        "test:ai/transcript_messages_declared_test.go#TestGetCurrentSystemMessageOverACustomRoleTranscript"
+        "test:coding/session_tool_order_parity_test.go#TestFreshAndCloneToolOrderMatchesPi"
       ]
     },
     {
@@ -104050,7 +104050,7 @@
       "evidence": [
         "test:ai/transcript_messages_upstream_test.go#TestTranscriptMessagesReplayIntoOneLeadingMessageUpstream",
         "test:ai/system_message_replay_test.go#TestSystemMessageReplaySkipsNilMessageEntries",
-        "test:ai/transcript_messages_declared_test.go#TestGetCurrentSystemMessageOverACustomRoleTranscript"
+        "test:coding/session_tool_order_parity_test.go#TestFreshAndCloneToolOrderMatchesPi"
       ]
     },
     {
@@ -157010,9 +157010,9 @@
         "call:coding/create_agent_session.go#createAgentSessionOver"
       ],
       "evidence": [
+        "test:coding/session_tool_order_parity_test.go#TestFreshAndCloneToolOrderMatchesPi",
         "test:coding/session_tool_prompt_metadata_test.go#TestSessionToolPromptUsesJavaScriptWhitespace",
-        "test:coding/session_tool_registry_clone_test.go#TestSessionToolRegistryClonePreservesMetadata",
-        "test:coding/session_tool_registry_port_test.go#TestAgentSessionDynamicToolsPort"
+        "test:coding/session_tool_registry_clone_test.go#TestSessionToolRegistryClonePreservesMetadata"
       ]
     },
     {

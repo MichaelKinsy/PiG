@@ -1048,6 +1048,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6a46bc7-7](#bf-6a46bc7-7) | A replay-safe tool's rerun shows its nested call's arguments in the member order of the stored checkpoint… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-6a46bc7-8](#bf-6a46bc7-8) | Expiring kept contexts stops at the first context still retained instead of copying the whole idle order on… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-6a46bc7-9](#bf-6a46bc7-9) | The Session orders the continuations of what a publication resolved before the next part of the same storage… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-6a56336](#bf-6a56336) | Sessions built with both caller-supplied custom tools (`SessionOptions.Tools`, `SessionOptions.CustomTools`… | PiG's own defect | All platforms | Unreleased |
 | [BF-6a6fffa](#bf-6a6fffa) | A session message whose integer member, such as `timestamp`, a usage count or `durationMs`, is spelled with a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6a6fffa-2](#bf-6a6fffa-2) | `formatToolCallWithArgs` against live Pi: new `TestFormatToolCallWithArgsMatchesPi`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6a6fffa-3](#bf-6a6fffa-3) | `getTextOutput` against live Pi: new `TestGetTextOutputMatchesPi`… | PiG's own defect | All platforms | 0.5.0 |
@@ -16703,6 +16704,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `6a46bc71d9` (2026-11-02)
 - **Tests:** None recorded.
 - **Release note:** The Session orders the continuations of what a publication resolved before the next part of the same storage call is published at any number of goroutines in the process. The ordering used to read a dump of every goroutine, cost about a millisecond per publication, and was given up above 128 goroutines. The waits of the Session (`SessionImpl.Park`, `SessionImpl.Await`, a commit caller's resumption) now register before they block and acknowledge when they resumed, so a publication costs microseconds and 4 KiB, whatever the process runs. A caller that needs its continuation ordered up to its next wait of the Session passes `session.WithContinuation(ctx)` and calls `Entered`. `SessionImpl.ReadOnLineCtx` and `ReadWithTicketCtx` run a line read with the caller's line admission and continuation.
+
+### BF-6a56336
+
+**Sessions built with both caller-supplied custom tools (`SessionOptions.Tools`, `SessionOptions.CustomTools`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Sessions built with both caller-supplied custom tools (`SessionOptions.Tools`, `SessionOptions.CustomTools`, or `SessionStartOptions.ExtraTools`) and extension-registered tools saw a tool-prefix mismatch between a fresh session (`[built-ins, caller custom tools, extension tools]`) and its clone or post-reload session (`[built-ins, extension tools, caller custom tools]`), causing a provider prompt-cache miss; fresh sessions now declare tools in Pi's order (`[built-ins, extension tools, caller custom tools]`) and `Session.Clone` seeds the clone with the source session's active tool order.
+- **Root cause:** createSessionToolRegistry appended caller custom tool names to activeNames before extension tool names, and Session.Clone did not pass InitialActiveToolNames to preserve the source session's active tool order
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6a5633658b` (2026-11-21)
+- **Tests:** `coding/session_tool_order_parity_test.go::TestFreshAndCloneToolOrderMatchesPi`
+- **Release note:** Sessions built with both caller-supplied custom tools (`SessionOptions.Tools`, `SessionOptions.CustomTools`, or `SessionStartOptions.ExtraTools`) and extension-registered tools saw a tool-prefix mismatch between a fresh session (`[built-ins, caller custom tools, extension tools]`) and its clone or post-reload session (`[built-ins, extension tools, caller custom tools]`), causing a provider prompt-cache miss; fresh sessions now declare tools in Pi's order (`[built-ins, extension tools, caller custom tools]`) and `Session.Clone` seeds the clone with the source session's active tool order. Existing persisted sessions keep their transcript's recorded tool order and byte-identical tool prefix on resume with no tool-state churn record. A session created with its own active tool order (InitialActiveToolNames) and cloned before its first prompt now keeps that order in the clone; before, the clone listed the same tools in registry order. Affects 0.3.0, 0.3.1, 0.4.0, 0.4.1, 0.5.0, 0.5.1, 0.5.2, 0.5.3, and 0.7.0.
 
 ### BF-6a6fffa
 

@@ -28154,6 +28154,28 @@
       "tests": []
     },
     {
+      "id": "BF-6a56336",
+      "title": "Sessions built with both caller-supplied custom tools (`SessionOptions.Tools`, `SessionOptions.CustomTools`…",
+      "symptom": "Sessions built with both caller-supplied custom tools (`SessionOptions.Tools`, `SessionOptions.CustomTools`, or `SessionStartOptions.ExtraTools`) and extension-registered tools saw a tool-prefix mismatch between a fresh session (`[built-ins, caller custom tools, extension tools]`) and its clone or post-reload session (`[built-ins, extension tools, caller custom tools]`), causing a provider prompt-cache miss; fresh sessions now declare tools in Pi's order (`[built-ins, extension tools, caller custom tools]`) and `Session.Clone` seeds the clone with the source session's active tool order.",
+      "rootCause": "createSessionToolRegistry appended caller custom tool names to activeNames before extension tool names, and Session.Clone did not pass InitialActiveToolNames to preserve the source session's active tool order",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Sessions built with both caller-supplied custom tools (`SessionOptions.Tools`, `SessionOptions.CustomTools`, or `SessionStartOptions.ExtraTools`) and extension-registered tools saw a tool-prefix mismatch between a fresh session (`[built-ins, caller custom tools, extension tools]`) and its clone or post-reload session (`[built-ins, extension tools, caller custom tools]`), causing a provider prompt-cache miss; fresh sessions now declare tools in Pi's order (`[built-ins, extension tools, caller custom tools]`) and `Session.Clone` seeds the clone with the source session's active tool order. Existing persisted sessions keep their transcript's recorded tool order and byte-identical tool prefix on resume with no tool-state churn record. A session created with its own active tool order (InitialActiveToolNames) and cloned before its first prompt now keeps that order in the clone; before, the clone listed the same tools in registry order. Affects 0.3.0, 0.3.1, 0.4.0, 0.4.1, 0.5.0, 0.5.1, 0.5.2, 0.5.3, and 0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6a5633658b",
+          "date": "2026-11-21"
+        }
+      ],
+      "tests": [
+        "coding/session_tool_order_parity_test.go::TestFreshAndCloneToolOrderMatchesPi"
+      ]
+    },
+    {
       "id": "BF-6a6fffa",
       "title": "A session message whose integer member, such as `timestamp`, a usage count or `durationMs`, is spelled with a…",
       "symptom": "PiG dropped the message from the session context and RPC `get_messages`.",
