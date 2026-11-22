@@ -168,6 +168,18 @@ class FuzzNightlyTests(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn("tagged:FuzzTagged", result.stderr)
 
+    def test_checked_in_skip_list_has_valid_entries(self) -> None:
+        skip_path = SCRIPT.with_name("fuzz-nightly-skip.txt")
+        self.assertTrue(skip_path.is_file(), f"missing {skip_path}")
+        for lineno, raw in enumerate(skip_path.read_text(encoding="utf-8").splitlines(), start=1):
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            parts = line.split(None, 1)
+            self.assertEqual(2, len(parts), f"{skip_path}:{lineno}: missing reason")
+            self.assertIn(":", parts[0], f"{skip_path}:{lineno}: want <package>:<target>")
+            self.assertTrue(parts[1].strip(), f"{skip_path}:{lineno}: empty reason")
+
 
 if __name__ == "__main__":
     unittest.main()

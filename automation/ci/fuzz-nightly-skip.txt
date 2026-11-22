@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: MIT
+# Optional skip list for automation/ci/fuzz-nightly.sh.
+# Format: <package>:<target> <reason>
+# Every entry must give a non-empty reason; targets not listed here are run.
