@@ -182,7 +182,7 @@ func (l *podLog) seedOf(target string, turns int) []*object {
 // quantile interpolates linearly between the closest ranks.
 func quantile(xs []float64, p float64) float64 {
 	s := slices.Sorted(slices.Values(xs))
-	k := float64(len(s)-1) * p
+	k := float64(float64(len(s)-1) * p)
 	f := int(math.Floor(k))
 	c := min(f+1, len(s)-1)
 	// Round the product explicitly so that the report's rows are the same on every CPU.
