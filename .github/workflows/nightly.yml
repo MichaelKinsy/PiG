@@ -27,7 +27,7 @@ jobs:
   race:
     name: Race / ${{ matrix.os }} / ${{ matrix.group }}${{ matrix.shard && format(' / {0}', matrix.shard) || '' }}
     runs-on: ${{ matrix.os }}
-    # automation/ci/race-packages.txt names the packages of each group. The cli group is one package whose whole -race run took 38 minutes on a 56-core slice, so it runs as four shards of its tests (PIG_RACE_SHARD). The parity, shared and conformance groups run on Linux only (conformance is test/extension-conformance in four shards, PIG_RACE_SHARD): the parity group holds the long parity-tool test packages (closure 483 s and sdksurface 1406 s under -race on 8 CPUs), and shared the packages that use sync, atomic, channels or context cancellation without starting a goroutine themselves (race-packages.txt).
+    # automation/ci/race-packages.txt names the packages of each group. The cli group is one package whose whole -race run took 38 minutes on a 56-core slice, so it runs as seven shards of its tests (PIG_RACE_SHARD): every shard's -run pattern must stay under automation/ci/test-shard-pattern.sh's 24,000-character limit with room for growth (at seven shards the longest pattern is 14,421 characters; recompute by measuring automation/ci/test-shard-pattern.sh k n ./coding/cli for each shard k of n). The parity, shared and conformance groups run on Linux only (conformance is test/extension-conformance in four shards, PIG_RACE_SHARD): the parity group holds the long parity-tool test packages (closure 483 s and sdksurface 1406 s under -race on 8 CPUs), and shared the packages that use sync, atomic, channels or context cancellation without starting a goroutine themselves (race-packages.txt).
     timeout-minutes: 90
     strategy:
       fail-fast: false
@@ -41,14 +41,20 @@ jobs:
           - {os: ubuntu-24.04, group: conformance, shard: 2/4}
           - {os: ubuntu-24.04, group: conformance, shard: 3/4}
           - {os: ubuntu-24.04, group: conformance, shard: 4/4}
-          - {os: ubuntu-24.04, group: cli, shard: 1/4}
-          - {os: ubuntu-24.04, group: cli, shard: 2/4}
-          - {os: ubuntu-24.04, group: cli, shard: 3/4}
-          - {os: ubuntu-24.04, group: cli, shard: 4/4}
-          - {os: macos-15, group: cli, shard: 1/4}
-          - {os: macos-15, group: cli, shard: 2/4}
-          - {os: macos-15, group: cli, shard: 3/4}
-          - {os: macos-15, group: cli, shard: 4/4}
+          - {os: ubuntu-24.04, group: cli, shard: 1/7}
+          - {os: ubuntu-24.04, group: cli, shard: 2/7}
+          - {os: ubuntu-24.04, group: cli, shard: 3/7}
+          - {os: ubuntu-24.04, group: cli, shard: 4/7}
+          - {os: ubuntu-24.04, group: cli, shard: 5/7}
+          - {os: ubuntu-24.04, group: cli, shard: 6/7}
+          - {os: ubuntu-24.04, group: cli, shard: 7/7}
+          - {os: macos-15, group: cli, shard: 1/7}
+          - {os: macos-15, group: cli, shard: 2/7}
+          - {os: macos-15, group: cli, shard: 3/7}
+          - {os: macos-15, group: cli, shard: 4/7}
+          - {os: macos-15, group: cli, shard: 5/7}
+          - {os: macos-15, group: cli, shard: 6/7}
+          - {os: macos-15, group: cli, shard: 7/7}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -96,7 +102,7 @@ jobs:
           # mirror of the pin's source. The nightly once listed these by hand, left out the npm trees, and every Pi-oracle test that imports a package from them failed with
           # ERR_MODULE_NOT_FOUND (test/ci-images/nightly_oracle_install_test.go).
           make upstream-mirror
-      # The Lisp SDK realization of cmd/pig's TestReplacedSession2860AcrossSDKs (cli shard 4/4) and the Lisp conformance rows fail without the pinned SBCL, as in ci.yml's Linux and macOS jobs: the same cache and install step.
+      # The Lisp SDK realization of cmd/pig's TestReplacedSession2860AcrossSDKs (in the cli shards) and the Lisp conformance rows fail without the pinned SBCL, as in ci.yml's Linux and macOS jobs: the same cache and install step.
       - name: Restore the pinned SBCL
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
