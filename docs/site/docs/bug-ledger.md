@@ -1784,6 +1784,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b78cdae](#bf-b78cdae) | A YAML parse error on a block scalar used as an implicit key (`name: x` followed by `\|description: ...`)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b7d2c07](#bf-b7d2c07) | Azure OpenAI Responses requests hold the members Pi's Azure requests hold | PiG's own defect | All platforms | Unreleased |
 | [BF-b7d9b2b](#bf-b7d9b2b) | `pig install` and `pig remove` no longer add ever deeper nested entries to the npm `package-lock.json` when… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-b80d98b](#bf-b80d98b) | `make generate` / `make bug-ledger` could fail on a loaded host with a bare `signal: killed` when a git… | PiG's own defect | All platforms | Unreleased |
 | [BF-b829321](#bf-b829321) | Extension SDKs: `send_user_message` / `sendUserMessage` with no delivery mode now behaves alike in every SDK… | PiG's own defect | All platforms | Unreleased |
 | [BF-b84facb](#bf-b84facb) | fix(codingagent,tui): extension editor follows the terminal rows; title and image fallback close only the… | PiG's own defect | All platforms | Unreleased |
 | [BF-b85fd68](#bf-b85fd68) | fix(chord/host): compile the frame schema once, not for every frame a link carries | PiG's own defect | All platforms | Unreleased |
@@ -26957,6 +26958,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `b7d9b2b676` (2026-10-25)
 - **Tests:** `coding/cli/npm_command_name_test.go::TestNpmCommandClassificationAtInstallAndRemove`, `coding/cli/package_batch_upstream_test.go::TestPackageBatchedConcurrentUpdatesOriginal`, `coding/cli/package_cli_output_test.go::TestPackageChildOutputAndFailure`, `internal/packagemanager/package_manager_ops_gaps_test.go::TestPackageManagerNpmInstallAndUninstallPassTheRealPathWhenTheAgentDirIsASymlink`, `internal/packagemanager/package_manager_ops_gaps_test.go::TestPackageManagerNpmUninstallAndUpdateCheckUseTheConfiguredCommand`
 - **Release note:** `pig install` and `pig remove` no longer add ever deeper nested entries to the npm `package-lock.json` when the agent directory is reached through a symlink, such as `~/.pi` linked into a dotfiles repository. PiG now passes the resolved real path to npm as `--prefix` (or `--cwd` for Bun).
+
+### BF-b80d98b
+
+**`make generate` / `make bug-ledger` could fail on a loaded host with a bare `signal: killed` when a git…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `make generate` / `make bug-ledger` could fail on a loaded host with a bare `signal: killed` when a git invocation hit the generator's 120s timeout; the hang guard is now 15m and a timeout names the git subcommand, the bound, and that the host or output reader is slow.
+- **Root cause:** repo.git and repo.gitLines used a 120s context timeout and formatted every cmd error without checking context.DeadlineExceeded, surfacing timeouts as bare signal: killed
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b80d98b1f1` (2026-11-21)
+- **Tests:** `automation/ci/bugledger/git_timeout_test.go::TestGitTimeoutSaysWhy`
+- **Release note:** `make generate` / `make bug-ledger` could fail on a loaded host with a bare `signal: killed` when a git invocation hit the generator's 120s timeout; the hang guard is now 15m and a timeout names the git subcommand, the bound, and that the host or output reader is slow.
 
 ### BF-b829321
 
