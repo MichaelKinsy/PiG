@@ -215,7 +215,7 @@ To resume this session:
 pig --session 01a12bb7-80df-773c-8928-031c941bb0df
 ```
 
-(`internal/codingagent/interactive.go:1420`; Pi prints the same two lines at `interactive-mode.ts:4338`.)
+(`internal/codingagent/interactive.go` `InteractiveMode.printResumeHint`; Pi prints the same two lines in `interactive-mode.ts` `InteractiveMode.shutdown`.)
 
 Run `pig --continue` in the same folder to resume the most recent conversation. `pig --resume` lists the saved ones. See [Sessions](/docs/latest/sessions).
 
