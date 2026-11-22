@@ -80,7 +80,6 @@ func (r repo) gitLinesWithTimeout(timeout time.Duration, args []string, fn func(
 	return nil
 }
 
-
 func gitCmdError(ctx context.Context, args []string, timeout time.Duration, err error, stderr string) error {
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		subcmd := ""
