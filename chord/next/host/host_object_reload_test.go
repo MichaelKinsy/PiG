@@ -1421,10 +1421,13 @@ func TestReloadOldWorkStartsAJobWritesDocumentsAndTablesAndReadsOnTheOldCodeTheN
 					if err != nil {
 						return nil, err
 					}
-					outcome, err := job.Outcome(run.ID(), ctx)
+					// Wait on the run's own Outcome handle, not job.Outcome(run.ID(), ctx) which rejects gone once settled
+					// (Pi: `const outcome = await (await job.start({ text: "a" }, ctx)).outcome(ctx)`).
+					rawOutcome, err := run.Outcome(ctx)
 					if err != nil {
 						return nil, err
 					}
+					outcome := rawOutcome.(Outcome)
 					result := outcome.Result
 					if outcome.Kind != OutcomeDone {
 						result = string(outcome.Kind)
