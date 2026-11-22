@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -756,6 +757,10 @@ func TestPiAgentPackagesTree(t *testing.T) {
 		cmd.Stdin = bytes.NewReader(pipeData)
 		out, err := cmd.Output()
 		if err != nil {
+			// The pipeline is the k8s images own, with GNUs tools: on Linux a stage that fails is a failure of the cross-check, not a reason to go without it.
+			if runtime.GOOS == "linux" {
+				t.Fatalf("shell pipeline cross-check: stage %q failed: %v", st.name, err)
+			}
 			t.Logf("shell pipeline cross-check skipped: stage %q failed: %v", st.name, err)
 			pipeOK = false
 			break
