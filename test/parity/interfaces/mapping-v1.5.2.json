@@ -41926,7 +41926,7 @@
       "id": "pkg:ai/api/google-shared#supportsGoogleStrictToolSampling",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:428163c0435c94f2e48479deb3097debb36265e87d3d4e1c3285a81dc7beed09",
-      "rationale": "Carried ahead of the pin: Pi 1.5.2 (packages/ai/src/api/google-shared.ts:463) declares supportsGoogleStrictToolSampling(modelId: string): boolean; Pi fe8a6f5dc741e9214a20f70f359c68c72b494d1e (#12371) changes the parameter to model: Model<T> so compat.supportsStrictMode overrides the version detection. PiG's ai/google.go#supportsGoogleStrictToolSampling takes *Model to match fe8a6f5dc, and automation/gen/pi-post-release-backports.mjs carries the commit in the oracle. The row goes with the next pin bump.",
+      "rationale": "Carried ahead of the pin: Pi 1.5.2 (packages/ai/src/api/google-shared.ts:463) declares supportsGoogleStrictToolSampling(modelId: string): boolean; Pi fe8a6f5dc741e9214a20f70f359c68c72b494d1e (#12371) changes the parameter to model: Model<T> so compat.supportsStrictMode overrides the version detection. PiG's ai/google.go#supportsGoogleStrictToolSampling takes *Model to match fe8a6f5dc, and automation/gen/pi-post-release-backports.mjs carries the commit in the oracle; PiG keeps the pin's string form beside it until the re-pin (drop the string form when pi-pin.d.ts declares the model). The row goes with the next pin bump.",
       "pigTargets": [
         "ai/google.go#supportsGoogleStrictToolSampling"
       ]
@@ -41935,7 +41935,7 @@
       "id": "pkg:ai/api/google-shared#supportsGoogleStrictToolSampling::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:2b3b4cce435cc7ec77b9207e9c6b11c9024c07743d2aef67e83a3e596b5c1321",
-      "rationale": "Carried ahead of the pin: Pi 1.5.2 (packages/ai/src/api/google-shared.ts:463) declares supportsGoogleStrictToolSampling(modelId: string): boolean; Pi fe8a6f5dc741e9214a20f70f359c68c72b494d1e (#12371) changes the parameter to model: Model<T> so compat.supportsStrictMode overrides the version detection. PiG's ai/google.go#supportsGoogleStrictToolSampling takes *Model to match fe8a6f5dc, and automation/gen/pi-post-release-backports.mjs carries the commit in the oracle. The row goes with the next pin bump.",
+      "rationale": "Carried ahead of the pin: Pi 1.5.2 (packages/ai/src/api/google-shared.ts:463) declares supportsGoogleStrictToolSampling(modelId: string): boolean; Pi fe8a6f5dc741e9214a20f70f359c68c72b494d1e (#12371) changes the parameter to model: Model<T> so compat.supportsStrictMode overrides the version detection. PiG's ai/google.go#supportsGoogleStrictToolSampling takes *Model to match fe8a6f5dc, and automation/gen/pi-post-release-backports.mjs carries the commit in the oracle; PiG keeps the pin's string form beside it until the re-pin (drop the string form when pi-pin.d.ts declares the model). The row goes with the next pin bump.",
       "pigTargets": [
         "ai/google.go#supportsGoogleStrictToolSampling"
       ]

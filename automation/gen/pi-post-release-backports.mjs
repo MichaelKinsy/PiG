@@ -1046,7 +1046,7 @@ packageFile("aa47cedce", "pi-ai/api/anthropic-messages.js", [
 // @google/genai at all: its Go body encoder mirrors the SDK's converters (ai/google_wire.go, which names the mirrored version). The oracle is Pi and installs the SDK.
 // The oracle carries the commit's BEHAVIOUR (the SDK, the three adapters, the bundle of both). What authors and inventories derive from the installed package stays the pin's:
 // not carried: pi-ai/package.json (`"@google/genai": "2.32.0"`): published ranges follow the pin until the re-pin (extensions/sdk-ts/package.json derives its peer range from the installed manifest); the lock the oracle installs names 2.32.0, the manifest on disk 2.21.0. Re-pin worklist: arrives with the pin.
-// not carried: pi-ai/api/google-shared.d.ts (drops `mapStopReasonString`, which google-shared.js below no longer exports): declarations follow the pin until the re-pin (extensions/sdk-ts/pi-pin.d.ts and test/parity/interfaces derive from the installed declarations). Re-pin worklist: arrives with the pin.
+// not carried: pi-ai/api/google-shared.d.ts (pi-ai/api/google-shared.js keeps `mapStopReasonString` as a PiG adaptation until the re-pin, so the pinned declaration agrees): declarations follow the pin until the re-pin (extensions/sdk-ts/pi-pin.d.ts and test/parity/interfaces derive from the installed declarations). Re-pin worklist: arrives with the pin.
 // not carried: pi-ai/api/google-{generative-ai,shared,vertex}.js.map and .d.ts.map: nothing imports through a source map and Pi's bundler runs with source maps off.
 dependency("f72f799a4", "pi-ai", {
     name: "@google/genai",
@@ -1108,21 +1108,7 @@ packageFile("f72f799a4", "pi-ai/api/google-shared.js", [
         case FinishReason.CONTINUATION:
             return "length";
 `],
-    [`    }
-}
-/**
- * Map string finish reason to our StopReason (for raw API responses).
- */
-export function mapStopReasonString(reason) {
-    switch (reason) {
-        case "STOP":
-            return "stop";
-        case "MAX_TOKENS":
-            return "length";
-        default:
-            return "error";
-`,
-      ``],
+    // PiG adaptation: keep the pinned mapStopReasonString export until the re-pin (pi-pin.d.ts declares it).
 ]);
 // END backport f72f799a4
 
@@ -3071,6 +3057,7 @@ export function killTrackedDetachedChildren(): void {
 
 // BEGIN backport fe8a6f5dc
 // fe8a6f5dc (#12371, closes #12321): unanchor getGeminiMajorVersion for prefixed Gemini IDs, reuse it for >= 4 in usesGoogleThinkingLevel, and let compat.supportsStrictMode override supportsGoogleStrictToolSampling.
+// PiG adaptation: the pinned declaration (extensions/sdk-ts/pi-pin.d.ts) takes the id string, kept beside Pi's model form until the re-pin; drop the string form when pi-pin.d.ts declares the model.
 // not carried: packages/ai/src/types.ts (TypeScript type union only; compiled JS has no runtime representation for GoogleCompat).
 // not carried: packages/ai/README.md, packages/ai/CHANGELOG.md, packages/coding-agent/CHANGELOG.md (package docs/changelogs not read by runtime or oracle tests).
 // not carried: packages/ai/test/google-shared-convert-tools.test.ts, packages/ai/test/google-shared-gemini3-unsigned-tool-call.test.ts, packages/ai/test/google-shared-image-tool-result-routing.test.ts (TypeScript tests; the package ships none).
@@ -3097,7 +3084,8 @@ export function supportsGoogleStrictToolSampling(modelId) {
  * Gemini 3+ enforces required function parameters in validated tool-calling modes.
  * \`compat.supportsStrictMode\` overrides the model ID detection, e.g. for Gemini models served under IDs without the version.
  */
-export function supportsGoogleStrictToolSampling(model) {
+export function supportsGoogleStrictToolSampling(modelOrId) {
+    const model = typeof modelOrId === "string" ? { id: modelOrId } : modelOrId;
     const majorVersion = getGeminiMajorVersion(model.id);
     return model.compat?.supportsStrictMode ?? (majorVersion !== undefined && majorVersion >= 3);
 }`],

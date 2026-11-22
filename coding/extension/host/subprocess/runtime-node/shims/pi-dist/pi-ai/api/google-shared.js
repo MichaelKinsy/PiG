@@ -414,7 +414,8 @@ export function convertTools(tools, useParameters = false, supportsStrictMode = 
  * Gemini 3+ enforces required function parameters in validated tool-calling modes.
  * `compat.supportsStrictMode` overrides the model ID detection, e.g. for Gemini models served under IDs without the version.
  */
-export function supportsGoogleStrictToolSampling(model) {
+export function supportsGoogleStrictToolSampling(modelOrId) {
+    const model = typeof modelOrId === "string" ? { id: modelOrId } : modelOrId;
     const majorVersion = getGeminiMajorVersion(model.id);
     return model.compat?.supportsStrictMode ?? (majorVersion !== undefined && majorVersion >= 3);
 }
@@ -473,6 +474,19 @@ export function mapStopReason(reason) {
             const _exhaustive = reason;
             throw new Error(`Unhandled stop reason: ${_exhaustive}`);
         }
+    }
+}
+/**
+ * Map string finish reason to our StopReason (for raw API responses).
+ */
+export function mapStopReasonString(reason) {
+    switch (reason) {
+        case "STOP":
+            return "stop";
+        case "MAX_TOKENS":
+            return "length";
+        default:
+            return "error";
     }
 }
 /**

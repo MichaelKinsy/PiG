@@ -7375,8 +7375,8 @@
         "integrity": "sha512-2tWPSnV3qzfiDIY3aWluBag3vC++Vs+VsXt/UquSU5onPMohPih72FUhIhaqmDdMYubOgB3Byl9uF4Vk40JLvQ=="
       },
       "source": "dist/api/google-shared.js",
-      "sourceSha256": "13b3fbad5a4d10b8f45a42c53093dc74ed769deedef65f8f85bc5649a2a545f1",
-      "sha256": "96fee08a9716530121740becb29fcdae552a8eb9e650b329031ef6c127366988",
+      "sourceSha256": "0a31b5f75df7b72630385fb28666ba761cd40da9c177b90cc1f00d7497c8b1a9",
+      "sha256": "e8d49a8d0d2ea780f0f167b6208f048af5914f24c96fb7ad2e16e69ced796728",
       "rewrite": "D74 the module's one SDK import replaced (automation/gen/vendor-pi-ai-apis.mjs)"
     },
     {
