@@ -17,20 +17,20 @@ func TestSyntaxHighlightDefaultTokenUpstream(t *testing.T) {
 	t.Run("colors each line of Python docstrings independently and trailing plain text with theme text color", func(t *testing.T) {
 		SetTheme("dark")
 		code := "\"\"\"\nline one\n\nline two\n\"\"\"\nafter"
-		ansi := ActiveTheme().Fg("syntaxString")
+		ansi := ActiveTheme().GetFgAnsi("syntaxString")
 		expected := []string{
 			ansi + "\"\"\"\x1b[39m",
 			ansi + "line one\x1b[39m",
 			"",
 			ansi + "line two\x1b[39m",
 			ansi + "\"\"\"\x1b[39m",
-			ActiveTheme().Fg("text") + "after\x1b[39m",
+			ActiveTheme().GetFgAnsi("text") + "after\x1b[39m",
 		}
 		if got := HighlightCode(code, "python"); !slices.Equal(got, expected) {
 			t.Fatalf("HighlightCode:\n got=%q\nwant=%q", got, expected)
 		}
-		if got := highlightMarkdownCode(code, "python"); !slices.Equal(got, expected) {
-			t.Fatalf("highlightMarkdownCode:\n got=%q\nwant=%q", got, expected)
+		if got := NewMarkdownTheme().HighlightCode(code, "python"); !slices.Equal(got, expected) {
+			t.Fatalf("MarkdownTheme.HighlightCode:\n got=%q\nwant=%q", got, expected)
 		}
 	})
 
@@ -38,7 +38,7 @@ func TestSyntaxHighlightDefaultTokenUpstream(t *testing.T) {
 	t.Run("colors unscoped highlighted code with the theme foreground", func(t *testing.T) {
 		SetTheme("light")
 		lines := HighlightCode("plainIdentifier\nconst answer = 42;", "typescript")
-		text := ActiveTheme().Fg("text")
+		text := ActiveTheme().GetFgAnsi("text")
 		if want := text + "plainIdentifier\x1b[39m"; lines[0] != want {
 			t.Fatalf("line 0:\n got=%q\nwant=%q", lines[0], want)
 		}
@@ -60,9 +60,9 @@ func TestMarkdownHighlightedCodeBlockDefaultTokenColors(t *testing.T) {
 	for _, themeName := range []string{"light", "dark"} {
 		t.Run(themeName, func(t *testing.T) {
 			SetTheme(themeName)
-			textFg := ActiveTheme().Fg("text")
-			kwFg := ActiveTheme().Fg("syntaxKeyword")
-			numFg := ActiveTheme().Fg("syntaxNumber")
+			textFg := ActiveTheme().GetFgAnsi("text")
+			kwFg := ActiveTheme().GetFgAnsi("syntaxKeyword")
+			numFg := ActiveTheme().GetFgAnsi("syntaxNumber")
 
 			// Markdown fenced code block with:
 			// - plain identifier line
