@@ -2104,7 +2104,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-dc003a9-3](#bf-dc003a9-3) | Sign in with ChatGPT: a ChatGPT Business workspace usage-limit error… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-dc53412](#bf-dc53412) | A `pig_strip_bedrock_converse_stream` Piglet Binary no longer links the AWS SDK through the Bedrock retry… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-dc7d547](#bf-dc7d547) | An interactive shell run by the bash tool or by a `!` command no longer suspends PiG with `suspended (tty… | PiG's own defect | All platforms | Unreleased |
-| [BF-dc99069](#bf-dc99069) | With a large fetched model catalog, every model lookup through `CreateProvider` re-merged the provider's… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-dc99069](#bf-dc99069) | For a provider built with `CreateProvider` (an SDK or natively registered provider, or a direct user of… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-dca5763](#bf-dca5763) | A notification, status or message that an extension queues on `setImmediate` or `setTimeout(0)` from inside a… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-dcf10b2](#bf-dcf10b2) | chord: a server that closed a connection while the host loop was sending on it could freeze the host for good… | PiG's own defect | All platforms | Unreleased |
 | [BF-dd06fc5](#bf-dd06fc5) | chord: `Plugins.Build` discovers again when a named plugin is unknown to discovery or a file discovery found… | PiG's own defect | All platforms | Unreleased |
@@ -31383,17 +31383,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-dc99069
 
-**With a large fetched model catalog, every model lookup through `CreateProvider` re-merged the provider's…**
+**For a provider built with `CreateProvider` (an SDK or natively registered provider, or a direct user of…**
 
 - **Source:** A fix Pi shipped that PiG ported
-- **Symptom:** With a large fetched model catalog, every model lookup through `CreateProvider` re-merged the provider's baseline and fetched catalogs on every read, slowing model selection and request setup; the catalog is now merged once when published (stored restore or network refresh) and cached, with public getters returning an owned copy and internal lookups reading the cached snapshot directly.
+- **Symptom:** For a provider built with `CreateProvider` (an SDK or natively registered provider, or a direct user of package ai) that fetches a large model catalog, every model lookup re-merged the provider's baseline and fetched catalogs on every read, slowing model selection and request setup for that provider; built-in providers were not affected; the catalog is now merged once when published (stored restore or network refresh) and cached, with public getters returning an owned copy and internal lookups reading the cached snapshot directly.
 - **Root cause:** 3dd4d752e8; upstream Pi 073b0bae8 (#12366, closes #12311)
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `dc99069530` (2026-11-21)
 - **Tests:** `ai/models_provider_catalog_merge_test.go::TestCreateProviderCatalogConcurrentReadsDuringRefresh`, `ai/models_provider_catalog_merge_test.go::TestCreateProviderCatalogMergeMatchesLegacy`, `ai/models_provider_catalog_merge_test.go::TestCreateProviderCatalogReadAllocs`, `ai/models_provider_catalog_merge_test.go::TestCreateProviderMergesCatalogOncePerPublishUpstream`, `ai/models_provider_catalog_merge_test.go::TestCreateProviderReplacedGetterBypassesCache`, `ai/models_provider_catalog_merge_test.go::TestCreateProviderRestoredCatalogMergesOncePerPublish`
-- **Release note:** With a large fetched model catalog, every model lookup through `CreateProvider` re-merged the provider's baseline and fetched catalogs on every read, slowing model selection and request setup; the catalog is now merged once when published (stored restore or network refresh) and cached, with public getters returning an owned copy and internal lookups reading the cached snapshot directly. Affects v0.4.0, v0.4.1, v0.5.0, v0.5.1, v0.5.2, v0.5.3, v0.7.0.
+- **Release note:** For a provider built with `CreateProvider` (an SDK or natively registered provider, or a direct user of package ai) that fetches a large model catalog, every model lookup re-merged the provider's baseline and fetched catalogs on every read, slowing model selection and request setup for that provider; built-in providers were not affected; the catalog is now merged once when published (stored restore or network refresh) and cached, with public getters returning an owned copy and internal lookups reading the cached snapshot directly. Affects v0.4.0, v0.4.1, v0.5.0, v0.5.1, v0.5.2, v0.5.3, v0.7.0.
 
 ### BF-dca5763
 
