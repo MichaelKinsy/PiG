@@ -97,7 +97,7 @@ class FuzzNightlyTests(unittest.TestCase):
         self.assertIn("== mixed FuzzMixedPlain ", result.stdout)
         self.assertIn("== mixed FuzzMixedGated ", result.stdout)
         self.assertEqual(
-            "fuzz-nightly: ran 4 targets, skipped 0 (named above), failed 0",
+            "fuzz-nightly: ran 4 targets, skipped 0 (named above), empty 0 (named above), failed 0",
             result.stdout.strip().splitlines()[-1],
         )
 
@@ -109,7 +109,7 @@ class FuzzNightlyTests(unittest.TestCase):
         self.assertIn("tagged\tFuzzTagged\tparity", result.stdout)
         self.assertIn("untagged\tFuzzUntagged\t-", result.stdout)
         self.assertEqual(
-            "fuzz-nightly: listed 4 targets, skipped 0 (named above), failed 0",
+            "fuzz-nightly: listed 4 targets, skipped 0 (named above), empty 0 (named above), failed 0",
             result.stdout.strip().splitlines()[-1],
         )
 
@@ -140,7 +140,7 @@ class FuzzNightlyTests(unittest.TestCase):
         )
         self.assertNotIn("== tagged FuzzTagged ", result.stdout)
         self.assertEqual(
-            "fuzz-nightly: ran 3 targets, skipped 1 (named above), failed 0",
+            "fuzz-nightly: ran 3 targets, skipped 1 (named above), empty 0 (named above), failed 0",
             result.stdout.strip().splitlines()[-1],
         )
 
@@ -161,7 +161,7 @@ class FuzzNightlyTests(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn("== broken FuzzBroken ", result.stdout)
         self.assertIn("fuzz-nightly: failing target: broken:FuzzBroken", result.stderr)
-        self.assertIn("fuzz-nightly: ran 5 targets, skipped 0 (named above), failed 1", result.stdout)
+        self.assertIn("fuzz-nightly: ran 5 targets, skipped 0 (named above), empty 0 (named above), failed 1", result.stdout)
 
     def test_skip_list_entry_without_reason_fails_loudly(self) -> None:
         result = run_fuzz_nightly(BASE_FILES, skip_list="tagged:FuzzTagged\n")
@@ -179,6 +179,39 @@ class FuzzNightlyTests(unittest.TestCase):
             self.assertEqual(2, len(parts), f"{skip_path}:{lineno}: missing reason")
             self.assertIn(":", parts[0], f"{skip_path}:{lineno}: want <package>:<target>")
             self.assertTrue(parts[1].strip(), f"{skip_path}:{lineno}: empty reason")
+
+    def test_matched_fuzz_file_with_no_listed_target_is_reported_and_counted(self) -> None:
+        files = {
+            **BASE_FILES,
+            "rawstr/doc_test.go": (
+                "package rawstr\n\n"
+                "import \"testing\"\n\n"
+                "func TestContainsFuzzLiteral(t *testing.T) {\n"
+                "\t_ = `\nfunc FuzzLiteral(f *testing.F) {}\n`\n"
+                "}\n"
+            ),
+        }
+        result = run_fuzz_nightly(files)
+        self.assertEqual(0, result.returncode, f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}")
+        self.assertIn(
+            "fuzz-nightly: rawstr: a fuzz file matched and no target is listed",
+            result.stdout,
+        )
+        self.assertEqual(
+            "fuzz-nightly: ran 4 targets, skipped 0 (named above), empty 1 (named above), failed 0",
+            result.stdout.strip().splitlines()[-1],
+        )
+
+        listed = run_fuzz_nightly(files, args=["--list"])
+        self.assertEqual(0, listed.returncode, f"stdout:\n{listed.stdout}\nstderr:\n{listed.stderr}")
+        self.assertIn(
+            "fuzz-nightly: rawstr: a fuzz file matched and no target is listed",
+            listed.stdout,
+        )
+        self.assertEqual(
+            "fuzz-nightly: listed 4 targets, skipped 0 (named above), empty 1 (named above), failed 0",
+            listed.stdout.strip().splitlines()[-1],
+        )
 
 
 if __name__ == "__main__":
