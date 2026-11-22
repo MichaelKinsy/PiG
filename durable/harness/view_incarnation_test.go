@@ -92,7 +92,7 @@ func TestAdvanceViewFollowsOnlyTheMountedIncarnation(t *testing.T) {
 			var advanced []durable.Op
 			observer := &ViewObserver{Advance: func(_ context.Context, call chord.WatchCall[ConversationView]) { advanced = call.Ops }}
 			windowed := &windowedObserver{min: 50, max: 100, value: ConversationView{Docs: mount.docs}, observer: observer}
-			advanceView(t.Context(), conversation, mount, []*windowedObserver{windowed}, tc.publication, func(err error) { t.Errorf("observer reported %v", err) })
+			advanceView(t.Context(), conversation, mount, nil, []*windowedObserver{windowed}, tc.publication, func(err error) { t.Errorf("observer reported %v", err) })
 			expectSameJSON(t, advanced, tc.ops)
 			expectSameJSON(t, mount.docs, tc.docs)
 			got, mounted := mount.incarnations[kind]
