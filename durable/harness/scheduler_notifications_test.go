@@ -2,12 +2,16 @@
 // shared set after awaiting its decision region, erasing waiters and holders a publication had queued meanwhile, so tasks
 // stayed waiting or completing.
 //
-// Go mapping: Pi interposes on `session.touch` to queue a held publication as a microtask that runs between a pass's
-// decision and the continuation that applies it. In Go, `regionPlainLocked` / `waitGatesLocked` (scheduler_region.go)
-// unlocks `s.mu` whenever a decision region touches a key with an unpublished writer. For the finalize test, `other` owns
-// two gated children and `held` owns one; `controlledStorage.holdCommits` batches `heldChild` ahead of `otherChild2` so
-// pass 1 parks in `waitGatesLocked` on `otherChild2`'s gate while `heldChild` publishes under `s.mu` and queues `held` in
-// `s.finalizeChecks`. (The reservation test below still uses the 25x loop until its own seam is restored.)
+// Go mapping: Pi interposes on `session.touch` to queue a held publication as a microtask between a pass's decision and the
+// continuation that applies it. A Go pass has no such window: its decision region runs the decision again after every wait
+// for a gate (`regionLocked`, scheduler_region.go), reading `finalizeChecks` and `runnable` afresh, and it applies the
+// decision that stands (clears the checks, deletes the dropped candidates) under the same hold of `s.mu`; a publication's
+// observer takes `s.mu`, so what it queues is read by the decision that stands or stays in the set. The Writer publishes
+// parts strictly in order and waits for each publication (writer.go publish), so holding storage commits
+// (`controlledStorage.holdCommits`) in the finalize test below publishes `held`'s last child while pass 1 waits in its
+// region on `other`'s gate: deterministic, one run. The reservation test provokes its case by ending the tasks together,
+// many times. Both pin the outcome and the order, and fail when a pass releases the mutex between its decision and its
+// application.
 
 package harness
 
@@ -100,7 +104,7 @@ func holdsChildrenTask(name string, children ...stepTask) stepTask {
 }
 
 // A finalize pass plans while the publication of another holder's last child is observed: the check that publication asks
-// for must stay for the next pass, or the holder stays completing.
+// for must not be lost: the holder ends in this pass or the next.
 func TestFinalizePassKeepsAHolderCheckPublishedWhilePlanning(t *testing.T) {
 	otherGate1 := deferred()
 	otherGate2 := deferred()
@@ -141,7 +145,9 @@ func TestFinalizePassKeepsAHolderCheckPublishedWhilePlanning(t *testing.T) {
 	// 4. Release batch 2: Writer.publish publishes part 0 (heldChild) while pass 1 is parked on part 1's gate,
 	// adding held to finalizeChecks, then publishes part 1 (otherChild2), waking pass 1.
 	held2.release()
-	// Pass 1 finalizes other; pass 2 must still see held in finalizeChecks and finalize it.
+	// When the gate opens the pass runs its decision again and reads held's check, queued while it waited: it ends other
+	// and held. (A pass that takes its round before it waits, as Pi does since #11892, leaves held to the next pass.)
+	// Either way both holders must end, each after every child it held.
 	eventually(t, func() bool { return taskStatusOf(t, opened.harness, otherId) == durable.TaskTerminal })
 	for range 200 {
 		if taskStatusOf(t, opened.harness, heldId) == durable.TaskTerminal {
