@@ -13,8 +13,8 @@ func TestRequestBodyWritesALoneSurrogateAsItsEscape(t *testing.T) {
 	}{
 		"codex prompt cache key":     {respRequest{Model: "m", PromptCacheKey: lone, codex: true}, `{"model":"m","stream":false,"input":null,"prompt_cache_key":"a\ud83db"}`},
 		"responses prompt cache key": {respRequest{Model: "m", PromptCacheKey: lone}, ``},
-		"assistant reasoning":    {oaiMessage{Role: "assistant", ReasoningContent: &reasoning}, `{"role":"assistant","content":null,"reasoning_content":"a\ud83db"}`},
-		"pair is one character":  {oaiMessage{Role: "user", Content: "😀 \u2028 <&>"}, "{\"role\":\"user\",\"content\":\"😀 \u2028 <&>\"}"},
+		"assistant reasoning":        {oaiMessage{Role: "assistant", ReasoningContent: &reasoning}, `{"role":"assistant","content":null,"reasoning_content":"a\ud83db"}`},
+		"pair is one character":      {oaiMessage{Role: "user", Content: "😀 \u2028 <&>"}, "{\"role\":\"user\",\"content\":\"😀 \u2028 <&>\"}"},
 	} {
 		got, err := marshalRequestBody(test.body)
 		if err != nil {

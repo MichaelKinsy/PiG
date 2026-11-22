@@ -1502,3 +1502,17 @@ commit = "94660e2125fc9a083d68962d6d0f384c1fedd4f9"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "TestAFailedCheckNamesAMirrorThatIsNotThePinnedBuild is a PiG autobind tool guard test, not a Pi behavior test. Read-only autobind runs now share upstreammirror.Check(root, o.version) before doing any work, so -check over another Pi mirror fails fast without deriving a ledger or printing the removed late \"this verdict is not the pin's\" wrapper; no Pi source line governs this expectation."
+
+[[entry]]
+path = "ai/openai_codex_request_test.go"
+commit = "948649396847221d1d22332cb003ed0a335ce63c"
+class = "PIBEHAVIOR"
+cite = "packages/ai/src/api/openai-codex-responses.ts:555"
+reason = "Pi edfe6b2ef (#12273) moves the Codex system prompt from top-level instructions to a leading developer input item."
+
+[[entry]]
+path = "ai/openai_codex_request_test.go"
+commit = "e6df1cddad72576baa13f4787d82f2e846f924ae"
+class = "PIBEHAVIOR"
+cite = "packages/ai/src/api/openai-codex-responses.ts:612"
+reason = "Pi fcc33744b (#12269) forwards maxTokens as max_output_tokens on openai-codex-responses unless compat.supportsMaxOutputTokens is false."
