@@ -58,8 +58,7 @@ func TestCodexWebSocketFramesMatchPi(t *testing.T) {
   const load = (rel) => import(require('node:url').pathToFileURL(require('node:path').join(root, rel)).href);
   const lazy = await load('node_modules/@earendil-works/pi-ai/dist/api/openai-codex-responses.lazy.js');
   const transcript = await load('node_modules/@earendil-works/pi-ai/dist/utils/transcript.js');
-  // packages/ai/src/api/openai-codex-responses.ts:555 (Pi edfe6b2ef): leading instruction item uses developer for reasoning models, matching NewOpenAICodexResponsesProvider (IsReasoning: true).
-  const model = { id: 'gpt-5.2', name: 'GPT', provider: 'openai-codex', api: 'openai-codex-responses', baseUrl, reasoning: true, input: ['text'],
+  const model = { id: 'gpt-5.2', name: 'GPT', provider: 'openai-codex', api: 'openai-codex-responses', baseUrl, reasoning: false, input: ['text'],
     maxTokens: 1000, contextWindow: 10000, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } };
   const tools = [{ name: 'lookup', description: 'Look up', parameters: JSON.parse(schema) }];
   const options = { apiKey: token, transport: 'auto', sessionId: 'session-ws' };
@@ -87,7 +86,8 @@ func TestCodexWebSocketFramesMatchPi(t *testing.T) {
 	}
 
 	defer CloseOpenAICodexWebSocketSessions()
-	provider := NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{APIKey: token, Model: "gpt-5.2", ProviderID: "openai-codex", BaseURL: server.URL})
+	// Match the Pi test model (reasoning: false) so both emit role:"system" for the leading system item (packages/ai/src/api/openai-codex-responses.ts:555).
+	provider := NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{APIKey: token, Model: "gpt-5.2", ProviderID: "openai-codex", BaseURL: server.URL, ModelMetadata: &Model{ID: "gpt-5.2", ProviderMeta: ProviderMetadata{API: APIOpenAICodexResponses, ProviderID: "openai-codex", BaseURL: server.URL, Reasoning: false}, Input: []string{"text"}}})
 	tools := mustTools(t, `[{"name":"lookup","description":"Look up","parameters":`+schema+`}]`)
 	options := StreamOptions{Transport: TransportAuto, SessionID: "session-ws"}
 	one := UserMessage{Content: UserText("one"), Timestamp: 1}
