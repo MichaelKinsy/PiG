@@ -560,18 +560,34 @@ export function createProvider(input) {
         throw new Error(`Provider ${input.id}: at least one of "api", "images", or "classifiers" is required.`);
     }
     const baselineModels = input.models;
-    let dynamicModels = [];
     const fetchModels = input.fetchModels;
-    const currentModels = () => {
+    // Pi 073b0bae8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+    const chatModelsOf = (models) => models.filter((model) => isModelType(model, "chat"));
+    // Merged once per publish, not per read: getModels() is on hot paths such as Models.getModel() (#12311).
+    let allModels = baselineModels;
+    let chatModels = chatModelsOf(allModels);
+    const setDynamicModels = (dynamicModels) => {
         const merged = [...baselineModels];
+        const indexByKey = new Map();
+        const keyOf = (model) => `${getModelType(model)}\0${model.id}`;
+        merged.forEach((model, index) => {
+            const key = keyOf(model);
+            if (!indexByKey.has(key))
+                indexByKey.set(key, index);
+        });
         for (const model of dynamicModels) {
-            const index = merged.findIndex((entry) => getModelType(entry) === getModelType(model) && entry.id === model.id);
-            if (index >= 0)
+            const key = keyOf(model);
+            const index = indexByKey.get(key);
+            if (index !== undefined) {
                 merged[index] = model;
-            else
+            }
+            else {
+                indexByKey.set(key, merged.length);
                 merged.push(model);
+            }
         }
-        return merged;
+        allModels = merged;
+        chatModels = chatModelsOf(merged);
     };
     const apiFor = (model) => single ?? byApi?.[model.api];
     const dispatch = (model, run, signal) => {
@@ -589,8 +605,8 @@ export function createProvider(input) {
         baseUrl: input.baseUrl,
         headers: input.headers,
         auth: input.auth,
-        getModels: () => currentModels().filter((model) => isModelType(model, "chat")),
-        getAllModels: currentModels,
+        getModels: () => chatModels,
+        getAllModels: () => allModels,
         refreshModels: fetchModels
             ? async (context) => {
                 if (context.stored) {
@@ -598,9 +614,7 @@ export function createProvider(input) {
                         .filter((model) => model.provider === input.id)
                         .map((model) => model);
                     if (!(await context.publish({
-                        update: () => {
-                            dynamicModels = restored;
-                        },
+                        update: () => setDynamicModels(restored),
                     }))) {
                         return;
                     }
@@ -613,9 +627,7 @@ export function createProvider(input) {
                 const refreshed = fetched.filter(hasKnownModelType);
                 await context.publish({
                     persist: { models: refreshed, checkedAt: Date.now() },
-                    update: () => {
-                        dynamicModels = refreshed;
-                    },
+                    update: () => setDynamicModels(refreshed),
                 });
             }
             : undefined,

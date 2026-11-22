@@ -9,7 +9,7 @@ import {
   openAICompletionsApi,
   openrouterProvider,
   typesafeSystemOneApi
-} from "./chunk-42YLIJQD.js";
+} from "./chunk-KJACVQTG.js";
 import {
   envApiKeyAuth,
   lazyOAuth
@@ -18,7 +18,7 @@ import {
   createModels,
   createProvider,
   isModelType
-} from "./chunk-TDDSYJUL.js";
+} from "./chunk-XXMZSYZB.js";
 import {
   __name
 } from "./chunk-SHUYVCID.js";
@@ -1081,7 +1081,7 @@ __name(cloudflareAIGatewayProvider, "cloudflareAIGatewayProvider");
 
 // pi-dist/pi-ai/api/cloudflare-workers-ai-system-one.lazy.js
 var cloudflareWorkersAISystemOneApi = /* @__PURE__ */ __name(() => ({
-  classify: /* @__PURE__ */ __name(async (model, context, options) => (await import("./chunk-AUT5B5AB.js")).classify(model, context, options), "classify")
+  classify: /* @__PURE__ */ __name(async (model, context, options) => (await import("./chunk-DQY2ZK3A.js")).classify(model, context, options), "classify")
 }), "cloudflareWorkersAISystemOneApi");
 
 // pi-dist/pi-ai/providers/cloudflare-workers-ai.js
@@ -1431,7 +1431,7 @@ __name(nvidiaProvider, "nvidiaProvider");
 
 // pi-dist/pi-ai/api/openai-decisions.lazy.js
 var openAIDecisionsApi = /* @__PURE__ */ __name(() => ({
-  classify: /* @__PURE__ */ __name(async (model, context, options) => (await import("./chunk-M2SJ6NSV.js")).classify(model, context, options), "classify")
+  classify: /* @__PURE__ */ __name(async (model, context, options) => (await import("./chunk-BCKKCROG.js")).classify(model, context, options), "classify")
 }), "openAIDecisionsApi");
 
 // pi-dist/pi-ai/providers/openai.js

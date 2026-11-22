@@ -122,6 +122,9 @@ func (r *ModelRegistry) GetProviderModelDataByID(id, modelID string) *ai.Model {
 		}
 		return nil
 	}
+	if r.GetProvider(id) != nil {
+		return r.NativeModels().GetModel(id, modelID)
+	}
 	for _, model := range r.GetProviderModelData(id) {
 		if model.ID == modelID {
 			return model

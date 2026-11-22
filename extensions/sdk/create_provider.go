@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 )
@@ -56,25 +57,66 @@ func CreateProvider(options CreateProviderOptions) (*Provider, error) {
 	if len(streams) == 0 && len(options.Images) == 0 && len(options.Classifiers) == 0 {
 		return nil, fmt.Errorf(`Provider %s: at least one of "api", "images", or "classifiers" is required.`, options.ID)
 	}
-	var mu sync.Mutex
-	var dynamicModels []map[string]any
-	currentModels := func() []map[string]any {
-		mu.Lock()
-		defer mu.Unlock()
-		merged := append([]map[string]any{}, options.Models...)
-		for _, model := range dynamicModels {
-			replaced := false
+	type modelKey struct {
+		modelType string
+		id        string
+	}
+	keyOf := func(model map[string]any) (modelKey, bool) {
+		id, ok := model["id"].(string)
+		return modelKey{modelType: GetModelType(model), id: id}, ok
+	}
+	baseline := slices.Clone(options.Models)
+	buildCatalog := func(dynamic []map[string]any) ([]map[string]any, []map[string]any) {
+		merged := make([]map[string]any, len(baseline), len(baseline)+len(dynamic))
+		copy(merged, baseline)
+		if len(dynamic) > 0 {
+			indexByKey := make(map[modelKey]int, len(merged)+len(dynamic))
 			for i, entry := range merged {
-				if GetModelType(entry) == GetModelType(model) && entry["id"] == model["id"] {
-					merged[i], replaced = model, true
-					break
+				if k, ok := keyOf(entry); ok {
+					if _, exists := indexByKey[k]; !exists {
+						indexByKey[k] = i
+					}
 				}
 			}
-			if !replaced {
-				merged = append(merged, model)
+			for _, model := range dynamic {
+				if k, ok := keyOf(model); ok {
+					if i, exists := indexByKey[k]; exists {
+						merged[i] = model
+					} else {
+						indexByKey[k] = len(merged)
+						merged = append(merged, model)
+					}
+					continue
+				}
+				replaced := false
+				for i, entry := range merged {
+					if GetModelType(entry) == GetModelType(model) && entry["id"] == model["id"] {
+						merged[i], replaced = model, true
+						break
+					}
+				}
+				if !replaced {
+					merged = append(merged, model)
+				}
 			}
 		}
-		return merged
+		chat := make([]map[string]any, 0, len(merged))
+		for _, model := range merged {
+			if IsModelType(model, "chat") {
+				chat = append(chat, model)
+			}
+		}
+		return merged, chat
+	}
+	var mu sync.RWMutex
+	allModels, chatModels := buildCatalog(nil)
+	setDynamicModels := func(dynamic []map[string]any) {
+		// Merged once per publish, not per read (upstream: packages/ai/src/models.ts, Pi 073b0bae8 / #12311).
+		merged, chat := buildCatalog(dynamic)
+		mu.Lock()
+		allModels = merged
+		chatModels = chat
+		mu.Unlock()
 	}
 	apiFor := func(model map[string]any) (ProviderStreams, bool) {
 		if options.API != nil {
@@ -87,15 +129,21 @@ func CreateProvider(options CreateProviderOptions) (*Provider, error) {
 	provider := &Provider{
 		ID: options.ID, Name: options.Name, BaseURL: options.BaseURL, Headers: options.Headers, Auth: options.Auth,
 		GetModels: func() ([]map[string]any, error) {
-			chat := []map[string]any{}
-			for _, model := range currentModels() {
-				if IsModelType(model, "chat") {
-					chat = append(chat, model)
-				}
-			}
-			return chat, nil
+			mu.RLock()
+			cached := chatModels
+			mu.RUnlock()
+			out := make([]map[string]any, len(cached))
+			copy(out, cached)
+			return out, nil
 		},
-		GetAllModels:    func() ([]map[string]any, error) { return currentModels(), nil },
+		GetAllModels: func() ([]map[string]any, error) {
+			mu.RLock()
+			cached := allModels
+			mu.RUnlock()
+			out := make([]map[string]any, len(cached))
+			copy(out, cached)
+			return out, nil
+		},
 		FilterModels:    options.FilterModels,
 		FilterAllModels: options.FilterAllModels,
 	}
@@ -113,9 +161,7 @@ func CreateProvider(options CreateProviderOptions) (*Provider, error) {
 					}
 				}
 				published, err := refresh.Publish(ModelsPublication{Update: func() error {
-					mu.Lock()
-					dynamicModels = restored
-					mu.Unlock()
+					setDynamicModels(restored)
 					return nil
 				}})
 				if err != nil || !published {
@@ -144,9 +190,7 @@ func CreateProvider(options CreateProviderOptions) (*Provider, error) {
 				return err
 			}
 			_, err = refresh.Publish(ModelsPublication{Persist: persist, Update: func() error {
-				mu.Lock()
-				dynamicModels = refreshed
-				mu.Unlock()
+				setDynamicModels(refreshed)
 				return nil
 			}})
 			return err

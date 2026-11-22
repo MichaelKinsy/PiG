@@ -1252,19 +1252,32 @@ function createProvider(input) {
     throw new Error(`Provider ${input.id}: at least one of "api", "images", or "classifiers" is required.`);
   }
   const baselineModels = input.models;
-  let dynamicModels = [];
   const fetchModels = input.fetchModels;
-  const currentModels = /* @__PURE__ */ __name(() => {
+  const chatModelsOf = /* @__PURE__ */ __name((models) => models.filter((model2) => isModelType(model2, "chat")), "chatModelsOf");
+  let allModels = baselineModels;
+  let chatModels = chatModelsOf(allModels);
+  const setDynamicModels = /* @__PURE__ */ __name((dynamicModels) => {
     const merged = [...baselineModels];
+    const indexByKey = /* @__PURE__ */ new Map();
+    const keyOf = /* @__PURE__ */ __name((model2) => `${getModelType(model2)}\0${model2.id}`, "keyOf");
+    merged.forEach((model2, index) => {
+      const key = keyOf(model2);
+      if (!indexByKey.has(key))
+        indexByKey.set(key, index);
+    });
     for (const model2 of dynamicModels) {
-      const index = merged.findIndex((entry) => getModelType(entry) === getModelType(model2) && entry.id === model2.id);
-      if (index >= 0)
+      const key = keyOf(model2);
+      const index = indexByKey.get(key);
+      if (index !== void 0) {
         merged[index] = model2;
-      else
+      } else {
+        indexByKey.set(key, merged.length);
         merged.push(model2);
+      }
     }
-    return merged;
-  }, "currentModels");
+    allModels = merged;
+    chatModels = chatModelsOf(merged);
+  }, "setDynamicModels");
   const apiFor = /* @__PURE__ */ __name((model2) => single ?? byApi?.[model2.api], "apiFor");
   const dispatch = /* @__PURE__ */ __name((model2, run, signal) => {
     const streams2 = apiFor(model2);
@@ -1281,15 +1294,13 @@ function createProvider(input) {
     baseUrl: input.baseUrl,
     headers: input.headers,
     auth: input.auth,
-    getModels: /* @__PURE__ */ __name(() => currentModels().filter((model2) => isModelType(model2, "chat")), "getModels"),
-    getAllModels: currentModels,
+    getModels: /* @__PURE__ */ __name(() => chatModels, "getModels"),
+    getAllModels: /* @__PURE__ */ __name(() => allModels, "getAllModels"),
     refreshModels: fetchModels ? async (context) => {
       if (context.stored) {
         const restored = context.stored.models.filter((model2) => model2.provider === input.id).map((model2) => model2);
         if (!await context.publish({
-          update: /* @__PURE__ */ __name(() => {
-            dynamicModels = restored;
-          }, "update")
+          update: /* @__PURE__ */ __name(() => setDynamicModels(restored), "update")
         })) {
           return;
         }
@@ -1302,9 +1313,7 @@ function createProvider(input) {
       const refreshed = fetched.filter(hasKnownModelType);
       await context.publish({
         persist: { models: refreshed, checkedAt: Date.now() },
-        update: /* @__PURE__ */ __name(() => {
-          dynamicModels = refreshed;
-        }, "update")
+        update: /* @__PURE__ */ __name(() => setDynamicModels(refreshed), "update")
       });
     } : void 0,
     filterModels: input.filterModels,

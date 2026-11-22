@@ -78,7 +78,7 @@ func (m *Models) GetModels(provider ...string) []*Model {
 		if provider == nil || provider.GetModels == nil {
 			continue
 		}
-		models, err := provider.GetModels()
+		models, err := provider.cachedChatModels()
 		if err == nil {
 			out = append(out, OfferedModels(models)...)
 		}
@@ -87,7 +87,15 @@ func (m *Models) GetModels(provider ...string) []*Model {
 }
 
 func (m *Models) GetModel(provider, id string) *Model {
-	for _, model := range m.GetModels(provider) {
+	entry := m.GetProvider(provider)
+	if entry == nil || entry.GetModels == nil {
+		return nil
+	}
+	models, err := entry.cachedChatModels()
+	if err != nil {
+		return nil
+	}
+	for _, model := range OfferedModels(models) {
 		if model.ID == id {
 			return model
 		}

@@ -1,0 +1,24 @@
+from = "1.5.2+9a7cfba4"
+to = "1.5.2+073b0bae"
+
+[[files]]
+path = "packages/ai/src/models.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/models_provider_catalog_merge_test.go#TestCreateProviderMergesCatalogOncePerPublishUpstream", "test:ai/models_provider_catalog_merge_test.go#TestCreateProviderRestoredCatalogMergesOncePerPublish", "test:ai/models_provider_catalog_merge_test.go#TestCreateProviderCatalogReadAllocs", "test:ai/models_provider_catalog_merge_test.go#TestCreateProviderCatalogMergeMatchesLegacy", "test:ai/models_provider_catalog_merge_test.go#TestCreateProviderCatalogConcurrentReadsDuringRefresh", "test:ai/models_provider_catalog_merge_test.go#TestCreateProviderReplacedGetterBypassesCache"]
+rationale = "073b0bae8 (#12366, closes #12311): createProvider previously re-merged baselineModels and dynamicModels with a linear findIndex per dynamic entry on every getModels()/getAllModels() call, making Models.getModel() quadratic in catalog size. The merge now runs once at construction and once per publish update callback (stored restore and network refresh) through a (type, id) index, caching both allModels and chatModels. ai/models_provider.go merges once per publish into an immutable atomic snapshot; public GetModels/GetAllModels return an owned shallow copy (1 alloc) so concurrent Go callers cannot race by mutating a shared slice, while package-private lookups (Models.GetModel, Models.GetModelOfType, Models.GetModels, Models.GetAllModels, compat builtin lookup) read the cached snapshot directly (0 allocs on GetModel). The Go, Rust, Python and Lisp SDK create_provider implementations merge once per publish the same way."
+oracle = "carried: 073b0bae8 (pi-ai/models.js: setDynamicModels with Map index, cached allModels and chatModels, and the two publish update callbacks)"
+
+[[files]]
+path = "packages/ai/test/models-runtime.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/models_provider_catalog_merge_test.go#TestCreateProviderMergesCatalogOncePerPublishUpstream"]
+rationale = "073b0bae8: Pi's #12311 regression test (baseline + fetched override/append, catalog cached across reads before and after refresh) is ported in TestCreateProviderMergesCatalogOncePerPublishUpstream alongside merge-count, allocation, property-equivalence and race tests."
+
+[[files]]
+path = "packages/ai/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "073b0bae8: Pi's changelog entry. PiG's user-visible change is its own changelog.d fragment."

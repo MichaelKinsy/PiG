@@ -67,29 +67,60 @@ def create_provider(
     classifiers = classifiers or {}
     if not streams and not images and not classifiers:
         raise ValueError(f'Provider {id}: at least one of "api", "images", or "classifiers" is required.')
+    baseline = list(models)
     lock = threading.Lock()
-    dynamic: list[dict] = []
 
-    def current_models() -> list[dict]:
-        with lock:
-            merged = list(models)
+    def _build_catalog(dynamic: list[dict]) -> tuple[list[dict], list[dict]]:
+        # Merged once per publish, not per read (upstream: packages/ai/src/models.ts, Pi 073b0bae8 / #12311).
+        merged = list(baseline)
+        if dynamic:
+            index_by_key: dict[tuple[str, Any], int] = {}
+            for index, entry in enumerate(merged):
+                entry_id = entry.get("id")
+                if isinstance(entry_id, (str, int, float, bool)) or entry_id is None:
+                    key = (_model_type(entry), entry_id)
+                    if key not in index_by_key:
+                        index_by_key[key] = index
             for model in dynamic:
-                for index, entry in enumerate(merged):
-                    if _model_type(entry) == _model_type(model) and entry.get("id") == model.get("id"):
-                        merged[index] = model
-                        break
+                model_id = model.get("id")
+                if isinstance(model_id, (str, int, float, bool)) or model_id is None:
+                    key = (_model_type(model), model_id)
+                    existing = index_by_key.get(key)
+                    if existing is not None:
+                        merged[existing] = model
+                    else:
+                        index_by_key[key] = len(merged)
+                        merged.append(model)
                 else:
-                    merged.append(model)
-            return merged
+                    for index, entry in enumerate(merged):
+                        if _model_type(entry) == _model_type(model) and entry.get("id") == model_id:
+                            merged[index] = model
+                            break
+                    else:
+                        merged.append(model)
+        chat = [model for model in merged if _model_type(model) == "chat"]
+        return merged, chat
+
+    all_models, chat_models = _build_catalog([])
+
+    def get_models() -> list[dict]:
+        with lock:
+            return list(chat_models)
+
+    def get_all_models() -> list[dict]:
+        with lock:
+            return list(all_models)
 
     def api_for(model: dict) -> ProviderStreams | None:
         return single if single is not None else by_api.get(model.get("api"))
 
     def set_dynamic(value: list[dict]) -> Callable[[], None]:
         def update() -> None:
-            nonlocal dynamic
+            nonlocal all_models, chat_models
+            merged, chat = _build_catalog(value)
             with lock:
-                dynamic = value
+                all_models = merged
+                chat_models = chat
 
         return update
 
@@ -117,11 +148,11 @@ def create_provider(
 
     provider = Provider(
         id=id, name=name if name is not None else id, auth=auth,
-        get_models=lambda: [model for model in current_models() if _model_type(model) == "chat"],
+        get_models=get_models,
         stream=dispatch(False), stream_simple=dispatch(True),
         base_url=base_url, headers=headers,
         filter_models=filter_models, filter_all_models=filter_all_models,
-        get_all_models=current_models,
+        get_all_models=get_all_models,
         refresh_models=refresh_models if fetch_models is not None else None,
     )
     if any(entry.fetch_deferred is not None for entry in streams):

@@ -26,7 +26,7 @@ func (m *Models) GetAllModels(provider ...string) []AnyModel {
 		if entry == nil {
 			continue
 		}
-		models, err := providerAllModels(entry)
+		models, err := entry.cachedAllModels()
 		if err == nil {
 			out = append(out, OfferedModels(models)...)
 		}
@@ -41,8 +41,16 @@ func (m *Models) GetModelsOfType(modelType ModelType, provider ...string) []AnyM
 
 // GetModelOfType looks up one model of the given type in the last-known lists, or returns nil.
 func (m *Models) GetModelOfType(modelType ModelType, provider, id string) AnyModel {
-	for _, model := range m.GetModelsOfType(modelType, provider) {
-		if model.ModelID() == id {
+	entry := m.GetProvider(provider)
+	if entry == nil {
+		return nil
+	}
+	models, err := entry.cachedAllModels()
+	if err != nil {
+		return nil
+	}
+	for _, model := range OfferedModels(models) {
+		if IsModelType(model, modelType) && model.ModelID() == id {
 			return model
 		}
 	}

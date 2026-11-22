@@ -47,17 +47,40 @@ model). API is a provider-streams or a hash-table of them by api; IMAGES and CLA
          (streams (cond (single (list single))
                         (by-api (loop for v being the hash-values of by-api when v collect v))))
          (lock (sb-thread:make-mutex :name "pig provider models"))
-         (dynamic '()))
+         (baseline (copy-list models))
+         (all-models '())
+         (chat-models '()))
     (unless (or streams (and images (plusp (hash-table-count images))) (and classifiers (plusp (hash-table-count classifiers))))
       (error "Provider ~A: at least one of \"api\", \"images\", or \"classifiers\" is required." id))
-    (labels ((current-models ()
-               (sb-thread:with-mutex (lock)
-                 (let ((merged (copy-list models)))
-                   (dolist (model dynamic merged)
-                     (let ((position (position-if (lambda (entry) (and (equal (cp-model-type entry) (cp-model-type model)) (equal (jget entry "id") (jget model "id")))) merged)))
-                       (if position (setf (nth position merged) model) (setf merged (append merged (list model)))))))))
+    (labels ((build-catalog (dynamic)
+               ;; Merged once per publish, not per read (upstream: packages/ai/src/models.ts, Pi 073b0bae8 / #12311).
+               (let ((merged (make-array (length baseline) :initial-contents baseline :adjustable t :fill-pointer t)))
+                 (when dynamic
+                   (let ((index-by-key (make-hash-table :test #'equal)))
+                     (loop for i below (length merged)
+                           for entry = (aref merged i)
+                           for key = (cons (cp-model-type entry) (jget entry "id"))
+                           unless (nth-value 1 (gethash key index-by-key))
+                             do (setf (gethash key index-by-key) i))
+                     (dolist (model dynamic)
+                       (let* ((key (cons (cp-model-type model) (jget model "id")))
+                              (existing (gethash key index-by-key)))
+                         (if existing
+                             (setf (aref merged existing) model)
+                             (progn
+                               (setf (gethash key index-by-key) (length merged))
+                               (vector-push-extend model merged)))))))
+                 (let* ((all (coerce merged 'list))
+                        (chat (remove-if-not (lambda (model) (equal (cp-model-type model) "chat")) all)))
+                   (values all chat))))
+             (set-dynamic (value)
+               (lambda ()
+                 (multiple-value-bind (all chat) (build-catalog value)
+                   (sb-thread:with-mutex (lock)
+                     (setf all-models all chat-models chat)))))
+             (get-models () (sb-thread:with-mutex (lock) (copy-list chat-models)))
+             (get-all-models () (sb-thread:with-mutex (lock) (copy-list all-models)))
              (api-for (model) (or single (cp-table-get by-api (jget model "api"))))
-             (set-dynamic (value) (lambda () (sb-thread:with-mutex (lock) (setf dynamic value))))
              (signalled-p (context) (and (refresh-models-context-signal context) (abort-signal-set-p (refresh-models-context-signal context))))
              (refresh-models (context)
                (let ((stored (refresh-models-context-stored context)))
@@ -81,11 +104,13 @@ model). API is a provider-streams or a hash-table of them by api; IMAGES and CLA
                        (funcall (if simple (provider-streams-stream-simple implementation) (provider-streams-stream implementation)) model context options)
                        (cp-setup-error-stream model (format nil "Provider ~A has no API implementation for ~S" id (cp-js-text (jget model "api"))))))))
              (deferred-p (accessor) (some accessor streams)))
+      (multiple-value-bind (all chat) (build-catalog nil)
+        (setf all-models all chat-models chat))
       (make-provider
        :id id :name (or name id) :auth auth
-       :get-models (lambda () (remove-if-not (lambda (model) (equal (cp-model-type model) "chat")) (current-models)))
+       :get-models #'get-models
        :stream (dispatch nil) :stream-simple (dispatch t) :base-url base-url :headers headers
-       :filter-models filter-models :filter-all-models filter-all-models :get-all-models #'current-models
+       :filter-models filter-models :filter-all-models filter-all-models :get-all-models #'get-all-models
        :refresh-models (and fetch-models #'refresh-models)
        :fetch-deferred
        (and (deferred-p #'provider-streams-fetch-deferred)

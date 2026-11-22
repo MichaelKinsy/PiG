@@ -211,7 +211,7 @@
     },
     {
       "path": "pi-dist/pi-ai/models.js",
-      "sha256": "f23dda9e5a472f9556c9b834d924504b771af8275d17a49496100a4f4b91e2dc"
+      "sha256": "5c67193e337652ecc239e03c35a11fe2a0afa06e5c23428e1b38ca4674c9499e"
     },
     {
       "path": "pi-dist/pi-ai/providers/all.js",

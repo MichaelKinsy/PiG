@@ -34041,6 +34041,27 @@
       ]
     },
     {
+      "id": "BF-83717f0",
+      "title": "fix(sdk): merge Go SDK CreateProvider model catalog once per publish",
+      "symptom": "fix(sdk): merge Go SDK CreateProvider model catalog once per publish",
+      "rootCause": "Ports Pi (#12366, closes #12311) to the Go extension SDK.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "83717f0974",
+          "date": "2026-11-21"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/create_provider_catalog_merge_test.go::TestCreateProviderCatalogMergesOncePerPublish"
+      ]
+    },
+    {
       "id": "BF-83928e2",
       "title": "A `context` handler that edits a message of `event.messages` in place and then throws now leaves the edit in…",
       "symptom": "A `context` handler that edits a message of `event.messages` in place and then throws now leaves the edit in the request, as it does in Pi, where the handler works on a copy of the list over the one set of message objects: an edit to a message stays and a change to the list does not.",
@@ -49773,6 +49794,25 @@
       ]
     },
     {
+      "id": "BF-bd272e5",
+      "title": "fix(sdk): merge Rust SDK create_provider model catalog once per publish",
+      "symptom": "fix(sdk): merge Rust SDK create_provider model catalog once per publish",
+      "rootCause": "Ports Pi (#12366, closes #12311) to the Rust extension SDK.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "bd272e545e",
+          "date": "2026-11-21"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-bd3e8ab",
       "title": "On arm64 and other CPUs with a fused multiply-add, Kimi, Radius and xAI OAuth credentials store the `expires`…",
       "symptom": "The expiry could differ in the last digit and the minutes by one at a half-minute boundary.",
@@ -51363,6 +51403,25 @@
       ]
     },
     {
+      "id": "BF-c511044",
+      "title": "fix(sdk): merge Python SDK create_provider model catalog once per publish",
+      "symptom": "fix(sdk): merge Python SDK create_provider model catalog once per publish",
+      "rootCause": "Ports Pi (#12366, closes #12311) to the Python extension SDK.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "c51104493d",
+          "date": "2026-11-21"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-c51c77e",
       "title": "An extension that calls `registerTool({})` or `registerTool(null)` now fails to load with Pi's error text…",
       "symptom": "An extension that calls `registerTool({})` or `registerTool(null)` now fails to load with Pi's error text (the missing parameter schema, or the TypeError of reading `parameters`), not a PiG-only message.",
@@ -51895,6 +51954,25 @@
       "tests": [
         "chord/next/host/host_registry_readers_test.go::TestValuesMemoryAValueAnAppKeepsAfterHostCloseKeepsNoClosedHostAndReadsItsLastCompositionSolAstra"
       ]
+    },
+    {
+      "id": "BF-c735439",
+      "title": "fix(sdk): merge Lisp SDK create-provider model catalog once per publish",
+      "symptom": "fix(sdk): merge Lisp SDK create-provider model catalog once per publish",
+      "rootCause": "Ports Pi (#12366, closes #12311) to the Lisp extension SDK.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "c7354395b9",
+          "date": "2026-11-21"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-c7b91e7",
@@ -58848,6 +58926,33 @@
         "internal/codingagent/tools/testmain_test.go::TestMain",
         "internal/testenv/terminal_session_linux_test.go::TestInTerminalSessionRunsTheTestAsTheLeaderOfAControllingTerminal",
         "internal/testenv/terminal_session_linux_test.go::TestRequireTerminalForegroundFailsWhileAnotherGroupHoldsTheTerminal"
+      ]
+    },
+    {
+      "id": "BF-dc99069",
+      "title": "For a provider built with `CreateProvider` (an SDK or natively registered provider, or a direct user of…",
+      "symptom": "For a provider built with `CreateProvider` (an SDK or natively registered provider, or a direct user of package ai) that fetches a large model catalog, every model lookup re-merged the provider's baseline and fetched catalogs on every read, slowing model selection and request setup for that provider; built-in providers were not affected; the catalog is now merged once when published (stored restore or network refresh) and cached, with public getters returning an owned copy and internal lookups reading the cached snapshot directly.",
+      "rootCause": "3dd4d752e8; upstream Pi 073b0bae8 (#12366, closes #12311)",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "For a provider built with `CreateProvider` (an SDK or natively registered provider, or a direct user of package ai) that fetches a large model catalog, every model lookup re-merged the provider's baseline and fetched catalogs on every read, slowing model selection and request setup for that provider; built-in providers were not affected; the catalog is now merged once when published (stored restore or network refresh) and cached, with public getters returning an owned copy and internal lookups reading the cached snapshot directly. Affects v0.4.0, v0.4.1, v0.5.0, v0.5.1, v0.5.2, v0.5.3, v0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "dc99069530",
+          "date": "2026-11-21"
+        }
+      ],
+      "tests": [
+        "ai/models_provider_catalog_merge_test.go::TestCreateProviderCatalogConcurrentReadsDuringRefresh",
+        "ai/models_provider_catalog_merge_test.go::TestCreateProviderCatalogMergeMatchesLegacy",
+        "ai/models_provider_catalog_merge_test.go::TestCreateProviderCatalogReadAllocs",
+        "ai/models_provider_catalog_merge_test.go::TestCreateProviderMergesCatalogOncePerPublishUpstream",
+        "ai/models_provider_catalog_merge_test.go::TestCreateProviderReplacedGetterBypassesCache",
+        "ai/models_provider_catalog_merge_test.go::TestCreateProviderRestoredCatalogMergesOncePerPublish"
       ]
     },
     {

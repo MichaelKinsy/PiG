@@ -13410,7 +13410,7 @@
       "evidence": [
         "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
-        "test:ai/models_refresh_replacement_test.go#TestModelsRefreshCannotStartAReplacedProviderSnapshot"
+        "test:ai/models_provider_catalog_merge_test.go#TestCreateProviderCatalogConcurrentReadsDuringRefresh"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -58156,7 +58156,7 @@
       "evidence": [
         "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
-        "test:ai/models_refresh_replacement_test.go#TestModelsRefreshCannotStartAReplacedProviderSnapshot"
+        "test:ai/models_provider_catalog_merge_test.go#TestCreateProviderCatalogConcurrentReadsDuringRefresh"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -83493,7 +83493,7 @@
       "evidence": [
         "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
-        "test:ai/models_refresh_replacement_test.go#TestModelsRefreshCannotStartAReplacedProviderSnapshot"
+        "test:ai/models_provider_catalog_merge_test.go#TestCreateProviderCatalogConcurrentReadsDuringRefresh"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
