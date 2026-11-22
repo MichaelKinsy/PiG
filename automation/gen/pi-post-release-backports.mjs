@@ -3277,17 +3277,25 @@ patch("37b74c546921", "pi-coding-agent/modes/interactive/components/oauth-select
         this.selectedIndex = query ? 0 : Math.min(this.selectedIndex, Math.max(0, this.filteredProviders.length - 1));
 `],
 ]);
+// Carries 37b74c546921 (#12246) and 5bcf370a5293 (#12334) in place for scoped-models-selector.js (5bcf370a5293 rewrites the same handleInput lines).
 patch("37b74c546921", "pi-coding-agent/modes/interactive/components/scoped-models-selector.js", [
     ["        // Pass everything else to search input\n        this.searchInput.handleInput(data);\n        this.refresh();\n",
       `        ${note("37b74c546921").trim()}
-        // Pass everything else to search input. A query moves the selection to the top row, so the best match is
-        // highlighted; toggles and reorders call refresh() too, so the reset lives here and not there.
+        ${note("5bcf370a5293").trim()}
+        // Pass everything else to search input. A new query moves the selection to the top row, so the best match is
+        // highlighted; toggles and reorders call refresh() too, so the reset lives here and not there. Cursor keys
+        // leave the query as it is and must not move the selection.
+        const previousQuery = this.searchInput.getValue();
         this.searchInput.handleInput(data);
-        if (this.searchInput.getValue())
+        const query = this.searchInput.getValue();
+        if (query === previousQuery)
+            return;
+        if (query)
             this.selectedIndex = 0;
         this.refresh();
 `],
 ]);
+// Carries 37b74c546921 (#12246) and 5bcf370a5293 (#12334) in place for session-selector.js (5bcf370a5293 rewrites handleSearchInput added by 37b74c546921).
 patch("37b74c546921", "pi-coding-agent/modes/interactive/components/session-selector.js", [
     ["            if (this.searchInput.getValue().length > 0) {\n                this.searchInput.handleInput(keyData);\n                this.filterSessions(this.searchInput.getValue());\n                return;\n",
       `            if (this.searchInput.getValue().length > 0) {
@@ -3302,10 +3310,15 @@ patch("37b74c546921", "pi-coding-agent/modes/interactive/components/session-sele
             this.handleSearchInput(keyData);
         }
     }
-    /** Applies a key to the search query; a non-empty query selects the top row, the best match. */
+    ${note("5bcf370a5293").trim()}
+    /** Applies a key to the search query; a changed, non-empty query selects the top row, the best match. */
     handleSearchInput(keyData) {
+        const previousQuery = this.searchInput.getValue();
         this.searchInput.handleInput(keyData);
         const query = this.searchInput.getValue();
+        // Cursor keys leave the query as it is and must not move the selection.
+        if (query === previousQuery)
+            return;
         this.filterSessions(query);
         if (!query.trim())
             return;
@@ -3321,6 +3334,7 @@ patch("37b74c546921", "pi-coding-agent/modes/interactive/components/session-sele
 
 // BEGIN backport 5bcf370a5293
 // 5bcf370a5293 (#12334, issue #12245): the searchable selectors re-run their filter only when the query changed, so Left, Right, Home and End keep the selection.
+// scoped-models-selector.js and session-selector.js carry 5bcf370a5293 in place in the 37b74c546921 block above because 5bcf370a5293 rewrites the lines 37b74c546921 added.
 patch("5bcf370a5293", "pi-coding-agent/modes/interactive/components/oauth-selector.js", [
     ["        // Pass everything else to search input\n        else {\n            this.searchInput.handleInput(keyData);\n            this.filterProviders(this.searchInput.getValue());\n        }\n",
       `        ${note("5bcf370a5293").trim()}
@@ -3334,45 +3348,6 @@ patch("5bcf370a5293", "pi-coding-agent/modes/interactive/components/oauth-select
         }
 `],
 ]);
-patch("5bcf370a5293", "pi-coding-agent/modes/interactive/components/scoped-models-selector.js", [
-    [`        // Pass everything else to search input. A query moves the selection to the top row, so the best match is
-        // highlighted; toggles and reorders call refresh() too, so the reset lives here and not there.
-        this.searchInput.handleInput(data);
-        if (this.searchInput.getValue())
-            this.selectedIndex = 0;
-        this.refresh();
-`, `        ${note("5bcf370a5293").trim()}
-        // Pass everything else to search input. A new query moves the selection to the top row, so the best match is
-        // highlighted; toggles and reorders call refresh() too, so the reset lives here and not there. Cursor keys
-        // leave the query as it is and must not move the selection.
-        const previousQuery = this.searchInput.getValue();
-        this.searchInput.handleInput(data);
-        const query = this.searchInput.getValue();
-        if (query === previousQuery)
-            return;
-        if (query)
-            this.selectedIndex = 0;
-        this.refresh();
-`],
-], "37b74c546921");
-patch("5bcf370a5293", "pi-coding-agent/modes/interactive/components/session-selector.js", [
-    [`    /** Applies a key to the search query; a non-empty query selects the top row, the best match. */
-    handleSearchInput(keyData) {
-        this.searchInput.handleInput(keyData);
-        const query = this.searchInput.getValue();
-        this.filterSessions(query);
-`, `    ${note("5bcf370a5293").trim()}
-    /** Applies a key to the search query; a changed, non-empty query selects the top row, the best match. */
-    handleSearchInput(keyData) {
-        const previousQuery = this.searchInput.getValue();
-        this.searchInput.handleInput(keyData);
-        const query = this.searchInput.getValue();
-        // Cursor keys leave the query as it is and must not move the selection.
-        if (query === previousQuery)
-            return;
-        this.filterSessions(query);
-`],
-], "37b74c546921");
 patch("5bcf370a5293", "pi-coding-agent/modes/interactive/components/config-selector.js", [
     ["        // Pass to search input\n        this.searchInput.handleInput(data);\n        this.filterItems(this.searchInput.getValue());\n",
       `        ${note("5bcf370a5293").trim()}
