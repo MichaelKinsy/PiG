@@ -1,0 +1,3 @@
+### Fixed
+
+- Changing the thinking level mid-conversation on GPT-6 models with the OpenAI Codex provider (`openai-codex-responses`) no longer invalidates the prompt cache: thinking level changes (including switching to `off`, sent as `none`) are now sent as `configuration_update` input items with a fixed `reasoning.effort` of `medium`, and `maxTokens` is forwarded as `max_output_tokens` (at least 16) unless `compat.supportsMaxOutputTokens` is `false`. <!-- fix: e6df1cddad --> <!-- cause: Codex did not enable supportsMidConvoEffort on GPT-6 models or emit configuration_update items, and skipped forwarding maxTokens to max_output_tokens. -->
