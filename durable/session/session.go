@@ -172,6 +172,9 @@ type SessionImpl struct {
 	// callers the delivery goroutine waits for.
 	parkMu          sync.Mutex
 	parks           map[*Parked]struct{}
+	// afterParkEnter is called by Park after enter(continuationOf(ctx)) and before inserting into parks.
+	// Only tests set it; it is nil in production.
+	afterParkEnter  func()
 	awaitingWakes   atomic.Int32
 	awaitingCallers atomic.Int32
 

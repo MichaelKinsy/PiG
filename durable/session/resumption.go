@@ -129,6 +129,9 @@ func (session *SessionImpl) Park(ctx context.Context, done <-chan struct{}) *Par
 	default:
 	}
 	enter(continuationOf(ctx))
+	if session.afterParkEnter != nil {
+		session.afterParkEnter()
+	}
 	parked := &Parked{resumption: newResumption(continuationOf(ctx)), session: session, done: done}
 	// A wait stays registered until it is acknowledged, not only until it resumed: the acknowledgement of one that belongs to a
 	// Continuation is given when the continuation has entered, and a publication that looks for the waits it readied after the

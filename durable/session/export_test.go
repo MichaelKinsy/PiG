@@ -65,3 +65,11 @@ func SetAfterSignalRead(tx *Transaction, after func(durable.TaskId, string, dura
 	defer tx.mu.Unlock()
 	tx.afterSignalRead = after
 }
+
+// SetAfterParkEnter sets the function Park calls after enter(continuationOf(ctx)) and before inserting into session.parks:
+// a test pauses the parking goroutine there to observe the enter-before-insert window.
+func SetAfterParkEnter(session *SessionImpl, after func()) {
+	session.parkMu.Lock()
+	defer session.parkMu.Unlock()
+	session.afterParkEnter = after
+}
