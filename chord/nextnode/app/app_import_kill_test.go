@@ -25,6 +25,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/workers"
 )
 
 // The kill tests of D462: an import or a delete of an address's data commits twice (the NodeHost's store, then the Go host's), where Pi's
@@ -133,8 +134,20 @@ func runSeamChild() {
 	os.Exit(2)
 }
 
-// killedAtTheSeam runs the child in mode do on dataDir and kills it by its pid where it says SEAM; the test fails when it does not.
+// killedAtTheSeam runs the child in mode do on dataDir, kills it by its pid where it says SEAM, and clears the dead
+// server's stale lock file (modeling what an operator on macOS and the BSDs must do by hand after a hard kill, as in
+// Pi; a no-op where locks are abstract sockets or named pipes).
 func killedAtTheSeam(t *testing.T, dataDir, root, archive, do, id, step string) {
+	t.Helper()
+	killedAtTheSeamRaw(t, dataDir, root, archive, do, id, step)
+	if _, err := workers.ClearStaleLock(serverLockName(dataDir), background); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// killedAtTheSeamRaw runs the child in mode do on dataDir and kills it by its pid where it says SEAM without clearing
+// any stale lock files left behind.
+func killedAtTheSeamRaw(t *testing.T, dataDir, root, archive, do, id, step string) {
 	t.Helper()
 	executable, err := os.Executable()
 	if err != nil {

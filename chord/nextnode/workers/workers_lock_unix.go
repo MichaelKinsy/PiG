@@ -19,6 +19,9 @@ import (
 // platformLockLocation is `processLock`'s choice of where the lock lives: Linux and Android an abstract socket (Node's
 // `\0chord-lock-<key>`, written @ by Go), elsewhere a socket file.
 func platformLockLocation(key string) (lockLocation, error) {
+	if loc, forced := forcedLockFileLocation(key); forced {
+		return loc, nil
+	}
 	if runtime.GOOS == "linux" || runtime.GOOS == "android" {
 		return lockLocation{kind: lockAbstract, address: "@chord-lock-" + key}, nil
 	}
