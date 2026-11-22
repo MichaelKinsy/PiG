@@ -2923,6 +2923,152 @@ import { NodeHttpHandler } from "@smithy/node-http-handler";
 ]);
 // END backport be269f57b1
 
+// BEGIN backport 31b407dc63
+// 31b407dc63 (#11889): run shutdown cleanup on Windows console close (SIGHUP on win32), wait for one synchronous
+// taskkill (2000 ms timeout) in killTrackedDetachedChildren on win32, and call killTrackedDetachedChildren before
+// process.exit on normal interactive and RPC quits.
+// not carried: packages/coding-agent/test/print-mode.test.ts, packages/coding-agent/test/rpc-prompt-response-semantics.test.ts, packages/coding-agent/test/shell-kill-process-tree.test.ts, and packages/coding-agent/CHANGELOG.md: the package ships none of them.
+patch("31b407dc63", "pi-coding-agent/utils/shell.js", [
+    [`export function killTrackedDetachedChildren() {
+    for (const pid of trackedDetachedChildPids) {
+        killProcessTree(pid);
+    }
+    trackedDetachedChildPids.clear();
+}
+/**
+ * Kill a process and all its children (cross-platform)
+ */
+export function killProcessTree(pid) {
+    if (process.platform === "win32") {
+        // Use the trusted System32 executable so cleanup does not depend on PATH.
+        try {
+            const child = spawn(join(process.env.SystemRoot || "C:\\\\Windows", "System32", "taskkill.exe"), ["/F", "/T", "/PID", String(pid)], {
+                stdio: "ignore",
+                detached: true,
+                windowsHide: true,
+            });`, `/** Kill every tracked shell process tree. On Windows this blocks until taskkill finishes. */
+export function killTrackedDetachedChildren() {
+    ${note("31b407dc63").trim()}
+    if (trackedDetachedChildPids.size === 0)
+        return;
+    if (process.platform === "win32") {
+        // Callers exit right after this. Exiting kills the shell (libuv's job object), and taskkill /T
+        // then no longer finds the shell's descendants, so wait for taskkill. windowsHide gives it its own
+        // console, so a console close (SIGHUP) does not end it too.
+        const pidArgs = [...trackedDetachedChildPids].flatMap((pid) => ["/PID", String(pid)]);
+        spawnSync(getTaskkillPath(), ["/F", "/T", ...pidArgs], {
+            stdio: "ignore",
+            timeout: 2000,
+            windowsHide: true,
+        });
+    }
+    else {
+        for (const pid of trackedDetachedChildPids) {
+            killProcessTree(pid);
+        }
+    }
+    trackedDetachedChildPids.clear();
+}
+// Use the trusted System32 executable so cleanup does not depend on PATH.
+function getTaskkillPath() {
+    return join(process.env.SystemRoot || "C:\\\\Windows", "System32", "taskkill.exe");
+}
+/**
+ * Kill a process and all its children (cross-platform)
+ */
+export function killProcessTree(pid) {
+    if (process.platform === "win32") {
+        try {
+            const child = spawn(getTaskkillPath(), ["/F", "/T", "/PID", String(pid)], {
+                stdio: "ignore",
+                detached: true,
+                windowsHide: true,
+            });`],
+]);
+patch("31b407dc63", "pi-coding-agent/modes/rpc/rpc-mode.js", [
+    [`    const registerSignalHandlers = () => {
+        const signals = ["SIGTERM"];
+        if (process.platform !== "win32") {
+            signals.push("SIGHUP");
+        }`, `    const registerSignalHandlers = () => {
+        ${note("31b407dc63").trim()}
+        const signals = ["SIGTERM", "SIGHUP"];`],
+    [`        if (signal !== "SIGTERM") {
+            await flushRawStdout();
+        }
+        process.exit(exitCode);`, `        if (signal !== "SIGTERM") {
+            await flushRawStdout();
+        }
+        ${note("31b407dc63").trim()}
+        // dispose() only starts killing a running \`bash\` command, which on Windows loses the race with
+        // exit. After the last await, so it also catches a shell spawned after the abort.
+        killTrackedDetachedChildren();
+        process.exit(exitCode);`],
+]);
+patch("31b407dc63", "pi-coding-agent/modes/interactive/interactive-mode.js", [
+    [`            await this.ui.terminal.drainInput(1000);
+            this.stop();
+            process.exit(0);`, `            await this.ui.terminal.drainInput(1000);
+            this.stop();
+            ${note("31b407dc63").trim()}
+            killTrackedDetachedChildren();
+            process.exit(0);`],
+    [`        if (resumeCommand) {
+            process.stdout.write(\`\${chalk.dim("To resume this session:")} \${resumeCommand}\\n\`);
+        }
+        process.exit(0);`, `        if (resumeCommand) {
+            process.stdout.write(\`\${chalk.dim("To resume this session:")} \${resumeCommand}\\n\`);
+        }
+        ${note("31b407dc63").trim()}
+        // dispose() only starts killing a running \`!\` command, which on Windows loses the race with
+        // exit. After the last await, so it also catches a shell spawned after the abort.
+        killTrackedDetachedChildren();
+        process.exit(0);`],
+    [`    registerSignalHandlers() {
+        this.unregisterSignalHandlers();
+        const signals = ["SIGTERM"];
+        if (process.platform !== "win32") {
+            signals.push("SIGHUP");
+        }`, `    registerSignalHandlers() {
+        this.unregisterSignalHandlers();
+        ${note("31b407dc63").trim()}
+        const signals = ["SIGTERM", "SIGHUP"];`],
+]);
+patch("31b407dc63", "pi-coding-agent/modes/print-mode.js", [
+    [`    const registerSignalHandlers = () => {
+        const signals = ["SIGTERM"];
+        if (process.platform !== "win32") {
+            signals.push("SIGHUP");
+        }`, `    const registerSignalHandlers = () => {
+        ${note("31b407dc63").trim()}
+        const signals = ["SIGTERM", "SIGHUP"];`],
+]);
+mirrorSource("31b407dc63", "packages/coding-agent/src/utils/shell.ts", [
+    [`export function killTrackedDetachedChildren(): void {
+	for (const pid of trackedDetachedChildPids) {
+		killProcessTree(pid);
+	}
+	trackedDetachedChildPids.clear();
+}`, `/** Kill every tracked shell process tree. On Windows this blocks until taskkill finishes. */
+export function killTrackedDetachedChildren(): void {
+	if (trackedDetachedChildPids.size === 0) return;
+	if (process.platform === "win32") {
+		const pidArgs = [...trackedDetachedChildPids].flatMap((pid) => ["/PID", String(pid)]);
+		spawnSync(getTaskkillPath(), ["/F", "/T", ...pidArgs], {
+			stdio: "ignore",
+			timeout: 2000,
+			windowsHide: true,
+		});
+	} else {
+		for (const pid of trackedDetachedChildPids) {
+			killProcessTree(pid);
+		}
+	}
+	trackedDetachedChildPids.clear();
+}`],
+]);
+// END backport 31b407dc63
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 // Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.

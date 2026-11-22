@@ -3636,6 +3636,8 @@ export class InteractiveMode {
             this.themeController.disableAutoSync();
             await this.ui.terminal.drainInput(1000);
             this.stop();
+            // Pi 31b407dc63 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+            killTrackedDetachedChildren();
             process.exit(0);
         }
         // Interactive quit (Ctrl+D, Ctrl+C, /quit, extension shutdown()). Stop the
@@ -3651,6 +3653,10 @@ export class InteractiveMode {
         if (resumeCommand) {
             process.stdout.write(`${chalk.dim("To resume this session:")} ${resumeCommand}\n`);
         }
+        // Pi 31b407dc63 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+        // dispose() only starts killing a running `!` command, which on Windows loses the race with
+        // exit. After the last await, so it also catches a shell spawned after the abort.
+        killTrackedDetachedChildren();
         process.exit(0);
     }
     emergencyTerminalExit() {
@@ -3713,10 +3719,8 @@ export class InteractiveMode {
     }
     registerSignalHandlers() {
         this.unregisterSignalHandlers();
-        const signals = ["SIGTERM"];
-        if (process.platform !== "win32") {
-            signals.push("SIGHUP");
-        }
+        // Pi 31b407dc63 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+        const signals = ["SIGTERM", "SIGHUP"];
         for (const signal of signals) {
             const handler = () => {
                 // SIGHUP no longer hard-exits: graceful shutdown emits session_shutdown

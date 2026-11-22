@@ -286,10 +286,8 @@ export async function runRpcMode(runtimeHost) {
         });
     };
     const registerSignalHandlers = () => {
-        const signals = ["SIGTERM"];
-        if (process.platform !== "win32") {
-            signals.push("SIGHUP");
-        }
+        // Pi 31b407dc63 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+        const signals = ["SIGTERM", "SIGHUP"];
         for (const signal of signals) {
             const exitCode = signal === "SIGHUP" ? 129 : 143;
             // Handlers stay registered until exit: without one, a signal during shutdown would kill
@@ -601,6 +599,10 @@ export async function runRpcMode(runtimeHost) {
         if (signal !== "SIGTERM") {
             await flushRawStdout();
         }
+        // Pi 31b407dc63 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+        // dispose() only starts killing a running `bash` command, which on Windows loses the race with
+        // exit. After the last await, so it also catches a shell spawned after the abort.
+        killTrackedDetachedChildren();
         process.exit(exitCode);
     }
     /**

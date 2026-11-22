@@ -29,6 +29,14 @@ func killProcessGroup(p *os.Process) error {
 	return killProcessTree(syscall.Kill, runtime.GOOS == "darwin", p.Pid)
 }
 
+// killTrackedProcessGroups ends every tracked process group on the exit path.
+// Ports packages/coding-agent/src/utils/shell.ts:killTrackedDetachedChildren (POSIX branch).
+func killTrackedProcessGroups(processes []*os.Process) {
+	for _, p := range processes {
+		_ = killProcessGroup(p)
+	}
+}
+
 // killProcessTree stops the group first on macOS, then SIGKILLs it and falls back to the shell alone when the group
 // kill fails. macOS signals group members one at a time after releasing the group lock, so a killed child can wake its
 // waiting shell before the shell is signalled and let `a; b` start b during cancellation (Pi #11252). Stopping first

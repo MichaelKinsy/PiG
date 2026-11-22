@@ -160,16 +160,31 @@ function untrackDetachedChildPid(pid) {
 }
 __name(untrackDetachedChildPid, "untrackDetachedChildPid");
 function killTrackedDetachedChildren() {
-  for (const pid of trackedDetachedChildPids) {
-    killProcessTree(pid);
+  if (trackedDetachedChildPids.size === 0)
+    return;
+  if (process.platform === "win32") {
+    const pidArgs = [...trackedDetachedChildPids].flatMap((pid) => ["/PID", String(pid)]);
+    spawnSync(getTaskkillPath(), ["/F", "/T", ...pidArgs], {
+      stdio: "ignore",
+      timeout: 2e3,
+      windowsHide: true
+    });
+  } else {
+    for (const pid of trackedDetachedChildPids) {
+      killProcessTree(pid);
+    }
   }
   trackedDetachedChildPids.clear();
 }
 __name(killTrackedDetachedChildren, "killTrackedDetachedChildren");
+function getTaskkillPath() {
+  return join(process.env.SystemRoot || "C:\\Windows", "System32", "taskkill.exe");
+}
+__name(getTaskkillPath, "getTaskkillPath");
 function killProcessTree(pid) {
   if (process.platform === "win32") {
     try {
-      const child = spawn(join(process.env.SystemRoot || "C:\\Windows", "System32", "taskkill.exe"), ["/F", "/T", "/PID", String(pid)], {
+      const child = spawn(getTaskkillPath(), ["/F", "/T", "/PID", String(pid)], {
         stdio: "ignore",
         detached: true,
         windowsHide: true

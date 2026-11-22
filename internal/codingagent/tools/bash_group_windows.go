@@ -3,12 +3,14 @@
 package tools
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"runtime"
 	"syscall"
+	"time"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -25,11 +27,26 @@ import (
 // Ports packages/coding-agent/src/utils/shell.ts
 func setProcessGroup(cmd *exec.Cmd) { jobgroup.Suspend(cmd) }
 
+// exitKillTimeout bounds the whole Windows exit-path kill (taskkill, job
+// termination, and waiting on job members) so a wedged child or taskkill cannot
+// block shutdown past Windows's ~5 s console-close window (Pi 31b407dc63, #11889).
+// upstream: packages/coding-agent/src/utils/shell.ts:killTrackedDetachedChildren
+const exitKillTimeout = 2000 * time.Millisecond
+
 // windowsTaskkillCommand detaches the hidden cleanup process from the caller's
 // console, as upstream's spawn with stdio "ignore", detached: true, and
 // windowsHide: true does.
 func windowsTaskkillCommand(pid int) *exec.Cmd {
-	command := newTaskkillCommand(pid)
+	return configureWindowsTaskkill(newTaskkillCommand(pid))
+}
+
+// windowsTaskkillCommandContext configures a bounded multi-PID taskkill for
+// the exit path (Pi 31b407dc63, #11889).
+func windowsTaskkillCommandContext(ctx context.Context, pids ...int) *exec.Cmd {
+	return configureWindowsTaskkill(newTaskkillCommandContext(ctx, pids...))
+}
+
+func configureWindowsTaskkill(command *exec.Cmd) *exec.Cmd {
 	command.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_NEW_PROCESS_GROUP | windows.DETACHED_PROCESS}
 	nodespawn.HideWindow(command, nodespawn.Ignore, nodespawn.Ignore, nodespawn.Ignore)
 	return command
@@ -45,7 +62,74 @@ func windowsTaskkillCommand(pid int) *exec.Cmd {
 // grandchild keeps its working directory open after the tool returns.
 func killProcessGroup(p *os.Process) error {
 	runTaskkill(windowsTaskkillCommand(p.Pid), (*exec.Cmd).Run)
-	v, ok := bashJobs.Load(p.Pid)
+	return terminateAndWaitBashJob(p.Pid)
+}
+
+// killTrackedProcessGroups ends every tracked shell tree on the exit path
+// within one shared exitKillTimeout budget: one bounded taskkill across all
+// PIDs, then TerminateJobObject for every tracked job, then bounded waits on
+// the job members using the remaining budget. When the deadline expires, exit
+// proceeds as in Pi (Pi 31b407dc63, #11889).
+// upstream: packages/coding-agent/src/utils/shell.ts:killTrackedDetachedChildren
+func killTrackedProcessGroups(processes []*os.Process) {
+	killTrackedProcessGroupsWithTimeout(processes, exitKillTimeout, (*exec.Cmd).Run, windows.WaitForSingleObject)
+}
+
+func killTrackedProcessGroupsWithTimeout(
+	processes []*os.Process,
+	budget time.Duration,
+	run func(*exec.Cmd) error,
+	waitHandle func(windows.Handle, uint32) (uint32, error),
+) {
+	if len(processes) == 0 {
+		return
+	}
+	//portlint:allow clock exitKillTimeout bounds the synchronous Windows shutdown kill against the ~5 s OS console-close deadline (Pi 31b407dc63, #11889)
+	deadline := time.Now().Add(budget)
+	pids := make([]int, len(processes))
+	for i, p := range processes {
+		pids[i] = p.Pid
+	}
+	//portlint:allow ctxbackground KillTrackedDetachedChildren is a synchronous shutdown exit hook with no caller context; its deadline is Pi's 2000 ms bound
+	ctx, cancel := context.WithDeadline(context.Background(), deadline)
+	defer cancel()
+	runTaskkill(windowsTaskkillCommandContext(ctx, pids...), run)
+	// Always issue TerminateJobObject for every tracked job (it is immediate),
+	// even if taskkill consumed the deadline, and collect member handles first.
+	var allMembers []windows.Handle
+	defer func() {
+		for _, h := range allMembers {
+			_ = windows.CloseHandle(h)
+		}
+	}()
+	for _, pid := range pids {
+		v, ok := bashJobs.Load(pid)
+		if !ok {
+			continue
+		}
+		job := v.(windows.Handle)
+		members, _ := openJobMembers(job)
+		allMembers = append(allMembers, members...)
+		_ = windows.TerminateJobObject(job, 1)
+	}
+	for _, h := range allMembers {
+		remaining := time.Until(deadline)
+		if remaining <= 0 {
+			return
+		}
+		// Round up partial milliseconds so a sub-millisecond remainder does not spin as 0.
+		ms := uint32((remaining + time.Millisecond - 1) / time.Millisecond)
+		event, err := waitHandle(h, ms)
+		if err != nil || event == uint32(windows.WAIT_TIMEOUT) {
+			if time.Until(deadline) <= 0 {
+				return
+			}
+		}
+	}
+}
+
+func terminateAndWaitBashJob(pid int) error {
+	v, ok := bashJobs.Load(pid)
 	if !ok {
 		return nil
 	}

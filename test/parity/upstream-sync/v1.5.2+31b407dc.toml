@@ -1,0 +1,62 @@
+from = "1.5.2+9a7cfba4"
+to = "1.5.2+31b407dc"
+
+[[files]]
+path = "packages/coding-agent/src/utils/shell.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/taskkill_port_test.go#TestTaskkillCommandContextAllPIDs", "test:internal/codingagent/tools/bash_group_windows_test.go#TestWin_KillTrackedProcessGroupsReapsJobDescendants", "test:internal/codingagent/tools/bash_group_windows_test.go#TestWin_KillTrackedProcessGroupsBoundedExit"]
+rationale = "31b407dc63 (#11889): on win32 killTrackedDetachedChildren runs one synchronous taskkill /F /T /PID ... with a 2,000 ms timeout; POSIX is unchanged. PiG's KillTrackedDetachedChildren routes to killTrackedProcessGroups, which on Windows runs one CommandContext taskkill across all tracked PIDs, issues TerminateJobObject for every tracked job, and bounds the job-member waits under one shared 2,000 ms exitKillTimeout deadline (while leaving killProcessGroup on the tool abort path unbounded)."
+oracle = "carried: 31b407dc63 (pi-coding-agent/utils/shell.js: synchronous 2000 ms taskkill in killTrackedDetachedChildren; mirrorSource packages/coding-agent/src/utils/shell.ts)"
+
+[[files]]
+path = "packages/coding-agent/src/modes/rpc/rpc-mode.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/cli/rpc_quit_kills_bash_unix_test.go#TestRPCInputEndKillsRunningBashTree", "test:coding/cli/rpc_quit_kills_bash_unix_test.go#TestRPCInputEndKillsRunningBashTreeNoExt", "test:coding/cli/rpc_quit_kills_bash_unix_test.go#TestRPCExtensionShutdownWhileBashRuns", "test:coding/cli/rpc_quit_kills_bash_unix_test.go#TestListenConnectionEOFDoesNotKillSiblingConnectionBash", "test:coding/cli/rpc_quit_kills_bash_windows_test.go#TestWin_RPCInputEndKillsRunningBashTree"]
+rationale = "31b407dc63 (#11889): rpc-mode.ts calls killTrackedDetachedChildren() right before process.exit in shutdown() and listens for SIGHUP on win32. PiG's exitRPC cleanup (coding/cli/rpc_mode.go) now calls tools.KillTrackedDetachedChildren() after terminateProcesses() when transport.processOwned is true, before exiting; SIGHUP on Windows is a no-op in Go runtime (Windows console-close cleanup was evaluated separately)."
+oracle = "carried: 31b407dc63 (pi-coding-agent/modes/rpc/rpc-mode.js: killTrackedDetachedChildren before process.exit and SIGHUP listener on win32)"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/cli/interactive_drained_quit_bash_linux_test.go#TestInteractiveDrainedQuitKillsRunningUserBash"]
+rationale = "31b407dc63 (#11889): interactive-mode.ts calls killTrackedDetachedChildren() right before process.exit on normal and signal quits and listens for SIGHUP on win32. PiG's ordinary interactive /quit and Ctrl+D path already cancels and joins user bash tasks in InteractiveMode.Stop; exitAtDrainedQuit (coding/cli/interactive_build.go) skipped Stop and now calls tools.KillTrackedDetachedChildren() after session.Dispose(), stopStartupExtensions(), and host.TerminateProcesses(), right before exitProcess(0)."
+oracle = "carried: 31b407dc63 (pi-coding-agent/modes/interactive/interactive-mode.js: killTrackedDetachedChildren before process.exit and SIGHUP listener on win32)"
+
+[[files]]
+path = "packages/coding-agent/src/modes/print-mode.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "31b407dc63 (#11889): enables SIGHUP on win32 in print-mode.ts. PiG's Go runtime does not receive SIGHUP on Windows console close (print mode already calls tools.KillTrackedDetachedChildren on termination signals and awaits prompts/tools before normal exit)."
+oracle = "carried: 31b407dc63 (pi-coding-agent/modes/print-mode.js: SIGHUP listener on win32)"
+
+[[files]]
+path = "packages/coding-agent/test/shell-kill-process-tree.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/taskkill_port_test.go#TestTaskkillCommandContextAllPIDs", "test:internal/codingagent/tools/bash_group_windows_test.go#TestWin_KillTrackedProcessGroupsBoundedExit"]
+rationale = "31b407dc63: tests single waited taskkill with 2000 ms timeout on win32 and unchanged POSIX group kill. Covered by TestTaskkillCommandContextAllPIDs, TestWin_KillTrackedProcessGroupsReapsJobDescendants, TestWin_KillTrackedProcessGroupsBoundedExit, and existing TestKillTrackedDetachedChildrenKillsARunningBashCall."
+
+[[files]]
+path = "packages/coding-agent/test/rpc-prompt-response-semantics.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/cli/rpc_quit_kills_bash_unix_test.go#TestRPCInputEndKillsRunningBashTree", "test:coding/cli/rpc_quit_kills_bash_unix_test.go#TestRPCInputEndKillsRunningBashTreeNoExt", "test:coding/cli/rpc_quit_kills_bash_windows_test.go#TestWin_RPCInputEndKillsRunningBashTree"]
+rationale = "31b407dc63: verifies killTrackedDetachedChildren runs after dispose on RPC stdin EOF. Covered end-to-end by TestRPCInputEndKillsRunningBashTree (both pig and oracle Pi), TestRPCInputEndKillsRunningBashTreeNoExt, and TestWin_RPCInputEndKillsRunningBashTree."
+
+[[files]]
+path = "packages/coding-agent/test/print-mode.test.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "31b407dc63: Node process.emit('SIGHUP') test for win32 print mode; Go does not deliver SIGHUP on Windows."
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "31b407dc63: Pi's coding-agent changelog entry for #11889. PiG's user-visible change is its own changelog.d fragment."

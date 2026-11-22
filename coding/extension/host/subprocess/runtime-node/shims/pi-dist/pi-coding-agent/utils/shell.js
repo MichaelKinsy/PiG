@@ -177,20 +177,40 @@ export function trackDetachedChildPid(pid) {
 export function untrackDetachedChildPid(pid) {
     trackedDetachedChildPids.delete(pid);
 }
+/** Kill every tracked shell process tree. On Windows this blocks until taskkill finishes. */
 export function killTrackedDetachedChildren() {
-    for (const pid of trackedDetachedChildPids) {
-        killProcessTree(pid);
+    // Pi 31b407dc63 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+    if (trackedDetachedChildPids.size === 0)
+        return;
+    if (process.platform === "win32") {
+        // Callers exit right after this. Exiting kills the shell (libuv's job object), and taskkill /T
+        // then no longer finds the shell's descendants, so wait for taskkill. windowsHide gives it its own
+        // console, so a console close (SIGHUP) does not end it too.
+        const pidArgs = [...trackedDetachedChildPids].flatMap((pid) => ["/PID", String(pid)]);
+        spawnSync(getTaskkillPath(), ["/F", "/T", ...pidArgs], {
+            stdio: "ignore",
+            timeout: 2000,
+            windowsHide: true,
+        });
+    }
+    else {
+        for (const pid of trackedDetachedChildPids) {
+            killProcessTree(pid);
+        }
     }
     trackedDetachedChildPids.clear();
+}
+// Use the trusted System32 executable so cleanup does not depend on PATH.
+function getTaskkillPath() {
+    return join(process.env.SystemRoot || "C:\\Windows", "System32", "taskkill.exe");
 }
 /**
  * Kill a process and all its children (cross-platform)
  */
 export function killProcessTree(pid) {
     if (process.platform === "win32") {
-        // Use the trusted System32 executable so cleanup does not depend on PATH.
         try {
-            const child = spawn(join(process.env.SystemRoot || "C:\\Windows", "System32", "taskkill.exe"), ["/F", "/T", "/PID", String(pid)], {
+            const child = spawn(getTaskkillPath(), ["/F", "/T", "/PID", String(pid)], {
                 stdio: "ignore",
                 detached: true,
                 windowsHide: true,
