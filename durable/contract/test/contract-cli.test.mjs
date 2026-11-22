@@ -24,15 +24,12 @@ const run = (args, extraEnv = {}) => {
 }
 
 test("the CI command line (--impls pi -j 4) does not exit 0 with zero rows", () => {
-	// Scope to the two-row dcore-history lane? Even cheaper: run with --lane do-core-design (a valid lane with 0 rows)
-	// would fail for 0 rows; instead run with --impls pi -j 4 and one fast real row E00 (or check --impls pi -j 4 with E15/U-memory-storage).
-	// Wait: with --impls pi -j 4 and NO ids, on buggy code `-j` and `4` become ids and match 0 rows (rc 0, pass 0 fail 0 pending 0 skipped 0).
-	// Pass E00 with --impls pi -j 4: on buggy code `-j` and `4` are left in rest alongside E00, which are unknown option/id tokens.
-	// Also pass --impls pi -j 4 with --lane do-core-design: on buggy code it exits 0 with `pass 0  fail 0  pending 0  skipped 0`!
+	// Verify CI's `--impls pi -j 4` spelling fails with a zero-row error on an empty lane (`do-core-design`, a valid LANES entry
+	// with no corpus rows) and parses `-j 4` cleanly when given a real corpus row (`E00`).
 	const zero = run(["all", "--impls", "pi", "-j", "4", "--lane", "do-core-design", "--out", join(work, "ci-zero")])
 	assert.notEqual(zero.code, 0, `CI args with 0 matching rows must not exit 0:\n${zero.stdout}`)
+	assert.match(zero.stdout + zero.stderr, /selection matched zero rows/)
 
-	// And the CI spelling (`--impls pi -j 4`) with a real corpus row (U-memory-storage, skipped; E00, real) must accept -j 4 cleanly and count the row.
 	const one = run(["all", "--impls", "pi", "-j", "4", "--out", join(work, "ci-one"), "E00"])
 	assert.equal(one.code, 0, `expected rc 0 with --impls pi -j 4 E00; got rc=${one.code}\nstdout:\n${one.stdout}\nstderr:\n${one.stderr}`)
 	assert.match(one.stdout, /totals pi: pass 1  fail 0  pending 0  skipped 0/, `expected E00 counted:\n${one.stdout}`)
@@ -41,36 +38,36 @@ test("the CI command line (--impls pi -j 4) does not exit 0 with zero rows", () 
 test("contract all with unknown scenario id exits non-zero and names the id", () => {
 	const r = run(["all", "--impls", "pi", "-j", "4", "--out", join(work, "bad-id-all"), "NO-SUCH-SCENARIO"])
 	assert.notEqual(r.code, 0, `expected non-zero exit for unknown id; stdout:\n${r.stdout}`)
-	assert.match(r.stdout + r.stderr, /NO-SUCH-SCENARIO/)
+	assert.match(r.stdout + r.stderr, /unknown scenario id\(s\):.*NO-SUCH-SCENARIO/)
 })
 
 test("contract run with unknown scenario id exits non-zero and names the id", () => {
 	const r = run(["run", "--impl", "pi", "-j", "4", "--out", join(work, "bad-id-run"), "NO-SUCH-SCENARIO"])
 	assert.notEqual(r.code, 0, `expected non-zero exit for unknown id; stdout:\n${r.stdout}`)
-	assert.match(r.stdout + r.stderr, /NO-SUCH-SCENARIO/)
+	assert.match(r.stdout + r.stderr, /unknown scenario id\(s\):.*NO-SUCH-SCENARIO/)
 })
 
 test("contract all with an unknown option exits non-zero and names it", () => {
 	const r = run(["all", "--impls", "pi", "--bogus-flag", "4", "--out", join(work, "bad-opt-all")])
 	assert.notEqual(r.code, 0, `expected non-zero exit for unknown option; stdout:\n${r.stdout}`)
-	assert.match(r.stdout + r.stderr, /--bogus-flag/)
+	assert.match(r.stdout + r.stderr, /unknown option\(s\):.*--bogus-flag/)
 })
 
 test("contract run with an unknown option exits non-zero and names it", () => {
 	const r = run(["run", "--impl", "pi", "--bogus-flag", "--out", join(work, "bad-opt-run")])
 	assert.notEqual(r.code, 0, `expected non-zero exit for unknown option; stdout:\n${r.stdout}`)
-	assert.match(r.stdout + r.stderr, /--bogus-flag/)
+	assert.match(r.stdout + r.stderr, /unknown option\(s\):.*--bogus-flag/)
 })
 
 test("contract all with zero matching rows (valid id excluded by --lane) exits non-zero and says so", () => {
 	// U-memory-storage is owned by dcore-host; filtering by --lane dcore-store matches zero rows.
 	const r = run(["all", "--impls", "pi", "--lane", "dcore-store", "--out", join(work, "zero-all"), "U-memory-storage"])
 	assert.notEqual(r.code, 0, `expected non-zero exit when zero rows match; stdout:\n${r.stdout}`)
-	assert.match(r.stdout + r.stderr, /zero|no .*row|matched no/i)
+	assert.match(r.stdout + r.stderr, /selection matched zero rows/)
 })
 
 test("contract run with zero matching rows (valid id excluded by --lane) exits non-zero and says so", () => {
 	const r = run(["run", "--impl", "pi", "--lane", "dcore-store", "--out", join(work, "zero-run"), "U-memory-storage"])
 	assert.notEqual(r.code, 0, `expected non-zero exit when zero rows match; stdout:\n${r.stdout}`)
-	assert.match(r.stdout + r.stderr, /zero|no .*row|matched no/i)
+	assert.match(r.stdout + r.stderr, /selection matched zero rows/)
 })
