@@ -201,6 +201,26 @@ func TestCodexConfigurationUpdateEffortUpstream(t *testing.T) {
 		}
 	})
 
+	t.Run("streamSimple ignores a caller's raw ReasoningEffort and computes effort from Thinking alone", func(t *testing.T) {
+		model := codexTestModel("gpt-6-sol", &OpenAIResponsesCompat{SupportsMidConvoEffort: new(true)}, ThinkingLevelMap{ThinkingOff: new("none")})
+		bodies, result := captureCodexSSE(t, model, func(fetch *http.Client) (*AssistantMessageEventStream, error) {
+			return StreamSimpleOpenAICodexResponses(t.Context(), model, NormalizeContext(Context{
+				Messages: []Message{UserMessage{Content: UserText("Say hello"), Timestamp: 1}},
+			}), StreamOptions{
+				APIKey:          token,
+				Transport:       TransportSSE,
+				ReasoningEffort: "high",
+				Fetch:           fetch,
+			})
+		})
+		if result.ProviderThinkingLevel != "none" {
+			t.Errorf("result.ProviderThinkingLevel = %q, want none (raw ReasoningEffort must not leak)", result.ProviderThinkingLevel)
+		}
+		if got, want := summarizeCodexInput(t, bodies[0]), []string{"user", "configuration_update:none"}; !reflect.DeepEqual(got, want) {
+			t.Errorf("input = %v, want %v", got, want)
+		}
+	})
+
 	t.Run("sends thinking levels as reasoning.effort without supportsMidConvoEffort", func(t *testing.T) {
 		model := codexTestModel("gpt-5.6-sol", nil, nil)
 		bodies, result := captureCodexSSE(t, model, func(fetch *http.Client) (*AssistantMessageEventStream, error) {

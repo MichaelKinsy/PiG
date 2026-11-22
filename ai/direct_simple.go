@@ -50,9 +50,11 @@ func streamSimpleAs(ctx context.Context, api API, model *Model, transcript Trans
 		options.PromptMode, options.ReasoningEffort = "", ""
 	}
 	applyOmittedReasoningFor(api, &options)
-	if api == APIOpenAICodexResponses && options.ReasoningEffort == "" {
-		// openai-codex-responses.ts streamSimple: off/omitted is sent as effort "none" on reasoning models
-		// so with configuration_update items switching to off keeps the prompt cache (#12269).
+	if api == APIOpenAICodexResponses {
+		// openai-codex-responses.ts streamSimple computes reasoningEffort from options.reasoning alone;
+		// a caller's raw ReasoningEffort must not leak through, and off/omitted is sent as effort "none"
+		// on reasoning models so with configuration_update items switching to off keeps the prompt cache (#12269).
+		options.ReasoningEffort = ""
 		clamped := ThinkingOff
 		if options.Thinking != "" {
 			clamped = ClampThinkingLevel(model, ModelThinkingLevel(options.Thinking))
