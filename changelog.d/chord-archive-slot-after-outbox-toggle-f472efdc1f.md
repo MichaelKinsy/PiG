@@ -1,0 +1,3 @@
+### Fixed
+
+- Chord: `UploadSession` now exports a full archive into the slot after the remote head whenever `outbox.Floor() > synced` (for example after turning the outbox off and on again), `RemoteHistoryOf` restores from the newest archive slot along the chain while copies behind it get `HistoryUnavailableError`, and `FoldSession` folds every unfolded slot covered by the snapshot including those before an archive slot (follows Pi `f472efdc1`). <!-- fix: d0eb79648d --> <!-- cause: UploadSession only exported an archive slot when synced == LogStart && outbox.Floor() > 0, so toggling the outbox off and on after a prior upload left outbox.Floor() > synced > 0 and failed with OutboxUnavailableError on every retry. -->

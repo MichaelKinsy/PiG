@@ -652,6 +652,93 @@ func TestSyncingASessionBetweenDevices(t *testing.T) {
 	})
 }
 
+// countingFiles wraps osFiles to count opened and closed SyncFileReaders.
+type countingFiles struct {
+	osFiles
+	opened int
+	closed int
+}
+
+type countingReader struct {
+	SyncFileReader
+	closed *int
+	done   bool
+}
+
+func (r *countingReader) Close(ctx context.Context) error {
+	if !r.done {
+		r.done = true
+		*r.closed++
+	}
+	return r.SyncFileReader.Close(ctx)
+}
+
+func (f *countingFiles) OpenBinaryReader(ctx context.Context, path string, options *OpenBinaryReaderOptions) (SyncFileReader, error) {
+	reader, err := f.osFiles.OpenBinaryReader(ctx, path, options)
+	if err != nil {
+		return nil, err
+	}
+	f.opened++
+	return &countingReader{SyncFileReader: reader, closed: &f.closed}, nil
+}
+
+func TestRemoteBodies(t *testing.T) {
+	t.Run("closes a body file at its end, and on Close also before the first read", func(t *testing.T) {
+		files := &countingFiles{}
+		remote := NewFileSystemSyncRemote(files, t.TempDir())
+		source := sessionStore(t)
+		commitAll(t, source, seedBatches()[:2]...)
+		_, err := UploadSession(background, UploadOptions{SessionID: session, Device: "laptop", Source: source, Store: remote, State: newMemoryState()})
+		noError(t, err)
+
+		readBody, err := remote.GetBatch(background, session, LogStart)
+		noError(t, err)
+		decoded, err := collect(t, DecodeBatch(readBody))
+		noError(t, err)
+		if len(decoded) == 0 {
+			t.Fatal("expected commits")
+		}
+		if files.opened != 1 || files.closed != 1 {
+			t.Fatalf("readers after full read = (%d, %d), want (1, 1)", files.opened, files.closed)
+		}
+
+		unread, err := remote.GetBatch(background, session, LogStart)
+		noError(t, err)
+		if files.opened != 2 || files.closed != 1 {
+			t.Fatalf("readers before unread close = (%d, %d), want (2, 1)", files.opened, files.closed)
+		}
+		noError(t, unread.Close())
+		noError(t, unread.Close())
+		if files.opened != 2 || files.closed != 2 {
+			t.Fatalf("readers after unread close = (%d, %d), want (2, 2)", files.opened, files.closed)
+		}
+		_, ok, err := unread.Next(background)
+		noError(t, err)
+		if ok {
+			t.Fatal("expected closed body Next to return ok=false")
+		}
+	})
+
+	t.Run("closes a body a pull read and then refused", func(t *testing.T) {
+		files := &countingFiles{}
+		remote := NewFileSystemSyncRemote(files, t.TempDir())
+		laptop := newDevice(t, "laptop", remote)
+		laptop.commit(seedBatches()[:2])
+		laptop.upload()
+		replica := newDevice(t, "replica", remote)
+		replica.pull()
+		head := RemoteHead(listing(t, remote, session))
+		_, err := remote.PutBatch(background, session, head, head+1, "laptop", EncodeBatch(SliceCommits(nil)), PutBatchOptions{Archive: true})
+		noError(t, err)
+
+		_, err = PullSession(background, PullOptions{SessionID: session, Store: remote, Local: LocalCopy{Kind: LocalCopyStore, Store: replica.store()}, State: replica.state})
+		_ = isError[*HistoryUnavailableError](t, err)
+		if files.opened < 2 || files.closed != files.opened {
+			t.Fatalf("readers after refused pull = (%d, %d), want opened >= 2 and closed == opened", files.opened, files.closed)
+		}
+	})
+}
+
 func TestBoundedMemory(t *testing.T) {
 	// bigBatches is rows of size characters each, one per commit: about count * size bytes of history.
 	bigBatches := func(count, size int) []rows {
