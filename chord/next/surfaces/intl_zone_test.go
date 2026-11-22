@@ -3,7 +3,7 @@ package surfaces
 import (
 	"testing"
 	"time"
-	_ "time/tzdata" // the zones below are loaded from Go's own data wherever the test runs
+	_ "time/tzdata" // fallback when a host has no system zoneinfo; time.LoadLocation checks ZONEINFO, then the system database, then the embedded copy
 )
 
 // D465 claim 2: the zone of `FormatTime` is the process's (`time.Local`), as a `Date`'s is in Node, across a daylight-saving change.
