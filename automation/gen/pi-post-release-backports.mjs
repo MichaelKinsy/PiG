@@ -3353,6 +3353,122 @@ patch("edfe6b2ef322", "pi-ai/api/openai-responses-shared.js", [
 ]);
 // END backport edfe6b2ef322
 
+// BEGIN backport fcc33744b072
+// fcc33744b072 (#12269): GPT-6 Codex models send thinking level changes (including off -> none) as configuration_update input items with a fixed reasoning.effort of "medium", and Codex forwards maxTokens as max_output_tokens (at least 16) unless compat.supportsMaxOutputTokens is false.
+// The catalog changes (supportsMidConvoEffort on GPT-6 openai-codex models) are carried by the pi-overlay files catalog/families/openai.ts, catalog/providers/openai.ts and catalog/providers/openai-codex.ts.
+// not carried: packages/ai/test/max-thinking.test.ts, packages/ai/test/openai-codex-stream.test.ts, packages/ai/CHANGELOG.md, packages/coding-agent/CHANGELOG.md (not shipped in compiled packages).
+packageFile("fcc33744b072", "pi-ai/api/openai-codex-responses.js", [
+    [`const PREVIOUS_RESPONSE_NOT_FOUND_CODE = "previous_response_not_found";
+const CODEX_RESPONSE_STATUSES = new Set([`, `const PREVIOUS_RESPONSE_NOT_FOUND_CODE = "previous_response_not_found";
+// The Responses API rejects max_output_tokens below 16: https://github.com/earendil-works/pi/issues/6265
+const MIN_OUTPUT_TOKENS = 16;
+// Fixed reasoning.effort while configuration_update items carry the thinking level.
+const CONFIGURATION_UPDATE_REQUEST_EFFORT = "medium";
+const CODEX_RESPONSE_STATUSES = new Set([`],
+    [`    (async () => {
+        const output = {
+            role: "assistant",
+            content: [],
+            api: "openai-codex-responses",
+            provider: model.provider,
+            model: model.id,
+            usage: {`, `    (async () => {
+        ${note("fcc33744b072").trim()}
+        const configurationUpdateEffort = getConfigurationUpdateEffort(model, options);
+        const output = {
+            role: "assistant",
+            content: [],
+            api: "openai-codex-responses",
+            provider: model.provider,
+            model: model.id,
+            ...(configurationUpdateEffort === undefined ? {} : { providerThinkingLevel: configurationUpdateEffort }),
+            usage: {`],
+    [`            let body = buildRequestBody(model, normalizedContext, options, codexSessionId, grammarToolInputProperties);`, `            let body = buildRequestBody(model, normalizedContext, options, codexSessionId, grammarToolInputProperties, configurationUpdateEffort);`],
+    [`    const clampedReasoning = options?.reasoning ? clampThinkingLevel(model, options.reasoning) : undefined;
+    const reasoningEffort = clampedReasoning === "off" ? undefined : clampedReasoning;`, `    const clampedReasoning = options?.reasoning ? clampThinkingLevel(model, options.reasoning) : "off";
+    const reasoningEffort = clampedReasoning !== "off" ? clampedReasoning : model.reasoning ? "none" : undefined;`],
+    [`function buildRequestBody(model, context, options, cacheSessionId, grammarToolInputProperties = createGrammarToolInputProperties(getDeclaredTools(context.messages), model.compat?.supportsOpenAIGrammarTools ?? false)) {`, `function getConfigurationUpdateEffort(model, options) {
+    if (!model.compat?.supportsMidConvoEffort || options?.reasoningEffort === undefined)
+        return undefined;
+    return resolveReasoningEffort(model, options.reasoningEffort) ?? undefined;
+}
+function resolveReasoningEffort(model, reasoningEffort) {
+    if (reasoningEffort === "none") {
+        return model.thinkingLevelMap?.off === undefined ? "none" : model.thinkingLevelMap.off;
+    }
+    return model.thinkingLevelMap?.[reasoningEffort] ?? reasoningEffort;
+}
+function buildRequestBody(model, context, options, cacheSessionId, grammarToolInputProperties, configurationUpdateEffort) {`],
+    [`        toolOptions: { strict: null, supportsStrictMode, supportsOpenAIGrammarTools },
+    });
+    const body = {`, `        toolOptions: { strict: null, supportsStrictMode, supportsOpenAIGrammarTools },
+        configurationUpdateEffort,
+    });
+    const body = {`],
+    [`        parallel_tool_calls: true,
+    };
+    if (options?.temperature !== undefined) {`, `        parallel_tool_calls: true,
+    };
+    if (options?.maxTokens && (model.compat?.supportsMaxOutputTokens ?? true)) {
+        body.max_output_tokens = Math.max(options.maxTokens, MIN_OUTPUT_TOKENS);
+    }
+    if (options?.temperature !== undefined) {`],
+    [`    if (options?.reasoningEffort !== undefined) {
+        const effort = options.reasoningEffort === "none"
+            ? model.thinkingLevelMap?.off === undefined
+                ? "none"
+                : model.thinkingLevelMap.off
+            : (model.thinkingLevelMap?.[options.reasoningEffort] ?? options.reasoningEffort);
+        if (effort !== null) {`, `    if (options?.reasoningEffort !== undefined) {
+        const effort = configurationUpdateEffort === undefined
+            ? resolveReasoningEffort(model, options.reasoningEffort)
+            : CONFIGURATION_UPDATE_REQUEST_EFFORT;
+        if (effort !== null) {`],
+]);
+// END backport fcc33744b072
+
+// BEGIN backport fcc33744b072
+// fcc33744b072 (#12269): compat-schema.js descriptions for supportsMidConvoEffort now include openai-codex-responses.
+patch("fcc33744b072", "pi-ai/providers/compat-schema.js", [
+    [`    supportsMidConvoEffort: opt(bool({
+        description: "Whether thinking level changes are sent as configuration_update input items instead of changing reasoning.effort, so a change keeps the prompt cache. Only used by the openai-responses API, and ignored with Sign in with ChatGPT on the openai provider.",
+        default: false,
+    })),`, `    supportsMidConvoEffort: opt(bool({
+        description: "Whether thinking level changes are sent as configuration_update input items instead of changing reasoning.effort, so a change keeps the prompt cache. Used by the openai-responses and openai-codex-responses APIs, and ignored with Sign in with ChatGPT on the openai provider.",
+        default: false,
+    })),`],
+    [`    supportsMidConvoEffort: optionalCompatBoolean({
+        description: "Whether thinking level changes are sent inside the conversation instead of changing the request's effort, so a change keeps the prompt cache. Used by the anthropic-messages and openai-responses APIs.",
+        default: false,
+    }),`, `    supportsMidConvoEffort: optionalCompatBoolean({
+        description: "Whether thinking level changes are sent inside the conversation instead of changing the request's effort, so a change keeps the prompt cache. Used by the anthropic-messages, openai-responses, and openai-codex-responses APIs.",
+        default: false,
+    }),`],
+]);
+// END backport fcc33744b072
+
+// BEGIN backport fcc33744b072
+// fcc33744b072 (#12269): models.schema.json description for supportsMidConvoEffort now includes openai-codex-responses.
+packageFile("fcc33744b072", "pi-coding-agent/schemas/models.schema.json", [
+    [`        "supportsMidConvoEffort": {
+          "type": "boolean",
+          "description": "Whether thinking level changes are sent inside the conversation instead of changing the request's effort, so a change keeps the prompt cache. Used by the anthropic-messages and openai-responses APIs.",
+          "default": false
+        },`, `        "supportsMidConvoEffort": {
+          "type": "boolean",
+          "description": "Whether thinking level changes are sent inside the conversation instead of changing the request's effort, so a change keeps the prompt cache. Used by the anthropic-messages, openai-responses, and openai-codex-responses APIs.",
+          "default": false
+        },`],
+]);
+// END backport fcc33744b072
+
+// BEGIN backport fcc33744b072
+// fcc33744b072 (#12269): models-configuration.md description for supportsMidConvoEffort now includes openai-codex-responses.
+patch("fcc33744b072", "pi-coding-agent/docs/models-configuration.md", [
+    [`| \`supportsMidConvoEffort\` | boolean | \`false\` | Whether thinking level changes are sent as configuration_update input items instead of changing reasoning.effort, so a change keeps the prompt cache. Only used by the openai-responses API, and ignored with Sign in with ChatGPT on the openai provider. |`, `| \`supportsMidConvoEffort\` | boolean | \`false\` | Whether thinking level changes are sent as configuration_update input items instead of changing reasoning.effort, so a change keeps the prompt cache. Used by the openai-responses and openai-codex-responses APIs, and ignored with Sign in with ChatGPT on the openai provider. |`],
+]);
+// END backport fcc33744b072
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 // Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.
