@@ -364,4 +364,109 @@ func TestFreshAndCloneToolOrderMatchesPi(t *testing.T) {
 			t.Errorf("clone-after-prompt of old-order session tool prefix bytes differ from pre-cure request")
 		}
 	})
+
+	// 4. Source with one tool deactivated and active tools set in a deliberately
+	// non-registry order via SetActiveToolsByName, cloned before and after its
+	// first prompt: both clones' provider requests list exactly the source's
+	// active tools in the source's order, with the deactivated tool absent.
+	t.Run("clone preserves deactivated tool and order before and after prompt", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: dir, AgentDir: dir})
+		if err != nil {
+			t.Fatalf("CreateAgentSessionServices: %v", err)
+		}
+		configureFauxAuth(t, services)
+		defer services.Close()
+
+		var recorded [][]string
+		provider := &scriptedProvider{
+			wrap: true,
+			responses: []scriptedResponse{
+				func(messages []ai.Message) *ai.AssistantMessage {
+					schemas := ai.GetCurrentTools(ai.TranscriptMessages[ai.Message](messages))
+					names := make([]string, len(schemas))
+					for i, s := range schemas {
+						names[i] = s.Name
+					}
+					recorded = append(recorded, names)
+					return &ai.AssistantMessage{
+						Provider:   "faux",
+						Model:      "faux-1",
+						Content:    []ai.AssistantContentBlock{ai.TextContent{Text: "ok"}},
+						StopReason: ai.StopReasonStop,
+					}
+				},
+			},
+		}
+		captureToolNames := func(t *testing.T, session *Session, prompt string) []string {
+			t.Helper()
+			before := len(recorded)
+			if err := session.Prompt(context.Background(), prompt); err != nil {
+				t.Fatalf("Prompt(%q): %v", prompt, err)
+			}
+			if len(recorded) <= before {
+				t.Fatalf("expected provider request for %q", prompt)
+			}
+			return recorded[len(recorded)-1]
+		}
+
+		runner := inproc.NewRunner([]extension.Extension{
+			{Name: "probe-ext", ToolOrder: []string{"ext_probe"}, Tools: map[string]extension.RegisteredTool{"ext_probe": extTool}},
+		}, dir)
+		source, err := NewSession(services, SessionOptions{
+			Model:       &ai.Model{ID: "faux-1", Provider: provider},
+			Runner:      runner,
+			CustomTools: []extension.ToolDefinition{callerTool},
+			NoSession:   true,
+		})
+		if err != nil {
+			t.Fatalf("NewSession: %v", err)
+		}
+		defer func() { _ = source.Close() }()
+
+		const deactivated = "bash"
+		reversed := []string{"caller_probe", "ext_probe", "write", "edit", "read"}
+		source.SetActiveToolsByName(reversed)
+		wantActive := source.ActiveToolNames()
+		t.Logf("source.ActiveToolNames() after SetActiveToolsByName(%v) = %v", reversed, wantActive)
+		if slices.Contains(wantActive, deactivated) {
+			t.Fatalf("source ActiveToolNames() = %v, still contains deactivated tool %q", wantActive, deactivated)
+		}
+
+		// Clone BEFORE any prompt on the source.
+		beforeClone, err := source.Clone()
+		if err != nil {
+			t.Fatalf("Clone before prompt: %v", err)
+		}
+		defer func() { _ = beforeClone.Close() }()
+		beforeGot := captureToolNames(t, beforeClone, "clone-before-prompt")
+		t.Logf("clone-before-prompt request tools = %v", beforeGot)
+		if slices.Contains(beforeGot, deactivated) {
+			t.Errorf("clone-before-prompt request tools = %v, contains deactivated tool %q", beforeGot, deactivated)
+		}
+		if !slices.Equal(beforeGot, wantActive) {
+			t.Errorf("clone-before-prompt request tools = %v, want %v", beforeGot, wantActive)
+		}
+
+		// Prompt the source once, then clone AFTER the prompt.
+		sourceGot := captureToolNames(t, source, "source-prompt")
+		if !slices.Equal(sourceGot, wantActive) {
+			t.Errorf("source request tools = %v, want %v", sourceGot, wantActive)
+		}
+
+		afterClone, err := source.Clone()
+		if err != nil {
+			t.Fatalf("Clone after prompt: %v", err)
+		}
+		defer func() { _ = afterClone.Close() }()
+		afterGot := captureToolNames(t, afterClone, "clone-after-prompt")
+		t.Logf("clone-after-prompt request tools = %v", afterGot)
+		if slices.Contains(afterGot, deactivated) {
+			t.Errorf("clone-after-prompt request tools = %v, contains deactivated tool %q", afterGot, deactivated)
+		}
+		if !slices.Equal(afterGot, wantActive) {
+			t.Errorf("clone-after-prompt request tools = %v, want %v", afterGot, wantActive)
+		}
+	})
 }
