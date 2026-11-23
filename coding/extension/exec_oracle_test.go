@@ -32,6 +32,9 @@ type execScenario struct {
 	AbortWhenFile string `json:"abortWhenFile,omitempty"`
 	// ExactCode marks a truncated row whose code is not a race, so that TestExecCommandMatchesPi compares it like the code of any other row.
 	ExactCode bool `json:"-"`
+	// AllowedCodes, when non-empty, accepts any listed code on each side in the main loop (while still comparing stdout, stderr, killed and truncated
+	// exactly) without going through the truncated-code sampler.
+	AllowedCodes []int `json:"-"`
 }
 
 type execOutcome struct {
@@ -112,10 +115,12 @@ func execScenarios(dir string) []execScenario {
 	return scenarios
 }
 
-// execOrderScenarios are the rows where the order of what exec.ts does with the command's pipes and its signal shows in the result without a race:
+// execOrderScenarios are the rows where the order of what exec.ts does with the command's pipes and its signal shows in the result:
 // the command's handler for the SIGTERM runs after the call has closed the pipes (a cap: exec.ts:111-113) or while they are open (an abort:
-// exec.ts:88-94, which signals and nothing else). Nothing in them depends on how soon the handler runs, which `while :; do sleep 0.05; done` leaves to
-// the end of a sleep. They need signals, so they are not run on Windows, where the kill ends the shell.
+// exec.ts:88-94, which signals and nothing else). For the trap rows, nothing depends on how soon the handler runs, which `while :; do sleep 0.05; done`
+// leaves to the end of a sleep. For the descendant-wait row, closing the pipes before sending SIGTERM lets a stalled caller see the descendant die of
+// SIGPIPE and the shell's bare `wait` exit 0 (rewritten to 1 by both Pi and PiG) instead of the shell ending by SIGTERM (143). They need signals, so
+// they are not run on Windows, where the kill ends the shell.
 func execOrderScenarios(dir string) []execScenario {
 	sh := func(script string, args ...string) []string { return append([]string{"-c", script}, args...) }
 	three, ten := 3.0, 10.0
@@ -125,8 +130,11 @@ func execOrderScenarios(dir string) []execScenario {
 		{Command: "sh", Args: sh("trap 'echo caught; exit 3' TERM; printf 12345; while :; do sleep 0.05; done"), CWD: dir, MaxBuffer: &three, ExactCode: true},
 		// A handler that writes nothing ends the shell with its own status.
 		{Command: "sh", Args: sh("trap 'exit 3' TERM; printf 12345; while :; do sleep 0.05; done"), CWD: dir, MaxBuffer: &three, ExactCode: true},
-		// A descendant that keeps writing meets the closed pipe and dies of SIGPIPE; the shell, waiting for it, ends by the SIGTERM (143).
-		{Command: "sh", Args: sh("(while :; do echo tick; sleep 0.01; done) & wait"), CWD: dir, MaxBuffer: &ten, ExactCode: true},
+		// The close comes before the signal: normally the descendant meets the closed pipe and dies of SIGPIPE while the shell, waiting for it, ends
+		// by SIGTERM (143). If the caller is stalled between the close and the signal, the descendant dies of SIGPIPE first, the shell's bare `wait`
+		// returns 0 and the shell exits 0, which both Pi and PiG rewrite to 1 on truncation. 141 is not valid: the shell itself is not the process
+		// that writes to the closed pipe.
+		{Command: "sh", Args: sh("(while :; do echo tick; sleep 0.01; done) & wait"), CWD: dir, MaxBuffer: &ten, AllowedCodes: []int{1, 143}},
 		// An abort while the command runs: the pipes are open, so what the handler writes reaches the caller.
 		{Command: "sh", Args: sh("trap 'echo bye; exit 4' TERM; echo ready; : > \"$1\"; while :; do sleep 0.05; done", "sh", ready), CWD: dir, AbortWhenFile: ready},
 		// stdin is /dev/null ("ignore", exec.ts:61): a command that reads it until the end gets the end at once.
@@ -434,7 +442,17 @@ func TestExecCommandMatchesPi(t *testing.T) {
 		normalized := pigExecOutcome(ctx, scenario)
 		raw, _ := json.Marshal(normalized)
 		want := expected[i]
-		if normalized.Truncated && want.Truncated && !scenario.ExactCode {
+		if len(scenario.AllowedCodes) > 0 {
+			if !slices.Contains(scenario.AllowedCodes, normalized.Code) || !slices.Contains(scenario.AllowedCodes, want.Code) {
+				if failures++; failures <= 8 {
+					in, _ := json.Marshal(scenario)
+					e, _ := json.Marshal(want)
+					t.Errorf("scenario %d %.300s (allowed codes %v)\n  Pig %.400s\n  Pi  %.400s", i, in, scenario.AllowedCodes, raw, e)
+				}
+				continue
+			}
+			normalized.Code, want.Code = scenario.AllowedCodes[0], scenario.AllowedCodes[0]
+		} else if normalized.Truncated && want.Truncated && !scenario.ExactCode {
 			truncated = append(truncated, scenario)
 			normalized.Code, want.Code = 1, 1
 		}
