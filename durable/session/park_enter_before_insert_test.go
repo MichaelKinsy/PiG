@@ -17,10 +17,9 @@ import (
 //
 // Using the test-only afterParkEnter hook (nil in production), this test pauses
 // the waiter goroutine right after enter(turn) acknowledges its preceding
-// ReadOnLine delivery (allowing deliverLoop to go idle) and before session.parks
-// insertion. While the waiter is paused in that gap, Call 2 ([one, two]) commits
-// and publishes part 0 ("one"), whose observer closes the waiter's done channel
-// via DeferUntilPublished.
+// ReadOnLine delivery (allowing deliverLoop to go idle). While the waiter is
+// paused there, Call 2 ([one, two]) commits and publishes part 0 ("one"), whose
+// observer closes the waiter's done channel via DeferUntilPublished.
 //
 // Contract: part 0's endPublication must wait in awaitReadied() for the waiter
 // (whose continuation has entered Park) before publishing part 1 ("two"). On the
@@ -67,8 +66,7 @@ func TestGroupCommitParkEnterBeforeInsertWindow(t *testing.T) {
 		}
 	})
 
-	// Pause the parking goroutine between enter(continuationOf(ctx)) and inserting
-	// into session.parks.
+	// Pause the parking goroutine immediately after enter(continuationOf(ctx)).
 	inParkGap := make(chan struct{})
 	releaseParkGap := make(chan struct{})
 	var hookOnce sync.Once
@@ -98,8 +96,7 @@ func TestGroupCommitParkEnterBeforeInsertWindow(t *testing.T) {
 	// Waiter goroutine with a Continuation: runs ReadOnLineCtx (fenced behind lead,
 	// mirroring waitForTask / Submissions.waitSettled), then calls Park(callCtx, waitDone).
 	// When lead settles, deliverLoop releases ReadOnLineCtx; the waiter calls Park,
-	// which calls enter(turn) (unblocking deliverLoop -> idle) and pauses at inParkGap
-	// before inserting into session.parks.
+	// which calls enter(turn) (unblocking deliverLoop -> idle) and pauses at inParkGap.
 	readRan := make(chan struct{})
 	waiter := spawnContinuing(func(callCtx ctxT, turn *session.Continuation) (any, error) {
 		_, err := g.session.ReadOnLineCtx(callCtx, func(_ durable.Storage) (any, error) {
@@ -122,8 +119,8 @@ func TestGroupCommitParkEnterBeforeInsertWindow(t *testing.T) {
 	}
 
 	// Hold Call 2 ([one, two]) in Storage.Commit until the waiter is paused in the
-	// enter-before-insert gap, so Call 2 publishes part 0 ("one") strictly while the
-	// waiter has entered and is not yet in session.parks.
+	// afterParkEnter hook, so Call 2 publishes part 0 ("one") strictly while the
+	// waiter has entered and has not returned from Park.
 	one := g.commitAsync(appendChange(a, "one"))
 	two := g.commitAsync(appendChange(b, "two"))
 	quiesce(one, two)
@@ -143,8 +140,8 @@ func TestGroupCommitParkEnterBeforeInsertWindow(t *testing.T) {
 	}
 
 	// Waiter has now called enter(turn) (acknowledging ReadOnLineCtx so deliverLoop is
-	// idle) and is paused before inserting into session.parks. Release Call 2 so part 0
-	// ("one") publishes and settles waitDone.
+	// idle) and is paused at afterParkEnter. Release Call 2 so part 0 ("one")
+	// publishes and settles waitDone.
 	heldCall2.Release()
 
 	select {
@@ -153,13 +150,15 @@ func TestGroupCommitParkEnterBeforeInsertWindow(t *testing.T) {
 		t.Fatalf("timed out after 5s waiting for part 0 (one) to publish")
 	}
 
-	// Contract: part 0's endPublication must wait for the waiter (or hold part 1)
-	// while the waiter is still in the enter-before-insert gap. If part 1 ("two")
-	// publishes before releaseParkGap is closed, the enter-before-insert window was hit.
+	// Contract: part 0's endPublication must wait in awaitReadied() for the waiter
+	// while the waiter is still paused at afterParkEnter. awaitWakeHop(2) returns
+	// once part 0 ("one", published commit 2 after lead) is awaiting a wake in
+	// awaitReadied(), or once part 1 ("two", commit 3) has already been published.
+	g.awaitWakeHop(2)
 	select {
 	case <-twoPublished:
 		t.Fatalf("the next part was published while a waiter had entered and was not yet parked (resumption.go: enter before insert)")
-	case <-time.After(100 * time.Millisecond):
+	default:
 	}
 
 	close(releaseParkGap)
