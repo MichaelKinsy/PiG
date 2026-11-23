@@ -60,3 +60,4 @@ c29b7c65d7 Follow-up to unreleased work: the drained report of a held tool or ha
 0bbc97bbbd see 7d225e5e36
 d3374596a1 Follow-up to unreleased work: the reap-time field that d12bb5340f's member added (in no release) becomes a one-method interface so that port-lint's clock rule no longer takes the accessor for an injected clock; no shipped behavior changes.
 beeb65ebf2 Follow-up to unreleased work: replaces direct strconv.ParseFloat and byte-offset slicing in getGeminiMajorVersion (introduced by 016ee5f7d0 on this branch, in no release) with strings.Cut/CutPrefix and jsnumber.ParseInt to clear port-lint [numbers]/[utf16units] findings and removes the stale baseline.toml entry; no release behavior changes
+3800eb3212 Follow-up to unreleased work: puts back the packed catalog source stamp (meta.json and piOverlayCommit) that a1cb330fd5 set by hand on this same unreleased line; no shipped behavior changes
