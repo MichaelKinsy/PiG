@@ -1,0 +1,242 @@
+# SPDX-License-Identifier: MIT
+# Diagnostic workflow for the two Windows native-4 reds (cargo-warm and auth-storage).
+# Runs only on diag/** pushes and is never merged.
+
+name: Diag Windows Two Reds
+
+on:
+  push:
+    branches: ['diag/**']
+
+permissions:
+  contents: read
+
+env:
+  NPM_VERSION: 12.2.1
+  RUST_VERSION: 1.97.1
+  PIG_PERF_TIMING_REPORT_ONLY: '1'
+
+jobs:
+  cargo-warm:
+    name: Windows diag cargo-warm
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Keep Go and oracle scratch under RUNNER_TEMP
+        shell: pwsh
+        run: |
+          "GOCACHE=$(Join-Path $env:RUNNER_TEMP 'go-build')" >> $env:GITHUB_ENV
+          "PIG_PI_BUILD_STORE=$(Join-Path $env:RUNNER_TEMP 'pi-builds')" >> $env:GITHUB_ENV
+          "PIG_TEST_CELL_CACHE=$(Join-Path $env:RUNNER_TEMP 'cell-cache')" >> $env:GITHUB_ENV
+          Write-Output "RUNNER_TEMP=$env:RUNNER_TEMP"
+          Get-PSDrive -PSProvider FileSystem | Format-Table Name, Used, Free
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Restore the Go module cache
+        id: cache-the-go-module-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}\go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: Restore the npm cache
+        id: cache-npm
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~\AppData\Local\npm-cache
+          key: node-cache-${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('extensions/sdk-ts/package-lock.json', 'test/parity/interface-extractor/package-lock.json') }}
+          restore-keys: |
+            node-cache-${{ runner.os }}-${{ runner.arch }}-npm-
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Select the qualified Rust toolchain
+        shell: pwsh
+        run: |
+          rustup toolchain install $env:RUST_VERSION --profile minimal
+          if ($LASTEXITCODE -ne 0) { throw "Rust toolchain installation failed" }
+          rustup default $env:RUST_VERSION
+          if ($LASTEXITCODE -ne 0) { throw "Rust toolchain selection failed" }
+      - name: Restore the native test tool archives
+        id: cache-native-test-tool-archives
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}\native-tool-archives
+          key: native-tools-${{ runner.os }}-${{ hashFiles('automation/ci/windows-tools.txt', 'automation/ci/install-windows-tools.ps1') }}
+      - name: Install native test tools
+        shell: pwsh
+        run: |
+          $bin = Join-Path $env:RUNNER_TEMP 'native-tools'
+          ./automation/ci/install-windows-tools.ps1 -Cache (Join-Path $env:RUNNER_TEMP 'native-tool-archives') -Bin $bin
+          Add-Content -Path $env:GITHUB_PATH -Value $bin
+          $env:PATH = "$bin;$env:PATH"
+          fd --version
+          if ($LASTEXITCODE -ne 0) { throw "fd is not available" }
+          rg --version
+          if ($LASTEXITCODE -ne 0) { throw "ripgrep is not available" }
+      - name: Restore the Pi oracle build
+        id: cache-pi-oracle-build
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}\pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
+      - name: Install pinned Pi test oracle
+        shell: bash
+        run: |
+          set -euo pipefail
+          automation/ci/install-npm-toolchain.sh
+          bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
+          cygpath -w "$bin" >> "$GITHUB_PATH"
+          export PATH="$bin:$PATH"
+          test "$(npm --version)" = "$NPM_VERSION"
+          py="$(command -v python3 || command -v python)"
+          "$py" automation/pin/pin.py install-oracle
+          "$py" automation/ci/npm-locked.py internal/typebox/testdata/npm
+          "$py" automation/ci/npm-locked.py ai/testdata/sdk
+          if [ "$("$py" automation/pin/pin.py get kind)" = tag ]; then "$py" automation/ci/npm-locked.py durable/interop; fi
+      - name: Mirror the pinned Pi source
+        shell: bash
+        env:
+          MSYS: winsymlinks:nativestrict
+        run: ./automation/gen/mirror-upstream.sh
+      - name: Run cargo-warm diagnostic
+        shell: bash
+        env:
+          PI_TEST_NATIVE_CLIPBOARD: '1'
+        run: |
+          set -uo pipefail
+          acceptance="$RUNNER_TEMP/pig native acceptance"
+          mkdir -p "$acceptance"
+          export PIG_HOME="$acceptance/config with spaces"
+          export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
+          go test -count=1 -v -timeout 20m -run '^TestMakeTestRaceNightlyDropsDefaultCargoTargetDir$' ./test/ci-images
+          echo "single_status=$?"
+          go test -count=1 -timeout 40m ./test/ci-images
+          echo "pkg_status=$?"
+
+  auth-storage:
+    name: Windows diag auth-storage
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Keep Go and oracle scratch under RUNNER_TEMP
+        shell: pwsh
+        run: |
+          "GOCACHE=$(Join-Path $env:RUNNER_TEMP 'go-build')" >> $env:GITHUB_ENV
+          "PIG_PI_BUILD_STORE=$(Join-Path $env:RUNNER_TEMP 'pi-builds')" >> $env:GITHUB_ENV
+          "PIG_TEST_CELL_CACHE=$(Join-Path $env:RUNNER_TEMP 'cell-cache')" >> $env:GITHUB_ENV
+          Write-Output "RUNNER_TEMP=$env:RUNNER_TEMP"
+          Get-PSDrive -PSProvider FileSystem | Format-Table Name, Used, Free
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Restore the Go module cache
+        id: cache-the-go-module-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}\go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: Restore the npm cache
+        id: cache-npm
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~\AppData\Local\npm-cache
+          key: node-cache-${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('extensions/sdk-ts/package-lock.json', 'test/parity/interface-extractor/package-lock.json') }}
+          restore-keys: |
+            node-cache-${{ runner.os }}-${{ runner.arch }}-npm-
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Select the qualified Rust toolchain
+        shell: pwsh
+        run: |
+          rustup toolchain install $env:RUST_VERSION --profile minimal
+          if ($LASTEXITCODE -ne 0) { throw "Rust toolchain installation failed" }
+          rustup default $env:RUST_VERSION
+          if ($LASTEXITCODE -ne 0) { throw "Rust toolchain selection failed" }
+      - name: Restore the native test tool archives
+        id: cache-native-test-tool-archives
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}\native-tool-archives
+          key: native-tools-${{ runner.os }}-${{ hashFiles('automation/ci/windows-tools.txt', 'automation/ci/install-windows-tools.ps1') }}
+      - name: Install native test tools
+        shell: pwsh
+        run: |
+          $bin = Join-Path $env:RUNNER_TEMP 'native-tools'
+          ./automation/ci/install-windows-tools.ps1 -Cache (Join-Path $env:RUNNER_TEMP 'native-tool-archives') -Bin $bin
+          Add-Content -Path $env:GITHUB_PATH -Value $bin
+          $env:PATH = "$bin;$env:PATH"
+          fd --version
+          if ($LASTEXITCODE -ne 0) { throw "fd is not available" }
+          rg --version
+          if ($LASTEXITCODE -ne 0) { throw "ripgrep is not available" }
+      - name: Restore the Pi oracle build
+        id: cache-pi-oracle-build
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}\pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
+      - name: Install pinned Pi test oracle
+        shell: bash
+        run: |
+          set -euo pipefail
+          automation/ci/install-npm-toolchain.sh
+          bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
+          cygpath -w "$bin" >> "$GITHUB_PATH"
+          export PATH="$bin:$PATH"
+          test "$(npm --version)" = "$NPM_VERSION"
+          py="$(command -v python3 || command -v python)"
+          "$py" automation/pin/pin.py install-oracle
+          "$py" automation/ci/npm-locked.py internal/typebox/testdata/npm
+          "$py" automation/ci/npm-locked.py ai/testdata/sdk
+          if [ "$("$py" automation/pin/pin.py get kind)" = tag ]; then "$py" automation/ci/npm-locked.py durable/interop; fi
+      - name: Mirror the pinned Pi source
+        shell: bash
+        env:
+          MSYS: winsymlinks:nativestrict
+        run: ./automation/gen/mirror-upstream.sh
+      - name: Run auth-storage diagnostic
+        shell: bash
+        env:
+          PI_TEST_NATIVE_CLIPBOARD: '1'
+        run: |
+          set -uo pipefail
+          acceptance="$RUNNER_TEMP/pig native acceptance"
+          mkdir -p "$acceptance"
+          export PIG_HOME="$acceptance/config with spaces"
+          export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
+          go test -count=2000 -timeout 30m -run '^TestAuthStorageFirstHalfUpstream$/^serializes_concurrent_modifications$' ./ai > auth.log 2>&1; echo status=$?; grep -c -- '--- FAIL' auth.log; grep -m 20 -B1 -A4 -- '--- FAIL' auth.log; tail -3 auth.log
+          go test -count=200 -timeout 30m -run '^TestAuthStorageFirstHalfUpstream$' ./ai > auth-all.log 2>&1; echo status=$?; grep -c -- '--- FAIL' auth-all.log; grep -m 20 -B1 -A4 -- '--- FAIL' auth-all.log; tail -3 auth-all.log
