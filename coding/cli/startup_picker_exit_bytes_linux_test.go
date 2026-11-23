@@ -30,7 +30,6 @@ func TestStartupResumePickerExitLeavesTheTerminalModesReset(t *testing.T) {
 	sessions := filepath.Join(home, "sessions")
 	resumableSession(t, dir, sessions, "picker-exit-session")
 	master, slave := openPTY(t, 40, 140)
-	t.Cleanup(func() { _ = master.Close() })
 	output := &ptyOutput{}
 	cmd := exec.Command(binary, "--resume", "--session-dir", sessions)
 	cmd.Dir = dir
@@ -50,7 +49,15 @@ func TestStartupResumePickerExitLeavesTheTerminalModesReset(t *testing.T) {
 			<-exited
 		}
 	})
-	go func() { _, _ = io.Copy(output, master) }()
+	copied := make(chan struct{})
+	go func() {
+		defer close(copied)
+		_, _ = io.Copy(output, master)
+	}()
+	t.Cleanup(func() {
+		_ = master.Close()
+		<-copied
+	})
 	p := &interactivePig{t: t, master: master, output: output}
 	p.waitScreen("Resume Session", "the session picker")
 	p.waitScreen("from elsewhere", "the Session in the picker")
@@ -64,7 +71,11 @@ func TestStartupResumePickerExitLeavesTheTerminalModesReset(t *testing.T) {
 	case <-time.After(testbudget.Wait(t)):
 		t.Fatalf("pig did not exit after ctrl+c; screen tail: %q", printableTail(output.since(0), 1500))
 	}
-	time.Sleep(200 * time.Millisecond)
+	select {
+	case <-copied:
+	case <-time.After(testbudget.Wait(t)):
+		t.Fatalf("pseudo-terminal output did not drain after pig exited; screen tail: %q", printableTail(output.since(0), 600))
+	}
 	written := output.since(0)
 	for _, mode := range []struct{ on, off string }{{"\x1b[?2004h", "\x1b[?2004l"}, {"\x1b[>", "\x1b[<u"}} {
 		on, off := bytes.LastIndex(written, []byte(mode.on)), bytes.LastIndex(written, []byte(mode.off))

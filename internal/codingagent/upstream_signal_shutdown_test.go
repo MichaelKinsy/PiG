@@ -179,7 +179,7 @@ func TestUpstreamSignalShutdownExtensionCleanup(t *testing.T) {
 	})
 }
 
-// interactive-mode.ts:4326 writes `${chalk.dim("To resume this session:")} ${resumeCommand}`; at chalk level 0 (FORCE_COLOR=0, --no-color, TERM=dumb,
+// interactive-mode.ts:4516 writes `${chalk.dim("To resume this session:")}\n${resumeCommand}\n` (#12237, Pi 63dec2621); at chalk level 0 (FORCE_COLOR=0, --no-color, TERM=dumb,
 // an unknown TERM) chalk.dim returns the text unchanged. PiG always wrote the dim codes.
 func TestResumeHintIsPlainAtChalkLevelZero(t *testing.T) {
 	setStdoutTTY(t, true)

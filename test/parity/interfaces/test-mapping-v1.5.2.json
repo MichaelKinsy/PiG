@@ -758,12 +758,12 @@
     },
     {
       "path": "packages/ai/test/generate-models-strict.test.ts",
-      "disposition": "ported",
+      "disposition": "designed-out",
       "upstreamTestHash": "sha256:00458d0fd5df2cc234f5b1d10b9130e14b9b620509e134e449828f49f7e99ec9",
-      "evidence": [
-        "ai/qwen_token_plan_models_test.go#TestQwenTokenPlanIndividualExposesExactlyDocumentedTextModels"
-      ],
-      "rationale": "Pi 1e34c3b4c removes this test with the strict exact-allowlist assertion of the Individual providers (a model models.dev lacks no longer fails generation); the Go twin TestGenerateModelsStrict is removed with it, and the exact Individual model list stays held by TestQwenTokenPlanIndividualExposesExactlyDocumentedTextModels. Before that commit: Strict generation rejects on a failed source and leaves the data directory untouched. Pi c23b9ec1 delta (qwen-token-plan-individual-cn rows and compat fields) is carried by the existing cases files/tests. Pi 1397070024 delta: the mocked source lists deepseek-v4.1-flash-1017, which the Individual allowlist now requires; the Go case's source lists it too."
+      "rationale": "Deleted upstream in Pi 1e34c3b4c (#12259), which removed this file along with the strict exact-allowlist assertion of the Individual providers (the v1.5.2 test inventory still lists it because the formal pin is v1.5.2; testinventorycheck has no separate deleted-upstream disposition). The Go twin TestGenerateModelsStrict (cmd/gen-models/generate_models_strict_test.go) was removed with it, matching Pi; the Individual provider model lists remain checked by ai/qwen_token_plan_models_test.go.",
+      "protects": "Before Pi 1e34c3b4c, strict model generation failed before mutating generated data when an Individual allowlist model was missing or lost tool support; Pi 1e34c3b4c deleted that strict allowlist check and this test.",
+      "pigTest": "Keeping cmd/gen-models/generate_models_strict_test.go was considered and removed with Pi 1e34c3b4c; the documented Individual model sets remain checked by ai/qwen_token_plan_models_test.go and internal/modelgen/modeldata/model_data_upstream_test.go.",
+      "whyNot": "Deleted upstream in Pi 1e34c3b4c: the strict exact-allowlist failure no longer exists in Pi or PiG, so a test asserting that failure would contradict upstream behavior. The row stays in test-mapping-v1.5.2.json only until the formal pin advances past 1e34c3b4c."
     },
     {
       "path": "packages/ai/test/github-copilot-anthropic.test.ts",
