@@ -3,6 +3,7 @@
 package ciimages
 
 import (
+	"bytes"
 	"io/fs"
 	"maps"
 	"os"
@@ -326,11 +327,19 @@ func TestMakeTestRaceNightlyDropsDefaultCargoTargetDir(t *testing.T) {
 		}
 		env = append(env, extraEnv...)
 		cmd.Env = env
-		out, err := cmd.CombinedOutput()
+		var stderr bytes.Buffer
+		cmd.Stderr = &stderr
+		out, err := cmd.Output()
 		if err != nil {
-			t.Fatalf("make %v: %v\n%s", args, err, out)
+			t.Fatalf("make %v: %v\nstdout:\n%s\nstderr:\n%s", args, err, out, stderr.String())
 		}
-		return strings.TrimSpace(string(out))
+		for line := range strings.SplitSeq(string(out), "\n") {
+			if trimmed := strings.TrimSpace(line); strings.Contains(trimmed, "test-race-nightly.sh") {
+				return trimmed
+			}
+		}
+		t.Fatalf("make %v: no test-race-nightly.sh recipe line in stdout:\n%s\nstderr:\n%s", args, out, stderr.String())
+		return ""
 	}
 	if got := runDry(nil); !strings.HasPrefix(got, "env -u CARGO_TARGET_DIR ") {
 		t.Errorf("default make -n test-race-nightly = %q, want env -u CARGO_TARGET_DIR prefix", got)
