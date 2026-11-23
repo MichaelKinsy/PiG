@@ -180,8 +180,7 @@ func itoa(n int) string {
 
 func fmtFloat(f float64, suffix string) string {
 	// One decimal, banker-truncated to match upstream `.toFixed(1)`.
-	//portlint:allow fusedmuladd f is bytes/2^10 or bytes/2^20 (formatSize), so f*10 is exact and fusion cannot move the rounding
-	scaled := int64(f*10 + 0.5)
+	scaled := int64(float64(f*10) + 0.5)
 	whole := scaled / 10
 	frac := scaled % 10
 	return itoa(int(whole)) + "." + string('0'+byte(frac)) + suffix

@@ -369,6 +369,6 @@ func (a *pigLogoAnimation) runTime(time float64) (float64, bool) {
 		return 0, false
 	}
 	cycle := math.Floor((time - logoPuzzleStart) / logoPuzzleCycle)
-	local := time - logoPuzzleStart - cycle*logoPuzzleCycle //portlint:allow fusedmuladd D87: PiG's running pig, no Pi counterpart
+	local := time - logoPuzzleStart - float64(cycle*logoPuzzleCycle)
 	return local, local < logoShuffleEnd
 }
