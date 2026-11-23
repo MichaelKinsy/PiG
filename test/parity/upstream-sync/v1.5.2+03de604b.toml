@@ -41,26 +41,26 @@ rationale = "03de604b8: live API conformance e2e test (skipIf(!target.apiKey)) a
 [[files]]
 path = "packages/ai/package.json"
 change = "modified"
-disposition = "designed-out"
+disposition = "deferred"
 evidence = []
-rationale = "03de604b8: TypeScript openai SDK bump 7.19.0 -> 7.59.0 for input_transformations types; Go decodes JSON directly in ai/openai_responses.go."
-oracle = "not carried: TypeScript type-only SDK bump; oracle does not require openai 7.59.0."
+rationale = "03de604b8: ported with the openai SDK 7.19.0 to 7.59.0 member (handoffs/next/OPENAI-SDK-7.59-DIFF-2026-11-23.md)."
+oracle = "not carried: tracked by the openai SDK 7.19.0 to 7.59.0 member."
 
 [[files]]
 path = "package-lock.json"
 change = "modified"
-disposition = "designed-out"
+disposition = "deferred"
 evidence = []
-rationale = "03de604b8: npm lockfile for openai 7.59.0 bump; no Go counterpart."
-oracle = "not carried: npm lockfile for TypeScript openai SDK bump."
+rationale = "03de604b8: ported with the openai SDK 7.19.0 to 7.59.0 member."
+oracle = "not carried: tracked by the openai SDK 7.19.0 to 7.59.0 member."
 
 [[files]]
 path = "packages/coding-agent/install-lock/package-lock.json"
 change = "modified"
-disposition = "designed-out"
+disposition = "deferred"
 evidence = []
-rationale = "03de604b8: npm install-lock for openai 7.59.0 bump; no Go counterpart."
-oracle = "not carried: npm install-lock for TypeScript openai SDK bump."
+rationale = "03de604b8: ported with the openai SDK 7.19.0 to 7.59.0 member."
+oracle = "not carried: tracked by the openai SDK 7.19.0 to 7.59.0 member."
 
 [[files]]
 path = "packages/ai/CHANGELOG.md"

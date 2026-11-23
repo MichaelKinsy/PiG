@@ -230,7 +230,7 @@ func (m *InteractiveMode) renderSessionEntryListWithLive(entries []SessionEntry,
 	if m.altScreen != nil {
 		m.altScreen.ResetTextSelection()
 	}
-	m.previousDroppedReasoning = nil
+	m.previousDroppedReasoning = droppedReasoningState{}
 	m.disposeMarkdownBlocks()
 	defer m.refreshFooterContextUsage()
 	// Reset all component tracking: all are stale after a branch navigation.
@@ -271,7 +271,7 @@ func (m *InteractiveMode) renderSessionEntryListWithLive(entries []SessionEntry,
 			}
 			if me, ok := decode(e); ok {
 				if me.Message.Assistant != nil {
-					m.previousDroppedReasoning = getDroppedReasoning(me.Message.Assistant)
+					m.previousDroppedReasoning, _ = countDroppedReasoning(me.Message.Assistant)
 					if m.statusLine != nil && me.Message.Assistant.Usage != nil {
 						m.statusLine.SetTurnContextUsage(me.Message.Assistant.Usage)
 					}

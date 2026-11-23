@@ -573,7 +573,7 @@ type InteractiveMode struct {
 	// cacheWarmingNotice is the last cache-warming notice, extended in place
 	// while it is the last chat line. Mirrors upstream cacheWarmingNotice.
 	cacheWarmingNotice       *cacheWarmingNotice
-	previousDroppedReasoning *droppedReasoning
+	previousDroppedReasoning droppedReasoningState
 
 	// inputLoopErr, owned by the input loop, ends it with the error of a
 	// keystroke handled after a subprocess listener's verdict.

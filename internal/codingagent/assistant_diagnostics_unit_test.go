@@ -59,10 +59,8 @@ func TestCountDroppedThinkingBlocksIgnoresOtherDiagnosticShapes(t *testing.T) {
 	for _, value := range []any{nil, "thinking_dropped", map[string]any{"type": "thinking_dropped"}, []any{nil, 3, "thinking_dropped", map[string]any{"type": "other"}}} {
 		message.Diagnostics[0].Details["transformations"] = value
 		if count := func(m *agent.AssistantMessage) int {
-			if d := getDroppedReasoning(m); d != nil {
-				return d.count
-			}
-			return 0
+			d, _ := countDroppedReasoning(m)
+			return d.count
 		}(message); count != 0 {
 			t.Fatalf("malformed transformations %#v count = %d", value, count)
 		}
@@ -70,10 +68,8 @@ func TestCountDroppedThinkingBlocksIgnoresOtherDiagnosticShapes(t *testing.T) {
 	message.Diagnostics[0].Type = "other"
 	message.Diagnostics[0].Details["transformations"] = []any{map[string]any{"type": "thinking_dropped"}}
 	if count := func(m *agent.AssistantMessage) int {
-		if d := getDroppedReasoning(m); d != nil {
-			return d.count
-		}
-		return 0
+		d, _ := countDroppedReasoning(m)
+		return d.count
 	}(message); count != 0 {
 		t.Fatalf("unrelated diagnostic count = %d", count)
 	}
@@ -81,7 +77,7 @@ func TestCountDroppedThinkingBlocksIgnoresOtherDiagnosticShapes(t *testing.T) {
 
 func BenchmarkThinkingDropNoticeUnchanged(b *testing.B) {
 	message := diagnosticAssistant().Assistant
-	m := &InteractiveMode{opts: InteractiveModeOptions{Settings: Settings{ShowCacheMissNotices: true}}, previousDroppedReasoning: &droppedReasoning{diagnostic: reasoningDropDiagnostics["anthropic_input_transformations"], count: 3}}
+	m := &InteractiveMode{opts: InteractiveModeOptions{Settings: Settings{ShowCacheMissNotices: true}}, previousDroppedReasoning: droppedReasoningState{diagnostic: reasoningDropDiagnostics["anthropic_input_transformations"], count: 3}}
 	b.ReportAllocs()
 	for b.Loop() {
 		m.maybeShowThinkingDropNotice(message)

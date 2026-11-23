@@ -36,55 +36,79 @@ var reasoningDropDiagnostics = map[string]*reasoningDropDiagnostic{
 	},
 }
 
-type droppedReasoning struct {
+type droppedReasoningState struct {
 	diagnostic *reasoningDropDiagnostic
 	count      int
-	reasons    []string
 }
 
 // Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (getDroppedReasoning).
-func getDroppedReasoning(message *agent.AssistantMessage) *droppedReasoning {
+// Returns the matching diagnostic kind, its dropped count, and the index of the diagnostic in message.Diagnostics
+// without allocating, so the unchanged path stays zero-allocation.
+func countDroppedReasoning(message *agent.AssistantMessage) (droppedReasoningState, int) {
 	if message == nil {
-		return nil
+		return droppedReasoningState{}, -1
 	}
-	for _, diagnostic := range message.Diagnostics {
+	for i, diagnostic := range message.Diagnostics {
 		kind := reasoningDropDiagnostics[diagnostic.Type]
 		if kind == nil {
 			continue
 		}
-		var dropped []map[string]any
+		count := 0
 		switch transformations := diagnostic.Details["transformations"].(type) {
 		case []any:
 			for _, value := range transformations {
 				if transformation, ok := value.(map[string]any); ok && transformation["type"] == kind.droppedType {
-					dropped = append(dropped, transformation)
+					count++
 				}
 			}
 		case []map[string]any:
 			for _, transformation := range transformations {
 				if transformation["type"] == kind.droppedType {
-					dropped = append(dropped, transformation)
+					count++
 				}
 			}
 		default:
 			continue
 		}
-		if len(dropped) == 0 {
-			continue
+		if count > 0 {
+			return droppedReasoningState{diagnostic: kind, count: count}, i
 		}
-		seen := make(map[string]struct{}, len(dropped))
-		reasons := make([]string, 0, len(dropped))
-		for _, transformation := range dropped {
-			if reason, ok := transformation["reason"].(string); ok {
-				if _, dup := seen[reason]; !dup {
-					seen[reason] = struct{}{}
-					reasons = append(reasons, reason)
-				}
+	}
+	return droppedReasoningState{}, -1
+}
+
+func collectDroppedReasoningReasons(diagnostic ai.AssistantMessageDiagnostic, droppedType string) []string {
+	var seen map[string]struct{}
+	var reasons []string
+	add := func(transformation map[string]any) {
+		if transformation["type"] != droppedType {
+			return
+		}
+		reason, ok := transformation["reason"].(string)
+		if !ok {
+			return
+		}
+		if seen == nil {
+			seen = make(map[string]struct{})
+		}
+		if _, dup := seen[reason]; !dup {
+			seen[reason] = struct{}{}
+			reasons = append(reasons, reason)
+		}
+	}
+	switch transformations := diagnostic.Details["transformations"].(type) {
+	case []any:
+		for _, value := range transformations {
+			if transformation, ok := value.(map[string]any); ok {
+				add(transformation)
 			}
 		}
-		return &droppedReasoning{diagnostic: kind, count: len(dropped), reasons: reasons}
+	case []map[string]any:
+		for _, transformation := range transformations {
+			add(transformation)
+		}
 	}
-	return nil
+	return reasons
 }
 
 // maybeShowThinkingDropNotice compares with the preceding displayed response. Session persistence can overtake queued UI events, so the owner loop keeps this state and branch rebuilds initialize it in their existing history walk.
@@ -92,11 +116,11 @@ func (m *InteractiveMode) maybeShowThinkingDropNotice(message *agent.AssistantMe
 	if !m.showCacheMissNotices() {
 		return
 	}
-	dropped := getDroppedReasoning(message)
-	if dropped == nil {
+	dropped, diagIdx := countDroppedReasoning(message)
+	if dropped.count == 0 {
 		return
 	}
-	if m.previousDroppedReasoning != nil && m.previousDroppedReasoning.diagnostic == dropped.diagnostic && dropped.count <= m.previousDroppedReasoning.count {
+	if m.previousDroppedReasoning.diagnostic == dropped.diagnostic && dropped.count <= m.previousDroppedReasoning.count {
 		return
 	}
 	noun := dropped.diagnostic.noun[1]
@@ -104,8 +128,8 @@ func (m *InteractiveMode) maybeShowThinkingDropNotice(message *agent.AssistantMe
 		noun = dropped.diagnostic.noun[0]
 	}
 	reasons := ""
-	if len(dropped.reasons) > 0 {
-		reasons = ": " + strings.Join(dropped.reasons, ", ")
+	if list := collectDroppedReasoningReasons(message.Diagnostics[diagIdx], dropped.diagnostic.droppedType); len(list) > 0 {
+		reasons = ": " + strings.Join(list, ", ")
 	}
 	text := fmt.Sprintf("%s dropped %d %s%s (details in session)", dropped.diagnostic.provider, dropped.count, noun, reasons)
 	m.chatContainer.Add(tui.NewSpacer(1))
@@ -552,7 +576,7 @@ func (m *InteractiveMode) applyAgentEvent(ev agent.AgentEvent) {
 				}
 			}
 		}
-		m.previousDroppedReasoning = getDroppedReasoning(e.Message.Assistant)
+		m.previousDroppedReasoning, _ = countDroppedReasoning(e.Message.Assistant)
 		m.evCurrentBlock.FinishStreaming() // its last delta arrived; keep no memos for the next one
 		m.evCurrentBlock = nil
 		m.tuiInst.RequestRender()

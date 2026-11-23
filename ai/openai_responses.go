@@ -2634,14 +2634,8 @@ func appendOpenAIReasoningRemovals(output *AssistantMessage, raw any) {
 	if !ok {
 		return
 	}
-	type orderedRemoval struct {
-		Type   any `json:"type"`
-		ID     any `json:"id,omitempty"`
-		Action any `json:"action"`
-		Reason any `json:"reason,omitempty"`
-	}
 	removals := make([]any, 0)
-	ordered := make([]orderedRemoval, 0)
+	order := make([]*orderedjson.Object, 0)
 	for _, entry := range items {
 		obj, ok := entry.(map[string]any)
 		if !ok {
@@ -2650,28 +2644,21 @@ func appendOpenAIReasoningRemovals(output *AssistantMessage, raw any) {
 		if obj["type"] != "reasoning" || obj["action"] != "removed" || obj["reason"] == "turn_boundary" {
 			continue
 		}
-		projected := map[string]any{
-			"type":   obj["type"],
-			"action": obj["action"],
-		}
-		if v, exists := obj["id"]; exists && v != nil {
-			projected["id"] = v
-		}
-		if v, exists := obj["reason"]; exists && v != nil {
-			projected["reason"] = v
+		projected := map[string]any{}
+		members := orderedjson.New()
+		for _, key := range []string{"type", "id", "action", "reason"} {
+			if value, exists := obj[key]; exists {
+				projected[key] = value
+				_ = members.SetValue(key, value)
+			}
 		}
 		removals = append(removals, projected)
-		ordered = append(ordered, orderedRemoval{
-			Type:   obj["type"],
-			ID:     obj["id"],
-			Action: obj["action"],
-			Reason: obj["reason"],
-		})
+		order = append(order, members)
 	}
 	if len(removals) == 0 {
 		return
 	}
-	orderBytes, _ := json.Marshal(ordered)
+	orderBytes, _ := json.Marshal(order)
 	details := newDiagnosticDetails()
 	details.set("transformations", removals, orderBytes)
 	AppendAssistantMessageDiagnostic(output, details.attach(AssistantMessageDiagnostic{
