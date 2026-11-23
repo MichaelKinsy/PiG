@@ -6,7 +6,7 @@ set -euo pipefail
 # of the pinned version for this OS and architecture (Linux amd64) the binary is installed; where it does not (arm64 macOS) the checksummed
 # release source is built, bootstrapped by the older official binary the lock names. Every download is checked against its lock digest before
 # it is used; nothing is piped to a shell. A prefix that already holds this pin is reused. Prints the prefix on the last line.
-# Building from source needs make and a C compiler.
+# Building from source needs make and a C compiler, and no system zstd (core compression is disabled).
 #   install-sbcl.sh [PREFIX]
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 lock="$root/automation/dev/toolchains.lock"
@@ -50,7 +50,8 @@ else
   (
     cd "$work/source"
     export SBCL_HOME="$work/boot-install/lib/sbcl"
-    sh make.sh --prefix="$prefix" --fancy \
+    # Disable sb-core-compression (part of --fancy): PiG saves Lisp images uncompressed, so the source build needs no system zstd (a runner without zstd.h fails in the C runtime).
+    sh make.sh --prefix="$prefix" --fancy --without-sb-core-compression \
       --xc-host="$work/boot-install/bin/sbcl --no-userinit --no-sysinit" >"$work/build.log" 2>&1 \
       || { tail -60 "$work/build.log" >&2; exit 1; }
     unset SBCL_HOME
