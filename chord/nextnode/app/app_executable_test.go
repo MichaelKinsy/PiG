@@ -12,6 +12,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/pluginstest"
 )
 
 // Ports the "base code" tests of packages/chord/test/node/app/app.test.ts that start a server with no `base` given (Pi's `runStart`).
@@ -110,8 +111,8 @@ func TestAppDoesNotCompareAnExecutableUnderTheGoBuildCache(t *testing.T) {
 			t.Errorf("inGoBuildCache(%q) = %v, want %v", path, got, want)
 		}
 	}
-	// End to end: an executable under such a directory is not compared. The barrier is a plugin edit: the watcher handles events in
-	// order, so once it shows the plugin dirty it has seen the executable's rewrite too.
+	// End to end: an executable under such a directory is not compared. pluginstest.Settle waits for every file event and base
+	// comparison to finish before checking the base mark.
 	built := filepath.Join(t.TempDir(), "go-build123", "b001", "server")
 	if err := os.MkdirAll(filepath.Dir(built), 0o755); err != nil {
 		t.Fatal(err)
@@ -126,8 +127,7 @@ func TestAppDoesNotCompareAnExecutableUnderTheGoBuildCache(t *testing.T) {
 	if err := os.WriteFile(built, []byte("v2"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	editEcho(t, s.root, "barrier")
-	untilMarks(t, s.app, "the barrier edit", func(m plugins.PluginsState) bool { return len(m.Dirty) == 1 })
+	pluginstest.Settle(t, s.app.Plugins.Component)
 	if s.app.Plugins.Component.Marks().Base {
 		t.Fatal("base is marked by an edit of an executable under the go-build cache")
 	}

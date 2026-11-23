@@ -17,6 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/pluginstest"
 )
 
 // Ports the "applies changes", "applying changes one after another" and "base code" tests of
@@ -225,8 +226,9 @@ func TestAppMarksBaseForAChangeOfBasesFilesAndDirectories(t *testing.T) {
 				t.Fatal("base is marked at start")
 			}
 			changed := filepath.Join(dir, name)
-			// A rewrite with the same bytes marks nothing (Pi compares base files by hash). The barrier is a plugin edit: the
-			// watcher handles events in order, so once it shows the plugin dirty it has seen the rewrite too.
+			// A rewrite with the same bytes marks nothing once settled (Pi compares base files by hash): os.WriteFile truncates
+			// then writes, and base comparisons hash files asynchronously off the watcher's section, so pluginstest.Settle waits
+			// for both the file events and every base comparison they started.
 			same, err := os.ReadFile(changed)
 			if err != nil {
 				t.Fatal(err)
@@ -234,8 +236,7 @@ func TestAppMarksBaseForAChangeOfBasesFilesAndDirectories(t *testing.T) {
 			if err := os.WriteFile(changed, same, 0o644); err != nil {
 				t.Fatal(err)
 			}
-			editEcho(t, s.root, "barrier")
-			untilMarks(t, s.app, "the barrier edit", func(m plugins.PluginsState) bool { return len(m.Dirty) == 1 })
+			pluginstest.Settle(t, s.app.Plugins.Component)
 			if s.app.Plugins.Component.Marks().Base {
 				t.Fatal("base is marked by a rewrite with the same bytes")
 			}
@@ -273,12 +274,11 @@ func TestAppMarksBaseForAChangeOfAWorkerKindsEntryNotForARewriteWithTheSameBytes
 	if got := s.errors.kinds(); len(got) != 0 {
 		t.Fatalf("reported %v", got)
 	}
-	// The barrier is a plugin edit: the watcher handles events in order, so once it shows the plugin dirty it has seen the rewrite.
+	// pluginstest.Settle waits for both the file events of the rewrite and every base comparison they started.
 	if err := replaceFile(entry, bytes); err != nil {
 		t.Fatal(err)
 	}
-	editEcho(t, s.root, "barrier")
-	untilMarks(t, s.app, "the barrier edit", func(m plugins.PluginsState) bool { return len(m.Dirty) == 1 })
+	pluginstest.Settle(t, s.app.Plugins.Component)
 	if s.app.Plugins.Component.Marks().Base {
 		t.Fatal("base is marked by a rewrite with the same bytes")
 	}
