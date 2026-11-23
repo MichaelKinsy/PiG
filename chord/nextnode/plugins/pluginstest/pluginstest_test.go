@@ -16,8 +16,11 @@ type fakeWatcher struct {
 	watching bool
 	// reached answers the call-th Watches (from 1).
 	reached func(call int) bool
-	trees   []string
-	asked   []string
+	// comparing, when non-nil, answers the call-th ComparingBase (from 1); nil means false.
+	comparing      func(call int) bool
+	comparingCalls int
+	trees          []string
+	asked          []string
 	// made is whether each directory asked about was there when it was asked.
 	made []bool
 }
@@ -32,6 +35,14 @@ func (w *fakeWatcher) Watches(dir string) bool {
 	w.asked = append(w.asked, dir)
 	w.made = append(w.made, err == nil && info.IsDir())
 	return w.reached(len(w.asked))
+}
+
+func (w *fakeWatcher) ComparingBase() bool {
+	w.comparingCalls++
+	if w.comparing == nil {
+		return false
+	}
+	return w.comparing(w.comparingCalls)
 }
 
 // failing is a test whose Fatalf is recorded and ends the goroutine it is called on, as a test's does.
@@ -105,6 +116,43 @@ func TestSettleFailsTheTestWhenTheWatcherHasNotReachedTheDirectoryAtTheBound(t *
 	}
 	if len(watcher.asked) == 0 {
 		t.Fatal("the watcher was never asked")
+	}
+}
+
+func TestSettleWaitsUntilComparingBaseIsFalseAfterTheDirectoryIsWatched(t *testing.T) {
+	watcher := &fakeWatcher{
+		watching:  true,
+		reached:   func(call int) bool { return call == 2 },
+		comparing: func(call int) bool { return call < 3 },
+	}
+	Settle(t, watcher)
+	if len(watcher.asked) != 2 || watcher.comparingCalls != 3 {
+		t.Fatalf("asked = %d, comparingCalls = %d, want 2 and 3", len(watcher.asked), watcher.comparingCalls)
+	}
+}
+
+func TestSettleFailsTheTestWhenComparingBaseStaysTrueAtTheBound(t *testing.T) {
+	watcher := &fakeWatcher{
+		watching:  true,
+		reached:   func(int) bool { return true },
+		comparing: func(int) bool { return true },
+	}
+	test := &failing{TB: t}
+	ended := make(chan struct{})
+	began := time.Now()
+	go func() {
+		defer close(ended)
+		settle(test, watcher, 40*time.Millisecond)
+	}()
+	<-ended
+	if want := "timed out after 40ms waiting for the watcher to finish base file comparisons"; test.fatal != want {
+		t.Fatalf("failure = %q, want %q", test.fatal, want)
+	}
+	if waited := time.Since(began); waited < 40*time.Millisecond {
+		t.Fatalf("failed after %v, want the bound (40ms) waited out", waited)
+	}
+	if watcher.comparingCalls == 0 {
+		t.Fatal("ComparingBase was never asked")
 	}
 }
 

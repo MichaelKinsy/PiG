@@ -1350,6 +1350,7 @@ func (w discoveringComponent) WatchTree(dir string) ([]string, bool) {
 }
 
 func (w discoveringComponent) Watches(dir string) bool { return w.c.Watches(dir) }
+func (w discoveringComponent) ComparingBase() bool     { return w.c.ComparingBase() }
 
 // No Pi counterpart (Plugins.WatchTree is the barrier's of the Go tests; Pi's tests share the watcher's thread). The component's
 // discovery keeps the tree its barrier watches: the barrier returns with a discovery between its WatchTree and its directory.

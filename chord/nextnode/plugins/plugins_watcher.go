@@ -500,6 +500,11 @@ func (w *pluginWatcher) watches(dir string) bool {
 	return ok
 }
 
+// comparingBase reports whether any base file comparison is queued or running.
+func (w *pluginWatcher) comparingBase() bool {
+	return len(w.comparing) > 0
+}
+
 // unwatchTree stops watching the tree at dir.
 func (w *pluginWatcher) unwatchTree(dir string) {
 	delete(w.trees, dir)

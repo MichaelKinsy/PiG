@@ -32,12 +32,10 @@ func (f *watcherFixture) baseIs(value bool) {
 	eventually(f.t, 5*time.Second, "base to be "+map[bool]string{true: "set", false: "clear"}[value], func() bool { return f.marks().Base == value })
 }
 
-// settled lets the watch events and the comparisons of the last writes run: the barrier's events, then the comparisons they
-// started.
+// settled lets the watch events and the comparisons of the last writes run (pluginstest.Settle waits for both).
 func (f *watcherFixture) settled() {
 	f.t.Helper()
 	f.settle()
-	f.joinComparisons()
 }
 
 // joinComparisons returns once no comparison of a base file is under way.

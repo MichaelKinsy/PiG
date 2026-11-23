@@ -170,7 +170,7 @@ func (f *watcherFixture) settle() {
 	pluginstest.Settle(f.t, f)
 }
 
-// WatchTree and Watches are the barrier's two questions (pluginstest.Watcher), asked in a section of the loop.
+// WatchTree, Watches and ComparingBase are the barrier's questions (pluginstest.Watcher), asked in a section of the loop.
 func (f *watcherFixture) WatchTree(dir string) ([]string, bool) {
 	var watched []string
 	var watching bool
@@ -182,6 +182,12 @@ func (f *watcherFixture) Watches(dir string) bool {
 	var watches bool
 	f.run(func() { watches = f.watcher.watches(dir) })
 	return watches
+}
+
+func (f *watcherFixture) ComparingBase() bool {
+	var comparing bool
+	f.run(func() { comparing = f.watcher.comparingBase() })
+	return comparing
 }
 
 // forget clears every mark the watcher holds: what a case sees is what it does from here.

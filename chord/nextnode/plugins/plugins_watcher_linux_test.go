@@ -105,10 +105,12 @@ func TestTheBaseMarkReadsOnePathInOrderASecondComparisonWaitsForTheFirstHeldOnAP
 	root := realOf(t, tempRoot(t))
 	pipe := filepath.Join(root, "held.ts")
 	fifo(t, pipe)
-	// The first comparison opens the pipe and waits for a writer; a second one is queued behind it.
+	// The first comparison opens the pipe and waits for a writer; a second one is queued behind it (a comparison stays
+	// held on purpose until writeWhenRead below, so do not wait for ComparingBase to clear).
 	f.recordBase(model.BaseInputs{pipe: hashOf("as built")})
 	f.mark(pipe)
-	f.settle()
+	// Wait for the first comparison to have opened the pipe before writing to it.
+	eventually(t, 5*time.Second, "a reader on "+pipe, func() bool { return readerWaits(pipe) })
 	// The first read gets other bytes: marked. (Two readers at once would split this: one of them gets nothing.)
 	writeWhenRead(t, pipe, "other bytes")
 	f.baseIs(true)
