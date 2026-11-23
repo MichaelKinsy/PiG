@@ -1984,6 +1984,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d13855f](#bf-d13855f) | A Node extension whose file or package entry point is gone is now reported with the same error whether it… | PiG's own defect | All platforms | Unreleased |
 | [BF-d1785c8](#bf-d1785c8) | Ctrl+P and Shift+Ctrl+P now cycle to the only model in scope when the active model is outside it, instead of… | PiG's own defect | All platforms | Unreleased |
 | [BF-d1848ed](#bf-d1848ed) | extensions: `/reload` left on screen what the replaced extensions had set and Pi resets when a reload begins… | PiG's own defect | All platforms | Unreleased |
+| [BF-d1a4d01](#bf-d1a4d01) | durable/harness: a host embedding `durable/harness` could be ended by Go's `concurrent map read and map… | PiG's own defect | All platforms | Unreleased |
 | [BF-d1af7ae](#bf-d1af7ae) | The crash message of a deterministic code mode VM that is told a result number it cannot take now reads as… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-d1af7ae-2](#bf-d1af7ae-2) | The errors that name a code mode tool or global (`Tool "x" is already registered`, `Invalid global name "x"`… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-d1af7ae-3](#bf-d1af7ae-3) | A code mode `done` message that carries no store writes now fails the execution with Pi's `store writes is… | PiG's own defect | All platforms | 0.7.0 |
@@ -29730,6 +29731,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `d1848ed259` (2026-11-12)
 - **Tests:** None recorded.
 - **Release note:** extensions: `/reload` left on screen what the replaced extensions had set and Pi resets when a reload begins: keyed statuses (`ctx.ui.setStatus`), a custom footer and header, the working message and indicator, the hidden thinking label, overlays, and the terminal title; a terminal input listener (`ctx.ui.onTerminalInput`) of a replaced extension kept receiving every key, and `ctx.ui.getEditorComponent()` kept answering its editor factory. A session replacement (`/new`, `/resume`, `/fork`) kept the statuses, the footer and header, the title and the input listeners. Both now reset all of them, as Pi's `resetExtensionUI` does, and dispose the footer and header components; an extension that wants them after a reload sets them again in its `session_start` handler. Present in releases 0.2.0 to 0.7.0.
+
+### BF-d1a4d01
+
+**durable/harness: a host embedding `durable/harness` could be ended by Go's `concurrent map read and map…**
+
+- **Source:** PiG's own defect
+- **Symptom:** durable/harness: a host embedding `durable/harness` could be ended by Go's `concurrent map read and map write` (or report a data race) when a commit was published while a task graph or conversation view observer attached or a registry change refreshed blocked reasons, and a task graph observer could show a task blocked for a definition that had just been installed, until the next registry change.
+- **Root cause:** Guard taskGraphMount's value, records, pending delivery queue, and refresh counter with a per-mount mutex so the commit follower and Session-line jobs never race on mount state. Queue state transitions under the mount mutex and drain them under a dedicated leaf deliverMu so observers receive changes synchronously in order without holding any state lock across callbacks. Update mount.records before computing blocked reasons off every lock, and recompute in advanceTaskGraph whenever a concurrent refreshBlocked advances the refresh counter so a stale reason read before a registry change is never published after it.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `388aed919e` (2026-11-22), `d1a4d01571` (2026-11-22), `deb3251294` (2026-11-22)
+- **Tests:** `durable/harness/view_incarnation_test.go::TestAdvanceViewFollowsOnlyTheMountedIncarnation`
+- **Release note:** durable/harness: a host embedding `durable/harness` could be ended by Go's `concurrent map read and map write` (or report a data race) when a commit was published while a task graph or conversation view observer attached or a registry change refreshed blocked reasons, and a task graph observer could show a task blocked for a definition that had just been installed, until the next registry change. Present since 0.7.0.
 
 ### BF-d1af7ae
 

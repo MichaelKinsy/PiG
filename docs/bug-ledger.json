@@ -54280,6 +54280,36 @@
       "tests": []
     },
     {
+      "id": "BF-d1a4d01",
+      "title": "durable/harness: a host embedding `durable/harness` could be ended by Go's `concurrent map read and map…",
+      "symptom": "durable/harness: a host embedding `durable/harness` could be ended by Go's `concurrent map read and map write` (or report a data race) when a commit was published while a task graph or conversation view observer attached or a registry change refreshed blocked reasons, and a task graph observer could show a task blocked for a definition that had just been installed, until the next registry change.",
+      "rootCause": "Guard taskGraphMount's value, records, pending delivery queue, and refresh counter with a per-mount mutex so the commit follower and Session-line jobs never race on mount state. Queue state transitions under the mount mutex and drain them under a dedicated leaf deliverMu so observers receive changes synchronously in order without holding any state lock across callbacks. Update mount.records before computing blocked reasons off every lock, and recompute in advanceTaskGraph whenever a concurrent refreshBlocked advances the refresh counter so a stale reason read before a registry change is never published after it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "durable/harness: a host embedding `durable/harness` could be ended by Go's `concurrent map read and map write` (or report a data race) when a commit was published while a task graph or conversation view observer attached or a registry change refreshed blocked reasons, and a task graph observer could show a task blocked for a definition that had just been installed, until the next registry change. Present since 0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "388aed919e",
+          "date": "2026-11-22"
+        },
+        {
+          "hash": "d1a4d01571",
+          "date": "2026-11-22"
+        },
+        {
+          "hash": "deb3251294",
+          "date": "2026-11-22"
+        }
+      ],
+      "tests": [
+        "durable/harness/view_incarnation_test.go::TestAdvanceViewFollowsOnlyTheMountedIncarnation"
+      ]
+    },
+    {
       "id": "BF-d1af7ae",
       "title": "The crash message of a deterministic code mode VM that is told a result number it cannot take now reads as…",
       "symptom": "The crash message of a deterministic code mode VM that is told a result number it cannot take now reads as Pi's does, `Error: Result 2 has sequence number 5, expected 1 or later, once`, and names `undefined` for a result that carries no number, where it read `Result 2 has sequence number 0, ...`.",
