@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"slices"
 	"strings"
@@ -114,14 +115,46 @@ func TestGroupedChangedRaceRunCarriesTheRaceTimeout(t *testing.T) {
 	}
 }
 
-func TestGroupedChangedPlainRunKeepsTheDefaultTimeout(t *testing.T) {
+var plainTimeoutDefaultPattern = regexp.MustCompile(`(?m)^PIG_PLAIN_TIMEOUT="\$\{PIG_PLAIN_TIMEOUT:-([^}]+)\}"$`)
+
+// plainTimeoutDefault reads the default PIG_PLAIN_TIMEOUT value declared in automation/ci/plain-timeout.sh.
+func plainTimeoutDefault(t *testing.T) string {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(repoRoot(t), "automation", "ci", "plain-timeout.sh"))
+	if err != nil {
+		t.Fatalf("read automation/ci/plain-timeout.sh: %v", err)
+	}
+	m := plainTimeoutDefaultPattern.FindStringSubmatch(string(data))
+	if len(m) != 2 {
+		t.Fatalf("automation/ci/plain-timeout.sh does not declare PIG_PLAIN_TIMEOUT default")
+	}
+	return m[1]
+}
+
+// TestGroupedChangedPlainRunCarriesThePlainTimeout verifies that a plain (non-race) run takes
+// plain-timeout.sh's PIG_PLAIN_TIMEOUT (default from automation/ci/plain-timeout.sh, or the caller's
+// override) and never carries -race or PIG_RACE_TIMEOUT.
+func TestGroupedChangedPlainRunCarriesThePlainTimeout(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("the fixture's fake go is a bash script found through PATH")
 	}
-	for _, leak := range []bool{false, true} {
-		lines := changedGoTestLines(t, leak, "TEST_CHANGED_RACE=none", "PIG_RACE_TIMEOUT=90m")
-		if len(lines) != 1 || strings.Contains(lines[0], "-race") || !strings.Contains(lines[0], " -timeout 30m ") {
-			t.Fatalf("plain run (leaked CI environment %v) = %q, want no -race and plain -timeout 30m", leak, lines)
-		}
+	defaultTimeout := plainTimeoutDefault(t)
+	for _, tc := range []struct {
+		name   string
+		leak   bool
+		env    []string
+		want   string
+		forbid string
+	}{
+		{name: "default", env: []string{"TEST_CHANGED_RACE=none", "PIG_RACE_TIMEOUT=90m"}, want: "-timeout " + defaultTimeout, forbid: "-timeout 90m"},
+		{name: "override", env: []string{"TEST_CHANGED_RACE=none", "PIG_RACE_TIMEOUT=90m", "PIG_PLAIN_TIMEOUT=45m"}, want: "-timeout 45m", forbid: "-timeout " + defaultTimeout},
+		{name: "default in the CI job's environment", leak: true, env: []string{"TEST_CHANGED_RACE=none", "PIG_RACE_TIMEOUT=90m"}, want: "-timeout " + defaultTimeout, forbid: "-timeout 90m"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			lines := changedGoTestLines(t, tc.leak, tc.env...)
+			if len(lines) != 1 || strings.Contains(lines[0], "-race") || !strings.Contains(lines[0], " "+tc.want+" ") || strings.Contains(lines[0], " "+tc.forbid+" ") {
+				t.Fatalf("plain run = %q, want no -race, %q, and not %q", lines, tc.want, tc.forbid)
+			}
+		})
 	}
 }
