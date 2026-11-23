@@ -61,6 +61,10 @@ func runSDKDiagnosticsCell(t *testing.T, tc kitCell, beforeStop func(*harness)) 
 	if beforeStop != nil {
 		beforeStop(h)
 	}
+	log := extensionLogs(t, started)
+	if h.host != nil {
+		h.host.Shutdown("test done")
+	}
 	out, errOut := capture.stop()
 	terminal := out + errOut
 
@@ -75,8 +79,6 @@ func runSDKDiagnosticsCell(t *testing.T, tc kitCell, beforeStop func(*harness)) 
 			break
 		}
 	}
-
-	log := extensionLogs(t, started)
 	if !strings.Contains(log, "probe-panic-boom") {
 		t.Errorf("%s: no extension log holds the report of the panic (probe-panic-boom):\n%s", tc.name, log)
 	}

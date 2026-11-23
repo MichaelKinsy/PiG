@@ -55,6 +55,9 @@ func runConsoleProbeCell(t *testing.T, mode string, tc kitCell, beforeStop func(
 	if beforeStop != nil {
 		beforeStop(h)
 	}
+	if h.host != nil {
+		h.host.Shutdown("test done")
+	}
 	out, errOut := capture.stop()
 	gotOut, gotErr := probeLines(out), probeLines(errOut)
 	var wantOut, wantErr []string
