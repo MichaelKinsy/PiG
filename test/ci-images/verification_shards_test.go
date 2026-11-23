@@ -434,7 +434,9 @@ func groupedTestFixture(t *testing.T) string {
 	copyCIFixture(t, root, "automation/ci/assert-clean-tmp.sh")
 	copyCIFixture(t, root, "automation/ci/agent-dir-guard.sh")
 	copyCIFixture(t, root, "automation/ci/reap-test-processes.sh")
-	copyCIFixture(t, root, "automation/ci/race-timeout.sh")
+	for _, rel := range groupedSourcedScripts(t) {
+		copyCIFixture(t, root, rel)
+	}
 	// test-grouped.sh enters the in-repo Porter extension module to warm its dependency-module build cache.
 	writeCIFixture(t, root, "piglets/porter/extensions/pig-porter/.keep", "")
 	// The core-fault group runs exactly the tests that the pigfault-tagged test files of durable/core/driver declare; an untagged file's tests belong to the normal run.
@@ -467,6 +469,7 @@ case "$1" in
     while (($#)); do
       case "$1" in
         -run) run=$2; shift 2 ;;
+        -timeout) shift 2 ;;
         -*) shift ;;
         *) packages+=("$1"); shift ;;
       esac
@@ -1111,6 +1114,35 @@ func TestOSParallelJobsKeepTheCheapFirstOrderOnMain(t *testing.T) {
 			if !strings.Contains(job.If, want) {
 				t.Errorf("%s: if %q lacks %q", name, job.If, want)
 			}
+		}
+	}
+}
+
+var groupedSourcedScriptPattern = regexp.MustCompile(`(?m)^\s*source\s+"\$ROOT/([^"]+)"`)
+
+// groupedSourcedScripts reads automation/ci/test-grouped.sh from the repository and returns every relative path it sources under $ROOT.
+func groupedSourcedScripts(t *testing.T) []string {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(repoRoot(t), "automation", "ci", "test-grouped.sh"))
+	if err != nil {
+		t.Fatalf("read automation/ci/test-grouped.sh: %v", err)
+	}
+	matches := groupedSourcedScriptPattern.FindAllStringSubmatch(string(data), -1)
+	if len(matches) == 0 {
+		t.Fatal("automation/ci/test-grouped.sh sources no scripts under $ROOT")
+	}
+	var scripts []string
+	for _, m := range matches {
+		scripts = append(scripts, m[1])
+	}
+	return scripts
+}
+
+func TestGroupedTestFixtureCopiesEverySourcedScript(t *testing.T) {
+	root := groupedTestFixture(t)
+	for _, rel := range groupedSourcedScripts(t) {
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(rel))); err != nil {
+			t.Errorf("groupedTestFixture missing sourced script %s: %v", rel, err)
 		}
 	}
 }
