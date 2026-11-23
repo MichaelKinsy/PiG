@@ -92,9 +92,6 @@ func TestCodexWebSocketFramesPinMaxOutputTokensWireOrder(t *testing.T) {
 	// packages/ai/src/api/openai-codex-responses.ts:601-614: max_output_tokens follows parallel_tool_calls.
 	want := `{"type":"response.create","model":"gpt-6.2-sol","store":false,"stream":true,"input":[{"role":"developer","content":"You are a helpful assistant."},{"role":"user","content":[{"type":"input_text","text":"Say hello"}]}],"text":{"verbosity":"low"},"include":["reasoning.encrypted_content"],"prompt_cache_key":"s-order-max","tool_choice":"auto","parallel_tool_calls":true,"max_output_tokens":5000}`
 	if len(frames) != 1 || frames[0] != want {
-		t.Fatalf("frames:
-%q
-want:
-%q", frames, want)
+		t.Fatalf("frames:\n%q\nwant:\n%q", frames, want)
 	}
 }

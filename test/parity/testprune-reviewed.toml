@@ -1517,30 +1517,3 @@ class = "CITE"
 cite = "packages/ai/src/api/openai-codex-responses.ts:612"
 reason = "Pi fcc33744b (#12269) forwards maxTokens as max_output_tokens on openai-codex-responses unless compat.supportsMaxOutputTokens is false."
 
-[[entry]]
-path = "ai/openai_codex_sse_upstream_test.go"
-commit = "948649396847221d1d22332cb003ed0a335ce63c"
-class = "CITE"
-cite = "packages/ai/test/openai-codex-stream.test.ts:1273"
-reason = "Pi edfe6b2ef (#12273) moves the Codex system prompt to input[0] as a leading developer item, shifting the zstd user message from input[0] to input[1]."
-
-[[entry]]
-path = "ai/openai_codex_ws_upstream_test.go"
-commit = "948649396847221d1d22332cb003ed0a335ce63c"
-class = "CITE"
-cite = "packages/ai/test/openai-codex-stream.test.ts:2492"
-reason = "Pi edfe6b2ef (#12273) adds the leading developer system-prompt item to the first WebSocket input and to the previous_response_not_found full-context fallback input (3 -> 4 items)."
-
-[[entry]]
-path = "ai/openai_codex_websocket_key_order_test.go"
-commit = "948649396847221d1d22332cb003ed0a335ce63c"
-class = "CITE"
-cite = "packages/ai/src/api/openai-codex-responses.ts:566"
-reason = "Pi edfe6b2ef (#12273) drops top-level instructions from Codex buildRequestBody and prepends the system prompt as a leading developer item in input."
-
-[[entry]]
-path = "ai/openai_responses_shared_oracle_test.go"
-commit = "948649396847221d1d22332cb003ed0a335ce63c"
-class = "CITE"
-cite = "packages/ai/src/api/openai-responses-shared.ts:126"
-reason = "Pi edfe6b2ef (#12273) removes ConvertResponsesMessagesOptions.includeSystemPrompt, so the includeSystemPrompt:false oracle case no longer exists."
