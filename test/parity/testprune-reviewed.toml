@@ -1509,10 +1509,3 @@ commit = "eb9075718e2f380e44972dc21c10c2128913cd1d"
 class = "CITE"
 cite = "packages/coding-agent/src/modes/interactive/interactive-mode.ts:4403"
 reason = "Pi 03de604b8 updates maybeShowThinkingDropNotice (interactive-mode.ts:4403) so both Anthropic and OpenAI reasoning drop notices include the deduplicated reasons list before (details in session). Commit eb9075718e updates the expected notice strings in assistant_diagnostics_unit_test.go to match."
-
-[[entry]]
-path = "internal/codingagent/assistant_diagnostics_unit_test.go"
-commit = "f2295855a1d32b0692b3caf7b43431a6c385f08d"
-class = "NOBEHAVIOR"
-cite = ""
-reason = "Commit f2295855a only runs gofmt on internal/codingagent/assistant_diagnostics_unit_test.go and adds a portlint:allow clock comment in ai/openai_responses.go; no test expectation changed."
