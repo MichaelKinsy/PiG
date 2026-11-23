@@ -3,7 +3,7 @@
 # With this, a fenced typescript code block in an assistant reply wraps plain tokens with the active theme text foreground and resets with SGR 39.
 # Requires the 562da75f9 backport block in automation/gen/pi-post-release-backports.mjs so the pinned Pi 1.5.2 oracle carries the new behavior.
 
-name = "52-highlight-default-token-text-color"
+name = "80-highlight-default-token-text-color"
 description = "Fenced code blocks apply the active theme text foreground to unscoped tokens in highlighted code."
 covers = [
   "packages/coding-agent/src/modes/interactive/theme/theme.ts",
