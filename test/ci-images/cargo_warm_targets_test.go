@@ -316,7 +316,7 @@ func TestMakeTestRaceNightlyDropsDefaultCargoTargetDir(t *testing.T) {
 	root := repoRoot(t)
 	runDry := func(extraEnv []string, extraArgs ...string) string {
 		t.Helper()
-		args := append([]string{"-C", root, "-n", "test-race-nightly"}, extraArgs...)
+		args := append([]string{"--no-print-directory", "-C", root, "-n", "test-race-nightly"}, extraArgs...)
 		cmd := exec.Command("make", args...)
 		var env []string
 		for _, kv := range os.Environ() {
