@@ -479,7 +479,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-37c6264](#bf-37c6264) | A Node extension that draws Pi's `ToolExecutionComponent` for a tool that renders itself (`renderShell… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-37d2daa](#bf-37d2daa) | An extension's `ctx.model` and model lists keep a model's `cost.tiers` when the model's record has it as an… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-37dad58](#bf-37dad58) | Chord: a peer that held and released origins faster than the host tore their objects down could make the host… | PiG's own defect | All platforms | Unreleased |
-| [BF-3800eb3](#bf-3800eb3) | fix(gen-models): meta.json and piOverlayCommit name the last packed catalog source again () | PiG's own defect | All platforms | Unreleased |
 | [BF-3804a5a](#bf-3804a5a) | The pi-messages and classifier (System One, decisions) requests are sent to the URL as written and a URL with… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-380ea0e](#bf-380ea0e) | fix(durable/core): a settled outcome without error detail is no cut-off (Pi) | PiG's own defect | All platforms | Unreleased |
 | [BF-3838d0b](#bf-3838d0b) | Interactive mode is ready to type about 10 ms sooner when the recorded "what's new" version differs from the… | PiG's own defect | All platforms | Unreleased |
@@ -1976,6 +1975,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d06e6cf](#bf-d06e6cf) | Ending an RPC session while a response is running (stdin closes, an extension calls `ctx.shutdown()`, or pig… | PiG's own defect | All platforms | Unreleased |
 | [BF-d0c2727](#bf-d0c2727) | fix(codingagent): decode a Node request's client identity from its fields; regenerate the normalization… | PiG's own defect | All platforms | Unreleased |
 | [BF-d0de445](#bf-d0de445) | The thinking-level shortcut now goes to the lowest level of the model when the current level is not one of… | PiG's own defect | All platforms | Unreleased |
+| [BF-d0eb796](#bf-d0eb796) | Chord sync: a store whose outbox was turned off and on again after it committed could not upload any more… | PiG's own defect | All platforms | Unreleased |
 | [BF-d11ca55](#bf-d11ca55) | `pig piglet build --format binary` from a Pig checkout with a `go.work` builds a Piglet whose fused Go… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d133e3d](#bf-d133e3d) | Codemode scripts that patch built-ins, for example `Array.prototype.toJSON = ...`, no longer break the tool… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-d133e3d-2](#bf-d133e3d-2) | MCP OAuth sign-in no longer fails with `invalid_redirect_uri` on OpenID Connect servers: client registration… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
@@ -8829,19 +8829,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `37dad5849b` (2026-11-15)
 - **Tests:** `chord/next/host/host_endings_order_test.go::TestEndingsOfOneIdentityTearDownInTheOrderTheyWereMadeOneAtATime`, `chord/next/host/host_pace_test.go::TestPaceBoundsTheEndingsAPeersUnmarkedChurnLeavesPending`, `chord/next/host/host_pace_test.go::TestPaceDoesNotHoldTheReaderForATeardownParkedOnALaterFrame`, `chord/next/host/host_pace_test.go::TestPaceInTheLinkReaderReturnsAtOnceWhenTheHostOrTheLinkCloses`, `chord/next/host/host_pace_test.go::TestPaceTwoHostsChurningToEachOtherOverABlockingTransportBothFinish`, `chord/next/host/host_pace_test.go::TestPaceWakesWhenTheLastRunningPacedTaskParks`
 - **Release note:** Chord: a peer that held and released origins faster than the host tore their objects down could make the host keep one pending teardown (a parked goroutine and the object it pinned) for every release: 14,626 pending tasks and 111 MiB at 20,000 origins of one identity, 73,430 and 568 MiB at 100,000, 294,528 and 2,265 MiB at 400,000. An ending now waits for the identity's previous one as a reaction (no goroutine parked on it), and a link's reader waits, after each frame it read off the transport, until the teardowns that frame started have ended or wait for something outside the host (Pi runs the microtasks an ending queued before its next frame), so the same churn leaves at most 2 pending at every size. A teardown that waits for something only a later frame releases does not stop the reader, and the endings queued behind it still pile up without bound, as in Pi. Reply order, teardown order per identity and abort and close order do not change; the reply to a ping sent after a release now comes after the teardown that release started.
-
-### BF-3800eb3
-
-**fix(gen-models): meta.json and piOverlayCommit name the last packed catalog source again ()**
-
-- **Source:** PiG's own defect
-- **Symptom:** fix(gen-models): meta.json and piOverlayCommit name the last packed catalog source again ()
-- **Root cause:** The member set both by hand, but meta.json is written by gen-models (packSource: -merge-source, -record-source) and that member adds no new row, so no tool run restamps it. As for the member (), the stamp names the last PACKED source; the next -merge-source run restamps it. The overlay files are Pi at.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `3800eb3212` (2026-11-20)
-- **Tests:** None recorded.
 
 ### BF-3804a5a
 
@@ -29617,6 +29604,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/model_utils_test.go::TestNextThinkingLevel`, `internal/codingagent/thinking_selector_test.go::TestCycleThinkingLevelGoesToTheLowestLevelOfTheModel`
 - **Release note:** The thinking-level shortcut now goes to the lowest level of the model when the current level is not one of its levels (`minimal` from `off` on a model that cannot turn thinking off, as Pi), and works for every model that reasons.
 
+### BF-d0eb796
+
+**Chord sync: a store whose outbox was turned off and on again after it committed could not upload any more…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord sync: a store whose outbox was turned off and on again after it committed could not upload any more (`UploadSession` failed with `OutboxUnavailableError` on every attempt and was retried forever) because the commits between what the remote held and the outbox start were gone.
+- **Root cause:** UploadSession only exported an archive slot when synced == LogStart && outbox.Floor() > 0, so toggling the outbox off and on after a prior upload left outbox.Floor() > synced > 0 and failed with OutboxUnavailableError on every retry.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d0eb79648d` (2026-11-22)
+- **Tests:** None recorded.
+- **Release note:** Chord sync: a store whose outbox was turned off and on again after it committed could not upload any more (`UploadSession` failed with `OutboxUnavailableError` on every attempt and was retried forever) because the commits between what the remote held and the outbox start were gone. `UploadSession` now creates an archive slot after the remote head (the store `Export`), so the session history continues from a full copy; `RemoteHistoryOf` and `PullSession` restore from the newest archive slot along the chain (copies behind it get `HistoryUnavailableError` and restore fresh), and `FoldSession` folds every unfolded slot covered by the snapshot including those before an archive slot (follows Pi `f472efdc1`).
+
 ### BF-d11ca55
 
 **`pig piglet build --format binary` from a Pig checkout with a `go.work` builds a Piglet whose fused Go…**
@@ -36590,7 +36591,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 
 - Failure found by the integration build of unreleased work: 2
 - Fix reverted before release: 2
-- Follow-up to unreleased work: 41
+- Follow-up to unreleased work: 42
 - Repair of a merge between development branches: 9
 - Review follow-up to unreleased work: 4
 - test-only: 1

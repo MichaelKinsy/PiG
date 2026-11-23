@@ -12701,25 +12701,6 @@
       ]
     },
     {
-      "id": "BF-3800eb3",
-      "title": "fix(gen-models): meta.json and piOverlayCommit name the last packed catalog source again ()",
-      "symptom": "fix(gen-models): meta.json and piOverlayCommit name the last packed catalog source again ()",
-      "rootCause": "The member set both by hand, but meta.json is written by gen-models (packSource: -merge-source, -record-source) and that member adds no new row, so no tool run restamps it. As for the member (), the stamp names the last PACKED source; the next -merge-source run restamps it. The overlay files are Pi at.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
-      "commits": [
-        {
-          "hash": "3800eb3212",
-          "date": "2026-11-20"
-        }
-      ],
-      "tests": []
-    },
-    {
       "id": "BF-3804a5a",
       "title": "The pi-messages and classifier (System One, decisions) requests are sent to the URL as written and a URL with…",
       "symptom": "The pi-messages and classifier (System One, decisions) requests are sent to the URL as written and a URL with credentials is refused as fetch refuses it, where Pig sent the credentials as Basic auth.",
@@ -54080,6 +54061,26 @@
       ]
     },
     {
+      "id": "BF-d0eb796",
+      "title": "Chord sync: a store whose outbox was turned off and on again after it committed could not upload any more…",
+      "symptom": "Chord sync: a store whose outbox was turned off and on again after it committed could not upload any more (`UploadSession` failed with `OutboxUnavailableError` on every attempt and was retried forever) because the commits between what the remote held and the outbox start were gone.",
+      "rootCause": "UploadSession only exported an archive slot when synced == LogStart \u0026\u0026 outbox.Floor() \u003e 0, so toggling the outbox off and on after a prior upload left outbox.Floor() \u003e synced \u003e 0 and failed with OutboxUnavailableError on every retry.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord sync: a store whose outbox was turned off and on again after it committed could not upload any more (`UploadSession` failed with `OutboxUnavailableError` on every attempt and was retried forever) because the commits between what the remote held and the outbox start were gone. `UploadSession` now creates an archive slot after the remote head (the store `Export`), so the session history continues from a full copy; `RemoteHistoryOf` and `PullSession` restore from the newest archive slot along the chain (copies behind it get `HistoryUnavailableError` and restore fresh), and `FoldSession` folds every unfolded slot covered by the snapshot including those before an archive slot (follows Pi `f472efdc1`).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d0eb79648d",
+          "date": "2026-11-22"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-d11ca55",
       "title": "`pig piglet build --format binary` from a Pig checkout with a `go.work` builds a Piglet whose fused Go…",
       "symptom": "The build stopped with `go: updates to go.sum needed, but go.sum is part of the overlay specified with -overlay`, because workspace mode needs checksums that `go mod tidy` does not write to the extension's `go.sum`.",
@@ -69688,7 +69689,7 @@
   "exemptCommits": {
     "Failure found by the integration build of unreleased work": 2,
     "Fix reverted before release": 2,
-    "Follow-up to unreleased work": 41,
+    "Follow-up to unreleased work": 42,
     "Repair of a merge between development branches": 9,
     "Review follow-up to unreleased work": 4,
     "test-only": 1
