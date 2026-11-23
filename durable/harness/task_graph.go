@@ -384,9 +384,9 @@ func taskKey(id durable.TaskId) string { return strconv.FormatInt(int64(id), 10)
 // advanceTaskGraph derives the mount's operations from one publication, applies them, and hands the revision to every observer.
 func advanceTaskGraph(ctx context.Context, mount *taskGraphMount, observers []taskGraphObserver, publication session.ObservedCommit, blocked func(BlockedSubject) durable.BlockedReason, report func(error)) {
 	type taskEntry struct {
-		record  durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue]
 		key     string
 		subject BlockedSubject
+		live    bool
 	}
 	var entries []taskEntry
 	var hasConversationWrites bool
@@ -395,9 +395,9 @@ func advanceTaskGraph(ctx context.Context, mount *taskGraphMount, observers []ta
 		case durable.TaskWrite:
 			record := write.Value
 			entries = append(entries, taskEntry{
-				record:  record,
 				key:     taskKey(record.Id),
 				subject: BlockedSubjectOf(record),
+				live:    record.State.Status != durable.TaskTerminal,
 			})
 		case durable.ConversationWrite:
 			if write.Value.Owner != nil {
@@ -414,7 +414,7 @@ func advanceTaskGraph(ctx context.Context, mount *taskGraphMount, observers []ta
 	mount.mu.Lock()
 	var liveEntries []int
 	for i, entry := range entries {
-		if entry.record.State.Status == durable.TaskTerminal {
+		if !entry.live {
 			delete(mount.records, entry.key)
 			continue
 		}
@@ -428,91 +428,101 @@ func advanceTaskGraph(ctx context.Context, mount *taskGraphMount, observers []ta
 	if len(liveEntries) > 0 {
 		reasons = make([]durable.BlockedReason, len(entries))
 	}
+	// Exits holding mount.mu once the blocked reasons have been computed with no concurrent refresh intervening.
 	for {
 		for _, i := range liveEntries {
 			reasons[i] = blocked(entries[i].subject)
 		}
 		mount.mu.Lock()
-		if len(liveEntries) > 0 && mount.refreshes != seenRefreshes {
-			seenRefreshes = mount.refreshes
-			mount.mu.Unlock()
+		if len(liveEntries) == 0 || mount.refreshes == seenRefreshes {
+			break
+		}
+		seenRefreshes = mount.refreshes
+		mount.mu.Unlock()
+	}
+
+	var ops []durable.Op
+	// Nodes this publication set (non-nil) or deleted (nil), over the mount's value.
+	changed := map[string]*TaskGraphNode{}
+	node := func(key string) *TaskGraphNode {
+		if next, ok := changed[key]; ok {
+			return next
+		}
+		if current, ok := mount.value.Tasks[key]; ok {
+			return &current
+		}
+		return nil
+	}
+	taskIndex := 0
+	for _, change := range publication.Changes {
+		write, ok := change.(durable.TaskWrite)
+		if !ok {
 			continue
 		}
-
-		var ops []durable.Op
-		// Nodes this publication set (non-nil) or deleted (nil), over the mount's value.
-		changed := map[string]*TaskGraphNode{}
-		node := func(key string) *TaskGraphNode {
-			if next, ok := changed[key]; ok {
-				return next
-			}
-			if current, ok := mount.value.Tasks[key]; ok {
-				return &current
-			}
-			return nil
+		reason := durable.BlockedReason("")
+		if len(reasons) > 0 {
+			reason = reasons[taskIndex]
 		}
-		for i, entry := range entries {
-			previous := node(entry.key)
-			if entry.record.State.Status == durable.TaskTerminal {
-				if previous == nil {
-					continue
-				}
-				ops = append(ops, durable.Op{"d", []any{"tasks", entry.key}})
-				changed[entry.key] = nil
+		taskIndex++
+		record := write.Value
+		key := taskKey(record.Id)
+		previous := node(key)
+		if record.State.Status == durable.TaskTerminal {
+			if previous == nil {
 				continue
 			}
-			conversations := []durable.ConversationId{}
-			if previous != nil {
-				conversations = previous.Conversations
-			}
-			next := taskGraphNodeOf(entry.record, conversations, reasons[i])
-			if previous != nil && sameNode(next, *previous) {
-				continue
-			}
-			value, err := durable.ToJsonValue(next)
-			if err != nil {
-				mount.mu.Unlock()
-				panic(err)
-			}
-			ops = append(ops, durable.Op{"s", []any{"tasks", entry.key}, value})
-			changed[entry.key] = &next
+			ops = append(ops, durable.Op{"d", []any{"tasks", key}})
+			changed[key] = nil
+			continue
 		}
-		// After the tasks, so a conversation created with its owner task in one commit finds the owner's node. Change order within a publication is unspecified, so each owner's list is sorted again.
-		if hasConversationWrites {
-			created := map[string][]durable.ConversationId{}
-			var createdOrder []string
-			for _, change := range publication.Changes {
-				write, ok := change.(durable.ConversationWrite)
-				if !ok || write.Value.Owner == nil {
-					continue
-				}
-				key := taskKey(write.Value.Owner.TaskId)
-				if node(key) == nil {
-					continue
-				}
-				if _, seen := created[key]; !seen {
-					createdOrder = append(createdOrder, key)
-				}
-				created[key] = append(created[key], write.Value.Id)
-			}
-			for _, key := range createdOrder {
-				current := node(key)
-				conversations := slices.Concat(current.Conversations, created[key])
-				slices.Sort(conversations)
-				next := *current
-				next.Conversations = conversations
-				changed[key] = &next
-				values := make([]any, len(conversations))
-				for i, id := range conversations {
-					values[i] = float64(id)
-				}
-				ops = append(ops, durable.Op{"s", []any{"tasks", key, "conversations"}, values})
-			}
+		conversations := []durable.ConversationId{}
+		if previous != nil {
+			conversations = previous.Conversations
 		}
-		mount.applyLocked(ctx, observers, changed, ops)
-		mount.mu.Unlock()
-		break
+		next := taskGraphNodeOf(record, conversations, reason)
+		if previous != nil && sameNode(next, *previous) {
+			continue
+		}
+		value, err := durable.ToJsonValue(next)
+		if err != nil {
+			mount.mu.Unlock()
+			panic(err)
+		}
+		ops = append(ops, durable.Op{"s", []any{"tasks", key}, value})
+		changed[key] = &next
 	}
+	// After the tasks, so a conversation created with its owner task in one commit finds the owner's node. Change order within a publication is unspecified, so each owner's list is sorted again.
+	created := map[string][]durable.ConversationId{}
+	var createdOrder []string
+	for _, change := range publication.Changes {
+		write, ok := change.(durable.ConversationWrite)
+		if !ok || write.Value.Owner == nil {
+			continue
+		}
+		key := taskKey(write.Value.Owner.TaskId)
+		if node(key) == nil {
+			continue
+		}
+		if _, seen := created[key]; !seen {
+			createdOrder = append(createdOrder, key)
+		}
+		created[key] = append(created[key], write.Value.Id)
+	}
+	for _, key := range createdOrder {
+		current := node(key)
+		conversations := slices.Concat(current.Conversations, created[key])
+		slices.Sort(conversations)
+		next := *current
+		next.Conversations = conversations
+		changed[key] = &next
+		values := make([]any, len(conversations))
+		for i, id := range conversations {
+			values[i] = float64(id)
+		}
+		ops = append(ops, durable.Op{"s", []any{"tasks", key, "conversations"}, values})
+	}
+	mount.applyLocked(ctx, observers, changed, ops)
+	mount.mu.Unlock()
 	mount.drainDeliveries(report)
 }
 
