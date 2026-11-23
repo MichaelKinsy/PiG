@@ -5,10 +5,12 @@ package codingagent
 import (
 	"errors"
 	"io"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -19,8 +21,10 @@ import (
 // selectStartupSession does.
 func TestSelectStartupSessionCancelsAndJoinsBlockedLoaders(t *testing.T) {
 	restoreStartupTheme(t)
-	var loaderStarted = make(chan struct{})
+	loaderStarted := make(chan struct{}, 2)
 	observed, release := make(chan struct{}, 2), make(chan struct{})
+	var releaseOnce sync.Once
+	releaseLoaders := func() { releaseOnce.Do(func() { close(release) }) }
 	var cancelled, returned atomic.Bool
 	blocked := func(options SessionListOptions) ([]SessionInfo, error) {
 		select {
@@ -38,26 +42,39 @@ func TestSelectStartupSessionCancelsAndJoinsBlockedLoaders(t *testing.T) {
 		return nil, options.Context.Err()
 	}
 	terminal := &fakeStartupTerminal{}
-	type result struct {
+	var res struct {
 		path     string
 		selected bool
 		err      error
 	}
-	done := make(chan result, 1)
+	done := make(chan struct{})
 	go func() {
-		path, selected, err := selectStartupSession(blocked, blocked, StartupUIOptions{Settings: Settings{Theme: "dark"}},
+		defer close(done)
+		res.path, res.selected, res.err = selectStartupSession(blocked, blocked, StartupUIOptions{Settings: Settings{Theme: "dark"}},
 			tui.NewWithOutput(io.Discard, 120, 30), terminal)
-		done <- result{path, selected, err}
+	}()
+	defer func() {
+		releaseLoaders()
+		select {
+		case <-done:
+			return
+		default:
+		}
+		terminal.send(t, "\x1b")
+		select {
+		case <-done:
+		case <-time.After(testbudget.Wait(t)):
+		}
 	}()
 	select {
 	case <-loaderStarted:
-	case <-time.After(10 * time.Second):
+	case <-time.After(testbudget.Wait(t)):
 		t.Fatal("the picker never started its loader")
 	}
 	terminal.send(t, "\x1b")
 	select {
 	case <-observed:
-	case <-time.After(10 * time.Second):
+	case <-time.After(testbudget.Wait(t)):
 		t.Fatal("Escape did not cancel the blocked loader")
 	}
 	// The loader holds its return until released: the picker must still be waiting for it.
@@ -66,16 +83,16 @@ func TestSelectStartupSessionCancelsAndJoinsBlockedLoaders(t *testing.T) {
 		t.Fatal("the picker returned before its cancelled loader finished")
 	case <-time.After(200 * time.Millisecond):
 	}
-	close(release)
+	releaseLoaders()
 	select {
-	case r := <-done:
-		if r.err != nil && !errors.Is(r.err, io.EOF) {
-			t.Fatal(r.err)
+	case <-done:
+		if res.err != nil && !errors.Is(res.err, io.EOF) {
+			t.Fatal(res.err)
 		}
-		if r.selected || r.path != "" {
-			t.Fatalf("picked (%q, %v) after cancel, want (\"\", false)", r.path, r.selected)
+		if res.selected || res.path != "" {
+			t.Fatalf("picked (%q, %v) after cancel, want (\"\", false)", res.path, res.selected)
 		}
-	case <-time.After(10 * time.Second):
+	case <-time.After(testbudget.Wait(t)):
 		t.Fatal("the picker did not finish after Escape")
 	}
 	if !cancelled.Load() || !returned.Load() {
