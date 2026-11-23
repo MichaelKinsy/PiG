@@ -1,0 +1,37 @@
+from = "1.5.2+f472efdc"
+to = "1.5.2+434dc5e4"
+
+[[files]]
+path = "packages/chord/src/sync/client.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/sync/sync_test.go#TestRemoteBodies"]
+rationale = "434dc5e4d: PullSession now closes the opened archive body on store.ImportStore error return (previously leaked when ImportStore returned before consuming parts, e.g. cancelled ctx or non-empty backend), matching Pi readBody finally close on every exit."
+
+[[files]]
+path = "packages/chord/src/sync/filesystem.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/sync/sync_test.go#TestRemoteBodies", "test:chord/sync/proof_chord_test.go#TestAStreamedBodyReadsAFileInChunksAndReleasesItsReaderOnce"]
+rationale = "434dc5e4d: fileBody.Close closes the underlying reader also before the first Next, at EOF, and on read error, and is guarded with sync.Once and an atomic closed flag mirroring Pi readerBody closing ??= reader.close(context) so concurrent closes (such as importEach background close) release the reader exactly once."
+
+[[files]]
+path = "packages/chord/src/sync/remote.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/sync/sync_test.go#TestRemoteBodies"]
+rationale = "434dc5e4d: SessionSyncStore.GetBatch and GetSnapshot doc comments state that the returned body may hold a file or connection until read to the end or Close is called, including before the first read."
+
+[[files]]
+path = "packages/chord/test/sync/sync.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/sync/sync_test.go#TestRemoteBodies"]
+rationale = "434dc5e4d: both regression tests (body file closed at EOF without calling Close and on Close before first read; body closed when PullSession refuses an archive slot) plus the ImportStore early-error body-close test are ported using shared countingFiles with raw open/close counts."
+
+[[files]]
+path = "packages/chord/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "434dc5e4d: Pi chord package changelog entry; PiG tracks user-visible changes in changelog.d/chord-archive-slot-after-outbox-toggle-d0eb79648d.md."
