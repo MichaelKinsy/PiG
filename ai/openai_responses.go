@@ -15,8 +15,8 @@ import (
 	"net/http"
 	"slices"
 	"strings"
-	"time"
 	"sync"
+	"time"
 	"unsafe"
 
 	"github.com/MichaelKinsy/PiG/internal/jsjson"
@@ -499,16 +499,16 @@ type respSSEEvent struct {
 }
 
 type respResponseObj struct {
-	ID                string           `json:"id,omitempty"`
-	Model             string           `json:"model,omitempty"`
-	Output            []respOutputItem `json:"output,omitempty"`
-	Status            string           `json:"status,omitempty"`
-	EndTurn           *bool            `json:"end_turn,omitempty"`
-	Usage             *respUsage       `json:"usage,omitempty"`
-	ServiceTier       string           `json:"service_tier,omitempty"`
-	Error             *respError       `json:"error,omitempty"`
-	IncompleteDetails    *respIncomplete `json:"incomplete_details,omitempty"`
-	InputTransformations any             `json:"input_transformations,omitempty"`
+	ID                   string           `json:"id,omitempty"`
+	Model                string           `json:"model,omitempty"`
+	Output               []respOutputItem `json:"output,omitempty"`
+	Status               string           `json:"status,omitempty"`
+	EndTurn              *bool            `json:"end_turn,omitempty"`
+	Usage                *respUsage       `json:"usage,omitempty"`
+	ServiceTier          string           `json:"service_tier,omitempty"`
+	Error                *respError       `json:"error,omitempty"`
+	IncompleteDetails    *respIncomplete  `json:"incomplete_details,omitempty"`
+	InputTransformations any              `json:"input_transformations,omitempty"`
 }
 
 type respUsage struct {
@@ -2675,6 +2675,6 @@ func appendOpenAIReasoningRemovals(output *AssistantMessage, raw any) {
 	details.set("transformations", removals, orderBytes)
 	AppendAssistantMessageDiagnostic(output, details.attach(AssistantMessageDiagnostic{
 		Type:      "openai_input_transformations",
-		Timestamp: time.Now().UnixMilli(),
+		Timestamp: time.Now().UnixMilli(), //portlint:allow clock openai-responses-shared.ts:851 `timestamp: Date.now()`; the package's clock seams belong to OAuth and backoff structs, not to diagnostics
 	}))
 }
