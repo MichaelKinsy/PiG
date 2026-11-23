@@ -1384,13 +1384,12 @@ func TestAdmissionOverALink(t *testing.T) {
 	})
 	t.Run("a denied hold is failed { denied }; a denial of a bound one drops its replicas, an allow binds it again", func(t *testing.T) {
 		l := admLinked(t, admDocCode{Built: &admLog{}})
-		doc := mustHold(t, l.Client, admDoc, jsonObject("id", "a"))
-		watch, err := refStateWatch(doc, background)
-		must(t, err)
-		states := statesOf(t, watch)
+		// Acquire the state watch in the same section as Hold so the memory link's denial cannot arrive before Watch
+		// (Pi: `client.hold(...)` then `await doc.state.watch(context)` in one task).
+		doc, states := admHoldStates(t, l.Client, admDoc, jsonObject("id", "a"))
 		admLinkDelivered(l.linkedHosts)
 		admDenied(t, stateOfRef(doc), "no access")
-		_, err = l.Client.Get(background, admDoc, jsonObject("id", "a"), GetOptions{})
+		_, err := l.Client.Get(background, admDoc, jsonObject("id", "a"), GetOptions{})
 		if got := told(err); got != [3]string{"forbidden", "", "no access"} {
 			t.Fatalf("getter rejected with %v", got)
 		}
