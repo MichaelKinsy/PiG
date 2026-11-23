@@ -123,15 +123,23 @@ type Parked struct {
 // already: nothing is going to be readied. A ctx that carries a Continuation (WithContinuation) is the caller's: the
 // continuation has entered once it parks.
 func (session *SessionImpl) Park(ctx context.Context, done <-chan struct{}) *Parked {
+	continuation := continuationOf(ctx)
+	// Check done and insert into session.parks under one parkMu lock so a publication's awaitReadied scan (which runs
+	// after the wake closes done, under parkMu) cannot slip between seeing done open and inserting parked: either the
+	// locked step ends before the scan (so awaitReadied finds parked closed and waits for it) or begins after the scan
+	// (so done is already closed and Park returns nil without calling enter).
+	// Release parkMu before enter: enter acknowledges any pending Parked on the same continuation, whose onAcknowledged
+	// takes parkMu.
+	session.parkMu.Lock()
 	select {
 	case <-done:
+		session.parkMu.Unlock()
 		return nil
 	default:
 	}
 	if session.beforeParkInsert != nil {
 		session.beforeParkInsert()
 	}
-	continuation := continuationOf(ctx)
 	parked := &Parked{resumption: newResumption(continuation), session: session, done: done}
 	// A wait stays registered until it is acknowledged, not only until it resumed: the acknowledgement of one that belongs to a
 	// Continuation is given when the continuation has entered, and a publication that looks for the waits it readied after the
@@ -141,10 +149,6 @@ func (session *SessionImpl) Park(ctx context.Context, done <-chan struct{}) *Par
 		delete(session.parks, parked)
 		session.parkMu.Unlock()
 	}
-	// Insert before enter so a publication whose Hop is unblocked by enter sees parked in session.parks.
-	// Release parkMu before enter: enter acknowledges any pending Parked on the same continuation, whose
-	// onAcknowledged takes parkMu.
-	session.parkMu.Lock()
 	if session.parks == nil {
 		session.parks = map[*Parked]struct{}{}
 	}
