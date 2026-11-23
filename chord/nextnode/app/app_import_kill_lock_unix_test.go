@@ -25,6 +25,7 @@ func init() {
 // shortTestLockDir creates a short temporary directory under /tmp so Unix socket paths fit within sun_path (103 bytes).
 func shortTestLockDir(t *testing.T) string {
 	t.Helper()
+	//portlint:allow hardtmp the lock socket path must stay within sun_path (103 bytes), which a scoped TMPDIR exceeds
 	dir, err := os.MkdirTemp("/tmp", "chord-app-lock-")
 	if err != nil {
 		t.Fatal(err)
