@@ -658,61 +658,47 @@ func (u *thirdHoldingHeaderUI) SetHeader(build extension.HeaderFactory) {
 	u.holdingHeaderUI.SetHeader(build)
 }
 
-// hostParkedInRunSlotCall scans all goroutines of the process and returns the stack of a goroutine parked on a mutex inside (*Host).runSlotCall for h, or "".
-func hostParkedInRunSlotCall(h *Host) string {
-	want := fmt.Sprintf("(*Host).runSlotCall(%p,", h)
+// allGoroutineStacks captures the stack traces of all goroutines in the process.
+func allGoroutineStacks() string {
 	buf := make([]byte, 1<<20)
 	for {
 		n := runtime.Stack(buf, true)
 		if n < len(buf) {
-			buf = buf[:n]
-			break
+			return string(buf[:n])
 		}
 		buf = make([]byte, 2*len(buf))
 	}
-	for g := range strings.SplitSeq(string(buf), "\n\n") {
+}
+
+// hostParkedInRunSlotCall scans all goroutines of the process and returns the stack of a goroutine parked on a mutex inside (*Host).runSlotCall, or "".
+// It matches frame names rather than pointer arguments because optimized (non-race) register-ABI stack traces do not guarantee exact argument values.
+// An unscoped scan is sound here because tests in this file never call t.Parallel (parallel tests in the package are paused while sequential tests run) and every callOrderFixture drains its lanes in t.Cleanup.
+func hostParkedInRunSlotCall() string {
+	for g := range strings.SplitSeq(allGoroutineStacks(), "\n\n") {
 		header, _, _ := strings.Cut(g, "\n")
-		if strings.Contains(header, "sync.Mutex.Lock") && strings.Contains(g, want) {
+		if strings.Contains(header, "sync.Mutex.Lock") && strings.Contains(g, "(*Host).runSlotCall(") {
 			return g
 		}
 	}
 	return ""
 }
 
-// hostInHandleIncoming scans all goroutines of the process and returns the stack of a goroutine running (*Host).handleIncoming for h, or "".
-func hostInHandleIncoming(h *Host) string {
-	want := fmt.Sprintf("(*Host).handleIncoming(%p,", h)
-	buf := make([]byte, 1<<20)
-	for {
-		n := runtime.Stack(buf, true)
-		if n < len(buf) {
-			buf = buf[:n]
-			break
-		}
-		buf = make([]byte, 2*len(buf))
-	}
-	for g := range strings.SplitSeq(string(buf), "\n\n") {
-		if strings.Contains(g, want) {
+// hostInHandleIncoming scans all goroutines of the process and returns the stack of a goroutine running (*Host).handleIncoming, or "".
+// Unscoped for the same reason as hostParkedInRunSlotCall: register-ABI stack arguments are unreliable in non-race builds, and sequential test execution ensures no other Host in this file is active concurrently.
+func hostInHandleIncoming() string {
+	for g := range strings.SplitSeq(allGoroutineStacks(), "\n\n") {
+		if strings.Contains(g, "(*Host).handleIncoming(") {
 			return g
 		}
 	}
 	return ""
 }
 
-// hostInShutdownWait reports whether some goroutine is inside (*Host).Shutdown for h waiting on its drain tasks WaitGroup.
-func hostInShutdownWait(h *Host) bool {
-	want := fmt.Sprintf("(*Host).Shutdown(%p,", h)
-	buf := make([]byte, 1<<20)
-	for {
-		n := runtime.Stack(buf, true)
-		if n < len(buf) {
-			buf = buf[:n]
-			break
-		}
-		buf = make([]byte, 2*len(buf))
-	}
-	for g := range strings.SplitSeq(string(buf), "\n\n") {
-		if strings.Contains(g, want) && strings.Contains(g, "(*WaitGroup).Wait") {
+// hostInShutdownWait reports whether some goroutine is inside (*Host).Shutdown waiting on its drain tasks WaitGroup.
+// Unscoped for the same reason as hostParkedInRunSlotCall: register-ABI stack arguments are unreliable in non-race builds, and sequential test execution ensures no other Host is shutting down concurrently.
+func hostInShutdownWait() bool {
+	for g := range strings.SplitSeq(allGoroutineStacks(), "\n\n") {
+		if strings.Contains(g, "(*Host).Shutdown(") && strings.Contains(g, "(*WaitGroup).Wait") {
 			return true
 		}
 	}
@@ -726,7 +712,6 @@ func TestCallOrderFixtureCleanupDrainsLanesBeforeReturning(t *testing.T) {
 	unblockThird := func() { releaseThird.Do(func() { close(thirdHold) }) }
 	defer unblockThird()
 
-	var firstHost *Host
 	subBodyDone := make(chan struct{})
 	sawShutdown := make(chan struct{})
 	stopObserver := make(chan struct{})
@@ -749,7 +734,7 @@ func TestCallOrderFixtureCleanupDrainsLanesBeforeReturning(t *testing.T) {
 				return
 			default:
 			}
-			if hostInShutdownWait(firstHost) {
+			if hostInShutdownWait() {
 				close(sawShutdown)
 				unblockThird()
 				return
@@ -759,6 +744,13 @@ func TestCallOrderFixtureCleanupDrainsLanesBeforeReturning(t *testing.T) {
 	}()
 
 	t.Run("finished fixture", func(t *testing.T) {
+		reachedEnd := false
+		// If the subtest exits early (t.Fatal/Goexit), release thirdHold before t.Cleanup runs h.Shutdown so cleanup does not deadlock waiting for the observer.
+		defer func() {
+			if !reachedEnd {
+				unblockThird()
+			}
+		}()
 		baseUI := &holdingHeaderUI{orderedSlotUI: newOrderedSlotUI(), holding: make(chan struct{}), hold: make(chan struct{})}
 		ui := &thirdHoldingHeaderUI{holdingHeaderUI: baseUI, thirdEntered: make(chan struct{}), thirdHold: thirdHold}
 		var holdOnce, releaseOnce sync.Once
@@ -770,7 +762,6 @@ func TestCallOrderFixtureCleanupDrainsLanesBeforeReturning(t *testing.T) {
 		bridge := NewUIBridge(func() {})
 		bridge.SetUIContext(ui)
 		f := newBridgeCallOrderFixture(t, bridge)
-		firstHost = f.host
 		f.conn.pendingMu.Lock()
 		f.conn.pending["r8"] = make(chan *Envelope, 1)
 		f.conn.pending["r9"] = make(chan *Envelope, 1)
@@ -791,7 +782,7 @@ func TestCallOrderFixtureCleanupDrainsLanesBeforeReturning(t *testing.T) {
 		// Release the empty lane so its queued c1 enters runSlotCall and parks on the header slot lock held by c3.
 		closeRelease()
 		deadline := time.After(testbudget.Wait(t))
-		for hostParkedInRunSlotCall(firstHost) == "" {
+		for hostParkedInRunSlotCall() == "" {
 			select {
 			case <-deadline:
 				t.Fatal("the older call never parked on the header slot lock")
@@ -799,15 +790,16 @@ func TestCallOrderFixtureCleanupDrainsLanesBeforeReturning(t *testing.T) {
 			}
 			runtime.Gosched()
 		}
+		reachedEnd = true
 		close(subBodyDone)
 	})
 
 	close(stopObserver)
 	<-observerDone
-	if parked := hostParkedInRunSlotCall(firstHost); parked != "" {
+	if parked := hostParkedInRunSlotCall(); parked != "" {
 		t.Fatalf("callOrderFixture cleanup returned while a goroutine of its Host was still parked in runSlotCall:\n%s", parked)
 	}
-	if loop := hostInHandleIncoming(firstHost); loop != "" {
+	if loop := hostInHandleIncoming(); loop != "" {
 		t.Fatalf("callOrderFixture cleanup returned while handleIncoming for its Host was still running:\n%s", loop)
 	}
 	select {
@@ -923,4 +915,62 @@ func TestSuspensionAppliesAfterEarlierCallsOfTheConnection(t *testing.T) {
 			t.Error("the suspension was never applied after the earlier call")
 		}
 	})
+}
+
+// TestHostParkedInRunSlotCallFindsParkedGoroutine verifies that hostParkedInRunSlotCall finds a goroutine parked on a slot mutex inside (*Host).runSlotCall in both non-race and race builds without relying on register-ABI argument values in runtime.Stack.
+func TestHostParkedInRunSlotCallFindsParkedGoroutine(t *testing.T) {
+	h := NewHostWithConfigRoot(t.TempDir(), t.TempDir())
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	unblock := func() { releaseOnce.Do(func() { close(release) }) }
+	defer unblock()
+
+	first := h.slotCalls.register("header", func() {
+		close(entered)
+		<-release
+	})
+	second := h.slotCalls.register("header", func() {})
+
+	firstDone := make(chan struct{})
+	go func() {
+		defer close(firstDone)
+		h.runSlotCall("header", first)
+	}()
+	waitSignal(t, entered, "first slot call to hold the header slot lock")
+
+	secondDone := make(chan struct{})
+	go func() {
+		defer close(secondDone)
+		h.runSlotCall("header", second)
+	}()
+
+	waitDeadline := time.After(testbudget.Wait(t))
+	for {
+		found := false
+		for g := range strings.SplitSeq(allGoroutineStacks(), "\n\n") {
+			header, _, _ := strings.Cut(g, "\n")
+			if strings.Contains(header, "sync.Mutex.Lock") && strings.Contains(g, "(*Host).runSlotCall(") {
+				found = true
+				break
+			}
+		}
+		if found {
+			break
+		}
+		select {
+		case <-waitDeadline:
+			t.Fatal("second goroutine never parked in (*Host).runSlotCall")
+		default:
+		}
+		runtime.Gosched()
+	}
+
+	got := hostParkedInRunSlotCall()
+	unblock()
+	<-firstDone
+	<-secondDone
+	if got == "" {
+		t.Fatal("hostParkedInRunSlotCall missed the goroutine parked on the slot mutex")
+	}
 }
