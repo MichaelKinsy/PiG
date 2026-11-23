@@ -651,44 +651,51 @@ func TestImportRefusals(t *testing.T) {
 		}
 		_ = enc.Close()
 
-		src := &blockingByteSource{
-			first:   append([]byte(nil), firstChunk...),
-			entered: make(chan struct{}),
-			release: make(chan struct{}),
-			closed:  make(chan struct{}),
-		}
+		const maxAttempts = 20
+		for attempt := 1; attempt <= maxAttempts; attempt++ {
+			src := &blockingByteSource{
+				first:   append([]byte(nil), firstChunk...),
+				entered: make(chan struct{}),
+				release: make(chan struct{}),
+				closed:  make(chan struct{}),
+			}
 
-		cancellable, cancel := chordctx.WithCancel(chordctx.Background())
-		db, err := node.OpenNodeSqliteDatabase(":memory:", node.NodeSqliteDatabaseOptions{})
-		if err != nil {
-			t.Fatalf("open: %v", err)
-		}
+			cancellable, cancel := chordctx.WithCancel(chordctx.Background())
+			db, err := node.OpenNodeSqliteDatabase(":memory:", node.NodeSqliteDatabaseOptions{})
+			if err != nil {
+				t.Fatalf("open: %v", err)
+			}
 
-		wrapped := &observingParts{PartSource: DecodeJsonl(src), nextDone: make(chan struct{})}
-		done := make(chan error, 1)
-		go func() {
-			_, err := ImportStore(SqliteBackend(db), wrapped, cancellable, StoreOptions{})
-			done <- err
-		}()
+			wrapped := &observingParts{PartSource: DecodeJsonl(src), nextDone: make(chan struct{})}
+			done := make(chan error, 1)
+			go func() {
+				_, err := ImportStore(SqliteBackend(db), wrapped, cancellable, StoreOptions{})
+				done <- err
+			}()
 
-		<-src.entered
-		cancel(errors.New("stop"))
-		err = <-done
-		if !archiveIsCode(err, data.CodeAborted) {
+			<-src.entered
+			// Release Next right after cancel so both writes to jsonlDecoder.finished land close together
+			// without sleeping; if importEach selected the settled EOF instead of ctx.Done, retry cleanly.
+			cancel(errors.New("stop"))
 			close(src.release)
-			t.Fatalf("ImportStore error = %v, want aborted", err)
+			err = <-done
+			select {
+			case <-wrapped.nextDone:
+			case <-time.After(5 * time.Second):
+				t.Fatal("the in-flight Next did not finish")
+			}
+			if !archiveIsCode(err, data.CodeAborted) {
+				continue
+			}
+			select {
+			case <-src.closed:
+			case <-time.After(5 * time.Second):
+				t.Fatal("the background close did not run")
+			}
+			t.Logf("aborted path exercised on attempt %d", attempt)
+			return
 		}
-		close(src.release)
-		select {
-		case <-src.closed:
-		case <-time.After(5 * time.Second):
-			t.Fatal("the background close did not run")
-		}
-		select {
-		case <-wrapped.nextDone:
-		case <-time.After(5 * time.Second):
-			t.Fatal("the in-flight Next did not finish")
-		}
+		t.Fatalf("ImportStore did not take the aborted path in %d attempts", maxAttempts)
 	})
 
 	t.Run("an input whose Next panics fails the import with the panic as its error", func(t *testing.T) {
