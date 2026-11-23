@@ -924,3 +924,70 @@ func TestSuspensionAppliesAfterEarlierCallsOfTheConnection(t *testing.T) {
 		}
 	})
 }
+
+// TestHostParkedInRunSlotCallFindsParkedGoroutine verifies that hostParkedInRunSlotCall finds a goroutine parked on a slot mutex inside (*Host).runSlotCall in both non-race and race builds without relying on register-ABI argument values in runtime.Stack.
+func TestHostParkedInRunSlotCallFindsParkedGoroutine(t *testing.T) {
+	h := NewHostWithConfigRoot(t.TempDir(), t.TempDir())
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	unblock := func() { releaseOnce.Do(func() { close(release) }) }
+	defer unblock()
+
+	first := h.slotCalls.register("header", func() {
+		close(entered)
+		<-release
+	})
+	second := h.slotCalls.register("header", func() {})
+
+	firstDone := make(chan struct{})
+	go func() {
+		defer close(firstDone)
+		h.runSlotCall("header", first)
+	}()
+	waitSignal(t, entered, "first slot call to hold the header slot lock")
+
+	secondDone := make(chan struct{})
+	go func() {
+		defer close(secondDone)
+		h.runSlotCall("header", second)
+	}()
+
+	waitDeadline := time.After(testbudget.Wait(t))
+	for {
+		buf := make([]byte, 1<<20)
+		for {
+			n := runtime.Stack(buf, true)
+			if n < len(buf) {
+				buf = buf[:n]
+				break
+			}
+			buf = make([]byte, 2*len(buf))
+		}
+		found := false
+		for g := range strings.SplitSeq(string(buf), "\n\n") {
+			header, _, _ := strings.Cut(g, "\n")
+			if strings.Contains(header, "sync.Mutex.Lock") && strings.Contains(g, "(*Host).runSlotCall(") {
+				found = true
+				break
+			}
+		}
+		if found {
+			break
+		}
+		select {
+		case <-waitDeadline:
+			t.Fatal("second goroutine never parked in (*Host).runSlotCall")
+		default:
+		}
+		runtime.Gosched()
+	}
+
+	got := hostParkedInRunSlotCall(h)
+	unblock()
+	<-firstDone
+	<-secondDone
+	if got == "" {
+		t.Fatal("hostParkedInRunSlotCall missed the goroutine parked on the slot mutex")
+	}
+}
