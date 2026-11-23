@@ -1399,6 +1399,11 @@ func (c *Conn) readLoop(ctx context.Context) {
 					hold.announce()
 				}
 			case env.RequestState.State == "blocked" || env.RequestState.State == "suspended":
+				if env.RequestState.State == "blocked" {
+					if hold := c.requestAckHold(env.RequestState.RequestID); hold != nil {
+						hold.seal()
+					}
+				}
 				c.reportSuspended(env.RequestState.RequestID)
 			case env.RequestState.State == "progress":
 				c.stateMu.Lock()
@@ -1514,7 +1519,7 @@ func (c *Conn) readLoop(ctx context.Context) {
 			c.clearLoopDrained()
 			if env.Call != nil {
 				// The handler's frames are read in the order it wrote them: a call counted here was sent before any report read after it.
-				c.holdAckForCall(env.Call.ParentRequestID)
+				c.holdAckForCall(&env)
 			}
 		}
 		// A call frame owns its parent-scoped context from the moment it is read, while the frames before a response are still ahead of it.

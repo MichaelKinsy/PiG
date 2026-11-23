@@ -4065,7 +4065,7 @@ func (h *Host) waitForRegister(ctx context.Context, me *managedExt, conn *Conn) 
 				return env.Register, nil
 			}
 			if env.Type == MsgCall && env.Call != nil && loadingBusCall(env.Call.Method) {
-				h.queueCall(me, conn, lanes, env.ID, env.Call)
+				h.queueCallDone(me, conn, lanes, env.ID, env.Call, env.ackCounted, nil)
 				continue
 			}
 			if env.Type == MsgCall {
@@ -5413,7 +5413,7 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 		if !h.acceptsNodeGeneration(me) {
 			// A generation a reload replaces still runs its command, and until the commit every handler that was in flight when the reload began; runCall answers each of its calls with Pi's stale error instead of leaving the handler that waits for the call blocked.
 			if env.Type == MsgCall && env.Call != nil && (me.replaced.Load() || h.supersedes(me)) {
-				h.queueCall(me, conn, lanes, env.ID, env.Call)
+				h.queueCallDone(me, conn, lanes, env.ID, env.Call, env.ackCounted, nil)
 				continue
 			}
 			if env.Type == MsgRequestState && env.RequestState != nil {
@@ -5432,7 +5432,7 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 			}
 			if env.Type == MsgCall {
 				conn.dropReservedHostCall(env.ID)
-				if env.Call != nil {
+				if env.Call != nil && env.ackCounted {
 					// The read loop counted it for its request's acknowledgment hold (holdAckForCall); the host runs none of it.
 					conn.hostCallApplied(env.Call.ParentRequestID, false)
 				}
@@ -5483,11 +5483,11 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 					if holdsForLoopTurn(call.Method) && (!native || !conn.requestsInFlight()) {
 						switch {
 						case call.Tick:
-							turns.Tick(call.OriginToolCallID, func(done func()) { h.queueCallDone(me, conn, lanes, env.ID, call, done) })
+							turns.Tick(call.OriginToolCallID, func(done func()) { h.queueCallDone(me, conn, lanes, env.ID, call, env.ackCounted, done) })
 						case native:
-							turns.MacrotaskDoneFor(conn, func(done func()) { h.queueCallDone(me, conn, lanes, env.ID, call, done) })
+							turns.MacrotaskDoneFor(conn, func(done func()) { h.queueCallDone(me, conn, lanes, env.ID, call, env.ackCounted, done) })
 						default:
-							turns.MacrotaskDone(func(done func()) { h.queueCallDone(me, conn, lanes, env.ID, call, done) })
+							turns.MacrotaskDone(func(done func()) { h.queueCallDone(me, conn, lanes, env.ID, call, env.ackCounted, done) })
 						}
 						continue
 					}
@@ -5495,7 +5495,7 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 					turns.Turn()
 				}
 			}
-			h.queueCall(me, conn, lanes, env.ID, call)
+			h.queueCallDone(me, conn, lanes, env.ID, call, env.ackCounted, nil)
 
 		case MsgWidgetPush:
 			if env.WidgetPush == nil {

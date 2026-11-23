@@ -186,29 +186,26 @@ func (l *callLanes) barrierMark() func() {
 	return reached.Wait
 }
 
-// queueCall orders one extension→host call. A Promise-shaped call runs on its
-// own goroutine, and the lane advances once the call has applied its
-// synchronous part (it marks initiation) or has finished, whichever is first.
-// The UI bridge marks initiation; a bare call handler has no initiation point,
-// so its call finishes before the lane advances.
-func (h *Host) queueCall(me *managedExt, conn *Conn, lanes *callLanes, callID string, call *CallPayload) {
-	h.queueCallDone(me, conn, lanes, callID, call, nil)
-}
-
-// queueCallDone is queueCall that calls done, when it is not nil, once the call ran or started: its effect is written. The request that made the call learns
-// that it applied (ackHold). A call that can wait for the session or the user (startsAsync) does not hold the acknowledgment of the handler awaiting it: the
-// handler is suspended on it, which is what the acknowledgment reports. A call whose upstream API returns nothing (holdsForLoopTurn) is one the handler does not
-// wait for: it holds the acknowledgment until the handler's synchronous part is over (ackHold.applied).
-func (h *Host) queueCallDone(me *managedExt, conn *Conn, lanes *callLanes, callID string, call *CallPayload, done func()) {
+// queueCallDone orders one extension→host call and calls done, when it is not nil, once the call ran or started: its effect is written. A Promise-shaped call
+// runs on its own goroutine, and the lane advances once the call has applied its synchronous part (it marks initiation) or has finished, whichever is first;
+// a bare call handler has no initiation point, so its call finishes before the lane advances. The request that made the call learns that it applied (ackHold)
+// when ackCounted is true (readLoop counted the frame before sealing). A call that can wait for the session or the user (startsAsync) does not hold the
+// acknowledgment of the handler awaiting it: the handler is suspended on it, which is what the acknowledgment reports. A call whose upstream API returns nothing
+// (holdsForLoopTurn) is one the handler does not wait for: it holds the acknowledgment until the handler's synchronous part is over (ackHold.applied).
+func (h *Host) queueCallDone(me *managedExt, conn *Conn, lanes *callLanes, callID string, call *CallPayload, ackCounted bool, done func()) {
 	if startsAsync(call.Method) {
-		conn.hostCallApplied(call.ParentRequestID, false)
+		if ackCounted {
+			conn.hostCallApplied(call.ParentRequestID, false)
+		}
 	} else {
 		applied := done
 		done = func() {
 			if applied != nil {
 				applied()
 			}
-			conn.hostCallApplied(call.ParentRequestID, holdsForLoopTurn(call.Method))
+			if ackCounted {
+				conn.hostCallApplied(call.ParentRequestID, holdsForLoopTurn(call.Method))
+			}
 		}
 	}
 	if done == nil {
@@ -394,7 +391,7 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		}
 		return
 	}
-	// Pi's loop stays alive for a call that starts I/O, a child process or a session change, and does not for a dialog that stdin can no longer answer. The count runs from the call's frame, and the drain notification that follows it waits for the call's lane (queueCall), so the drain sees it.
+	// Pi's loop stays alive for a call that starts I/O, a child process or a session change, and does not for a dialog that stdin can no longer answer. The count runs from the call's frame, and the drain notification that follows it waits for the call's lane (queueCallDone), so the drain sees it.
 	if takesInteractiveFocus(call.Method) {
 		defer conn.countHostCall(call.ParentRequestID, true)()
 	} else if startsAsync(call.Method) {
