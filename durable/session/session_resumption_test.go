@@ -216,3 +216,37 @@ func TestAnAbandonedWaitOfAContinuationIsAcknowledgedAtOnce(t *testing.T) {
 	}
 	g.close()
 }
+
+// A continuation that already holds a resumed Parked enters it inside the next Park call: onAcknowledged takes parkMu to
+// remove the prior wait from session.parks, so Park must release parkMu before calling enter or it self-deadlocks.
+func TestParkWithPendingParkedOnSameContinuationDoesNotDeadlock(t *testing.T) {
+	g := openGC(t, 1)
+	defer g.close()
+	continued, _ := session.WithContinuation(ctx)
+	firstDone := make(chan struct{})
+	first := g.session.Park(continued, firstDone)
+	close(firstDone)
+	// Resume holds first on the continuation's pending list until the next enter (or Entered).
+	first.Resume()
+	if waits := session.ParkedWaits(g.session); waits != 1 {
+		t.Fatalf("%d waits registered before second Park, want 1", waits)
+	}
+	secondDone := make(chan struct{})
+	parkedCh := make(chan *session.Parked, 1)
+	go func() {
+		parkedCh <- g.session.Park(continued, secondDone)
+	}()
+	var second *session.Parked
+	select {
+	case second = <-parkedCh:
+	case <-time.After(5 * time.Second):
+		t.Fatal("Park deadlocked when the continuation held a pending Parked of its own (parkMu held across enter)")
+	}
+	if waits := session.ParkedWaits(g.session); waits != 1 {
+		t.Fatalf("%d waits registered after second Park, want 1 (first acknowledged, second registered)", waits)
+	}
+	second.Abandon()
+	if waits := session.ParkedWaits(g.session); waits != 0 {
+		t.Fatalf("%d waits registered after abandoning second Park, want 0", waits)
+	}
+}
