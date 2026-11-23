@@ -13191,6 +13191,26 @@
       "tests": []
     },
     {
+      "id": "BF-3b0319b",
+      "title": "Chord sync: a `PullSession` restore whose `store.ImportStore` failed before reading the archive body (such as…",
+      "symptom": "Chord sync: a `PullSession` restore whose `store.ImportStore` failed before reading the archive body (such as on a cancelled context or non-empty backend) left the remote body file open, and concurrent closes of a `FileSystemSyncRemote` body raced on a plain bool.",
+      "rootCause": "PullSession omitted body.Close() on the ImportStore error return and fileBody.closed was an unguarded bool under concurrent background close.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord sync: a `PullSession` restore whose `store.ImportStore` failed before reading the archive body (such as on a cancelled context or non-empty backend) left the remote body file open, and concurrent closes of a `FileSystemSyncRemote` body raced on a plain bool. `PullSession` now closes the body on the `ImportStore` error return and `fileBody.Close` is once-guarded (follows Pi `434dc5e4d`).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3b0319bcde",
+          "date": "2026-11-22"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-3b3dba6",
       "title": "A streamed tool argument of `-0` is held as `0`, so the serialized arguments write `0` as Pi's…",
       "symptom": "A streamed tool argument of `-0` is held as `0`, so the serialized arguments write `0` as Pi's `JSON.stringify` does instead of `-0`.",
@@ -44564,6 +44584,26 @@
       "tests": []
     },
     {
+      "id": "BF-a45f316",
+      "title": "`durable/contract/tools/setup.sh` now populates the Pi reference checkout's generated provider catalogs…",
+      "symptom": "Previously it unpacked the published `@earendil-works/pi-ai@1.0.4` package and silently skipped copying post-1.0.4 catalogs when `.upstream/current` was absent, leaving `qwen-token-plan-individual-cn.json` missing on fresh checkouts and restored Actions caches and failing `U-provider-session-cache-e2e` and `U-system-order-cache-e2e`.",
+      "rootCause": "setup.sh seeded packages/ai/src/providers/data from npm pack @earendil-works/pi-ai@1.0.4 and copied post-1.0.4 catalogs only when the gitignored .upstream/current mirror existed, which ci.yml never built before durable-contract-setup ran",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`durable/contract/tools/setup.sh` now populates the Pi reference checkout's generated provider catalogs (`packages/ai/src/providers/data`) from the committed vendored `@earendil-works/pi-ai` tarball in `third_party/pi-packs` whose `manifest.json` commit equals `durable/contract/PIN` `main`, re-syncing whenever the pack digest stamp or any imported catalog is missing, and fails loudly naming any missing catalog file or manifest mismatch. Previously it unpacked the published `@earendil-works/pi-ai@1.0.4` package and silently skipped copying post-1.0.4 catalogs when `.upstream/current` was absent, leaving `qwen-token-plan-individual-cn.json` missing on fresh checkouts and restored Actions caches and failing `U-provider-session-cache-e2e` and `U-system-order-cache-e2e`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a45f316348",
+          "date": "2026-11-23"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-a46f930",
       "title": "A Package configured as a settings object reads a resource kind its `pi` manifest does not declare (or…",
       "symptom": "A Package configured as a settings object reads a resource kind its `pi` manifest does not declare (or declares empty, when patterns are given) from the conventional directory, and a `pi` manifest field that is not an array of strings counts as absent, as in Pi's `collectPackageResources`.",
@@ -48333,6 +48373,34 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-b5a660a",
+      "title": "Group-commit publication no longer publishes the next part of a storage call before a wait's continuation has…",
+      "symptom": "Group-commit publication no longer publishes the next part of a storage call before a wait's continuation has run for waits carrying a `Continuation`.",
+      "rootCause": "SessionImpl.Park checked done outside parkMu and called enter(continuationOf(ctx)) before inserting into session.parks, letting a publication close done and run awaitReadied before the wait was in parks and letting deliverLoop go idle while the wait was still entering Park",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Group-commit publication no longer publishes the next part of a storage call before a wait's continuation has run for waits carrying a `Continuation`. `SessionImpl.Park` previously had two race gaps: it called `enter(continuationOf(ctx))` before inserting the new `*Parked` entry into `session.parks`, and it checked whether `done` was closed before acquiring `parkMu` to insert into `session.parks`, allowing a publication's `awaitReadied` scan (which runs under `parkMu` after deferred wakes close their channels) to miss the wait and letting the next part's `Hop` proceed early. `Park` now holds `parkMu` across the `done` check and the map insert, then releases `parkMu` before calling `enter`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "84b5913537",
+          "date": "2026-11-22"
+        },
+        {
+          "hash": "b5a660ac5c",
+          "date": "2026-11-22"
+        }
+      ],
+      "tests": [
+        "durable/session/park_check_before_insert_test.go::TestGroupCommitParkCheckBeforeInsertWindow",
+        "durable/session/park_enter_before_insert_test.go::TestGroupCommitParkEnterBeforeInsertWindow",
+        "durable/session/session_resumption_test.go::TestParkWithPendingParkedOnSameContinuationDoesNotDeadlock"
+      ]
     },
     {
       "id": "BF-b5b7b43",
@@ -52705,6 +52773,29 @@
       ]
     },
     {
+      "id": "BF-ca83bfc",
+      "title": "ai: an Azure OpenAI Responses base URL that already carries the full Responses endpoint path with a query…",
+      "symptom": "ai: an Azure OpenAI Responses base URL that already carries the full Responses endpoint path with a query string (such as `https://\u003cresource\u003e.openai.azure.com/openai/responses?api-version=2025-04-01-preview` or a gateway `.../responses?api-version=...`) now reaches the endpoint, as in Pi, instead of appending `/responses?api-version=...` onto the query string and failing the request.",
+      "rootCause": "azureResponsesEndpoint.resolve built the URL by string concatenation (`strings.TrimRight(config.BaseURL, \"/\") + \"/responses?api-version=\" + url.QueryEscape(config.APIVersion)`) instead of the openai SDK's `client.buildURL(\"/responses\")` with `defaultQuery: { \"api-version\": apiVersion }`",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "ai: an Azure OpenAI Responses base URL that already carries the full Responses endpoint path with a query string (such as `https://\u003cresource\u003e.openai.azure.com/openai/responses?api-version=2025-04-01-preview` or a gateway `.../responses?api-version=...`) now reaches the endpoint, as in Pi, instead of appending `/responses?api-version=...` onto the query string and failing the request.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ca83bfc373",
+          "date": "2026-11-23"
+        }
+      ],
+      "tests": [
+        "ai/azure_request_url_oracle_test.go::TestAzureResponsesRequestURLMatchesSDK",
+        "ai/azure_request_url_test.go::TestAzureResponsesRequestURL"
+      ]
+    },
+    {
       "id": "BF-caae28a",
       "title": "In RPC mode, `exit.log` no longer says \"received SIGTERM\" for a single signal that arrived during a shutdown…",
       "symptom": "In RPC mode, `exit.log` no longer says \"received SIGTERM\" for a single signal that arrived during a shutdown that stdin's end or `ctx.shutdown()` had started and that finished with exit status 0.",
@@ -54103,6 +54194,26 @@
         "ai/model_utils_test.go::TestNextThinkingLevel",
         "internal/codingagent/thinking_selector_test.go::TestCycleThinkingLevelGoesToTheLowestLevelOfTheModel"
       ]
+    },
+    {
+      "id": "BF-d0eb796",
+      "title": "Chord sync: a store whose outbox was turned off and on again after it committed could not upload any more…",
+      "symptom": "Chord sync: a store whose outbox was turned off and on again after it committed could not upload any more (`UploadSession` failed with `OutboxUnavailableError` on every attempt) because the commits between what the remote held and the outbox start were gone.",
+      "rootCause": "UploadSession only exported an archive slot when synced == LogStart \u0026\u0026 outbox.Floor() \u003e 0, so toggling the outbox off and on after a prior upload left outbox.Floor() \u003e synced \u003e 0 and failed with OutboxUnavailableError on every retry.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord sync: a store whose outbox was turned off and on again after it committed could not upload any more (`UploadSession` failed with `OutboxUnavailableError` on every attempt) because the commits between what the remote held and the outbox start were gone. `UploadSession` now creates an archive slot after the remote head (the store `Export`), so the session history continues from a full copy; `RemoteHistoryOf` and `PullSession` restore from the newest archive slot along the chain (copies behind it get `HistoryUnavailableError` and restore fresh), and `FoldSession` folds every unfolded slot covered by the snapshot including those before an archive slot (follows Pi `f472efdc1`).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d0eb79648d",
+          "date": "2026-11-22"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-d11ca55",
@@ -63978,6 +64089,26 @@
         {
           "hash": "f0eace4daf",
           "date": "2026-11-06"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-f0f349c",
+      "title": "Chord store/sync: cancelling a store import while it waits for input triggered a data race under the Go race…",
+      "symptom": "Chord store/sync: cancelling a store import while it waits for input triggered a data race under the Go race detector (no wrong result is known).",
+      "rootCause": "importEach calls parts.Close() in a background goroutine on early exit while parts.Next(ctx) may still be running, but jsonlDecoder.finished and gunzipBody.done/reader were unguarded against concurrent Close.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord store/sync: cancelling a store import while it waits for input triggered a data race under the Go race detector (no wrong result is known). `DecodeJsonl` and `DecodeSnapshot` now synchronize their close flags and close the underlying source once so background cancellation closes safely alongside an in-flight read.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f0f349cb03",
+          "date": "2026-11-22"
         }
       ],
       "tests": []

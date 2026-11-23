@@ -498,6 +498,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3ab4c24](#bf-3ab4c24) | fix(coding-agent): render HTML export for sessions deeper than the call stack (Pi) | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-3ad9ec8](#bf-3ad9ec8) | fix(tui): tree label prompt gives its input width-2 cells (Pi LabelInput) | PiG's own defect | All platforms | Unreleased |
 | [BF-3b009a3](#bf-3b009a3) | `chord/host`: a child host forked by `ForkDriver` no longer inherits its parent's `CHORD2_LOCK` | PiG's own defect | All platforms | 0.5.0 |
+| [BF-3b0319b](#bf-3b0319b) | Chord sync: a `PullSession` restore whose `store.ImportStore` failed before reading the archive body (such as… | PiG's own defect | All platforms | Unreleased |
 | [BF-3b3dba6](#bf-3b3dba6) | A streamed tool argument of `-0` is held as `0`, so the serialized arguments write `0` as Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3b49d43](#bf-3b49d43) | fix(chord): calls crossing a failed or a fresh bound are answered by what their consumer knows | PiG's own defect | All platforms | Unreleased |
 | [BF-3b696c8](#bf-3b696c8) | A changelog version recorded with a prerelease or build suffix, such as `0.1.5-20261020.7`, no longer shows… | PiG's own defect | All platforms | Unreleased |
@@ -1647,6 +1648,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a3e1a0c](#bf-a3e1a0c) | fix(chord/surfaces): comparableEqual's swallowed panic cites Pi | PiG's own defect | All platforms | Unreleased |
 | [BF-a40a16d](#bf-a40a16d) | fix(codingagent): typed input restarts the idle collection's wait on every route | PiG's own defect | All platforms | Unreleased |
 | [BF-a422947](#bf-a422947) | fix(chord/next/documents): a shared cold load hands its document to the waiters, which an ending object may… | PiG's own defect | All platforms | Unreleased |
+| [BF-a45f316](#bf-a45f316) | `durable/contract/tools/setup.sh` now populates the Pi reference checkout's generated provider catalogs… | PiG's own defect | All platforms | Unreleased |
 | [BF-a46f930](#bf-a46f930) | A Package configured as a settings object reads a resource kind its `pi` manifest does not declare (or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a4753ec](#bf-a4753ec) | The prompt-cache refresh that fires minutes after a prompt now treats a panic in the extension decision or in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a4753ec-2](#bf-a4753ec-2) | When the terminal's input ends while its output is still there, PiG keeps running as Pi does instead of… | PiG's own defect | All platforms | 0.5.0 |
@@ -1775,6 +1777,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b50a5ab](#bf-b50a5ab) | A telemetry span of a failed provider request kept a 500-character cut of the provider's error message that… | PiG's own defect | All platforms | Unreleased |
 | [BF-b54f9aa](#bf-b54f9aa) | The tree selector label time of a session entry whose timestamp is not a valid date prints "aN/NaN/NaN… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b59b9db](#bf-b59b9db) | fix(durable/core): a Session-mode read that stored held changes answers when the Storage settles the commit… | PiG's own defect | All platforms | Unreleased |
+| [BF-b5a660a](#bf-b5a660a) | Group-commit publication no longer publishes the next part of a storage call before a wait's continuation has… | PiG's own defect | All platforms | Unreleased |
 | [BF-b5b7b43](#bf-b5b7b43) | Frontmatter YAML parsing matches the `yaml` library on text outside ASCII and on unterminated quotes: an… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b5ebeb5](#bf-b5ebeb5) | A resumed session draws its `!` and `!!` command blocks, as Pi does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b5fb4aa](#bf-b5fb4aa) | fix(tui): a streamed Markdown is not resumed past a paragraph that a later LaTeX closer clips; keep wraps… | PiG's own defect | All platforms | Unreleased |
@@ -1930,6 +1933,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ca27ba6](#bf-ca27ba6) | The Go extension SDK accepts a native Provider object with no auth methods, as Pi's `ProviderAuth` (both… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ca41377](#bf-ca41377) | fix(tui): the alt-screen frame serves a render's viewport reads and ends a screen's callbacks at disposal… | PiG's own defect | All platforms | Unreleased |
 | [BF-ca675e0](#bf-ca675e0) | A list item whose text is `[ ] ` or `[x] ` with nothing after the spaces on the line is plain text, not a… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-ca83bfc](#bf-ca83bfc) | ai: an Azure OpenAI Responses base URL that already carries the full Responses endpoint path with a query… | PiG's own defect | All platforms | Unreleased |
 | [BF-caae28a](#bf-caae28a) | In RPC mode, `exit.log` no longer says "received SIGTERM" for a single signal that arrived during a shutdown… | PiG's own defect | All platforms | Unreleased |
 | [BF-cafa121](#bf-cafa121) | fix(llama): default llama.cpp server URL is port 9931 (Pi, #12001); NVIDIA RTX guide mirror (Pi) | PiG's own defect | All platforms | Unreleased |
 | [BF-cb00273](#bf-cb00273) | OpenRouter's signature-only `reasoning.text` delta for Claude is kept and replayed with its reasoning block… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
@@ -1977,6 +1981,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d06e6cf](#bf-d06e6cf) | Ending an RPC session while a response is running (stdin closes, an extension calls `ctx.shutdown()`, or pig… | PiG's own defect | All platforms | Unreleased |
 | [BF-d0c2727](#bf-d0c2727) | fix(codingagent): decode a Node request's client identity from its fields; regenerate the normalization… | PiG's own defect | All platforms | Unreleased |
 | [BF-d0de445](#bf-d0de445) | The thinking-level shortcut now goes to the lowest level of the model when the current level is not one of… | PiG's own defect | All platforms | Unreleased |
+| [BF-d0eb796](#bf-d0eb796) | Chord sync: a store whose outbox was turned off and on again after it committed could not upload any more… | PiG's own defect | All platforms | Unreleased |
 | [BF-d11ca55](#bf-d11ca55) | `pig piglet build --format binary` from a Pig checkout with a `go.work` builds a Piglet whose fused Go… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d133e3d](#bf-d133e3d) | Codemode scripts that patch built-ins, for example `Array.prototype.toJSON = ...`, no longer break the tool… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-d133e3d-2](#bf-d133e3d-2) | MCP OAuth sign-in no longer fails with `invalid_redirect_uri` on OpenID Connect servers: client registration… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
@@ -2304,6 +2309,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f0c8b96](#bf-f0c8b96) | The find tool matched path patterns through folders above the search path: with the project in `~/src/app`… | PiG's own defect | All platforms | Unreleased |
 | [BF-f0eace4](#bf-f0eace4) | LaTeX math renders two surrogate halves that end up side by side in one argument (`\vec{\ud83d{}\ude00}`… | PiG's own defect | All platforms | Unreleased |
 | [BF-f0eace4-2](#bf-f0eace4-2) | LaTeX math reads an unbraced astral argument (`\vec😀`, `\frac😀x`, `\sqrt😀`, `\not😀`, `x^😀` in… | PiG's own defect | All platforms | Unreleased |
+| [BF-f0f349c](#bf-f0f349c) | Chord store/sync: cancelling a store import while it waits for input triggered a data race under the Go race… | PiG's own defect | All platforms | Unreleased |
 | [BF-f105c62](#bf-f105c62) | A terminal client's device pairing counted the poll interval from the start of the previous poll, so a slow… | PiG's own defect | All platforms | Unreleased |
 | [BF-f12896b](#bf-f12896b) | Interactive startup writes the terminal color query before its first frame, as Pi does: starting the renderer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f19efb1](#bf-f19efb1) | A `session_compact` handler's passive custom message reaches the overflow retry (D138, Pi #9051) | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
@@ -9094,6 +9100,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `3b009a35c1` (2026-10-13), `488a47a47d` (2026-10-13), `b02876b1d5` (2026-10-13)
 - **Tests:** None recorded.
 - **Release note:** `chord/host`: a child host forked by `ForkDriver` no longer inherits its parent's `CHORD2_LOCK`. Before, a child host that forked its own children passed its lock on, and children without a lock of their own failed to start with `locked` (Pi a4d040d3).
+
+### BF-3b0319b
+
+**Chord sync: a `PullSession` restore whose `store.ImportStore` failed before reading the archive body (such as…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord sync: a `PullSession` restore whose `store.ImportStore` failed before reading the archive body (such as on a cancelled context or non-empty backend) left the remote body file open, and concurrent closes of a `FileSystemSyncRemote` body raced on a plain bool.
+- **Root cause:** PullSession omitted body.Close() on the ImportStore error return and fileBody.closed was an unguarded bool under concurrent background close.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3b0319bcde` (2026-11-22)
+- **Tests:** None recorded.
+- **Release note:** Chord sync: a `PullSession` restore whose `store.ImportStore` failed before reading the archive body (such as on a cancelled context or non-empty backend) left the remote body file open, and concurrent closes of a `FileSystemSyncRemote` body raced on a plain bool. `PullSession` now closes the body on the `ImportStore` error return and `fileBody.Close` is once-guarded (follows Pi `434dc5e4d`).
 
 ### BF-3b3dba6
 
@@ -25072,6 +25092,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `a422947b5f` (2026-10-30)
 - **Tests:** None recorded.
 
+### BF-a45f316
+
+**`durable/contract/tools/setup.sh` now populates the Pi reference checkout's generated provider catalogs…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Previously it unpacked the published `@earendil-works/pi-ai@1.0.4` package and silently skipped copying post-1.0.4 catalogs when `.upstream/current` was absent, leaving `qwen-token-plan-individual-cn.json` missing on fresh checkouts and restored Actions caches and failing `U-provider-session-cache-e2e` and `U-system-order-cache-e2e`.
+- **Root cause:** setup.sh seeded packages/ai/src/providers/data from npm pack @earendil-works/pi-ai@1.0.4 and copied post-1.0.4 catalogs only when the gitignored .upstream/current mirror existed, which ci.yml never built before durable-contract-setup ran
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a45f316348` (2026-11-23)
+- **Tests:** None recorded.
+- **Release note:** `durable/contract/tools/setup.sh` now populates the Pi reference checkout's generated provider catalogs (`packages/ai/src/providers/data`) from the committed vendored `@earendil-works/pi-ai` tarball in `third_party/pi-packs` whose `manifest.json` commit equals `durable/contract/PIN` `main`, re-syncing whenever the pack digest stamp or any imported catalog is missing, and fails loudly naming any missing catalog file or manifest mismatch. Previously it unpacked the published `@earendil-works/pi-ai@1.0.4` package and silently skipped copying post-1.0.4 catalogs when `.upstream/current` was absent, leaving `qwen-token-plan-individual-cn.json` missing on fresh checkouts and restored Actions caches and failing `U-provider-session-cache-e2e` and `U-system-order-cache-e2e`.
+
 ### BF-a46f930
 
 **A Package configured as a settings object reads a resource kind its `pi` manifest does not declare (or…**
@@ -26842,6 +26876,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `b59b9db8f9` (2026-10-27)
 - **Tests:** None recorded.
+
+### BF-b5a660a
+
+**Group-commit publication no longer publishes the next part of a storage call before a wait's continuation has…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Group-commit publication no longer publishes the next part of a storage call before a wait's continuation has run for waits carrying a `Continuation`.
+- **Root cause:** SessionImpl.Park checked done outside parkMu and called enter(continuationOf(ctx)) before inserting into session.parks, letting a publication close done and run awaitReadied before the wait was in parks and letting deliverLoop go idle while the wait was still entering Park
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `84b5913537` (2026-11-22), `b5a660ac5c` (2026-11-22)
+- **Tests:** `durable/session/park_check_before_insert_test.go::TestGroupCommitParkCheckBeforeInsertWindow`, `durable/session/park_enter_before_insert_test.go::TestGroupCommitParkEnterBeforeInsertWindow`, `durable/session/session_resumption_test.go::TestParkWithPendingParkedOnSameContinuationDoesNotDeadlock`
+- **Release note:** Group-commit publication no longer publishes the next part of a storage call before a wait's continuation has run for waits carrying a `Continuation`. `SessionImpl.Park` previously had two race gaps: it called `enter(continuationOf(ctx))` before inserting the new `*Parked` entry into `session.parks`, and it checked whether `done` was closed before acquiring `parkMu` to insert into `session.parks`, allowing a publication's `awaitReadied` scan (which runs under `parkMu` after deferred wakes close their channels) to miss the wait and letting the next part's `Hop` proceed early. `Park` now holds `parkMu` across the `done` check and the map insert, then releases `parkMu` before calling `enter`.
 
 ### BF-b5b7b43
 
@@ -28985,6 +29033,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `tui/markdown_task_item_oracle_test.go::TestMarkdownTaskItemFirstLineIsTextMatchesPi`, `tui/markdown_task_item_oracle_test.go::TestMarkdownTaskItemNeedsATextAfterTheSpacesMatchesPi`
 - **Release note:** A list item whose text is `[ ] ` or `[x] ` with nothing after the spaces on the line is plain text, not a task item (marked's listIsTask needs a non-whitespace character after the spaces), so `- [ ] ` renders as `- [ ]` like Pi.
 
+### BF-ca83bfc
+
+**ai: an Azure OpenAI Responses base URL that already carries the full Responses endpoint path with a query…**
+
+- **Source:** PiG's own defect
+- **Symptom:** ai: an Azure OpenAI Responses base URL that already carries the full Responses endpoint path with a query string (such as `https://<resource>.openai.azure.com/openai/responses?api-version=2025-04-01-preview` or a gateway `.../responses?api-version=...`) now reaches the endpoint, as in Pi, instead of appending `/responses?api-version=...` onto the query string and failing the request.
+- **Root cause:** azureResponsesEndpoint.resolve built the URL by string concatenation (`strings.TrimRight(config.BaseURL, "/") + "/responses?api-version=" + url.QueryEscape(config.APIVersion)`) instead of the openai SDK's `client.buildURL("/responses")` with `defaultQuery: { "api-version": apiVersion }`
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ca83bfc373` (2026-11-23)
+- **Tests:** `ai/azure_request_url_oracle_test.go::TestAzureResponsesRequestURLMatchesSDK`, `ai/azure_request_url_test.go::TestAzureResponsesRequestURL`
+- **Release note:** ai: an Azure OpenAI Responses base URL that already carries the full Responses endpoint path with a query string (such as `https://<resource>.openai.azure.com/openai/responses?api-version=2025-04-01-preview` or a gateway `.../responses?api-version=...`) now reaches the endpoint, as in Pi, instead of appending `/responses?api-version=...` onto the query string and failing the request.
+
 ### BF-caae28a
 
 **In RPC mode, `exit.log` no longer says "received SIGTERM" for a single signal that arrived during a shutdown…**
@@ -29635,6 +29697,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `d0de445007` (2026-11-14)
 - **Tests:** `ai/model_utils_test.go::TestNextThinkingLevel`, `internal/codingagent/thinking_selector_test.go::TestCycleThinkingLevelGoesToTheLowestLevelOfTheModel`
 - **Release note:** The thinking-level shortcut now goes to the lowest level of the model when the current level is not one of its levels (`minimal` from `off` on a model that cannot turn thinking off, as Pi), and works for every model that reasons.
+
+### BF-d0eb796
+
+**Chord sync: a store whose outbox was turned off and on again after it committed could not upload any more…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord sync: a store whose outbox was turned off and on again after it committed could not upload any more (`UploadSession` failed with `OutboxUnavailableError` on every attempt) because the commits between what the remote held and the outbox start were gone.
+- **Root cause:** UploadSession only exported an archive slot when synced == LogStart && outbox.Floor() > 0, so toggling the outbox off and on after a prior upload left outbox.Floor() > synced > 0 and failed with OutboxUnavailableError on every retry.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d0eb79648d` (2026-11-22)
+- **Tests:** None recorded.
+- **Release note:** Chord sync: a store whose outbox was turned off and on again after it committed could not upload any more (`UploadSession` failed with `OutboxUnavailableError` on every attempt) because the commits between what the remote held and the outbox start were gone. `UploadSession` now creates an archive slot after the remote head (the store `Export`), so the session history continues from a full copy; `RemoteHistoryOf` and `PullSession` restore from the newest archive slot along the chain (copies behind it get `HistoryUnavailableError` and restore fresh), and `FoldSession` folds every unfolded slot covered by the snapshot including those before an archive slot (follows Pi `f472efdc1`).
 
 ### BF-d11ca55
 
@@ -34160,6 +34236,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `f0eace4daf` (2026-11-06)
 - **Tests:** None recorded.
 - **Release note:** LaTeX math reads an unbraced astral argument (`\vec😀`, `\frac😀x`, `\sqrt😀`, `\not😀`, `x^😀` in display mode) as Pi does, one UTF-16 unit: the high half is the argument and the low half is the next character.
+
+### BF-f0f349c
+
+**Chord store/sync: cancelling a store import while it waits for input triggered a data race under the Go race…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord store/sync: cancelling a store import while it waits for input triggered a data race under the Go race detector (no wrong result is known).
+- **Root cause:** importEach calls parts.Close() in a background goroutine on early exit while parts.Next(ctx) may still be running, but jsonlDecoder.finished and gunzipBody.done/reader were unguarded against concurrent Close.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f0f349cb03` (2026-11-22)
+- **Tests:** None recorded.
+- **Release note:** Chord store/sync: cancelling a store import while it waits for input triggered a data race under the Go race detector (no wrong result is known). `DecodeJsonl` and `DecodeSnapshot` now synchronize their close flags and close the underlying source once so background cancellation closes safely alongside an in-flight read.
 
 ### BF-f105c62
 

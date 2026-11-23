@@ -107324,8 +107324,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_25_test.go#TestExample25ExportImport",
-        "test:chord/next/store/jsonl_test.go#TestJsonl",
-        "test:chord/sync/chunks_test.go#TestNothingThatReadsABodyKeepsAChunkPastTheNextNext"
+        "test:chord/next/store/import_test.go#TestImportRefusals",
+        "test:chord/next/store/jsonl_test.go#TestJsonl"
       ]
     },
     {
@@ -107346,8 +107346,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_25_test.go#TestExample25ExportImport",
-        "test:chord/next/store/jsonl_test.go#TestJsonl",
-        "test:chord/sync/chunks_test.go#TestNothingThatReadsABodyKeepsAChunkPastTheNextNext"
+        "test:chord/next/store/import_test.go#TestImportRefusals",
+        "test:chord/next/store/jsonl_test.go#TestJsonl"
       ]
     },
     {
@@ -107855,8 +107855,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_25_test.go#TestExample25ExportImport",
-        "test:chord/next/store/jsonl_test.go#TestJsonl",
-        "test:chord/nextnode/app/archive_upstream_test.go#TestRoundTripsAHostDirectorysKitStoreBesideItsPluginStore"
+        "test:chord/next/store/import_test.go#TestImportRefusals",
+        "test:chord/next/store/jsonl_test.go#TestJsonl"
       ]
     },
     {
@@ -107877,8 +107877,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_25_test.go#TestExample25ExportImport",
-        "test:chord/next/store/jsonl_test.go#TestJsonl",
-        "test:chord/nextnode/app/archive_upstream_test.go#TestRoundTripsAHostDirectorysKitStoreBesideItsPluginStore"
+        "test:chord/next/store/import_test.go#TestImportRefusals",
+        "test:chord/next/store/jsonl_test.go#TestJsonl"
       ]
     },
     {
@@ -114468,7 +114468,8 @@
       ],
       "evidence": [
         "test:chord/next/store/evidence_storeA_test.go#TestEvidenceStoreAOutboxBounds",
-        "test:chord/next/store/outbox_test.go#TestOutbox"
+        "test:chord/next/store/outbox_test.go#TestOutbox",
+        "test:chord/sync/sync_test.go#TestRemoteBodies"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -114490,7 +114491,8 @@
       ],
       "evidence": [
         "test:chord/next/store/evidence_storeA_test.go#TestEvidenceStoreAOutboxBounds",
-        "test:chord/next/store/outbox_test.go#TestOutbox"
+        "test:chord/next/store/outbox_test.go#TestOutbox",
+        "test:chord/sync/sync_test.go#TestRemoteBodies"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -118911,7 +118913,7 @@
       "evidence": [
         "test:chord/next/store/outbox_test.go#TestOutbox",
         "test:chord/next/store/store_test.go#TestStore",
-        "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"
+        "test:chord/sync/sync_test.go#TestRemoteBodies"
       ]
     },
     {
@@ -123526,8 +123528,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
-        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseDoesNotWaitForABaseBuildStalledOnAReadItsLateResultIsDroppedAndWaitReturnsNil",
-        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing"
+        "test:chord/nextnode/app/app_base_settle_test.go#TestAppBaseMarkIsWithdrawnAfterTruncateAndSameBytesRewriteOnceSettled",
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseDoesNotWaitForABaseBuildStalledOnAReadItsLateResultIsDroppedAndWaitReturnsNil"
       ]
     },
     {
@@ -123700,9 +123702,9 @@
         "call:chord/nextnode/app/app.go#App.ApplyChanges"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_base_settle_test.go#TestAppBaseMarkIsWithdrawnAfterTruncateAndSameBytesRewriteOnceSettled",
         "test:chord/nextnode/app/app_bases_linux_test.go#TestAppRefusesRequestsAndLinksWith503WhileTheServersPluginsAreStillLoading",
-        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing",
-        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeEditedSinceTheStartMarksBaseWhileTheAppIsOpen"
+        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing"
       ]
     },
     {
@@ -123724,7 +123726,7 @@
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
         "test:chord/nextnode/app/app_changes_test.go#TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt",
-        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseDoesNotWaitForABaseBuildStalledOnAReadItsLateResultIsDroppedAndWaitReturnsNil"
+        "test:chord/nextnode/app/app_base_settle_test.go#TestAppBaseMarkIsWithdrawnAfterTruncateAndSameBytesRewriteOnceSettled"
       ]
     },
     {
@@ -130374,8 +130376,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
-        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseDoesNotWaitForABaseBuildStalledOnAReadItsLateResultIsDroppedAndWaitReturnsNil",
-        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing"
+        "test:chord/nextnode/app/app_base_settle_test.go#TestAppBaseMarkIsWithdrawnAfterTruncateAndSameBytesRewriteOnceSettled",
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseDoesNotWaitForABaseBuildStalledOnAReadItsLateResultIsDroppedAndWaitReturnsNil"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -130792,7 +130794,7 @@
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientRunsTheAppsTerminalCodeWithThePluginsConfirmsItsActionsAppliesAnEditInPlaceExits",
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer"
+        "test:chord/nextnode/app/app_base_settle_test.go#TestAppBaseMarkIsWithdrawnAfterTruncateAndSameBytesRewriteOnceSettled"
       ]
     },
     {
@@ -134137,6 +134139,7 @@
       ],
       "evidence": [
         "test:chord/sync/lines_test.go#TestIsNotFoundTellsAMissingFileFromOtherFailures",
+        "test:chord/sync/sync_test.go#TestRemoteBodies",
         "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -134159,6 +134162,7 @@
       ],
       "evidence": [
         "test:chord/sync/lines_test.go#TestIsNotFoundTellsAMissingFileFromOtherFailures",
+        "test:chord/sync/sync_test.go#TestRemoteBodies",
         "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -134312,6 +134316,7 @@
         "call:chord/sync/filesystem.go#FileSystemSyncRemote.PutBatch"
       ],
       "evidence": [
+        "test:chord/sync/sync_test.go#TestRemoteBodies",
         "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -134333,6 +134338,7 @@
         "call:chord/sync/filesystem.go#FileSystemSyncRemote.PutBatch"
       ],
       "evidence": [
+        "test:chord/sync/sync_test.go#TestRemoteBodies",
         "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -134678,6 +134684,7 @@
         "call:chord/sync/client.go#PullSession"
       ],
       "evidence": [
+        "test:chord/sync/sync_test.go#TestRemoteBodies",
         "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"
       ]
     },
@@ -134698,6 +134705,7 @@
         "call:chord/sync/client.go#PullSession"
       ],
       "evidence": [
+        "test:chord/sync/sync_test.go#TestRemoteBodies",
         "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"
       ]
     },
@@ -134788,6 +134796,7 @@
       ],
       "evidence": [
         "test:chord/sync/sync_test.go#TestBoundedMemory",
+        "test:chord/sync/sync_test.go#TestRemoteBodies",
         "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"
       ]
     },
@@ -135038,6 +135047,7 @@
       ],
       "evidence": [
         "test:chord/sync/sync_test.go#TestBoundedMemory",
+        "test:chord/sync/sync_test.go#TestRemoteBodies",
         "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -135060,6 +135070,7 @@
       ],
       "evidence": [
         "test:chord/sync/sync_test.go#TestBoundedMemory",
+        "test:chord/sync/sync_test.go#TestRemoteBodies",
         "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -135148,6 +135159,7 @@
         "call:chord/sync/remote.go#RemoteHead"
       ],
       "evidence": [
+        "test:chord/sync/sync_test.go#TestRemoteBodies",
         "test:chord/sync/sync_test.go#TestRemoteHistory"
       ]
     },
@@ -135168,6 +135180,7 @@
         "call:chord/sync/remote.go#RemoteHead"
       ],
       "evidence": [
+        "test:chord/sync/sync_test.go#TestRemoteBodies",
         "test:chord/sync/sync_test.go#TestRemoteHistory"
       ]
     },
@@ -136143,8 +136156,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_25_test.go#TestExample25ExportImport",
-        "test:chord/sync/batch_source_test.go#TestABatchBodyEndsWithTheErrorOfItsSourceAndGivesTheSourceBack",
-        "test:chord/sync/batch_source_test.go#TestABatchBodyPassesTheContextOfNextToItsSource"
+        "test:chord/next/store/import_test.go#TestImportRefusals",
+        "test:chord/sync/batch_source_test.go#TestABatchBodyEndsWithTheErrorOfItsSourceAndGivesTheSourceBack"
       ]
     },
     {
@@ -136739,7 +136752,7 @@
       "id": "pkg:chord/sync#SyncStateStore",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:4d34c0fe8f7289cbd36048d7fa284e5a5a7442c8df62d329e97127247cd01e91",
-      "rationale": "Derived by the interface gap detector: SyncStateStore is Go chord/sync/client.go#SyncStateStore (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SyncStateStore is Go chord/sync/client.go#SyncStateStore (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/client.go#SyncStateStore"
       ],
@@ -136752,7 +136765,7 @@
         "call:chord/sync/client.go#PullSession"
       ],
       "evidence": [
-        "reach:chord/sync/client.go#PullSession"
+        "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -136967,8 +136980,8 @@
       ],
       "evidence": [
         "test:chord/sync/limits_test.go#TestLineLimit",
-        "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices",
-        "test:chord/sync/limits_test.go#TestSizesCountUTF16Units"
+        "test:chord/sync/sync_test.go#TestRemoteBodies",
+        "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -136990,8 +137003,8 @@
       ],
       "evidence": [
         "test:chord/sync/limits_test.go#TestLineLimit",
-        "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices",
-        "test:chord/sync/limits_test.go#TestSizesCountUTF16Units"
+        "test:chord/sync/sync_test.go#TestRemoteBodies",
+        "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },

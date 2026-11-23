@@ -33408,6 +33408,17 @@
       "shapeHash": "sha256:26db495a5bd1520f3072fc7eabf461ae476ad40289ef85f22ba75734a3d26c45"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#azureResponsesRequestURL",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "azureResponsesRequestURL",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(config AzureConfig) (string, error)"
+      },
+      "shapeHash": "sha256:5c71216e3026c69e26289fd9c0e211e5bfd8ed373311224c90a7c36def7270b8"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#azureToolCallProviders",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "azureToolCallProviders",
@@ -62866,6 +62877,17 @@
       "shapeHash": "sha256:988ac19e71c304c6a8fe7278c8b31c3aa626db77ec6a2592f01415e7f7cbd47a"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#sdkBuildURLWithDefaultQuery",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "sdkBuildURLWithDefaultQuery",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(baseURL string, path string, defaultQuery ...sdkQueryParam) (string, error)"
+      },
+      "shapeHash": "sha256:397b866f8e1a46c8d58fd2024b6f20f193b4c30688543dac07c3cd60448dedce"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#sdkMarshalerType",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "sdkMarshalerType",
@@ -62875,6 +62897,17 @@
         "type": "reflect.Type"
       },
       "shapeHash": "sha256:dba07026e73ec4d94bad9fb9a7088d80fa221e81e079fc9238ee150247c3234d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#sdkQueryParam",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "sdkQueryParam",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "sdkQueryParam"
+      },
+      "shapeHash": "sha256:f2316ef37a1b7c16bf5b20abeab3b0b52143ddb06a1015868787f9331ca8e7cc"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#serverSentEvent",
@@ -62963,6 +62996,17 @@
         "type": "func() []error"
       },
       "shapeHash": "sha256:37478fdf5e8948aa8a01a8ab0577b707b1b1512f6963742ab3ae9050136efefc"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#setSDKQueryParam",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "setSDKQueryParam",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(members []sdkQueryParam, name string, value string) []sdkQueryParam"
+      },
+      "shapeHash": "sha256:2e33a27c45849a28ab74369025c7ac10e20494a439152b0186d2612016025ec2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#setSlotArray",
