@@ -1,13 +1,15 @@
 package atomicfile
 
 import (
+	"context"
 	"errors"
 	"slices"
 	"syscall"
+	"time"
 )
 
-// What a replacement must keep of a file's security descriptor is decided here, on every platform, so that a test can drive every branch without Windows.
-// The Win32 calls that read and set a descriptor are in descriptor_windows.go.
+// What a replacement must keep of a file's security descriptor and how the Windows replacement orders the descriptor carry and the move are decided here,
+// on every platform, so that tests can drive every branch without Windows. The Win32 calls live in descriptor_windows.go and replace_windows.go.
 
 // Errors of Windows (winerror.h) that a token gets for an owner or a group it may not give a file. They are numbers so that the decision is the same code on
 // every platform and a test can inject them.
@@ -18,8 +20,57 @@ const (
 	errPrivilegeNotHeld    = syscall.Errno(1314) // ERROR_PRIVILEGE_NOT_HELD
 )
 
+// MoveFileExW flags used by the Windows replacement (winbase.h). Defined here as constants so the step logic and its cross-platform tests verify the exact
+// flags passed to MoveFileExW without needing a Windows build.
+const (
+	moveReplaceExisting = 0x1 // MOVEFILE_REPLACE_EXISTING
+	moveWriteThrough    = 0x8 // MOVEFILE_WRITE_THROUGH
+)
+
 // errAccessDiffers is what a carry of a security descriptor returns when the access of the file is not the access it was to be given.
 var errAccessDiffers = errors.New("the DACL's entries or SE_DACL_PROTECTED are not those of the old file")
+
+// windowsMoveSteps are the calls a Windows replacement performs: carrying the existing file's security descriptor onto the temporary file (when the target
+// existed), then moving the temporary file over the target in one MoveFileExW call with MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH, retried under
+// fsretry.Retry while another process holds the target open.
+type windowsMoveSteps struct {
+	carry func(from, to string) error
+	move  func(from, to string, flags uint32) error
+	retry func(ctx context.Context, op func() error) error
+}
+
+// replaceWithMove carries the existing target's security descriptor onto temp (tolerating only a difference in SE_DACL_AUTO_INHERITED) and then moves temp
+// over path in a single MoveFileExW call with MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH, retried through steps.retry. Because ReplaceFileW is not
+// used, path is never left without a file between two renames; if the carry or move fails, path still holds the old file intact and the caller removes temp.
+func replaceWithMove(ctx context.Context, temp, path string, existed bool, steps windowsMoveSteps) error {
+	if existed {
+		if err := steps.carry(path, temp); err != nil && !errors.Is(err, errAutoInheritedDiffers) {
+			return err
+		}
+	}
+	return steps.retry(ctx, func() error {
+		return steps.move(temp, path, moveReplaceExisting|moveWriteThrough)
+	})
+}
+
+// retryWithWait runs op with doubling delays from firstDelay up to maxDelay while transient(err) holds and budget remains, mirroring fsretry.Retry so
+// cross-platform tests can drive the retry loop without depending on the host's GOOS.
+func retryWithWait(ctx context.Context, budget, firstDelay, maxDelay time.Duration, transient func(error) bool, wait func(context.Context, time.Duration) error, op func() error) error {
+	delay := firstDelay
+	remaining := budget
+	for {
+		err := op()
+		if err == nil || !transient(err) || remaining <= 0 {
+			return err
+		}
+		pause := min(delay, remaining)
+		if waitErr := wait(ctx, pause); waitErr != nil {
+			return errors.Join(err, waitErr)
+		}
+		remaining -= pause
+		delay = min(delay*2, maxDelay)
+	}
+}
 
 // access is the part of a security descriptor that decides who may open a file, and the flag that records how the DACL was set.
 type access struct {
