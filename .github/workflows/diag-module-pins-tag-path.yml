@@ -1,0 +1,85 @@
+# SPDX-License-Identifier: MIT
+
+name: Diag module-pins tag path
+
+# Diagnostic workflow (never merged): verifies that CI bookkeeping checkout
+# fetches git tags and that automation/ci/modulepins takes the tag reachability
+# path (reachable.go) cleanly on an existing ancestor tag (extensions/sdk/v0.7.0)
+# and fails with the expected missing-tag diagnostic on a non-existent tag (v0.8.0).
+
+on:
+  push:
+    branches:
+      - 'diag/**'
+
+permissions:
+  contents: read
+
+jobs:
+  diag-module-pins-tag-path:
+    name: Diag module-pins tag path
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The bug ledger and the DCO check read the history.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          # The job restores its own Go build cache below; setup-go's copy would download a second, older one.
+          cache: false
+      - name: Check git tags and history in checkout
+        shell: bash
+        run: |
+          set +e
+          git tag -l 'extensions/sdk/*'
+          git rev-parse --verify --quiet 'extensions/sdk/v0.7.0^{commit}'
+          echo "tag_resolves_status=$?"
+          git merge-base --is-ancestor 'extensions/sdk/v0.7.0^{commit}' HEAD
+          echo "tag_is_ancestor_status=$?"
+          git rev-parse --is-shallow-repository
+          echo "DIAG-STEP-END"
+      - name: Run module-pins on committed pseudo-version pins
+        shell: bash
+        run: |
+          set +e
+          make module-pins
+          echo "module_pins_pseudo_status=$?"
+          echo "DIAG-STEP-END"
+      - name: Exercise module-pins tag path with v0.7.0 (working tree only)
+        shell: bash
+        run: |
+          set +e
+          # Pre-build modulepins before mutating go.mod so go run does not fail on go.sum or module resolution.
+          bin="$(mktemp)"
+          go build -o "$bin" ./automation/ci/modulepins
+          echo "module_pins_build_status=$?"
+          mapfile -t files < <(git grep -l 'MichaelKinsy/PiG\(/extensions/sdk\)\? v0\.7\.1-0\.20261115110416-4c9c52e1bf09' -- '*go.mod')
+          printf "%s\n" "${files[@]}"
+          sed -i 's/v0\.7\.1-0\.20261115110416-4c9c52e1bf09/v0.7.0/g' "${files[@]}"
+          git diff --stat
+          "$bin"
+          echo "module_pins_tag_status=$?"
+          go run ./automation/ci/modulepins
+          echo "module_pins_tag_gorun_status=$?"
+          rm -f "$bin"
+          echo "DIAG-STEP-END"
+      - name: Exercise module-pins missing-tag contrast with v0.8.0 (working tree only)
+        shell: bash
+        run: |
+          set +e
+          git checkout -- '*go.mod'
+          bin="$(mktemp)"
+          go build -o "$bin" ./automation/ci/modulepins
+          echo "module_pins_build_status=$?"
+          mapfile -t files < <(git grep -l 'MichaelKinsy/PiG\(/extensions/sdk\)\? v0\.7\.1-0\.20261115110416-4c9c52e1bf09' -- '*go.mod')
+          sed -i 's/v0\.7\.1-0\.20261115110416-4c9c52e1bf09/v0.8.0/g' "${files[@]}"
+          git diff --stat
+          "$bin"
+          echo "module_pins_missing_tag_status=$?"
+          git checkout -- '*go.mod'
+          rm -f "$bin"
+          echo "DIAG-STEP-END"
