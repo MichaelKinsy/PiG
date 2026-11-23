@@ -655,6 +655,7 @@ func TestImportRefusals(t *testing.T) {
 			first:   append([]byte(nil), firstChunk...),
 			entered: make(chan struct{}),
 			release: make(chan struct{}),
+			closed:  make(chan struct{}),
 		}
 
 		cancellable, cancel := chordctx.WithCancel(chordctx.Background())
@@ -676,7 +677,11 @@ func TestImportRefusals(t *testing.T) {
 		if !archiveIsCode(err, data.CodeAborted) {
 			t.Fatalf("ImportStore error = %v, want aborted", err)
 		}
-		time.Sleep(20 * time.Millisecond)
+		select {
+		case <-src.closed:
+		case <-time.After(5 * time.Second):
+			t.Fatal("the background close did not run")
+		}
 	})
 
 	t.Run("an input whose Next panics fails the import with the panic as its error", func(t *testing.T) {
@@ -782,13 +787,15 @@ func TestImportOfAnArchiveWrittenBeforeSchema3(t *testing.T) {
 	})
 }
 
-// blockingByteSource yields `first`, then blocks on `release` after closing `entered`, with a lockless Close so
-// concurrent Close and returning Next exercise jsonlDecoder under the race detector.
+// blockingByteSource yields `first`, then blocks on `release` after closing `entered`. Close signals `closed`
+// without synchronizing with Next, so the test can wait for importEach's background Close without sleeping while
+// Next and Close still execute concurrently on jsonlDecoder under the race detector.
 type blockingByteSource struct {
 	first   []byte
 	sent    bool
 	entered chan struct{}
 	release chan struct{}
+	closed  chan struct{}
 }
 
 func (b *blockingByteSource) Next(ctx context.Context) ([]byte, bool, error) {
@@ -801,4 +808,7 @@ func (b *blockingByteSource) Next(ctx context.Context) ([]byte, bool, error) {
 	return nil, false, nil
 }
 
-func (*blockingByteSource) Close() error { return nil }
+func (b *blockingByteSource) Close() error {
+	close(b.closed)
+	return nil
+}
