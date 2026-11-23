@@ -399,6 +399,10 @@ func (u *Upgrades) keep(connection *upgraded) {
 // upgrade completes the upgrade with a gorilla upgrader of its own (no compression), dropped with the upgrade: nothing is
 // kept per frame size. It starts reading once then returned.
 func upgrade(w nethttp.ResponseWriter, request *nethttp.Request, maxPayload int, then func(socket *WebSocket)) {
+	if !websocket.IsWebSocketUpgrade(request) {
+		refuse(w, nethttp.StatusBadRequest)
+		return
+	}
 	upgrader := websocket.Upgrader{CheckOrigin: func(*nethttp.Request) bool { return true }}
 	conn, err := upgrader.Upgrade(w, request, nil)
 	if err != nil {

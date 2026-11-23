@@ -897,3 +897,28 @@ func TestTheLinksEndpointsCloseRacingThePeersCloseRunsClosedOnce(t *testing.T) {
 	case <-time.After(100 * time.Millisecond):
 	}
 }
+
+// A request carrying Connection: Upgrade with a non-websocket Upgrade token reaches the upgrade handler (as Node emits
+// `upgrade` for any Upgrade header), and Pi's `ws` refuses it with 400 Bad Request rather than gorilla/websocket's 426.
+func TestNonWebSocketUpgradeHeaderAnswers400(t *testing.T) {
+	server := serving(t, []plugin{{"@app/s", contributing(HttpContribution{Sockets: []HttpSocketEntry{SocketFunc("/s", noopSocket())}})}}, servedOptions{})
+	conn, err := net.Dial("tcp", "127.0.0.1:"+strconv.Itoa(server.port))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = conn.Close() }()
+	_, err = io.WriteString(conn, "GET /s HTTP/1.1\r\nHost: 127.0.0.1:"+strconv.Itoa(server.port)+"\r\nConnection: Upgrade\r\nUpgrade: h2c\r\nx-principal: owner\r\n\r\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = conn.SetReadDeadline(time.Now().Add(within))
+	answer := make([]byte, 4096)
+	n, err := conn.Read(answer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	firstLine, _, _ := strings.Cut(string(answer[:n]), "\r\n")
+	if firstLine != "HTTP/1.1 400 Bad Request" {
+		t.Fatalf("status line = %q, want HTTP/1.1 400 Bad Request (full response: %q)", firstLine, string(answer[:n]))
+	}
+}
