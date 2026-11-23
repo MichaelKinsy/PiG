@@ -475,7 +475,9 @@ jobs:
     needs: [changes, bookkeeping]
     if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || (needs.changes.outputs.os-parallel == 'true' && needs.bookkeeping.result != 'skipped')) }}
     runs-on: ubuntu-24.04
-    # Three dispatched runs of Linux / test-fast (45131680807, 45061942294, 45034549861): 41:27, 34:07, 28:54 (worst 41:27, 69% of 60; 3x = 124:21 -> 125).
+    # Applies to every shard of the Linux matrix (conformance, portmap, test-fast and the rest);
+    # slowest leg is Linux / test-fast across three dispatched runs (45131680807, 45061942294, 45034549861):
+    # 41:27, 34:07, 28:54 (worst 41:27, 69% of 60; 3x = 124:21 -> 125).
     timeout-minutes: 125
     # The job installs the Pi oracle (make upstream-mirror): a test that cannot find its Pi source fails here instead of skipping (internal/pioracle.Missing).
     env:

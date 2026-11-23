@@ -20,6 +20,14 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
+// linuxShardBudgetSeconds is the 60-minute shard budget that Linux shard plans must fit inside.
+// The linux job's timeout-minutes in ci.yml is the GitHub kill limit and is set from three times
+// the worst measured Linux matrix job by the rule in ci.yml, separate from this shard budget.
+const (
+	linuxShardBudgetSeconds = 3600
+	linuxKillLimitMinutes   = 125
+)
+
 type verificationJob struct {
 	Name     string
 	Needs    []string
@@ -110,8 +118,8 @@ func TestLinuxShardsRetainEveryCheck(t *testing.T) {
 	if len(full.Matrix["linux"]) < 2 {
 		t.Fatal("Linux verification is not sharded")
 	}
-	if linux.Timeout > 125 || linux.Timeout <= 0 || linux.Strategy.FailFast == nil || *linux.Strategy.FailFast {
-		t.Fatal("Linux shards must retain the timeout ceiling and run every shard on failure")
+	if linux.Timeout*60 < linuxShardBudgetSeconds || linux.Timeout > linuxKillLimitMinutes || linux.Strategy.FailFast == nil || *linux.Strategy.FailFast {
+		t.Fatalf("Linux shards must keep timeout-minutes in %d..%d (got %d) and run every shard on failure", linuxShardBudgetSeconds/60, linuxKillLimitMinutes, linux.Timeout)
 	}
 	if linux.Strategy.Matrix.Include != "${{ fromJSON(needs.changes.outputs.linux) }}" {
 		t.Fatalf("the Linux matrix is %v, want the changes job's plan", linux.Strategy.Matrix.Include)
@@ -268,12 +276,13 @@ func TestPortmapShardsAreWiredEndToEnd(t *testing.T) {
 // TestPortmapShardsFitTheirBudget guards against regressions like runs 44870314130 and 44880357753 where
 // Linux / portmap-1 (55.5 m, 92.5% of 60 m on southcentralus) and Linux / portmap-3 (51.8 m, 86.4% on westus)
 // exceeded the 70% slow-pool budget at PORTMAP_SHARDS=8. Scaling the worst observed 8-shard work linearly to
-// PORTMAP_SHARDS must keep every shard <= 60% of the 60-minute limit on the fast pool and <= 85% on the slow pool.
+// PORTMAP_SHARDS must keep every shard <= 60% of the 60-minute shard budget on the fast pool and <= 85% on the slow pool.
 func TestPortmapShardsFitTheirBudget(t *testing.T) {
-	limit := verificationJobs(t)["linux"].Timeout * 60
-	if limit <= 0 || limit > 7500 {
-		t.Fatalf("linux timeout = %d s, want 1..7500", limit)
+	killLimit := verificationJobs(t)["linux"].Timeout * 60
+	if killLimit < linuxShardBudgetSeconds || killLimit > linuxKillLimitMinutes*60 {
+		t.Fatalf("linux timeout = %d s, want %d..%d", killLimit, linuxShardBudgetSeconds, linuxKillLimitMinutes*60)
 	}
+	budget := linuxShardBudgetSeconds
 	total := portmapShards(t)
 	// Measured on run 44880357753 (portmap-1 at 8 shards): 3113 s shard work + 218 s setup on southcentralus (slow pool),
 	// and run 44870314130 (portmap-1 at 8 shards): 2430 s shard work + 216 s setup on us-west-2 (fast pool).
@@ -283,15 +292,15 @@ func TestPortmapShardsFitTheirBudget(t *testing.T) {
 		fastWork8Sec    = 2430
 		slowSetupSec    = 240
 		slowWork8Sec    = 3113
-		slowMarginRatio = 85 // <= 85% of limit (at least 15% margin)
+		slowMarginRatio = 85 // <= 85% of shard budget (at least 15% margin)
 	)
 	fastProjected := fastSetupSec + (fastWork8Sec*baseShards+total-1)/total
 	slowProjected := slowSetupSec + (slowWork8Sec*baseShards+total-1)/total
-	if fastProjected*5 > limit*3 {
-		t.Errorf("PORTMAP_SHARDS=%d projects %d s fast-pool wall (> 60%% of %d s limit)", total, fastProjected, limit)
+	if fastProjected*5 > budget*3 {
+		t.Errorf("PORTMAP_SHARDS=%d projects %d s fast-pool wall (> 60%% of %d s shard budget)", total, fastProjected, budget)
 	}
-	if slowProjected*100 > limit*slowMarginRatio {
-		t.Errorf("PORTMAP_SHARDS=%d projects %d s slow-pool wall (> %d%% of %d s limit)", total, slowProjected, slowMarginRatio, limit)
+	if slowProjected*100 > budget*slowMarginRatio {
+		t.Errorf("PORTMAP_SHARDS=%d projects %d s slow-pool wall (> %d%% of %d s shard budget)", total, slowProjected, slowMarginRatio, budget)
 	}
 }
 
