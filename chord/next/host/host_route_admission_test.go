@@ -267,9 +267,16 @@ func TestRouteAdmissionBeforeTheFirstAllowNothingIsResolvedOrForwardedADeniedHol
 	forEachCodec(t, func(t *testing.T) {
 		g := routeGated(t, relayedOptions{}, nil)
 		defer closeHosts(t, g.Tab, g.Server)
-		notes := mustHold(t, g.Tab, PlacedNotes, jsonObject("session", "S1"))
-		if got := kindOf(notes); got != RefStateLoading {
-			t.Fatalf("state = %s, want loading", got)
+		// Hold and read the initial loading state in one client section so the memory link's denial
+		// cannot land between Hold and kindOf (Pi: tab.hold(...) then expect(notes.state.value.kind) in one turn).
+		var notes *Reference
+		var initial RefStateKind
+		g.Tab.(*chordHost).enter(func() {
+			notes = mustHold(t, g.Tab, PlacedNotes, jsonObject("session", "S1"))
+			initial = kindOf(notes)
+		})
+		if initial != RefStateLoading {
+			t.Fatalf("state = %s, want loading", initial)
 		}
 		g.settled()
 		cause := wantDenied(t, notes)

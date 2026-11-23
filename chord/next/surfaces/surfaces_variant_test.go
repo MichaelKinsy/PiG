@@ -28,6 +28,9 @@ func kindOf(ref *host.Reference) host.RefStateKind { return ref.State().Value().
 func TestLiveIn(t *testing.T) {
 	t.Run("is the reference while it is live in the variant, nothing before it binds or for no reference", func(t *testing.T) {
 		desk := deskfix.New(t)
+		// Hold the desk loading until the before-bind read has run: Pi holds and reads in one turn,
+		// while Go's memory link delivers on a goroutine and may bind before LiveIn runs.
+		open := desk.Gate()
 		held, err := desk.Client.Hold(bg, deskfix.Desk, delta.JsonObjectOf(), host.GetOptions{})
 		if err != nil {
 			t.Fatal(err)
@@ -38,6 +41,7 @@ func TestLiveIn(t *testing.T) {
 		if LiveIn(nil, "reader") != nil {
 			t.Fatal("LiveIn of no reference is not nil")
 		}
+		open()
 		untilState(t, held, func() bool { return kindOf(held) == host.RefStateLive })
 		if LiveIn(held, "reader") != held {
 			t.Fatal("LiveIn(held, reader) is not held")
