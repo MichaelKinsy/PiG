@@ -2,7 +2,6 @@ package cli
 
 import (
 	"bufio"
-	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -141,19 +140,10 @@ func rpcSettleImplementations(t *testing.T) []rpcSettleImplementation {
 	}
 }
 
-// buildRustSettleWait builds testdata/rpc-settle-wait-rs and returns the executable.
+// buildRustSettleWait builds testdata/rpc-settle-wait-rs once per test process and returns the executable.
 func buildRustSettleWait(t *testing.T) string {
 	t.Helper()
-	target := t.TempDir()
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Minute)
-	defer cancel()
-	cargo := exec.CommandContext(ctx, "cargo", "build", "--release", "--quiet")
-	cargo.Dir = filepath.Join("testdata", "rpc-settle-wait-rs")
-	cargo.Env = append(os.Environ(), "CARGO_TARGET_DIR="+target)
-	if out, err := cargo.CombinedOutput(); err != nil {
-		t.Fatalf("build rpc-settle-wait-rs: %v\n%s", err, out)
-	}
-	return filepath.Join(target, "release", testExecutable("rpc-settle-wait-rs"))
+	return buildRustSDKFixture(t, "rpc-settle-wait-rs")
 }
 
 // An agent_settled handler that waits on a socket is awaiting I/O, so Pi's event loop reads stdin meanwhile: a get_state sent on seeing agent_end is answered before agent_settled, which follows only when the handler returns (agent-session.ts:1094-1105 awaits the handler before it emits agent_settled; rpc-mode.ts:808-810 starts every stdin line without waiting for the one before). Every SDK's handler waits on the same read, and the host cannot tell what the read is.
