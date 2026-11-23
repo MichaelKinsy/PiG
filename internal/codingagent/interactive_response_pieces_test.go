@@ -18,10 +18,6 @@ import (
 // as tasks of one update that carry no markers. Both leave the same transcript: thinking, text, the cards of two tool calls in their order
 // with their arguments and results, and the last answer.
 func TestInteractiveResponseInOnePieceLeavesTheTranscriptOfItsChunks(t *testing.T) {
-	file := filepath.Join(t.TempDir(), "notes.txt")
-	if err := os.WriteFile(file, []byte("FILE-LINE-ONE\nFILE-LINE-TWO\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
 	transcript := func(t *testing.T, tokensPerSecond int) (chat string, updates, tasks int) {
 		t.Helper()
 		synctest.Test(t, func(t *testing.T) {
@@ -30,14 +26,17 @@ func TestInteractiveResponseInOnePieceLeavesTheTranscriptOfItsChunks(t *testing.
 				ai.FauxStaticStep(ai.FauxResponse{StopReason: string(ai.StopReasonToolUse), Content: []ai.FauxContentBlock{
 					ai.FauxThinking("a thought that the provider streams in several chunks before the answer"),
 					ai.FauxText("an answer that the provider streams in several chunks of text"),
-					ai.FauxToolCall("read", map[string]any{"path": file}, &ai.FauxToolCallOptions{ID: "call-1"}),
-					ai.FauxToolCall("read", map[string]any{"path": file, "offset": 2, "limit": 1}, &ai.FauxToolCallOptions{ID: "call-2"}),
+					ai.FauxToolCall("read", map[string]any{"path": "notes.txt"}, &ai.FauxToolCallOptions{ID: "call-1"}),
+					ai.FauxToolCall("read", map[string]any{"path": "notes.txt", "offset": 2, "limit": 1}, &ai.FauxToolCallOptions{ID: "call-2"}),
 				}}),
 				ai.FauxStaticStep(ai.FauxResponse{StopReason: string(ai.StopReasonStop), Content: []ai.FauxContentBlock{
 					ai.FauxText("the last words of the run"),
 				}}),
 			})
 			_, opts := replySessionOn(t, provider)
+			if err := os.WriteFile(filepath.Join(opts.CWD, "notes.txt"), []byte("FILE-LINE-ONE\nFILE-LINE-TWO\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
 			marked := false
 			h := icodingagent.NewTestHarnessWithOutput(t, opts, func(_ *icodingagent.TestHarness, ev agent.AgentEvent) {
 				if _, ok := ev.(agent.MessageUpdateEvent); ok {
@@ -58,7 +57,7 @@ func TestInteractiveResponseInOnePieceLeavesTheTranscriptOfItsChunks(t *testing.
 			h.Do(h.OwnFrames)
 			h.Do(func() { h.Enter("hello") })
 			h.WaitIdle(t, 30*time.Second)
-			time.Sleep(200 * time.Millisecond)
+			synctest.Wait()
 			chat = h.Chat()
 		})
 		return chat, updates, tasks
