@@ -174,6 +174,12 @@ type SessionImpl struct {
 	parks           map[*Parked]struct{}
 	awaitingWakes   atomic.Int32
 	awaitingCallers atomic.Int32
+	// beforeParkInsert is called by Park after its done check and before inserting into session.parks.
+	// Only tests set it, before any goroutine can call Park (unsynchronised read in Park); it is nil in production.
+	beforeParkInsert func()
+	// afterParkEnter is called by Park immediately after enter(continuationOf(ctx)).
+	// Only tests set it, before any goroutine can call Park (unsynchronised read in Park); it is nil in production.
+	afterParkEnter func()
 
 	// fenceMu guards the fence: the queue of deliveries in line order, the delivery goroutine's state, the backpressure
 	// counters, and the failure's boundary.
