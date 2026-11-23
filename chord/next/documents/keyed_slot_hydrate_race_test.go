@@ -86,6 +86,94 @@ func TestKeyedSlotEndedHandleRefusesWrongKindKeyBeforeEndedPinsPiOrder(t *testin
 	nexttest.RequireJSONEqual(t, rejection(t, err), want)
 }
 
+// TestKeyedSlotSealedHandleSiblingsWhileHydrateWritesDoNotRaceDefinition exercises Watch,
+// Keys (HandleKeys), and exported KeyOf from another goroutine against Hydrate at the same
+// per-slot barrier (no sleep).
+func TestKeyedSlotSealedHandleSiblingsWhileHydrateWritesDoNotRaceDefinition(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		run  func(old *Keyed) error
+	}{
+		{"Watch", func(old *Keyed) error {
+			_, err := old.Watch(background, "b")
+			return err
+		}},
+		{"Keys", func(old *Keyed) error {
+			it := old.Keys(background)
+			defer it.Close()
+			_, _, err := it.Next(background)
+			return err
+		}},
+		{"KeyOf", func(old *Keyed) error {
+			_, err := old.Slot.KeyOf("b")
+			return err
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			chordStore, db := ksFreshStore(t)
+			ksSeed(t, chordStore, ksEntry{"b", "y"})
+			p := ksPersistedOver(t, chordStore, nil)
+			gate := db.holdNextLoad()
+			old := p.notes()
+			first := ksGo(func() (*JsonObject, error) { return old.Get(background, "b") })
+			ksWaitClosed(t, gate.entered)
+			p.current().Fail()
+
+			hydrateReady := make(chan struct{})
+			callReady := make(chan struct{})
+			release := make(chan struct{})
+			var releaseOnce sync.Once
+			unblock := func() { releaseOnce.Do(func() { close(release) }) }
+
+			def := old.Slot.Definition()
+			p.o.Do(func() {
+				def.beforeHydrate = func() {
+					close(hydrateReady)
+					<-release
+				}
+			})
+			defer func() {
+				unblock()
+				gate.open()
+				p.o.Do(func() { def.beforeHydrate = nil })
+				p.close()
+			}()
+
+			restarting := ksGo(func() (*JsonObject, error) { return nil, p.start() })
+			calling := ksGo(func() (*JsonObject, error) {
+				close(callReady)
+				<-release
+				return nil, tc.run(old)
+			})
+			ksWaitClosed(t, hydrateReady)
+			ksWaitClosed(t, callReady)
+			unblock()
+
+			if tc.name == "Keys" {
+				// Keys queues a page job on the line behind first; open the load gate so it resolves released.
+				gate.open()
+			}
+			err := ksRecv(t, calling).err
+			if tc.name == "KeyOf" {
+				if err != nil {
+					t.Fatalf("KeyOf: %v", err)
+				}
+			} else {
+				_ = ksRequireCode(t, err, data.CodeReleased)
+			}
+			gate.open()
+			if res := ksRecv(t, first); res.err != nil {
+				t.Fatalf("first: %v", res.err)
+			} else {
+				ksRequireDoc(t, res.value, "y")
+			}
+			if res := ksRecv(t, restarting); res.err != nil {
+				t.Fatalf("restart: %v", res.err)
+			}
+		})
+	}
+}
+
 func BenchmarkKeyedGetOffLoop(b *testing.B) {
 	var notes *Keyed
 	o, _ := activated(b, objectOptions{}, func(a *attempt) { notes = a.Keyed(ksMemo(b)) })

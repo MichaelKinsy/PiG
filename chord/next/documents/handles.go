@@ -146,11 +146,7 @@ func (handle *Keyed) access() Access { return Access{Token: handle.Token, Versio
 
 // Get is the value at key, nil when absent.
 func (handle *Keyed) Get(ctx context.Context, key any) (*JsonObject, error) {
-	stored, err := handle.Slot.KeyOf(key)
-	if err != nil {
-		return nil, err
-	}
-	return handle.Slot.Get(stored, handle.access(), ctx)
+	return handle.Slot.getHandle(key, handle.access(), ctx)
 }
 
 // Keys is the keys of the present documents, in code point order of their stored keys.
@@ -160,11 +156,7 @@ func (handle *Keyed) Keys(ctx context.Context) *HandleKeyIterator {
 
 // Watch is a watch of the document at key, nil when absent.
 func (handle *Keyed) Watch(ctx context.Context, key any) (chord.WatchHandle[delta.JsonValue], error) {
-	stored, err := handle.Slot.KeyOf(key)
-	if err != nil {
-		return nil, err
-	}
-	watch, err := handle.Slot.Watch(stored, handle.access(), ctx)
+	watch, err := handle.Slot.watchHandle(key, handle.access(), ctx)
 	if err != nil || watch == nil {
 		return nil, err
 	}
