@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"math/rand"
 	"net/http"
 	"os/exec"
@@ -19,6 +18,9 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
+
+// chatgptFixedNowMillis is the instant the Pi oracle's fixed clock reports (testdata/chatgpt_responses.mjs).
+const chatgptFixedNowMillis = 1_700_000_000_000
 
 type chatgptResponseProbe struct {
 	Flow       string `json:"flow"`
@@ -101,6 +103,10 @@ func chatgptResponseProbes() []chatgptResponseProbe {
 }
 
 func TestChatGPTResponsesMatchPi(t *testing.T) {
+	// Pi's oracle runs on a fixed clock; the Go flow reads nowMillis, so it reads the same instant and a loaded host cannot add milliseconds to a credential's time to live.
+	previousNow := nowMillis
+	nowMillis = func() int64 { return chatgptFixedNowMillis }
+	t.Cleanup(func() { nowMillis = previousNow })
 	probes := chatgptResponseProbes()
 	payload, err := json.Marshal(probes)
 	if err != nil {
@@ -128,7 +134,6 @@ func TestChatGPTResponsesMatchPi(t *testing.T) {
 		withMockCodexClient(t, func(*http.Request) (*http.Response, error) {
 			return &http.Response{StatusCode: probe.Status, Status: fmt.Sprintf("%d %s", probe.Status, probe.StatusText), Body: io.NopCloser(bytes.NewReader(probe.Raw)), Header: http.Header{}}, nil
 		})
-		started := float64(nowMillis())
 		var credentials OAuthCredentials
 		if probe.Flow == "exchange" {
 			credentials, err = exchangeChatGPTAuthorizationCode(t.Context(), "code", "verifier", "cid")
@@ -145,9 +150,9 @@ func TestChatGPTResponsesMatchPi(t *testing.T) {
 			_ = json.Unmarshal(credentials.Extra["scopes"], &scopes)
 			var clientID string
 			_ = json.Unmarshal(credentials.Extra["clientId"], &clientID)
-			got := map[string]any{"type": "oauth", "access": credentials.Access, "refresh": credentials.Refresh, "ttlMs": math.Round((credentials.ExpiresMillis()-started)/100) * 100, "clientId": clientID, "scopes": scopes}
+			got := map[string]any{"type": "oauth", "access": credentials.Access, "refresh": credentials.Refresh, "ttlMs": credentials.ExpiresMillis() - chatgptFixedNowMillis, "clientId": clientID, "scopes": scopes}
 			expires, _ := want.OK["expires"].(float64)
-			wantMap := map[string]any{"type": want.OK["type"], "access": want.OK["access"], "refresh": want.OK["refresh"], "ttlMs": math.Round((expires-1_700_000_000_000)/100) * 100, "clientId": want.OK["clientId"], "scopes": want.OK["scopes"]}
+			wantMap := map[string]any{"type": want.OK["type"], "access": want.OK["access"], "refresh": want.OK["refresh"], "ttlMs": expires - chatgptFixedNowMillis, "clientId": want.OK["clientId"], "scopes": want.OK["scopes"]}
 			same = reflect.DeepEqual(got, wantMap)
 		}
 		if want.Err == nil {
