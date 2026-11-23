@@ -7,4 +7,5 @@
 # its pull request. Sorted by class: behaviour, scope, remove-when, owner-field, editorial, new. Within a class the
 # generator listed them in reading order: tokens-changed, large-insert, medium, owner-statement-after, small.
 D462 behaviour line 7 gains the sentence on macOS and the BSDs (the server's own lock file is removed by hand as in Pi; stale address locks of interrupted operations are cleared by the next start), with the fix 0024f22d1e; text commit dfc680227
+D631 behaviour replace macOS unmeasured guess with macOS 26.7.3 /usr/bin/yes ENOTCONN socketpair probe counts and nightly macos-15 host job counts
 D614 new added on the release line by 633aaa0 (Mount plugin UI views over D107 in every extension SDK (D614)), first merge 19321a064 Merge the plugin UI port fixes (lint, port-lint, embedder docs, regenerated bund
