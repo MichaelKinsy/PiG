@@ -5,7 +5,6 @@ package ai
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"os"
 	"strings"
 )
@@ -80,6 +79,14 @@ type azureResponsesEndpoint struct {
 	modelBaseURL string
 }
 
+// azureResponsesRequestURL builds the Azure OpenAI Responses request URL the way pinned openai 7.19.0
+// AzureOpenAI does (azure.mjs:41 sets defaultQuery['api-version'] = apiVersion; client.mjs:468-482 buildURL
+// appends '/responses' to baseURL and merges defaultQuery over Object.fromEntries(url.searchParams)).
+// /responses is not in azure.mjs's _deployments_endpoints, so buildRequest does not rewrite its path.
+func azureResponsesRequestURL(config AzureConfig) (string, error) {
+	return sdkBuildURLWithDefaultQuery(config.BaseURL, "/responses", sdkQueryParam{name: "api-version", value: config.APIVersion})
+}
+
 // resolve returns the provider for one request: the same configuration with the deployment name as the wire model and the resolved endpoint.
 func (e *azureResponsesEndpoint) resolve(p *openAIResponsesProvider, opts StreamOptions) *openAIResponsesProvider {
 	options := opts
@@ -91,7 +98,7 @@ func (e *azureResponsesEndpoint) resolve(p *openAIResponsesProvider, opts Stream
 		if err != nil {
 			return "", err
 		}
-		return strings.TrimRight(config.BaseURL, "/") + "/responses?api-version=" + url.QueryEscape(config.APIVersion), nil
+		return azureResponsesRequestURL(config)
 	}
 	resolved.cfg.azure = nil
 	return &resolved

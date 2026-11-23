@@ -31,8 +31,20 @@ func newSDKFetchRequest(ctx context.Context, method, href string, body io.Reader
 	return request, nil
 }
 
+// sdkQueryParam is a single default query entry passed to the Stainless SDK's buildURL (`defaultQuery`).
+type sdkQueryParam struct {
+	name, value string
+}
+
 // sdkBuildURL is `client.buildURL(path)` of the Stainless-generated openai and @anthropic-ai/sdk clients (openai/client.mjs buildURL, @anthropic-ai/sdk/client.mjs buildURL) for a client built with baseURL: new URL(baseURL + path) with one slash dropped where both meet, then, when the base carried a query, the pairs of `Object.fromEntries(url.searchParams)` written back through qs. The error is the constructor's TypeError message.
 func sdkBuildURL(baseURL, path string) (string, error) {
+	return sdkBuildURLWithDefaultQuery(baseURL, path)
+}
+
+// sdkBuildURLWithDefaultQuery is `client.buildURL(path)` with `defaultQuery` (openai/client.mjs:468-482, openai/azure.mjs:41):
+// `new URL(baseURL + path)` with one slash dropped where both meet, then `{ ...Object.fromEntries(url.searchParams), ...defaultQuery }`
+// written back through qs.
+func sdkBuildURLWithDefaultQuery(baseURL, path string, defaultQuery ...sdkQueryParam) (string, error) {
 	if strings.HasSuffix(baseURL, "/") && strings.HasPrefix(path, "/") {
 		path = path[1:]
 	}
@@ -41,25 +53,19 @@ func sdkBuildURL(baseURL, path string) (string, error) {
 		return "", err
 	}
 	pairs := nodeurl.SearchPairs(parsed.Query)
-	if len(pairs) == 0 {
+	if len(pairs) == 0 && len(defaultQuery) == 0 {
 		return parsed.Href(), nil
 	}
-	// Object.fromEntries keeps the last value of a repeated name at the first one's position; the object then enumerates integer-like names first.
-	type member struct{ name, value string }
-	var members []member
+	// Object.fromEntries keeps the last value of a repeated name at the first one's position; spreading defaultQuery overrides
+	// any matching pathQuery name in place and appends new names at the end; the object then enumerates integer-like names first.
+	members := make([]sdkQueryParam, 0, len(pairs)+len(defaultQuery))
 	for _, pair := range pairs {
-		found := false
-		for i := range members {
-			if members[i].name == pair[0] {
-				members[i].value, found = pair[1], true
-				break
-			}
-		}
-		if !found {
-			members = append(members, member{pair[0], pair[1]})
-		}
+		members = setSDKQueryParam(members, pair[0], pair[1])
 	}
-	jsstring.SortOwnKeys(members, func(m member) string { return m.name })
+	for _, param := range defaultQuery {
+		members = setSDKQueryParam(members, param.name, param.value)
+	}
+	jsstring.SortOwnKeys(members, func(m sdkQueryParam) string { return m.name })
 	var query strings.Builder
 	for i, m := range members {
 		if i > 0 {
@@ -68,6 +74,16 @@ func sdkBuildURL(baseURL, path string) (string, error) {
 		query.WriteString(qsEncode(m.name) + "=" + qsEncode(m.value))
 	}
 	return parsed.WithSearch(query.String()), nil
+}
+
+func setSDKQueryParam(members []sdkQueryParam, name, value string) []sdkQueryParam {
+	for i := range members {
+		if members[i].name == name {
+			members[i].value = value
+			return members
+		}
+	}
+	return append(members, sdkQueryParam{name: name, value: value})
 }
 
 // qsEncode is the openai SDK's qs encoder (openai/internal/qs/utils.mjs encode) for a string: UTF-8 percent-encoding of every byte but the RFC 3986 unreserved ones.
