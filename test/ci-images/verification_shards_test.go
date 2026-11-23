@@ -1114,3 +1114,32 @@ func TestOSParallelJobsKeepTheCheapFirstOrderOnMain(t *testing.T) {
 		}
 	}
 }
+
+var groupedSourcedScriptPattern = regexp.MustCompile(`(?m)^\s*source\s+"\$ROOT/([^"]+)"`)
+
+// groupedSourcedScripts reads automation/ci/test-grouped.sh from the repository and returns every relative path it sources under $ROOT.
+func groupedSourcedScripts(t *testing.T) []string {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(repoRoot(t), "automation", "ci", "test-grouped.sh"))
+	if err != nil {
+		t.Fatalf("read automation/ci/test-grouped.sh: %v", err)
+	}
+	matches := groupedSourcedScriptPattern.FindAllStringSubmatch(string(data), -1)
+	if len(matches) == 0 {
+		t.Fatal("automation/ci/test-grouped.sh sources no scripts under $ROOT")
+	}
+	var scripts []string
+	for _, m := range matches {
+		scripts = append(scripts, m[1])
+	}
+	return scripts
+}
+
+func TestGroupedTestFixtureCopiesEverySourcedScript(t *testing.T) {
+	root := groupedTestFixture(t)
+	for _, rel := range groupedSourcedScripts(t) {
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(rel))); err != nil {
+			t.Errorf("groupedTestFixture missing sourced script %s: %v", rel, err)
+		}
+	}
+}
