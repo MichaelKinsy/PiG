@@ -418,7 +418,9 @@ func TestToolExecutionCompactReadsUpstream(t *testing.T) {
 			def := withBuiltInRenderers("read", baseToolDefinition("read"))
 			f := toolComponent(t, "read", "tool-compact-"+tc.title, map[string]any{"path": tc.path}, &def)
 			f.update(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: tc.content}}}, false)
-			text := f.plain(120)
+			// Render wide enough that an absolute path outside cwd never soft-wraps at a deep checkout root.
+			width := max(120, len(tc.compact)+32)
+			text := f.plain(width)
 			assertToolContains(t, text, tc.compact)
 			if strings.Contains(text, tc.hidden) || (tc.absent != "" && strings.Contains(text, tc.absent)) {
 				t.Fatalf("expanded/invalid collapsed label: %q", text)
