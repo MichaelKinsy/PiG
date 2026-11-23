@@ -27,28 +27,75 @@ jobs:
   race:
     name: Race / ${{ matrix.os }} / ${{ matrix.group }}${{ matrix.shard && format(' / {0}', matrix.shard) || '' }}
     runs-on: ${{ matrix.os }}
-    # automation/ci/race-packages.txt names the packages of each group. The cli group is one package whose whole -race run took 38 minutes on a 56-core slice, so it runs as four shards of its tests (PIG_RACE_SHARD). The parity, shared and conformance groups run on Linux only (conformance is test/extension-conformance in four shards, PIG_RACE_SHARD): the parity group holds the long parity-tool test packages (closure 483 s and sdksurface 1406 s under -race on 8 CPUs), and shared the packages that use sync, atomic, channels or context cancellation without starting a goroutine themselves (race-packages.txt).
+    # automation/ci/race-packages.txt names the packages of each group. The cli group is one package whose whole -race run took 38 minutes on a 56-core slice, so it runs as seven shards of its tests (PIG_RACE_SHARD): every shard's -run pattern must stay under automation/ci/test-shard-pattern.sh's 24,000-character limit with room for growth (at seven shards the longest pattern is 14,421 characters; recompute by measuring automation/ci/test-shard-pattern.sh k n ./coding/cli for each shard k of n). The tui and codingagent groups are single packages whose whole -race runs exceeded or approached Go's 60-minute per-package timeout on macOS (tui timed out at 1h0m0s; internal/codingagent took 3,274 s) and exceeded half an hour on Linux (tui 1,880 s, internal/codingagent 1,818 s), so both run sharded via PIG_RACE_SHARD on both Linux and macOS: tui in 8 shards (max pattern 17,081 chars, matching automation/ci/test-shard-weights.txt; recompute with automation/ci/test-shard-pattern.sh k 8 ./tui) and codingagent in 12 shards (max pattern 17,098 chars; recompute with automation/ci/test-shard-pattern.sh k 12 ./internal/codingagent). The parity and conformance groups run on Linux only (conformance is test/extension-conformance in four shards, PIG_RACE_SHARD): the parity group holds the long parity-tool test packages (closure 483 s and sdksurface 1406 s under -race on 8 CPUs). The shared group holds the packages that use sync, atomic, channels or context cancellation without starting a goroutine themselves (race-packages.txt) and runs on both Linux and macOS.
     timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, macos-15]
-        group: [ai, rest, host, coding, libs, hljs]
+        group: [ai, rest, host, coding, libs, hljs, photonimage]
         include:
           - {os: ubuntu-24.04, group: parity}
           - {os: ubuntu-24.04, group: shared}
+          - {os: macos-15, group: shared}
           - {os: ubuntu-24.04, group: conformance, shard: 1/4}
           - {os: ubuntu-24.04, group: conformance, shard: 2/4}
           - {os: ubuntu-24.04, group: conformance, shard: 3/4}
           - {os: ubuntu-24.04, group: conformance, shard: 4/4}
-          - {os: ubuntu-24.04, group: cli, shard: 1/4}
-          - {os: ubuntu-24.04, group: cli, shard: 2/4}
-          - {os: ubuntu-24.04, group: cli, shard: 3/4}
-          - {os: ubuntu-24.04, group: cli, shard: 4/4}
-          - {os: macos-15, group: cli, shard: 1/4}
-          - {os: macos-15, group: cli, shard: 2/4}
-          - {os: macos-15, group: cli, shard: 3/4}
-          - {os: macos-15, group: cli, shard: 4/4}
+          - {os: ubuntu-24.04, group: cli, shard: 1/7}
+          - {os: ubuntu-24.04, group: cli, shard: 2/7}
+          - {os: ubuntu-24.04, group: cli, shard: 3/7}
+          - {os: ubuntu-24.04, group: cli, shard: 4/7}
+          - {os: ubuntu-24.04, group: cli, shard: 5/7}
+          - {os: ubuntu-24.04, group: cli, shard: 6/7}
+          - {os: ubuntu-24.04, group: cli, shard: 7/7}
+          - {os: macos-15, group: cli, shard: 1/7}
+          - {os: macos-15, group: cli, shard: 2/7}
+          - {os: macos-15, group: cli, shard: 3/7}
+          - {os: macos-15, group: cli, shard: 4/7}
+          - {os: macos-15, group: cli, shard: 5/7}
+          - {os: macos-15, group: cli, shard: 6/7}
+          - {os: macos-15, group: cli, shard: 7/7}
+          - {os: ubuntu-24.04, group: tui, shard: 1/8}
+          - {os: ubuntu-24.04, group: tui, shard: 2/8}
+          - {os: ubuntu-24.04, group: tui, shard: 3/8}
+          - {os: ubuntu-24.04, group: tui, shard: 4/8}
+          - {os: ubuntu-24.04, group: tui, shard: 5/8}
+          - {os: ubuntu-24.04, group: tui, shard: 6/8}
+          - {os: ubuntu-24.04, group: tui, shard: 7/8}
+          - {os: ubuntu-24.04, group: tui, shard: 8/8}
+          - {os: macos-15, group: tui, shard: 1/8}
+          - {os: macos-15, group: tui, shard: 2/8}
+          - {os: macos-15, group: tui, shard: 3/8}
+          - {os: macos-15, group: tui, shard: 4/8}
+          - {os: macos-15, group: tui, shard: 5/8}
+          - {os: macos-15, group: tui, shard: 6/8}
+          - {os: macos-15, group: tui, shard: 7/8}
+          - {os: macos-15, group: tui, shard: 8/8}
+          - {os: ubuntu-24.04, group: codingagent, shard: 1/12}
+          - {os: ubuntu-24.04, group: codingagent, shard: 2/12}
+          - {os: ubuntu-24.04, group: codingagent, shard: 3/12}
+          - {os: ubuntu-24.04, group: codingagent, shard: 4/12}
+          - {os: ubuntu-24.04, group: codingagent, shard: 5/12}
+          - {os: ubuntu-24.04, group: codingagent, shard: 6/12}
+          - {os: ubuntu-24.04, group: codingagent, shard: 7/12}
+          - {os: ubuntu-24.04, group: codingagent, shard: 8/12}
+          - {os: ubuntu-24.04, group: codingagent, shard: 9/12}
+          - {os: ubuntu-24.04, group: codingagent, shard: 10/12}
+          - {os: ubuntu-24.04, group: codingagent, shard: 11/12}
+          - {os: ubuntu-24.04, group: codingagent, shard: 12/12}
+          - {os: macos-15, group: codingagent, shard: 1/12}
+          - {os: macos-15, group: codingagent, shard: 2/12}
+          - {os: macos-15, group: codingagent, shard: 3/12}
+          - {os: macos-15, group: codingagent, shard: 4/12}
+          - {os: macos-15, group: codingagent, shard: 5/12}
+          - {os: macos-15, group: codingagent, shard: 6/12}
+          - {os: macos-15, group: codingagent, shard: 7/12}
+          - {os: macos-15, group: codingagent, shard: 8/12}
+          - {os: macos-15, group: codingagent, shard: 9/12}
+          - {os: macos-15, group: codingagent, shard: 10/12}
+          - {os: macos-15, group: codingagent, shard: 11/12}
+          - {os: macos-15, group: codingagent, shard: 12/12}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -80,7 +127,7 @@ jobs:
           if [ "$RUNNER_OS" = Linux ]; then
             automation/ci/install-native-test-packages.sh
           else
-            brew install fd ripgrep
+            brew install fd ripgrep tmux
           fi
           rust="$(awk '/^  RUST_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
           npm_version="$(awk '/^  NPM_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
@@ -96,7 +143,7 @@ jobs:
           # mirror of the pin's source. The nightly once listed these by hand, left out the npm trees, and every Pi-oracle test that imports a package from them failed with
           # ERR_MODULE_NOT_FOUND (test/ci-images/nightly_oracle_install_test.go).
           make upstream-mirror
-      # The Lisp SDK realization of cmd/pig's TestReplacedSession2860AcrossSDKs (cli shard 4/4) and the Lisp conformance rows fail without the pinned SBCL, as in ci.yml's Linux and macOS jobs: the same cache and install step.
+      # The Lisp SDK realization of cmd/pig's TestReplacedSession2860AcrossSDKs (in the cli shards) and the Lisp conformance rows fail without the pinned SBCL, as in ci.yml's Linux and macOS jobs: the same cache and install step.
       - name: Restore the pinned SBCL
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -111,6 +158,36 @@ jobs:
           echo "PIG_SBCL=$prefix/bin/sbcl" >> "$GITHUB_ENV"
           echo "SBCL_HOME=$prefix/lib/sbcl" >> "$GITHUB_ENV"
           echo "$prefix/bin" >> "$GITHUB_PATH"
+      # Install the pinned zstd (internal/zstdblob.PinnedCLIVersion) into ~/.cache/pig-zstd and cache it by pin. Setting PIG_REQUIRE_ZSTD=1 makes the frame tests fail instead of skipping if the binary is missing.
+      - name: Restore the pinned zstd
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-zstd
+          key: zstd-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-zstd.sh') }}
+      - name: Install the pinned zstd
+        shell: bash
+        run: |
+          set -euo pipefail
+          zstd="$(automation/ci/install-zstd.sh)"
+          echo "PIG_ZSTD=$zstd" >> "$GITHUB_ENV"
+          echo "PIG_REQUIRE_ZSTD=1" >> "$GITHUB_ENV"
+      - name: Warm the Rust SDK Cargo targets
+        # Builds pig-sdk and its dependencies (and Pi's env daemon for libs) into each group's SharedCargoTargetDir before go test starts, so no race test compiles the Rust SDK cold inside its 120 s wait budget.
+        if: matrix.group == 'cli' || matrix.group == 'rest' || matrix.group == 'host' || matrix.group == 'conformance' || matrix.group == 'libs'
+        shell: bash
+        env:
+          PIG_RACE_GROUP: ${{ matrix.group }}
+        run: |
+          set -euo pipefail
+          case "$PIG_RACE_GROUP" in
+            cli) targets=(cli) ;;
+            rest) targets=(subprocess) ;;
+            host) targets=(runtimecell) ;;
+            conformance) targets=(conformance) ;;
+            libs) targets=(env-oracle) ;;
+            *) echo "unexpected race group $PIG_RACE_GROUP" >&2; exit 1 ;;
+          esac
+          ./automation/ci/test-warm.sh --rust-only "${targets[@]}"
       - name: Race and goroutine-leak gate
         env:
           CI: '1'
@@ -293,7 +370,7 @@ jobs:
         with:
           go-version-file: .go-version
           cache: true
-      # The tests of ./coding/... start node (the Pi-oracle tests and the Node extension host): the pinned Node and the oracle, as in the strip-matrix job.
+      # The tests of ./coding/... start node (the Pi-oracle tests and the Node extension host), sbcl (the Lisp SDK rows) and the pinned zstd (the frame tests): the pinned Node and oracle, as in the strip-matrix job, and the pinned SBCL and zstd, as in the race job.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
@@ -309,6 +386,33 @@ jobs:
           export PATH="$bin:$PATH"
           test "$(npm --version)" = "$npm_version"
           make upstream-mirror
+      # The Lisp SDK rows under ./coding/... need the pinned SBCL, as in the race job: the same cache and install step.
+      - name: Restore the pinned SBCL
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-sbcl
+          key: sbcl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-sbcl.sh') }}
+      - name: Install the pinned SBCL
+        shell: bash
+        run: |
+          set -euo pipefail
+          prefix="$(automation/ci/install-sbcl.sh)"
+          echo "PIG_SBCL=$prefix/bin/sbcl" >> "$GITHUB_ENV"
+          echo "SBCL_HOME=$prefix/lib/sbcl" >> "$GITHUB_ENV"
+          echo "$prefix/bin" >> "$GITHUB_PATH"
+      # Install the pinned zstd (internal/zstdblob.PinnedCLIVersion) into ~/.cache/pig-zstd and cache it by pin. Setting PIG_REQUIRE_ZSTD=1 makes the frame tests fail instead of skipping if the binary is missing.
+      - name: Restore the pinned zstd
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-zstd
+          key: zstd-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-zstd.sh') }}
+      - name: Install the pinned zstd
+        shell: bash
+        run: |
+          set -euo pipefail
+          zstd="$(automation/ci/install-zstd.sh)"
+          echo "PIG_ZSTD=$zstd" >> "$GITHUB_ENV"
+          echo "PIG_REQUIRE_ZSTD=1" >> "$GITHUB_ENV"
       - name: Test ./coding/... and ./internal/codingagent/... under the strip tag set
         env:
           CI: '1'
