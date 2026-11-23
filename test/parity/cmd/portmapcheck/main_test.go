@@ -987,3 +987,76 @@ func TestInfraFailureClassification(t *testing.T) {
 		}
 	}
 }
+
+// TestNoCacheForcesEveryRowToRun: with a cached green record already on disk under build/portmap-coverage, a normal run replays it
+// without invoking the evidence test, while -no-cache ignores the cache, runs the evidence test again, reports 0 cached / N run, and
+// refreshes the cache entry.
+func TestNoCacheForcesEveryRowToRun(t *testing.T) {
+	runsFile := filepath.Join(t.TempDir(), "runs.log")
+	body := "package lib\n\nimport (\n\t\"os\"\n\t\"testing\"\n)\n\nfunc TestWidget(t *testing.T) {\n" +
+		"\tf, err := os.OpenFile(" + strconv.Quote(runsFile) + ", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)\n" +
+		"\tif err != nil {\n\t\tt.Fatal(err)\n\t}\n" +
+		"\t_, _ = f.WriteString(\"x\\n\")\n" +
+		"\t_ = f.Close()\n" +
+		"\tif (Widget{Name: \"a\"}).Hello() != \"hello a\" {\n\t\tt.Fatal(\"hello\")\n\t}\n}\n"
+	root := coverageFixture(t, body)
+
+	bin := filepath.Join(t.TempDir(), "portmapcheck")
+	build := exec.Command("go", "build", "-o", bin, ".")
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build portmapcheck: %v\n%s", err, out)
+	}
+
+	runCLI := func(args ...string) (string, error) {
+		cmd := exec.Command(bin, append([]string{"-root", root}, args...)...)
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		cmd.Stderr = &out
+		err := cmd.Run()
+		return out.String(), err
+	}
+
+	countRuns := func() int {
+		b, err := os.ReadFile(runsFile)
+		if err != nil {
+			return 0
+		}
+		return bytes.Count(b, []byte("\n"))
+	}
+
+	// 1. Cold run: invokes the evidence test once and writes build/portmap-coverage/<digest>.json.
+	out1, err := runCLI()
+	if err != nil {
+		t.Fatalf("cold run failed: %v\n%s", err, out1)
+	}
+	if !strings.Contains(out1, "portmap: 1 rows: 0 cached, 1 run;") {
+		t.Fatalf("cold run summary mismatch:\n%s", out1)
+	}
+	if got := countRuns(); got != 1 {
+		t.Fatalf("cold run evidence invocations = %d, want 1", got)
+	}
+
+	// 2. Warm run without -no-cache: replays the cached entry without invoking the evidence test.
+	out2, err := runCLI()
+	if err != nil {
+		t.Fatalf("warm run failed: %v\n%s", err, out2)
+	}
+	if !strings.Contains(out2, "portmap: 1 rows: 1 cached, 0 run;") {
+		t.Fatalf("warm run summary mismatch:\n%s", out2)
+	}
+	if got := countRuns(); got != 1 {
+		t.Fatalf("warm run should not re-invoke evidence test: got %d invocations, want 1", got)
+	}
+
+	// 3. Forced run with -no-cache: ignores the cache entry on disk, invokes the evidence test again, and reports 0 cached, 1 run.
+	out3, err := runCLI("-no-cache")
+	if err != nil {
+		t.Fatalf("-no-cache run failed: %v\n%s", err, out3)
+	}
+	if !strings.Contains(out3, "portmap: 1 rows: 0 cached, 1 run;") {
+		t.Fatalf("-no-cache summary mismatch:\n%s", out3)
+	}
+	if got := countRuns(); got != 2 {
+		t.Fatalf("-no-cache run evidence invocations = %d, want 2", got)
+	}
+}
