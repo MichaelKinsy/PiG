@@ -70,9 +70,11 @@ var codingPackages = []string{"./coding/...", "./internal/codingagent/..."}
 // about twenty minutes at eight CPUs.
 const codingTestTimeout = "90m"
 
-// wholeTestTimeout bounds go test of aiPackage and wholePackages under one set: ./ai/ under one set takes 371 to 528 s at eight CPUs
-// on a loaded 192-CPU host, above go test's ten-minute default at the gate's opening burst. Matches the 30m timeout ci.yml uses for
-// plain whole-package ./ai runs.
+// wholeTestTimeout bounds go test of aiPackage and wholePackages under one set.
+// Plain ./ai/ in this step measures 428.898 to 592.346 s across eight runs at eight CPUs on xd670 (load up to 94, plus 600.047 s
+// killed by go test's ten-minute default at the gate's opening burst) and 438.196 to 534.135 s across all four sets on a 4-CPU
+// GitHub ubuntu runner (nightly job 137304936373: 438.196, 468.893, 500.160, 534.135 s) — 73 to 99 percent of the ten-minute
+// default in both places. Three times the worst measure (592.346 s) is 29.6 minutes, so 30m matches ci.yml's plain ./ai timeout.
 const wholeTestTimeout = "30m"
 
 // redDir holds one file per tag set, named after the tag (all.txt for all tags): the top-level tests of aiPackage that fail under
