@@ -182,11 +182,11 @@ func (l *podLog) seedOf(target string, turns int) []*object {
 // quantile interpolates linearly between the closest ranks.
 func quantile(xs []float64, p float64) float64 {
 	s := slices.Sorted(slices.Values(xs))
-	k := float64(len(s)-1) * p
+	k := float64(float64(len(s)-1) * p)
 	f := int(math.Floor(k))
 	c := min(f+1, len(s)-1)
-	//portlint:allow fusedmuladd benchmark report statistics: no Pi counterpart, and a last-bit difference cannot change a reported row
-	return s[f] + (s[c]-s[f])*(k-float64(f))
+	// Round the product explicitly so that the report's rows are the same on every CPU.
+	return s[f] + float64((s[c]-s[f])*(k-float64(f)))
 }
 
 func median(xs []float64) float64 { return quantile(xs, 0.5) }
@@ -200,7 +200,7 @@ func jsRound(x float64) float64 {
 	return f
 }
 
-func round1(v float64) float64 { return jsRound(v*10) / 10 }
+func round1(v float64) float64 { return jsRound(float64(v*10)) / 10 }
 
 func roundTo(v float64, digits int) float64 {
 	scale := math.Pow(10, float64(digits))
@@ -322,8 +322,7 @@ func spread(xs []float64, gate bool) metricNoise {
 	if n > 1 {
 		var ss float64
 		for _, x := range xs {
-			//portlint:allow fusedmuladd benchmark report statistics: no Pi counterpart, and a last-bit difference cannot change a reported row
-			ss += (x - m.Mean) * (x - m.Mean)
+			ss += float64((x - m.Mean) * (x - m.Mean))
 		}
 		m.SD = math.Sqrt(ss / float64(n-1))
 	}
@@ -1104,12 +1103,9 @@ func correlation(a, b []float64) float64 {
 	ma, mb := spread(a, false).Mean, spread(b, false).Mean
 	var sab, saa, sbb float64
 	for i := range a {
-		//portlint:allow fusedmuladd benchmark report statistics: no Pi counterpart, and a last-bit difference cannot change a reported row
-		sab += (a[i] - ma) * (b[i] - mb)
-		//portlint:allow fusedmuladd benchmark report statistics: no Pi counterpart
-		saa += (a[i] - ma) * (a[i] - ma)
-		//portlint:allow fusedmuladd benchmark report statistics: no Pi counterpart
-		sbb += (b[i] - mb) * (b[i] - mb)
+		sab += float64((a[i] - ma) * (b[i] - mb))
+		saa += float64((a[i] - ma) * (a[i] - ma))
+		sbb += float64((b[i] - mb) * (b[i] - mb))
 	}
 	if saa == 0 || sbb == 0 {
 		return 0

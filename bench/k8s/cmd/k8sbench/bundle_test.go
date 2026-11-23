@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -735,11 +736,41 @@ func TestPiAgentPackagesTree(t *testing.T) {
 	if err != nil || got != want {
 		t.Fatalf("packagesTreeSHA256 = %s, %v; want %s", got, err, want)
 	}
-	pipeline := `find node_modules/@earendil-works -type d -name node_modules -prune -o -type f -print | LC_ALL=C sort | xargs -d '\n' sha256sum | sha256sum`
-	if out, err := exec.Command("sh", "-c", "cd \"$1\" && "+pipeline, "sh", dir).Output(); err != nil {
-		t.Logf("no shell pipeline here: %v", err)
-	} else if shell, _, _ := strings.Cut(string(out), " "); shell != want {
-		t.Errorf("the shell pipeline prints %s, packagesTreeSHA256 %s", shell, want)
+	stages := []struct {
+		name string
+		args []string
+		env  []string
+	}{
+		{"find", []string{"find", "node_modules/@earendil-works", "-type", "d", "-name", "node_modules", "-prune", "-o", "-type", "f", "-print"}, nil},
+		{"sort", []string{"sort"}, append(os.Environ(), "LC_ALL=C")},
+		{"xargs -d \\n sha256sum", []string{"xargs", "-d", "\n", "sha256sum"}, nil},
+		{"sha256sum", []string{"sha256sum"}, nil},
+	}
+	var pipeData []byte
+	pipeOK := true
+	for _, st := range stages {
+		cmd := exec.Command(st.args[0], st.args[1:]...)
+		cmd.Dir = dir
+		if st.env != nil {
+			cmd.Env = st.env
+		}
+		cmd.Stdin = bytes.NewReader(pipeData)
+		out, err := cmd.Output()
+		if err != nil {
+			// The pipeline is the k8s images own, with GNUs tools: on Linux a stage that fails is a failure of the cross-check, not a reason to go without it.
+			if runtime.GOOS == "linux" {
+				t.Fatalf("shell pipeline cross-check: stage %q failed: %v", st.name, err)
+			}
+			t.Logf("shell pipeline cross-check skipped: stage %q failed: %v", st.name, err)
+			pipeOK = false
+			break
+		}
+		pipeData = out
+	}
+	if pipeOK {
+		if shell, _, _ := strings.Cut(string(pipeData), " "); shell != want {
+			t.Errorf("the shell pipeline prints %s, packagesTreeSHA256 %s", shell, want)
+		}
 	}
 	testenv.Symlink(t, "z.json", filepath.Join(dir, "node_modules/@earendil-works/link"))
 	if _, err := packagesTreeSHA256(dir, "node_modules/@earendil-works"); err == nil || !strings.Contains(err.Error(), "is not a regular file") {
