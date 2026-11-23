@@ -5,7 +5,6 @@ package atomicfile
 import (
 	"context"
 	"os"
-	"unsafe"
 
 	"golang.org/x/sys/windows"
 
@@ -32,8 +31,6 @@ func createTemp(dir, pattern string, perm os.FileMode, existed bool) (*os.File, 
 // carryIdentity does nothing on Windows: the owner and group go with the rest of the security descriptor, in carryAttributes and before the move.
 func carryIdentity(*os.File, os.FileInfo) error { return nil }
 
-var procReplaceFile = windows.NewLazySystemDLL("kernel32.dll").NewProc("ReplaceFileW")
-
 // replace puts temp in place of path in a single MoveFileExW call with MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH, retried for
 // fsretry.RenameBudget while another process holds the target open without delete sharing. ReplaceFileW is not used because it renames the old file
 // away to a backup before moving the replacement in, leaving path momentarily absent to concurrent stat, open and realpath callers.
@@ -45,39 +42,12 @@ func replace(temp, path string, existed bool) error {
 	//portlint:allow ctxbackground a credential write has no caller context: the replace must not be abandoned half way, and fsretry bounds it by RenameBudget
 	ctx := context.Background()
 	return replaceWithMove(ctx, temp, path, existed, windowsMoveSteps{
-		carry: func(from, to string) error { return carryDescriptor(from, to, false) },
+		carry: carryDescriptor,
 		move:  moveFileWithFlags,
 		retry: func(ctx context.Context, op func() error) error {
 			return fsretry.Retry(ctx, nil, op)
 		},
 	})
-}
-
-// carryOnto is the carry of a replacement of path: onto path itself it is made for the live file (see [carryDescriptor]), onto any other file for a
-// temporary one.
-func carryOnto(path string) func(from, to string) error {
-	return func(from, to string) error { return carryDescriptor(from, to, to == path) }
-}
-
-// replaceFile is ReplaceFileW(replaced, replacement, backup, no flags): the replaced file is kept under the backup name.
-func replaceFile(replaced, replacement, backup string) error {
-	to, err := windows.UTF16PtrFromString(replaced)
-	if err != nil {
-		return err
-	}
-	from, err := windows.UTF16PtrFromString(replacement)
-	if err != nil {
-		return err
-	}
-	kept, err := windows.UTF16PtrFromString(backup)
-	if err != nil {
-		return err
-	}
-	//nolint:gosec // G103: the pointers address UTF-16 buffers that live across the call.
-	if result, _, callErr := procReplaceFile.Call(uintptr(unsafe.Pointer(to)), uintptr(unsafe.Pointer(from)), uintptr(unsafe.Pointer(kept)), 0, 0, 0); result == 0 {
-		return &os.LinkError{Op: "replace", Old: replacement, New: replaced, Err: callErr}
-	}
-	return nil
 }
 
 // moveFile is MoveFileEx(from, to, MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH).

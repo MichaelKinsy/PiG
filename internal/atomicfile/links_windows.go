@@ -21,6 +21,6 @@ func linkCount(file *os.File, _ os.FileInfo) uint64 {
 // already waits out, and no setup that works with an in-place write is known to fail the temporary file (NOT RUN: see the lane report).
 func refusesNewFile(error) bool { return false }
 
-// refusesReplace is false on Windows: ReplaceFileW and MoveFileEx report a busy or protected target as ERROR_ACCESS_DENIED, ERROR_SHARING_VIOLATION
-// or ERROR_UNABLE_TO_REMOVE_REPLACED, which fsretry retries for its budget and then returns (NOT RUN: see the lane report).
+// refusesReplace is false on Windows: MoveFileEx reports a busy or protected target as ERROR_ACCESS_DENIED, ERROR_SHARING_VIOLATION or
+// ERROR_LOCK_VIOLATION, which fsretry retries for its budget and then returns (NOT RUN: see the lane report).
 func refusesReplace(error) bool { return false }

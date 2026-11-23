@@ -27,6 +27,11 @@ const (
 	moveWriteThrough    = 0x8 // MOVEFILE_WRITE_THROUGH
 )
 
+// errAutoInheritedDiffers is what a carry of a security descriptor returns when the entries of the DACL and SE_DACL_PROTECTED, which decide who may open the
+// file, are as the old file's but SE_DACL_AUTO_INHERITED is not: a file system may set that bookkeeping flag whatever the caller asked for. It is not a
+// failure; a carry that returns any other error did not give the file the old access.
+var errAutoInheritedDiffers = errors.New("the security descriptor has the access of the old file but not its SE_DACL_AUTO_INHERITED flag")
+
 // errAccessDiffers is what a carry of a security descriptor returns when the access of the file is not the access it was to be given.
 var errAccessDiffers = errors.New("the DACL's entries or SE_DACL_PROTECTED are not those of the old file")
 
@@ -109,8 +114,7 @@ type carryCalls struct {
 	// SE_DACL_AUTO_INHERITED) in the control of the descriptor given. It is tried only for a descriptor that has SE_DACL_AUTO_INHERITED.
 	asked func() error
 	// named is SetNamedSecurityInfo, which the Windows job showed sets SE_DACL_AUTO_INHERITED but also runs inheritance, which can add entries to an
-	// unprotected DACL and rewrites the inherited flag of the entries of a protected one. It is nil for the file at the name callers open: the window in which
-	// that file would hold the parent's current inheritable entries is not opened there.
+	// unprotected DACL and rewrites the inherited flag of the entries of a protected one.
 	named func() error
 	read  func() (access, error)
 }

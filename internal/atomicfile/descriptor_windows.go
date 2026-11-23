@@ -69,7 +69,7 @@ func accessOf(descriptor *windows.SECURITY_DESCRIPTOR) (access, error) {
 // It is the Windows form of copying the extended attributes: a temporary file that cannot take the access is an error, which WriteFile answers with
 // an in-place write, as Pi writes, so that the file never has other access than it had.
 func carryAttributes(temp *os.File, path string) error {
-	if err := carryDescriptor(path, temp.Name(), false); err != nil && !errors.Is(err, errAutoInheritedDiffers) {
+	if err := carryDescriptor(path, temp.Name()); err != nil && !errors.Is(err, errAutoInheritedDiffers) {
 		return err
 	}
 	return carryFileAttributes(path, temp.Name())
@@ -104,14 +104,13 @@ func carryFileAttributes(from, to string) error {
 	return windows.SetFileAttributes(dstPtr, next)
 }
 
-// carryDescriptor gives the file at to the security descriptor of the file at from and reads the descriptor of to back ([carryAccess] decides which calls).
-// live says that to is the file at the name callers open, not a temporary file that no one has opened: there the call that runs inheritance
-// ([setAccessNamed]) is not made, so that the file never holds the parent's current inheritable entries. It returns nil when the access and
-// SE_DACL_AUTO_INHERITED are as from's, [errAutoInheritedDiffers] when only SE_DACL_AUTO_INHERITED is not, and any other error when the access is not:
-// whatever the calls themselves reported, the read-back decides. The owner and the group are not read back: a token that may not set them (ERROR_INVALID_OWNER,
-// ERROR_INVALID_PRIMARY_GROUP, ERROR_PRIVILEGE_NOT_HELD, or no WRITE_OWNER on the file) leaves them as they are, as chown does on Unix. A file system that
-// keeps no security descriptor (the file at from has none: ERROR_NOT_SUPPORTED, ERROR_INVALID_FUNCTION) has nothing to carry.
-func carryDescriptor(from, to string, live bool) error {
+// carryDescriptor gives the temporary file at to the security descriptor of the file at from and reads the descriptor of to back ([carryAccess] decides
+// which calls). It returns nil when the access and SE_DACL_AUTO_INHERITED are as from's, [errAutoInheritedDiffers] when only SE_DACL_AUTO_INHERITED is
+// not, and any other error when the access is not: whatever the calls themselves reported, the read-back decides. The owner and the group are not read back:
+// a token that may not set them (ERROR_INVALID_OWNER, ERROR_INVALID_PRIMARY_GROUP, ERROR_PRIVILEGE_NOT_HELD, or no WRITE_OWNER on the file) leaves them as
+// they are, as chown does on Unix. A file system that keeps no security descriptor (the file at from has none: ERROR_NOT_SUPPORTED, ERROR_INVALID_FUNCTION)
+// has nothing to carry.
+func carryDescriptor(from, to string) error {
 	source, err := windows.GetNamedSecurityInfo(from, windows.SE_FILE_OBJECT, descriptorParts)
 	if errors.Is(err, windows.ERROR_NOT_SUPPORTED) || errors.Is(err, windows.ERROR_INVALID_FUNCTION) {
 		return nil
@@ -131,9 +130,6 @@ func carryDescriptor(from, to string, live bool) error {
 		asked: func() error { return setAccessAsked(from, to, want) },
 		named: func() error { return setAccessNamed(to, source, want) },
 		read:  func() (access, error) { return readAccess(to) },
-	}
-	if live {
-		calls.named = nil
 	}
 	ownerErr := setOwnerAndGroup(to, source)
 	got, setErr, err := carryAccess(want, calls)
