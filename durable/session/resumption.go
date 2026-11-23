@@ -128,11 +128,8 @@ func (session *SessionImpl) Park(ctx context.Context, done <-chan struct{}) *Par
 		return nil
 	default:
 	}
-	enter(continuationOf(ctx))
-	if session.afterParkEnter != nil {
-		session.afterParkEnter()
-	}
-	parked := &Parked{resumption: newResumption(continuationOf(ctx)), session: session, done: done}
+	continuation := continuationOf(ctx)
+	parked := &Parked{resumption: newResumption(continuation), session: session, done: done}
 	// A wait stays registered until it is acknowledged, not only until it resumed: the acknowledgement of one that belongs to a
 	// Continuation is given when the continuation has entered, and a publication that looks for the waits it readied after the
 	// goroutine resumed must still find it.
@@ -141,12 +138,19 @@ func (session *SessionImpl) Park(ctx context.Context, done <-chan struct{}) *Par
 		delete(session.parks, parked)
 		session.parkMu.Unlock()
 	}
+	// Insert before enter so a publication whose Hop is unblocked by enter sees parked in session.parks.
+	// Release parkMu before enter: enter acknowledges any pending Parked on the same continuation, whose
+	// onAcknowledged takes parkMu.
 	session.parkMu.Lock()
 	if session.parks == nil {
 		session.parks = map[*Parked]struct{}{}
 	}
 	session.parks[parked] = struct{}{}
 	session.parkMu.Unlock()
+	enter(continuation)
+	if session.afterParkEnter != nil {
+		session.afterParkEnter()
+	}
 	return parked
 }
 
