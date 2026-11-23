@@ -40158,6 +40158,29 @@
       "tests": []
     },
     {
+      "id": "BF-95a57fd",
+      "title": "Two pig processes opening the MCP OAuth credential file (`mcp-auth.json`) for the first time at the same…",
+      "symptom": "Two pig processes opening the MCP OAuth credential file (`mcp-auth.json`) for the first time at the same moment, or reaching it while it was being replaced, could overwrite every stored MCP login with `{}`.",
+      "rootCause": "FileAuthStorageBackend.WithLock used unlocked os.Stat followed by truncating os.WriteFile(\"{}\") before locking, so a concurrent caller seeing mcp-auth.json absent overwrote an existing credential file.",
+      "rootCauseSource": "release note",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Two pig processes opening the MCP OAuth credential file (`mcp-auth.json`) for the first time at the same moment, or reaching it while it was being replaced, could overwrite every stored MCP login with `{}`. The initial file creation used a truncating write after an unlocked existence check instead of exclusive creation, so a late create could land on top of a credential another process had already written; `mcp-auth.json` is now created exclusively with owner-only access (following dangling symlinks), so an existing file is never overwritten by the create.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "95a57fda36",
+          "date": "2026-11-23"
+        }
+      ],
+      "tests": [
+        "coding/mcpext/storage_create_race_internal_test.go::TestFileAuthStorageBackendCreateNeverOverwritesCompletedWrite",
+        "coding/mcpext/storage_create_race_internal_test.go::TestFileAuthStorageBackendCreatesOwnerOnlyAndFollowsDanglingSymlink"
+      ]
+    },
+    {
       "id": "BF-95a5f79",
       "title": "RPC mode starts the `--tools` list active in its own order when it names extension tools, as Pi does",
       "symptom": "RPC mode starts the `--tools` list active in its own order when it names extension tools, as Pi does.",
