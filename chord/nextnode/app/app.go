@@ -794,7 +794,7 @@ func openServer(path string, ctx context.Context) (opened openedServer, err erro
 	}
 	waited, cancel := context.WithTimeout(ctx, serverLock)
 	defer cancel()
-	lock, err := workers.ProcessLock("chord-app:"+dataDir, waited)
+	lock, err := workers.ProcessLock(serverLockName(dataDir), waited)
 	if err != nil {
 		if waited.Err() != nil && ctx.Err() == nil {
 			return openedServer{}, fmt.Errorf("startServer: another server runs on %s", dataDir)
@@ -914,6 +914,11 @@ type nodeHostData interface {
 // "intent" (the removal of the intent, the last step of both), and "resolved" (every intent found at the start is resolved: the last thing
 // before the server serves). The kill tests' child process stops there, where it is killed by its pid; nil in the product.
 var resolveSeam func(step string)
+
+// serverLockName is the process lock of the server for dataDir.
+func serverLockName(dataDir string) string {
+	return "chord-app:" + dataDir
+}
 
 // workerLock is the process lock of the worker with key: its worker holds it while it runs, an export or import meanwhile.
 func workerLock(name, dataDir, key string) string {

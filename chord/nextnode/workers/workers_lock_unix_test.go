@@ -13,6 +13,7 @@ import (
 	"time"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/internal/lockseam"
 )
 
 // pi: packages/chord/src/node/workers/lock.ts
@@ -65,5 +66,37 @@ func TestAConnectErrorMeaningNobodyAcceptsOnTheLockMarksItStale(t *testing.T) {
 		if got := lockRefused(dial(test.errno)); got != test.want {
 			t.Errorf("lockRefused(%s) = %v, want %v", name, got, test.want)
 		}
+	}
+}
+
+// The lockseam hook forces Unix process locks into socket files under a test directory even on Linux, so tests can
+// exercise stale-file refusal and ClearStaleLock through ProcessLock and ClearStaleLock without macOS.
+func TestLockSeamForcesSocketFileLocksOnUnix(t *testing.T) {
+	dir := shortLockDir(t)
+	restore := lockseam.ForceSocketFile(dir)
+	t.Cleanup(restore)
+
+	name := fmt.Sprintf("chord-seam-test-%d-%d", os.Getpid(), time.Now().UnixNano())
+	loc, err := lockAddress(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loc.kind != lockFile || filepath.Dir(loc.address) != dir {
+		t.Fatalf("lockAddress = %+v, want lockFile in %s", loc, dir)
+	}
+	leaveSocketFile(t, loc.address)
+	if _, err := ProcessLock(name, chordctx.Background()); err == nil || !strings.Contains(err.Error(), "is a stale lock file") {
+		t.Fatalf("ProcessLock on stale file = %v, want stale lock file error", err)
+	}
+	cleared, err := ClearStaleLock(name, chordctx.Background())
+	if err != nil || !cleared {
+		t.Fatalf("ClearStaleLock = %v, %v, want true, nil", cleared, err)
+	}
+	held, err := ProcessLock(name, chordctx.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := held.Release(); err != nil {
+		t.Fatal(err)
 	}
 }

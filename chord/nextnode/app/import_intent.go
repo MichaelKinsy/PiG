@@ -16,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/workers"
 )
 
 // The intent of an import or a delete of an address's data (D462).
@@ -430,7 +431,13 @@ func (a *App) resolveIntent(files intentFiles, ctx context.Context) {
 	what := "an interrupted import or delete of " + files.stem
 	if err == nil {
 		what = fmt.Sprintf("the interrupted %s of %s", intent.Kind, address.Key)
-		err = a.underLock(address, "resolve", "holds its worker lock", ctx, func() error { return a.resolve(intent, address, where, files, ctx) })
+		// Safe to clear here: openServer holds the data directory's server lock and no worker of this server has started yet,
+		// so this start is the sole clearer for this address's lock (no two-clearers race). A live worker still holding the
+		// lock is untouched because ClearStaleLock removes a socket file only when nobody accepts on it (underLock then waits
+		// and refuses if still held).
+		if _, err = workers.ClearStaleLock(workerLock(a.options.Name, a.DataDir, address.Key), ctx); err == nil {
+			err = a.underLock(address, "resolve", "holds its worker lock", ctx, func() error { return a.resolve(intent, address, where, files, ctx) })
+		}
 	}
 	if err != nil {
 		blocked := fmt.Errorf("start: %s cannot be resolved: %w. Its record is %s. Until it is resolved the address's worker does not start and its import, delete and export are refused; its data is as it was before the change or partly changed: check it, then fix the cause and restart the server, or remove the record and its .node and .go files", what, err, files.record())
