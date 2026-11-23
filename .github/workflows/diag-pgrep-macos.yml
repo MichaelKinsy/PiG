@@ -1,0 +1,81 @@
+# SPDX-License-Identifier: MIT
+# Diagnostic workflow for the macos-15 session helper
+# (internal/testenv LiveSessionProcesses) and its caller
+# TestTypingEchoesWhileASessionNameHandlerSleeps.
+# Runs only on pushes to diag/** and is never merged.
+name: Diag pgrep on macos-15
+
+on:
+  push:
+    branches:
+      - "diag/**"
+
+permissions:
+  contents: read
+
+jobs:
+  diag-pgrep-macos:
+    name: Diag pgrep / macos-15
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Install a current bash for the shard selection script
+        run: |
+          set -euo pipefail
+          brew install bash
+          echo "$(brew --prefix bash)/bin" >> "$GITHUB_PATH"
+      - name: Install native test tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          brew install fd ripgrep tmux
+      - name: Show the system and its pgrep
+        shell: bash
+        run: |
+          set +e
+          echo "+ sw_vers"
+          sw_vers
+          echo "+ which -a pgrep"
+          which -a pgrep
+          echo "+ pgrep -s 1"
+          pgrep -s 1 2>&1
+          echo "status=$?"
+      - name: Run the session helper's own tests, plain and under race
+        shell: bash
+        env:
+          CI: "1"
+        run: |
+          set +e
+          echo "=== go vet ./internal/testenv/ ==="
+          go vet ./internal/testenv/
+          echo "vet_status=$?"
+          echo "=== plain ==="
+          go test -count=1 -v -timeout 5m -run 'Session' ./internal/testenv/
+          echo "plain_status=$?"
+          echo "=== race ==="
+          go test -race -count=1 -v -timeout 5m -run 'Session' ./internal/testenv/
+          echo "race_status=$?"
+      - name: Run TestTypingEchoesWhileASessionNameHandlerSleeps three times
+        shell: bash
+        env:
+          CI: "1"
+        run: |
+          set +e
+          for i in 1 2 3; do
+            echo "=== go test run $i ==="
+            go test -race -count=1 -v -timeout 10m -run "^TestTypingEchoesWhileASessionNameHandlerSleeps$" ./internal/codingagent
+            echo "run_${i}_status=$?"
+          done
