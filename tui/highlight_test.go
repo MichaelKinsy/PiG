@@ -87,7 +87,7 @@ func TestHighlightCode_ColorsEachLineOfPythonDocstringsIndependently(t *testing.
 	if got := HighlightCode(code, "python"); !slices.Equal(got, want) {
 		t.Errorf("HighlightCode = %q, want %q", got, want)
 	}
-	if got := HighlightCode(code, "python"); !slices.Equal(got, want) {
+	if got := GetMarkdownTheme().HighlightCode(code, "python"); !slices.Equal(got, want) {
 		t.Errorf("markdown theme highlightCode = %q, want %q", got, want)
 	}
 }
