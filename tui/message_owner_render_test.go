@@ -14,7 +14,9 @@ import (
 // was taken on the tree before the change. It was taken again on the tree that carries Pi 2ce9d527 (#10925), which
 // drops the space after a styled word at a wrap boundary (packages/tui/src/utils.ts:997): the rows that wrap after a
 // styled word changed, and the tree without the memos renders the same bytes as the tree with them on both sides of
-// that fix.
+// that fix. It was taken again on the tree that carries Pi 562da75f9, which sets default: (s) => t.fg("text", s) in
+// buildCliHighlightTheme (packages/coding-agent/src/modes/interactive/theme/theme.ts:894), wrapping unscoped code tokens
+// in the theme text foreground escape.
 func TestMessageOwnersRenderBytes(t *testing.T) {
 	prev := ActiveTheme()
 	t.Cleanup(func() { SetTheme(prev.Name) })
@@ -50,7 +52,7 @@ func TestMessageOwnersRenderBytes(t *testing.T) {
 			}
 		}
 	}
-	const want = "1a8c6dc28fc93ebb9f7219a438e45170285d029c6fc69f4578b6093e7fecd403"
+	const want = "6ddab6b29e98ea6f623d37a49387a164017e7fd29aad2afdaa04fcc6b615ecd6"
 	if got := hex.EncodeToString(hash.Sum(nil)); got != want {
 		t.Errorf("owner rows hash %s, want %s", got, want)
 	}
