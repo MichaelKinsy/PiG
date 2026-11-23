@@ -947,17 +947,8 @@ func TestHostParkedInRunSlotCallFindsParkedGoroutine(t *testing.T) {
 
 	waitDeadline := time.After(testbudget.Wait(t))
 	for {
-		buf := make([]byte, 1<<20)
-		for {
-			n := runtime.Stack(buf, true)
-			if n < len(buf) {
-				buf = buf[:n]
-				break
-			}
-			buf = make([]byte, 2*len(buf))
-		}
 		found := false
-		for g := range strings.SplitSeq(string(buf), "\n\n") {
+		for g := range strings.SplitSeq(allGoroutineStacks(), "\n\n") {
 			header, _, _ := strings.Cut(g, "\n")
 			if strings.Contains(header, "sync.Mutex.Lock") && strings.Contains(g, "(*Host).runSlotCall(") {
 				found = true
