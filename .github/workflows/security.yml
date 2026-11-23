@@ -54,7 +54,8 @@ jobs:
     needs: [changes]
     if: needs.changes.outputs.product == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # Three dispatched runs (45131684796, 45123321834, 45061944784): 20:09, 18:28, 12:53 (worst 20:09, 67% of 30; 3x = 60:27 -> 65).
+    timeout-minutes: 65
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -287,7 +288,11 @@ jobs:
   secret-scan-trufflehog:
     name: Secret scanning (TruffleHog)
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    # On workflow_dispatch (base and head empty) TruffleHog scans the whole git history; on pull_request
+    # and merge_group it scans the event range. Last seven dispatched runs: 13:54, 14:10, 14:34, 14:33,
+    # 14:37, 12:28, 14:40 (worst 14:40); run 45258673606 was cancelled at 15:15 under a 15-minute limit.
+    # Rule: a job limit is at least three times its worst measured time (3 x 14:40 = 44:00, rounded up to 45).
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

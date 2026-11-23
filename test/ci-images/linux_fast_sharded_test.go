@@ -121,8 +121,8 @@ var linuxFastShardedFastPoolSeconds = map[string]int{
 // 60-minute limit on the fast pool and <= 85% on the slow pool (1.4x fast-pool projection).
 func TestLinuxFastShardedHalvesFitTheirBudget(t *testing.T) {
 	limit := verificationJobs(t)["linux"].Timeout * 60
-	if limit <= 0 || limit > 3600 {
-		t.Fatalf("linux timeout = %d s, want 1..3600", limit)
+	if limit <= 0 || limit > 7500 {
+		t.Fatalf("linux timeout = %d s, want 1..7500", limit)
 	}
 	const fastSetupSec = 600 // checkout, caches, warm fixtures (~10 m on us-east-1)
 	halfFast := map[int]int{1: fastSetupSec, 2: fastSetupSec}

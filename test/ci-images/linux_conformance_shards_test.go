@@ -122,8 +122,8 @@ const (
 // 10 minutes of margin cold.
 func TestLinuxConformanceJobsFitTheirBudget(t *testing.T) {
 	limit := verificationJobs(t)["linux"].Timeout * 60
-	if limit <= 0 || limit > 3600 {
-		t.Fatalf("linux timeout = %d s, want 1..3600", limit)
+	if limit <= 0 || limit > 7500 {
+		t.Fatalf("linux timeout = %d s, want 1..7500", limit)
 	}
 	total, jobRanges := conformanceJobRanges(t)
 	if total != len(linuxConformanceWarmShardSeconds) {

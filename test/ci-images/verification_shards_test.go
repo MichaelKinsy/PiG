@@ -110,7 +110,7 @@ func TestLinuxShardsRetainEveryCheck(t *testing.T) {
 	if len(full.Matrix["linux"]) < 2 {
 		t.Fatal("Linux verification is not sharded")
 	}
-	if linux.Timeout > 60 || linux.Timeout <= 0 || linux.Strategy.FailFast == nil || *linux.Strategy.FailFast {
+	if linux.Timeout > 125 || linux.Timeout <= 0 || linux.Strategy.FailFast == nil || *linux.Strategy.FailFast {
 		t.Fatal("Linux shards must retain the timeout ceiling and run every shard on failure")
 	}
 	if linux.Strategy.Matrix.Include != "${{ fromJSON(needs.changes.outputs.linux) }}" {
@@ -271,8 +271,8 @@ func TestPortmapShardsAreWiredEndToEnd(t *testing.T) {
 // PORTMAP_SHARDS must keep every shard <= 60% of the 60-minute limit on the fast pool and <= 85% on the slow pool.
 func TestPortmapShardsFitTheirBudget(t *testing.T) {
 	limit := verificationJobs(t)["linux"].Timeout * 60
-	if limit <= 0 || limit > 3600 {
-		t.Fatalf("linux timeout = %d s, want 1..3600", limit)
+	if limit <= 0 || limit > 7500 {
+		t.Fatalf("linux timeout = %d s, want 1..7500", limit)
 	}
 	total := portmapShards(t)
 	// Measured on run 44880357753 (portmap-1 at 8 shards): 3113 s shard work + 218 s setup on southcentralus (slow pool),
