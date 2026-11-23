@@ -456,18 +456,18 @@
     "upstream": "packages/coding-agent/src/core/tools/renderers/edit.ts",
     "package": "./internal/codingagent",
     "tests": [
-      "TestBuiltInRenderersMatchPi104"
+      "TestBuiltInRenderersMatchPi"
     ],
-    "upstream_reference": "packages/coding-agent/src/core/tools/renderers/edit.ts renderCall and renderResult rows for every committed probe case (internal/codingagent/testdata/pi104-render-probe, recorded from Pi 1.0.4's built renderers)",
+    "upstream_reference": "packages/coding-agent/src/core/tools/renderers/edit.ts renderCall and renderResult rows for every committed probe case (internal/codingagent/testdata/pi-render-probe, recorded from Pi 1.0.4's built renderers)",
     "mutation": "internal/codingagent/tool_builtin_renderers.go: token = \"toolSuccessBg\" -> \"toolPendingBg\" in editRenderCall; compiled test FAIL, baseline PASS"
   },
   {
     "upstream": "packages/coding-agent/src/core/tools/renderers/write.ts",
     "package": "./internal/codingagent",
     "tests": [
-      "TestBuiltInRenderersMatchPi104"
+      "TestBuiltInRenderersMatchPi"
     ],
-    "upstream_reference": "packages/coding-agent/src/core/tools/renderers/write.ts renderCall and renderResult rows for every committed probe case (internal/codingagent/testdata/pi104-render-probe, recorded from Pi 1.0.4's built renderers)",
+    "upstream_reference": "packages/coding-agent/src/core/tools/renderers/write.ts renderCall and renderResult rows for every committed probe case (internal/codingagent/testdata/pi-render-probe, recorded from Pi 1.0.4's built renderers)",
     "mutation": "internal/codingagent/tool_builtin_renderers.go: \"[invalid content arg - expected string]\" -> \"[invalid content arg]\" in writeRenderCall; compiled test FAIL, baseline PASS"
   },
   {

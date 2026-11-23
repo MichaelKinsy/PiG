@@ -1,4 +1,4 @@
-// The golden rows are Pi 1.0.4 rendering on a POSIX host: paths and file URLs differ on Windows.
+// The golden rows are Pi 1.5.2+562da75f9 rendering on a POSIX host: paths and file URLs differ on Windows.
 
 //go:build !windows
 
@@ -19,12 +19,12 @@ import (
 
 // The stock edit tool has no extension definition, yet Pi's edit card draws its own box (core/tools/edit.ts renderShell:
 // "self"): ToolExecutionComponent.render returns a blank row and the call renderer's rows, with no content box around them.
-// The rows are Pi 1.0.4's, from the probe's "edit:ok" call once its preview diff settled.
+// The rows are Pi 1.5.2+562da75f9's, from the probe's "edit:ok" call once its preview diff settled.
 // Pi: packages/coding-agent/src/modes/interactive/components/tool-execution.ts:175 (ToolExecutionComponent.setArgsComplete).
 func TestStockEditCardDrawsItsOwnShell(t *testing.T) {
 	// Before the environment below: its cleanup runs after theirs and puts back the capabilities and the theme the test began with.
 	restoreStartupTheme(t)
-	data, err := os.ReadFile(filepath.Join("testdata", "pi104-render-probe", "builtin-renderers.golden.json"))
+	data, err := os.ReadFile(filepath.Join("testdata", "pi-render-probe", "builtin-renderers.golden.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
