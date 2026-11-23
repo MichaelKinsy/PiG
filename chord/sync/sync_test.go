@@ -203,6 +203,21 @@ func TestRemoteHistory(t *testing.T) {
 		twelve := Seq(12)
 		same(t, "history from 12", RemoteHistoryOf(found, &twelve), RemoteHistory{Batches: []BatchInfo{}, Head: 12})
 	})
+
+	t.Run("restores from the newest archive slot along the chain, past an older snapshot; a copy gets the chain as it is", func(t *testing.T) {
+		archived := slot(10, 12, "b")
+		archived.Archive = true
+		withArchive := RemoteListing{
+			Snapshots: found.Snapshots,
+			Batches:   []BatchInfo{found.Batches[0], found.Batches[1], archived, slot(12, 15, "b")},
+		}
+		same(t, "restore from archive", RemoteHistoryOf(withArchive, nil), RemoteHistory{Batches: []BatchInfo{archived, slot(12, 15, "b")}, Head: 15})
+		four := Seq(4)
+		same(t, "copy from 4", RemoteHistoryOf(withArchive, &four), RemoteHistory{
+			Batches: []BatchInfo{slot(4, 10, "a"), archived, slot(12, 15, "b")},
+			Head:    15,
+		})
+	})
 }
 
 func TestSyncingASessionBetweenDevices(t *testing.T) {
@@ -536,6 +551,210 @@ func TestSyncingASessionBetweenDevices(t *testing.T) {
 		replica.pull()
 		same(t, "replica copy", reads(t, replica.store()), reads(t, source))
 	})
+
+	t.Run("goes on from a full state after the outbox was turned off and on again", func(t *testing.T) {
+		remote := newRemote(t)
+		file := filepath.Join(t.TempDir(), "session.sqlite")
+		state := newMemoryState()
+		upload := func(source store.Store) (UploadResult, error) {
+			return UploadSession(background, UploadOptions{SessionID: session, Device: "laptop", Source: source, Store: remote, State: state})
+		}
+		outboxOn := true
+		first, err := store.OpenStore(backendAt(t, file), background, store.StoreOptions{Outbox: &outboxOn})
+		noError(t, err)
+		commitAll(t, first, seedBatches()[:4]...)
+		synced := lastSeq(first)
+		res, err := upload(first)
+		noError(t, err)
+		same(t, "first upload", res, UploadResult{Type: Uploaded, Head: synced})
+		noError(t, first.Close(background))
+		// A replica in step with the remote now.
+		replica := newDevice(t, "replica", remote)
+		replica.pull()
+
+		// Off: the outbox's commits are dropped, and the store commits on without one.
+		outboxOff := false
+		off, err := store.OpenStore(backendAt(t, file), background, store.StoreOptions{Outbox: &outboxOff})
+		noError(t, err)
+		commitAll(t, off, seedBatches()[4:7]...)
+		noError(t, off.Close(background))
+		// On again: the outbox starts at the store's head, past what the remote holds.
+		source := opened(t, backendAt(t, file), true)
+		if floor := source.Outbox().Floor(); floor <= synced {
+			t.Fatalf("floor = %d, want > %d", floor, synced)
+		}
+		res, err = upload(source)
+		noError(t, err)
+		same(t, "archive upload", res, UploadResult{Type: Uploaded, Head: lastSeq(source)})
+		batches := listing(t, remote, session).Batches
+		wantArchive := slot(synced, lastSeq(source), "laptop")
+		wantArchive.Archive = true
+		same(t, "archive slot", batches[len(batches)-1], wantArchive)
+
+		// Commits after it are batches again.
+		archived := lastSeq(source)
+		commitAll(t, source, seedBatches()[7:]...)
+		res, err = upload(source)
+		noError(t, err)
+		same(t, "batch after archive", res, UploadResult{Type: Uploaded, Head: lastSeq(source)})
+		batches = listing(t, remote, session).Batches
+		same(t, "batch slot", batches[len(batches)-1], slot(archived, lastSeq(source), "laptop"))
+
+		// A restore starts from the archive slot; a copy behind it cannot apply it and restores fresh.
+		fresh := newDevice(t, "fresh", remote)
+		fresh.pull()
+		same(t, "fresh copy", reads(t, fresh.store()), reads(t, source))
+		_, err = PullSession(background, PullOptions{SessionID: session, Store: remote, Local: LocalCopy{Kind: LocalCopyStore, Store: replica.store()}, State: replica.state})
+		_ = isError[*HistoryUnavailableError](t, err)
+
+		// Folding covers every slot, also those before the archive slot, and restores the same.
+		to, folded, err := FoldSession(background, FoldOptions{SessionID: session, Store: remote, Scratch: backendAt(t, filepath.Join(t.TempDir(), "scratch.sqlite"))})
+		noError(t, err)
+		if !folded || to != lastSeq(source) {
+			t.Fatalf("fold = (%d, %v), want (%d, true)", to, folded, lastSeq(source))
+		}
+		for index, batch := range listing(t, remote, session).Batches {
+			if !batch.Folded {
+				t.Fatalf("batch[%d] (after %d) folded = false, want true", index, batch.After)
+			}
+		}
+		foldedCopy := newDevice(t, "folded", remote)
+		foldedCopy.pull()
+		same(t, "folded copy", reads(t, foldedCopy.store()), reads(t, source))
+	})
+
+	t.Run("finds its own slots when its sync state is lost, and goes on from a full state after them", func(t *testing.T) {
+		remote := newRemote(t)
+		file := filepath.Join(t.TempDir(), "session.sqlite")
+		outboxOn := true
+		first, err := store.OpenStore(backendAt(t, file), background, store.StoreOptions{Outbox: &outboxOn})
+		noError(t, err)
+		commitAll(t, first, seedBatches()[:4]...)
+		upload := func(source store.Store, state SyncStateStore) (UploadResult, error) {
+			return UploadSession(background, UploadOptions{SessionID: session, Device: "laptop", Source: source, Store: remote, State: state})
+		}
+		_, err = upload(first, newMemoryState())
+		noError(t, err)
+		noError(t, first.Close(background))
+		outboxOff := false
+		off, err := store.OpenStore(backendAt(t, file), background, store.StoreOptions{Outbox: &outboxOff})
+		noError(t, err)
+		commitAll(t, off, seedBatches()[4:]...)
+		noError(t, off.Close(background))
+		source := opened(t, backendAt(t, file), true)
+		// No sync state: the archive at 0 finds this device's slot, and the next archive goes after it.
+		res, err := upload(source, newMemoryState())
+		noError(t, err)
+		same(t, "upload after lost state", res, UploadResult{Type: Uploaded, Head: lastSeq(source)})
+		fresh := newDevice(t, "fresh", remote)
+		fresh.pull()
+		same(t, "fresh copy", reads(t, fresh.store()), reads(t, source))
+	})
+}
+
+func TestRemoteBodies(t *testing.T) {
+	t.Run("closes a body file at its end, and on Close also before the first read", func(t *testing.T) {
+		opened, closed := 0, 0
+		remote := NewFileSystemSyncRemote(countingFiles{opened: &opened, closes: &closed}, t.TempDir())
+		source := sessionStore(t)
+		commitAll(t, source, seedBatches()[:2]...)
+		_, err := UploadSession(background, UploadOptions{SessionID: session, Device: "laptop", Source: source, Store: remote, State: newMemoryState()})
+		noError(t, err)
+
+		readBody, err := remote.GetBatch(background, session, LogStart)
+		noError(t, err)
+		// Read to the end WITHOUT calling Close, pinning that fileBody closes the reader at EOF itself.
+		commits := DecodeBatch(readBody)
+		count := 0
+		for {
+			_, ok, err := commits.Next(background)
+			noError(t, err)
+			if !ok {
+				break
+			}
+			count++
+		}
+		if count == 0 {
+			t.Fatal("expected commits")
+		}
+		if opened != 1 || closed != 1 {
+			t.Fatalf("readers after full read = (opened %d, closed %d), want (1, 1)", opened, closed)
+		}
+
+		unread, err := remote.GetBatch(background, session, LogStart)
+		noError(t, err)
+		if opened != 2 || closed != 1 {
+			t.Fatalf("readers before unread close = (opened %d, closed %d), want (2, 1)", opened, closed)
+		}
+		noError(t, unread.Close())
+		noError(t, unread.Close())
+		if opened != 2 || closed != 2 {
+			t.Fatalf("readers after unread close = (opened %d, closed %d), want (2, 2)", opened, closed)
+		}
+		_, ok, err := unread.Next(background)
+		noError(t, err)
+		if ok {
+			t.Fatal("expected closed body Next to return ok=false")
+		}
+	})
+
+	t.Run("closes a body a pull read and then refused", func(t *testing.T) {
+		opened, closed := 0, 0
+		remote := NewFileSystemSyncRemote(countingFiles{opened: &opened, closes: &closed}, t.TempDir())
+		laptop := newDevice(t, "laptop", remote)
+		laptop.commit(seedBatches()[:2])
+		laptop.upload()
+		replica := newDevice(t, "replica", remote)
+		replica.pull()
+		head := RemoteHead(listing(t, remote, session))
+		_, err := remote.PutBatch(background, session, head, head+1, "laptop", EncodeBatch(SliceCommits(nil)), PutBatchOptions{Archive: true})
+		noError(t, err)
+
+		_, err = PullSession(background, PullOptions{SessionID: session, Store: remote, Local: LocalCopy{Kind: LocalCopyStore, Store: replica.store()}, State: replica.state})
+		_ = isError[*HistoryUnavailableError](t, err)
+		if opened < 2 || closed != opened {
+			t.Fatalf("readers after refused pull = (opened %d, closed %d), want opened >= 2 and closed == opened", opened, closed)
+		}
+	})
+
+	t.Run("closes an archive body when PullSession fails in ImportStore before reading it", func(t *testing.T) {
+		opened, closed := 0, 0
+		remote := NewFileSystemSyncRemote(countingFiles{opened: &opened, closes: &closed}, t.TempDir())
+		// A remote whose history starts with an archive slot at 0.
+		source := sessionStore(t)
+		commitAll(t, source, seedBatches()[:2]...)
+		noError(t, source.Outbox().Trim(lastSeq(source), background))
+		_, err := UploadSession(background, UploadOptions{SessionID: session, Device: "laptop", Source: source, Store: remote, State: newMemoryState()})
+		noError(t, err)
+
+		pullCtx, cancel := context.WithCancel(background)
+		defer cancel()
+		state := &cancelOnSetState{cancel: cancel}
+
+		_, err = PullSession(pullCtx, PullOptions{
+			SessionID: session,
+			Store:     remote,
+			Local:     LocalCopy{Kind: LocalCopyEmpty, Backend: backendAt(t, "")},
+			State:     state,
+		})
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("PullSession error = %v, want context.Canceled", err)
+		}
+		if opened != 1 || closed != 1 {
+			t.Fatalf("readers after aborted archive pull = (opened %d, closed %d), want (1, 1)", opened, closed)
+		}
+	})
+}
+
+type cancelOnSetState struct {
+	cancel context.CancelFunc
+}
+
+func (*cancelOnSetState) Get(context.Context, string) (*SyncState, error) { return nil, nil }
+
+func (s *cancelOnSetState) Set(context.Context, string, SyncState) error {
+	s.cancel()
+	return nil
 }
 
 func TestBoundedMemory(t *testing.T) {

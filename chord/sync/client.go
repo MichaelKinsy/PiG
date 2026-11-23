@@ -138,8 +138,10 @@ type UploadOptions struct {
 // trims the outbox through what the remote acknowledged. Every device continues a session as its own; whichever creates
 // the slot first continues the session, so an upload that is acknowledged stays.
 //
-// A session the remote does not have yet, whose outbox does not reach back to its first commit (turned on later, or
-// trimmed, as for a copy renamed after it diverged), starts with an archive slot: the store's `Export` at its head.
+// Where the outbox does not reach back to what the copy shares with the remote, the next slot is an archive slot: the
+// store's `Export` at its head. For a session the remote does not have yet, that is its first slot (the outbox was
+// turned on later, or trimmed, as for a copy renamed after it diverged); for one it has, the slot after its head (the
+// outbox was turned off, dropping commits not uploaded yet, and on again), so the history goes on from a full state.
 //
 // A slot this device created already is an upload whose response was lost: the remote has the history up to its end, and
 // the upload goes on from there.
@@ -163,7 +165,7 @@ func UploadSession(ctx context.Context, options UploadOptions) (UploadResult, er
 		var to Seq
 		var body SyncBody
 		archive := false
-		if synced == LogStart && outbox.Floor() > 0 {
+		if outbox.Floor() > synced {
 			snapshot, err := exportSnapshot(ctx, options.Source)
 			if err != nil {
 				return UploadResult{}, err
@@ -482,12 +484,13 @@ type pullBody struct {
 	read    func() (SyncBody, error)
 }
 
-// PullSession applies what the remote has after the local head; into an empty backend, that restores the session (from an
-// archive when the history starts with one) and opens its store with an outbox. It returns the store, which the caller
+// PullSession applies what the remote has after the local head; into an empty backend, that restores the session (from the
+// newest archive along its history, if any) and opens its store with an outbox. It returns the store, which the caller
 // owns and closes. Nothing may hold the store's claims (no `StoreStorage`, no Harness): ApplyBatch refuses then.
 //
 // A copy with commits it has not uploaded fails with UnsyncedCommitsError instead of getting the remote's commits spliced
-// onto its own. A copy whose history folding removed fails with HistoryUnavailableError and restores into a fresh backend.
+// onto its own. A copy whose history folding removed, or that an archive slot continues (a full state, which does not
+// apply on top of a store), fails with HistoryUnavailableError and restores into a fresh backend.
 func PullSession(ctx context.Context, options PullOptions) (result PullResult, err error) {
 	apply := options.apply
 	if apply == nil {
@@ -559,7 +562,7 @@ func PullSession(ctx context.Context, options PullOptions) (result PullResult, e
 			target, err = store.ImportStore(options.Local.Backend, DecodeSnapshot(body), ctx, store.StoreOptions{Outbox: &outbox})
 			if err != nil {
 				target = nil
-				return PullResult{}, err
+				return PullResult{}, errors.Join(err, body.Close())
 			}
 		} else {
 			if target == nil {
@@ -654,9 +657,10 @@ func FoldSession(ctx context.Context, options FoldOptions) (to Seq, folded bool,
 	if err = errors.Join(err, snapshot.body.Close()); err != nil {
 		return 0, false, err
 	}
+	// Every slot the snapshot covers, also those before an archive slot the restore started from.
 	var covered []Seq
-	for _, batch := range history.Batches {
-		if batch.To <= snapshot.to {
+	for _, batch := range listing.Batches {
+		if batch.To <= snapshot.to && !batch.Folded {
 			covered = append(covered, batch.After)
 		}
 	}

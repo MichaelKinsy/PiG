@@ -1,0 +1,44 @@
+from = "1.5.2+cead615b"
+to = "1.5.2+f472efdc"
+
+[[files]]
+path = "packages/chord/src/sync/client.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices", "test:chord/sync/sync_test.go#TestRemoteHistory"]
+rationale = "f472efdc1: UploadSession now exports an archive slot whenever outbox.Floor() > synced (not only when synced == LogStart && outbox.Floor() > 0), FoldSession folds every unfolded batch in listing.Batches with batch.To <= snapshot.to (including slots before an archive slot), and PullSession doc comment matches Pi."
+
+[[files]]
+path = "packages/chord/src/sync/remote.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/sync/sync_test.go#TestRemoteHistory"]
+rationale = "f472efdc1: RemoteHistoryOf for a restore (from == nil || *from == LogStart) starts from the newest archive slot along the chain, past any older snapshot; a copy at from > 0 gets the chain as-is so PullSession rejects it with HistoryUnavailableError."
+
+[[files]]
+path = "packages/chord/test/sync/sync.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/sync/sync_test.go#TestRemoteHistory", "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"]
+rationale = "f472efdc1: all three new cases ported in chord/sync/sync_test.go (remoteHistory archive-past-snapshot, outbox off-and-on again with archive slot + replica HistoryUnavailableError + fold, lost sync state finding own slots)."
+
+[[files]]
+path = "packages/chord/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "f472efdc1: Pi chord package changelog entry; PiG tracks user-visible changes in changelog.d/chord-archive-slot-after-outbox-toggle-d0eb79648d.md."
+
+[[files]]
+path = "apps/p2/src/runtime/backup.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "f472efdc1: apps/p2 is outside this Chord library lane and tracked on the p2 line (follow/p2-preview); PiG has no apps/p2 backup.go."
+
+[[files]]
+path = "apps/p2/test/p2/backup.test.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "f472efdc1: apps/p2 backup end-to-end test; tracked on the p2 line (follow/p2-preview), outside this Chord library lane."

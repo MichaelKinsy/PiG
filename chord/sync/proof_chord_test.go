@@ -28,9 +28,10 @@ func TestIsNotFoundIsTrueOnlyForAMissingFileOrDirectory(t *testing.T) {
 	}
 }
 
-// countingFiles is osFiles that counts the closes of the readers it hands out: what a body's close must release.
+// countingFiles is osFiles that counts the opens and closes of the readers it hands out: what a body's close must release.
 type countingFiles struct {
 	osFiles
+	opened *int
 	closes *int
 }
 
@@ -40,7 +41,9 @@ type countingReader struct {
 }
 
 func (reader countingReader) Close(ctx context.Context) error {
-	*reader.closes++
+	if reader.closes != nil {
+		*reader.closes++
+	}
 	return reader.SyncFileReader.Close(ctx)
 }
 
@@ -48,6 +51,9 @@ func (files countingFiles) OpenBinaryReader(ctx context.Context, path string, op
 	reader, err := files.osFiles.OpenBinaryReader(ctx, path, options)
 	if err != nil {
 		return nil, err
+	}
+	if files.opened != nil {
+		*files.opened++
 	}
 	return countingReader{reader, files.closes}, nil
 }

@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"slices"
 	"strconv"
+	stdsync "sync"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
@@ -300,15 +302,17 @@ func (remote *FileSystemSyncRemote) stream(ctx context.Context, sessionID string
 	return &fileBody{reader: reader}, nil
 }
 
-// fileBody is a file as a body: chunks read at growing offsets, the file closed at the end or when the body is.
+// fileBody is a file as a body: chunks read at growing offsets, the file closed once at the end or when the body is.
 type fileBody struct {
-	reader SyncFileReader
-	offset int64
-	closed bool
+	reader    SyncFileReader
+	offset    int64
+	closed    atomic.Bool
+	closeOnce stdsync.Once
+	closeErr  error
 }
 
 func (body *fileBody) Next(ctx context.Context) ([]byte, bool, error) {
-	if body.closed {
+	if body.closed.Load() {
 		return nil, false, nil
 	}
 	chunk, err := body.reader.Read(ctx, body.offset, readChunk)
@@ -323,12 +327,12 @@ func (body *fileBody) Next(ctx context.Context) ([]byte, bool, error) {
 }
 
 func (body *fileBody) Close() error {
-	if body.closed {
-		return nil
-	}
-	body.closed = true
-	//portlint:allow ctxbackground Pi's reader.close(context) runs after the body's own context may be aborted: the close must still release the file
-	return body.reader.Close(context.Background())
+	body.closed.Store(true)
+	body.closeOnce.Do(func() {
+		//portlint:allow ctxbackground Pi's reader.close(context) runs after the body's own context may be aborted: the close must still release the file
+		body.closeErr = body.reader.Close(context.Background())
+	})
+	return body.closeErr
 }
 
 // once is bytes as a one-chunk body.

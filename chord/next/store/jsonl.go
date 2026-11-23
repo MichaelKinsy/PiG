@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -30,7 +31,8 @@ import (
 const chunkBytes = 64 * 1024
 
 // ByteSource is an AsyncIterable<Uint8Array>: Next gives the next chunk (ok false at the end), Close releases it
-// early. A chunk is valid until the next Next or Close: copy it to keep it. (Pi's streams hand out arrays of their own;
+// early. Close may be called from another goroutine while a Next is in flight: the import does not wait for a stalled
+// input. A chunk is valid until the next Next or Close: copy it to keep it. (Pi's streams hand out arrays of their own;
 // a source here may fill the buffer it handed out again, as the sync bodies do.)
 type ByteSource interface {
 	Next(ctx context.Context) (chunk []byte, ok bool, err error)
@@ -96,7 +98,7 @@ type jsonlDecoder struct {
 	// line counts the lines taken so far.
 	line     int
 	started  bool
-	finished bool
+	finished atomic.Bool
 }
 
 // DecodeJsonl is the values of JSONL bytes, one per nonempty line, for ImportStore to check (a trust boundary: bytes
@@ -106,14 +108,14 @@ func DecodeJsonl(bytes ByteSource) PartSource { return &jsonlDecoder{bytes: byte
 func (decoder *jsonlDecoder) parse(text string) (any, error) {
 	value, err := delta.DecodeJson([]byte(text))
 	if err != nil {
-		decoder.finished = true
+		decoder.finished.Store(true)
 		return nil, data.Invalid(data.ReasonArgs, "jsonl: line "+strconv.Itoa(decoder.line)+" is not JSON")
 	}
 	return value, nil
 }
 
 func (decoder *jsonlDecoder) Next(ctx context.Context) (any, bool, error) {
-	for !decoder.finished {
+	for !decoder.finished.Load() {
 		if end := strings.IndexByte(decoder.rest[decoder.start:], '\n'); end >= 0 {
 			text := decoder.rest[decoder.start : decoder.start+end]
 			decoder.start += end + 1
@@ -127,7 +129,7 @@ func (decoder *jsonlDecoder) Next(ctx context.Context) (any, bool, error) {
 		decoder.start = 0
 		chunk, ok, err := decoder.bytes.Next(ctx)
 		if err != nil {
-			decoder.finished = true
+			decoder.finished.Store(true)
 			return nil, false, err
 		}
 		if ok {
@@ -143,7 +145,7 @@ func (decoder *jsonlDecoder) Next(ctx context.Context) (any, bool, error) {
 			return nil, false, err
 		}
 		decoder.rest += text
-		decoder.finished = true
+		decoder.finished.Store(true)
 		decoder.line++
 		if len(jsstring.Trim(decoder.rest)) > 0 {
 			return decoder.emit(decoder.rest)
@@ -180,7 +182,7 @@ func (decoder *jsonlDecoder) decode(chunk []byte, final bool) (string, error) {
 	}
 	decoder.pending = append([]byte(nil), buffer[complete:]...)
 	if !utf8.Valid(buffer[:complete]) {
-		decoder.finished = true
+		decoder.finished.Store(true)
 		return "", data.Invalid(data.ReasonArgs, "jsonl: line "+strconv.Itoa(decoder.line+1)+" is not UTF-8")
 	}
 	text := string(buffer[:complete])
@@ -192,6 +194,6 @@ func (decoder *jsonlDecoder) decode(chunk []byte, final bool) (string, error) {
 }
 
 func (decoder *jsonlDecoder) Close() error {
-	decoder.finished = true
+	decoder.finished.Store(true)
 	return decoder.bytes.Close()
 }

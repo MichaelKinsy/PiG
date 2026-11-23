@@ -36,6 +36,7 @@ type PartSource interface {
 	// Next blocks for the next value; ok is false at the end of the input.
 	Next(ctx context.Context) (value any, ok bool, err error)
 	// Close ends the input early (Pi's iterator `return()`); called when the import stops before the end.
+	// Close may be called from another goroutine while a Next is in flight: the import does not wait for a stalled input.
 	Close() error
 }
 

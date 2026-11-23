@@ -642,6 +642,62 @@ func TestImportRefusals(t *testing.T) {
 		}
 	})
 
+	t.Run("cancelling ctx while DecodeJsonl Next is in flight does not race with background Close", func(t *testing.T) {
+		parts := importArchive(t)
+		enc := EncodeJsonl(&jsonlParts{parts: parts[:1]})
+		firstChunk, ok, err := enc.Next(chordctx.Background())
+		if err != nil || !ok {
+			t.Fatalf("encode first: %v, %v", ok, err)
+		}
+		_ = enc.Close()
+
+		const maxAttempts = 20
+		for attempt := 1; attempt <= maxAttempts; attempt++ {
+			src := &blockingByteSource{
+				first:   append([]byte(nil), firstChunk...),
+				entered: make(chan struct{}),
+				release: make(chan struct{}),
+				closed:  make(chan struct{}),
+			}
+
+			cancellable, cancel := chordctx.WithCancel(chordctx.Background())
+			db, err := node.OpenNodeSqliteDatabase(":memory:", node.NodeSqliteDatabaseOptions{})
+			if err != nil {
+				t.Fatalf("open: %v", err)
+			}
+
+			wrapped := &observingParts{PartSource: DecodeJsonl(src), nextDone: make(chan struct{})}
+			done := make(chan error, 1)
+			go func() {
+				_, err := ImportStore(SqliteBackend(db), wrapped, cancellable, StoreOptions{})
+				done <- err
+			}()
+
+			<-src.entered
+			// Release Next right after cancel so both writes to jsonlDecoder.finished land close together
+			// without sleeping; if importEach selected the settled EOF instead of ctx.Done, retry cleanly.
+			cancel(errors.New("stop"))
+			close(src.release)
+			err = <-done
+			select {
+			case <-wrapped.nextDone:
+			case <-time.After(5 * time.Second):
+				t.Fatal("the in-flight Next did not finish")
+			}
+			if !archiveIsCode(err, data.CodeAborted) {
+				continue
+			}
+			select {
+			case <-src.closed:
+			case <-time.After(5 * time.Second):
+				t.Fatal("the background close did not run")
+			}
+			t.Logf("aborted path exercised on attempt %d", attempt)
+			return
+		}
+		t.Fatalf("ImportStore did not take the aborted path in %d attempts", maxAttempts)
+	})
+
 	t.Run("an input whose Next panics fails the import with the panic as its error", func(t *testing.T) {
 		parts := importArchive(t)
 		db, err := node.OpenNodeSqliteDatabase(":memory:", node.NodeSqliteDatabaseOptions{})
@@ -743,4 +799,45 @@ func TestImportOfAnArchiveWrittenBeforeSchema3(t *testing.T) {
 			t.Fatalf("exported parts differ from the archive:\n got %v\nwant %v", got, want)
 		}
 	})
+}
+
+// blockingByteSource yields `first`, then blocks on `release` after closing `entered`. Close signals `closed`
+// without synchronizing with Next, so the test can wait for importEach's background Close without sleeping while
+// Next and Close still execute concurrently on jsonlDecoder under the race detector.
+type blockingByteSource struct {
+	first   []byte
+	sent    bool
+	entered chan struct{}
+	release chan struct{}
+	closed  chan struct{}
+}
+
+func (b *blockingByteSource) Next(ctx context.Context) ([]byte, bool, error) {
+	if !b.sent {
+		b.sent = true
+		return b.first, true, nil
+	}
+	close(b.entered)
+	<-b.release
+	return nil, false, nil
+}
+
+func (b *blockingByteSource) Close() error {
+	close(b.closed)
+	return nil
+}
+
+// observingParts wraps a PartSource to signal nextDone once Next returns ok=false or an error,
+// so the test waits for the in-flight Next goroutine to finish without synchronizing it with Close.
+type observingParts struct {
+	PartSource
+	nextDone chan struct{}
+}
+
+func (p *observingParts) Next(ctx context.Context) (any, bool, error) {
+	v, ok, err := p.PartSource.Next(ctx)
+	if !ok || err != nil {
+		close(p.nextDone)
+	}
+	return v, ok, err
 }

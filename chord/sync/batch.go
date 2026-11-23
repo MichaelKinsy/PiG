@@ -6,6 +6,8 @@ import (
 	"context"
 	"errors"
 	"io"
+	stdsync "sync"
+	"sync/atomic"
 	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/chord/next/store"
@@ -28,7 +30,8 @@ import (
 //
 // Sizes (a chunk of lines, a line's Bytes) count UTF-16 units, as Pi's `.length` does.
 
-// SyncBody is a body on the remote: its bytes in chunks, read once.
+// SyncBody is a body on the remote: its bytes in chunks, read once. Close may be called from another goroutine while a
+// Next is in flight: the import does not wait for a stalled input.
 type SyncBody = store.ByteSource
 
 // CommitSource is a stream of outbox commits: Next blocks for the next commit (ok false at the end), Close ends the stream
@@ -321,11 +324,13 @@ func (body *gzipBody) Close() error {
 
 // gunzipBody is src decompressed as it is read, a chunk of at most chunkBytes at a time.
 type gunzipBody struct {
-	src    store.ByteSource
-	input  chunkReader
-	reader *gzip.Reader
-	buffer []byte
-	done   bool
+	src       store.ByteSource
+	input     chunkReader
+	reader    *gzip.Reader
+	buffer    []byte
+	done      atomic.Bool
+	closeOnce stdsync.Once
+	closeErr  error
 }
 
 func gunzipSource(src store.ByteSource) SyncBody {
@@ -333,7 +338,7 @@ func gunzipSource(src store.ByteSource) SyncBody {
 }
 
 func (body *gunzipBody) Next(ctx context.Context) ([]byte, bool, error) {
-	if body.done {
+	if body.done.Load() {
 		return nil, false, nil
 	}
 	body.input.ctx = ctx
@@ -350,7 +355,7 @@ func (body *gunzipBody) Next(ctx context.Context) ([]byte, bool, error) {
 		read, err := body.reader.Read(body.buffer[n:])
 		n += read
 		if errors.Is(err, io.EOF) {
-			body.done = true
+			body.done.Store(true)
 			break
 		}
 		if err != nil {
@@ -365,8 +370,8 @@ func (body *gunzipBody) Next(ctx context.Context) ([]byte, bool, error) {
 
 // fail ends the body with err: a source's error as it is, a malformed gzip stream as a LogFormatError.
 func (body *gunzipBody) fail(err error) error {
-	body.done = true
-	_ = body.src.Close()
+	body.done.Store(true)
+	_ = body.Close()
 	if body.input.err != nil {
 		return body.input.err
 	}
@@ -374,11 +379,11 @@ func (body *gunzipBody) fail(err error) error {
 }
 
 func (body *gunzipBody) Close() error {
-	body.done = true
-	if body.reader != nil {
-		_ = body.reader.Close()
-	}
-	return body.src.Close()
+	body.done.Store(true)
+	body.closeOnce.Do(func() {
+		body.closeErr = body.src.Close()
+	})
+	return body.closeErr
 }
 
 // chunkReader is a byte source as an io.Reader, taking its context from the Next that reads.
