@@ -25,7 +25,7 @@ import { crash, induction, recycle, soak, timeTravel } from "../lib/robust.mjs"
 import { exitAfterFlush } from "../lib/exit.mjs"
 
 const [cmd, ...rest] = process.argv.slice(2)
-const opt = (name, fallback) => { const i = rest.indexOf(`--${name}`); return i < 0 ? fallback : rest[i + 1] }
+const opt = (name, fallback) => { const flag = name.length === 1 ? `-${name}` : `--${name}`; const i = rest.indexOf(flag); return i < 0 ? fallback : rest[i + 1] }
 const out = opt("out", mkdtempSync(join(tmpdir(), "contract-robust-")))
 const json = opt("json")
 const MiB = 1024 * 1024

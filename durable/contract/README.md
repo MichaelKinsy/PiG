@@ -10,7 +10,7 @@ The gate every lane of the Durable core uses ([CONTRACT.md](../../docs/plan/dura
 
 ```sh
 make durable-contract-setup                 # clone Pi at the pin into durable/contract/.cache, npm ci (needs git, npm, Node >= 24.19)
-make durable-contract-test                  # the tooling's own tests, negative controls included (about 1 minute)
+make durable-contract-test                  # the tooling's own tests, negative controls included (about 18 minutes at 8 CPUs; dominated by robust-memory.test.mjs)
 make durable-contract                       # the gate: pi (control), wasm-tinygo, wasm-go, native (E/U/SC through the JS host, W/X1/H through the bench host), native-bench (the bench-slice reference engine); a per-lane table
 make durable-contract DURABLE_CONTRACT_ARGS="--impls ts --lane dcore-loop"
 ```

@@ -202,7 +202,11 @@ test("the reference's bench program counts its store work and repeats it exactly
 
 test("a Wasm core's crossings are counted, and only the core's", { timeout: 120_000 }, async t => {
 	const wasm = new URL("../../core/host/cf/dist/core-tinygo.wasm", import.meta.url)
-	if (!(await import("node:fs")).existsSync(wasm)) return t.skip("the TinyGo core is not built (make -C durable/core build-tinygo)")
+	if (!(await import("node:fs")).existsSync(wasm)) {
+		const msg = "the TinyGo core is not built (make -C durable/core build-tinygo)"
+		if (process.env.DURABLE_CONTRACT_REQUIRE_BUILDS) assert.fail(msg)
+		return t.skip(msg)
+	}
 	const run = await benchRunner("wasm-tinygo")
 	const out = mkdtempSync(join(tmpdir(), "counts-test-"))
 	const file = join(out, "c.jsonl")
