@@ -31,7 +31,7 @@ func TestAssistantDiagnosticsUpstreamCases(t *testing.T) {
 			m.opts.Settings.ShowCacheMissNotices = enabled
 			m.maybeShowThinkingDropNotice(diagnosticAssistant().Assistant)
 			if enabled {
-				if got := stripANSITest(strings.Join(m.chatContainer.Render(120), "\n")); !strings.Contains(got, "Anthropic dropped 3 thinking blocks (details in session)") {
+				if got := stripANSITest(strings.Join(m.chatContainer.Render(120), "\n")); !strings.Contains(got, "Anthropic dropped 3 thinking blocks: prefix_binding_mismatch (details in session)") {
 					t.Fatalf("notice = %q", got)
 				}
 			} else if m.chatContainer.ChildCount() != 0 {
@@ -58,20 +58,20 @@ func TestCountDroppedThinkingBlocksIgnoresOtherDiagnosticShapes(t *testing.T) {
 	message := diagnosticAssistant().Assistant
 	for _, value := range []any{nil, "thinking_dropped", map[string]any{"type": "thinking_dropped"}, []any{nil, 3, "thinking_dropped", map[string]any{"type": "other"}}} {
 		message.Diagnostics[0].Details["transformations"] = value
-		if count := countDroppedThinkingBlocks(message); count != 0 {
+		if count := func(m *agent.AssistantMessage) int { if d := getDroppedReasoning(m); d != nil { return d.count }; return 0 }(message); count != 0 {
 			t.Fatalf("malformed transformations %#v count = %d", value, count)
 		}
 	}
 	message.Diagnostics[0].Type = "other"
 	message.Diagnostics[0].Details["transformations"] = []any{map[string]any{"type": "thinking_dropped"}}
-	if count := countDroppedThinkingBlocks(message); count != 0 {
+	if count := func(m *agent.AssistantMessage) int { if d := getDroppedReasoning(m); d != nil { return d.count }; return 0 }(message); count != 0 {
 		t.Fatalf("unrelated diagnostic count = %d", count)
 	}
 }
 
 func BenchmarkThinkingDropNoticeUnchanged(b *testing.B) {
 	message := diagnosticAssistant().Assistant
-	m := &InteractiveMode{opts: InteractiveModeOptions{Settings: Settings{ShowCacheMissNotices: true}}, previousThinkingDroppedCount: 3}
+	m := &InteractiveMode{opts: InteractiveModeOptions{Settings: Settings{ShowCacheMissNotices: true}}, previousDroppedReasoning: &droppedReasoning{diagnostic: reasoningDropDiagnostics["anthropic_input_transformations"], count: 3}}
 	b.ReportAllocs()
 	for b.Loop() {
 		m.maybeShowThinkingDropNotice(message)

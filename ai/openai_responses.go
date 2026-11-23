@@ -506,7 +506,8 @@ type respResponseObj struct {
 	Usage             *respUsage       `json:"usage,omitempty"`
 	ServiceTier       string           `json:"service_tier,omitempty"`
 	Error             *respError       `json:"error,omitempty"`
-	IncompleteDetails *respIncomplete  `json:"incomplete_details,omitempty"`
+	IncompleteDetails    *respIncomplete `json:"incomplete_details,omitempty"`
+	InputTransformations any             `json:"input_transformations,omitempty"`
 }
 
 type respUsage struct {
@@ -2354,6 +2355,7 @@ func processResponsesStream(ctx context.Context, decoder providerSSEDecoder, bui
 					builder.partial.Content[contentIndex] = block
 				}
 			}
+			appendOpenAIReasoningRemovals(&builder.partial, event.Response.InputTransformations)
 			var usage *Usage
 			if u := event.Response.Usage; u != nil {
 				cached := 0
@@ -2621,4 +2623,57 @@ func mapRespStatus(status, incompleteReason string) (StopReason, string) {
 // sampling parameter that overrode the request field (openai-responses.ts:196, openai-codex-responses.ts:674).
 func requestServiceTierOf(opts StreamOptions) string {
 	return opts.ServiceTier
+}
+
+// appendOpenAIReasoningRemovals records replayed reasoning items OpenAI withheld from the model,
+// leaving out turn_boundary removals (openai-responses-shared.ts appendReasoningRemovals).
+func appendOpenAIReasoningRemovals(output *AssistantMessage, raw any) {
+	items, ok := raw.([]any)
+	if !ok {
+		return
+	}
+	type orderedRemoval struct {
+		Type   any `json:"type"`
+		ID     any `json:"id,omitempty"`
+		Action any `json:"action"`
+		Reason any `json:"reason,omitempty"`
+	}
+	removals := make([]any, 0)
+	ordered := make([]orderedRemoval, 0)
+	for _, entry := range items {
+		obj, ok := entry.(map[string]any)
+		if !ok {
+			continue
+		}
+		if obj["type"] != "reasoning" || obj["action"] != "removed" || obj["reason"] == "turn_boundary" {
+			continue
+		}
+		projected := map[string]any{
+			"type":   obj["type"],
+			"action": obj["action"],
+		}
+		if v, exists := obj["id"]; exists && v != nil {
+			projected["id"] = v
+		}
+		if v, exists := obj["reason"]; exists && v != nil {
+			projected["reason"] = v
+		}
+		removals = append(removals, projected)
+		ordered = append(ordered, orderedRemoval{
+			Type:   obj["type"],
+			ID:     obj["id"],
+			Action: obj["action"],
+			Reason: obj["reason"],
+		})
+	}
+	if len(removals) == 0 {
+		return
+	}
+	orderBytes, _ := json.Marshal(ordered)
+	details := newDiagnosticDetails()
+	details.set("transformations", removals, orderBytes)
+	AppendAssistantMessageDiagnostic(output, details.attach(AssistantMessageDiagnostic{
+		Type:      "openai_input_transformations",
+		Timestamp: time.Now().UnixMilli(),
+	}))
 }

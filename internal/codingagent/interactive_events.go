@@ -8,6 +8,7 @@ import (
 	jsonv2 "encoding/json/v2"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
@@ -16,45 +17,97 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts:3985-4025.
-func countDroppedThinkingBlocks(message *agent.AssistantMessage) int {
-	count := 0
+type reasoningDropDiagnostic struct {
+	provider    string
+	droppedType string
+	noun        [2]string
+}
+
+var reasoningDropDiagnostics = map[string]*reasoningDropDiagnostic{
+	"anthropic_input_transformations": {
+		provider:    "Anthropic",
+		droppedType: "thinking_dropped",
+		noun:        [2]string{"thinking block", "thinking blocks"},
+	},
+	"openai_input_transformations": {
+		provider:    "OpenAI",
+		droppedType: "reasoning",
+		noun:        [2]string{"reasoning item", "reasoning items"},
+	},
+}
+
+type droppedReasoning struct {
+	diagnostic *reasoningDropDiagnostic
+	count      int
+	reasons    []string
+}
+
+// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (getDroppedReasoning).
+func getDroppedReasoning(message *agent.AssistantMessage) *droppedReasoning {
+	if message == nil {
+		return nil
+	}
 	for _, diagnostic := range message.Diagnostics {
-		if diagnostic.Type != "anthropic_input_transformations" {
+		kind := reasoningDropDiagnostics[diagnostic.Type]
+		if kind == nil {
 			continue
 		}
+		var dropped []map[string]any
 		switch transformations := diagnostic.Details["transformations"].(type) {
 		case []any:
 			for _, value := range transformations {
-				if transformation, ok := value.(map[string]any); ok && transformation["type"] == "thinking_dropped" {
-					count++
+				if transformation, ok := value.(map[string]any); ok && transformation["type"] == kind.droppedType {
+					dropped = append(dropped, transformation)
 				}
 			}
 		case []map[string]any:
 			for _, transformation := range transformations {
-				if transformation["type"] == "thinking_dropped" {
-					count++
+				if transformation["type"] == kind.droppedType {
+					dropped = append(dropped, transformation)
+				}
+			}
+		default:
+			continue
+		}
+		if len(dropped) == 0 {
+			continue
+		}
+		seen := make(map[string]struct{}, len(dropped))
+		reasons := make([]string, 0, len(dropped))
+		for _, transformation := range dropped {
+			if reason, ok := transformation["reason"].(string); ok {
+				if _, dup := seen[reason]; !dup {
+					seen[reason] = struct{}{}
+					reasons = append(reasons, reason)
 				}
 			}
 		}
+		return &droppedReasoning{diagnostic: kind, count: len(dropped), reasons: reasons}
 	}
-	return count
+	return nil
 }
 
-// maybeShowThinkingDropNotice compares with the preceding displayed response. Session persistence can overtake queued UI events, so the owner loop keeps this scalar and branch rebuilds initialize it in their existing history walk.
+// maybeShowThinkingDropNotice compares with the preceding displayed response. Session persistence can overtake queued UI events, so the owner loop keeps this state and branch rebuilds initialize it in their existing history walk.
 func (m *InteractiveMode) maybeShowThinkingDropNotice(message *agent.AssistantMessage) {
 	if !m.showCacheMissNotices() {
 		return
 	}
-	count := countDroppedThinkingBlocks(message)
-	if count == 0 || count <= m.previousThinkingDroppedCount {
+	dropped := getDroppedReasoning(message)
+	if dropped == nil {
 		return
 	}
-	noun := "thinking blocks"
-	if count == 1 {
-		noun = "thinking block"
+	if m.previousDroppedReasoning != nil && m.previousDroppedReasoning.diagnostic == dropped.diagnostic && dropped.count <= m.previousDroppedReasoning.count {
+		return
 	}
-	text := fmt.Sprintf("Anthropic dropped %d %s (details in session)", count, noun)
+	noun := dropped.diagnostic.noun[1]
+	if dropped.count == 1 {
+		noun = dropped.diagnostic.noun[0]
+	}
+	reasons := ""
+	if len(dropped.reasons) > 0 {
+		reasons = ": " + strings.Join(dropped.reasons, ", ")
+	}
+	text := fmt.Sprintf("%s dropped %d %s%s (details in session)", dropped.diagnostic.provider, dropped.count, noun, reasons)
 	m.chatContainer.Add(tui.NewSpacer(1))
 	m.chatContainer.Add(themedNotice("warning", text, 1))
 }
@@ -499,7 +552,7 @@ func (m *InteractiveMode) applyAgentEvent(ev agent.AgentEvent) {
 				}
 			}
 		}
-		m.previousThinkingDroppedCount = countDroppedThinkingBlocks(e.Message.Assistant)
+		m.previousDroppedReasoning = getDroppedReasoning(e.Message.Assistant)
 		m.evCurrentBlock.FinishStreaming() // its last delta arrived; keep no memos for the next one
 		m.evCurrentBlock = nil
 		m.tuiInst.RequestRender()
