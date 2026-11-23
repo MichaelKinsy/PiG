@@ -112,7 +112,7 @@ type taskGraphDelivery struct {
 // and Session-line jobs (attach, refreshBlocked).
 //
 // Lock order:
-//   - Session line -> mount.deliverMu -> mount.mu
+//   - Session line -> mount.deliverMu -> mount.mu (deliverMu is the outermost mount lock, held only while draining)
 //   - mount.deliverMu -> view.mu (via observer Detach or panic inside Advance)
 //   - s.mu (inside blocking.Blocked) is never taken while holding mount.mu, view.mu, or mount.deliverMu
 //   - view.mu is never held across mount.mu or mount.deliverMu
@@ -128,7 +128,8 @@ type taskGraphMount struct {
 	records   map[string]BlockedSubject
 	pending   []taskGraphDelivery
 	refreshes uint64
-	// deliverMu serializes observer.Advance calls as a leaf lock so deliveries stay synchronous and ordered.
+	// deliverMu is the mount's outermost lock, held only while draining queued deliveries so observer.Advance
+	// calls stay synchronous and ordered with no state lock (mount.mu or view.mu) held across Advance.
 	// Contract (durable/types.go): "Advance must only record the call, synchronously and quickly, never wait, call the Session, or panic."
 	deliverMu sync.Mutex
 }
@@ -441,6 +442,13 @@ func advanceTaskGraph(ctx context.Context, mount *taskGraphMount, observers []ta
 		mount.mu.Unlock()
 	}
 
+	mount.deriveAndApplyUnlocking(ctx, observers, publication, reasons)
+	mount.drainDeliveries(report)
+}
+
+// deriveAndApplyUnlocking is entered with mount.mu held and releases it on every exit, panics included.
+func (mount *taskGraphMount) deriveAndApplyUnlocking(ctx context.Context, observers []taskGraphObserver, publication session.ObservedCommit, reasons []durable.BlockedReason) {
+	defer mount.mu.Unlock()
 	var ops []durable.Op
 	// Nodes this publication set (non-nil) or deleted (nil), over the mount's value.
 	changed := map[string]*TaskGraphNode{}
@@ -485,7 +493,6 @@ func advanceTaskGraph(ctx context.Context, mount *taskGraphMount, observers []ta
 		}
 		value, err := durable.ToJsonValue(next)
 		if err != nil {
-			mount.mu.Unlock()
 			panic(err)
 		}
 		ops = append(ops, durable.Op{"s", []any{"tasks", key}, value})
@@ -522,8 +529,6 @@ func advanceTaskGraph(ctx context.Context, mount *taskGraphMount, observers []ta
 		ops = append(ops, durable.Op{"s", []any{"tasks", key, "conversations"}, values})
 	}
 	mount.applyLocked(ctx, observers, changed, ops)
-	mount.mu.Unlock()
-	mount.drainDeliveries(report)
 }
 
 // applyLocked applies changed nodes (non-nil set, nil deleted) to mount.value and queues the delivery for drainDeliveries.

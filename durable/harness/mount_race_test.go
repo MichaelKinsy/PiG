@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"math"
 	"reflect"
 	"slices"
 	"sync"
@@ -293,7 +294,13 @@ func TestConversationViewMountRace(t *testing.T) {
 func TestTaskGraphObserverMayDetachInsideAdvance(t *testing.T) {
 	task := mountRaceMissingTask("test.detach-inside-advance")
 	opened := tkOpenRoot(t, []durable.AnyTask{task.Erased()})
-	defer mustClose(t, opened.harness)
+	timedOut := false
+	defer func() {
+		if timedOut {
+			return
+		}
+		mustClose(t, opened.harness)
+	}()
 
 	var calls atomic.Int32
 	var detachFn func()
@@ -330,6 +337,7 @@ func TestTaskGraphObserverMayDetachInsideAdvance(t *testing.T) {
 	select {
 	case <-done:
 	case <-time.After(5 * time.Second):
+		timedOut = true
 		t.Fatal("an observer that detaches itself inside Advance deadlocked the delivery")
 	}
 
@@ -474,4 +482,92 @@ func TestTaskGraphReasonReadBeforeARefreshIsNotPublishedAfterIt(t *testing.T) {
 	if node.Blocked != "" {
 		t.Fatalf("task %s shown blocked with the stale reason %q", key, node.Blocked)
 	}
+}
+
+func TestTaskGraphMountLockReleasedOnSameNodePanic(t *testing.T) {
+	ctx := context.Background()
+	store := storage.NewMemoryStorage()
+	line := session.CreateSession(store)
+
+	view := NewTaskGraphView(line, TaskGraphBlocking{
+		Blocked:          func(BlockedSubject) durable.BlockedReason { return "" },
+		SubscribeBlocked: func(func()) func() { return func() {} },
+	})
+
+	obs, err := view.Observe(ctx, observerFuncs[TaskGraph]{
+		advance: func(context.Context, chord.WatchCall[TaskGraph]) {},
+		end:     func(durable.WatchEnd) {},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	view.mu.Lock()
+	mount := view.mount
+	view.mu.Unlock()
+	if mount == nil {
+		t.Fatal("expected mount to be created")
+	}
+
+	// Build a live sleeping task record whose Until is NaN so sameNode panics while marshaling JSON.
+	// Insert a prior node so advanceTaskGraph enters sameNode(next, *previous) with mount.mu held.
+	const taskID durable.TaskId = 1
+	key := taskKey(taskID)
+	nan := math.NaN()
+	record := durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue]{
+		Id:             taskID,
+		Kind:           "probe",
+		Version:        1,
+		ConversationId: 1,
+		State: durable.TaskState[durable.JsonValue, durable.JsonValue]{
+			Status: durable.TaskSleeping,
+			Until:  &nan,
+		},
+	}
+
+	mount.mu.Lock()
+	mount.value = TaskGraph{Tasks: map[string]TaskGraphNode{
+		key: {Id: taskID, Kind: "probe", ConversationId: 1, State: TaskGraphState{Status: durable.TaskPending}},
+	}}
+	mount.mu.Unlock()
+
+	pub := session.ObservedCommit{
+		Changes: []durable.CommitChange{durable.TaskWrite{Value: record}},
+	}
+
+	var recovered any
+	func() {
+		defer func() { recovered = recover() }()
+		advanceTaskGraph(ctx, mount, nil, pub, func(BlockedSubject) durable.BlockedReason { return "" }, func(error) {})
+	}()
+	if recovered == nil {
+		t.Fatal("expected advanceTaskGraph to panic in sameNode for non-JSON sleeping Until")
+	}
+
+	// Verify mount.mu is not left held after the panic by attaching a second observer within a strict 5s bound.
+	attachDone := make(chan error, 1)
+	go func() {
+		obs2, err := view.Observe(ctx, observerFuncs[TaskGraph]{
+			advance: func(context.Context, chord.WatchCall[TaskGraph]) {},
+			end:     func(durable.WatchEnd) {},
+		})
+		if err == nil {
+			obs2.Detach()
+		}
+		attachDone <- err
+	}()
+
+	select {
+	case err := <-attachDone:
+		if err != nil {
+			t.Fatalf("second Observe after panic: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("mount.mu remained locked after sameNode panic: second Observe did not complete within 5 s")
+	}
+
+	obs.Detach()
+	closeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	_ = line.Close(closeCtx)
 }
