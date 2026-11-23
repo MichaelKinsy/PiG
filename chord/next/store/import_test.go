@@ -642,6 +642,43 @@ func TestImportRefusals(t *testing.T) {
 		}
 	})
 
+	t.Run("cancelling ctx while DecodeJsonl Next is in flight does not race with background Close", func(t *testing.T) {
+		parts := importArchive(t)
+		enc := EncodeJsonl(&jsonlParts{parts: parts[:1]})
+		firstChunk, ok, err := enc.Next(chordctx.Background())
+		if err != nil || !ok {
+			t.Fatalf("encode first: %v, %v", ok, err)
+		}
+		_ = enc.Close()
+
+		src := &blockingByteSource{
+			first:   append([]byte(nil), firstChunk...),
+			entered: make(chan struct{}),
+			release: make(chan struct{}),
+		}
+
+		cancellable, cancel := chordctx.WithCancel(chordctx.Background())
+		db, err := node.OpenNodeSqliteDatabase(":memory:", node.NodeSqliteDatabaseOptions{})
+		if err != nil {
+			t.Fatalf("open: %v", err)
+		}
+
+		done := make(chan error, 1)
+		go func() {
+			_, err := ImportStore(SqliteBackend(db), DecodeJsonl(src), cancellable, StoreOptions{})
+			done <- err
+		}()
+
+		<-src.entered
+		cancel(errors.New("stop"))
+		close(src.release)
+		err = <-done
+		if !archiveIsCode(err, data.CodeAborted) {
+			t.Fatalf("ImportStore error = %v, want aborted", err)
+		}
+		time.Sleep(20 * time.Millisecond)
+	})
+
 	t.Run("an input whose Next panics fails the import with the panic as its error", func(t *testing.T) {
 		parts := importArchive(t)
 		db, err := node.OpenNodeSqliteDatabase(":memory:", node.NodeSqliteDatabaseOptions{})
@@ -744,3 +781,24 @@ func TestImportOfAnArchiveWrittenBeforeSchema3(t *testing.T) {
 		}
 	})
 }
+
+// blockingByteSource yields `first`, then blocks on `release` after closing `entered`, with a lockless Close so
+// concurrent Close and returning Next exercise jsonlDecoder under the race detector.
+type blockingByteSource struct {
+	first   []byte
+	sent    bool
+	entered chan struct{}
+	release chan struct{}
+}
+
+func (b *blockingByteSource) Next(ctx context.Context) ([]byte, bool, error) {
+	if !b.sent {
+		b.sent = true
+		return b.first, true, nil
+	}
+	close(b.entered)
+	<-b.release
+	return nil, false, nil
+}
+
+func (*blockingByteSource) Close() error { return nil }
