@@ -1502,3 +1502,10 @@ commit = "94660e2125fc9a083d68962d6d0f384c1fedd4f9"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "TestAFailedCheckNamesAMirrorThatIsNotThePinnedBuild is a PiG autobind tool guard test, not a Pi behavior test. Read-only autobind runs now share upstreammirror.Check(root, o.version) before doing any work, so -check over another Pi mirror fails fast without deriving a ledger or printing the removed late \"this verdict is not the pin's\" wrapper; no Pi source line governs this expectation."
+
+[[entry]]
+path = "internal/codingagent/assistant_diagnostics_unit_test.go"
+commit = "eb9075718e2f380e44972dc21c10c2128913cd1d"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/interactive-mode.ts:4398"
+reason = "Pi 03de604b8 updates maybeShowThinkingDropNotice (interactive-mode.ts:4398) so both Anthropic and OpenAI reasoning drop notices include the deduplicated reasons list before (details in session). Commit eb9075718e updates the expected notice strings in assistant_diagnostics_unit_test.go to match."
