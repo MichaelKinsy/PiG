@@ -619,6 +619,157 @@ func TestReadLoopFooterDoesNotWaitForRunningHeader(t *testing.T) {
 	}
 }
 
+// thirdHoldingHeaderUI extends holdingHeaderUI so a test can also hold the "third" header call inside SetHeader while holding the header slot lock.
+type thirdHoldingHeaderUI struct {
+	*holdingHeaderUI
+	thirdEntered, thirdHold chan struct{}
+}
+
+func (u *thirdHoldingHeaderUI) SetHeader(build extension.HeaderFactory) {
+	factory := frameOf(build, 2)
+	if lines, _ := factory.([]string); len(lines) == 1 && lines[0] == "third" {
+		close(u.thirdEntered)
+		<-u.thirdHold
+	}
+	u.holdingHeaderUI.SetHeader(build)
+}
+
+// hostParkedInRunSlotCall scans all goroutines of the process and returns the stack of a goroutine parked on a mutex inside (*Host).runSlotCall for h, or "".
+func hostParkedInRunSlotCall(h *Host) string {
+	want := fmt.Sprintf("(*Host).runSlotCall(%p,", h)
+	buf := make([]byte, 1<<20)
+	for {
+		n := runtime.Stack(buf, true)
+		if n < len(buf) {
+			buf = buf[:n]
+			break
+		}
+		buf = make([]byte, 2*len(buf))
+	}
+	for g := range strings.SplitSeq(string(buf), "\n\n") {
+		header, _, _ := strings.Cut(g, "\n")
+		if strings.Contains(header, "sync.Mutex.Lock") && strings.Contains(g, want) {
+			return g
+		}
+	}
+	return ""
+}
+
+// hostInShutdownWait reports whether some goroutine is inside (*Host).Shutdown for h waiting on its drain tasks WaitGroup.
+func hostInShutdownWait(h *Host) bool {
+	want := fmt.Sprintf("(*Host).Shutdown(%p,", h)
+	buf := make([]byte, 1<<20)
+	for {
+		n := runtime.Stack(buf, true)
+		if n < len(buf) {
+			buf = buf[:n]
+			break
+		}
+		buf = make([]byte, 2*len(buf))
+	}
+	for g := range strings.SplitSeq(string(buf), "\n\n") {
+		if strings.Contains(g, want) && strings.Contains(g, "(*WaitGroup).Wait") {
+			return true
+		}
+	}
+	return false
+}
+
+// callOrderFixture cleanup must drain its connection's call lanes before the test ends, so no goroutine of a finished fixture's Host can outlive its test parked in runSlotCall and trip the next test's process-wide waitSlotCallDoneOrParked scan.
+func TestCallOrderFixtureCleanupDrainsLanesBeforeReturning(t *testing.T) {
+	thirdHold := make(chan struct{})
+	var releaseThird sync.Once
+	unblockThird := func() { releaseThird.Do(func() { close(thirdHold) }) }
+	defer unblockThird()
+
+	var firstHost *Host
+	subBodyDone := make(chan struct{})
+	sawShutdown := make(chan struct{})
+	stopObserver := make(chan struct{})
+	observerDone := make(chan struct{})
+
+	go func() {
+		defer close(observerDone)
+		select {
+		case <-subBodyDone:
+		case <-stopObserver:
+			return
+		}
+		deadline := time.After(testbudget.Wait(t))
+		for {
+			select {
+			case <-stopObserver:
+				return
+			case <-deadline:
+				unblockThird()
+				return
+			default:
+			}
+			if hostInShutdownWait(firstHost) {
+				close(sawShutdown)
+				unblockThird()
+				return
+			}
+			runtime.Gosched()
+		}
+	}()
+
+	t.Run("finished fixture", func(t *testing.T) {
+		baseUI := &holdingHeaderUI{orderedSlotUI: newOrderedSlotUI(), holding: make(chan struct{}), hold: make(chan struct{})}
+		ui := &thirdHoldingHeaderUI{holdingHeaderUI: baseUI, thirdEntered: make(chan struct{}), thirdHold: thirdHold}
+		var holdOnce, releaseOnce sync.Once
+		closeHold := func() { holdOnce.Do(func() { close(baseUI.hold) }) }
+		closeRelease := func() { releaseOnce.Do(func() { close(baseUI.release) }) }
+		defer closeRelease()
+		defer closeHold()
+
+		bridge := NewUIBridge(func() {})
+		bridge.SetUIContext(ui)
+		f := newBridgeCallOrderFixture(t, bridge)
+		firstHost = f.host
+		f.conn.pendingMu.Lock()
+		f.conn.pending["r8"] = make(chan *Envelope, 1)
+		f.conn.pending["r9"] = make(chan *Envelope, 1)
+		f.conn.pendingMu.Unlock()
+		f.call("gate", "ui.notify", "", map[string]any{"message": "gate"})
+		waitSignal(t, baseUI.entered, "gating notify")
+		for _, send := range []slotSend{headerSend("c1", "", "older"), headerSend("c2", "r9", "newer")} {
+			f.call(send.id, send.method, send.parent, send.args)
+		}
+		waitSignal(t, baseUI.holding, "the older call to be running in the newer call's lane")
+		third := headerSend("c3", "r8", "third")
+		f.call(third.id, third.method, third.parent, third.args)
+		if parked := waitSlotCallDoneOrParked(t, f.resultArrived(third.id)); parked == "" {
+			t.Fatal("the third call applied while an earlier call of its slot was still running")
+		}
+		closeHold()
+		waitSignal(t, ui.thirdEntered, "the third call to hold the header slot lock")
+		// Release the empty lane so its queued c1 enters runSlotCall and parks on the header slot lock held by c3.
+		closeRelease()
+		deadline := time.After(testbudget.Wait(t))
+		for hostParkedInRunSlotCall(firstHost) == "" {
+			select {
+			case <-deadline:
+				t.Fatal("the older call never parked on the header slot lock")
+			default:
+			}
+			runtime.Gosched()
+		}
+		close(subBodyDone)
+	})
+
+	close(stopObserver)
+	<-observerDone
+	if parked := hostParkedInRunSlotCall(firstHost); parked != "" {
+		t.Fatalf("callOrderFixture cleanup returned while a goroutine of its Host was still parked in runSlotCall:\n%s", parked)
+	}
+	select {
+	case <-sawShutdown:
+	default:
+		t.Fatal("callOrderFixture cleanup returned without waiting for its Host's lanes to drain")
+	}
+}
+
 // resultArrived returns a channel that closes once the host has sent the result for call id. Its poller stops when the test ends.
 func (f *callOrderFixture) resultArrived(id string) <-chan struct{} {
 	done := make(chan struct{})
