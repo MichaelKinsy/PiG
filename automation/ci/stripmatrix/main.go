@@ -70,6 +70,11 @@ var codingPackages = []string{"./coding/...", "./internal/codingagent/..."}
 // about twenty minutes at eight CPUs.
 const codingTestTimeout = "90m"
 
+// wholeTestTimeout bounds go test of aiPackage and wholePackages under one set: ./ai/ under one set takes 371 to 528 s at eight CPUs
+// on a loaded 192-CPU host, above go test's ten-minute default at the gate's opening burst. Matches the 30m timeout ci.yml uses for
+// plain whole-package ./ai runs.
+const wholeTestTimeout = "30m"
+
 // redDir holds one file per tag set, named after the tag (all.txt for all tags): the top-level tests of aiPackage that fail under
 // the set, one per line, the name followed by the reason. The list can only shrink: a listed test that passes fails the gate, and
 // so does a failing test that is not listed.
@@ -114,7 +119,7 @@ func parseRed(text string) ([]string, error) {
 
 // aiTestArgs returns the go arguments that test aiPackage outside red under set.
 func aiTestArgs(set tagSet, red []string) []string {
-	args := []string{"test", "-tags", set.String(), "-count=1"}
+	args := []string{"test", "-tags", set.String(), "-count=1", "-timeout", wholeTestTimeout}
 	if len(red) > 0 {
 		args = append(args, "-skip", "^("+strings.Join(red, "|")+")$")
 	}
@@ -123,7 +128,7 @@ func aiTestArgs(set tagSet, red []string) []string {
 
 // wholeTestArgs returns the go arguments that test wholePackages under set.
 func wholeTestArgs(set tagSet) []string {
-	return append([]string{"test", "-tags", set.String(), "-count=1"}, wholePackages...)
+	return append([]string{"test", "-tags", set.String(), "-count=1", "-timeout", wholeTestTimeout}, wholePackages...)
 }
 
 // testAI runs aiPackage under the set. Every test outside the set's red list must pass in one run of the package, and every listed
