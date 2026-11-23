@@ -56,12 +56,7 @@ func compileRustSDKFixture(ctx context.Context, name string) (string, error) {
 		return "", fmt.Errorf("cargo is required for %s: %w", name, err)
 	}
 	src := filepath.Join(fixtureSourceRoot, "coding", "cli", "testdata", name)
-	target := strings.TrimSpace(os.Getenv("CARGO_TARGET_DIR"))
-	if target == "" {
-		target = filepath.Join(src, "target")
-	} else if !filepath.IsAbs(target) {
-		target = filepath.Join(src, target)
-	}
+	target := rustFixtureTargetDir(src, os.Getenv("CARGO_TARGET_DIR"), fixtureRoot)
 	binDir := filepath.Join(fixtureRoot, "bin")
 	if err := os.MkdirAll(binDir, 0o700); err != nil {
 		return "", err
@@ -70,11 +65,26 @@ func compileRustSDKFixture(ctx context.Context, name string) (string, error) {
 	return buildRustFixtureCopy(ctx, target, name, dst, func(ctx context.Context) error {
 		cargo := exec.CommandContext(ctx, "cargo", "build", "--release", "--quiet")
 		cargo.Dir = src
+		cargo.Env = append(os.Environ(), "CARGO_TARGET_DIR="+target)
 		if out, err := cargo.CombinedOutput(); err != nil {
 			return fmt.Errorf("build %s: %w\n%s", name, err, out)
 		}
 		return nil
 	})
+}
+
+// rustFixtureTargetDir picks the Cargo target directory for a standalone Rust fixture: the inherited or
+// TestMain-configured CARGO_TARGET_DIR (resolved against src when relative), or a scratch directory under
+// scratchRoot when unset or whitespace-only so a build never writes into the checkout.
+func rustFixtureTargetDir(src, envTarget, scratchRoot string) string {
+	target := strings.TrimSpace(envTarget)
+	if target == "" {
+		return filepath.Join(scratchRoot, "rust-target")
+	}
+	if filepath.IsAbs(target) {
+		return target
+	}
+	return filepath.Join(src, target)
 }
 
 func buildRustFixtureCopy(ctx context.Context, target, program, dst string, build func(context.Context) error) (string, error) {
@@ -131,5 +141,23 @@ func TestBuildRustFixtureCopyIsolatesTheBinaryFromLaterBuilds(t *testing.T) {
 	}
 	if string(data) != "first-build" {
 		t.Fatalf("copied binary = %q, want first-build", data)
+	}
+}
+
+func TestRustFixtureTargetDirFallsBackOutsideCheckoutWhenEmptyOrBlank(t *testing.T) {
+	src := filepath.Join("coding", "cli", "testdata", "ctx-abort-rs")
+	scratch := t.TempDir()
+	wantFallback := filepath.Join(scratch, "rust-target")
+	for _, raw := range []string{"", "   ", "\t"} {
+		if got := rustFixtureTargetDir(src, raw, scratch); got != wantFallback {
+			t.Errorf("rustFixtureTargetDir(%q) = %q, want %q", raw, got, wantFallback)
+		}
+	}
+	abs := filepath.Join(scratch, "shared")
+	if got := rustFixtureTargetDir(src, abs, scratch); got != abs {
+		t.Errorf("rustFixtureTargetDir(abs) = %q, want %q", got, abs)
+	}
+	if got, want := rustFixtureTargetDir(src, "rel-target", scratch), filepath.Join(src, "rel-target"); got != want {
+		t.Errorf("rustFixtureTargetDir(rel) = %q, want %q", got, want)
 	}
 }
