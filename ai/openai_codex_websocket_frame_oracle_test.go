@@ -109,8 +109,8 @@ func TestCodexWebSocketFramesMatchPi(t *testing.T) {
 	if second.StopReason != StopReasonStop {
 		t.Fatalf("second: %s", second.ErrorMessage)
 	}
-	// The third turn changes instructions, a member other than input, so the bodies differ by JSON text and the request carries the
-	// full context (requestBodiesMatchExceptInput, openai-codex-responses.ts:1434-1444).
+	// The third turn changes the system prompt, which changes the leading developer item in input, so the prefix no longer matches and
+	// the request carries the full context (openai-codex-responses.ts).
 	thirdContext := NormalizeContext(Context{SystemPrompt: "be terse", Messages: append(slices.Clone(secondMessages), *second, UserMessage{Content: UserText("three"), Timestamp: 3}), Tools: tools})
 	thirdStream, err := provider.Stream(t.Context(), thirdContext, options)
 	if err != nil {

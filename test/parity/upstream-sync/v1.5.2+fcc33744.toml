@@ -54,7 +54,7 @@ oracle = "carried: fcc33744b072 (pi-coding-agent/schemas/models.schema.json)"
 path = "packages/coding-agent/docs/models-configuration.md"
 change = "modified"
 disposition = "ported"
-evidence = ["test:internal/codingagent/configschema/render_test.go#TestModelsConfigurationReferenceMatchesThePinnedPiPage"]
+evidence = ["test:internal/codingagent/configschema/references_test.go#TestModelsConfigurationReferenceMatchesThePinnedPiPage"]
 rationale = "fcc33744b072 (#12269): docs page regenerated from configschema (integrator commits generated docs)."
 oracle = "carried: fcc33744b072 (pi-coding-agent/docs/models-configuration.md)"
 

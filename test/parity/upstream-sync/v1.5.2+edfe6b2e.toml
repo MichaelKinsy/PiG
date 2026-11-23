@@ -14,7 +14,7 @@ oracle = "carried: edfe6b2ef322 (pi-ai/api/openai-codex-responses.js)"
 path = "packages/ai/src/api/openai-responses-shared.ts"
 change = "modified"
 disposition = "ported"
-evidence = ["test:ai/openai_codex_developer_item_and_effort_upstream_test.go#TestOpenAIResponsesSharedPathUnchangedMatrix", "test:ai/openai_responses_shared_oracle_test.go#TestOpenAIResponsesSharedMatchesPi"]
+evidence = ["test:ai/openai_codex_developer_item_and_effort_upstream_test.go#TestOpenAIResponsesSharedPathUnchangedMatrix", "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi"]
 rationale = "edfe6b2ef322 (#12273): ConvertResponsesMessagesOptions removes IncludeSystemPrompt, and convertAnchored always emits the leading system message with the instruction role when non-empty."
 oracle = "carried: edfe6b2ef322 (pi-ai/api/openai-responses-shared.js)"
 

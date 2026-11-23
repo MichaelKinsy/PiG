@@ -65,7 +65,7 @@ func TestMaxThinkingUpstream(t *testing.T) {
 			t.Fatal(got)
 		}
 	})
-	// .upstream/v1.6.0/packages/ai/test/max-thinking.test.ts:88 (Pi fcc33744b)
+	// packages/ai/test/max-thinking.test.ts:88 (Pi fcc33744b)
 	t.Run("sends max as reasoning.effort to the Codex Responses API for gpt-5.6-sol", func(t *testing.T) {
 		m := mustGeneratedModel(t, "openai-codex", "gpt-5.6-sol")
 		p := NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{APIKey: codexTestToken(t, "acc_test"), Model: m.ID, ProviderID: m.Provider, BaseURL: m.BaseURL, Compat: m.Compat})
@@ -75,6 +75,7 @@ func TestMaxThinkingUpstream(t *testing.T) {
 	for _, id := range []string{"gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6.2-astra", "gpt-6.2-sol"} {
 		t.Run("sends max as a configuration_update item to the Codex Responses API for "+id, func(t *testing.T) {
 			m := mustGeneratedModel(t, "openai-codex", id)
+			// Remove this local override once catalog regeneration sets SupportsMidConvoEffort on generated GPT-6 Codex models.
 			compat := m.Compat
 			if compat == nil {
 				compat = &OpenAIResponsesCompat{}
