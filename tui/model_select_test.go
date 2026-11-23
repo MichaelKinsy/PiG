@@ -222,8 +222,7 @@ func TestModelSelectorArrowNavigationWrapsAtBothEnds(t *testing.T) {
 	}
 }
 
-// Upstream handleInput passes every other key to the search input and then always calls filterModels, which selects the first row while a query is active, even when the key did not change the query.
-// Pi 5bcf370a5 (#12334): a key that leaves the query unchanged does not re-run the filter, so the selection stays.
+// Pi 5bcf370a5 (#12334): handleInput passes every other key to the search input and calls filterModels only when the query changed, so a key that leaves the query unchanged keeps the selection.
 func TestModelSelectorUnchangedQueryKeyKeepsTheSelection(t *testing.T) {
 	items := mkItems("fixture/model-two", "fixture/model-one")
 	for _, key := range []string{"\x1b[D", "\x1b[Z"} {

@@ -45,6 +45,10 @@ func TestOAuthSelectorSelectsTheBestMatchAfterTypingAQueryEvenAfterScrolling(t *
 		selector.HandleInput(selectorDownKey)
 	}
 	typeSelectorQuery(selector, "openai")
+	rendered := strings.Join(selector.Render(80), "\n")
+	if !strings.Contains(rendered, "→ OpenAI") {
+		t.Fatalf("rendered selector does not highlight OpenAI:\n%s", rendered)
+	}
 	if got := selector.SelectedID(); got != "openai" {
 		t.Fatalf("selected %q after the query, want openai", got)
 	}
@@ -200,6 +204,10 @@ func TestSelectSubmenuKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged(t *
 	submenu.HandleInput(selectorHomeKey)
 	if got := submenu.CurrentValue(); got != "dark-green" {
 		t.Fatalf("selection = %q, want dark-green", got)
+	}
+	submenu.HandleInput("\r")
+	if !submenu.Done() || submenu.SelectedValue() != "dark-green" {
+		t.Fatalf("Enter selected done=%v value=%q, want done=true value=dark-green", submenu.Done(), submenu.SelectedValue())
 	}
 }
 

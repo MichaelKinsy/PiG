@@ -8,7 +8,7 @@
 # The pinned release (cead615b) ran filterModels after every such key and set selectedIndex to 0 for a non-empty query.
 # With the local two-model fixture:
 #   /model Enter, "model", Down  -> "Model Name: Model One"
-#   Right, Left                  -> still "Model Name: Model One" (the screen does not change: wait_stable_milliseconds)
+#   Right, Left                  -> still "Model Name: Model One" (frame_watch forbids "Model Name: Model Two" on both steps)
 # Pi e7a0df27 (#7629) handles tui.select.pageUp and tui.select.pageDown in the model selector, so PageDown
 # is no longer an unbound picker key: it moves the selection one page, clamped to the last row, and the
 # fullscreen viewport leaves it to the focused picker (24-fullscreen-model-picker-page-keys-reach-selector).
@@ -53,11 +53,17 @@ wait_timeout_seconds = 5
 keys = ["Right"]
 wait_stable_milliseconds = 500
 wait_timeout_seconds = 5
+[tmux.steps.frame_watch]
+stale_contains = ["Model Name: Model Two"]
+min_samples = 10
 
 [[tmux.steps]]
 keys = ["Left"]
 wait_stable_milliseconds = 500
 wait_timeout_seconds = 5
+[tmux.steps.frame_watch]
+stale_contains = ["Model Name: Model Two"]
+min_samples = 10
 
 [[tmux.steps]]
 keys = ["PgDn", "Down"]
@@ -82,4 +88,5 @@ both_contain = [
 both_not_contain = ["panic:", "goroutine ", "Could not refresh", "→   model-one"]
 output_equal = true
 escaped_output_equal = true
+pig_no_stale_frames = true
 runs = 3

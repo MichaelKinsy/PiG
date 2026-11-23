@@ -29,7 +29,7 @@ change = "modified"
 disposition = "ported"
 evidence = ["test:tui/selector_search_selection_upstream_test.go#TestScopedModelsKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged"]
 rationale = "5bcf370a5293: the filter runs only when the query text changed. PiG's counterpart is tui/scoped_models_list.go HandleInput."
-oracle = "carried: 5bcf370a5293 (pi-coding-agent/modes/interactive/components/scoped-models-selector.js)"
+oracle = "carried in 37b74c546921 block: 5bcf370a5293 (pi-coding-agent/modes/interactive/components/scoped-models-selector.js)"
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/session-selector.ts"
@@ -37,7 +37,7 @@ change = "modified"
 disposition = "ported"
 evidence = ["test:internal/codingagent/session_selector_search_selection_upstream_test.go#TestSessionSelectorKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged"]
 rationale = "5bcf370a5293: the filter runs only when the query text changed. PiG's counterpart is internal/codingagent/session_selector.go handleSearchInput."
-oracle = "carried: 5bcf370a5293 (pi-coding-agent/modes/interactive/components/session-selector.js)"
+oracle = "carried in 37b74c546921 block: 5bcf370a5293 (pi-coding-agent/modes/interactive/components/session-selector.js)"
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/config-selector.ts"

@@ -20,8 +20,8 @@ func withBindings(t *testing.T, overrides map[string][]string) {
 	t.Cleanup(func() { SetKeybindings(previous) })
 }
 
-// settings-list.ts handleInput delegates every key the list does not own to the search Input and then refilters, so the Input's
-// editing keys work and the selection returns to the first match.
+// settings-list.ts handleInput delegates every key the list does not own to the search Input and refilters when the query changed,
+// so the Input's editing keys work and a query edit selects the first match.
 func TestSettingsListSearchDelegatesEditingKeysToTheInput(t *testing.T) {
 	list := NewSettingsList(settingsInputItems(), 10, GetSettingsListTheme(), nil, nil, SettingsListOptions{EnableSearch: true})
 	for _, key := range []string{"m", "o", "d", "e"} {
