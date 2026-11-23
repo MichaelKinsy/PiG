@@ -2,6 +2,26 @@
   "since": "0.4.1",
   "entries": [
     {
+      "id": "BF-0024f22",
+      "title": "On macOS and the BSDs, after a Chord server is hard-killed in the middle of an import or delete, the next…",
+      "symptom": "On macOS and the BSDs, after a Chord server is hard-killed in the middle of an import or delete, the next start now undoes the interrupted import or finishes the interrupted delete once the dead server's stale lock file is removed (as in Pi); previously the address stayed blocked on its own stale lock file.",
+      "rootCause": "startup intent recovery was written and tested where process locks are Linux abstract sockets that disappear when their holder dies, so the start never cleared a stale socket-file address lock before taking it",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "macOS",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On macOS and the BSDs, after a Chord server is hard-killed in the middle of an import or delete, the next start now undoes the interrupted import or finishes the interrupted delete once the dead server's stale lock file is removed (as in Pi); previously the address stayed blocked on its own stale lock file.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0024f22d1e",
+          "date": "2026-11-22"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-003af7c",
       "title": "fix(chord/nextnode/tui): the sandbox's end reaches the loop through one method the test shares (a mutant…",
       "symptom": "fix(chord/nextnode/tui): the sandbox's end reaches the loop through one method the test shares (a mutant without the goroutine now fails); the SIGUSR1 notes say what Go does with the signal",
@@ -31707,6 +31727,25 @@
         "coding/cli/rpc_unawaited_event_test.go::TestRPCUnawaitedEventAcrossSDKs",
         "test/extension-conformance/unawaited_event_wait_conformance_test.go::TestConformance_UnawaitedEventDoesNotWaitForAWaitingHandler"
       ]
+    },
+    {
+      "id": "BF-77c0b8d",
+      "title": "fix(codingagent): three products ported from Pi are rounded before they are added",
+      "symptom": "fix(codingagent): three products ported from Pi are rounded before they are added",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "77c0b8d4d6",
+          "date": "2026-11-22"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-77e64cd",
@@ -63668,6 +63707,26 @@
       "tests": []
     },
     {
+      "id": "BF-f01e5a1",
+      "title": "Durable contract CLI (`durable/contract/cli/contract.mjs`, `durable/contract/cli/robust.mjs`): `-j N` is now…",
+      "symptom": "Durable contract CLI (`durable/contract/cli/contract.mjs`, `durable/contract/cli/robust.mjs`): `-j N` is now parsed as the concurrency option instead of being treated as scenario ids, and `contract all` / `contract run` now exit non-zero on unknown options, unknown scenario ids, or selections that match zero rows (previously CI passing `-j 4` ran zero scenarios and exited 0).",
+      "rootCause": "contract.mjs looked up every option with two dashes (--j) and forwarded every leftover token as a scenario id filter where matching zero rows exited 0, so -j 4 silently matched nothing.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Durable contract CLI (`durable/contract/cli/contract.mjs`, `durable/contract/cli/robust.mjs`): `-j N` is now parsed as the concurrency option instead of being treated as scenario ids, and `contract all` / `contract run` now exit non-zero on unknown options, unknown scenario ids, or selections that match zero rows (previously CI passing `-j 4` ran zero scenarios and exited 0).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f01e5a14c4",
+          "date": "2026-11-22"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-f02269c",
       "title": "When an extension's `before_provider_request` handler replaces an Anthropic request, or a Codex WebSocket…",
       "symptom": "When an extension's `before_provider_request` handler replaces an Anthropic request, or a Codex WebSocket request carries raw JSON, nested values are written as Pi's `JSON.stringify` writes them after `JSON.parse`: `\\u00e9` becomes `é`, and a nested object's repeated key keeps its first place with its last value.",
@@ -69005,6 +69064,30 @@
       ]
     },
     {
+      "id": "BF-ff7b272",
+      "title": "A command's reply is no longer held back by calls or dialogs an extension handler starts after it began to…",
+      "symptom": "A command's reply is no longer held back by calls or dialogs an extension handler starts after it began to wait (`Conn.readLoop` seals `ackHold` on a non-`host_call` `blocked` report and records `ackCounted` on `Envelope` so only calls read before the report hold or release the acknowledgment).",
+      "rootCause": "ackHold counted host calls and blocked:host_call announcements by when Conn.readLoop read them rather than whether the handler sent them before its blocked report, so a post-report call or announcement read before stateCh was drained raised unapplied or announced and falsely held the acknowledgment",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A command's reply is no longer held back by calls or dialogs an extension handler starts after it began to wait (`Conn.readLoop` seals `ackHold` on a non-`host_call` `blocked` report and records `ackCounted` on `Envelope` so only calls read before the report hold or release the acknowledgment).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6c102b39a7",
+          "date": "2026-11-22"
+        },
+        {
+          "hash": "ff7b27274e",
+          "date": "2026-11-22"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-ffcd800",
       "title": "Text after an empty heading follows the same space-token rule as after any other block: blank lines or spaces…",
       "symptom": "Text after an empty heading follows the same space-token rule as after any other block: blank lines or spaces after a final empty heading add the empty row Pi shows.",
@@ -69669,7 +69752,7 @@
   "exemptCommits": {
     "Failure found by the integration build of unreleased work": 2,
     "Fix reverted before release": 2,
-    "Follow-up to unreleased work": 41,
+    "Follow-up to unreleased work": 42,
     "Repair of a merge between development branches": 9,
     "Review follow-up to unreleased work": 4,
     "test-only": 1

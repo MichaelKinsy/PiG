@@ -19,6 +19,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
+| [BF-0024f22](#bf-0024f22) | On macOS and the BSDs, after a Chord server is hard-killed in the middle of an import or delete, the next… | PiG's own defect | macOS | Unreleased |
 | [BF-003af7c](#bf-003af7c) | fix(chord/nextnode/tui): the sandbox's end reaches the loop through one method the test shares (a mutant… | PiG's own defect | All platforms | Unreleased |
 | [BF-003f6f0](#bf-003f6f0) | Ctrl+U, Ctrl+K and the word-delete keys leave an open autocomplete list open, as Pi's editor does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-006a496](#bf-006a496) | The faux provider no longer counts newly cached prompt tokens as input as well as cache writes: with a… | PiG's own defect | All platforms | 0.7.0 |
@@ -1179,6 +1180,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7781c92](#bf-7781c92) | A `before_provider_request` handler that adds members to the Google, Vertex or pi-messages request it was… | PiG's own defect | All platforms | Unreleased |
 | [BF-779318a](#bf-779318a) | OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-77a1d72](#bf-77a1d72) | An RPC `set_session_name` or `set_thinking_level` no longer waits for an extension's `session_info_changed`… | PiG's own defect | All platforms | Unreleased |
+| [BF-77c0b8d](#bf-77c0b8d) | fix(codingagent): three products ported from Pi are rounded before they are added | PiG's own defect | All platforms | Unreleased |
 | [BF-77e64cd](#bf-77e64cd) | GitHub Copilot's chat-completions models with effort levels (Gemini 4 Argon, Gemini 3.8 Flash and Kimi K3)… | PiG's own defect | All platforms | Unreleased |
 | [BF-7809364](#bf-7809364) | Schema errors of a `ChordError` of code `invalid` list their members in the order the value arrived in, as… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-7838047](#bf-7838047) | `/resume` no longer selects an unrelated session while its list reloads after a session is deleted or… | PiG's own defect | All platforms | Unreleased |
@@ -2291,6 +2293,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ef0f95a](#bf-ef0f95a) | OpenCode Zen and OpenCode Go use the `opencode.ai/inference` endpoints, which fixes OpenCode Go Gemini models… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f003f0a](#bf-f003f0a) | tui: after quick terminal resizes a subprocess extension could be left rendering for a width the terminal no… | PiG's own defect | All platforms | Unreleased |
 | [BF-f00bf6c](#bf-f00bf6c) | fix(childwait): call PeekNamedPipe through kernel32 | PiG's own defect | All platforms | Unreleased |
+| [BF-f01e5a1](#bf-f01e5a1) | Durable contract CLI (`durable/contract/cli/contract.mjs`, `durable/contract/cli/robust.mjs`): `-j N` is now… | PiG's own defect | All platforms | Unreleased |
 | [BF-f02269c](#bf-f02269c) | When an extension's `before_provider_request` handler replaces an Anthropic request, or a Codex WebSocket… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f051c65](#bf-f051c65) | fix(extensions): a yield call on the withSession route answers empty; D225 marker at endSyncRunHold, docs of… | PiG's own defect | All platforms | Unreleased |
 | [BF-f06ab7e](#bf-f06ab7e) | A run that `sendMessage({ triggerTurn: true })` starts while idle emits `before_agent_start`, checks… | PiG's own defect | All platforms | 0.5.0 |
@@ -2465,11 +2468,26 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-fe625bb-2](#bf-fe625bb-2) | When an extension's `before_provider_request` handler returns a replacement body for OpenAI Completions… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ff225d2](#bf-ff225d2) | The Cloudflare host's report spans record the reason, extension and task of a `task_interrupted` report, as… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ff6b95e](#bf-ff6b95e) | Chord's terminal launcher no longer ends the session when a stop and continue (Ctrl+Z, then `fg`) interrupts… | PiG's own defect | macOS | Unreleased |
+| [BF-ff7b272](#bf-ff7b272) | A command's reply is no longer held back by calls or dialogs an extension handler starts after it began to… | PiG's own defect | All platforms | Unreleased |
 | [BF-ffcd800](#bf-ffcd800) | Text after an empty heading follows the same space-token rule as after any other block: blank lines or spaces… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ffeb469](#bf-ffeb469) | A long session keeps less memory for each turn it has compacted away | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fffc16a](#bf-fffc16a) | fix: follow minimatch 11.0.3 (Pi) | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
+
+### BF-0024f22
+
+**On macOS and the BSDs, after a Chord server is hard-killed in the middle of an import or delete, the next…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On macOS and the BSDs, after a Chord server is hard-killed in the middle of an import or delete, the next start now undoes the interrupted import or finishes the interrupted delete once the dead server's stale lock file is removed (as in Pi); previously the address stayed blocked on its own stale lock file.
+- **Root cause:** startup intent recovery was written and tested where process locks are Linux abstract sockets that disappear when their holder dies, so the start never cleared a stale socket-file address lock before taking it
+- **User impact:** Behavior differed from Pi
+- **Platform:** macOS
+- **Fixed in:** Unreleased
+- **Fix commits:** `0024f22d1e` (2026-11-22)
+- **Tests:** None recorded.
+- **Release note:** On macOS and the BSDs, after a Chord server is hard-killed in the middle of an import or delete, the next start now undoes the interrupted import or finishes the interrupted delete once the dead server's stale lock file is removed (as in Pi); previously the address stayed blocked on its own stale lock file.
 
 ### BF-003af7c
 
@@ -18524,6 +18542,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/cli/rpc_unawaited_event_test.go::TestRPCUnawaitedEventAcrossSDKs`, `test/extension-conformance/unawaited_event_wait_conformance_test.go::TestConformance_UnawaitedEventDoesNotWaitForAWaitingHandler`
 - **Release note:** An RPC `set_session_name` or `set_thinking_level` no longer waits for an extension's `session_info_changed` or `thinking_level_select` handler written with the Go, Rust, Python or Lisp SDK: Pi replies at once because it does not await that event, but PiG's reply was held until the handler returned, for ever when the handler waited on a socket or a timer and never came back, and now waits at most the 250 ms that already bounds the other handlers a runtime cannot report waiting. A handler that computes for longer than that writes its own notification after the reply, where Pi writes it before; the handler's effect is not lost. The wait has been there since v0.7.0 and earlier.
 
+### BF-77c0b8d
+
+**fix(codingagent): three products ported from Pi are rounded before they are added**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(codingagent): three products ported from Pi are rounded before they are added
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `77c0b8d4d6` (2026-11-22)
+- **Tests:** None recorded.
+
 ### BF-77e64cd
 
 **GitHub Copilot's chat-completions models with effort levels (Gemini 4 Argon, Gemini 3.8 Flash and Kimi K3)…**
@@ -33975,6 +34006,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `f00bf6c64c` (2026-10-29)
 - **Tests:** None recorded.
 
+### BF-f01e5a1
+
+**Durable contract CLI (`durable/contract/cli/contract.mjs`, `durable/contract/cli/robust.mjs`): `-j N` is now…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Durable contract CLI (`durable/contract/cli/contract.mjs`, `durable/contract/cli/robust.mjs`): `-j N` is now parsed as the concurrency option instead of being treated as scenario ids, and `contract all` / `contract run` now exit non-zero on unknown options, unknown scenario ids, or selections that match zero rows (previously CI passing `-j 4` ran zero scenarios and exited 0).
+- **Root cause:** contract.mjs looked up every option with two dashes (--j) and forwarded every leftover token as a scenario id filter where matching zero rows exited 0, so -j 4 silently matched nothing.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f01e5a14c4` (2026-11-22)
+- **Tests:** None recorded.
+- **Release note:** Durable contract CLI (`durable/contract/cli/contract.mjs`, `durable/contract/cli/robust.mjs`): `-j N` is now parsed as the concurrency option instead of being treated as scenario ids, and `contract all` / `contract run` now exit non-zero on unknown options, unknown scenario ids, or selections that match zero rows (previously CI passing `-j 4` ran zero scenarios and exited 0).
+
 ### BF-f02269c
 
 **When an extension's `before_provider_request` handler replaces an Anthropic request, or a Codex WebSocket…**
@@ -36405,6 +36450,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `tui/terminal_syscall_eintr_audit_test.go::TestEINTRAuditCoversTheWholeRepository`, `tui/terminal_syscall_eintr_audit_test.go::TestTerminalSyscallsThatCanSleepRetryEINTR`
 - **Release note:** Chord's terminal launcher no longer ends the session when a stop and continue (Ctrl+Z, then `fg`) interrupts the termios ioctl of raw mode: macOS reports that as EINTR, and Node's `setRawMode` retries it, but the launcher's `SetRaw` called `x/term` directly and failed with `interrupted system call`. Entering and leaving raw mode now retries the ioctls on EINTR.
 
+### BF-ff7b272
+
+**A command's reply is no longer held back by calls or dialogs an extension handler starts after it began to…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A command's reply is no longer held back by calls or dialogs an extension handler starts after it began to wait (`Conn.readLoop` seals `ackHold` on a non-`host_call` `blocked` report and records `ackCounted` on `Envelope` so only calls read before the report hold or release the acknowledgment).
+- **Root cause:** ackHold counted host calls and blocked:host_call announcements by when Conn.readLoop read them rather than whether the handler sent them before its blocked report, so a post-report call or announcement read before stateCh was drained raised unapplied or announced and falsely held the acknowledgment
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6c102b39a7` (2026-11-22), `ff7b27274e` (2026-11-22)
+- **Tests:** None recorded.
+- **Release note:** A command's reply is no longer held back by calls or dialogs an extension handler starts after it began to wait (`Conn.readLoop` seals `ackHold` on a non-`host_call` `blocked` report and records `ackCounted` on `Envelope` so only calls read before the report hold or release the acknowledgment).
+
 ### BF-ffcd800
 
 **Text after an empty heading follows the same space-token rule as after any other block: blank lines or spaces…**
@@ -36576,7 +36635,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 
 - Failure found by the integration build of unreleased work: 2
 - Fix reverted before release: 2
-- Follow-up to unreleased work: 41
+- Follow-up to unreleased work: 42
 - Repair of a merge between development branches: 9
 - Review follow-up to unreleased work: 4
 - test-only: 1

@@ -39491,6 +39491,61 @@
       "shapeHash": "sha256:8c2c25c05be990d156af5316d0723444537851bde41d6afa6bcb371a541de271"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#currentStrippedAPIs",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "currentStrippedAPIs",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "sync/atomic.Pointer[strippedAPIsSnapshot]"
+      },
+      "shapeHash": "sha256:dfdc6dade191753bc05e7f2386fbbfbfe8a4fc093fe7977708b360f9de8e221c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#currentStrippedAPIs.CompareAndSwap",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "currentStrippedAPIs.CompareAndSwap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(old *strippedAPIsSnapshot, new *strippedAPIsSnapshot) (swapped bool)"
+      },
+      "shapeHash": "sha256:b4cf863a80ffd7413ef2667de23adb825cc308c16a1f7355e940c7742c1ac894"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#currentStrippedAPIs.Load",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "currentStrippedAPIs.Load",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *strippedAPIsSnapshot"
+      },
+      "shapeHash": "sha256:bb995f5e9644f9f9a03a8ede05332f2b200c587b6782485756fc1a8d913671a4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#currentStrippedAPIs.Store",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "currentStrippedAPIs.Store",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(val *strippedAPIsSnapshot)"
+      },
+      "shapeHash": "sha256:dbff641e12cf3ace44a459bc36f72cb65727d857bbca90a75afe9bcec8e16e40"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#currentStrippedAPIs.Swap",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "currentStrippedAPIs.Swap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(new *strippedAPIsSnapshot) (old *strippedAPIsSnapshot)"
+      },
+      "shapeHash": "sha256:3c72723ffac55e2dc88a78bc06a09a46722dd3852a380978efd899e99cd285cf"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#currentSystemMessage",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "currentSystemMessage",
@@ -51545,6 +51600,17 @@
         "type": "func(model AnyModel, decoded *catalogShape) (*catalogShape, error)"
       },
       "shapeHash": "sha256:821209c433b5cd83778500fc57b4cee52ee8dff57760966b2e856123ce894384"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#modelOffered",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "modelOffered",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func[T AnyModel](model T) bool"
+      },
+      "shapeHash": "sha256:af04a1f5f404b165c9cb1092eff5e40a0547d353491a2ee77f0ad83c255da20d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#modelProviderID",
@@ -64525,6 +64591,17 @@
         "type": "func() []API"
       },
       "shapeHash": "sha256:ae331f0ea9bae37de3b791713db0c7dbc1c3ca4eccafeb5486fa36136e0bd4e1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#strippedAPIsSnapshot",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "strippedAPIsSnapshot",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "strippedAPIsSnapshot"
+      },
+      "shapeHash": "sha256:eca217c7d4ead116d3c44994e03da638c89374c32a6fed075546a0712a7ed3e3"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#strippedDirectAPIError",
@@ -136803,9 +136880,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(requestID string)"
+        "type": "func(env *Envelope)"
       },
-      "shapeHash": "sha256:2821d88ee06040aa50a25de57351e7094b704ff05ab52720ce90d64ff6e27731"
+      "shapeHash": "sha256:1b02f7178f643466edd9789b690b10c3c895a7d66453ed525ade867d10ee9a79"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.holdLiveness",
@@ -141329,26 +141406,15 @@
       "shapeHash": "sha256:f4b15df8b33b954f696b774f5a9b97367b81946eeb4d46881a0fbd3a1be0c536"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.queueCall",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
-      "name": "Host.queueCall",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(me *managedExt, conn *Conn, lanes *callLanes, callID string, call *CallPayload)"
-      },
-      "shapeHash": "sha256:dbf59dde8897f3e4ef412c1d63305de27a1c0e5f45e0561943a60d1cec756b37"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.queueCallDone",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Host.queueCallDone",
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(me *managedExt, conn *Conn, lanes *callLanes, callID string, call *CallPayload, done func())"
+        "type": "func(me *managedExt, conn *Conn, lanes *callLanes, callID string, call *CallPayload, ackCounted bool, done func())"
       },
-      "shapeHash": "sha256:4bfd592181e6687d2b537abfa98352f39374e17918d908b99d54f8ac4029b958"
+      "shapeHash": "sha256:4066a5083c9312ffa53e1faf7242d94c3729dccc0f56882b6b1fcdf0bc9ee5d9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.queueLoadedProvider",
@@ -150118,15 +150184,26 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ackHold.sent",
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ackHold.seal",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
-      "name": "ackHold.sent",
+      "name": "ackHold.seal",
       "kind": "function",
       "exported": false,
       "shape": {
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ackHold.sent",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ackHold.sent",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ackHold.wentOn",
