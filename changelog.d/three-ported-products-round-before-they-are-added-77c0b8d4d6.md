@@ -1,0 +1,3 @@
+### Fixed
+
+- On arm64 and other CPUs with a fused multiply-add, three products ported from Pi are now rounded before they are added, as in Pi: the running pig's puzzle clock, the modification time that orders sessions for `--continue`, and the one-decimal size in truncation notices. No visible change is known. <!-- fix: 77c0b8d4d6 --> <!-- cause: the three lines carried a port-lint fusedmuladd exemption whose stated reason did not hold, so each product could be fused into the add or subtract that follows it instead of being rounded first as JavaScript rounds it --> <!-- tests: TestPigLogoRunCycle, TestFindMostRecentSessionMatchesPi, TestFormatSize -->
