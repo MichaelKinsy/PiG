@@ -484,12 +484,13 @@ type pullBody struct {
 	read    func() (SyncBody, error)
 }
 
-// PullSession applies what the remote has after the local head; into an empty backend, that restores the session (from an
-// archive when the history starts with one) and opens its store with an outbox. It returns the store, which the caller
+// PullSession applies what the remote has after the local head; into an empty backend, that restores the session (from the
+// newest archive along its history, if any) and opens its store with an outbox. It returns the store, which the caller
 // owns and closes. Nothing may hold the store's claims (no `StoreStorage`, no Harness): ApplyBatch refuses then.
 //
 // A copy with commits it has not uploaded fails with UnsyncedCommitsError instead of getting the remote's commits spliced
-// onto its own. A copy whose history folding removed fails with HistoryUnavailableError and restores into a fresh backend.
+// onto its own. A copy whose history folding removed, or that an archive slot continues (a full state, which does not
+// apply on top of a store), fails with HistoryUnavailableError and restores into a fresh backend.
 func PullSession(ctx context.Context, options PullOptions) (result PullResult, err error) {
 	apply := options.apply
 	if apply == nil {
