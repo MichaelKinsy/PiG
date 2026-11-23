@@ -159,7 +159,7 @@ func (c *fakeClock) Advance(ms int64) {
 
 // object is a documents owner: the object's name, batch, context, store and live failures.
 type object struct {
-	t         *testing.T
+	t         testing.TB
 	label     string
 	loop      *loop
 	clock     *fakeClock
@@ -187,7 +187,7 @@ type objectOptions struct {
 }
 
 // newObject is an object with fresh documents; its store is options.store (nil: no store).
-func newObject(t *testing.T, options objectOptions) *object {
+func newObject(t testing.TB, options objectOptions) *object {
 	t.Helper()
 	l := &loop{scheduler: chord.NewDeliveryScheduler()}
 	o := &object{t: t, label: "app.owner(1)", loop: l, clock: newFakeClock(l), scheduler: l.scheduler, ctx: background, store: options.store, owner: "app.owner"}
@@ -382,7 +382,7 @@ func (o *object) End() {
 }
 
 // activated is an object whose first attempt ran factory and activated.
-func activated(t *testing.T, options objectOptions, factory func(a *attempt)) (*object, *attempt) {
+func activated(t testing.TB, options objectOptions, factory func(a *attempt)) (*object, *attempt) {
 	t.Helper()
 	o := newObject(t, options)
 	a := o.newAttempt()

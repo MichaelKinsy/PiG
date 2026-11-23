@@ -122,37 +122,111 @@ func (slot *KeyedSlot) Get(raw string, access Access, ctx context.Context) (*Jso
 	return slot.get(key, access, ctx)
 }
 
+// getHandle resolves raw under the slot's section in Pi's order (keyOf, Key, AssertLive, AssertVersion, resident) so
+// handle reads take no extra section and never read definition.current outside Do.
+func (slot *KeyedSlot) getHandle(raw any, access Access, ctx context.Context) (*JsonObject, error) {
+	_, value, err := slot.getHandleWithKey(raw, access, ctx)
+	return value, err
+}
+
+// getHandleWithKey is getHandle returning the resolved stored key for Watch.
+func (slot *KeyedSlot) getHandleWithKey(raw any, access Access, ctx context.Context) (string, *JsonObject, error) {
+	if slot.owner.InSection() {
+		key, value, settled, err := slot.getHandleInSection(raw, access)
+		if err != nil || settled {
+			return key, value, err
+		}
+		value, err = slot.loadAndRead(key, access.Token, ctx)
+		return key, value, err
+	}
+	return slot.getHandleFromOutside(raw, access, ctx)
+}
+
+// getHandleFromOutside is getHandleWithKey for a caller outside the owner's section (closure allocated here only).
+func (slot *KeyedSlot) getHandleFromOutside(raw any, access Access, ctx context.Context) (string, *JsonObject, error) {
+	var state struct {
+		key     string
+		value   *JsonObject
+		err     error
+		settled bool
+	}
+	slot.owner.Do(func() {
+		state.key, state.value, state.settled, state.err = slot.getHandleInSection(raw, access)
+	})
+	if state.err != nil || state.settled {
+		return state.key, state.value, state.err
+	}
+	value, err := slot.loadAndRead(state.key, access.Token, ctx)
+	return state.key, value, err
+}
+
+// getHandleInSection resolves raw and reads an in-memory resident inside the owner's section in Pi's order
+// (keyOf, Key, AssertLive, AssertVersion, resident).
+func (slot *KeyedSlot) getHandleInSection(raw any, access Access) (key string, value *JsonObject, settled bool, err error) {
+	if key, err = slot.keyOfInSection(raw); err != nil {
+		return "", nil, false, err
+	}
+	if key, err = slot.Key(key); err != nil {
+		return "", nil, false, err
+	}
+	value, settled, err = slot.getInSection(key, access)
+	return key, value, settled, err
+}
+
 // get is Get of a key that went through Key already.
 func (slot *KeyedSlot) get(key string, access Access, ctx context.Context) (*JsonObject, error) {
-	var value *JsonObject
-	var failure error
-	var settled bool
-	slot.owner.Do(func() {
-		if failure = slot.owner.AssertLive(); failure != nil {
-			return
+	if slot.owner.InSection() {
+		value, settled, err := slot.getInSection(key, access)
+		if err != nil || settled {
+			return value, err
 		}
-		if failure = slot.definition.AssertVersion(access.Version); failure != nil {
-			return
-		}
-		resident, err := slot.resident(key)
-		if err != nil {
-			failure = err
-			return
-		}
-		if resident != nil {
-			slot.touch(resident)
-			value, settled = resident.Tracker.Value(), true
-			return
-		}
-		settled = slot.persistence == nil
-	})
-	if failure != nil || settled {
-		return value, failure
+		return slot.loadAndRead(key, access.Token, ctx)
 	}
-	loaded, err := slot.loadShared(key, access.Token, ctx)
+	return slot.getFromOutside(key, access, ctx)
+}
+
+// getFromOutside is get for a caller outside the owner's section (closure allocated here only).
+func (slot *KeyedSlot) getFromOutside(key string, access Access, ctx context.Context) (*JsonObject, error) {
+	var state struct {
+		value   *JsonObject
+		err     error
+		settled bool
+	}
+	slot.owner.Do(func() {
+		state.value, state.settled, state.err = slot.getInSection(key, access)
+	})
+	if state.err != nil || state.settled {
+		return state.value, state.err
+	}
+	return slot.loadAndRead(key, access.Token, ctx)
+}
+
+// getInSection runs the in-section read of Get for an already validated key.
+func (slot *KeyedSlot) getInSection(key string, access Access) (value *JsonObject, settled bool, err error) {
+	if err = slot.owner.AssertLive(); err != nil {
+		return nil, false, err
+	}
+	if err = slot.definition.AssertVersion(access.Version); err != nil {
+		return nil, false, err
+	}
+	resident, err := slot.resident(key)
+	if err != nil {
+		return nil, false, err
+	}
+	if resident != nil {
+		slot.touch(resident)
+		return resident.Tracker.Value(), true, nil
+	}
+	return nil, slot.persistence == nil, nil
+}
+
+// loadAndRead loads a cold key on the line and returns its resident or loaded value.
+func (slot *KeyedSlot) loadAndRead(key string, token *SealToken, ctx context.Context) (*JsonObject, error) {
+	loaded, err := slot.loadShared(key, token, ctx)
 	if err != nil {
 		return nil, err
 	}
+	var value *JsonObject
 	slot.owner.Do(func() {
 		if resident := slot.residents[key]; resident != nil {
 			value = resident.Tracker.Value()
@@ -251,7 +325,7 @@ type HandleKeyIterator struct {
 
 // HandleKeys is Keys as a handle yields them.
 func (slot *KeyedSlot) HandleKeys(access Access, ctx context.Context) *HandleKeyIterator {
-	return &HandleKeyIterator{keys: slot.Keys(access, ctx), kind: slot.definition.current.Host}
+	return &HandleKeyIterator{keys: slot.Keys(access, ctx), kind: slot.hostKind()}
 }
 
 // Next is the next key; ok is false once every key was read. Decoded keys are not re-validated.
@@ -284,6 +358,20 @@ func (slot *KeyedSlot) Watch(raw string, access Access, ctx context.Context) (*c
 	if err != nil || value == nil {
 		return nil, err
 	}
+	return slot.openKeyWatch(key, ctx)
+}
+
+// watchHandle is Watch for a handle: resolves raw inside getHandleWithKey's Do section in Pi's order.
+func (slot *KeyedSlot) watchHandle(raw any, access Access, ctx context.Context) (*chord.Watch[delta.JsonValue], error) {
+	key, value, err := slot.getHandleWithKey(raw, access, ctx)
+	if err != nil || value == nil {
+		return nil, err
+	}
+	return slot.openKeyWatch(key, ctx)
+}
+
+// openKeyWatch pins key and opens its watch once Get confirmed it is present.
+func (slot *KeyedSlot) openKeyWatch(key string, ctx context.Context) (*chord.Watch[delta.JsonValue], error) {
 	var watch *chord.Watch[delta.JsonValue]
 	var failure error
 	slot.owner.Do(func() {
@@ -395,7 +483,29 @@ func (slot *KeyedSlot) Key(key string) (string, error) { return store.StoredText
 // as it is (Key applies the text rules), a host-keyed slot's address of its kind (an Address or *Address) as the
 // address's key; anything else is invalid/args.
 func (slot *KeyedSlot) KeyOf(key any) (string, error) {
-	kind := slot.definition.current.Host
+	return slot.keyOfWithKind(slot.hostKind(), key)
+}
+
+// hostKind reads the slot's key host kind under the owner's section (inline when already in one).
+func (slot *KeyedSlot) hostKind() *contracts.HostKind {
+	if slot.owner.InSection() {
+		return slot.definition.current.Host
+	}
+	return slot.hostKindFromOutside()
+}
+
+// hostKindFromOutside is hostKind for a caller outside the owner's section (the closure is made here only).
+func (slot *KeyedSlot) hostKindFromOutside() (kind *contracts.HostKind) {
+	slot.owner.Do(func() { kind = slot.definition.current.Host })
+	return kind
+}
+
+// keyOfInSection is KeyOf when the caller already holds the owner's section.
+func (slot *KeyedSlot) keyOfInSection(key any) (string, error) {
+	return slot.keyOfWithKind(slot.definition.current.Host, key)
+}
+
+func (slot *KeyedSlot) keyOfWithKind(kind *contracts.HostKind, key any) (string, error) {
 	if kind == nil {
 		text, isText := key.(string)
 		if !isText {
@@ -620,7 +730,9 @@ func (slot *KeyedSlot) ReadChanged(key string, step *store.Step, ctx context.Con
 		return ChangedDocument{Kind: ChangedAbsent}, nil
 	}
 	var unchanged bool
+	var definition AnyDefinition
 	slot.owner.Do(func() {
+		definition = slot.definition.current
 		if resident := slot.residents[key]; resident != nil && resident.Stored != nil {
 			unchanged = resident.Stored.ID == record.ID && resident.Stored.Revision == record.Revision
 		}
@@ -632,7 +744,7 @@ func (slot *KeyedSlot) ReadChanged(key string, step *store.Step, ctx context.Con
 	if err != nil {
 		return ChangedDocument{}, err
 	}
-	loaded, err := persistence.Decode(&document, slot.definition.current, ctx)
+	loaded, err := persistence.Decode(&document, definition, ctx)
 	if err != nil {
 		return ChangedDocument{Kind: ChangedFailed, Error: data.AsChordError(err, slot.owner.Label())}, nil
 	}

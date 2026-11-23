@@ -1519,12 +1519,20 @@ func (k *ReferenceKeyed) key(raw any) (string, error) {
 	return store.StoredText(stored, k.member+": key")
 }
 
-// slot is the provider's slot: the ultimate provider's, through re-exposures (rule 22).
-func (k *ReferenceKeyed) slot() (*documents.KeyedSlot, error) {
-	var slot *documents.KeyedSlot
-	var err error
-	k.binding.loop.Run(func() { slot, err = k.binding.keyedSlot(k.member) })
-	return slot, err
+// slot is the provider's slot and its current own access, read together in one loop section (rule 22).
+func (k *ReferenceKeyed) slot() (*documents.KeyedSlot, documents.Access, error) {
+	var resolved struct {
+		slot   *documents.KeyedSlot
+		access documents.Access
+		err    error
+	}
+	k.binding.loop.Run(func() {
+		resolved.slot, resolved.err = k.binding.keyedSlot(k.member)
+		if resolved.err == nil {
+			resolved.access = ownAccess(resolved.slot)
+		}
+	})
+	return resolved.slot, resolved.access, resolved.err
 }
 
 // keyedBinding is this member as another object re-exposing it has it: its keys held through this reference.
@@ -1545,7 +1553,7 @@ func (k *ReferenceKeyed) Get(ctx context.Context, raw any) (value delta.JsonValu
 	if err = k.binding.awaitHydrated(ctx); err != nil {
 		return nil, false, err
 	}
-	slot, err := k.slot()
+	slot, access, err := k.slot()
 	if err != nil {
 		return nil, false, err
 	}
@@ -1553,7 +1561,7 @@ func (k *ReferenceKeyed) Get(ctx context.Context, raw any) (value delta.JsonValu
 	if err != nil {
 		return nil, false, err
 	}
-	document, err := slot.Get(key, ownAccess(slot), ctx)
+	document, err := slot.Get(key, access, ctx)
 	if err != nil || document == nil {
 		return nil, false, err
 	}
@@ -1578,11 +1586,11 @@ func (k *ReferenceKeyed) Watch(ctx context.Context, raw any) (chord.WatchHandle[
 	if err := b.awaitFirstValues(ctx); err != nil {
 		return nil, err
 	}
-	slot, err := k.slot()
+	slot, access, err := k.slot()
 	if err != nil {
 		return nil, err
 	}
-	document, err := slot.Get(key, ownAccess(slot), ctx)
+	document, err := slot.Get(key, access, ctx)
 	if err != nil || document == nil {
 		return nil, err
 	}
@@ -1651,12 +1659,12 @@ func (k *ReferenceKeyed) Snapshot(ctx context.Context, observer documents.KeyObs
 	if err = k.binding.awaitFirstValues(ctx); err != nil {
 		return nil, nil, err
 	}
-	slot, err := k.slot()
+	slot, access, err := k.slot()
 	if err != nil {
 		return nil, nil, err
 	}
 	stop = slot.Observe(observer)
-	keys := slot.Keys(ownAccess(slot), ctx)
+	keys := slot.Keys(access, ctx)
 	defer keys.Close()
 	for {
 		key, ok, err := keys.Next(ctx)
@@ -1679,7 +1687,7 @@ func (k *ReferenceKeyed) Snapshot(ctx context.Context, observer documents.KeyObs
 }
 
 // ownAccess is how a consumer reads its provider's keyed documents as the provider's own code may: current version, own
-// token.
+// token. Called inside the host loop section.
 func ownAccess(slot *documents.KeyedSlot) documents.Access {
 	return documents.Access{Token: slot.Owner().Own(), Version: slot.Definition().Current().Version}
 }

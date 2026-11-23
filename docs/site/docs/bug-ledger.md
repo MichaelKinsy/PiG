@@ -2392,6 +2392,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f89c404](#bf-f89c404) | fix(durable/core/turn): the pattern generator reads Pi's single-quoted pattern strings, so the Zhipu 1308… | PiG's own defect | All platforms | Unreleased |
 | [BF-f8d96b7](#bf-f8d96b7) | The Node SQLite driver keeps the 256 most recently used prepared statements per connection instead of every… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-f927290](#bf-f927290) | `durable/core/budget/tinygo-install.sh` retries the TinyGo download when the release host answers with a… | PiG's own defect | All platforms | Unreleased |
+| [BF-f93a8f2](#bf-f93a8f2) | Reading, watching, or listing a keyed state document while its object restarts or reloads no longer races the… | PiG's own defect | All platforms | Unreleased |
 | [BF-f9648c6](#bf-f9648c6) | On Windows, stopping a terminal reader whose input is a pipe no longer hangs | PiG's own defect | Windows | 0.7.0 |
 | [BF-f98d129](#bf-f98d129) | Clearing the queued messages (RPC `clear_queue`, the SDK, the interactive restore-to-editor key) no longer… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-f98d129-2](#bf-f98d129-2) | Omitting a failed retry attempt no longer makes the context usage jump to an estimate of the whole history | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
@@ -35389,6 +35390,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `f927290d26` (2026-11-08)
 - **Tests:** `coding/cli/stdout_backpressure_test.go::TestRPCUsageProbeFailsWhenTheCLIWritesNoFrame`
 - **Release note:** `durable/core/budget/tinygo-install.sh` retries the TinyGo download when the release host answers with a transient error (HTTP 408, 429, 5xx). A single 504 from GitHub's release CDN made the `wasm-tinygo` row of the Durable contract job fail with "tinygo not found" in CI.
+
+### BF-f93a8f2
+
+**Reading, watching, or listing a keyed state document while its object restarts or reloads no longer races the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Reading, watching, or listing a keyed state document while its object restarts or reloads no longer races the new attempt's state hydration.
+- **Root cause:** KeyedSlot.KeyOf, KeyedSlot.HandleKeys, KeyedSlot.ReadChanged, and ReferenceKeyed ownAccess read slot.definition.current outside the owner's Do section while SlotDefinition.Hydrate wrote it inside Do on concurrent attempt activation, racing off-loop handle and reference calls.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f93a8f2b11` (2026-11-23)
+- **Tests:** `chord/next/documents/keyed_slot_hydrate_race_test.go::TestKeyedSlotEndedHandleRefusesWrongKindKeyBeforeEndedPinsPiOrder`, `chord/next/documents/keyed_slot_hydrate_race_test.go::TestKeyedSlotSealedHandleGetWhileHydrateWritesDoesNotRaceDefinition`, `chord/next/documents/keyed_slot_hydrate_race_test.go::TestKeyedSlotSealedHandleSiblingsWhileHydrateWritesDoNotRaceDefinition`
+- **Release note:** Reading, watching, or listing a keyed state document while its object restarts or reloads no longer races the new attempt's state hydration. Handle and reference lookups now read the slot's active definition inside the object's serialized section, keeping key-validation errors ahead of ended-handle errors as in Pi.
 
 ### BF-f9648c6
 
