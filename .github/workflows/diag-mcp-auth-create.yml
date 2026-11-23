@@ -1,0 +1,96 @@
+# SPDX-License-Identifier: MIT
+# Diagnostic workflow for fix/mcp-auth-create-never-writes-over-an-existing-file
+# on Windows (windows-latest) and macOS (macos-15).
+# Runs only on pushes to diag/** and is never merged.
+name: Diag mcp-auth exclusive create (Windows and macOS)
+
+on:
+  push:
+    branches:
+      - "diag/**"
+
+permissions:
+  contents: read
+
+jobs:
+  diag-mcpext:
+    name: Diag mcpext / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-15]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Prepare scratch directories
+        shell: bash
+        run: |
+          set +e
+          mkdir -p "$RUNNER_TEMP/diag-logs" "$RUNNER_TEMP/diag-bin"
+          echo "DIAG_LOGS=$RUNNER_TEMP/diag-logs" >> "$GITHUB_ENV"
+          echo "DIAG_BIN=$RUNNER_TEMP/diag-bin" >> "$GITHUB_ENV"
+          echo "PROBE-STEP-END"
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Build coding/mcpext test binary
+        shell: bash
+        env:
+          CI: "1"
+        run: |
+          set +e
+          mkdir -p "$DIAG_LOGS" "$DIAG_BIN"
+          go test -c -o "$DIAG_BIN/mcpext.test" ./coding/mcpext > "$DIAG_LOGS/build-mcpext.log" 2>&1
+          s_plain=$?
+          echo "build_mcpext_plain_status=$s_plain"
+          if [ "$s_plain" -ne 0 ]; then cat "$DIAG_LOGS/build-mcpext.log"; fi
+          echo "PROBE-STEP-END"
+          exit "$s_plain"
+      - name: Run coding/mcpext tests (plain)
+        if: always()
+        shell: bash
+        env:
+          CI: "1"
+        run: |
+          set +e
+          log="$DIAG_LOGS/mcpext-plain.log"
+          go test -v -count=1 -timeout 20m ./coding/mcpext/... > "$log" 2>&1
+          status=$?
+          pass_n=$(grep -c '^--- PASS:' "$log" || true)
+          fail_n=$(grep -c '^--- FAIL:' "$log" || true)
+          skip_n=$(grep -c '^--- SKIP:' "$log" || true)
+          echo "mcpext_plain_status=$status pass=$pass_n fail=$fail_n skip=$skip_n"
+          grep -E 'TestFileAuthStorageBackend' "$log" || true
+          if [ "$fail_n" -gt 0 ] || [ "$status" -ne 0 ]; then
+            echo "=== first 20 failures ==="
+            grep -n -B 1 -A 5 '--- FAIL:' "$log" | head -n 120 || true
+          fi
+          echo "PROBE-STEP-END"
+          exit "$status"
+      - name: Run FileAuthStorageBackend tests under -race
+        if: always()
+        shell: bash
+        env:
+          CI: "1"
+        run: |
+          set +e
+          log="$DIAG_LOGS/mcpext-race.log"
+          go test -race -v -count=1 -timeout 10m -run '^TestFileAuthStorageBackend' ./coding/mcpext > "$log" 2>&1
+          status=$?
+          pass_n=$(grep -c '^--- PASS:' "$log" || true)
+          fail_n=$(grep -c '^--- FAIL:' "$log" || true)
+          cat "$log"
+          echo "mcpext_race_status=$status pass=$pass_n fail=$fail_n"
+          echo "PROBE-STEP-END"
+          exit "$status"
+      - name: Upload raw diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: diag-mcpext-${{ matrix.os }}-logs
+          path: ${{ runner.temp }}/diag-logs/
+          retention-days: 14
