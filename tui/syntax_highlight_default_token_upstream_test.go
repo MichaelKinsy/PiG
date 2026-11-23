@@ -1,3 +1,5 @@
+//go:build !pig_strip_syntax_highlight
+
 package tui
 
 import (
@@ -52,6 +54,9 @@ func TestMarkdownHighlightedCodeBlockDefaultTokenColors(t *testing.T) {
 
 			if !strings.Contains(rendered, textFg+"plainIdentifier\x1b[39m") {
 				t.Fatalf("theme=%s: plain identifier lacks text fg %q in:\n%q", themeName, textFg, rendered)
+			}
+			if strings.Contains(rendered, textFg+"\x1b[39m") {
+				t.Fatalf("theme=%s: empty line unexpectedly wrapped in empty text fg %q in:\n%q", themeName, textFg, rendered)
 			}
 			if !strings.Contains(rendered, kwFg+"const\x1b[39m"+textFg+" answer = \x1b[39m"+numFg+"42\x1b[39m"+textFg+";\x1b[39m") {
 				t.Fatalf("theme=%s: text between tokens lacks text fg %q in:\n%q", themeName, textFg, rendered)
