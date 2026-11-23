@@ -14,8 +14,8 @@ import (
 	"time"
 )
 
-// Watcher is what the barrier asks of a file watcher. *plugins.Plugins answers for its own (WatchTree, Watches); the tests of
-// package plugins answer for a watcher they made without a component.
+// Watcher is what the barrier asks of a file watcher. *plugins.Plugins answers for its own (WatchTree, Watches,
+// ComparingBase); the tests of package plugins answer for a watcher they made without a component.
 type Watcher interface {
 	// WatchTree has the watcher watch the tree at dir too, until it closes, and returns the directories it watches then; false
 	// when it watches nothing (a watcher that failed to watch, or a closed one). No discovery of the watcher's drops the tree:
@@ -23,6 +23,8 @@ type Watcher interface {
 	WatchTree(dir string) (watched []string, watching bool)
 	// Watches reports whether the watcher has a watch on the directory dir.
 	Watches(dir string) bool
+	// ComparingBase reports whether a comparison of a base file is queued or in flight.
+	ComparingBase() bool
 }
 
 // settleBound is how long Settle waits for the watcher before it fails the test.
@@ -38,12 +40,14 @@ type barrier struct {
 // barriers is each watcher's barrier, from its first Settle until the test that made it ends.
 var barriers sync.Map
 
-// Settle returns once watcher handled the events of every file operation made before the call: a watch event of an edit
-// arrives on its own time, and one that arrives after a build that followed the first event of the edit would leave the plugin
-// dirty. A write in place is two events, a removed directory many. The events of one file system arrive in order, and a
-// directory made in a watched one is watched when its event was handled: the watcher's own answer (Watches) says the barrier's
-// directory was reached, so everything before it was. Nothing is waited for when the watcher does not watch. It fails the
-// test when the watcher has not reached the directory after 15 s.
+// Settle returns once watcher handled the events of every file operation made before the call and finished every base-file
+// comparison those events started: a watch event of an edit arrives on its own time, and one that arrives after a build that
+// followed the first event of the edit would leave the plugin dirty; a base file's hash is read off the watcher's section, so
+// its mark reflects the latest write only once ComparingBase is false. A write in place is two events, a removed directory
+// many. The events of one file system arrive in order, and a directory made in a watched one is watched when its event was
+// handled: the watcher's own answer (Watches) says the barrier's directory was reached, so everything before it was, and
+// ComparingBase then waits for any queued or in-flight base comparison to end. Nothing is waited for when the watcher does not
+// watch. It fails the test when the watcher has not settled after 15 s.
 func Settle(t testing.TB, watcher Watcher) {
 	t.Helper()
 	settle(t, watcher, settleBound)
@@ -78,6 +82,12 @@ func settle(t testing.TB, watcher Watcher, bound time.Duration) {
 	for !watcher.Watches(sentinel) {
 		if time.Now().After(deadline) {
 			t.Fatalf("timed out after %v waiting for the watcher to handle a directory made after the edits", bound)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	for watcher.ComparingBase() {
+		if time.Now().After(deadline) {
+			t.Fatalf("timed out after %v waiting for the watcher to finish base file comparisons", bound)
 		}
 		time.Sleep(5 * time.Millisecond)
 	}

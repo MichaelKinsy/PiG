@@ -362,6 +362,16 @@ func (c *Plugins) Watches(dir string) bool {
 	return watches
 }
 
+// ComparingBase reports whether a comparison of a base file is queued or in flight now: a file event on base code starts a
+// hash read off the watcher's section, so the mark reflects the file once no comparison is under way. It reads the watcher's
+// state and changes nothing. Its one caller is the tests' barrier (pluginstest.Settle); no contract, wire message, plugin or
+// configuration reaches it, and Pi's watcher has no such member (its tests share the watcher's thread).
+func (c *Plugins) ComparingBase() bool {
+	var comparing bool
+	c.section(func() { comparing = c.watcher.comparingBase() })
+	return comparing
+}
+
 // Build builds every facet of names (and of plugins discovered since the last build; discovery runs again first when the
 // plugin set changed, or when a named plugin is unknown to it or its files are gone before the watcher said so): plain data. It changes no current set: a rollout ships it.
 func (c *Plugins) Build(names []string, ctx context.Context) (*Built, error) {
