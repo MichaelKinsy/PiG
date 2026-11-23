@@ -737,6 +737,45 @@ func TestRemoteBodies(t *testing.T) {
 			t.Fatalf("readers after refused pull = (%d, %d), want opened >= 2 and closed == opened", files.opened, files.closed)
 		}
 	})
+
+	t.Run("closes an archive body when PullSession fails in ImportStore before reading it", func(t *testing.T) {
+		files := &bodyCountingFiles{}
+		remote := NewFileSystemSyncRemote(files, t.TempDir())
+		// A remote whose history starts with an archive slot at 0.
+		source := sessionStore(t)
+		commitAll(t, source, seedBatches()[:2]...)
+		noError(t, source.Outbox().Trim(lastSeq(source), background))
+		_, err := UploadSession(background, UploadOptions{SessionID: session, Device: "laptop", Source: source, Store: remote, State: newMemoryState()})
+		noError(t, err)
+
+		pullCtx, cancel := context.WithCancel(background)
+		defer cancel()
+		state := &cancelOnSetState{cancel: cancel}
+
+		_, err = PullSession(pullCtx, PullOptions{
+			SessionID: session,
+			Store:     remote,
+			Local:     LocalCopy{Kind: LocalCopyEmpty, Backend: backendAt(t, "")},
+			State:     state,
+		})
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("PullSession error = %v, want context.Canceled", err)
+		}
+		if files.opened != 1 || files.closed != 1 {
+			t.Fatalf("readers after aborted archive pull = (opened %d, closed %d), want (1, 1)", files.opened, files.closed)
+		}
+	})
+}
+
+type cancelOnSetState struct {
+	cancel context.CancelFunc
+}
+
+func (*cancelOnSetState) Get(context.Context, string) (*SyncState, error) { return nil, nil }
+
+func (s *cancelOnSetState) Set(context.Context, string, SyncState) error {
+	s.cancel()
+	return nil
 }
 
 func TestBoundedMemory(t *testing.T) {
