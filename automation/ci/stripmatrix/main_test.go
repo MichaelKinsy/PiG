@@ -96,3 +96,20 @@ func TestPickSetFollowsSetsAndSet(t *testing.T) {
 		}
 	}
 }
+
+func TestWholePackageTestArgsNameTimeout(t *testing.T) {
+	set := tagSet{tags: []string{"pig_strip_bedrock_converse_stream"}}
+	for _, tc := range []struct {
+		name string
+		args []string
+	}{
+		{"ai without red", aiTestArgs(set, nil)},
+		{"ai with red", aiTestArgs(set, []string{"TestOne", "TestTwo"})},
+		{"whole packages", wholeTestArgs(set)},
+	} {
+		i := slices.Index(tc.args, "-timeout")
+		if i < 0 || i+1 >= len(tc.args) || tc.args[i+1] == "" {
+			t.Errorf("%s: args %q lack -timeout <duration>", tc.name, tc.args)
+		}
+	}
+}

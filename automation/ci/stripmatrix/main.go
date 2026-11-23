@@ -112,6 +112,20 @@ func parseRed(text string) ([]string, error) {
 	return tests, nil
 }
 
+// aiTestArgs returns the go arguments that test aiPackage outside red under set.
+func aiTestArgs(set tagSet, red []string) []string {
+	args := []string{"test", "-tags", set.String(), "-count=1"}
+	if len(red) > 0 {
+		args = append(args, "-skip", "^("+strings.Join(red, "|")+")$")
+	}
+	return append(args, aiPackage)
+}
+
+// wholeTestArgs returns the go arguments that test wholePackages under set.
+func wholeTestArgs(set tagSet) []string {
+	return append([]string{"test", "-tags", set.String(), "-count=1"}, wholePackages...)
+}
+
 // testAI runs aiPackage under the set. Every test outside the set's red list must pass in one run of the package, and every listed
 // test must fail in a process of its own (a panic there ends that test only).
 func testAI(set tagSet, scratch string) error {
@@ -119,11 +133,7 @@ func testAI(set tagSet, scratch string) error {
 	if err != nil {
 		return err
 	}
-	args := []string{"test", "-tags", set.String(), "-count=1"}
-	if len(red) > 0 {
-		args = append(args, "-skip", "^("+strings.Join(red, "|")+")$")
-	}
-	if err := run(nil, "go", append(args, aiPackage)...); err != nil {
+	if err := run(nil, "go", aiTestArgs(set, red)...); err != nil {
 		return fmt.Errorf("a test of %s outside the red list fails: %w", aiPackage, err)
 	}
 	if len(red) == 0 {
@@ -514,7 +524,7 @@ func main() {
 				if err := testAI(set, filepath.Join(scratch, fmt.Sprint(i)+"-test")); err != nil {
 					return err
 				}
-				return run(nil, "go", append([]string{"test", "-tags", set.String(), "-count=1"}, wholePackages...)...)
+				return run(nil, "go", wholeTestArgs(set)...)
 			}})
 		}
 		steps = append(steps, step{"smoke", func() error {
