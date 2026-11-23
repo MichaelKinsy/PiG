@@ -154,7 +154,13 @@ func TestGroupCommitParkEnterBeforeInsertWindow(t *testing.T) {
 	// while the waiter is still paused at afterParkEnter. awaitWakeHop(2) returns
 	// once part 0 ("one", published commit 2 after lead) is awaiting a wake in
 	// awaitReadied(), or once part 1 ("two", commit 3) has already been published.
+	// Check g.published.len() as well as twoPublished because openGC's FollowCommits
+	// listener appends to g.published before this test's FollowCommits listener
+	// closes twoPublished.
 	g.awaitWakeHop(2)
+	if g.published.len() > 2 {
+		t.Fatalf("the next part was published while a waiter had entered and was not yet parked (resumption.go: enter before insert): published=%v", g.published.entryKinds())
+	}
 	select {
 	case <-twoPublished:
 		t.Fatalf("the next part was published while a waiter had entered and was not yet parked (resumption.go: enter before insert)")
