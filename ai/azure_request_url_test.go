@@ -138,6 +138,54 @@ func TestAzureResponsesRequestURL(t *testing.T) {
 			apiVersion:   "v1",
 			want:         "https://res.openai.azure.com/openai/responses?api-version=v1",
 		},
+		{
+			name:         "apiver_with_space",
+			resolvedBase: "https://res.openai.azure.com/openai/v1",
+			apiVersion:   "2025 04",
+			want:         "https://res.openai.azure.com/openai/v1/responses?api-version=2025%2004",
+		},
+		{
+			name:         "apiver_with_plus",
+			resolvedBase: "https://res.openai.azure.com/openai/v1",
+			apiVersion:   "2025+04",
+			want:         "https://res.openai.azure.com/openai/v1/responses?api-version=2025%2B04",
+		},
+		{
+			name:         "double_trailing_slash_raw_base",
+			resolvedBase: "https://gw.example/openai/v1//",
+			apiVersion:   "v1",
+			want:         "https://gw.example/openai/v1//responses?api-version=v1",
+		},
+		{
+			name:         "uppercase_host_raw_base",
+			resolvedBase: "https://GW.EXAMPLE/openai/v1",
+			apiVersion:   "v1",
+			want:         "https://gw.example/openai/v1/responses?api-version=v1",
+		},
+		{
+			name:         "default_port_443_raw_base",
+			resolvedBase: "https://gw.example:443/openai/v1",
+			apiVersion:   "v1",
+			want:         "https://gw.example/openai/v1/responses?api-version=v1",
+		},
+		{
+			name:         "fragment_azure",
+			resolvedBase: "https://res.openai.azure.com/openai/v1#x",
+			apiVersion:   "v1",
+			want:         "https://res.openai.azure.com/openai/v1?api-version=v1#x/responses",
+		},
+		{
+			name:         "fragment_nonazure",
+			resolvedBase: "https://gw.example/openai/v1#x",
+			apiVersion:   "v1",
+			want:         "https://gw.example/openai/v1?api-version=v1#x/responses",
+		},
+		{
+			name:         "query_and_fragment_nonazure",
+			resolvedBase: "https://gw.example/openai/v1?a=1#x",
+			apiVersion:   "v1",
+			want:         "https://gw.example/openai/v1?a=1&api-version=v1#x/responses",
+		},
 	}
 
 	for _, tc := range cases {
@@ -172,6 +220,34 @@ func TestAzureResponsesRequestURL(t *testing.T) {
 		{
 			row:  azureURLOracleRow{Name: "deployments_q_apiver", EnvBaseURL: "https://res.openai.azure.com/openai/deployments/d?api-version=2024-10-21", APIVersion: "v1"},
 			want: "https://res.openai.azure.com/openai/deployments/d?api-version=v1",
+		},
+		{
+			row:  azureURLOracleRow{Name: "apiver_with_space", EnvBaseURL: "https://res.openai.azure.com/openai/v1", APIVersion: "2025 04"},
+			want: "https://res.openai.azure.com/openai/v1/responses?api-version=2025%2004",
+		},
+		{
+			row:  azureURLOracleRow{Name: "apiver_with_plus", EnvBaseURL: "https://res.openai.azure.com/openai/v1", APIVersion: "2025+04"},
+			want: "https://res.openai.azure.com/openai/v1/responses?api-version=2025%2B04",
+		},
+		{
+			row:  azureURLOracleRow{Name: "double_trailing_slash_nonazure", EnvBaseURL: "https://gw.example/openai/v1//", APIVersion: "v1"},
+			want: "https://gw.example/openai/v1/responses?api-version=v1",
+		},
+		{
+			row:  azureURLOracleRow{Name: "uppercase_host_nonazure", EnvBaseURL: "https://GW.EXAMPLE/openai/v1", APIVersion: "v1"},
+			want: "https://gw.example/openai/v1/responses?api-version=v1",
+		},
+		{
+			row:  azureURLOracleRow{Name: "default_port_443_nonazure", EnvBaseURL: "https://gw.example:443/openai/v1", APIVersion: "v1"},
+			want: "https://gw.example/openai/v1/responses?api-version=v1",
+		},
+		{
+			row:  azureURLOracleRow{Name: "fragment_nonazure", EnvBaseURL: "https://gw.example/openai/v1#x", APIVersion: "v1"},
+			want: "https://gw.example/openai/v1?api-version=v1#x/responses",
+		},
+		{
+			row:  azureURLOracleRow{Name: "query_and_fragment_nonazure", EnvBaseURL: "https://gw.example/openai/v1?a=1#x", APIVersion: "v1"},
+			want: "https://gw.example/openai/v1?a=1&api-version=v1#x/responses",
 		},
 	}
 	for _, tc := range callerCases {

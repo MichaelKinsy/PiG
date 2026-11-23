@@ -77,6 +77,18 @@ func azureURLOracleRows() []azureURLOracleRow {
 		// (g9, g10) classic Azure Responses endpoint with api-version query, as AZURE_OPENAI_BASE_URL and as model.baseUrl
 		{Name: "g9_classic_azure_openai_responses_env_q_apiver", Resolve: true, EnvBaseURL: "https://res.openai.azure.com/openai/responses?api-version=2025-04-01-preview", APIVersion: "v1"},
 		{Name: "g10_classic_azure_openai_responses_model_q_apiver", Resolve: true, ModelBaseURL: "https://res.openai.azure.com/openai/responses?api-version=2025-04-01-preview", APIVersion: "v1"},
+		// (h) SDK-form boundary rows: API version encoding (space vs plus), double trailing slashes, upper-case host & default :443, and fragment.
+		{Name: "h1_apiver_with_space", Resolve: true, EnvBaseURL: "https://res.openai.azure.com/openai/v1", APIVersion: "2025 04"},
+		{Name: "h2_apiver_with_plus", Resolve: true, EnvBaseURL: "https://res.openai.azure.com/openai/v1", APIVersion: "2025+04"},
+		{Name: "h3_double_trailing_slash_azure", Resolve: true, EnvBaseURL: "https://res.openai.azure.com/openai/v1//", APIVersion: "v1"},
+		{Name: "h4_double_trailing_slash_nonazure", Resolve: true, EnvBaseURL: "https://gw.example/openai/v1//", APIVersion: "v1"},
+		{Name: "h5_uppercase_host_azure", Resolve: true, EnvBaseURL: "https://RES.OPENAI.AZURE.COM/openai/v1", APIVersion: "v1"},
+		{Name: "h6_uppercase_host_nonazure", Resolve: true, EnvBaseURL: "https://GW.EXAMPLE/openai/v1", APIVersion: "v1"},
+		{Name: "h7_default_port_443_azure", Resolve: true, EnvBaseURL: "https://res.openai.azure.com:443/openai/v1", APIVersion: "v1"},
+		{Name: "h8_default_port_443_nonazure", Resolve: true, EnvBaseURL: "https://gw.example:443/openai/v1", APIVersion: "v1"},
+		{Name: "h9_fragment_azure", Resolve: true, EnvBaseURL: "https://res.openai.azure.com/openai/v1#x", APIVersion: "v1"},
+		{Name: "h10_fragment_nonazure", Resolve: true, EnvBaseURL: "https://gw.example/openai/v1#x", APIVersion: "v1"},
+		{Name: "h11_query_and_fragment_nonazure", Resolve: true, EnvBaseURL: "https://gw.example/openai/v1?a=1#x", APIVersion: "v1"},
 	}
 }
 
