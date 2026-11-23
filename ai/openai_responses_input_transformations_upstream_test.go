@@ -116,6 +116,24 @@ func TestOpenAIResponsesInputTransformationsUpstream(t *testing.T) {
 		}
 	})
 
+	t.Run("keeps explicit null id and reason and preserves Pi member order", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			const withNulls = `{"reason":null,"action":"removed","id":null,"type":"reasoning"}`
+			result, wantTimestamp := processTerminal(t, "["+withNulls+"]", "completed")
+			if result.StopReason != StopReasonStop {
+				t.Fatalf("stopReason=%s, want stop; error=%s", result.StopReason, result.ErrorMessage)
+			}
+			encoded, err := json.Marshal(result.Diagnostics)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := fmt.Sprintf(`[{"type":"openai_input_transformations","timestamp":%d,"details":{"transformations":[{"type":"reasoning","id":null,"action":"removed","reason":null}]}}]`, wantTimestamp)
+			if string(encoded) != want {
+				t.Fatalf("diagnostics = %s, want %s", encoded, want)
+			}
+		})
+	})
+
 	t.Run("records removals that Codex reports in response.done", func(t *testing.T) {
 		sse := fmt.Sprintf("data: {\"type\":\"response.done\",\"response\":{\"id\":\"resp_codex\",\"status\":\"completed\",\"output\":[],\"input_transformations\":[%s,%s]}}\n\n", prefixMismatch, turnBoundary)
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -148,14 +166,16 @@ func TestOpenAIResponsesInputTransformationsUpstream(t *testing.T) {
 		if len(result.Diagnostics) != 1 {
 			t.Fatalf("diagnostics=%+v, want 1", result.Diagnostics)
 		}
-		encoded, err := json.Marshal(result.Diagnostics[0].Details)
+		encoded, err := json.Marshal(result.Diagnostics)
 		if err != nil {
 			t.Fatal(err)
 		}
-		assertShapeJSON(t, encoded, fmt.Sprintf(`{"transformations":[%s]}`, prefixMismatch))
+		want := fmt.Sprintf(`[{"type":"openai_input_transformations","timestamp":%d,"details":{"transformations":[%s]}}]`, result.Diagnostics[0].Timestamp, prefixMismatch)
+		assertShapeJSON(t, encoded, want)
 	})
 
 	t.Run("records removals on Azure OpenAI Responses", func(t *testing.T) {
+		t.Setenv("AZURE_OPENAI_BASE_URL", "")
 		sse := fmt.Sprintf("data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_azure\",\"status\":\"completed\",\"output\":[],\"input_transformations\":[%s,%s]}}\n\n", prefixMismatch, turnBoundary)
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/event-stream")
@@ -186,10 +206,11 @@ func TestOpenAIResponsesInputTransformationsUpstream(t *testing.T) {
 		if len(result.Diagnostics) != 1 {
 			t.Fatalf("diagnostics=%+v, want 1", result.Diagnostics)
 		}
-		encoded, err := json.Marshal(result.Diagnostics[0].Details)
+		encoded, err := json.Marshal(result.Diagnostics)
 		if err != nil {
 			t.Fatal(err)
 		}
-		assertShapeJSON(t, encoded, fmt.Sprintf(`{"transformations":[%s]}`, prefixMismatch))
+		want := fmt.Sprintf(`[{"type":"openai_input_transformations","timestamp":%d,"details":{"transformations":[%s]}}]`, result.Diagnostics[0].Timestamp, prefixMismatch)
+		assertShapeJSON(t, encoded, want)
 	})
 }

@@ -148,6 +148,7 @@ func azureTickGaps(t *testing.T, barrier *readbarrier.Barrier, fixture string, r
 		mark()
 		return nil
 	}
+	t.Setenv("AZURE_OPENAI_BASE_URL", "")
 	provider := NewAzureOpenAIResponsesProvider(AzureOpenAIResponsesConfig{BaseURL: server.URL + "/v1", APIKey: "test", Model: "probe", ProviderID: "probe-provider"})
 	defer func() { _ = provider.Close() }()
 	var out []azureTickGap
