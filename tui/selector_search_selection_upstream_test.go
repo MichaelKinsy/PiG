@@ -45,7 +45,7 @@ func TestOAuthSelectorSelectsTheBestMatchAfterTypingAQueryEvenAfterScrolling(t *
 		selector.HandleInput(selectorDownKey)
 	}
 	typeSelectorQuery(selector, "openai")
-	rendered := StripANSI(strings.Join(selector.Render(80), "\n"))
+	rendered := stripANSI(strings.Join(selector.Render(80), "\n"))
 	if !strings.Contains(rendered, "→ OpenAI") {
 		t.Fatalf("rendered selector does not highlight OpenAI:\n%s", rendered)
 	}
