@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 	"sync"
 	"unsafe"
 
@@ -2355,7 +2356,7 @@ func processResponsesStream(ctx context.Context, decoder providerSSEDecoder, bui
 					builder.partial.Content[contentIndex] = block
 				}
 			}
-			appendOpenAIReasoningRemovals(&builder.partial, event.Response.InputTransformations)
+			appendOpenAIReasoningRemovals(builder.partial, event.Response.InputTransformations)
 			var usage *Usage
 			if u := event.Response.Usage; u != nil {
 				cached := 0
