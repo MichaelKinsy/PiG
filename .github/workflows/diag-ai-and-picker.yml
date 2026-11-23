@@ -1,0 +1,338 @@
+# SPDX-License-Identifier: MIT
+# Diagnostic workflow for two members prepared for the 0.8.0 release head, on the systems no lane host has:
+#   - deps/gorilla-websocket-past-the-mask-key-fix: ./ai whole (the Codex WebSocket transport is its client)
+#   - test/startup-picker-test-keeps-its-loader-started-signal: the picker test 50 times
+# Each job carries the preparation of the CI job that runs ./ai on its system, copied from that job: ci.yml's Windows job
+# (native shard 2 is ./ai) and nightly.yml's race job (group ai on macos-15). The npm and Rust versions are read from
+# ci.yml's env block in a step. Left out: the Go, npm and SBCL caches, the SBCL install (the cli and conformance groups
+# need it, ./ai does not) and the Rust SDK warm-up (extension tests). Runs only on pushes to diag/** and is never merged.
+name: Diag ai and startup picker (Windows and macOS)
+
+on:
+  push:
+    branches:
+      - "diag/**"
+
+permissions:
+  contents: read
+
+jobs:
+  diag-windows:
+    name: Diag ai and picker / windows-latest
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Keep Go and oracle scratch under RUNNER_TEMP
+        shell: pwsh
+        run: |
+          "GOCACHE=$(Join-Path $env:RUNNER_TEMP 'go-build')" >> $env:GITHUB_ENV
+          "PIG_PI_BUILD_STORE=$(Join-Path $env:RUNNER_TEMP 'pi-builds')" >> $env:GITHUB_ENV
+          "PIG_TEST_CELL_CACHE=$(Join-Path $env:RUNNER_TEMP 'cell-cache')" >> $env:GITHUB_ENV
+          $logs = Join-Path $env:RUNNER_TEMP 'diag-logs'
+          New-Item -ItemType Directory -Force -Path $logs | Out-Null
+          "DIAG_LOGS=$logs" >> $env:GITHUB_ENV
+          Write-Output "RUNNER_TEMP=$env:RUNNER_TEMP"
+          Get-PSDrive -PSProvider FileSystem | Format-Table Name, Used, Free
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Select the qualified Rust toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          rust="$(awk '/^  RUST_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
+          rustup toolchain install "$rust" --profile minimal
+          rustup default "$rust"
+      - name: Install native test tools
+        shell: pwsh
+        run: |
+          $bin = Join-Path $env:RUNNER_TEMP 'native-tools'
+          ./automation/ci/install-windows-tools.ps1 -Cache (Join-Path $env:RUNNER_TEMP 'native-tool-archives') -Bin $bin
+          Add-Content -Path $env:GITHUB_PATH -Value $bin
+          $env:PATH = "$bin;$env:PATH"
+          fd --version
+          if ($LASTEXITCODE -ne 0) { throw "fd is not available" }
+          rg --version
+          if ($LASTEXITCODE -ne 0) { throw "ripgrep is not available" }
+      - name: Restore the Pi oracle build
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}\pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
+      - name: Install pinned Pi test oracle
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm_version="$(awk '/^  NPM_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
+          automation/ci/install-npm-toolchain.sh
+          bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
+          cygpath -w "$bin" >> "$GITHUB_PATH"
+          export PATH="$bin:$PATH"
+          test "$(npm --version)" = "$npm_version"
+          py="$(command -v python3 || command -v python)"
+          "$py" automation/pin/pin.py install-oracle
+          "$py" automation/ci/npm-locked.py internal/typebox/testdata/npm
+          "$py" automation/ci/npm-locked.py ai/testdata/sdk
+          if [ "$("$py" automation/pin/pin.py get kind)" = tag ]; then "$py" automation/ci/npm-locked.py durable/interop; fi
+      - name: Mirror the pinned Pi source
+        shell: bash
+        env:
+          MSYS: winsymlinks:nativestrict
+        run: ./automation/gen/mirror-upstream.sh
+      - name: Show the environment and the WebSocket library this tree builds with
+        shell: bash
+        run: |
+          set +e
+          go version
+          go env GOOS GOARCH GOCACHE
+          node --version
+          npm --version
+          go list -m github.com/gorilla/websocket
+          echo "list_module_status=$?"
+          git log -1 --format='head=%H'
+          echo "DIAG-STEP-END"
+      - name: Build the two test binaries
+        shell: bash
+        env:
+          CI: "1"
+        run: |
+          set +e
+          go test -count=1 -run '^$' ./ai > "$DIAG_LOGS/build-ai.log" 2>&1
+          s_ai=$?
+          echo "build_ai_status=$s_ai"
+          if [ "$s_ai" -ne 0 ]; then cat "$DIAG_LOGS/build-ai.log"; fi
+          go test -count=1 -run '^$' ./internal/codingagent > "$DIAG_LOGS/build-codingagent.log" 2>&1
+          s_ca=$?
+          echo "build_codingagent_status=$s_ca"
+          if [ "$s_ca" -ne 0 ]; then cat "$DIAG_LOGS/build-codingagent.log"; fi
+          echo "DIAG-STEP-END"
+          if [ "$s_ai" -ne 0 ] || [ "$s_ca" -ne 0 ]; then exit 1; fi
+      - name: Run ./ai whole as the Windows native shard does (plain)
+        if: always()
+        shell: bash
+        env:
+          CI: "1"
+          PI_TEST_NATIVE_CLIPBOARD: "1"
+        run: |
+          set +e
+          acceptance="$RUNNER_TEMP/pig native acceptance"
+          mkdir -p "$acceptance"
+          export PIG_HOME="$acceptance/config with spaces"
+          export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
+          log="$DIAG_LOGS/ai-plain.log"
+          go test -count=1 -timeout 30m -v ./ai > "$log" 2>&1
+          status=$?
+          pass_n=$(grep -c -e '^--- PASS:' "$log" || true)
+          fail_n=$(grep -c -e '^--- FAIL:' "$log" || true)
+          skip_n=$(grep -c -e '^--- SKIP:' "$log" || true)
+          echo "ai_plain_status=$status pass=$pass_n fail=$fail_n skip=$skip_n"
+          grep -E -e '^(ok|FAIL|panic:)' "$log" | head -n 20 || true
+          ws='^--- (PASS|FAIL|SKIP): Test[A-Za-z0-9_]*(WebSocket|Websocket|Codex)'
+          echo "codex_and_websocket_tests pass=$(grep -E -e "$ws" "$log" | grep -c -e '^--- PASS:' || true) fail=$(grep -E -e "$ws" "$log" | grep -c -e '^--- FAIL:' || true) skip=$(grep -E -e "$ws" "$log" | grep -c -e '^--- SKIP:' || true)"
+          echo "=== Codex and WebSocket tests not PASS ==="
+          grep -E -e "$ws" "$log" | grep -v -e '^--- PASS:' | head -n 60 || true
+          echo "=== every skipped test with its reason (first 80 lines) ==="
+          grep -n -A 1 -e '^--- SKIP:' "$log" | head -n 80 || true
+          if [ "$fail_n" -gt 0 ] || [ "$status" -ne 0 ]; then
+            echo "=== first failures ==="
+            grep -n -B 1 -A 8 -e '--- FAIL:' "$log" | head -n 200 || true
+            echo "=== last 40 lines ==="
+            tail -n 40 "$log"
+          fi
+          echo "DIAG-STEP-END"
+          exit "$status"
+      - name: Run the startup picker test 50 times (plain)
+        if: always()
+        shell: bash
+        env:
+          CI: "1"
+        run: |
+          set +e
+          log="$DIAG_LOGS/picker-plain-50.log"
+          go test -count=50 -v -timeout 15m -run '^TestSelectStartupSessionCancelsAndJoinsBlockedLoaders$' ./internal/codingagent > "$log" 2>&1
+          status=$?
+          pass_n=$(grep -c -e '^--- PASS: TestSelectStartupSessionCancelsAndJoinsBlockedLoaders' "$log" || true)
+          fail_n=$(grep -c -e '^--- FAIL:' "$log" || true)
+          echo "picker_plain_status=$status pass=$pass_n fail=$fail_n want_pass=50"
+          grep -E -e '^(ok|FAIL|panic:)' "$log" | head -n 10 || true
+          if [ "$fail_n" -gt 0 ] || [ "$status" -ne 0 ] || [ "$pass_n" -ne 50 ]; then
+            grep -n -B 1 -A 8 -e '--- FAIL:' "$log" | head -n 120 || true
+            tail -n 40 "$log"
+          fi
+          echo "DIAG-STEP-END"
+          if [ "$status" -eq 0 ] && [ "$pass_n" -ne 50 ]; then exit 1; fi
+          exit "$status"
+      - name: Upload raw diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: diag-ai-picker-windows-latest-logs
+          path: ${{ runner.temp }}/diag-logs/
+          retention-days: 14
+
+  diag-macos:
+    name: Diag ai and picker / macos-15
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Install native test tools, Rust and the pinned Pi oracle
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/diag-logs"
+          echo "DIAG_LOGS=$RUNNER_TEMP/diag-logs" >> "$GITHUB_ENV"
+          brew install fd ripgrep tmux
+          rust="$(awk '/^  RUST_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
+          npm_version="$(awk '/^  NPM_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
+          rustup toolchain install "$rust" --profile minimal
+          rustup default "$rust"
+          automation/ci/install-npm-toolchain.sh
+          bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
+          echo "$bin" >> "$GITHUB_PATH"
+          export PATH="$bin:$PATH"
+          test "$(npm --version)" = "$npm_version"
+          make upstream-mirror
+      - name: Install the pinned zstd
+        shell: bash
+        run: |
+          set -euo pipefail
+          zstd="$(automation/ci/install-zstd.sh)"
+          echo "PIG_ZSTD=$zstd" >> "$GITHUB_ENV"
+          echo "PIG_REQUIRE_ZSTD=1" >> "$GITHUB_ENV"
+      - name: Show the environment and the WebSocket library this tree builds with
+        shell: bash
+        run: |
+          set +e
+          go version
+          go env GOOS GOARCH
+          node --version
+          npm --version
+          uname -a
+          go list -m github.com/gorilla/websocket
+          echo "list_module_status=$?"
+          git log -1 --format='head=%H'
+          echo "DIAG-STEP-END"
+      - name: Run the nightly race group ai (./ai and ./ai/providers/bedrock under -race)
+        if: always()
+        shell: bash
+        env:
+          CI: "1"
+          PIG_RACE_GROUP: ai
+        run: |
+          set +e
+          log="$DIAG_LOGS/ai-race-nightly.log"
+          make test-race-nightly > "$log" 2>&1
+          status=$?
+          echo "ai_race_nightly_status=$status races=$(grep -c -e 'WARNING: DATA RACE' "$log" || true) fail=$(grep -c -e '^--- FAIL:' "$log" || true)"
+          grep -E -e '^(ok|FAIL|panic:)' "$log" | head -n 20 || true
+          if [ "$status" -ne 0 ]; then
+            echo "=== first failures ==="
+            grep -n -B 1 -A 8 -e '--- FAIL:' "$log" | head -n 200 || true
+            grep -n -A 30 -e 'WARNING: DATA RACE' "$log" | head -n 120 || true
+          fi
+          echo "=== last 30 lines ==="
+          tail -n 30 "$log"
+          echo "DIAG-STEP-END"
+          exit "$status"
+      - name: Run ./ai whole (plain)
+        if: always()
+        shell: bash
+        env:
+          CI: "1"
+        run: |
+          set +e
+          log="$DIAG_LOGS/ai-plain.log"
+          go test -count=1 -timeout 30m -v ./ai > "$log" 2>&1
+          status=$?
+          pass_n=$(grep -c -e '^--- PASS:' "$log" || true)
+          fail_n=$(grep -c -e '^--- FAIL:' "$log" || true)
+          skip_n=$(grep -c -e '^--- SKIP:' "$log" || true)
+          echo "ai_plain_status=$status pass=$pass_n fail=$fail_n skip=$skip_n"
+          grep -E -e '^(ok|FAIL|panic:)' "$log" | head -n 20 || true
+          ws='^--- (PASS|FAIL|SKIP): Test[A-Za-z0-9_]*(WebSocket|Websocket|Codex)'
+          echo "codex_and_websocket_tests pass=$(grep -E -e "$ws" "$log" | grep -c -e '^--- PASS:' || true) fail=$(grep -E -e "$ws" "$log" | grep -c -e '^--- FAIL:' || true) skip=$(grep -E -e "$ws" "$log" | grep -c -e '^--- SKIP:' || true)"
+          echo "=== Codex and WebSocket tests not PASS ==="
+          grep -E -e "$ws" "$log" | grep -v -e '^--- PASS:' | head -n 60 || true
+          echo "=== every skipped test with its reason (first 80 lines) ==="
+          grep -n -A 1 -e '^--- SKIP:' "$log" | head -n 80 || true
+          if [ "$fail_n" -gt 0 ] || [ "$status" -ne 0 ]; then
+            echo "=== first failures ==="
+            grep -n -B 1 -A 8 -e '--- FAIL:' "$log" | head -n 200 || true
+            echo "=== last 40 lines ==="
+            tail -n 40 "$log"
+          fi
+          echo "DIAG-STEP-END"
+          exit "$status"
+      - name: Run the startup picker test 50 times (plain)
+        if: always()
+        shell: bash
+        env:
+          CI: "1"
+        run: |
+          set +e
+          log="$DIAG_LOGS/picker-plain-50.log"
+          go test -count=50 -v -timeout 15m -run '^TestSelectStartupSessionCancelsAndJoinsBlockedLoaders$' ./internal/codingagent > "$log" 2>&1
+          status=$?
+          pass_n=$(grep -c -e '^--- PASS: TestSelectStartupSessionCancelsAndJoinsBlockedLoaders' "$log" || true)
+          fail_n=$(grep -c -e '^--- FAIL:' "$log" || true)
+          echo "picker_plain_status=$status pass=$pass_n fail=$fail_n want_pass=50"
+          grep -E -e '^(ok|FAIL|panic:)' "$log" | head -n 10 || true
+          if [ "$fail_n" -gt 0 ] || [ "$status" -ne 0 ] || [ "$pass_n" -ne 50 ]; then
+            grep -n -B 1 -A 8 -e '--- FAIL:' "$log" | head -n 120 || true
+            tail -n 40 "$log"
+          fi
+          echo "DIAG-STEP-END"
+          if [ "$status" -eq 0 ] && [ "$pass_n" -ne 50 ]; then exit 1; fi
+          exit "$status"
+      - name: Run the startup picker test 50 times under -race (as the nightly race group codingagent does)
+        if: always()
+        shell: bash
+        env:
+          CI: "1"
+        run: |
+          set +e
+          log="$DIAG_LOGS/picker-race-50.log"
+          go test -race -count=50 -v -timeout 20m -run '^TestSelectStartupSessionCancelsAndJoinsBlockedLoaders$' ./internal/codingagent > "$log" 2>&1
+          status=$?
+          pass_n=$(grep -c -e '^--- PASS: TestSelectStartupSessionCancelsAndJoinsBlockedLoaders' "$log" || true)
+          fail_n=$(grep -c -e '^--- FAIL:' "$log" || true)
+          race_n=$(grep -c -e 'WARNING: DATA RACE' "$log" || true)
+          echo "picker_race_status=$status pass=$pass_n fail=$fail_n races=$race_n want_pass=50"
+          grep -E -e '^(ok|FAIL|panic:)' "$log" | head -n 10 || true
+          if [ "$fail_n" -gt 0 ] || [ "$status" -ne 0 ] || [ "$pass_n" -ne 50 ]; then
+            grep -n -B 1 -A 8 -e '--- FAIL:' "$log" | head -n 120 || true
+            tail -n 60 "$log"
+          fi
+          echo "DIAG-STEP-END"
+          if [ "$status" -eq 0 ] && [ "$pass_n" -ne 50 ]; then exit 1; fi
+          exit "$status"
+      - name: Upload raw diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: diag-ai-picker-macos-15-logs
+          path: ${{ runner.temp }}/diag-logs/
+          retention-days: 14
