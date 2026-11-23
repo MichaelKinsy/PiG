@@ -95,8 +95,8 @@ func (m *Models) GetModel(provider, id string) *Model {
 	if err != nil {
 		return nil
 	}
-	for _, model := range OfferedModels(models) {
-		if model.ID == id {
+	for _, model := range models {
+		if model != nil && model.ID == id && modelOffered(model) {
 			return model
 		}
 	}
