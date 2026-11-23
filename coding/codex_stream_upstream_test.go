@@ -90,10 +90,6 @@ func TestModelRuntimeCodexSimpleThinkingAndAutoTransport(t *testing.T) {
 func TestModelRuntimeCodexStreamSimpleOffSendsConfigurationUpdateNone(t *testing.T) {
 	var captured []byte
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var body json.RawMessage
-		if err := json.NewDecoder(r.Body).Decode(&body); err == nil {
-			captured = body
-		}
 		w.Header().Set("Content-Type", "text/event-stream")
 		_, _ = fmt.Fprintf(w, "data: %s\n\n", `{"type":"response.completed","response":{"id":"resp_off","status":"completed"}}`)
 	}))
@@ -116,7 +112,13 @@ func TestModelRuntimeCodexStreamSimpleOffSendsConfigurationUpdateNone(t *testing
 
 	result := services.ModelRuntime().StreamSimple(t.Context(), model, ai.Context{
 		Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Say hello"), Timestamp: 1}},
-	}, ai.StreamOptions{APIKey: token, Transport: ai.TransportSSE}).Result()
+	}, ai.StreamOptions{APIKey: token, Transport: ai.TransportSSE, OnPayload: func(value any, _ *ai.Model) (any, error) {
+		encoded, err := json.Marshal(value)
+		if err == nil {
+			captured = encoded
+		}
+		return nil, err
+	}}).Result()
 	if result.StopReason != ai.StopReasonStop {
 		t.Fatalf("StopReason = %q (%s), want stop", result.StopReason, result.ErrorMessage)
 	}
