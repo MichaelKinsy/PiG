@@ -28,7 +28,7 @@ type azureURLOracleResult struct {
 	Error           *string `json:"error"`
 }
 
-func azureURLOraclePassingRows() []azureURLOracleRow {
+func azureURLOracleRows() []azureURLOracleRow {
 	return []azureURLOracleRow{
 		// (a) resource name only (AZURE_OPENAI_RESOURCE_NAME) -> https://<res>.openai.azure.com/openai/v1
 		{Name: "a_resource_name_only", Resolve: true, ResourceName: "res", APIVersion: "v1"},
@@ -47,15 +47,36 @@ func azureURLOraclePassingRows() []azureURLOracleRow {
 		// (e) deployment-style base .../openai/deployments/<d>
 		{Name: "e1_azure_deployments", Resolve: true, EnvBaseURL: "https://res.openai.azure.com/openai/deployments/d", APIVersion: "v1"},
 		{Name: "e2_nonazure_deployments", Resolve: true, EnvBaseURL: "https://gw.example/openai/deployments/d", APIVersion: "v1"},
-		// (f-b) Azure root with query: normalizeAzureBaseUrl strips query on Azure root, so Go and SDK 7.19.0 agree
+		// (f-b) plain host with query
 		{Name: "f_b1_azure_root_q_apiver", Resolve: true, EnvBaseURL: "https://res.openai.azure.com?api-version=2024-10-21", APIVersion: "v1"},
 		{Name: "f_b2_azure_root_q_foo", Resolve: true, EnvBaseURL: "https://res.openai.azure.com?foo=1", APIVersion: "v1"},
-		// (g) base ending in /responses without preserved query
+		{Name: "f_b3_nonazure_root_q_apiver", Resolve: true, EnvBaseURL: "https://gw.example?api-version=2024-10-21", APIVersion: "v1"},
+		{Name: "f_b4_nonazure_root_q_foo", Resolve: true, EnvBaseURL: "https://gw.example?foo=1", APIVersion: "v1"},
+		// (f-c) model baseUrl with query
+		{Name: "f_c1_model_nonazure_q_apiver", Resolve: true, ModelBaseURL: "https://gw.example/openai/v1?api-version=2024-10-21", APIVersion: "v1"},
+		{Name: "f_c2_model_nonazure_q_foo", Resolve: true, ModelBaseURL: "https://gw.example/openai/v1?foo=1", APIVersion: "v1"},
+		// (f-d) /openai/v1 with query
+		{Name: "f_d1_azure_openai_v1_q_apiver", Resolve: true, EnvBaseURL: "https://res.openai.azure.com/openai/v1?api-version=2024-10-21", APIVersion: "v1"},
+		{Name: "f_d2_azure_openai_v1_q_foo", Resolve: true, EnvBaseURL: "https://res.openai.azure.com/openai/v1?foo=1", APIVersion: "v1"},
+		{Name: "f_d3_nonazure_openai_v1_q_apiver", Resolve: true, EnvBaseURL: "https://gw.example/openai/v1?api-version=2024-10-21", APIVersion: "v1"},
+		{Name: "f_d4_nonazure_openai_v1_q_foo", Resolve: true, EnvBaseURL: "https://gw.example/openai/v1?foo=1", APIVersion: "v1"},
+		// (f-e) deployment-style base with query (includes reviewer's example)
+		{Name: "f_e1_reviewer_azure_deployments_q_apiver", Resolve: true, EnvBaseURL: "https://res.openai.azure.com/openai/deployments/d?api-version=2024-10-21", APIVersion: "v1"},
+		{Name: "f_e2_azure_deployments_q_foo", Resolve: true, EnvBaseURL: "https://res.openai.azure.com/openai/deployments/d?foo=1", APIVersion: "v1"},
+		{Name: "f_e3_nonazure_deployments_q_apiver", Resolve: true, EnvBaseURL: "https://gw.example/openai/deployments/d?api-version=2024-10-21", APIVersion: "v1"},
+		{Name: "f_e4_nonazure_deployments_q_foo", Resolve: true, EnvBaseURL: "https://gw.example/openai/deployments/d?foo=1", APIVersion: "v1"},
+		// (g) base ending in /responses
 		{Name: "g1_azure_openai_v1_responses", Resolve: true, EnvBaseURL: "https://res.openai.azure.com/openai/v1/responses", APIVersion: "v1"},
 		{Name: "g2_azure_openai_v1_responses_q_apiver", Resolve: true, EnvBaseURL: "https://res.openai.azure.com/openai/v1/responses?api-version=2024-10-21", APIVersion: "v1"},
 		{Name: "g3_azure_openai_v1_responses_q_foo", Resolve: true, EnvBaseURL: "https://res.openai.azure.com/openai/v1/responses?foo=1", APIVersion: "v1"},
 		{Name: "g4_azure_other_responses", Resolve: true, EnvBaseURL: "https://res.openai.azure.com/custom/responses", APIVersion: "v1"},
+		{Name: "g5_azure_other_responses_q_apiver", Resolve: true, EnvBaseURL: "https://res.openai.azure.com/custom/responses?api-version=2024-10-21", APIVersion: "v1"},
 		{Name: "g6_nonazure_openai_v1_responses", Resolve: true, EnvBaseURL: "https://gw.example/openai/v1/responses", APIVersion: "v1"},
+		{Name: "g7_nonazure_openai_v1_responses_q_apiver", Resolve: true, EnvBaseURL: "https://gw.example/openai/v1/responses?api-version=2024-10-21", APIVersion: "v1"},
+		{Name: "g8_nonazure_openai_v1_responses_q_foo", Resolve: true, EnvBaseURL: "https://gw.example/openai/v1/responses?foo=1", APIVersion: "v1"},
+		// (g9, g10) classic Azure Responses endpoint with api-version query, as AZURE_OPENAI_BASE_URL and as model.baseUrl
+		{Name: "g9_classic_azure_openai_responses_env_q_apiver", Resolve: true, EnvBaseURL: "https://res.openai.azure.com/openai/responses?api-version=2025-04-01-preview", APIVersion: "v1"},
+		{Name: "g10_classic_azure_openai_responses_model_q_apiver", Resolve: true, ModelBaseURL: "https://res.openai.azure.com/openai/responses?api-version=2025-04-01-preview", APIVersion: "v1"},
 	}
 }
 
@@ -140,5 +161,5 @@ func assertAzureURLOracleRowsMatchSDK(t *testing.T, rows []azureURLOracleRow) {
 
 // TestAzureResponsesRequestURLMatchesSDK compares the request URL Go's azure-openai-responses provider sends with the URL pinned openai 7.19.0 AzureOpenAI builds for the same Pi-resolved base URL and apiVersion.
 func TestAzureResponsesRequestURLMatchesSDK(t *testing.T) {
-	assertAzureURLOracleRowsMatchSDK(t, azureURLOraclePassingRows())
+	assertAzureURLOracleRowsMatchSDK(t, azureURLOracleRows())
 }
