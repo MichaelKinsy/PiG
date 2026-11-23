@@ -100,6 +100,17 @@ func TestParseChangelog_UnreleasedAtTopSkipped(t *testing.T) {
 	}
 }
 
+func TestParseChangelog_VersionedProseMentioningUnreleased(t *testing.T) {
+	in := "## [Unreleased]\n\n## [0.8.0] - 2026-11-23\n\n### Fixed\n\n- `make changelog-fold` stops while `## [Unreleased]` still holds entries.\n"
+	got := ParseChangelog(in)
+	if len(got) != 1 || got[0].Major != 0 || got[0].Minor != 8 || got[0].Patch != 0 {
+		t.Fatalf("expected 0.8.0 entry, got %#v", got)
+	}
+	if strings.Contains(got[0].Content, "\n## [Unreleased]") || strings.HasPrefix(got[0].Content, "## [Unreleased]") {
+		t.Fatalf("unexpected Unreleased heading in versioned entry: %q", got[0].Content)
+	}
+}
+
 func TestParseChangelog_BareNumericHeader(t *testing.T) {
 	// Upstream regex accepts both `## [1.2.3]` and `## 1.2.3` (the
 	// `\[?` and `\]?` are optional).
@@ -140,7 +151,7 @@ func TestParseChangelog_RealFile(t *testing.T) {
 		t.Fatalf("bundled CHANGELOG.md has no 0.0.0 development baseline: %#v", baseline)
 	}
 	for _, entry := range got {
-		if strings.Contains(entry.Content, "[Unreleased]") {
+		if strings.Contains(entry.Content, "\n## [Unreleased]") || strings.HasPrefix(entry.Content, "## [Unreleased]") {
 			t.Fatalf("unreleased content bled into a versioned entry: %q", entry.Content)
 		}
 	}

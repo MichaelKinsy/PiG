@@ -1,0 +1,8 @@
+[
+  {
+    "id": "BF-D465",
+    "rootCause": "D465 recorded the out-of-range instant as formatted (Go has no invalid Date), but a range check on the time value was never added, so a value Pi refuses printed a clock time.",
+    "decidedBy": "owner decision 2026-11-23",
+    "reason": "BF-D465 is a divergence-origin entry whose newest fix commit carries a Root-Cause trailer, but divergence-origin entries leave rootCause empty without a correction."
+  }
+]

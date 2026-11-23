@@ -24316,7 +24316,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 - **Source:** A Pi defect that PiG fixed first (divergence D465)
 - **Symptom:** Not a Pi bug.
-- **Root cause:** Not recorded.
+- **Root cause:** D465 recorded the out-of-range instant as formatted (Go has no invalid Date), but a range check on the time value was never added, so a value Pi refuses printed a clock time.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
@@ -25777,7 +25777,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 - **Source:** PiG's own defect
 - **Symptom:** A prompt sent after `/reload` no longer hangs when a command of the extension that asked for the reload was still running while the next reload staged its replacement: the old generation's stop removed the socket file at the path its extension's name mapped to, which was by then the path the staged generation listened on, so the staged extension process could not connect (a Python extension beside an edited one hit it) and the reload waited for a connection that never came.
-- **Root cause:** A command that awaits ctx.reload() keeps its generation running until the command returns, which can be after the next reload staged a successor and began to listen. Every generation of an extension name listened on one path, and the old generation's stop removed the file at that path, which by then was the successor's listener: the successor's process failed to connect (ENOENT), the reload that staged it waited for a connection that never came, and the prompt that asked for the reload never answered. A Python extension beside an edited one hit it when the stop of a retired generation ran after the next staged one had bound; the CI failure was…
+- **Root cause:** Every generation of an extension name listened on one socket path, so a retiring generation's stop removed the socket file that a staged successor generation had already bound.
 - **User impact:** Crash, hang or runaway process
 - **Platform:** All platforms
 - **Fixed in:** Unreleased

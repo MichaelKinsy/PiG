@@ -271,7 +271,7 @@ FILES = ["Makefile", ".github/workflows/ci.yml", "automation/pin/carried_guard.p
          "durable/interop/carried_oracle_test.go", "durable/interop/interop_test.go", "durable/interop/unawaited_job_test.go", "internal/pioracle/source.go",
          "test/parity/interface-closure/autobind/mirror_guard_test.go", "test/parity/interface-closure/autobind/reviewed/reviewed-decisions.json"]
 # Where a retired name may stay: the release history, the sync ledger of the pin that carried the work, and the tool that retires the next one.
-HISTORY = ("changelog.d/", "CHANGELOG.md", "docs/bug-ledger.json", "docs/site/docs/bug-ledger.md", "test/parity/upstream-sync/", "automation/pin/carried.py", "automation/pin/test_carried.py")
+HISTORY = ("changelog.d/", "CHANGELOG.md", "docs/bug-ledger.json", "docs/site/docs/bug-ledger.md", "docs/release/", "test/parity/upstream-sync/", "automation/pin/carried.py", "automation/pin/test_carried.py")
 OTHER = "c" * 40
 
 
