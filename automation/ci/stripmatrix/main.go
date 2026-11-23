@@ -70,6 +70,13 @@ var codingPackages = []string{"./coding/...", "./internal/codingagent/..."}
 // about twenty minutes at eight CPUs.
 const codingTestTimeout = "90m"
 
+// wholeTestTimeout bounds go test of aiPackage and wholePackages under one set.
+// Plain ./ai/ in this step measures 428.898 to 592.346 s across eight runs at eight CPUs on xd670 (load up to 94, plus 600.047 s
+// killed by go test's ten-minute default at the gate's opening burst) and 438.196 to 534.135 s across all four sets on a 4-CPU
+// GitHub ubuntu runner (nightly job 137304936373: 438.196, 468.893, 500.160, 534.135 s) — 73 to 99 percent of the ten-minute
+// default (71 to 99 percent on the host, 73 to 89 percent on GitHub). Three times the worst measure (592.346 s) is 29.6 minutes, so 30m matches ci.yml's plain ./ai timeout.
+const wholeTestTimeout = "30m"
+
 // redDir holds one file per tag set, named after the tag (all.txt for all tags): the top-level tests of aiPackage that fail under
 // the set, one per line, the name followed by the reason. The list can only shrink: a listed test that passes fails the gate, and
 // so does a failing test that is not listed.
@@ -112,6 +119,20 @@ func parseRed(text string) ([]string, error) {
 	return tests, nil
 }
 
+// aiTestArgs returns the go arguments that test aiPackage outside red under set.
+func aiTestArgs(set tagSet, red []string) []string {
+	args := []string{"test", "-tags", set.String(), "-count=1", "-timeout", wholeTestTimeout}
+	if len(red) > 0 {
+		args = append(args, "-skip", "^("+strings.Join(red, "|")+")$")
+	}
+	return append(args, aiPackage)
+}
+
+// wholeTestArgs returns the go arguments that test wholePackages under set.
+func wholeTestArgs(set tagSet) []string {
+	return append([]string{"test", "-tags", set.String(), "-count=1", "-timeout", wholeTestTimeout}, wholePackages...)
+}
+
 // testAI runs aiPackage under the set. Every test outside the set's red list must pass in one run of the package, and every listed
 // test must fail in a process of its own (a panic there ends that test only).
 func testAI(set tagSet, scratch string) error {
@@ -119,11 +140,7 @@ func testAI(set tagSet, scratch string) error {
 	if err != nil {
 		return err
 	}
-	args := []string{"test", "-tags", set.String(), "-count=1"}
-	if len(red) > 0 {
-		args = append(args, "-skip", "^("+strings.Join(red, "|")+")$")
-	}
-	if err := run(nil, "go", append(args, aiPackage)...); err != nil {
+	if err := run(nil, "go", aiTestArgs(set, red)...); err != nil {
 		return fmt.Errorf("a test of %s outside the red list fails: %w", aiPackage, err)
 	}
 	if len(red) == 0 {
@@ -514,7 +531,7 @@ func main() {
 				if err := testAI(set, filepath.Join(scratch, fmt.Sprint(i)+"-test")); err != nil {
 					return err
 				}
-				return run(nil, "go", append([]string{"test", "-tags", set.String(), "-count=1"}, wholePackages...)...)
+				return run(nil, "go", wholeTestArgs(set)...)
 			}})
 		}
 		steps = append(steps, step{"smoke", func() error {

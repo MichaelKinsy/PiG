@@ -42,9 +42,11 @@ if [[ -n "${CI:-}" ]]; then
 fi
 RUN_FLAG=()
 RACE_FLAG=()
-# A run under -race takes the nightly race gate's timeout (race-timeout.sh, PIG_RACE_TIMEOUT); go test's 10-minute default fails packages that pass under -race. A plain run keeps the default.
+# A run under -race takes the nightly race gate's timeout (race-timeout.sh, PIG_RACE_TIMEOUT); a plain run takes plain-timeout.sh (PIG_PLAIN_TIMEOUT) so no whole-package go test falls back to go test's 10-minute default.
 # shellcheck source=automation/ci/race-timeout.sh
 source "$ROOT/automation/ci/race-timeout.sh"
+# shellcheck source=automation/ci/plain-timeout.sh
+source "$ROOT/automation/ci/plain-timeout.sh"
 # changed mode streams go test -json into test-json-report.py and keeps each group's raw events under JSON_DIR.
 JSON_DIR=
 JSON_LABEL=
@@ -231,8 +233,8 @@ run_group() {
   shift 2
   local pkgs=("$@")
   [[ ${#pkgs[@]} -gt 0 ]] || return 0
-  local race_timeout=()
-  [[ ${#RACE_FLAG[@]} -eq 0 ]] || race_timeout=(-timeout "$PIG_RACE_TIMEOUT")
+  local test_timeout=(-timeout "$PIG_PLAIN_TIMEOUT")
+  [[ ${#RACE_FLAG[@]} -eq 0 ]] || test_timeout=(-timeout "$PIG_RACE_TIMEOUT")
   if [[ ${#pkgs[@]} -eq 0 ]]; then
     return 0
   fi
@@ -265,9 +267,9 @@ run_group() {
   if [[ -n "$JSON_DIR" ]]; then
     JSON_LABEL=$((JSON_LABEL + 1))
     # The tests get no copy of the checkout lock: a process they leak would otherwise hold it and block every later run here.
-    TMPDIR="$SCRATCH" go test -json -p "$parallel" ${TAG_FLAG[@]+"${TAG_FLAG[@]}"} ${COUNT_FLAG[@]+"${COUNT_FLAG[@]}"} ${RACE_FLAG[@]+"${RACE_FLAG[@]}"} ${race_timeout[@]+"${race_timeout[@]}"} ${RUN_FLAG[@]+"${RUN_FLAG[@]}"} "${pkgs[@]}" 9>&- | python3 "$ROOT/automation/ci/test-json-report.py" --out "$JSON_DIR/$JSON_LABEL-${label//[^A-Za-z0-9]/-}.json" || status=$?
+    TMPDIR="$SCRATCH" go test -json -p "$parallel" ${TAG_FLAG[@]+"${TAG_FLAG[@]}"} ${COUNT_FLAG[@]+"${COUNT_FLAG[@]}"} ${RACE_FLAG[@]+"${RACE_FLAG[@]}"} ${test_timeout[@]+"${test_timeout[@]}"} ${RUN_FLAG[@]+"${RUN_FLAG[@]}"} "${pkgs[@]}" 9>&- | python3 "$ROOT/automation/ci/test-json-report.py" --out "$JSON_DIR/$JSON_LABEL-${label//[^A-Za-z0-9]/-}.json" || status=$?
   else
-    TMPDIR="$SCRATCH" go test -p "$parallel" ${TAG_FLAG[@]+"${TAG_FLAG[@]}"} ${COUNT_FLAG[@]+"${COUNT_FLAG[@]}"} ${RACE_FLAG[@]+"${RACE_FLAG[@]}"} ${race_timeout[@]+"${race_timeout[@]}"} ${RUN_FLAG[@]+"${RUN_FLAG[@]}"} "${pkgs[@]}" 9>&- || status=$?
+    TMPDIR="$SCRATCH" go test -p "$parallel" ${TAG_FLAG[@]+"${TAG_FLAG[@]}"} ${COUNT_FLAG[@]+"${COUNT_FLAG[@]}"} ${RACE_FLAG[@]+"${RACE_FLAG[@]}"} ${test_timeout[@]+"${test_timeout[@]}"} ${RUN_FLAG[@]+"${RUN_FLAG[@]}"} "${pkgs[@]}" 9>&- || status=$?
   fi
   "$ROOT/automation/ci/reap-test-processes.sh" "$SCRATCH" || status=$?
   "$ROOT/automation/ci/agent-dir-guard.sh" check "$AGENT_GUARD" || status=$?
