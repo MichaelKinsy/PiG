@@ -1501,6 +1501,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-958e80d](#bf-958e80d) | A tool call whose arguments hold a number out of float64 range (`1e999`, `-1e999`) no longer ends the session… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-959646e](#bf-959646e) | Kitty and iTerm2 images no longer cover an overlay drawn over them | PiG's own defect | All platforms | Unreleased |
 | [BF-959a66e](#bf-959a66e) | fix(chord/nextnode/workers): shutdown takes effect before the next message; one signal channel each; no… | PiG's own defect | All platforms | Unreleased |
+| [BF-95a57fd](#bf-95a57fd) | Two pig processes opening the MCP OAuth credential file (`mcp-auth.json`) for the first time at the same… | PiG's own defect | All platforms | Unreleased |
 | [BF-95a5f79](#bf-95a5f79) | RPC mode starts the `--tools` list active in its own order when it names extension tools, as Pi does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-95db124](#bf-95db124) | A `-p`, `--mode json` or `--mode rpc` run over a large session no longer sometimes keeps the Go GC target of… | PiG's own defect | All platforms | Unreleased |
 | [BF-95de1de](#bf-95de1de) | An image the model receives is now JPEG-encoded with a port of Photon's encoder (image 0.24.9: the IJG… | PiG's own defect | All platforms | 0.7.0 |
@@ -23014,6 +23015,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `959a66eb4e` (2026-10-31)
 - **Tests:** None recorded.
+
+### BF-95a57fd
+
+**Two pig processes opening the MCP OAuth credential file (`mcp-auth.json`) for the first time at the same…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Two pig processes opening the MCP OAuth credential file (`mcp-auth.json`) for the first time at the same moment, or reaching it while it was being replaced, could overwrite every stored MCP login with `{}`.
+- **Root cause:** FileAuthStorageBackend.WithLock used unlocked os.Stat followed by truncating os.WriteFile("{}") before locking, so a concurrent caller seeing mcp-auth.json absent overwrote an existing credential file.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `95a57fda36` (2026-11-23)
+- **Tests:** `coding/mcpext/storage_create_race_internal_test.go::TestFileAuthStorageBackendCreateNeverOverwritesCompletedWrite`, `coding/mcpext/storage_create_race_internal_test.go::TestFileAuthStorageBackendCreatesOwnerOnlyAndFollowsDanglingSymlink`
+- **Release note:** Two pig processes opening the MCP OAuth credential file (`mcp-auth.json`) for the first time at the same moment, or reaching it while it was being replaced, could overwrite every stored MCP login with `{}`. The initial file creation used a truncating write after an unlocked existence check instead of exclusive creation, so a late create could land on top of a credential another process had already written; `mcp-auth.json` is now created exclusively with owner-only access (following dangling symlinks), so an existing file is never overwritten by the create.
 
 ### BF-95a5f79
 
