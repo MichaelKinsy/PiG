@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strings"
 	"testing"
 )
@@ -150,6 +149,31 @@ func TestGrepEventParserAllocatesNothingPerEvent(t *testing.T) {
 	}
 }
 
+func TestGrepEventParserAcceptsEscapedRGKeys(t *testing.T) {
+	cases := []struct {
+		name string
+		line string
+	}{
+		{name: "type", line: `{"t\u0079pe":"match","data":{"path":{"text":"a"},"lines":{"text":"x"},"line_number":1}}`},
+		{name: "data", line: `{"type":"match","d\u0061ta":{"path":{"text":"a"},"lines":{"text":"x"},"line_number":1}}`},
+		{name: "path", line: `{"type":"match","data":{"p\u0061th":{"text":"a"},"lines":{"text":"x"},"line_number":1}}`},
+		{name: "lines", line: `{"type":"match","data":{"path":{"text":"a"},"l\u0069nes":{"text":"x"},"line_number":1}}`},
+		{name: "text", line: `{"type":"match","data":{"path":{"t\u0065xt":"a"},"lines":{"t\u0065xt":"x"},"line_number":1}}`},
+		{name: "bytes", line: `{"type":"match","data":{"path":{"b\u0079tes":"YQ=="},"lines":{"b\u0079tes":"eA=="},"line_number":1}}`},
+		{name: "line_number", line: `{"type":"match","data":{"path":{"text":"a"},"lines":{"text":"x"},"line_n\u0075mber":1}}`},
+	}
+	var parser grepEventParser
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			wantMatch, wantPath, wantNumber, wantText, wantOK := referenceGrepEvent(tc.line)
+			got, gotOK := parser.parse([]byte(tc.line))
+			t.Logf("%s: scanner=(ok=%v match=%v path=%q line=%d text=%q) reference=(ok=%v match=%v path=%q line=%d text=%q)",
+				tc.name, gotOK, got.isMatch, got.path, got.lineNumber, got.lineText, wantOK, wantMatch, wantPath, wantNumber, wantText)
+			checkGrepEvent(t, &parser, tc.line)
+		})
+	}
+}
+
 func FuzzGrepEventParserMatchesEncodingJSON(f *testing.F) {
 	for _, line := range grepEventLines {
 		f.Add(line)
@@ -161,16 +185,87 @@ func FuzzGrepEventParserMatchesEncodingJSON(f *testing.F) {
 		}
 		// encoding/json matches a name without regard to case, as JSON.parse's property access never does: the scanner is exact, so a
 		// name that only folds to one of rg's names has no reference.
-		for _, key := range grepEventKeyPattern.FindAllStringSubmatch(line, -1) {
-			for _, name := range []string{"type", "data", "path", "lines", "text", "bytes", "line_number"} {
-				if key[1] != name && strings.EqualFold(key[1], name) {
-					t.Skip()
-				}
-			}
+		if grepEventLineHasFoldedKey(line) {
+			t.Skip()
 		}
 		var parser grepEventParser
 		checkGrepEvent(t, &parser, line)
 	})
 }
 
-var grepEventKeyPattern = regexp.MustCompile(`"([^"\\]*)"\s*:`)
+// grepEventLineHasFoldedKey walks the JSON object keys of line with encoding/json (so every key's JSON escapes are decoded before
+// comparison) and reports whether any key at a path the scanner and reference inspect folds case-insensitively to one of rg's names
+// without equalling it:
+//   - depth 1 (root): "type", "data"
+//   - depth 2 (under "data"): "path", "lines", "line_number"
+//   - depth 3 (under "data"."path" or "data"."lines"): "text", "bytes"
+func grepEventLineHasFoldedKey(line string) bool {
+	dec := json.NewDecoder(strings.NewReader(line))
+	type frame struct {
+		delim  byte
+		inData bool
+		inText bool
+		key    string
+	}
+	var stack []frame
+	expectKey := false
+	for {
+		tok, err := dec.Token()
+		if err != nil {
+			return false
+		}
+		switch v := tok.(type) {
+		case json.Delim:
+			switch v {
+			case '{':
+				var f frame
+				f.delim = '{'
+				if len(stack) == 1 && stack[0].delim == '{' && stack[0].key == "data" {
+					f.inData = true
+				} else if len(stack) == 2 && stack[1].inData && (stack[1].key == "path" || stack[1].key == "lines") {
+					f.inText = true
+				}
+				stack = append(stack, f)
+				expectKey = true
+			case '[':
+				stack = append(stack, frame{delim: '['})
+				expectKey = false
+			case '}', ']':
+				if len(stack) > 0 {
+					stack = stack[:len(stack)-1]
+				}
+				expectKey = len(stack) > 0 && stack[len(stack)-1].delim == '{'
+			}
+		case string:
+			if expectKey {
+				top := &stack[len(stack)-1]
+				top.key = v
+				if len(stack) == 1 && grepEventKeyFolds(v, "type", "data") {
+					return true
+				}
+				if top.inData && grepEventKeyFolds(v, "path", "lines", "line_number") {
+					return true
+				}
+				if top.inText && grepEventKeyFolds(v, "text", "bytes") {
+					return true
+				}
+				expectKey = false
+			} else if len(stack) > 0 && stack[len(stack)-1].delim == '{' {
+				expectKey = true
+			}
+		default:
+			if len(stack) > 0 && stack[len(stack)-1].delim == '{' {
+				expectKey = true
+			}
+		}
+	}
+}
+
+func grepEventKeyFolds(key string, names ...string) bool {
+	for _, name := range names {
+		if key != name && strings.EqualFold(key, name) {
+			return true
+		}
+	}
+	return false
+}
