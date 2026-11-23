@@ -652,40 +652,10 @@ func TestSyncingASessionBetweenDevices(t *testing.T) {
 	})
 }
 
-// bodyCountingFiles wraps osFiles to count opened and closed SyncFileReaders.
-type bodyCountingFiles struct {
-	osFiles
-	opened int
-	closed int
-}
-
-type bodyCountingReader struct {
-	SyncFileReader
-	closed *int
-	done   bool
-}
-
-func (r *bodyCountingReader) Close(ctx context.Context) error {
-	if !r.done {
-		r.done = true
-		*r.closed++
-	}
-	return r.SyncFileReader.Close(ctx)
-}
-
-func (f *bodyCountingFiles) OpenBinaryReader(ctx context.Context, path string, options *OpenBinaryReaderOptions) (SyncFileReader, error) {
-	reader, err := f.osFiles.OpenBinaryReader(ctx, path, options)
-	if err != nil {
-		return nil, err
-	}
-	f.opened++
-	return &bodyCountingReader{SyncFileReader: reader, closed: &f.closed}, nil
-}
-
 func TestRemoteBodies(t *testing.T) {
 	t.Run("closes a body file at its end, and on Close also before the first read", func(t *testing.T) {
-		files := &bodyCountingFiles{}
-		remote := NewFileSystemSyncRemote(files, t.TempDir())
+		opened, closed := 0, 0
+		remote := NewFileSystemSyncRemote(countingFiles{opened: &opened, closes: &closed}, t.TempDir())
 		source := sessionStore(t)
 		commitAll(t, source, seedBatches()[:2]...)
 		_, err := UploadSession(background, UploadOptions{SessionID: session, Device: "laptop", Source: source, Store: remote, State: newMemoryState()})
@@ -693,24 +663,33 @@ func TestRemoteBodies(t *testing.T) {
 
 		readBody, err := remote.GetBatch(background, session, LogStart)
 		noError(t, err)
-		decoded, err := collect(t, DecodeBatch(readBody))
-		noError(t, err)
-		if len(decoded) == 0 {
+		// Read to the end WITHOUT calling Close, pinning that fileBody closes the reader at EOF itself.
+		commits := DecodeBatch(readBody)
+		count := 0
+		for {
+			_, ok, err := commits.Next(background)
+			noError(t, err)
+			if !ok {
+				break
+			}
+			count++
+		}
+		if count == 0 {
 			t.Fatal("expected commits")
 		}
-		if files.opened != 1 || files.closed != 1 {
-			t.Fatalf("readers after full read = (%d, %d), want (1, 1)", files.opened, files.closed)
+		if opened != 1 || closed != 1 {
+			t.Fatalf("readers after full read = (opened %d, closed %d), want (1, 1)", opened, closed)
 		}
 
 		unread, err := remote.GetBatch(background, session, LogStart)
 		noError(t, err)
-		if files.opened != 2 || files.closed != 1 {
-			t.Fatalf("readers before unread close = (%d, %d), want (2, 1)", files.opened, files.closed)
+		if opened != 2 || closed != 1 {
+			t.Fatalf("readers before unread close = (opened %d, closed %d), want (2, 1)", opened, closed)
 		}
 		noError(t, unread.Close())
 		noError(t, unread.Close())
-		if files.opened != 2 || files.closed != 2 {
-			t.Fatalf("readers after unread close = (%d, %d), want (2, 2)", files.opened, files.closed)
+		if opened != 2 || closed != 2 {
+			t.Fatalf("readers after unread close = (opened %d, closed %d), want (2, 2)", opened, closed)
 		}
 		_, ok, err := unread.Next(background)
 		noError(t, err)
@@ -720,8 +699,8 @@ func TestRemoteBodies(t *testing.T) {
 	})
 
 	t.Run("closes a body a pull read and then refused", func(t *testing.T) {
-		files := &bodyCountingFiles{}
-		remote := NewFileSystemSyncRemote(files, t.TempDir())
+		opened, closed := 0, 0
+		remote := NewFileSystemSyncRemote(countingFiles{opened: &opened, closes: &closed}, t.TempDir())
 		laptop := newDevice(t, "laptop", remote)
 		laptop.commit(seedBatches()[:2])
 		laptop.upload()
@@ -733,14 +712,14 @@ func TestRemoteBodies(t *testing.T) {
 
 		_, err = PullSession(background, PullOptions{SessionID: session, Store: remote, Local: LocalCopy{Kind: LocalCopyStore, Store: replica.store()}, State: replica.state})
 		_ = isError[*HistoryUnavailableError](t, err)
-		if files.opened < 2 || files.closed != files.opened {
-			t.Fatalf("readers after refused pull = (%d, %d), want opened >= 2 and closed == opened", files.opened, files.closed)
+		if opened < 2 || closed != opened {
+			t.Fatalf("readers after refused pull = (opened %d, closed %d), want opened >= 2 and closed == opened", opened, closed)
 		}
 	})
 
 	t.Run("closes an archive body when PullSession fails in ImportStore before reading it", func(t *testing.T) {
-		files := &bodyCountingFiles{}
-		remote := NewFileSystemSyncRemote(files, t.TempDir())
+		opened, closed := 0, 0
+		remote := NewFileSystemSyncRemote(countingFiles{opened: &opened, closes: &closed}, t.TempDir())
 		// A remote whose history starts with an archive slot at 0.
 		source := sessionStore(t)
 		commitAll(t, source, seedBatches()[:2]...)
@@ -761,8 +740,8 @@ func TestRemoteBodies(t *testing.T) {
 		if !errors.Is(err, context.Canceled) {
 			t.Fatalf("PullSession error = %v, want context.Canceled", err)
 		}
-		if files.opened != 1 || files.closed != 1 {
-			t.Fatalf("readers after aborted archive pull = (opened %d, closed %d), want (1, 1)", files.opened, files.closed)
+		if opened != 1 || closed != 1 {
+			t.Fatalf("readers after aborted archive pull = (opened %d, closed %d), want (1, 1)", opened, closed)
 		}
 	})
 }
