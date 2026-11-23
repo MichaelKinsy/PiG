@@ -1,0 +1,235 @@
+# SPDX-License-Identifier: MIT
+# Diagnostic workflow for Windows file replacement visibility across three methods:
+#   R:  ReplaceFileW with backup (current internal/atomicfile)
+#   A1: carryDescriptor + MoveFileEx(MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH)
+#   A2: writeInPlace (Pi writeFileSync form)
+# Readers: os.Stat, os.ReadFile, internal/noderealpath.Sync (tight loop, target 200000 writes),
+# plus openhold (os.Open without FILE_SHARE_DELETE held 2 to 5 ms per read, 1000 writes).
+# Also runs:
+#   - T3: uncured TestAuthStorageFirstHalfUpstream/serializes_concurrent_modifications (count=2000)
+#   - Baseline Windows ACL and security descriptor matrix tests
+#   - TestToolExecutionCompactReadsUpstream in ./internal/codingagent (link 13 Windows row)
+# Runs only on pushes to diag/** and is never merged.
+name: Diag Windows replace probe
+
+on:
+  push:
+    branches:
+      - "diag/**"
+
+permissions:
+  contents: read
+
+jobs:
+  diag-windows-replace-probe:
+    name: Diag Windows replace probe / windows-latest
+    # Matches .github/workflows/ci.yml Windows jobs (lines 983-988 and 1266: windows-latest).
+    runs-on: windows-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Prepare scratch directories and Go build cache under RUNNER_TEMP
+        shell: pwsh
+        run: |
+          $gocache = Join-Path $env:RUNNER_TEMP 'go-build'
+          $logdir = Join-Path $env:RUNNER_TEMP 'diag-logs'
+          $bindir = Join-Path $env:RUNNER_TEMP 'diag-bin'
+          New-Item -ItemType Directory -Force -Path $gocache, $logdir, $bindir | Out-Null
+          "GOCACHE=$gocache" >> $env:GITHUB_ENV
+          "DIAG_LOGS=$logdir" >> $env:GITHUB_ENV
+          "DIAG_BIN=$bindir" >> $env:GITHUB_ENV
+          Write-Output "RUNNER_TEMP=$env:RUNNER_TEMP"
+          Get-PSDrive -PSProvider FileSystem | Format-Table Name, Used, Free
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Show Windows and Go environment
+        shell: bash
+        run: |
+          set +e
+          go version
+          go env GOOS GOARCH GOCACHE TEMP TMP
+          cmd.exe /c ver
+          uname -a
+          echo "PROBE-STEP-END"
+      - name: Build probe and test binaries
+        shell: bash
+        env:
+          CI: "1"
+        run: |
+          set +e
+          mkdir -p "$DIAG_LOGS" "$DIAG_BIN"
+
+          go build -o "$DIAG_BIN/winreplaceprobe.exe" ./automation/diag/winreplaceprobe > "$DIAG_LOGS/build-probe.log" 2>&1
+          s_probe=$?
+          echo "build_probe_status=$s_probe"
+          if [ "$s_probe" -ne 0 ]; then cat "$DIAG_LOGS/build-probe.log"; fi
+
+          go test -c -o "$DIAG_BIN/ai.test.exe" ./ai > "$DIAG_LOGS/build-ai.log" 2>&1
+          s_ai=$?
+          echo "build_ai_test_status=$s_ai"
+          if [ "$s_ai" -ne 0 ]; then cat "$DIAG_LOGS/build-ai.log"; fi
+
+          go test -c -o "$DIAG_BIN/atomicfile.test.exe" ./internal/atomicfile > "$DIAG_LOGS/build-atomicfile.log" 2>&1
+          s_af=$?
+          echo "build_atomicfile_test_status=$s_af"
+          if [ "$s_af" -ne 0 ]; then cat "$DIAG_LOGS/build-atomicfile.log"; fi
+
+          go test -c -o "$DIAG_BIN/ownerfile.test.exe" ./internal/ownerfile > "$DIAG_LOGS/build-ownerfile.log" 2>&1
+          s_of=$?
+          echo "build_ownerfile_test_status=$s_of"
+          if [ "$s_of" -ne 0 ]; then cat "$DIAG_LOGS/build-ownerfile.log"; fi
+
+          go test -c -o "$DIAG_BIN/codingagent.test.exe" ./internal/codingagent > "$DIAG_LOGS/build-codingagent.log" 2>&1
+          s_ca=$?
+          echo "build_codingagent_test_status=$s_ca"
+          if [ "$s_ca" -ne 0 ]; then cat "$DIAG_LOGS/build-codingagent.log"; fi
+
+          echo "PROBE-STEP-END"
+          if [ "$s_probe" -ne 0 ] || [ "$s_ai" -ne 0 ] || [ "$s_af" -ne 0 ] || [ "$s_of" -ne 0 ] || [ "$s_ca" -ne 0 ]; then
+            exit 1
+          fi
+      - name: Run Windows replace probe (R, A1, A2; tight + openhold)
+        if: always()
+        shell: bash
+        env:
+          CI: "1"
+        run: |
+          set +e
+          log="$DIAG_LOGS/probe.log"
+          if [ ! -x "$DIAG_BIN/winreplaceprobe.exe" ]; then
+            echo "probe_status=missing_binary"
+            echo "PROBE-STEP-END"
+            exit 1
+          fi
+          "$DIAG_BIN/winreplaceprobe.exe" \
+            -methods=R,A1,A2 \
+            -target-writes=200000 \
+            -max-method-duration=35m \
+            -openhold-writes=1000 \
+            -openhold-duration=5m > "$log" 2>&1
+          status=$?
+          echo "=== PROBE table ==="
+          grep '^PROBE ' "$log" || true
+          echo "=== PROBE non-PROBE stderr/notes (first 40 lines) ==="
+          grep -v '^PROBE ' "$log" | head -n 40 || true
+          echo "probe_status=$status"
+          echo "PROBE-STEP-END"
+          exit "$status"
+      - name: T3 uncured auth concurrent modify stress (count=2000)
+        if: always()
+        shell: bash
+        env:
+          CI: "1"
+        run: |
+          set +e
+          log="$DIAG_LOGS/t3-serializes-2000.log"
+          if [ ! -x "$DIAG_BIN/ai.test.exe" ]; then
+            echo "t3_status=missing_binary"
+            echo "PROBE-STEP-END"
+            exit 1
+          fi
+          acceptance="$RUNNER_TEMP/pig native acceptance"
+          mkdir -p "$acceptance"
+          export PIG_HOME="$acceptance/config with spaces"
+          export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
+          (cd ai && "$DIAG_BIN/ai.test.exe" -test.v -test.count=2000 -test.timeout=30m -test.run='^TestAuthStorageFirstHalfUpstream$/^serializes_concurrent_modifications$') > "$log" 2>&1
+          status=$?
+          pass_parent=$(grep -c '^--- PASS: TestAuthStorageFirstHalfUpstream ' "$log" || true)
+          fail_parent=$(grep -c '^--- FAIL: TestAuthStorageFirstHalfUpstream ' "$log" || true)
+          pass_sub=$(grep -c '^    --- PASS: TestAuthStorageFirstHalfUpstream/serializes_concurrent_modifications ' "$log" || true)
+          fail_sub=$(grep -c '^    --- FAIL: TestAuthStorageFirstHalfUpstream/serializes_concurrent_modifications ' "$log" || true)
+          enoent_count=$(grep -c 'ENOENT:' "$log" || true)
+          echo "t3_status=$status pass_parent=$pass_parent fail_parent=$fail_parent pass_sub=$pass_sub fail_sub=$fail_sub enoent_lines=$enoent_count"
+          if [ "$fail_sub" -gt 0 ] || [ "$fail_parent" -gt 0 ] || [ "$status" -ne 0 ]; then
+            echo "=== first 20 failure blocks ==="
+            grep -n -B 1 -A 4 '--- FAIL:' "$log" | head -n 120 || true
+          fi
+          echo "PROBE-STEP-END"
+          exit "$status"
+      - name: Baseline Windows ACL and security descriptor matrix tests
+        if: always()
+        shell: bash
+        env:
+          CI: "1"
+        run: |
+          set +e
+          log_af="$DIAG_LOGS/baseline-atomicfile.log"
+          log_of="$DIAG_LOGS/baseline-ownerfile.log"
+          log_ai="$DIAG_LOGS/baseline-auth-acl.log"
+
+          s_af=1
+          if [ -x "$DIAG_BIN/atomicfile.test.exe" ]; then
+            (cd internal/atomicfile && "$DIAG_BIN/atomicfile.test.exe" -test.v -test.count=1 -test.timeout=20m) > "$log_af" 2>&1
+            s_af=$?
+          fi
+          af_pass=$(grep -c '^--- PASS:' "$log_af" 2>/dev/null || true)
+          af_fail=$(grep -c '^--- FAIL:' "$log_af" 2>/dev/null || true)
+          af_skip=$(grep -c '^--- SKIP:' "$log_af" 2>/dev/null || true)
+          echo "baseline_atomicfile_status=$s_af pass=$af_pass fail=$af_fail skip=$af_skip"
+          if [ "$s_af" -ne 0 ]; then
+            echo "=== atomicfile failures (first 20) ==="
+            grep -n -B 1 -A 5 '--- FAIL:' "$log_af" | head -n 120 || true
+          fi
+
+          s_of=1
+          if [ -x "$DIAG_BIN/ownerfile.test.exe" ]; then
+            (cd internal/ownerfile && "$DIAG_BIN/ownerfile.test.exe" -test.v -test.count=1 -test.timeout=20m) > "$log_of" 2>&1
+            s_of=$?
+          fi
+          of_pass=$(grep -c '^--- PASS:' "$log_of" 2>/dev/null || true)
+          of_fail=$(grep -c '^--- FAIL:' "$log_of" 2>/dev/null || true)
+          echo "baseline_ownerfile_status=$s_of pass=$of_pass fail=$of_fail"
+          if [ "$s_of" -ne 0 ]; then
+            echo "=== ownerfile failures (first 20) ==="
+            grep -n -B 1 -A 5 '--- FAIL:' "$log_of" | head -n 120 || true
+          fi
+
+          s_ai=1
+          if [ -x "$DIAG_BIN/ai.test.exe" ]; then
+            (cd ai && "$DIAG_BIN/ai.test.exe" -test.v -test.count=1 -test.timeout=20m -test.run='^TestAuthStoragePreservesExistingACL$') > "$log_ai" 2>&1
+            s_ai=$?
+          fi
+          ai_pass=$(grep -c '^--- PASS:' "$log_ai" 2>/dev/null || true)
+          ai_fail=$(grep -c '^--- FAIL:' "$log_ai" 2>/dev/null || true)
+          echo "baseline_auth_acl_status=$s_ai pass=$ai_pass fail=$ai_fail"
+          if [ "$s_ai" -ne 0 ]; then
+            echo "=== auth ACL failures (first 20) ==="
+            grep -n -B 1 -A 5 '--- FAIL:' "$log_ai" | head -n 120 || true
+          fi
+
+          echo "PROBE-STEP-END"
+          if [ "$s_af" -ne 0 ] || [ "$s_of" -ne 0 ] || [ "$s_ai" -ne 0 ]; then
+            exit 1
+          fi
+      - name: Windows row for TestToolExecutionCompactReadsUpstream (internal/codingagent)
+        if: always()
+        shell: bash
+        env:
+          CI: "1"
+        run: |
+          set +e
+          log="$DIAG_LOGS/tool-execution-compact-reads.log"
+          if [ ! -x "$DIAG_BIN/codingagent.test.exe" ]; then
+            echo "tool_compact_reads_status=missing_binary"
+            echo "PROBE-STEP-END"
+            exit 1
+          fi
+          (cd internal/codingagent && "$DIAG_BIN/codingagent.test.exe" -test.v -test.count=1 -test.timeout=10m -test.run='^TestToolExecutionCompactReadsUpstream$') > "$log" 2>&1
+          status=$?
+          pass_n=$(grep -c '--- PASS:' "$log" || true)
+          fail_n=$(grep -c '--- FAIL:' "$log" || true)
+          cat "$log"
+          echo "tool_compact_reads_status=$status pass=$pass_n fail=$fail_n"
+          echo "PROBE-STEP-END"
+          exit "$status"
+      - name: Upload raw diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: diag-windows-replace-probe-logs
+          path: ${{ runner.temp }}/diag-logs/
+          retention-days: 14
