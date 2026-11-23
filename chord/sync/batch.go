@@ -30,7 +30,8 @@ import (
 //
 // Sizes (a chunk of lines, a line's Bytes) count UTF-16 units, as Pi's `.length` does.
 
-// SyncBody is a body on the remote: its bytes in chunks, read once.
+// SyncBody is a body on the remote: its bytes in chunks, read once. Close may be called from another goroutine while a
+// Next is in flight: the import does not wait for a stalled input.
 type SyncBody = store.ByteSource
 
 // CommitSource is a stream of outbox commits: Next blocks for the next commit (ok false at the end), Close ends the stream
