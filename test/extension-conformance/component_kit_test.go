@@ -88,6 +88,11 @@ func componentKitSDKCells() []kitCell {
 	return componentKitCells()[1:]
 }
 
+// beforeKitThemeRead, when non-nil, runs in startKitCell's theme callback
+// immediately before codingagent.ActiveExtensionTheme reads os.Stdout. Only
+// serial tests that verify stdio-restore ordering set it.
+var beforeKitThemeRead atomic.Pointer[func()]
+
 // startKitCell makes the cell's harness and wires its bridge as production
 // does (coding/cli/extensions.go): the theme palette and terminal capabilities
 // come from the tui package, so an SDK that renders lines itself draws with
@@ -108,6 +113,9 @@ func startKitCell(t *testing.T, tc kitCell) *harness {
 		return h
 	}
 	h.bridge.SetThemeFunc(func() any {
+		if fn := beforeKitThemeRead.Load(); fn != nil {
+			(*fn)()
+		}
 		palette := codingagent.ActiveExtensionTheme()
 		// The rows are a terminal's, where chalk draws bold and the other
 		// modifiers (its stdout is a TTY), as the tui ports always do. This

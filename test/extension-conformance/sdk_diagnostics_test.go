@@ -28,55 +28,65 @@ func TestConformance_SDKDiagnosticsReachOnlyTheExtensionLog(t *testing.T) {
 		rpcRowMode = mode
 		for _, tc := range componentKitSDKCells() {
 			t.Run(mode+"/"+tc.name, func(t *testing.T) {
-				t.Setenv("PIG_FIXTURE_PANIC_PROBE", "1")
-				started := time.Now().Add(-250 * time.Millisecond)
-				capture := swapProcessStd(t)
-				h := startKitCell(t, tc)
-				fused := strings.HasPrefix(tc.name, "fused")
-
-				command, ok := findCommand(h.runner, "panic-probe")
-				if !ok {
-					t.Fatal("panic-probe is not registered")
-				}
-				if err := command.Handler(kitCommandContext(t, h), ""); err == nil {
-					t.Fatal("panic-probe returned no error: the handler's panic was not reported to the host")
-				}
-				barrierArgs := ""
-				if fused {
-					barrierArgs = "stderr"
-				}
-				runKitCommand(t, h, "console-probe", barrierArgs)
-				waitFor(t, func() bool {
-					out, errOut := capture.snapshot()
-					return strings.Contains(out+errOut, "probe-err-2")
-				})
-				out, errOut := capture.stop()
-				terminal := out + errOut
-
-				for _, line := range []string{"probe-err-loaded", "probe-err-command"} {
-					if !strings.Contains(errOut, line+"\n") {
-						t.Errorf("%s: the extension's own stderr line %q did not reach the terminal's stderr: stdout %q stderr %q", tc.name, line, out, errOut)
-					}
-				}
-				for _, report := range []string{"probe-panic-boom", "goroutine ", "Traceback", "recovered from", "debug.Stack"} {
-					if strings.Contains(terminal, report) {
-						t.Errorf("%s: the terminal holds the SDK's own report (%q):\n%s", tc.name, report, terminal)
-						break
-					}
-				}
-
-				log := extensionLogs(t, started)
-				if !strings.Contains(log, "probe-panic-boom") {
-					t.Errorf("%s: no extension log holds the report of the panic (probe-panic-boom):\n%s", tc.name, log)
-				}
-				if marker := sdkStackMarker(tc.name); marker != "" && !strings.Contains(log, marker) {
-					t.Errorf("%s: the extension log lacks the stack (%q):\n%s", tc.name, marker, log)
-				}
-				if !fused && !strings.Contains(log, "probe-err-command") {
-					t.Errorf("%s: the extension log lacks the extension's own stderr line probe-err-command (the host copies stderr to it):\n%s", tc.name, log)
-				}
+				runSDKDiagnosticsCell(t, tc, nil)
 			})
 		}
+	}
+}
+
+func runSDKDiagnosticsCell(t *testing.T, tc kitCell, beforeStop func(*harness)) {
+	t.Helper()
+	t.Setenv("PIG_FIXTURE_PANIC_PROBE", "1")
+	started := time.Now().Add(-250 * time.Millisecond)
+	capture := swapProcessStd(t)
+	h := startKitCell(t, tc)
+	fused := strings.HasPrefix(tc.name, "fused")
+
+	command, ok := findCommand(h.runner, "panic-probe")
+	if !ok {
+		t.Fatal("panic-probe is not registered")
+	}
+	if err := command.Handler(kitCommandContext(t, h), ""); err == nil {
+		t.Fatal("panic-probe returned no error: the handler's panic was not reported to the host")
+	}
+	barrierArgs := ""
+	if fused {
+		barrierArgs = "stderr"
+	}
+	runKitCommand(t, h, "console-probe", barrierArgs)
+	waitFor(t, func() bool {
+		out, errOut := capture.snapshot()
+		return strings.Contains(out+errOut, "probe-err-2")
+	})
+	if beforeStop != nil {
+		beforeStop(h)
+	}
+	log := extensionLogs(t, started)
+	if h.host != nil {
+		h.host.Shutdown("test done")
+	}
+	out, errOut := capture.stop()
+	terminal := out + errOut
+
+	for _, line := range []string{"probe-err-loaded", "probe-err-command"} {
+		if !strings.Contains(errOut, line+"\n") {
+			t.Errorf("%s: the extension's own stderr line %q did not reach the terminal's stderr: stdout %q stderr %q", tc.name, line, out, errOut)
+		}
+	}
+	for _, report := range []string{"probe-panic-boom", "goroutine ", "Traceback", "recovered from", "debug.Stack"} {
+		if strings.Contains(terminal, report) {
+			t.Errorf("%s: the terminal holds the SDK's own report (%q):\n%s", tc.name, report, terminal)
+			break
+		}
+	}
+	if !strings.Contains(log, "probe-panic-boom") {
+		t.Errorf("%s: no extension log holds the report of the panic (probe-panic-boom):\n%s", tc.name, log)
+	}
+	if marker := sdkStackMarker(tc.name); marker != "" && !strings.Contains(log, marker) {
+		t.Errorf("%s: the extension log lacks the stack (%q):\n%s", tc.name, marker, log)
+	}
+	if !fused && !strings.Contains(log, "probe-err-command") {
+		t.Errorf("%s: the extension log lacks the extension's own stderr line probe-err-command (the host copies stderr to it):\n%s", tc.name, log)
 	}
 }
 
