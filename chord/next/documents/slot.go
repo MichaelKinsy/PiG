@@ -64,6 +64,8 @@ type PersistedSlot interface {
 type SlotDefinition struct {
 	current  AnyDefinition
 	hydrated bool
+	// beforeHydrate is a test-only seam run right before Hydrate writes current; nil in production.
+	beforeHydrate func()
 }
 
 // NewSlotDefinition is the slot definition of a slot first declared with definition.
@@ -130,6 +132,9 @@ func hostKindName(kind *contracts.HostKind) string {
 
 // Hydrate records the hydration with definition.
 func (slot *SlotDefinition) Hydrate(definition AnyDefinition) {
+	if slot.beforeHydrate != nil {
+		slot.beforeHydrate()
+	}
 	slot.current = definition
 	slot.hydrated = true
 }
