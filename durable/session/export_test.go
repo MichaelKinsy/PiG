@@ -66,6 +66,12 @@ func SetAfterSignalRead(tx *Transaction, after func(durable.TaskId, string, dura
 	tx.afterSignalRead = after
 }
 
+// SetBeforeParkInsert sets the function Park calls after its done check and before inserting into session.parks.
+// Must be called before any goroutine can call Park on session (unsynchronised read in Park).
+func SetBeforeParkInsert(session *SessionImpl, before func()) {
+	session.beforeParkInsert = before
+}
+
 // SetAfterParkEnter sets the function Park calls immediately after enter(continuationOf(ctx)).
 // Must be called before any goroutine can call Park on session (unsynchronised read in Park).
 func SetAfterParkEnter(session *SessionImpl, after func()) {

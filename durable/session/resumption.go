@@ -128,6 +128,9 @@ func (session *SessionImpl) Park(ctx context.Context, done <-chan struct{}) *Par
 		return nil
 	default:
 	}
+	if session.beforeParkInsert != nil {
+		session.beforeParkInsert()
+	}
 	continuation := continuationOf(ctx)
 	parked := &Parked{resumption: newResumption(continuation), session: session, done: done}
 	// A wait stays registered until it is acknowledged, not only until it resumed: the acknowledgement of one that belongs to a
