@@ -324,7 +324,8 @@ func TestMakeTestRaceNightlyDropsDefaultCargoTargetDir(t *testing.T) {
 				env = append(env, kv)
 			}
 		}
-		cmd.Env = append(env, extraEnv...)
+		env = append(env, extraEnv...)
+		cmd.Env = env
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			t.Fatalf("make %v: %v\n%s", args, err, out)
