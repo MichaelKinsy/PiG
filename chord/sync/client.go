@@ -561,7 +561,7 @@ func PullSession(ctx context.Context, options PullOptions) (result PullResult, e
 			target, err = store.ImportStore(options.Local.Backend, DecodeSnapshot(body), ctx, store.StoreOptions{Outbox: &outbox})
 			if err != nil {
 				target = nil
-				return PullResult{}, err
+				return PullResult{}, errors.Join(err, body.Close())
 			}
 		} else {
 			if target == nil {

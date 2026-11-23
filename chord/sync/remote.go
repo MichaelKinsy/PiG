@@ -100,9 +100,10 @@ type SessionSyncStore interface {
 	// PutBatch creates the slot after `after` unless it exists or the history does not end at `after`. body is a stream
 	// read once; a remote that answers without reading it (exists, not_head) leaves it unread: the caller closes it.
 	PutBatch(ctx context.Context, sessionID string, after, to Seq, device string, body SyncBody, options PutBatchOptions) (PutBatchResult, error)
-	// GetBatch is a batch's body; nil when its slot is folded or absent.
+	// GetBatch is a batch's body; nil when its slot is folded or absent. The body may hold a file or a connection
+	// until it is read to the end or Close is called, which releases it also before the first read.
 	GetBatch(ctx context.Context, sessionID string, after Seq) (SyncBody, error)
-	// GetSnapshot is a snapshot's body; nil when there is none.
+	// GetSnapshot is a snapshot's body, released as GetBatch's; nil when it is absent.
 	GetSnapshot(ctx context.Context, sessionID string, to Seq) (SyncBody, error)
 	List(ctx context.Context, sessionID string) (RemoteListing, error)
 	// Sessions are the sessions changed after cursor (all of them without one). A remote may also list sessions that did
