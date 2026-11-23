@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"maps"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -304,5 +305,39 @@ func windowsWarmStepCoversShard(expr, shard string) bool {
 		return strings.Contains(expr, "startsWith(matrix.shard, 'extension-')")
 	default:
 		return expr == ""
+	}
+}
+
+// Makefile exports CARGO_TARGET_DIR ?= $(CURDIR)/tmp/test-fixtures/rust-target for targets that fill it via
+// test-fixtures.sh. test-race-nightly does not run test-fixtures.sh (nightly warms SharedCargoTargetDir via
+// test-warm.sh --rust-only instead), so it must drop Makefile's unfilled default while honoring an explicit
+// CARGO_TARGET_DIR from the caller's environment or command line.
+func TestMakeTestRaceNightlyDropsDefaultCargoTargetDir(t *testing.T) {
+	root := repoRoot(t)
+	runDry := func(extraEnv []string, extraArgs ...string) string {
+		t.Helper()
+		args := append([]string{"-C", root, "-n", "test-race-nightly"}, extraArgs...)
+		cmd := exec.Command("make", args...)
+		var env []string
+		for _, kv := range os.Environ() {
+			if !strings.HasPrefix(kv, "CARGO_TARGET_DIR=") {
+				env = append(env, kv)
+			}
+		}
+		cmd.Env = append(env, extraEnv...)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("make %v: %v\n%s", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	if got := runDry(nil); !strings.HasPrefix(got, "env -u CARGO_TARGET_DIR ") {
+		t.Errorf("default make -n test-race-nightly = %q, want env -u CARGO_TARGET_DIR prefix", got)
+	}
+	if got := runDry([]string{"CARGO_TARGET_DIR=/tmp/explicit"}); strings.Contains(got, "env -u CARGO_TARGET_DIR") {
+		t.Errorf("env-override make -n test-race-nightly = %q, must keep explicit CARGO_TARGET_DIR", got)
+	}
+	if got := runDry(nil, "CARGO_TARGET_DIR=/tmp/cli"); strings.Contains(got, "env -u CARGO_TARGET_DIR") {
+		t.Errorf("cli-override make -n test-race-nightly = %q, must keep command-line CARGO_TARGET_DIR", got)
 	}
 }
