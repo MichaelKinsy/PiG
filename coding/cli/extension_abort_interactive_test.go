@@ -330,19 +330,6 @@ func writeAbortProbe(t *testing.T, layout string) string {
 	return ""
 }
 
-// buildRustSDKFixture builds testdata/<name>, a Rust SDK extension that is a program of its own, and returns the executable.
-func buildRustSDKFixture(t *testing.T, name string) string {
-	t.Helper()
-	target := t.TempDir()
-	cargo := exec.CommandContext(testbudget.Context(t), "cargo", "build", "--release", "--quiet")
-	cargo.Dir = filepath.Join("testdata", name)
-	cargo.Env = append(os.Environ(), "CARGO_TARGET_DIR="+target)
-	if out, err := cargo.CombinedOutput(); err != nil {
-		t.Fatalf("build %s: %v\n%s", name, err, out)
-	}
-	return filepath.Join(target, "release", testExecutable(name))
-}
-
 // An extension's ctx.abort() from a handler the run awaits, in the TUI of the real binary, in every SDK: the call returns, the run's signal is aborted by the time
 // it returns (for the signal the handler held before the call, for ctx.signal read again, and for a second handler of the same event queued behind it, whose own
 // abort is a no-op), the turn ends aborted and the next prompt is answered. Pi aborts the run's AbortController before abort() returns and awaits nothing

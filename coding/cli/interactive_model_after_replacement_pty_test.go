@@ -284,23 +284,6 @@ func TestInteractiveExtensionSetModelAfterNewKeepsRegisteredMetadata(t *testing.
 	}
 }
 
-// buildModelAfterNewRust builds testdata/model-after-new-rs, the Rust SDK realization of the fixture.
-func buildModelAfterNewRust(t *testing.T) string {
-	t.Helper()
-	if _, err := exec.LookPath("cargo"); err != nil {
-		t.Fatalf("cargo is required for the Rust SDK realization: %v", err)
-	}
-	target := t.TempDir()
-	ctx := testbudget.DeadlineContext(t)
-	cargo := exec.CommandContext(ctx, "cargo", "build", "--release", "--quiet")
-	cargo.Dir = filepath.Join("testdata", "model-after-new-rs")
-	cargo.Env = append(os.Environ(), "CARGO_TARGET_DIR="+target)
-	if out, err := cargo.CombinedOutput(); err != nil {
-		t.Fatalf("build model-after-new-rs: %v\n%s", err, out)
-	}
-	return filepath.Join(target, "release", testExecutable("model-after-new-rs"))
-}
-
 // Every SDK that registers a provider hands the Session's models the same way: the Go, Rust, Python and Lisp realizations of the fixture start the Session on their provider, replace it with /new, and
 // select the provider's models.
 func TestInteractiveModelAfterNewAcrossSDKs(t *testing.T) {
@@ -324,7 +307,7 @@ func TestInteractiveModelAfterNewAcrossSDKs(t *testing.T) {
 		fixtures[name] = path
 	}
 	fixtures["go"] = buildGoSDKFixture(t, "model-after-new-go")
-	fixtures["rust"] = buildModelAfterNewRust(t)
+	fixtures["rust"] = buildRustSDKFixture(t, "model-after-new-rs")
 	for _, name := range []string{"go", "rust", "python", "lisp"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()

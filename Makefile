@@ -526,8 +526,9 @@ test-race: ## Race and goroutine-leak gate for the TUI concurrency model
 	@./automation/ci/test-race.sh
 
 # The nightly workflow runs these outside make check: whole-package -race on the concurrency owners, and every Fuzz target for PIG_FUZZ_TIME.
+# test-race-nightly runs go test without test-fixtures.sh, so do not hand Makefile's unfilled default CARGO_TARGET_DIR to TestMain (which otherwise skips the warmed SharedCargoTargetDir).
 test-race-nightly: ## Whole-package -race and goroutine-leak gate (nightly)
-	@./automation/ci/test-race-nightly.sh
+	@$(if $(filter file,$(origin CARGO_TARGET_DIR)),env -u CARGO_TARGET_DIR )./automation/ci/test-race-nightly.sh
 
 fuzz-nightly: ## Run every Fuzz target for PIG_FUZZ_TIME, default 30s (nightly)
 	@./automation/ci/fuzz-nightly.sh

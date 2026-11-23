@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -10,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 	"github.com/MichaelKinsy/PiG/internal/toolchain"
@@ -39,20 +37,11 @@ func replaced2860Fixtures(t *testing.T) map[string]string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := t.TempDir()
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Minute)
-	defer cancel()
-	cargo := exec.CommandContext(ctx, "cargo", "build", "--release", "--quiet")
-	cargo.Dir = filepath.Join("testdata", "session-replaced-2860-rs")
-	cargo.Env = append(os.Environ(), "CARGO_TARGET_DIR="+target)
-	if out, err := cargo.CombinedOutput(); err != nil {
-		t.Fatalf("build session-replaced-2860-rs: %v\n%s", err, out)
-	}
 	return map[string]string{
 		"node":   node,
 		"python": python,
 		"go":     buildGoSDKFixture(t, "session-replaced-2860-go"),
-		"rust":   filepath.Join(target, "release", testExecutable("session-replaced-2860-rs")),
+		"rust":   buildRustSDKFixture(t, "session-replaced-2860-rs"),
 		"lisp":   lisp,
 	}
 }
