@@ -27,7 +27,6 @@ func init() {
 		// Spawn a child in the same session that exits at once and stay alive
 		// without reaping it until stdin closes, so the parent observes a real
 		// zombie process alongside a live session leader.
-		//nolint:gosec // G204: re-execing the current test binary with a fixed fixture mode.
 		child := exec.Command(os.Args[0])
 		child.Env = append(os.Environ(), sessionExitFixtureEnv+"=exit-now")
 		if err := child.Start(); err != nil {
@@ -46,7 +45,6 @@ func init() {
 func waitForZombieState(pid int) {
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
-		//nolint:gosec // G204: literal ps; pid is formatted by strconv.
 		out, err := exec.Command("ps", "-o", "stat=", "-p", strconv.Itoa(pid)).Output()
 		if err == nil && strings.HasPrefix(strings.TrimSpace(string(out)), "Z") {
 			return
@@ -122,7 +120,6 @@ exit 2
 	})
 
 	t.Run("zombie_child_not_counted", func(t *testing.T) {
-		//nolint:gosec // G204: re-execing the current test binary with a fixed fixture mode.
 		cmd := exec.Command(os.Args[0])
 		cmd.Env = append(os.Environ(), sessionExitFixtureEnv+"=hold-zombie")
 		cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
