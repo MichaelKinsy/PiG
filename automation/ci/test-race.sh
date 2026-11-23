@@ -25,6 +25,7 @@ go test -race ${CI:+-count=1} -run \
   'TestRunOnMain_DeterministicNoLeak|TestRunOnMain_DropsOnShutdown|TestConcurrent_StatusLineInvalidate_NoRace|TestConcurrent_SIGWINCHViaPostUITask_NoRace' \
   "$pkg"
 go test -race ${CI:+-count=1} -run '^TestConfigSelector' ./coding/cli
+go test -race ${CI:+-count=1} -run '^(TestTaskGraphMountRace|TestConversationViewMountRace)$' ./durable/harness
 
 echo "== goroutineleak profile =="
 leak_output="$(go test ${CI:+-count=1} -v -run '^TestRunOnMain_NoGoroutineLeakProfile$' "$pkg")"

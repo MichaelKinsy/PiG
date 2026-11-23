@@ -185,10 +185,11 @@ type viewMount struct {
 // ConversationViews holds the Harness's conversation view mounts: at most one per conversation, built on the Session line by its first observer and dropped with its last. Each mount advances from the Session's commit publications, which are durable, and hands each observer the next revision of its own window.
 type ConversationViews struct {
 	session *session.SessionImpl
-	mu      sync.Mutex
-	mounts  map[durable.ConversationId]*viewMount
-	order   []durable.ConversationId
-	closed  bool
+	// mu guards mounts, order, closed, mount.observers, and mount.docs: mount.docs is read on the Session line by Attach and replaced on the writer's goroutine by the commit follower; it is swapped whole under this lock and never mutated in place; no callback runs under it.
+	mu     sync.Mutex
+	mounts map[durable.ConversationId]*viewMount
+	order  []durable.ConversationId
+	closed bool
 }
 
 // NewConversationViews subscribes the mounts to the Session's commits and close.
@@ -209,7 +210,7 @@ func NewConversationViews(sessionImpl *session.SessionImpl) *ConversationViews {
 		}
 		views.mu.Unlock()
 		for _, entry := range mounts {
-			advanceView(ctx, entry.id, entry.mount, entry.observers, publication, views.session.Report)
+			advanceView(ctx, entry.id, entry.mount, &views.mu, entry.observers, publication, views.session.Report)
 		}
 	})
 	sessionImpl.SubscribeClose(func() {
@@ -331,7 +332,10 @@ func (views *ConversationViews) Attach(ctx context.Context, id durable.Conversat
 		if err != nil {
 			return nil, err
 		}
-		windowed := &windowedObserver{min: bounds.min, max: bounds.max, value: viewOf(mount.conversation, entries, before, mount.docs)}
+		views.mu.Lock()
+		docs := mount.docs
+		views.mu.Unlock()
+		windowed := &windowedObserver{min: bounds.min, max: bounds.max, value: viewOf(mount.conversation, entries, before, docs)}
 		detach := func() {
 			views.mu.Lock()
 			defer views.mu.Unlock()
@@ -459,7 +463,7 @@ func ownedEntries(storage durable.Storage, entries []durable.EntryRecord) []dura
 // advanceView derives the mount's operations from one publication and hands each observer the next revision of its window; one
 // that panics is reported through report, and the others still get theirs. Documents are applied once and shared; each window
 // takes the appended entries and, past its max, drops its oldest down to its min in one splice.
-func advanceView(ctx context.Context, id durable.ConversationId, mount *viewMount, observers []*windowedObserver, publication session.ObservedCommit, report func(error)) {
+func advanceView(ctx context.Context, id durable.ConversationId, mount *viewMount, mu *sync.Mutex, observers []*windowedObserver, publication session.ObservedCommit, report func(error)) {
 	var docOps []durable.Op
 	// Entry writes are published in ID order.
 	var appended []durable.EntryRecord
@@ -507,12 +511,18 @@ func advanceView(ctx context.Context, id durable.ConversationId, mount *viewMoun
 	if len(docOps) == 0 && len(appended) == 0 {
 		return
 	}
+	mu.Lock()
+	docs := mount.docs
+	mu.Unlock()
 	if len(docOps) > 0 {
-		docs, err := applyDocOps(mount.docs, docOps)
+		next, err := applyDocOps(docs, docOps)
 		if err != nil {
 			panic(err)
 		}
+		docs = next
+		mu.Lock()
 		mount.docs = docs
+		mu.Unlock()
 	}
 	frameContext := context.WithoutCancel(ctx)
 	var inserted []any
@@ -538,7 +548,7 @@ func advanceView(ctx context.Context, id durable.ConversationId, mount *viewMoun
 				ops = append(ops, durable.Op{"p", []any{"entries"}, 0, drop, []any{}}, durable.Op{"s", []any{"before"}, float64(*before)})
 			}
 		}
-		windowed.value = viewOf(mount.conversation, entries, before, mount.docs)
+		windowed.value = viewOf(mount.conversation, entries, before, docs)
 		call := chord.WatchCall[ConversationView]{Kind: chord.WatchCallValue, Value: windowed.value, Ops: ops}
 		session.Contained(func() { windowed.observer.Advance(frameContext, call) }, report)
 	}
