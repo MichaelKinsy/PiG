@@ -5,6 +5,7 @@ package testenv
 import (
 	"os"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -83,5 +84,42 @@ func TestReadPTYUntilSentinelFailsWithCollectedBytesWhenSentinelNeverArrives(t *
 	}
 	if !strings.Contains(err.Error(), "pty sentinel did not arrive") || !strings.Contains(err.Error(), "partial-output") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+type revokedSlave struct {
+	file *os.File
+}
+
+func (r revokedSlave) Write([]byte) (int, error) {
+	return 0, &os.PathError{Op: "write", Path: r.file.Name(), Err: syscall.EIO}
+}
+
+func (r revokedSlave) Close() error {
+	return r.file.Close()
+}
+
+func TestReadPTYUntilSentinelDrainsOnRevokedSlaveEIO(t *testing.T) {
+	master, slave, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	finish, cleanup := startPTYReader(t.Context(), master, revokedSlave{file: slave}, 5*time.Second)
+	t.Cleanup(cleanup)
+	const payload = "child-output\x1b[?2004l--- PASS: TestChild (0.01s)\r\nPASS\r\n"
+	if _, err := slave.WriteString(payload); err != nil {
+		t.Fatal(err)
+	}
+	// Simulate session-leader exit on macOS: the tty output queue drains to master
+	// and closes it (EOF) while the parent slave fd is revoked and returns EIO on write.
+	if err := slave.Close(); err != nil {
+		t.Fatal(err)
+	}
+	got, err := finish()
+	if err != nil {
+		t.Fatalf("finish failed on revoked slave EIO: %v", err)
+	}
+	if string(got) != payload {
+		t.Fatalf("got %q, want %q", got, payload)
 	}
 }
