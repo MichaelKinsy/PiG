@@ -120,8 +120,8 @@ func TestGroupedChangedPlainRunKeepsTheDefaultTimeout(t *testing.T) {
 	}
 	for _, leak := range []bool{false, true} {
 		lines := changedGoTestLines(t, leak, "TEST_CHANGED_RACE=none", "PIG_RACE_TIMEOUT=90m")
-		if len(lines) != 1 || strings.Contains(lines[0], "-race") || strings.Contains(lines[0], "-timeout") {
-			t.Fatalf("plain run (leaked CI environment %v) = %q, want neither -race nor -timeout", leak, lines)
+		if len(lines) != 1 || strings.Contains(lines[0], "-race") || !strings.Contains(lines[0], " -timeout 30m ") {
+			t.Fatalf("plain run (leaked CI environment %v) = %q, want no -race and plain -timeout 30m", leak, lines)
 		}
 	}
 }
