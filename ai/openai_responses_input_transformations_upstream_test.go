@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"testing/synctest"
@@ -22,7 +23,7 @@ func TestOpenAIResponsesInputTransformationsUpstream(t *testing.T) {
 		futureReason         = `{"type":"reasoning","id":"rs_future","action":"removed","reason":"future_reason"}`
 	)
 
-	processTerminal := func(t *testing.T, inputTransformations string, status string) (AssistantMessage, int64) {
+	processTerminal := func(t *testing.T, inputTransformations string, status string) (*AssistantMessage, int64) {
 		t.Helper()
 		eventType := "response.completed"
 		extra := ""
@@ -117,31 +118,26 @@ func TestOpenAIResponsesInputTransformationsUpstream(t *testing.T) {
 
 	t.Run("records removals that Codex reports in response.done", func(t *testing.T) {
 		sse := fmt.Sprintf("data: {\"type\":\"response.done\",\"response\":{\"id\":\"resp_codex\",\"status\":\"completed\",\"output\":[],\"input_transformations\":[%s,%s]}}\n\n", prefixMismatch, turnBoundary)
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/event-stream")
+			_, _ = io.WriteString(w, sse)
+		}))
+		defer srv.Close()
 		payload := base64.StdEncoding.EncodeToString([]byte(`{"https://api.openai.com/auth":{"chatgpt_account_id":"acc_test"}}`))
-		client := &http.Client{
-			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-				return &http.Response{
-					StatusCode: http.StatusOK,
-					Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
-					Body:       io.NopCloser(strings.NewReader(sse)),
-				}, nil
-			}),
-		}
 		provider := NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{
 			ProviderID: "openai-codex",
 			APIKey:     "aaa." + payload + ".bbb",
-			BaseURL:    "https://chatgpt.com/backend-api",
+			BaseURL:    srv.URL,
 			Model:      "gpt-6.2-sol",
-			HTTPClient: client,
 		})
 		defer func() {
 			if err := provider.Close(); err != nil {
 				t.Error(err)
 			}
 		}()
-		stream, err := provider.Stream(context.Background(), TranscriptContext{
-			Messages: []Message{{Role: RoleUser, Content: []ContentBlock{TextContent{Text: "Hello"}}, Timestamp: 1}},
-		}, StreamOptions{Transport: TransportSSE})
+		stream, err := provider.Stream(context.Background(), NormalizeContext(Context{
+			Messages: []Message{UserMessage{Content: UserText("Hello"), Timestamp: 1}},
+		}), StreamOptions{Transport: TransportSSE})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -161,31 +157,25 @@ func TestOpenAIResponsesInputTransformationsUpstream(t *testing.T) {
 
 	t.Run("records removals on Azure OpenAI Responses", func(t *testing.T) {
 		sse := fmt.Sprintf("data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_azure\",\"status\":\"completed\",\"output\":[],\"input_transformations\":[%s,%s]}}\n\n", prefixMismatch, turnBoundary)
-		client := &http.Client{
-			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-				return &http.Response{
-					StatusCode: http.StatusOK,
-					Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
-					Body:       io.NopCloser(strings.NewReader(sse)),
-				}, nil
-			}),
-		}
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/event-stream")
+			_, _ = io.WriteString(w, sse)
+		}))
+		defer srv.Close()
 		provider := NewAzureOpenAIResponsesProvider(AzureOpenAIResponsesConfig{
-			ProviderID:   "azure-openai-responses",
-			APIKey:       "azure-test-key",
-			ResourceName: "test-resource",
-			Deployment:   "gpt-6.2-sol",
-			Model:        "gpt-6.2-sol",
-			HTTPClient:   client,
+			ProviderID: "azure-openai-responses",
+			APIKey:     "azure-test-key",
+			BaseURL:    srv.URL,
+			Model:      "gpt-6.2-sol",
 		})
 		defer func() {
 			if err := provider.Close(); err != nil {
 				t.Error(err)
 			}
 		}()
-		stream, err := provider.Stream(context.Background(), TranscriptContext{
-			Messages: []Message{{Role: RoleUser, Content: []ContentBlock{TextContent{Text: "Hello"}}, Timestamp: 1}},
-		}, StreamOptions{})
+		stream, err := provider.Stream(context.Background(), NormalizeContext(Context{
+			Messages: []Message{UserMessage{Content: UserText("Hello"), Timestamp: 1}},
+		}), StreamOptions{})
 		if err != nil {
 			t.Fatal(err)
 		}
