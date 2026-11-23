@@ -1039,7 +1039,8 @@ jobs:
     needs: [changes, bookkeeping]
     if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-durable-cf-host == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || (needs.changes.outputs.os-parallel == 'true' && needs.bookkeeping.result != 'skipped')) }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    # Four dispatched runs (45131680807, 45061942294, 45034549861, 45005979260): 29:23, 27:58, 28:15, 31:08 (worst 31:08, 69% of 45; 3x = 93:24 -> 95).
+    timeout-minutes: 95
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
