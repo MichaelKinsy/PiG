@@ -1180,7 +1180,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7781c92](#bf-7781c92) | A `before_provider_request` handler that adds members to the Google, Vertex or pi-messages request it was… | PiG's own defect | All platforms | Unreleased |
 | [BF-779318a](#bf-779318a) | OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-77a1d72](#bf-77a1d72) | An RPC `set_session_name` or `set_thinking_level` no longer waits for an extension's `session_info_changed`… | PiG's own defect | All platforms | Unreleased |
-| [BF-77c0b8d](#bf-77c0b8d) | fix(codingagent): three products ported from Pi are rounded before they are added | PiG's own defect | All platforms | Unreleased |
+| [BF-77c0b8d](#bf-77c0b8d) | On arm64 and other CPUs with a fused multiply-add, three products ported from Pi are now rounded before they… | PiG's own defect | All platforms | Unreleased |
 | [BF-77e64cd](#bf-77e64cd) | GitHub Copilot's chat-completions models with effort levels (Gemini 4 Argon, Gemini 3.8 Flash and Kimi K3)… | PiG's own defect | All platforms | Unreleased |
 | [BF-7809364](#bf-7809364) | Schema errors of a `ChordError` of code `invalid` list their members in the order the value arrived in, as… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-7838047](#bf-7838047) | `/resume` no longer selects an unrelated session while its list reloads after a session is deleted or… | PiG's own defect | All platforms | Unreleased |
@@ -18545,16 +18545,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-77c0b8d
 
-**fix(codingagent): three products ported from Pi are rounded before they are added**
+**On arm64 and other CPUs with a fused multiply-add, three products ported from Pi are now rounded before they…**
 
 - **Source:** PiG's own defect
-- **Symptom:** fix(codingagent): three products ported from Pi are rounded before they are added
-- **Root cause:** Not recorded.
-- **User impact:** Behavior differed from Pi
+- **Symptom:** On arm64 and other CPUs with a fused multiply-add, three products ported from Pi are now rounded before they are added, as in Pi: the running pig's puzzle clock, the modification time that orders sessions for `--continue`, and the one-decimal size in truncation notices.
+- **Root cause:** the three lines carried a port-lint fusedmuladd exemption whose stated reason did not hold, so each product could be fused into the add or subtract that follows it instead of being rounded first as JavaScript rounds it
+- **User impact:** Wrong output or ordering
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `77c0b8d4d6` (2026-11-22)
-- **Tests:** None recorded.
+- **Tests:** `internal/codingagent/pig_logo_animation_test.go::TestPigLogoRunCycle`, `internal/codingagent/session_recent_oracle_test.go::TestFindMostRecentSessionMatchesPi`, `internal/codingagent/tools/sanitize_test.go::TestFormatSize`
+- **Release note:** On arm64 and other CPUs with a fused multiply-add, three products ported from Pi are now rounded before they are added, as in Pi: the running pig's puzzle clock, the modification time that orders sessions for `--continue`, and the one-decimal size in truncation notices. No visible change is known.
 
 ### BF-77e64cd
 
@@ -29737,14 +29738,14 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 **durable/harness: a host embedding `durable/harness` could be ended by Go's `concurrent map read and map…**
 
 - **Source:** PiG's own defect
-- **Symptom:** durable/harness: a host embedding `durable/harness` could be ended by Go's `concurrent map read and map write` (or report a data race) when a commit was published while a task graph or conversation view observer attached or a registry change refreshed blocked reasons, and a task graph observer could show a task blocked for a definition that had just been installed, until the next registry change.
+- **Symptom:** durable/harness: a host embedding `durable/harness` could be ended by Go's `concurrent map read and map write` when a registry change refreshed blocked reasons concurrently with commit publication, could hit a data race when a task graph or conversation view observer attached during commit publication, and could see a task graph observer show a task blocked for a definition that had just been installed until the next registry change.
 - **Root cause:** Guard taskGraphMount's value, records, pending delivery queue, and refresh counter with a per-mount mutex so the commit follower and Session-line jobs never race on mount state. Queue state transitions under the mount mutex and drain them under a dedicated leaf deliverMu so observers receive changes synchronously in order without holding any state lock across callbacks. Update mount.records before computing blocked reasons off every lock, and recompute in advanceTaskGraph whenever a concurrent refreshBlocked advances the refresh counter so a stale reason read before a registry change is never published after it.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `388aed919e` (2026-11-22), `d1a4d01571` (2026-11-22), `deb3251294` (2026-11-22)
-- **Tests:** `durable/harness/view_incarnation_test.go::TestAdvanceViewFollowsOnlyTheMountedIncarnation`
-- **Release note:** durable/harness: a host embedding `durable/harness` could be ended by Go's `concurrent map read and map write` (or report a data race) when a commit was published while a task graph or conversation view observer attached or a registry change refreshed blocked reasons, and a task graph observer could show a task blocked for a definition that had just been installed, until the next registry change. Present since 0.7.0.
+- **Fix commits:** `388aed919e` (2026-11-22), `7f55f03889` (2026-11-22), `d1a4d01571` (2026-11-22), `deb3251294` (2026-11-22)
+- **Tests:** `durable/harness/mount_race_test.go::TestTaskGraphMountLockReleasedOnSameNodePanic`, `durable/harness/mount_race_test.go::TestTaskGraphObserverMayDetachInsideAdvance`, `durable/harness/view_incarnation_test.go::TestAdvanceViewFollowsOnlyTheMountedIncarnation`
+- **Release note:** durable/harness: a host embedding `durable/harness` could be ended by Go's `concurrent map read and map write` when a registry change refreshed blocked reasons concurrently with commit publication, could hit a data race when a task graph or conversation view observer attached during commit publication, and could see a task graph observer show a task blocked for a definition that had just been installed until the next registry change. Present since 0.7.0.
 
 ### BF-d1af7ae
 

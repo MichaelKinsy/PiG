@@ -123636,8 +123636,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/app_bases_test.go#TestAppReportsABaseThatFailsAfterTheListenAndRunsOnThePageAnswers503TheKindsWorkersFailTheirStart",
-        "test:chord/nextnode/app/app_import_kill_test.go#TestAStartReportsTheInterruptedImportItUndid",
-        "test:chord/nextnode/app/app_import_kill_test.go#TestAnIntentThatCannotBeUsedBlocksItsAddressOnly"
+        "test:chord/nextnode/app/app_import_kill_lock_unix_test.go#TestAKillLeavesAStaleAddressLockFileThatTheNextStartClears",
+        "test:chord/nextnode/app/app_import_kill_test.go#TestAStartReportsTheInterruptedImportItUndid"
       ]
     },
     {
@@ -124412,7 +124412,7 @@
       "evidence": [
         "test:chord/nextnode/app/app_bases_linux_test.go#TestAppRefusesRequestsAndLinksWith503WhileTheServersPluginsAreStillLoading",
         "test:chord/nextnode/app/app_close_test.go#TestAppCloseStopsAtTheFirstFailedStepAndLeavesTheLaterStepsUndone",
-        "test:chord/nextnode/app/app_test.go#TestAppFailsWhenAPluginOfTheAppsRootFailsWithEverythingClosed"
+        "test:chord/nextnode/app/app_import_kill_lock_unix_test.go#TestAKillLeavesAStaleAddressLockFileThatTheNextStartClears"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -124435,7 +124435,7 @@
       "evidence": [
         "test:chord/nextnode/app/app_bases_linux_test.go#TestAppRefusesRequestsAndLinksWith503WhileTheServersPluginsAreStillLoading",
         "test:chord/nextnode/app/app_close_test.go#TestAppCloseStopsAtTheFirstFailedStepAndLeavesTheLaterStepsUndone",
-        "test:chord/nextnode/app/app_test.go#TestAppFailsWhenAPluginOfTheAppsRootFailsWithEverythingClosed"
+        "test:chord/nextnode/app/app_import_kill_lock_unix_test.go#TestAKillLeavesAStaleAddressLockFileThatTheNextStartClears"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -233074,7 +233074,8 @@
       ],
       "evidence": [
         "test:durable/harness/harness_observers_test.go#TestObserveConversationAndObserveTaskGraph",
-        "test:durable/harness/task_graph_pi_oracle_test.go#TestTaskGraphViewMatchesPiOnSeededPrograms"
+        "test:durable/harness/mount_race_test.go#TestTaskGraphMountLockReleasedOnSameNodePanic",
+        "test:durable/harness/mount_race_test.go#TestTaskGraphReasonReadBeforeARefreshIsNotPublishedAfterIt"
       ]
     },
     {
@@ -233117,8 +233118,8 @@
       ],
       "evidence": [
         "test:durable/commit_change_test.go#TestDocumentCommitChangeVariantsCarryTheirDiscriminators",
-        "test:durable/harness/view_incarnation_test.go#TestAdvanceViewFollowsOnlyTheMountedIncarnation",
-        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestACompactionCutOffByACrashRerunsFromItsCheckpoint"
+        "test:durable/harness/mount_race_test.go#TestTaskGraphMountLockReleasedOnSameNodePanic",
+        "test:durable/harness/view_incarnation_test.go#TestAdvanceViewFollowsOnlyTheMountedIncarnation"
       ]
     },
     {
@@ -247750,7 +247751,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/task_graph.go#publishChanged"
+        "call:durable/harness/task_graph.go#taskGraphMount.applyLocked"
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestDeliverySchedulerHoldFoldsTheFramesAdvancedWhileItIsOpenIntoOneCallPerWatch",
