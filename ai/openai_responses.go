@@ -499,16 +499,17 @@ type respSSEEvent struct {
 }
 
 type respResponseObj struct {
-	ID                   string           `json:"id,omitempty"`
-	Model                string           `json:"model,omitempty"`
-	Output               []respOutputItem `json:"output,omitempty"`
-	Status               string           `json:"status,omitempty"`
-	EndTurn              *bool            `json:"end_turn,omitempty"`
-	Usage                *respUsage       `json:"usage,omitempty"`
-	ServiceTier          string           `json:"service_tier,omitempty"`
-	Error                *respError       `json:"error,omitempty"`
-	IncompleteDetails    *respIncomplete  `json:"incomplete_details,omitempty"`
-	InputTransformations any              `json:"input_transformations,omitempty"`
+	ID                string           `json:"id,omitempty"`
+	Model             string           `json:"model,omitempty"`
+	Output            []respOutputItem `json:"output,omitempty"`
+	Status            string           `json:"status,omitempty"`
+	EndTurn           *bool            `json:"end_turn,omitempty"`
+	Usage             *respUsage       `json:"usage,omitempty"`
+	ServiceTier       string           `json:"service_tier,omitempty"`
+	Error             *respError       `json:"error,omitempty"`
+	IncompleteDetails *respIncomplete  `json:"incomplete_details,omitempty"`
+	// InputTransformations carries response.input_transformations (Pi 03de604b8).
+	InputTransformations any `json:"input_transformations,omitempty"`
 }
 
 type respUsage struct {
