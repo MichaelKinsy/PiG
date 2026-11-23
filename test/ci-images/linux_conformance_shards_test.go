@@ -113,18 +113,19 @@ const (
 	linuxConformanceWarmPerShardSeconds = 10
 	linuxConformanceColdSetupSeconds    = 1020
 	linuxConformanceColdPerShardSeconds = 11
-	linuxConformanceColdMarginSeconds   = 600 // at least 10 minutes under the 60-minute limit even on a cold runner
+	linuxConformanceColdMarginSeconds   = 600 // at least 10 minutes under the 60-minute shard budget even on a cold runner
 )
 
 // TestLinuxConformanceJobsFitTheirBudget guards against regressions like runs 44870314130 and 44880357753 where
 // Linux / test-conformance-1 was cancelled at timeout-minutes: 60 on cold caches with every shard passing.
-// Every Linux conformance job must stay at or under 60% of the job limit warm (2160 s of 3600 s) and leave at least
+// Every Linux conformance job must stay at or under 60% of the 60-minute shard budget warm (2160 s of 3600 s) and leave at least
 // 10 minutes of margin cold.
 func TestLinuxConformanceJobsFitTheirBudget(t *testing.T) {
-	limit := verificationJobs(t)["linux"].Timeout * 60
-	if limit <= 0 || limit > 3600 {
-		t.Fatalf("linux timeout = %d s, want 1..3600", limit)
+	killLimit := verificationJobs(t)["linux"].Timeout * 60
+	if killLimit < linuxShardBudgetSeconds || killLimit > linuxKillLimitMinutes*60 {
+		t.Fatalf("linux timeout = %d s, want %d..%d", killLimit, linuxShardBudgetSeconds, linuxKillLimitMinutes*60)
 	}
+	budget := linuxShardBudgetSeconds
 	total, jobRanges := conformanceJobRanges(t)
 	if total != len(linuxConformanceWarmShardSeconds) {
 		t.Fatalf("conformance shard count = %d, timing table has %d entries: update timings", total, len(linuxConformanceWarmShardSeconds))
@@ -136,11 +137,11 @@ func TestLinuxConformanceJobsFitTheirBudget(t *testing.T) {
 			warm += linuxConformanceWarmShardSeconds[shard-1] + linuxConformanceWarmPerShardSeconds
 			cold += linuxConformanceColdShardSeconds[shard-1] + linuxConformanceColdPerShardSeconds
 		}
-		if warm*5 > limit*3 {
-			t.Errorf("linux job %s (shards %d..%d) takes %d s warm, more than 60%% of its %d s limit", name, rng[0], rng[1], warm, limit)
+		if warm*5 > budget*3 {
+			t.Errorf("linux job %s (shards %d..%d) takes %d s warm, more than 60%% of its %d s shard budget", name, rng[0], rng[1], warm, budget)
 		}
-		if cold > limit-linuxConformanceColdMarginSeconds {
-			t.Errorf("linux job %s (shards %d..%d) takes %d s cold, leaving less than %d s margin under its %d s limit", name, rng[0], rng[1], cold, linuxConformanceColdMarginSeconds, limit)
+		if cold > budget-linuxConformanceColdMarginSeconds {
+			t.Errorf("linux job %s (shards %d..%d) takes %d s cold, leaving less than %d s margin under its %d s shard budget", name, rng[0], rng[1], cold, linuxConformanceColdMarginSeconds, budget)
 		}
 	}
 }

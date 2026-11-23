@@ -118,12 +118,13 @@ var linuxFastShardedFastPoolSeconds = map[string]int{
 }
 
 // TestLinuxFastShardedHalvesFitTheirBudget pins that each half of Linux / test-fast-sharded stays <= 60% of the
-// 60-minute limit on the fast pool and <= 85% on the slow pool (1.4x fast-pool projection).
+// 60-minute shard budget on the fast pool and <= 85% on the slow pool (1.4x fast-pool projection).
 func TestLinuxFastShardedHalvesFitTheirBudget(t *testing.T) {
-	limit := verificationJobs(t)["linux"].Timeout * 60
-	if limit <= 0 || limit > 3600 {
-		t.Fatalf("linux timeout = %d s, want 1..3600", limit)
+	killLimit := verificationJobs(t)["linux"].Timeout * 60
+	if killLimit < linuxShardBudgetSeconds || killLimit > linuxKillLimitMinutes*60 {
+		t.Fatalf("linux timeout = %d s, want %d..%d", killLimit, linuxShardBudgetSeconds, linuxKillLimitMinutes*60)
 	}
+	budget := linuxShardBudgetSeconds
 	const fastSetupSec = 600 // checkout, caches, warm fixtures (~10 m on us-east-1)
 	halfFast := map[int]int{1: fastSetupSec, 2: fastSetupSec}
 	for _, pkg := range fastShardedPackages(t) {
@@ -135,11 +136,11 @@ func TestLinuxFastShardedHalvesFitTheirBudget(t *testing.T) {
 	}
 	for half, fastSec := range halfFast {
 		slowSec := (fastSec*14 + 9) / 10
-		if fastSec*5 > limit*3 {
-			t.Errorf("test-fast-sharded half %d projects %d s fast-pool (> 60%% of %d s limit)", half, fastSec, limit)
+		if fastSec*5 > budget*3 {
+			t.Errorf("test-fast-sharded half %d projects %d s fast-pool (> 60%% of %d s shard budget)", half, fastSec, budget)
 		}
-		if slowSec*100 > limit*85 {
-			t.Errorf("test-fast-sharded half %d projects %d s slow-pool (> 85%% of %d s limit)", half, slowSec, limit)
+		if slowSec*100 > budget*85 {
+			t.Errorf("test-fast-sharded half %d projects %d s slow-pool (> 85%% of %d s shard budget)", half, slowSec, budget)
 		}
 	}
 }
