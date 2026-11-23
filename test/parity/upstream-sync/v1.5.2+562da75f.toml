@@ -1,0 +1,31 @@
+from = "1.5.2+cead615b"
+to = "1.5.2+562da75f"
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "ported"
+evidence = ["changelog.d/highlight-default-token-text-color-6389d4475.md"]
+rationale = "User-visible changelog note carried in changelog.d/highlight-default-token-text-color-6389d4475.md."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/theme/theme.ts"
+change = "modified"
+disposition = "ported"
+evidence = [
+  "test:tui/syntax_highlight_default_token_upstream_test.go#TestSyntaxHighlightDefaultTokenUpstream",
+  "test:tui/syntax_highlight_default_token_upstream_test.go#TestMarkdownHighlightedCodeBlockDefaultTokenColors",
+  "test:tui/highlight_test.go#TestHighlightCode_ColorsEachLineOfPythonDocstringsIndependently",
+  "scenario:test/parity/scenarios/interactive-rendering/80-highlight-default-token-text-color.toml",
+]
+rationale = "Ported buildCliHighlightTheme default token entry {\"default\", \"text\"} in tui/highlight.go (6389d4475) and added the 562da75f9 backport block in automation/gen/pi-post-release-backports.mjs."
+
+[[files]]
+path = "packages/coding-agent/test/syntax-highlight.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = [
+  "test:tui/syntax_highlight_default_token_upstream_test.go#TestSyntaxHighlightDefaultTokenUpstream",
+  "test:tui/highlight_test.go#TestHighlightCode_ColorsEachLineOfPythonDocstringsIndependently",
+]
+rationale = "Ported both the updated Python docstring trailing unscoped token assertion and the new unscoped highlighted code theme foreground test."
