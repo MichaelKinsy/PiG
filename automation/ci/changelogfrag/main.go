@@ -385,7 +385,16 @@ func foldInto(dir, changelogPath, legacyPath, recordsPath, version string, fragm
 	if slices.ContainsFunc(left, func(entry fs.DirEntry) bool { return !isDataOnlyModFile(entry) }) {
 		return nil
 	}
-	return dropRecordEntryFile(recordsPath, filepath.ToSlash(dir)+"/")
+	prefix := filepath.ToSlash(dir) + "/"
+	if err := dropRecordEntryFile(recordsPath, prefix); err != nil {
+		return err
+	}
+	for _, f := range fragments {
+		if err := dropRecordEntryFile(recordsPath, prefix+f.name); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func run(args []string, stdout *os.File) error {

@@ -357,3 +357,31 @@ func assertFile(t *testing.T, path, want string) {
 		t.Fatalf("%s:\n%q\nwant:\n%q", path, got, want)
 	}
 }
+
+func TestFoldRemovesVersionRecordsPerFragmentEntry(t *testing.T) {
+	saved := legacyList
+	defer func() { legacyList = saved }()
+	legacyList = ""
+	dir, clPath, legacyPath, recordsPath, _ := foldTree(t, map[string]string{
+		"d243-123827b998.md": "### Fixed\n\n- SDK local bash fix. <!-- fix: 123827b998 -->\n",
+	})
+	entry := filepath.ToSlash(dir) + "/d243-123827b998.md"
+	records := "[[record]]\nversion = \"1.5.1\"\nreason = \"Fragment names an earlier Pi release.\"\npaths = [\n  \"docs/site/docs/bug-ledger.md\",\n  \"" + entry + "\",\n]\n"
+	if err := os.WriteFile(recordsPath, []byte(records), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	frags, problems := load(dir)
+	if len(problems) != 0 || len(frags) != 1 {
+		t.Fatalf("load = %v, %v", frags, problems)
+	}
+	if err := foldInto(dir, clPath, legacyPath, recordsPath, "1.0.0", frags); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(recordsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(got), entry) {
+		t.Fatalf("per-fragment record path survived fold:\n%s", got)
+	}
+}
