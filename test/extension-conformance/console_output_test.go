@@ -29,39 +29,86 @@ func TestConformance_ExtensionConsoleReachesTheTerminalInEverySDK(t *testing.T) 
 		rpcRowMode = mode
 		for _, tc := range componentKitSDKCells() {
 			t.Run(mode+"/"+tc.name, func(t *testing.T) {
-				capture := swapProcessStd(t)
-				h := startKitCell(t, tc)
-				args := ""
-				if strings.HasPrefix(tc.name, "fused") {
-					args = "stderr"
-				}
-				runKitCommand(t, h, "console-probe", args)
-				wantLines := 4
-				if args == "stderr" {
-					wantLines = 2
-				}
-				waitFor(t, func() bool {
-					out, errOut := capture.snapshot()
-					return len(probeLines(out))+len(probeLines(errOut)) >= wantLines
-				})
-				out, errOut := capture.stop()
-				gotOut, gotErr := probeLines(out), probeLines(errOut)
-				var wantOut, wantErr []string
-				switch {
-				case args == "stderr":
-					wantErr = []string{"probe-err-1", "probe-err-2"}
-				case mode == "tui":
-					wantOut = []string{"probe-out-1", "probe-out-2"}
-					wantErr = []string{"probe-err-1", "probe-err-2"}
-				default:
-					wantErr = []string{"probe-out-1", "probe-err-1", "probe-out-2", "probe-err-2"}
-				}
-				if !equalLines(gotOut, wantOut) || !equalLines(gotErr, wantErr) {
-					t.Errorf("%s: terminal stdout %q stderr %q, want stdout %q stderr %q", tc.name, gotOut, gotErr, wantOut, wantErr)
-				}
+				runConsoleProbeCell(t, mode, tc, nil)
 			})
 		}
 	}
+}
+
+func runConsoleProbeCell(t *testing.T, mode string, tc kitCell, beforeStop func(*harness)) {
+	t.Helper()
+	capture := swapProcessStd(t)
+	h := startKitCell(t, tc)
+	args := ""
+	if strings.HasPrefix(tc.name, "fused") {
+		args = "stderr"
+	}
+	runKitCommand(t, h, "console-probe", args)
+	wantLines := 4
+	if args == "stderr" {
+		wantLines = 2
+	}
+	waitFor(t, func() bool {
+		out, errOut := capture.snapshot()
+		return len(probeLines(out))+len(probeLines(errOut)) >= wantLines
+	})
+	if beforeStop != nil {
+		beforeStop(h)
+	}
+	out, errOut := capture.stop()
+	gotOut, gotErr := probeLines(out), probeLines(errOut)
+	var wantOut, wantErr []string
+	switch {
+	case args == "stderr":
+		wantErr = []string{"probe-err-1", "probe-err-2"}
+	case mode == "tui":
+		wantOut = []string{"probe-out-1", "probe-out-2"}
+		wantErr = []string{"probe-err-1", "probe-err-2"}
+	default:
+		wantErr = []string{"probe-out-1", "probe-err-1", "probe-out-2", "probe-err-2"}
+	}
+	if !equalLines(gotOut, wantOut) || !equalLines(gotErr, wantErr) {
+		t.Errorf("%s: terminal stdout %q stderr %q, want stdout %q stderr %q", tc.name, gotOut, gotErr, wantOut, wantErr)
+	}
+}
+
+// TestConformance_ExtensionConsoleRestoreJoinsFrontendPushes verifies under -race that restoring os.Stdout/os.Stderr after a console-probe cell is ordered after the cell's UIBridge frontend-push worker finishes reading os.Stdout via codingagent.ActiveExtensionTheme.
+func TestConformance_ExtensionConsoleRestoreJoinsFrontendPushes(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
+	}
+	t.Cleanup(func() { rpcRowMode = "" })
+	rpcRowMode = "print"
+	var nodeCell kitCell
+	var found bool
+	for _, tc := range componentKitSDKCells() {
+		if tc.name == "subprocess-node" {
+			nodeCell = tc
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("subprocess-node cell not found")
+	}
+	triggerPush := func(t *testing.T) func(*harness) {
+		return func(h *harness) {
+			entered := make(chan struct{})
+			var enteredOnce sync.Once
+			hook := func() { enteredOnce.Do(func() { close(entered) }) }
+			beforeKitThemeRead.Store(&hook)
+			t.Cleanup(func() { beforeKitThemeRead.Store(nil) })
+			h.bridge.SetFrontend(false)
+			<-entered
+			beforeKitThemeRead.Store(nil)
+		}
+	}
+	t.Run("console-probe", func(t *testing.T) {
+		runConsoleProbeCell(t, "print", nodeCell, triggerPush(t))
+	})
+	t.Run("sdk-diagnostics", func(t *testing.T) {
+		runSDKDiagnosticsCell(t, nodeCell, triggerPush(t))
+	})
 }
 
 func equalLines(a, b []string) bool {
