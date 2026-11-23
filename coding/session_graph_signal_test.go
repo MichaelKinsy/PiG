@@ -490,16 +490,25 @@ type graphUnstableScope struct {
 	aborted     atomic.Bool
 	tokens      atomic.Uint64
 	reads       atomic.Int64
+	liveRead    chan struct{}
 	abortedRead chan struct{}
 	abortedN    atomic.Int64
 	stormCap    int64
 }
 
 func newGraphUnstableScope(stormCap int64) *graphUnstableScope {
-	s := &graphUnstableScope{stormCap: stormCap, abortedRead: make(chan struct{}, stormCap+8)}
+	s := &graphUnstableScope{
+		stormCap:    stormCap,
+		liveRead:    make(chan struct{}, 8),
+		abortedRead: make(chan struct{}, stormCap+8),
+	}
 	s.serve = func(string, []json.RawMessage) (any, error) {
 		s.reads.Add(1)
 		if !s.aborted.Load() {
+			select {
+			case s.liveRead <- struct{}{}:
+			default:
+			}
 			return tokenSignal(s.tokens.Add(1), false, false), nil
 		}
 		n := s.abortedN.Add(1)
@@ -547,14 +556,18 @@ func TestGraphUnstableSignalIsReadOncePerRequest(t *testing.T) {
 
 	bridge.RunSignalChanged()
 	execute()
+	// Wait for both live reads (RunSignalChanged and execute) before aborting, so the live RunSignalChanged task cannot land after the abort.
+	for range 2 {
+		<-scope.liveRead
+	}
 	scope.aborted.Store(true)
 	bridge.RunSignalChanged()
-	// The sync that sees the abort reads the getter, and so does the watcher that the abort of the run fires.
-	for range 2 {
+	// The abort fires three async reads: the RunSignalChanged sync, the watcher of the cancelled live context (cancelled inside graphSignal.read before runSignals stops it), and the watcher of the new cancelled context. Wait for all three before the settle request and snapshot, so none can land inside the request loop.
+	for range 3 {
 		<-scope.abortedRead
 	}
 	execute()
-	// The reads so far are the abort's: the host has settled, and each request after it is one read.
+	// The reads so far are the abort's: all three async abort reads and the settle request have completed, so each request after this snapshot is one read.
 	abortReads, before := scope.abortedN.Load(), scope.reads.Load()
 	for range requests {
 		execute()
