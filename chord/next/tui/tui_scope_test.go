@@ -339,6 +339,9 @@ func TestScopeReferenceInOneVariantReadsItNarrowedWhileLiveInTheVariantAChangeOf
 	desk := deskfix.New(t)
 	var changes atomic.Int64
 	scope := scopeOn(desk.Client, func() { changes.Add(1) })
+	// Hold Desk loading until the before-bind reader() check has run: Pi holds and reads in one turn,
+	// while Go's memory link delivers on a goroutine and may bind before reader() runs.
+	open := desk.Gate()
 	held, err := scope.Hold(deskfix.Desk, delta.JsonObjectOf())
 	if err != nil {
 		t.Fatal(err)
@@ -348,6 +351,7 @@ func TestScopeReferenceInOneVariantReadsItNarrowedWhileLiveInTheVariantAChangeOf
 	if reader() != nil {
 		t.Fatal("reader() before it binds is not nil")
 	}
+	open()
 	until(t, func() bool { return reader() == held })
 	if editor() != nil {
 		t.Fatal("editor() while live as a reader is not nil")
