@@ -145,6 +145,7 @@ func splitJSWhitespace(text string) []string {
 	return append(parts, text[start:])
 }
 
+// pig divergence (D645): Pi's getScopeFormatter (packages/coding-agent/src/utils/syntax-highlight.ts:102) reads theme[scope] on a plain object, returning Object.prototype.constructor for reasonml's hljs-constructor instead of falling back to theme.default (visible since Pi 562da75f9).
 // formatter is the theme's own entry for scope, true when it holds a formatter; a nil entry is an own property set to undefined. A scope that names a member of Object.prototype (highlight.js's reasonml grammar emits `constructor`) has no entry unless the theme sets one, like any other scope.
 func (theme HighlightTheme) formatter(scope string) (HighlightFormatter, bool) {
 	f := theme[scope]
