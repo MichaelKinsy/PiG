@@ -7,6 +7,7 @@ change = "modified"
 disposition = "ported"
 evidence = ["test:ai/openai_responses_input_transformations_upstream_test.go#TestOpenAIResponsesInputTransformationsUpstream"]
 rationale = "03de604b8: appendReasoningRemovals records non-turn_boundary removed reasoning items from response.input_transformations as openai_input_transformations assistant message diagnostics across OpenAI Responses, Azure OpenAI Responses, and Codex Responses. Ported in ai/openai_responses.go (appendOpenAIReasoningRemovals)."
+oracle = "not carried: no oracle test feeds response.input_transformations through pi-ai; direct unit tests in ai/openai_responses_input_transformations_upstream_test.go cover all 5 Pi cases plus Azure Responses."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
@@ -14,6 +15,7 @@ change = "modified"
 disposition = "ported"
 evidence = ["test:internal/codingagent/assistant_diagnostics_upstream_test.go#TestAssistantDiagnosticsShowsOpenAIReasoningRemovalsWithReasons", "test:internal/codingagent/assistant_diagnostics_upstream_test.go#TestAssistantDiagnosticsShowsOpenAIReasoningRemovalsOnlyWhenNewItemsRemoved"]
 rationale = "03de604b8: getDroppedReasoning and maybeShowThinkingDropNotice now report both Anthropic thinking_dropped and OpenAI reasoning removals with their deduplicated reasons, comparing against the previous response of the same diagnostic kind. Ported in internal/codingagent/interactive.go, interactive_events.go, and interactive_transcript.go."
+oracle = "not carried: interactive mode UI is Go-native; no Node oracle test exercises interactive-mode.ts drop notices."
 
 [[files]]
 path = "packages/ai/test/openai-responses-input-transformations.test.ts"
@@ -42,6 +44,7 @@ change = "modified"
 disposition = "designed-out"
 evidence = []
 rationale = "03de604b8: TypeScript openai SDK bump 7.19.0 -> 7.59.0 for input_transformations types; Go decodes JSON directly in ai/openai_responses.go."
+oracle = "not carried: TypeScript type-only SDK bump; oracle does not require openai 7.59.0."
 
 [[files]]
 path = "package-lock.json"
@@ -49,6 +52,7 @@ change = "modified"
 disposition = "designed-out"
 evidence = []
 rationale = "03de604b8: npm lockfile for openai 7.59.0 bump; no Go counterpart."
+oracle = "not carried: npm lockfile for TypeScript openai SDK bump."
 
 [[files]]
 path = "packages/coding-agent/install-lock/package-lock.json"
@@ -56,6 +60,7 @@ change = "modified"
 disposition = "designed-out"
 evidence = []
 rationale = "03de604b8: npm install-lock for openai 7.59.0 bump; no Go counterpart."
+oracle = "not carried: npm install-lock for TypeScript openai SDK bump."
 
 [[files]]
 path = "packages/ai/CHANGELOG.md"
