@@ -160,3 +160,103 @@ func TestModelRuntimeCodexStreamSimpleOffSendsConfigurationUpdateNone(t *testing
 		t.Errorf("input = %v, want %v (raw=%s)", summary, wantSummary, captured)
 	}
 }
+
+// Covers the other two simple-stream caller boundaries that share prepareSimpleStreamOptions
+// with ModelRuntime.StreamSimple: requestOptionsProvider.SimpleStreamOptions (compaction/completer)
+// and ModelRuntime.GetProvider().StreamSimple (builtinStreamSimple).
+func TestCodexSimpleStreamPreparationAcrossCallerBoundaries(t *testing.T) {
+	var captured []byte
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = fmt.Fprintf(w, "data: %s\n\n", `{"type":"response.completed","response":{"id":"resp_boundary","status":"completed"}}`)
+	}))
+	defer server.Close()
+
+	agentDir := t.TempDir()
+	token := "aaa." + base64.RawURLEncoding.EncodeToString([]byte(`{"https://api.openai.com/auth":{"chatgpt_account_id":"acc_test"}}`)) + ".bbb"
+	config := fmt.Sprintf(`{"providers":{"openai-codex":{"api":"openai-codex-responses","baseUrl":%q,"apiKey":%q,"models":[{"id":"gpt-6-sol","name":"GPT-6 Sol","reasoning":true,"input":["text"],"contextWindow":400000,"maxTokens":128000,"compat":{"supportsMidConvoEffort":true},"thinkingLevelMap":{"off":"none"}}]}}}`, server.URL, token)
+	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(config), 0600); err != nil {
+		t.Fatal(err)
+	}
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	model, err := BuildModel("openai-codex/gpt-6-sol", services)
+	if err != nil {
+		t.Fatal(err)
+	}
+	transcript := ai.NormalizeContext(ai.Context{
+		Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Say hello"), Timestamp: 1}},
+	})
+
+	t.Run("requestOptionsProvider.SimpleStreamOptions", func(t *testing.T) {
+		wrapped := newRequestOptionsProvider(model.Provider, "openai-codex", nil).(*requestOptionsProvider)
+		got := wrapped.SimpleStreamOptions(model, transcript, ai.StreamOptions{ReasoningEffort: "high"})
+		if got.ReasoningEffort != "none" {
+			t.Fatalf("SimpleStreamOptions ReasoningEffort = %q, want %q", got.ReasoningEffort, "none")
+		}
+	})
+
+	t.Run("GetProvider.StreamSimple", func(t *testing.T) {
+		captured = nil
+		provider := services.ModelRuntime().GetProvider("openai-codex")
+		if provider == nil || provider.StreamSimple == nil {
+			t.Fatalf("GetProvider(openai-codex) = %#v, want StreamSimple", provider)
+		}
+		stream, err := provider.StreamSimple(t.Context(), model, transcript, ai.StreamOptions{
+			APIKey:    token,
+			Transport: ai.TransportSSE,
+			OnPayload: func(value any, _ *ai.Model) (any, error) {
+				encoded, err := json.Marshal(value)
+				if err == nil {
+					captured = encoded
+				}
+				return nil, err
+			},
+		})
+		if err != nil {
+			t.Fatalf("GetProvider.StreamSimple: %v", err)
+		}
+		result := stream.Result()
+		if result.StopReason != ai.StopReasonStop {
+			t.Fatalf("StopReason = %q (%s), want stop", result.StopReason, result.ErrorMessage)
+		}
+		if result.ProviderThinkingLevel != "none" {
+			t.Errorf("ProviderThinkingLevel = %q, want %q", result.ProviderThinkingLevel, "none")
+		}
+		var req struct {
+			Reasoning *struct {
+				Effort  string `json:"effort"`
+				Summary string `json:"summary"`
+			} `json:"reasoning"`
+			Input []struct {
+				Type      string `json:"type"`
+				Role      string `json:"role"`
+				Reasoning *struct {
+					Effort string `json:"effort"`
+				} `json:"reasoning"`
+			} `json:"input"`
+		}
+		if err := json.Unmarshal(captured, &req); err != nil {
+			t.Fatalf("unmarshal request: %v (raw=%s)", err, captured)
+		}
+		if req.Reasoning == nil || req.Reasoning.Effort != "medium" || req.Reasoning.Summary != "auto" {
+			t.Errorf("reasoning = %+v, want {Effort:medium Summary:auto}", req.Reasoning)
+		}
+		var summary []string
+		for _, item := range req.Input {
+			if item.Type == "configuration_update" && item.Reasoning != nil {
+				summary = append(summary, "configuration_update:"+item.Reasoning.Effort)
+			} else if item.Role != "" {
+				summary = append(summary, item.Role)
+			} else {
+				summary = append(summary, item.Type)
+			}
+		}
+		wantSummary := []string{"user", "configuration_update:none"}
+		if fmt.Sprint(summary) != fmt.Sprint(wantSummary) {
+			t.Errorf("input = %v, want %v (raw=%s)", summary, wantSummary, captured)
+		}
+	})
+}

@@ -196,7 +196,7 @@ func (r *ModelRegistry) RegisterProviderInput(id string, input ProviderConfigInp
 	base := r.builtinBase(id, fallback)
 	if base == nil {
 		auth, _ := ai.BuiltinProviderAuth(id)
-		base = &ai.ModelsProvider{ID: id, Name: catalogProviderName(id), Auth: auth, GetModels: func() ([]*ai.Model, error) { return nil, nil }, Stream: fallback, StreamSimple: fallback}
+		base = &ai.ModelsProvider{ID: id, Name: catalogProviderName(id), Auth: auth, GetModels: func() ([]*ai.Model, error) { return nil, nil }, Stream: fallback, StreamSimple: r.simpleFallback(id, fallback)}
 	}
 	if _, err := r.composeNativeProvider(base, &input); err != nil {
 		return err

@@ -373,6 +373,7 @@ func NewModelRuntime(services *AgentSessionServices) (*ModelRuntime, error) {
 	runtime := &ModelRuntime{services: services, modelNetworkEnabled: icodingagent.ModelNetworkEnabled()}
 	runtime.prepare = runtime.prepareRequest
 	services.Registry().SetAPIStream(runtime.builtinStream)
+	services.Registry().SetAPISimpleStream(runtime.builtinStreamSimple)
 	runtime.availability = modelAvailability{
 		providerSeq:     make(map[string]uint64),
 		listCredentials: services.Registry().ListCredentials,
@@ -560,14 +561,8 @@ func (runtime *ModelRuntime) start(ctx context.Context, model *ai.Model, transcr
 	_, registeredCallback := leaf.(*registeredStreamProvider)
 	if native, ok := leaf.(*nativeModelProvider); ok {
 		native.simple = simple
-	} else if simple && registryBuilt && !registeredCallback && preparedModel.ProviderMeta.API != ai.APIPiMessages {
-		// Every API module's streamSimple but pi-messages.ts (:432-444) builds its options with buildBaseOptions; pi-messages sends the caller's.
-		ai.ApplyOmittedReasoning(preparedModel, &preparedOptions)
-		maxTokens := preparedOptions.MaxTokens
-		if maxTokens == 0 {
-			maxTokens = preparedModel.Capabilities.MaxOutputTokens
-		}
-		preparedOptions.MaxTokens = ai.ClampMaxTokensToContext(preparedModel, transcript, maxTokens)
+	} else if simple && registryBuilt && !registeredCallback {
+		preparedOptions = prepareSimpleStreamOptions(preparedModel, transcript, preparedOptions)
 	}
 	if registryBuilt {
 		if !registeredCallback {
