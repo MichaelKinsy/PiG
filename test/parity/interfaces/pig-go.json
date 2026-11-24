@@ -411077,9 +411077,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(theme HighlightTheme, open []scopeEntry, parts ...string) (output string, scopes []scopeEntry, err error)"
+        "type": "func(theme HighlightTheme, cliTheme *Theme, open []scopeEntry, parts ...string) (output string, scopes []scopeEntry, err error)"
       },
-      "shapeHash": "sha256:d629aba9671c1f51ae212e3ade6afcaad5d039daf29d39b0e500dff04615afcd"
+      "shapeHash": "sha256:ef77adc2831472fb4159a32dc2e41942374c304aa8ebbfb9b2ba6f73317acf65"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#renderInline",
