@@ -177,8 +177,10 @@ func generationTime() string {
 	return time.Now().UTC().Format(isoMillis)
 }
 
-// piOverlayCommit is the Pi commit the files of pi-overlay come from (git show <commit>:packages/ai/catalog/<path>).
-const piOverlayCommit = "cead615b48b80d1c61eecab2f0b576d16eeaf4c5"
+// piOverlayCommit is the newest Pi commit an overlay file is taken from; each file is at the commit of the sync ledger that carries it
+// (17 files at b82477b7b; families/openai.ts, providers/openai.ts, providers/openai-codex.ts and providers/qwen-token-plan-individual.ts
+// at cead615b; providers/github-copilot.ts at e5c01ca6cb9d minus supportsDeveloperRole: false, without unported c815a3dfe).
+const piOverlayCommit = "b82477b7bbb59e727de66ceda1fbfcdd3ccf8216"
 
 const isoMillis = "2006-01-02T15:04:05.000Z"
 
