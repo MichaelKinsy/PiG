@@ -54,6 +54,16 @@ const E = {
 	"35-durable-on-the-store": ["store", "a Harness on Chord's store"],
 	"36-durable-views": ["store", "Durable views on Chord's store"],
 	"37-harness-registry": ["loop", "a Harness over a registry"],
+	"38-signals": ["session", "typed signals delivered to a live task from outside"],
+	"39-ask-a-person": ["session", "a plugin task that sleeps on a signal or deadline"],
+	"40-tool-waits-for-webhook": ["loop", "a tool that parks on a signal and cancels on stop"],
+	"41-tool-polls": ["loop", "a tool that polls by parking on time with backoff"],
+	"42-parallel-children": ["loop", "a tool that starts nested calls without waiting and parks until any ends"],
+	"43-subagent-waits": ["session", "a subagent tool that parks on its child submission settling"],
+	"44-approval-gate": ["loop", "beforeTool gates that park a tool call until approved or expired"],
+	"45-review-on-yield": ["loop", "an onYield hook task that reviews an answer while input stays open"],
+	"46-after-tools-terminate": ["loop", "an afterTools hook task that parks and steers or terminates a run"],
+	"47-fit-images": ["loop", "fitting images to model limits before storing them in the transcript"],
 }
 const U = {
 	"codemode-checkpoints": "loop", "harness-blocked": "session", "harness-deferred-progress": "session", "harness-failed-run-inbox": "session", "harness-host-inputs": "session",
@@ -75,6 +85,8 @@ const U = {
 	"harness-turn-limit": "loop", "harness-registry-reader": "loop", "store-storage": "store",
 	"harness-context-range": "loop", "harness-group-commit": "session", "harness-idle-scopes": "session", "search": "loop", "session-cached-storage": "session",
 	"session-conversation-tails": "session", "session-group-commit": "session", "store-storage-commit": "store", "tool-args-typebox": "loop",
+	"env-node-list-race": "host", "harness-hook-tasks": "loop", "harness-park-children": "loop", "harness-signals": "session",
+	"harness-tool-gates": "loop", "harness-tool-parks": "loop", "images-fit": "loop",
 }
 // Sources that gained, after Pi 5f312dac, what the follow's Durable port on Chord's store and the registry covers (14b4c56e,
 // 6eb99ad6). The row is pending until that port lands: the candidates cannot pass it, and a row that
@@ -90,6 +102,23 @@ const LATER = {
 	"harness-observers": pendingDStore("a Session close fails an observer (S1) and ends a watch ended (6eb99ad6)"),
 	"session-observers": pendingDStore("a Session close fails an observer (S1) and ends a watch ended (6eb99ad6)"),
 	"SC": pendingDStore("it refuses a creation and a change of one document in one commit (14b4c56e)"),
+	"38-signals": "pending durable/core v1.6.0 signals/parks/fit-images port: typed task signals (473515f9)",
+	"39-ask-a-person": "pending durable/core v1.6.0 signals/parks/fit-images port: task sleep on signal or deadline (473515f9)",
+	"40-tool-waits-for-webhook": "pending durable/core v1.6.0 signals/parks/fit-images port: parked tools and cancel (473515f9)",
+	"41-tool-polls": "pending durable/core v1.6.0 signals/parks/fit-images port: parked tools polling on time (473515f9)",
+	"42-parallel-children": "pending durable/core v1.6.0 signals/parks/fit-images port: non-waiting nested calls and wait parks (473515f9)",
+	"43-subagent-waits": "pending durable/core v1.6.0 signals/parks/fit-images port: submission settlement signals (473515f9)",
+	"44-approval-gate": "pending durable/core v1.6.0 signals/parks/fit-images port: beforeTool approval gates (473515f9)",
+	"45-review-on-yield": "pending durable/core v1.6.0 signals/parks/fit-images port: onYield hook tasks (473515f9)",
+	"46-after-tools-terminate": "pending durable/core v1.6.0 signals/parks/fit-images port: afterTools hook tasks (473515f9)",
+	"47-fit-images": "pending durable/core v1.6.0 signals/parks/fit-images port: fit-images extension (76c79d8b)",
+	"env-node-list-race": "pending durable/core v1.6.0 signals/parks/fit-images port: env node listDir race handling (75ca6e7d)",
+	"harness-hook-tasks": "pending durable/core v1.6.0 signals/parks/fit-images port: afterTools and onYield hook tasks (473515f9)",
+	"harness-park-children": "pending durable/core v1.6.0 signals/parks/fit-images port: parked tool children and settlement signals (473515f9)",
+	"harness-signals": "pending durable/core v1.6.0 signals/parks/fit-images port: signals and parked task wakes (473515f9)",
+	"harness-tool-gates": "pending durable/core v1.6.0 signals/parks/fit-images port: beforeTool gates (473515f9)",
+	"harness-tool-parks": "pending durable/core v1.6.0 signals/parks/fit-images port: parked tools and cancel (473515f9)",
+	"images-fit": "pending durable/core v1.6.0 signals/parks/fit-images port: fitImage/fitImages and fit-images extension (76c79d8b)",
 }
 const out = []
 const emit = (...lines) => out.push(...lines, "")
@@ -104,7 +133,7 @@ emit(
 	"# status: ready (a runner exists and the reference capture is deterministic), pending (no candidate can run it yet, with the",
 	"# reason and the owner; `--strict` fails on it), skipped (nobody can run it here, with the reason).",
 	"",
-	"[pin]", `reference = ${q("earendil-works/pi")}`, `commit = ${q("b4afdddf44e059c67ccf5097e5317d913521b470")}`, `release = ${q("1.0.4")}`,
+	"[pin]", `reference = ${q("earendil-works/pi")}`, `commit = ${q("faac585884ae2c013a6b1400f3e9e77f10b34bac")}`, `release = ${q("1.0.4")}`,
 )
 for (const f of readdirSync(join(pi, "packages/durable/test/examples")).filter(f => /^\d\d-.*\.ts$/.test(f)).sort()) {
 	const name = f.replace(/\.ts$/, "")
