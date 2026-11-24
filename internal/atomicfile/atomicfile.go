@@ -50,14 +50,15 @@ func SetInPlaceReporter(report func(path string, cause error)) {
 //     system that keeps none (never dropped silently);
 //   - the temporary file cannot be created in the directory because it refuses the process (EACCES, EROFS, EPERM: a directory the process cannot
 //     write, holding a file it can); or the rename is refused (EBUSY, EXDEV, ETXTBSY: a file mounted into a container on its own is a mount point;
-//     on Windows, ERROR_ACCESS_DENIED, ERROR_SHARING_VIOLATION or ERROR_LOCK_VIOLATION after [fsretry.RenameBudget] is spent);
+//     on Windows, ERROR_ACCESS_DENIED, ERROR_SHARING_VIOLATION or ERROR_LOCK_VIOLATION from the pre-move descriptor carry or after
+//     [fsretry.RenameBudget] is spent on the move);
 //   - the file is not a regular file (a device such as /dev/null, a named pipe): a rename would replace the node itself with an ordinary file that has its mode.
 //
 // A file the caller may not write (a read-only file) is refused as an in-place write would refuse it, and a write that fails for a real reason (a
-// full disk, an I/O error) is an error, in place or not. On Windows a rename another process's open handle refuses is retried for
-// [fsretry.RenameBudget]; if the file is still held busy when the budget is spent, WriteFile writes in place as Pi writes it (reporting the cause and
-// removing the temporary file). Any [*fs.PathError] naming the resolved target or its temporary sibling reports path as given, as os.WriteFile and
-// Node's writeFileSync do.
+// full disk, an I/O error) is an error, in place or not. On Windows, when the file's access cannot be carried onto the replacement (either before data
+// is written or on the pre-move carry) or another process keeps the file open for the whole [fsretry.RenameBudget], WriteFile writes in place as Pi
+// writes it (reporting the cause and removing the temporary file). Any [*fs.PathError] naming the resolved target or its temporary sibling reports
+// path as given, as os.WriteFile and Node's writeFileSync do.
 func WriteFile(path string, data []byte, perm os.FileMode) error {
 	// pig divergence (D651): replaced through a private temporary file and a rename, in place where that is refused; Pi writes the file in place.
 	given := path
