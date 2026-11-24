@@ -810,7 +810,12 @@ func TestExternalSIGTSTPUnderDashJobControl(t *testing.T) {
 	idleMark := r.mark()
 	_, _ = r.master.WriteString("idleok")
 	r.waitBytes(idleMark, "idle echo under dash", "idleok")
-	_, _ = r.master.WriteString(strings.Repeat("\x7f", 6))
+	// Wait for pig to drain the editor clear before SIGTSTP: dash keeps raw termios
+	// across job stop, so any unread \x7f bytes left in the PTY input queue would be
+	// read literally by dash ahead of "fg".
+	clearMark := r.mark()
+	_, _ = r.master.WriteString(strings.Repeat("\x7f", 6) + "okdash")
+	r.waitBytes(clearMark, "idle clear under dash", "okdash")
 
 	stopMark := r.mark()
 	if err := syscall.Kill(r.pig, syscall.SIGTSTP); err != nil {

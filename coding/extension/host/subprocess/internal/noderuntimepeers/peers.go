@@ -22,7 +22,7 @@ var hostPeers = map[string]map[string]string{
 	"@earendil-works/pi-ai": {
 		".": "shims/pi-ai.mjs", "./compat": "shims/pi-ai.mjs", "./oauth": "shims/pi-ai-oauth.mjs",
 		"./models": "shims/pi-ai-models.mjs", "./bedrock-provider": "shims/pi-dist/pi-ai/bedrock-provider.js", "./bun-oauth": "shims/pi-dist/pi-ai/bun-oauth.js",
-		"./lazy-bedrock-provider": "shims/pi-dist/pi-ai/lazy-bedrock-provider.js", "./lazy-oauth": "shims/pi-dist/pi-ai/lazy-oauth.js",
+		"./lazy-bedrock-provider": "shims/pi-dist/pi-ai/lazy-bedrock-provider.js", "./lazy-oauth": "shims/pi-dist/pi-ai/lazy-oauth.js", "./session-resources": "shims/pi-dist/pi-ai/session-resources.js",
 		"./providers/*": "shims/pi-dist/pi-ai/providers/*.js", "./api/*": "shims/pi-dist/pi-ai/api/*.js", "./utils/*": "shims/pi-dist/pi-ai/utils/*.js",
 	},
 	"@earendil-works/pi-tui": {".": "shims/pi-tui.mjs"},

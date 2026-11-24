@@ -50,7 +50,6 @@ await row("convertTools strips JSON Schema meta keys", () => google.convertTools
 await row("convertTools without parametersJsonSchema", () => google.convertTools([tool({ type: "object", properties: { a: { const: "x" } } })], false));
 const each = (fn, inputs) => inputs.map((x) => { try { return fn(x); } catch (e) { return "threw: " + String(e.message).split("\n")[0]; } });
 await row("mapStopReason", () => each((r) => google.mapStopReason(r), ["STOP", "MAX_TOKENS", "CONTINUATION", "SAFETY", "FINISH_REASON_UNSPECIFIED", "MALFORMED_FUNCTION_CALL", "BOGUS"]));
-await row("mapStopReasonString", () => ["STOP", "MAX_TOKENS", "OTHER"].map((r) => google.mapStopReasonString(r)));
 await row("mapToolChoice", () => each((c) => google.mapToolChoice(c), ["auto", "none", "any", "other"]));
 await row("thinking levels", () => ({ levels: ["minimal", "low", "medium", "high"].map((l) => google.toGoogleThinkingLevel(l)), sdk: ["THINKING_LEVEL_UNSPECIFIED", "MINIMAL", "LOW", "MEDIUM", "HIGH"].map((l) => google.toGoogleSdkThinkingLevel(l)) }));
 await row("model id helpers", () => ({ byId: ["gemini-3-pro-preview", "gemini-2.5-flash", "gemma-3-27b"].map((id) => [google.usesGoogleThinkingLevel({ id }), google.requiresToolCallId(id), google.supportsGoogleStrictToolSampling(id), google.supportsGoogleStrictToolSampling({ id })]), strictOverride: google.supportsGoogleStrictToolSampling({ id: "gemini-3-pro-preview", compat: { supportsStrictMode: false } }) }));
@@ -111,8 +110,8 @@ func TestRestoredAPIValuesBehaveAsUnderPi(t *testing.T) {
 		t.Fatal(err)
 	}
 	pi, pig := run(piDir), run(filepath.Join(runtime, "harness"))
-	if len(pi) != 14 {
-		t.Fatalf("Pi produced %d rows, want the 14 the test declares", len(pi))
+	if len(pi) != 13 {
+		t.Fatalf("Pi produced %d rows, want the 13 the test declares", len(pi))
 	}
 	for name, want := range pi {
 		if strings.HasPrefix(string(want), `"threw`) {

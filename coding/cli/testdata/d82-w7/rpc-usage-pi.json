@@ -3,7 +3,7 @@
     "type": "message_start",
     "outputTokens": 0,
     "stopReason": "pending",
-    "text": "a"
+    "text": ""
   },
   {
     "type": "message_update",
