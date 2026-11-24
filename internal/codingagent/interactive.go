@@ -572,8 +572,8 @@ type InteractiveMode struct {
 	anthropicSubWarningShown bool
 	// cacheWarmingNotice is the last cache-warming notice, extended in place
 	// while it is the last chat line. Mirrors upstream cacheWarmingNotice.
-	cacheWarmingNotice           *cacheWarmingNotice
-	previousThinkingDroppedCount int
+	cacheWarmingNotice       *cacheWarmingNotice
+	previousDroppedReasoning droppedReasoningState
 
 	// inputLoopErr, owned by the input loop, ends it with the error of a
 	// keystroke handled after a subprocess listener's verdict.

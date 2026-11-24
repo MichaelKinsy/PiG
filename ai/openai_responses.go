@@ -16,6 +16,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 	"unsafe"
 
 	"github.com/MichaelKinsy/PiG/internal/jsjson"
@@ -26,6 +27,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/internal/jsonwire"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 // ─── Config ──────────────────────────────────────────────────────────────────
@@ -521,6 +523,8 @@ type respResponseObj struct {
 	ServiceTier       string           `json:"service_tier,omitempty"`
 	Error             *respError       `json:"error,omitempty"`
 	IncompleteDetails *respIncomplete  `json:"incomplete_details,omitempty"`
+	// InputTransformations carries response.input_transformations (Pi 03de604b8).
+	InputTransformations any `json:"input_transformations,omitempty"`
 }
 
 type respUsage struct {
@@ -2367,6 +2371,7 @@ func processResponsesStream(ctx context.Context, decoder providerSSEDecoder, bui
 					builder.partial.Content[contentIndex] = block
 				}
 			}
+			appendOpenAIReasoningRemovals(builder.partial, event.Response.InputTransformations)
 			var usage *Usage
 			if u := event.Response.Usage; u != nil {
 				cached := 0
@@ -2634,4 +2639,44 @@ func mapRespStatus(status, incompleteReason string) (StopReason, string) {
 // sampling parameter that overrode the request field (openai-responses.ts:196, openai-codex-responses.ts:674).
 func requestServiceTierOf(opts StreamOptions) string {
 	return opts.ServiceTier
+}
+
+// appendOpenAIReasoningRemovals records replayed reasoning items OpenAI withheld from the model,
+// leaving out turn_boundary removals (openai-responses-shared.ts appendReasoningRemovals).
+func appendOpenAIReasoningRemovals(output *AssistantMessage, raw any) {
+	items, ok := raw.([]any)
+	if !ok {
+		return
+	}
+	removals := make([]any, 0)
+	order := make([]*orderedjson.Object, 0)
+	for _, entry := range items {
+		obj, ok := entry.(map[string]any)
+		if !ok {
+			continue
+		}
+		if obj["type"] != "reasoning" || obj["action"] != "removed" || obj["reason"] == "turn_boundary" {
+			continue
+		}
+		projected := map[string]any{}
+		members := orderedjson.New()
+		for _, key := range []string{"type", "id", "action", "reason"} {
+			if value, exists := obj[key]; exists {
+				projected[key] = value
+				_ = members.SetValue(key, value)
+			}
+		}
+		removals = append(removals, projected)
+		order = append(order, members)
+	}
+	if len(removals) == 0 {
+		return
+	}
+	orderBytes, _ := json.Marshal(order)
+	details := newDiagnosticDetails()
+	details.set("transformations", removals, orderBytes)
+	AppendAssistantMessageDiagnostic(output, details.attach(AssistantMessageDiagnostic{
+		Type:      "openai_input_transformations",
+		Timestamp: time.Now().UnixMilli(), //portlint:allow clock openai-responses-shared.ts:851 `timestamp: Date.now()`; the package's clock seams belong to OAuth and backoff structs, not to diagnostics
+	}))
 }

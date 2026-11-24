@@ -1517,3 +1517,9 @@ class = "CITE"
 cite = "packages/ai/src/api/openai-codex-responses.ts:612"
 reason = "Pi fcc33744b (#12269) forwards maxTokens as max_output_tokens on openai-codex-responses unless compat.supportsMaxOutputTokens is false."
 
+[[entry]]
+path = "internal/codingagent/assistant_diagnostics_unit_test.go"
+commit = "eb9075718e2f380e44972dc21c10c2128913cd1d"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/interactive-mode.ts:4403"
+reason = "Pi 03de604b8 updates maybeShowThinkingDropNotice (interactive-mode.ts:4403) so both Anthropic and OpenAI reasoning drop notices include the deduplicated reasons list before (details in session). Commit eb9075718e updates the expected notice strings in assistant_diagnostics_unit_test.go to match."
