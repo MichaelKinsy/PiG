@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"slices"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -695,6 +696,16 @@ type oaiChunk struct {
 	Choices []oaiChunkChoice `json:"choices"`
 	Usage   *oaiUsage        `json:"usage"`
 	Error   json.RawMessage  `json:"error,omitempty"`
+}
+
+// UnmarshalJSON rejects a JSON null choice element so the slow path routes it to normalizeOpenAIChunkJS
+// (matching openai 7.59.0 normalizeChatCompletionChunk throwing TypeError on choice.finish_reason).
+func (c *oaiChunkChoice) UnmarshalJSON(data []byte) error {
+	if bytes.Equal(bytes.TrimSpace(data), []byte("null")) {
+		return &json.UnmarshalTypeError{Value: "null", Type: reflect.TypeFor[oaiChunkChoice]()}
+	}
+	type rawChoice oaiChunkChoice
+	return json.Unmarshal(data, (*rawChoice)(c))
 }
 
 // ─── Message conversion ───────────────────────────────────────────────────────
@@ -2107,6 +2118,11 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 					return
 				}
 				thrown = read.thrown
+				if thrown == nullChoiceFinishReason {
+					builder.settleDeferred()
+					fail(StopReasonError, errors.New(thrown))
+					return
+				}
 				if read.finishReason != nil && len(chunk.Choices) > 0 {
 					chunk.Choices[0].FinishReason, chunk.Choices[0].finishReasonNotString = *read.finishReason, true
 				}
