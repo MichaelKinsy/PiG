@@ -1270,6 +1270,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-83928e2](#bf-83928e2) | A `context` handler that edits a message of `event.messages` in place and then throws now leaves the edit in… | PiG's own defect | All platforms | Unreleased |
 | [BF-83928e2-2](#bf-83928e2-2) | A `message_end` handler that edits `event.message` in place and returns nothing now changes the message the… | PiG's own defect | All platforms | Unreleased |
 | [BF-8392c29](#bf-8392c29) | MCP stdio servers now start in a session of their own, as Pi's stdio transport does (`detached` in Node's… | PiG's own defect | All platforms | Unreleased |
+| [BF-83992d8](#bf-83992d8) | Durable agent turns whose provider call failed with a node-fetch network error of the form `request to <url>… | PiG's own defect | All platforms | Unreleased |
 | [BF-83d0c73](#bf-83d0c73) | Interactive mode: a `/reload` that fails leaves the old extension instances stale, as in Pi: their captured… | PiG's own defect | All platforms | Unreleased |
 | [BF-83d5488](#bf-83d5488) | `pig install <dir>` of a local directory with no package manifest and no `extensions/`, `skills/`, `prompts/`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-83ee534](#bf-83ee534) | The exit's terminal restore is one uninterrupted sequence of writes now: a title an extension sets, an OSC 52… | PiG's own defect | All platforms | Unreleased |
@@ -19797,6 +19798,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `8392c29006` (2026-11-11, #427)
 - **Tests:** `mcp/fixtures_test.go::TestMain`, `mcp/stdio_session_linux_test.go::TestStdioServerCannotTakeThePigTerminal`, `mcp/stdio_session_linux_test.go::TestStdioServerLeadsItsOwnSessionAndProcessGroup`
 - **Release note:** MCP stdio servers now start in a session of their own, as Pi's stdio transport does (`detached` in Node's spawn is `setsid`): a server, or a child of it, no longer keeps PiG's controlling terminal and cannot take the terminal's foreground process group from PiG. The server still leads its own process group, so closing the transport still ends its children (#427).
+
+### BF-83992d8
+
+**Durable agent turns whose provider call failed with a node-fetch network error of the form `request to <url>…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Durable agent turns whose provider call failed with a node-fetch network error of the form `request to <url> failed, reason: ...` were not retried since v0.7.0 because the Durable core regex engine did not implement the `\S` non-space character class; they are now retried, as in Pi.
+- **Root cause:** durable/core/turn/rx.go only handled \d and \s after a backslash and fell through to literal characters for every other escape, so \S in patterns.go silently matched literal S.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `83992d8801` (2026-11-23), `ce5cdf9823` (2026-11-23)
+- **Tests:** None recorded.
+- **Release note:** Durable agent turns whose provider call failed with a node-fetch network error of the form `request to <url> failed, reason: ...` were not retried since v0.7.0 because the Durable core regex engine did not implement the `\S` non-space character class; they are now retried, as in Pi.
 
 ### BF-83d0c73
 

@@ -34191,6 +34191,30 @@
       ]
     },
     {
+      "id": "BF-83992d8",
+      "title": "Durable agent turns whose provider call failed with a node-fetch network error of the form `request to \u003curl\u003e…",
+      "symptom": "Durable agent turns whose provider call failed with a node-fetch network error of the form `request to \u003curl\u003e failed, reason: ...` were not retried since v0.7.0 because the Durable core regex engine did not implement the `\\S` non-space character class; they are now retried, as in Pi.",
+      "rootCause": "durable/core/turn/rx.go only handled \\d and \\s after a backslash and fell through to literal characters for every other escape, so \\S in patterns.go silently matched literal S.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Durable agent turns whose provider call failed with a node-fetch network error of the form `request to \u003curl\u003e failed, reason: ...` were not retried since v0.7.0 because the Durable core regex engine did not implement the `\\S` non-space character class; they are now retried, as in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "83992d8801",
+          "date": "2026-11-23"
+        },
+        {
+          "hash": "ce5cdf9823",
+          "date": "2026-11-23"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-83d0c73",
       "title": "Interactive mode: a `/reload` that fails leaves the old extension instances stale, as in Pi: their captured…",
       "symptom": "Interactive mode: a `/reload` that fails leaves the old extension instances stale, as in Pi: their captured `pi` and `ctx` throw the stale-context error, and a later `/reload` that succeeds loads live instances.",
