@@ -1,0 +1,24 @@
+from = "1.5.2+e4f50d76"
+to = "1.5.2+3107a58d"
+
+[[files]]
+path = "packages/tui/src/tui.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = ["test:tui/continue_signal_unix_test.go#TestContinueSignalListenerWaitsForTheFirstStart", "test:tui/continue_signal_unix_test.go#TestContinueSignalListenerLastsUntilStopHasRestored", "test:tui/continue_signal_unix_test.go#TestContinueSignalListenerStaysWhileNeeded", "test:tui/continue_signal_unix_test.go#TestContinueSignalRawModeOwnershipSpansMakeRawAndRestoreCooked", "test:tui/continue_signal_unix_test.go#TestRearmRawModeBalancesKittyKeyboardStack", "test:tui/continue_signal_unix_test.go#TestContinueSignalOwnershipFollowsEachRenderer", "test:tui/continue_signal_unix_test.go#TestContinueSignalTuiSurfaceSuspendAndResume", "test:tui/continue_signal_unix_test.go#TestContinueSignalIgnoresRendererNotOnProcessTerminal", "test:tui/continue_signal_unix_test.go#TestContinueSignalIgnoresWriterBackedRendererWithNilTerminal", "test:internal/codingagent/startup_continue_pty_linux_test.go#TestInitOwnsTerminalForSIGCONTAsSoonAsStartTerminalArmsIt"]
+oracle = "not carried: D661 diverges from Pi's SIGTSTP listener and omits TUI.setSuspendSignalHandler; no parity scenario exercises external SIGTSTP or TUI.setSuspendSignalHandler."
+rationale = "3107a58d (#12339): Pi ties the SIGTSTP listener strictly to ownsTerminal (false before first start, true before beforeTerminalStart/terminal.start, cleared last in stop after terminal restore, no off/on removal gap while still needed, and dropping a second SIGTSTP mid-restore). Under D661 (awaiting owner approval), PiG applies the ownsTerminal lifecycle to tui.SetContinueSignalHandler on SIGCONT across ProcessTerminal.enterRawMode (beginning before MakeRaw and ending after RestoreCooked), TuiAltScreen.BeforeTerminalStart/Start/StopWithOptions, TuiMainScreen, and TuiSurface (including Suspend/Resume), excluding non-process and writer-backed renderers; a second SIGTSTP mid-restore is not dropped (D661 item 3), and public TUI.setSuspendSignalHandler remains absent from tui.TUI, all native SDKs, extensions/sdk-ts/pi-pin.d.ts, vendored pi-dist/pi-tui/tui.js, and Node factoryTui."
+
+[[files]]
+path = "packages/tui/test/suspend-signal.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/continue_signal_unix_test.go#TestContinueSignalListenerWaitsForTheFirstStart", "test:tui/continue_signal_unix_test.go#TestContinueSignalListenerLastsUntilStopHasRestored", "test:tui/continue_signal_unix_test.go#TestContinueSignalListenerStaysWhileNeeded"]
+rationale = "3107a58d: all 3 follow-up test cases (7 total in suspend-signal.test.ts) adapted 1:1 in tui/continue_signal_unix_test.go against tui.SetContinueSignalHandler on SIGCONT (D661), with TestContinueSignalListenerLastsUntilStopHasRestored covering both TuiMainScreen and TuiAltScreen."
+
+[[files]]
+path = "packages/tui/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "3107a58d: Pi's tui changelog wording update for TUI.setSuspendSignalHandler() (#12283/#12339). Under D661, TUI.setSuspendSignalHandler is absent from tui.TUI, all native SDKs (Go/Python/Rust/Lisp), extensions/sdk-ts/pi-pin.d.ts, vendored pi-dist/pi-tui/tui.js, and Node factoryTui; PiG's user-visible behavior is in changelog.d/external-sigtstp-rearm-f36632c6ee.md."
