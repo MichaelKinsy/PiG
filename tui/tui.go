@@ -2964,9 +2964,12 @@ func (t *TuiMainScreen) fullRender(newLines []string, width, height int, clear b
 	bufLen := max(len(newLines), height)
 	viewportTop := max(0, bufLen-height)
 
-	remainingBytes := 32
+	remainingBytes := len("\x1b[?2026h") + len("\x1b[?2026l")
+	if clear {
+		remainingBytes += len("\x1b[2J\x1b[H\x1b[3J")
+	}
 	for _, line := range newLines {
-		remainingBytes += len(line) + 2
+		remainingBytes += len(line) + len("\r\n")
 	}
 	buf := boundedTerminalWriter{write: func(data string) { WriteToTerminal(t.out, data) }}
 	buf.buffer.Grow(min(remainingBytes, maxRenderWriteChars))

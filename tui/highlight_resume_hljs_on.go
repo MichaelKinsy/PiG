@@ -98,12 +98,12 @@ func highlightResumable(registry *hljs.Registry, code, lang string, t *Theme, ke
 	cut := strings.LastIndexAny(html[:end], ">\n") + 1
 	head, scopes, pending := "", base.scopes, base.pending
 	if cut > 0 {
-		if head, scopes, err = renderHighlightedHTMLFrom(theme, base.scopes, pending, html[:cut]); err != nil {
+		if head, scopes, err = renderHighlightedHTMLFrom(theme, t, base.scopes, pending, html[:cut]); err != nil {
 			return nil, false
 		}
 		pending = ""
 	}
-	tail, _, err := renderHighlightedHTMLFrom(theme, scopes, pending, html[cut:])
+	tail, _, err := renderHighlightedHTMLFrom(theme, t, scopes, pending, html[cut:])
 	if err != nil {
 		return nil, false
 	}

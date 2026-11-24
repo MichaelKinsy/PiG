@@ -219,3 +219,14 @@ func TestHighlightCodeHighlightsDartNixAndGroovy(t *testing.T) {
 		}
 	}
 }
+
+// A modified 27-key copy of cliHighlightTheme with an overridden scope formatter must use the caller's formatter, not ActiveTheme()'s fgAnsi.
+func TestRenderHighlightedHtmlHonorsOverriddenCliThemeCopy(t *testing.T) {
+	theme := cliHighlightTheme(ActiveTheme())
+	theme["keyword"] = func(s string) string { return "<KW:" + s + ">" }
+	got := RenderHighlightedHtml(`<span class="hljs-keyword">const</span> x`, theme)
+	want := "<KW:const>" + ActiveTheme().Fg("text", " x")
+	if got != want {
+		t.Fatalf("RenderHighlightedHtml = %q, want %q", got, want)
+	}
+}

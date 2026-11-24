@@ -230,13 +230,14 @@ func RenderHighlightedHtml(html string, theme HighlightTheme) string {
 }
 
 func renderHighlightedHTML(html string, theme HighlightTheme) (output string, err error) {
-	output, _, err = renderHighlightedHTMLFrom(theme, nil, html)
+	output, _, err = renderHighlightedHTMLFrom(theme, nil, nil, html)
 	return output, err
 }
 
 // renderHighlightedHTMLFrom is renderHighlightedHTML for the HTML that parts join to, none of which ends inside a tag or a character reference, and which starts inside the spans of open, outermost first; it also returns the spans open where the HTML ends. HTML cut after a tag or a line break renders as its two parts do, the second from the spans the first leaves open: a formatter takes the text between two tags line by line.
+// When cliTheme is non-nil (passed explicitly by internal Theme-backed callers, never inferred from HighlightTheme), fgAnsi affixes are written straight into out without per-token string allocations once every cliHighlightTokens key is confirmed present on cliTheme.
 // pig additive (D112): see hlCacheMax. A streamed code block is rendered from where its highlighting resumes (highlightResumable).
-func renderHighlightedHTMLFrom(theme HighlightTheme, open []scopeEntry, parts ...string) (output string, scopes []scopeEntry, err error) {
+func renderHighlightedHTMLFrom(theme HighlightTheme, cliTheme *Theme, open []scopeEntry, parts ...string) (output string, scopes []scopeEntry, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			thrown, ok := recovered.(error)
@@ -260,34 +261,13 @@ func renderHighlightedHTMLFrom(theme HighlightTheme, open []scopeEntry, parts ..
 	} else {
 		scopes = slices.Clone(open)
 	}
-	// Fast path for cliHighlightTheme: probe the theme's active fgAnsi directly when
-	// theme carries the exact cliHighlightTheme key set and matches ActiveTheme(),
-	// writing open+line+close straight into out with zero per-token string allocations.
-	var cliTheme *Theme
-	if len(theme) == len(cliHighlightTokens)+3 {
-		if active := ActiveTheme(); active != nil {
-			// Confirm theme has every cliHighlightTokens key and the 3 decoration keys
-			// and that every token exists in active.fgAnsi (so unknown-token panics still go through f).
-			matched := theme["emphasis"] != nil && theme["strong"] != nil && theme["link"] != nil
-			if matched {
-				for i := range cliHighlightTokens {
-					entry := &cliHighlightTokens[i]
-					if theme[entry.class] == nil {
-						matched = false
-						break
-					}
-					if _, ok := active.fgAnsi[entry.token]; !ok {
-						matched = false
-						break
-					}
-				}
-			}
-			if matched {
-				// Verify theme["default"] matches active.Fg("text", ...) using a single probe
-				// so a custom 27-key HighlightTheme with different formatters never takes this path.
-				if f := theme["default"]; f("") == active.Fg("text", "") {
-					cliTheme = active
-				}
+	// Confirm cliTheme defines every cliHighlightTokens key in fgAnsi so an unknown token
+	// still falls through to theme formatters and raises t.Fg's unknown-color panic.
+	if cliTheme != nil {
+		for i := range cliHighlightTokens {
+			if _, ok := cliTheme.fgAnsi[cliHighlightTokens[i].token]; !ok {
+				cliTheme = nil
+				break
 			}
 		}
 	}
@@ -786,7 +766,12 @@ func highlightCodeUncached(registry highlightEngine, code, lang string, t *Theme
 	if lang == "" || !registry.SupportsLanguage(lang) {
 		return codeBlockLines(code, t)
 	}
-	highlighted, err := highlightWith(registry, code, HighlightOptions{Language: lang, IgnoreIllegals: true, Theme: cliHighlightTheme(t)})
+	html, err := registry.Highlight(code, lang, true)
+	if err != nil {
+		// theme.ts highlightCode: `catch { return code.split("\n").map((line) => theme.fg("mdCodeBlock", line)); }`.
+		return codeBlockLines(code, t)
+	}
+	highlighted, _, err := renderHighlightedHTMLFrom(cliHighlightTheme(t), t, nil, html)
 	if err != nil {
 		// theme.ts highlightCode: `catch { return code.split("\n").map((line) => theme.fg("mdCodeBlock", line)); }`.
 		return codeBlockLines(code, t)
