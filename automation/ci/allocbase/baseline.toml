@@ -3836,12 +3836,12 @@ allocs = 65
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkAltScreenPageUpScroll/messages-1000"
-allocs = 456
+allocs = 351
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkAltScreenPageUpScroll/messages-270"
-allocs = 457
+allocs = 351
 
 [[benchmark]]
 package = "./tui"
@@ -3866,17 +3866,17 @@ allocs = 28
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkAltScreenWheelScroll/lines-104k"
-allocs = 479
+allocs = 372
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkAltScreenWheelScroll/lines-1k"
-allocs = 470
+allocs = 366
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkAltScreenWheelScroll/lines-26k"
-allocs = 478
+allocs = 372
 
 [[benchmark]]
 package = "./tui"
@@ -4226,7 +4226,7 @@ allocs = 313697
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkLongStreamingAssistantMessage/default"
-allocs = 77111
+allocs = 72376
 
 [[benchmark]]
 package = "./tui"
@@ -4306,7 +4306,7 @@ allocs = 1919
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkMarkdownStreaming"
-allocs = 667105
+allocs = 521083
 
 [[benchmark]]
 package = "./tui"
@@ -4536,12 +4536,12 @@ allocs = 0
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkProcessTerminalFullRedrawCJK/turns=500"
-allocs = 45
+allocs = 14
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkProcessTerminalFullRedrawCJK/turns=5000"
-allocs = 285
+allocs = 266
 
 [[benchmark]]
 package = "./tui"
@@ -4561,12 +4561,12 @@ allocs = 198
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkRenderScrollOffChange/turns=50"
-allocs = 34
+allocs = 13
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkRenderScrollOffChange/turns=500"
-allocs = 44
+allocs = 14
 
 [[benchmark]]
 package = "./tui"
@@ -4681,17 +4681,17 @@ allocs = 24
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkStreamedCodeBlocks/json-200-lines"
-allocs = 11030
+allocs = 9285
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkStreamedCodeBlocks/md20000"
-allocs = 22852
+allocs = 19252
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkStreamedCodeBlocks/ts-200-lines"
-allocs = 22612
+allocs = 18874
 
 [[benchmark]]
 package = "./tui"
@@ -4716,7 +4716,7 @@ allocs = 1607264
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkStreamedFence/typescript"
-allocs = 5744113
+allocs = 4882565
 
 [[benchmark]]
 package = "./tui"
@@ -4781,7 +4781,7 @@ allocs = 7
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkStreamingMessageAcrossCollections"
-allocs = 44680
+allocs = 41118
 
 [[benchmark]]
 package = "./tui"
@@ -4796,17 +4796,17 @@ allocs = 1
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkSyntaxThemeScopes/diff"
-allocs = 5567
+allocs = 4558
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkSyntaxThemeScopes/html"
-allocs = 13088
+allocs = 9773
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkSyntaxThemeScopes/python"
-allocs = 10487
+allocs = 7073
 
 [[benchmark]]
 package = "./tui"

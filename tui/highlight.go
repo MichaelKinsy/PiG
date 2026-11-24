@@ -87,6 +87,18 @@ func getScopeFromSpanTag(tag string) (string, bool) {
 	if !ok || classValue == "" {
 		return "", false
 	}
+	// Fast path: highlight.js usually emits a single ASCII class like "hljs-keyword".
+	hasSpace := false
+	for i := 0; i < len(classValue); i++ {
+		c := classValue[i]
+		if c <= ' ' || c >= 0x80 {
+			hasSpace = true
+			break
+		}
+	}
+	if !hasSpace {
+		return strings.CutPrefix(classValue, highlightClassPrefix)
+	}
 	for _, className := range splitJSWhitespace(classValue) {
 		if scope, ok := strings.CutPrefix(className, highlightClassPrefix); ok {
 			return scope, true
@@ -234,46 +246,184 @@ func renderHighlightedHTMLFrom(theme HighlightTheme, open []scopeEntry, parts ..
 			err = thrown
 		}
 	}()
+	totalLen := 0
+	for _, part := range parts {
+		totalLen += len(part)
+	}
 	var out, textBuffer strings.Builder
-	scopes = slices.Clone(open)
+	if totalLen > 0 {
+		out.Grow(totalLen * 2)
+	}
+	var scopesBuf [8]scopeEntry
+	if len(open) <= len(scopesBuf) {
+		scopes = append(scopesBuf[:0], open...)
+	} else {
+		scopes = slices.Clone(open)
+	}
+	// Fast path for cliHighlightTheme: probe the theme's active fgAnsi directly when
+	// theme carries the exact cliHighlightTheme key set and matches ActiveTheme(),
+	// writing open+line+close straight into out with zero per-token string allocations.
+	var cliTheme *Theme
+	if len(theme) == len(cliHighlightTokens)+3 {
+		if active := ActiveTheme(); active != nil {
+			// Confirm theme has every cliHighlightTokens key and the 3 decoration keys
+			// and that every token exists in active.fgAnsi (so unknown-token panics still go through f).
+			matched := theme["emphasis"] != nil && theme["strong"] != nil && theme["link"] != nil
+			if matched {
+				for i := range cliHighlightTokens {
+					entry := &cliHighlightTokens[i]
+					if theme[entry.class] == nil {
+						matched = false
+						break
+					}
+					if _, ok := active.fgAnsi[entry.token]; !ok {
+						matched = false
+						break
+					}
+				}
+			}
+			if matched {
+				// Verify theme["default"] matches active.Fg("text", ...) using a single probe
+				// so a custom 27-key HighlightTheme with different formatters never takes this path.
+				if f := theme["default"]; f("") == active.Fg("text", "") {
+					cliTheme = active
+				}
+			}
+		}
+	}
+	lookupCLIAffix := func(scope string) (openSeq, closeSeq string, ok bool) {
+		lookup := func(name string) (string, string, bool) {
+			for i := range cliHighlightTokens {
+				if cliHighlightTokens[i].class == name {
+					tok := cliHighlightTokens[i].token
+					ansi := cliTheme.fgAnsi[tok]
+					if cliTheme.dimTokens[tok] {
+						return ansi + "\x1b[2m", "\x1b[22;39m", true
+					}
+					return ansi, SGRFgReset, true
+				}
+			}
+			return "", "", false
+		}
+		if o, c, found := lookup(scope); found {
+			return o, c, true
+		}
+		if before, _, cut := strings.Cut(scope, "."); cut {
+			if o, c, found := lookup(before); found {
+				return o, c, true
+			}
+		}
+		if before, _, cut := strings.Cut(scope, "-"); cut {
+			if o, c, found := lookup(before); found {
+				return o, c, true
+			}
+		}
+		return "", "", false
+	}
+	activeCLIAffix := func() (openSeq, closeSeq string, ok bool) {
+		for _, sc := range slices.Backward(scopes) {
+			if !sc.defined {
+				continue
+			}
+			if o, c, found := lookupCLIAffix(sc.scope); found {
+				return o, c, true
+			}
+			base := sc.scope
+			if before, _, cut := strings.Cut(base, "."); cut {
+				base = before
+			} else if before, _, cut := strings.Cut(base, "-"); cut {
+				base = before
+			}
+			if base == "emphasis" || base == "strong" || base == "link" {
+				return "", "", false
+			}
+		}
+		ansi := cliTheme.fgAnsi["text"]
+		if cliTheme.dimTokens["text"] {
+			return ansi + "\x1b[2m", "\x1b[22;39m", true
+		}
+		return ansi, SGRFgReset, true
+	}
+	writeFormatted := func(text string) {
+		if text == "" {
+			return
+		}
+		if cliTheme != nil {
+			if openSeq, closeSeq, ok := activeCLIAffix(); ok {
+				// Each non-empty line takes the formatter on its own, so a token that spans lines (a multiline string or comment) keeps its color on every line after a terminal wraps or splits the output (#10143).
+				for lineStart := 0; ; {
+					nl := strings.IndexByte(text[lineStart:], '\n')
+					lineEnd := len(text)
+					if nl >= 0 {
+						lineEnd = lineStart + nl
+					}
+					if lineStart > 0 {
+						out.WriteByte('\n')
+					}
+					if line := text[lineStart:lineEnd]; line != "" {
+						out.WriteString(openSeq)
+						out.WriteString(line)
+						out.WriteString(closeSeq)
+					}
+					if nl < 0 {
+						break
+					}
+					lineStart = lineEnd + 1
+				}
+				return
+			}
+		}
+		if f, ok := getActiveFormatter(scopes, theme); ok {
+			// Each non-empty line takes the formatter on its own, so a token that spans lines (a multiline string or comment) keeps its color on every line after a terminal wraps or splits the output (#10143).
+			for lineStart := 0; ; {
+				nl := strings.IndexByte(text[lineStart:], '\n')
+				lineEnd := len(text)
+				if nl >= 0 {
+					lineEnd = lineStart + nl
+				}
+				if lineStart > 0 {
+					out.WriteByte('\n')
+				}
+				if line := text[lineStart:lineEnd]; line != "" {
+					out.WriteString(f(line))
+				}
+				if nl < 0 {
+					break
+				}
+				lineStart = lineEnd + 1
+			}
+		} else {
+			out.WriteString(text)
+		}
+	}
 	flushText := func() {
 		if textBuffer.Len() == 0 {
 			return
 		}
-		if f, ok := getActiveFormatter(scopes, theme); ok {
-			// Each non-empty line takes the formatter on its own, so a token that spans lines (a multiline string or comment) keeps its color on every line after a terminal wraps or splits the output (#10143).
-			for i, line := range strings.Split(textBuffer.String(), "\n") {
-				if i > 0 {
-					out.WriteByte('\n')
-				}
-				if line != "" {
-					out.WriteString(f(line))
-				}
-			}
-		} else {
-			out.WriteString(textBuffer.String())
-		}
+		writeFormatted(textBuffer.String())
 		textBuffer.Reset()
 	}
-	for _, html := range parts {
+	for partIdx, html := range parts {
 		for index := 0; index < len(html); {
-			if isSpanOpenTagStart(html, index) {
-				if tagEnd := strings.IndexByte(html[index+5:], '>'); tagEnd >= 0 {
-					tagEnd += index + 5
+			if html[index] == '<' {
+				if isSpanOpenTagStart(html, index) {
+					if tagEnd := strings.IndexByte(html[index+5:], '>'); tagEnd >= 0 {
+						tagEnd += index + 5
+						flushText()
+						scope, ok := getScopeFromSpanTag(html[index : tagEnd+1])
+						scopes = append(scopes, scopeEntry{scope, ok})
+						index = tagEnd + 1
+						continue
+					}
+				}
+				if strings.HasPrefix(html[index:], "</span>") {
 					flushText()
-					scope, ok := getScopeFromSpanTag(html[index : tagEnd+1])
-					scopes = append(scopes, scopeEntry{scope, ok})
-					index = tagEnd + 1
+					if len(scopes) > 0 {
+						scopes = scopes[:len(scopes)-1]
+					}
+					index += len("</span>")
 					continue
 				}
-			}
-			if strings.HasPrefix(html[index:], "</span>") {
-				flushText()
-				if len(scopes) > 0 {
-					scopes = scopes[:len(scopes)-1]
-				}
-				index += len("</span>")
-				continue
 			}
 			if html[index] == '&' {
 				if text, length, ok := decodeHTMLEntityAt(html, index); ok {
@@ -282,11 +432,25 @@ func renderHighlightedHTMLFrom(theme HighlightTheme, open []scopeEntry, parts ..
 					continue
 				}
 			}
-			textBuffer.WriteByte(html[index])
+			runStart := index
 			index++
+			for index < len(html) && html[index] != '<' && html[index] != '&' {
+				index++
+			}
+			atTag := index < len(html) && html[index] == '<' && (strings.HasPrefix(html[index:], "</span>") || (isSpanOpenTagStart(html, index) && strings.IndexByte(html[index+5:], '>') >= 0))
+			if textBuffer.Len() == 0 && (atTag || index == len(html) && partIdx == len(parts)-1) {
+				writeFormatted(html[runStart:index])
+			} else {
+				textBuffer.WriteString(html[runStart:index])
+			}
 		}
 	}
 	flushText()
+	if len(scopes) == 0 {
+		scopes = nil
+	} else if &scopes[0] == &scopesBuf[0] {
+		scopes = slices.Clone(scopes)
+	}
 	return out.String(), scopes, nil
 }
 

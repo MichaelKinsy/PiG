@@ -352,28 +352,46 @@ func replaceScrollbarCell(line string, column, totalWidth int, replacement strin
 		start = column
 		end = column + 1
 	}
-	before := widthx.SliceByColumn(line, 0, start, true)
-	target := widthx.SliceByColumn(line, start, end-start, true)
+	beforeRes := widthx.SliceWithWidth(line, 0, start, true)
+	before := beforeRes.Text
+	var targetBg string
+	if preserveTargetBackground {
+		target := widthx.SliceByColumn(line, start, end-start, true)
+		targetIndex := 0
+		for targetIndex < len(target) {
+			_, n := widthx.ExtractAnsiCode(target, targetIndex)
+			if n == 0 {
+				break
+			}
+			targetIndex += n
+		}
+		if targetIndex > 0 {
+			targetBg = widthx.GetActiveBackgroundAnsi(target[:targetIndex])
+		}
+	}
 	after := widthx.SliceByColumn(line, end, max(0, totalWidth-end), true)
 
-	var targetPrefix strings.Builder
-	targetIndex := 0
-	for targetIndex < len(target) {
-		code, n := widthx.ExtractAnsiCode(target, targetIndex)
-		if n == 0 {
-			break
-		}
-		targetPrefix.WriteString(code)
-		targetIndex += n
+	beforePad := max(0, start-beforeRes.Width)
+	cellPadBefore := max(0, column-start)
+	cellPadAfter := max(0, end-column-1)
+	const baseStyle = "\x1b[0m\x1b]8;;\x07"
+	var out strings.Builder
+	out.Grow(len(before) + beforePad + len(baseStyle) + len(targetBg) + cellPadBefore + len(replacement) + cellPadAfter + len(after))
+	out.WriteString(before)
+	for range beforePad {
+		out.WriteByte(' ')
 	}
-	beforePadding := strings.Repeat(" ", max(0, start-widthx.VisibleWidth(before)))
-	cellPaddingBefore := strings.Repeat(" ", max(0, column-start))
-	cellPaddingAfter := strings.Repeat(" ", max(0, end-column-1))
-	targetStyle := "\x1b[0m\x1b]8;;\x07"
-	if preserveTargetBackground {
-		targetStyle += widthx.GetActiveBackgroundAnsi(targetPrefix.String())
+	out.WriteString(baseStyle)
+	out.WriteString(targetBg)
+	for range cellPadBefore {
+		out.WriteByte(' ')
 	}
-	return before + beforePadding + targetStyle + cellPaddingBefore + replacement + cellPaddingAfter + after
+	out.WriteString(replacement)
+	for range cellPadAfter {
+		out.WriteByte(' ')
+	}
+	out.WriteString(after)
+	return out.String()
 }
 
 // GetScrollbarGeometry computes where a scroll box's scrollbar paints, or nil if
@@ -439,14 +457,26 @@ func paintScrollbar(box *LayoutBox, screen []string, totalWidth int) {
 		thumbGlyph = "█"
 	}
 	preserveTargetBackground := scrollView.Scrollbar() != "always"
+	var trackReplacement, thumbReplacement string
+	var hasTrack, hasThumb bool
 	for offset := 0; offset < geometry.TrackHeight; offset++ {
 		row := geometry.TrackTop + offset
 		if row < box.Clip.Y || row >= box.Clip.Y+box.Clip.Height || row < 0 || row >= len(screen) {
 			continue
 		}
-		replacement := scrollView.ScrollbarTrackStyle("│")
+		var replacement string
 		if row >= geometry.ThumbTop && row < geometry.ThumbTop+geometry.ThumbHeight {
-			replacement = scrollView.ScrollbarThumbStyle(thumbGlyph)
+			if !hasThumb {
+				thumbReplacement = scrollView.ScrollbarThumbStyle(thumbGlyph)
+				hasThumb = true
+			}
+			replacement = thumbReplacement
+		} else {
+			if !hasTrack {
+				trackReplacement = scrollView.ScrollbarTrackStyle("│")
+				hasTrack = true
+			}
+			replacement = trackReplacement
 		}
 		screen[row] = replaceScrollbarCell(screen[row], geometry.Column, totalWidth, replacement, preserveTargetBackground)
 	}

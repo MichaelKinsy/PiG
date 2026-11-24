@@ -2964,7 +2964,12 @@ func (t *TuiMainScreen) fullRender(newLines []string, width, height int, clear b
 	bufLen := max(len(newLines), height)
 	viewportTop := max(0, bufLen-height)
 
+	remainingBytes := 32
+	for _, line := range newLines {
+		remainingBytes += len(line) + 2
+	}
 	buf := boundedTerminalWriter{write: func(data string) { WriteToTerminal(t.out, data) }}
+	buf.buffer.Grow(min(remainingBytes, maxRenderWriteChars))
 	buf.WriteString("\x1b[?2026h")
 	if clear {
 		// Delete previously tracked Kitty images before wiping the screen
@@ -2973,9 +2978,13 @@ func (t *TuiMainScreen) fullRender(newLines []string, width, height int, clear b
 		buf.WriteString("\x1b[2J\x1b[H\x1b[3J")
 	}
 	for i := 0; i < len(newLines); i++ {
+		if buf.buffer.Cap() == 0 && remainingBytes > 0 {
+			buf.buffer.Grow(min(remainingBytes, maxRenderWriteChars))
+		}
 		if i > 0 {
 			buf.WriteString("\r\n")
 		}
+		remainingBytes -= len(newLines[i]) + 2
 		line := newLines[i]
 		if widthx.IsImageLine(line) {
 			reservedRows := t.kittyImageReservedRows(newLines, i, len(newLines)-1)
