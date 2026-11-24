@@ -1020,6 +1020,7 @@ func (c *Workers) startChild(record *routed, spawned *child, data delta.JsonValu
 	if err != nil {
 		return host.ResolvedLink{}, err
 	}
+	c.loop.Run(func() { spawned.shipped = keyOf(scripts) })
 	lock, err := c.options.Lock(address)
 	if err != nil {
 		return host.ResolvedLink{}, err
@@ -1032,7 +1033,6 @@ func (c *Workers) startChild(record *routed, spawned *child, data delta.JsonValu
 		return host.ResolvedLink{}, err
 	}
 	c.loop.Run(func() {
-		spawned.shipped = keyOf(scripts)
 		spawned.lock = lock
 		spawned.process.Send(ToWorker{Kind: ToWorkerStart, Address: address, Start: data, Scripts: scripts, Lock: lock})
 	})
@@ -1437,14 +1437,19 @@ func (c *Workers) Rollout(scripts []plugins.PluginScript, ctx context.Context) (
 		c.route.Retry(record.address)
 	}
 	c.loop.Run(func() {
+		retried := map[string]struct{}{}
 		for _, record := range failed {
 			if started := record.starting; started != nil {
+				retried[record.address.Key] = struct{}{}
 				entries = append(entries, entry{record.address.Key, c.retried(record, started)})
 			} else {
 				c.forget(record)
 			}
 		}
 		for _, name := range c.order {
+			if _, listed := retried[name]; listed {
+				continue
+			}
 			record := c.addresses[name]
 			child := record.child
 			if child == nil || child.status == WorkerStopping || child.shipped == key {
