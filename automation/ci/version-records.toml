@@ -15,6 +15,7 @@ reason = "Investigation reports, performance measurements, release integration l
 paths = [
   "docs/design/rpc33-observation.md",
   "docs/findings/0.3.0-known-gaps.md",
+  "docs/parity/KNOWN-GAPS-0.3.x.md",
   "docs/findings/d35-easter-eggs.md",
   "docs/findings/exit-latency.md",
   "docs/findings/fix-drift-rpc.md",
@@ -299,7 +300,6 @@ paths = [
   "docs/additive-features.md",
   "docs/extension-api-parity.md",
   "docs/parity/DIVERGENCES.md",
-  "docs/parity/KNOWN-GAPS-0.3.x.md",
   "docs/parity/PORT_MAP.md",
   "docs/parity/divergences/D146.md",
   "docs/parity/divergences/D151.md",
