@@ -1,0 +1,381 @@
+# SPDX-License-Identifier: MIT
+# Diagnostic workflow for fix/windows-replace-never-leaves-the-path-absent (A1 form).
+# Preparation steps mirror diag-ai-and-picker.yml / ci.yml (versions read from ci.yml via awk).
+# Windows (windows-latest):
+#   - ./internal/atomicfile ./internal/ownerfile ./internal/fsretry whole (incl. ACL matrix & HIDDEN attrs)
+#   - T1: TestWriteFileNeverLeavesPathAbsentAcrossProcessAndGoroutineObservers 200 times
+#   - T3: TestAuthStorageFirstHalfUpstream/serializes_concurrent_modifications 2000 times (target 0/2000 vs 194/2000 before)
+#   - 5-minute production WriteFile tight-loop probe (stat/readfile/realpath in child processes)
+#   - ./ai whole (plain) and ./coding/mcpext/... whole (plain)
+# macOS (macos-15):
+#   - ./internal/atomicfile whole (plain)
+#   - ./ai whole (plain)
+# Runs only on pushes to diag/** and is never merged.
+name: Diag Windows replace cure A1
+
+on:
+  push:
+    branches:
+      - "diag/**"
+
+permissions:
+  contents: read
+
+jobs:
+  diag-a1-windows:
+    name: Diag A1 / windows-latest
+    runs-on: windows-latest
+    timeout-minutes: 95
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Keep Go and oracle scratch under RUNNER_TEMP
+        shell: pwsh
+        run: |
+          $gocache = Join-Path $env:RUNNER_TEMP 'go-build'
+          $pibuilds = Join-Path $env:RUNNER_TEMP 'pi-builds'
+          $cellcache = Join-Path $env:RUNNER_TEMP 'cell-cache'
+          $logs = Join-Path $env:RUNNER_TEMP 'diag-logs'
+          $bins = Join-Path $env:RUNNER_TEMP 'diag-bin'
+          New-Item -ItemType Directory -Force -Path $gocache, $pibuilds, $cellcache, $logs, $bins | Out-Null
+          "GOCACHE=$gocache" >> $env:GITHUB_ENV
+          "PIG_PI_BUILD_STORE=$pibuilds" >> $env:GITHUB_ENV
+          "PIG_TEST_CELL_CACHE=$cellcache" >> $env:GITHUB_ENV
+          "DIAG_LOGS=$logs" >> $env:GITHUB_ENV
+          "DIAG_BIN=$bins" >> $env:GITHUB_ENV
+          Write-Output "RUNNER_TEMP=$env:RUNNER_TEMP"
+          Get-PSDrive -PSProvider FileSystem | Format-Table Name, Used, Free
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Select the qualified Rust toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          rust="$(awk '/^  RUST_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
+          rustup toolchain install "$rust" --profile minimal
+          rustup default "$rust"
+      - name: Install native test tools
+        shell: pwsh
+        run: |
+          $bin = Join-Path $env:RUNNER_TEMP 'native-tools'
+          ./automation/ci/install-windows-tools.ps1 -Cache (Join-Path $env:RUNNER_TEMP 'native-tool-archives') -Bin $bin
+          Add-Content -Path $env:GITHUB_PATH -Value $bin
+          $env:PATH = "$bin;$env:PATH"
+          fd --version
+          if ($LASTEXITCODE -ne 0) { throw "fd is not available" }
+          rg --version
+          if ($LASTEXITCODE -ne 0) { throw "ripgrep is not available" }
+      - name: Restore the Pi oracle build
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}\pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
+      - name: Install pinned Pi test oracle
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm_version="$(awk '/^  NPM_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
+          automation/ci/install-npm-toolchain.sh
+          bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
+          cygpath -w "$bin" >> "$GITHUB_PATH"
+          export PATH="$bin:$PATH"
+          test "$(npm --version)" = "$npm_version"
+          py="$(command -v python3 || command -v python)"
+          "$py" automation/pin/pin.py install-oracle
+          "$py" automation/ci/npm-locked.py internal/typebox/testdata/npm
+          "$py" automation/ci/npm-locked.py ai/testdata/sdk
+          if [ "$("$py" automation/pin/pin.py get kind)" = tag ]; then "$py" automation/ci/npm-locked.py durable/interop; fi
+      - name: Mirror the pinned Pi source
+        shell: bash
+        env:
+          MSYS: winsymlinks:nativestrict
+        run: ./automation/gen/mirror-upstream.sh
+      - name: Show environment
+        shell: bash
+        run: |
+          set +e
+          go version
+          go env GOOS GOARCH GOCACHE
+          node --version
+          npm --version
+          cmd.exe /c ver
+          git log -1 --format='head=%H'
+          echo "PROBE-STEP-END"
+      - name: Build probe and test binaries
+        if: always()
+        shell: bash
+        env:
+          CI: "1"
+        run: |
+          set +e
+          mkdir -p "$DIAG_LOGS" "$DIAG_BIN"
+          go build -o "$DIAG_BIN/wincureprobe.exe" ./automation/diag/wincureprobe > "$DIAG_LOGS/build-probe.log" 2>&1
+          s_pr=$?
+          go test -c -o "$DIAG_BIN/atomicfile.test.exe" ./internal/atomicfile > "$DIAG_LOGS/build-atomicfile.log" 2>&1
+          s_af=$?
+          go test -c -o "$DIAG_BIN/ownerfile.test.exe" ./internal/ownerfile > "$DIAG_LOGS/build-ownerfile.log" 2>&1
+          s_of=$?
+          go test -c -o "$DIAG_BIN/fsretry.test.exe" ./internal/fsretry > "$DIAG_LOGS/build-fsretry.log" 2>&1
+          s_fr=$?
+          go test -c -o "$DIAG_BIN/ai.test.exe" ./ai > "$DIAG_LOGS/build-ai.log" 2>&1
+          s_ai=$?
+          go test -c -o "$DIAG_BIN/mcpext.test.exe" ./coding/mcpext > "$DIAG_LOGS/build-mcpext.log" 2>&1
+          s_mc=$?
+          echo "build_probe=$s_pr build_atomicfile=$s_af build_ownerfile=$s_of build_fsretry=$s_fr build_ai=$s_ai build_mcpext=$s_mc"
+          for pair in "probe:$s_pr" "atomicfile:$s_af" "ownerfile:$s_of" "fsretry:$s_fr" "ai:$s_ai" "mcpext:$s_mc"; do
+            k="${pair%%:*}"; v="${pair##*:}"
+            if [ "$v" -ne 0 ]; then cat "$DIAG_LOGS/build-$k.log"; fi
+          done
+          echo "PROBE-STEP-END"
+          test "$s_pr" -eq 0 && test "$s_af" -eq 0 && test "$s_of" -eq 0 && test "$s_fr" -eq 0 && test "$s_ai" -eq 0 && test "$s_mc" -eq 0
+      - name: Run internal/atomicfile, internal/ownerfile, internal/fsretry whole (includes ACL matrix)
+        if: always()
+        shell: bash
+        env:
+          CI: "1"
+        run: |
+          set +e
+          log="$DIAG_LOGS/win-core-packages.log"
+          go test -v -count=1 -timeout 20m ./internal/atomicfile ./internal/ownerfile ./internal/fsretry > "$log" 2>&1
+          status=$?
+          pass_n=$(grep -c -e '^--- PASS:' "$log" || true)
+          fail_n=$(grep -c -e '^--- FAIL:' "$log" || true)
+          skip_n=$(grep -c -e '^--- SKIP:' "$log" || true)
+          echo "win_core_status=$status pass=$pass_n fail=$fail_n skip=$skip_n"
+          grep -E -e '^(ok|FAIL|panic:)' "$log" | head -n 20 || true
+          grep -E -e 'TestWindowsSecurityDescriptorMatrix|TestWindowsWriteFileOfANewFileGivesTheStoresDescriptor|TestWindowsInheritanceDoesNotReachAProtectedFileAfterAWrite|TestWindowsWriteFilePreservesHiddenAndUserAttributes|TestWriteFileNeverLeavesPathAbsent' "$log" | head -n 40 || true
+          if [ "$fail_n" -gt 0 ] || [ "$status" -ne 0 ]; then
+            echo "=== first 20 failures ==="
+            grep -n -B 1 -A 6 -e '--- FAIL:' "$log" | head -n 140 || true
+          fi
+          echo "PROBE-STEP-END"
+          exit "$status"
+      - name: T1 cross-process and goroutine observer test 200 times
+        if: always()
+        shell: bash
+        env:
+          CI: "1"
+        run: |
+          set +e
+          log="$DIAG_LOGS/win-t1-200.log"
+          (cd internal/atomicfile && "$DIAG_BIN/atomicfile.test.exe" -test.v -test.count=200 -test.timeout=20m -test.run='^TestWriteFileNeverLeavesPathAbsentAcrossProcessAndGoroutineObservers$') > "$log" 2>&1
+          status=$?
+          pass_n=$(grep -c -e '^--- PASS: TestWriteFileNeverLeavesPathAbsentAcrossProcessAndGoroutineObservers ' "$log" || true)
+          fail_n=$(grep -c -e '^--- FAIL: TestWriteFileNeverLeavesPathAbsentAcrossProcessAndGoroutineObservers ' "$log" || true)
+          echo "win_t1_200_status=$status pass=$pass_n fail=$fail_n want_pass=200"
+          if [ "$fail_n" -gt 0 ] || [ "$status" -ne 0 ] || [ "$pass_n" -ne 200 ]; then
+            echo "=== first 20 failures ==="
+            grep -n -B 1 -A 6 -e '--- FAIL:' "$log" | head -n 140 || true
+          fi
+          echo "PROBE-STEP-END"
+          if [ "$status" -eq 0 ] && [ "$pass_n" -ne 200 ]; then exit 1; fi
+          exit "$status"
+      - name: T3 serializes_concurrent_modifications 2000 times (target 0 failures vs 194 before)
+        if: always()
+        shell: bash
+        env:
+          CI: "1"
+        run: |
+          set +e
+          log="$DIAG_LOGS/win-t3-2000.log"
+          acceptance="$RUNNER_TEMP/pig native acceptance"
+          mkdir -p "$acceptance"
+          export PIG_HOME="$acceptance/config with spaces"
+          export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
+          (cd ai && "$DIAG_BIN/ai.test.exe" -test.v -test.count=2000 -test.timeout=30m -test.run='^TestAuthStorageFirstHalfUpstream$/^serializes_concurrent_modifications$') > "$log" 2>&1
+          status=$?
+          pass_sub=$(grep -c -e '^    --- PASS: TestAuthStorageFirstHalfUpstream/serializes_concurrent_modifications ' "$log" || true)
+          fail_sub=$(grep -c -e '^    --- FAIL: TestAuthStorageFirstHalfUpstream/serializes_concurrent_modifications ' "$log" || true)
+          enoent_n=$(grep -c -e 'ENOENT:' "$log" || true)
+          echo "win_t3_2000_status=$status pass_sub=$pass_sub fail_sub=$fail_sub enoent_lines=$enoent_n want_pass=2000"
+          if [ "$fail_sub" -gt 0 ] || [ "$status" -ne 0 ] || [ "$pass_sub" -ne 2000 ]; then
+            echo "=== first 20 failures ==="
+            grep -n -B 1 -A 4 -e '--- FAIL:' "$log" | head -n 120 || true
+          fi
+          echo "PROBE-STEP-END"
+          if [ "$status" -eq 0 ] && [ "$pass_sub" -ne 2000 ]; then exit 1; fi
+          exit "$status"
+      - name: Production WriteFile 5-minute tight-loop cross-process probe
+        if: always()
+        shell: bash
+        env:
+          CI: "1"
+        run: |
+          set +e
+          log="$DIAG_LOGS/win-prod-probe-5m.log"
+          "$DIAG_BIN/wincureprobe.exe" -duration=5m > "$log" 2>&1
+          status=$?
+          echo "=== PROBE table (A1 production WriteFile) ==="
+          grep -e '^PROBE ' "$log" || true
+          echo "=== non-PROBE lines (first 30) ==="
+          grep -v -e '^PROBE ' "$log" | head -n 30 || true
+          echo "win_prod_probe_status=$status"
+          echo "PROBE-STEP-END"
+          exit "$status"
+      - name: Run ./ai whole and ./coding/mcpext/... whole on Windows
+        if: always()
+        shell: bash
+        env:
+          CI: "1"
+          PI_TEST_NATIVE_CLIPBOARD: "1"
+        run: |
+          set +e
+          acceptance="$RUNNER_TEMP/pig native acceptance"
+          mkdir -p "$acceptance"
+          export PIG_HOME="$acceptance/config with spaces"
+          export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
+
+          log_ai="$DIAG_LOGS/win-ai-whole.log"
+          go test -v -count=1 -timeout 30m ./ai > "$log_ai" 2>&1
+          s_ai=$?
+          ai_pass=$(grep -c -e '^--- PASS:' "$log_ai" || true)
+          ai_fail=$(grep -c -e '^--- FAIL:' "$log_ai" || true)
+          ai_skip=$(grep -c -e '^--- SKIP:' "$log_ai" || true)
+          echo "win_ai_whole_status=$s_ai pass=$ai_pass fail=$ai_fail skip=$ai_skip"
+          grep -E -e '^(ok|FAIL|panic:)' "$log_ai" | head -n 20 || true
+          if [ "$ai_fail" -gt 0 ] || [ "$s_ai" -ne 0 ]; then
+            echo "=== ai first 20 failures ==="
+            grep -n -B 1 -A 6 -e '--- FAIL:' "$log_ai" | head -n 140 || true
+          fi
+
+          log_mc="$DIAG_LOGS/win-mcpext-whole.log"
+          go test -v -count=1 -timeout 20m ./coding/mcpext/... > "$log_mc" 2>&1
+          s_mc=$?
+          mc_pass=$(grep -c -e '^--- PASS:' "$log_mc" || true)
+          mc_fail=$(grep -c -e '^--- FAIL:' "$log_mc" || true)
+          mc_skip=$(grep -c -e '^--- SKIP:' "$log_mc" || true)
+          echo "win_mcpext_whole_status=$s_mc pass=$mc_pass fail=$mc_fail skip=$mc_skip"
+          grep -E -e '^(ok|FAIL|panic:)' "$log_mc" | head -n 20 || true
+          if [ "$mc_fail" -gt 0 ] || [ "$s_mc" -ne 0 ]; then
+            echo "=== mcpext first 20 failures ==="
+            grep -n -B 1 -A 6 -e '--- FAIL:' "$log_mc" | head -n 140 || true
+          fi
+          echo "PROBE-STEP-END"
+          test "$s_ai" -eq 0 && test "$s_mc" -eq 0
+      - name: Upload raw Windows diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: diag-a1-windows-logs
+          path: ${{ runner.temp }}/diag-logs/
+          retention-days: 14
+
+  diag-a1-macos:
+    name: Diag A1 / macos-15
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: '1'
+      HOMEBREW_NO_INSTALL_CLEANUP: '1'
+      HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Install native test tools, Rust and the pinned Pi oracle
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/diag-logs" "$RUNNER_TEMP/diag-bin"
+          echo "DIAG_LOGS=$RUNNER_TEMP/diag-logs" >> "$GITHUB_ENV"
+          echo "DIAG_BIN=$RUNNER_TEMP/diag-bin" >> "$GITHUB_ENV"
+          brew install fd ripgrep tmux
+          rust="$(awk '/^  RUST_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
+          npm_version="$(awk '/^  NPM_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
+          rustup toolchain install "$rust" --profile minimal
+          rustup default "$rust"
+          automation/ci/install-npm-toolchain.sh
+          bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
+          echo "$bin" >> "$GITHUB_PATH"
+          export PATH="$bin:$PATH"
+          test "$(npm --version)" = "$npm_version"
+          make upstream-mirror
+      - name: Install the pinned zstd
+        shell: bash
+        run: |
+          set -euo pipefail
+          zstd="$(automation/ci/install-zstd.sh)"
+          echo "PIG_ZSTD=$zstd" >> "$GITHUB_ENV"
+          echo "PIG_REQUIRE_ZSTD=1" >> "$GITHUB_ENV"
+      - name: Show environment and build test binaries
+        if: always()
+        shell: bash
+        env:
+          CI: "1"
+        run: |
+          set +e
+          go version
+          go env GOOS GOARCH
+          node --version
+          npm --version
+          uname -a
+          git log -1 --format='head=%H'
+          go test -c -o "$DIAG_BIN/atomicfile.test" ./internal/atomicfile > "$DIAG_LOGS/build-atomicfile.log" 2>&1
+          s_af=$?
+          go test -c -o "$DIAG_BIN/ai.test" ./ai > "$DIAG_LOGS/build-ai.log" 2>&1
+          s_ai=$?
+          echo "build_atomicfile=$s_af build_ai=$s_ai"
+          if [ "$s_af" -ne 0 ]; then cat "$DIAG_LOGS/build-atomicfile.log"; fi
+          if [ "$s_ai" -ne 0 ]; then cat "$DIAG_LOGS/build-ai.log"; fi
+          echo "PROBE-STEP-END"
+          test "$s_af" -eq 0 && test "$s_ai" -eq 0
+      - name: Run ./internal/atomicfile and ./ai whole on macOS
+        if: always()
+        shell: bash
+        env:
+          CI: "1"
+        run: |
+          set +e
+          log_af="$DIAG_LOGS/macos-atomicfile-whole.log"
+          go test -v -count=1 -timeout 10m ./internal/atomicfile > "$log_af" 2>&1
+          s_af=$?
+          af_pass=$(grep -c -e '^--- PASS:' "$log_af" || true)
+          af_fail=$(grep -c -e '^--- FAIL:' "$log_af" || true)
+          af_skip=$(grep -c -e '^--- SKIP:' "$log_af" || true)
+          echo "macos_atomicfile_status=$s_af pass=$af_pass fail=$af_fail skip=$af_skip"
+          grep -E -e '^(ok|FAIL|panic:)' "$log_af" | head -n 20 || true
+          if [ "$af_fail" -gt 0 ] || [ "$s_af" -ne 0 ]; then
+            echo "=== atomicfile first 20 failures ==="
+            grep -n -B 1 -A 6 -e '--- FAIL:' "$log_af" | head -n 140 || true
+          fi
+
+          log_ai="$DIAG_LOGS/macos-ai-whole.log"
+          go test -v -count=1 -timeout 30m ./ai > "$log_ai" 2>&1
+          s_ai=$?
+          ai_pass=$(grep -c -e '^--- PASS:' "$log_ai" || true)
+          ai_fail=$(grep -c -e '^--- FAIL:' "$log_ai" || true)
+          ai_skip=$(grep -c -e '^--- SKIP:' "$log_ai" || true)
+          echo "macos_ai_status=$s_ai pass=$ai_pass fail=$ai_fail skip=$ai_skip"
+          grep -E -e '^(ok|FAIL|panic:)' "$log_ai" | head -n 20 || true
+          if [ "$ai_fail" -gt 0 ] || [ "$s_ai" -ne 0 ]; then
+            echo "=== ai first 20 failures ==="
+            grep -n -B 1 -A 6 -e '--- FAIL:' "$log_ai" | head -n 140 || true
+          fi
+          echo "PROBE-STEP-END"
+          test "$s_af" -eq 0 && test "$s_ai" -eq 0
+      - name: Upload raw macOS diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: diag-a1-macos-logs
+          path: ${{ runner.temp }}/diag-logs/
+          retention-days: 14
