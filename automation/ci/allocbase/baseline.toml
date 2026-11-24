@@ -3171,7 +3171,7 @@ allocs = 36
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkInteractiveLongAnswerStream"
-allocs = 709351
+allocs = 655957
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3641,12 +3641,12 @@ allocs = 127
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkStreamedWriteCard/50KB"
-allocs = 255804
+allocs = 220854
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkStreamedWriteCard/5KB"
-allocs = 156699
+allocs = 121079
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3766,17 +3766,17 @@ allocs = 247280
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkWriteCardFrames/warm=off/50KB"
-allocs = 86446
+allocs = 78722
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkWriteCardFrames/warm=on/200KB"
-allocs = 815616
+allocs = 674182
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkWriteCardFrames/warm=on/50KB"
-allocs = 195668
+allocs = 162065
 
 [[benchmark]]
 package = "./internal/codingagent"
