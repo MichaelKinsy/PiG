@@ -3294,8 +3294,8 @@
  "packages/coding-agent/src/modes/interactive/components/radius-login-selector.ts": [
   {
    "file": "internal/codingagent/radius_login_selector.go",
-   "old": "animated := theme.Fg(\"accent\", \"→ \") + shimmer + r.label[len(r.text):]",
-   "new": "animated := theme.Fg(\"accent\", \"→ \") + shimmer + r.label"
+   "old": "animated := theme.Fg(\"accent\", \"\u2192 \") + shimmer + r.label[len(r.text):]",
+   "new": "animated := theme.Fg(\"accent\", \"\u2192 \") + shimmer + r.label"
   }
  ],
  "packages/coding-agent/src/modes/interactive/components/themed-text.ts": [
@@ -3397,7 +3397,7 @@
   },
   {
    "file": "internal/codingagent/presentation_tui.go",
-   "old": "label += \" · \" + tui.FormatKeyText(",
+   "old": "label += \" \u00b7 \" + tui.FormatKeyText(",
    "new": "label += \" - \" + tui.FormatKeyText("
   },
   {
@@ -6601,8 +6601,8 @@
  "packages/chord/src/host/events.ts": [
   {
    "file": "chord/next/host/host_events.go",
-   "old": "func (n *eventNode) tapped() bool { return len(n.taps) > 0 }\n",
-   "new": "func (n *eventNode) tapped() bool { return false }\n"
+   "old": "\tfor _, call := range flush.calls {\n\t\tcall.subscription.call(call.entry, h.report)\n\t}\n",
+   "new": "\t_ = flush.calls\n"
   }
  ],
  "packages/chord/src/host/query-reader.ts": [
@@ -6615,8 +6615,8 @@
  "packages/chord/src/host/reference-events.ts": [
   {
    "file": "chord/next/host/host_reference_events.go",
-   "old": "\treturn taps\n",
-   "new": "\treturn nil\n"
+   "old": "\tnode.tap(tp)\n",
+   "new": "\t// mutant: do not tap node\n"
   }
  ],
  "packages/chord/src/host/route-admission.ts": [
@@ -6630,14 +6630,14 @@
   {
    "file": "chord/nextnode/app/ephemeral_sign_ins.go",
    "old": "\treturn signIn.hash, signIn.principal, true\n",
-   "new": "\treturn \"\", nil, false\n"
+   "new": "\t_ = signIn\n\treturn \"\", nil, false\n"
   }
  ],
  "packages/chord/src/store/read-plan.ts": [
   {
    "file": "chord/next/store/read_plan.go",
-   "old": "\t\treturn \"SELECT count(*) AS count FROM \" + plan.from + filter\n",
-   "new": "\t\treturn \"SELECT 0 AS count FROM \" + plan.from + filter\n"
+   "old": "\tif err := checkExpected(query.Expected, bindings); err != nil {\n\t\treturn nil, err\n\t}\n",
+   "new": "\t// mutant: skip checkExpected\n"
   }
  ],
  "packages/coding-agent/src/modes/diagnostics-stderr.ts": [
@@ -6650,43 +6650,43 @@
  "packages/chord/src/state/framed.ts": [
   {
    "file": "chord/next/state/framed.go",
-   "old": "func (f *FramedSource) Ready() bool { return f.state == framedHasValue }\n",
-   "new": "func (f *FramedSource) Ready() bool { return false }\n"
+   "old": "\tif f.state == framedDetached {\n\t\treturn\n\t}\n\tf.failing = false\n",
+   "new": "\tif true || f.state == framedDetached {\n\t\treturn\n\t}\n\tf.failing = false\n"
   }
  ],
  "packages/chord/src/store/open-query.ts": [
   {
    "file": "chord/next/store/open_query.go",
-   "old": "\treturn query.compiled\n",
-   "new": "\treturn Compiled{}\n"
+   "old": "\tquery.compiling.Lock()\n\tquery.compileInto()\n\tquery.compiling.Unlock()\n",
+   "new": "\tquery.compiling.Lock()\n\t// mutant: skip recompile\n\tquery.compiling.Unlock()\n"
   }
  ],
  "packages/chord/src/store/page.ts": [
   {
    "file": "chord/next/store/page.go",
    "old": "\treturn StoredPage{Stored: stored, Next: &next}, nil\n",
-   "new": "\treturn StoredPage{Stored: stored}, nil\n"
+   "new": "\t_ = next\n\treturn StoredPage{Stored: stored}, nil\n"
   }
  ],
  "packages/chord/src/store/read.ts": [
   {
    "file": "chord/next/store/read.go",
    "old": "\t\treturn ReadRun{Kind: \"count\", Count: count}, nil\n",
-   "new": "\t\treturn ReadRun{Kind: \"count\", Count: 0}, nil\n"
+   "new": "\t\t_ = count\n\t\treturn ReadRun{Kind: \"count\", Count: 0}, nil\n"
   }
  ],
  "packages/chord/src/store/reads.ts": [
   {
    "file": "chord/next/store/reads.go",
-   "old": "\treturn slices.Clone(reads.byTable[table])\n",
-   "new": "\treturn nil\n"
+   "old": "\tif reads.closed {\n\t\treads.mu.Unlock()\n\t\treturn\n\t}\n",
+   "new": "\tif false && reads.closed {\n\t\treads.mu.Unlock()\n\t\treturn\n\t}\n"
   }
  ],
  "packages/chord/src/store/skip.ts": [
   {
    "file": "chord/next/store/skip.go",
-   "old": "\t\treturn change.Assigned == nil || slices.ContainsFunc(change.Assigned, func(name string) bool { return columns[name] })\n",
-   "new": "\t\treturn false\n"
+   "old": "\tif change.Kind != ChangePut && change.Kind != ChangeDelete && !assigns(use.Depends) {\n\t\treturn true, nil\n\t}\n",
+   "new": "\tif change.Kind != ChangePut && change.Kind != ChangeDelete && !assigns(use.Depends) {\n\t\treturn false, nil\n\t}\n"
   }
  ],
  "packages/chord/src/host/read-declarations.ts": [
@@ -6699,8 +6699,22 @@
  "packages/chord/src/host/tiling.ts": [
   {
    "file": "chord/next/host/host_tiling.go",
-   "old": "\treturn len(t.pages) == 0 || t.pages[len(t.pages)-1].through == nil\n",
-   "new": "\treturn false\n"
+   "old": "\tif known != nil && page.after != nil && t.compare(page.after, known) >= 0 {\n",
+   "new": "\tif false && known != nil && page.after != nil && t.compare(page.after, known) >= 0 {\n"
+  }
+ ],
+ "packages/chord/src/surfaces/variant.ts": [
+  {
+   "file": "chord/next/surfaces/surfaces_variant.go",
+   "old": "\treturn ref\n",
+   "new": "\treturn nil\n"
+  }
+ ],
+ "packages/durable/src/harness/parks.ts": [
+  {
+   "file": "durable/harness/parks.go",
+   "old": "func isPark(result durable.ToolExecutionResult) bool { return result.Park != nil }\n",
+   "new": "func isPark(result durable.ToolExecutionResult) bool { return false }\n"
   }
  ]
 }

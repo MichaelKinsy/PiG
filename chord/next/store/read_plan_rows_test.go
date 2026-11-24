@@ -114,7 +114,6 @@ func (w *rpWorld) explained(t *testing.T, statement Statement) string {
 	return strings.Join(details, "; ")
 }
 
-// pi: packages/chord/src/store/read.ts
 func TestReadPlanRowsExists(t *testing.T) {
 	f := rpFixtures(t)
 

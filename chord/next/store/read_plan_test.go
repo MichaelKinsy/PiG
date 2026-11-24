@@ -77,7 +77,6 @@ func rpJSON(t *testing.T, node WhereNode) string {
 	return string(text)
 }
 
-// pi: packages/chord/src/store/read-plan.ts
 func TestReadPlanExists(t *testing.T) {
 	f := rpFixtures(t)
 
@@ -394,6 +393,7 @@ func rpDefineColumns(t *testing.T, name string, options ColumnSetOptions) *Colum
 	return set
 }
 
+// pi: packages/chord/src/store/read-plan.ts
 func TestReadPlanWrittenFor(t *testing.T) {
 	own := qDefine(t, "own", TableOptions{Version: 1, Columns: []ColumnProp{Col("id", Int()), Col("partner", Str())}, Key: []string{"id"}})
 

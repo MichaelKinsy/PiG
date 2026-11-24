@@ -5,7 +5,8 @@
 
 package harness
 
-// pi: packages/durable/src/harness/tool.ts, parks.ts
+// pi: packages/durable/src/harness/tool.ts
+// pi: packages/durable/src/harness/parks.ts
 
 import (
 	"context"
