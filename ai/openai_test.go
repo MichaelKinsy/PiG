@@ -596,9 +596,9 @@ func TestDetectCompat_Ollama(t *testing.T) {
 		t.Fatal("expected non-nil compat for ollama")
 		return
 	}
-	// openai-completions.ts detectCompat has no Ollama case: a local server is a standard provider.
-	if !*c.SupportsDeveloperRole {
-		t.Error("ollama gets the standard developer role setting")
+	// openai-completions.ts detectCompat defaults supportsDeveloperRole to true only for api.openai.com (Pi b82477b7b).
+	if *c.SupportsDeveloperRole {
+		t.Error("ollama should default supportsDeveloperRole to false")
 	}
 	if !*c.SupportsReasoningEffort {
 		t.Error("ollama gets the standard reasoning effort setting")
@@ -614,12 +614,12 @@ func TestDetectCompat_OpenRouter(t *testing.T) {
 		t.Fatal("expected non-nil compat for openrouter")
 		return
 	}
-	// detectCompat: only anthropic/ and openai/ OpenRouter models take the developer role.
+	// detectCompat: only api.openai.com defaults supportsDeveloperRole to true (Pi b82477b7b).
 	if *c.SupportsDeveloperRole {
 		t.Error("an unnamed openrouter model should not support developer role")
 	}
-	if !*detectOpenAICompletionsCompat("openrouter", "https://openrouter.ai/api/v1", "openai/gpt-5").SupportsDeveloperRole {
-		t.Error("an openrouter openai/ model supports developer role")
+	if *detectOpenAICompletionsCompat("openrouter", "https://openrouter.ai/api/v1", "openai/gpt-5").SupportsDeveloperRole {
+		t.Error("an openrouter openai/ model should default supportsDeveloperRole to false")
 	}
 	if c.ThinkingFormat != "openrouter" {
 		t.Errorf("openrouter thinkingFormat = %q, want openrouter", c.ThinkingFormat)
@@ -731,8 +731,8 @@ func TestSystemPromptRole_ReasoningModelOnOpenAI(t *testing.T) {
 func TestSystemPromptRole_ReasoningModelOnUnconfiguredLocalEndpoint(t *testing.T) {
 	p := &openAIProvider{cfg: OpenAIConfig{BaseURL: "http://localhost:11434/v1"}}
 	role := p.systemPromptRole(true)
-	if role != "developer" {
-		t.Errorf("unconfigured compatible endpoint role = %q, want Pi's default developer role", role)
+	if role != "system" {
+		t.Errorf("unconfigured compatible endpoint role = %q, want Pi b82477b7b default system role", role)
 	}
 }
 

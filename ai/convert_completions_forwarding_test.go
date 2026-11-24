@@ -30,10 +30,12 @@ func TestConvertCompletionsMessagesUsesTheModelsProviderBaseURLIDAndInput(t *tes
 		providerID, baseURL, id string
 		want                    string
 	}{
-		{"standard provider", "custom", "https://example.test/v1", "m", "developer"},
+		{"openai provider", "openai", "https://example.test/v1", "m", "developer"},
+		{"openai base URL", "custom", "https://api.openai.com/v1", "m", "developer"},
+		{"custom provider", "custom", "https://example.test/v1", "m", "system"},
 		{"non-standard base URL", "custom", "https://api.x.ai/v1", "m", "system"},
 		{"non-standard provider", "cerebras", "https://example.test/v1", "m", "system"},
-		{"openrouter anthropic model", "openrouter", "https://example.test/v1", "anthropic/claude", "developer"},
+		{"openrouter anthropic model", "openrouter", "https://example.test/v1", "anthropic/claude", "system"},
 		{"openrouter other model", "openrouter", "https://example.test/v1", "meta/llama", "system"},
 	}
 	for _, tc := range cases {

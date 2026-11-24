@@ -94,9 +94,10 @@ func TestModelRuntimeCopilotAnthropicAdaptiveThinking(t *testing.T) {
 // openai-completions leaf keeps the selected model's compat. Upstream
 // getCompat overlays model.compat on detectCompat
 // (.upstream/v0.87.1/packages/ai/src/api/openai-completions.ts:1688), and
-// github-copilot.json gives gemini-3.8-flash supportsStore and supportsDeveloperRole
-// false with supportsStrictMode true: the request uses the system role, omits
-// store, and marks tools strict:false (openai-completions.ts:832, 1225, 1505).
+// github-copilot.json gives gemini-3.8-flash supportsStore false with
+// supportsStrictMode true: the request omits store, marks tools strict:false,
+// and uses the system role by the openai-completions default for non-OpenAI
+// hosts (openai-completions.ts:832, 1225, 1505).
 // Since Pi 86918f9eeb (#12110) the record's supportsReasoningEffort comes from
 // models.dev's effort options (catalog/providers/github-copilot.ts:104) and is
 // true, so the selected level is sent as reasoning_effort
@@ -138,7 +139,7 @@ func TestModelRuntimeCopilotCompletionsCompat(t *testing.T) {
 		t.Fatal("request has no messages")
 	}
 	if role := messages[0].(map[string]any)["role"]; role != "system" {
-		t.Errorf("instruction role=%v, want system (supportsDeveloperRole false)", role)
+		t.Errorf("instruction role=%v, want system (openai-completions default)", role)
 	}
 	tools, _ := body["tools"].([]any)
 	if len(tools) != 1 {

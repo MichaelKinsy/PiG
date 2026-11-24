@@ -44,7 +44,11 @@ func detectOpenAICompletionsCompat(providerID, baseURL, modelID string) OpenAICo
 	useMaxTokens := has("chutes.ai") || isDeepSeek || isMoonshot || isCloudflareAIGateway || isTogether || isNvidia || isAntLing || isZai
 	//portlint:allow providerliteral detectCompat special-cases these providers by name and base URL in Pi (openai-completions.ts:1593-1694)
 	isGrok := providerID == "xai" || has("api.x.ai")
-	isOpenRouterDeveloperRoleModel := isOpenRouter && (strings.HasPrefix(modelID, "anthropic/") || strings.HasPrefix(modelID, "openai/"))
+	// The developer role is OpenAI's. Other hosts' chat templates often reject it (#10741),
+	// and every host accepts system, so only OpenAI's own API gets developer by default.
+	// Mirrors packages/ai/src/api/openai-completions.ts:1643 (Pi b82477b7b).
+	//portlint:allow providerliteral detectCompat special-cases these providers by name and base URL in Pi (openai-completions.ts:1593-1694)
+	isOpenAI := providerID == "openai" || has("api.openai.com")
 
 	maxTokensField := "max_completion_tokens"
 	if useMaxTokens {
@@ -74,7 +78,7 @@ func detectOpenAICompletionsCompat(providerID, baseURL, modelID string) OpenAICo
 	}
 	return OpenAICompat{
 		SupportsStore:                               new(!isNonStandard),
-		SupportsDeveloperRole:                       new(isOpenRouterDeveloperRoleModel || (!isNonStandard && !isOpenRouter)),
+		SupportsDeveloperRole:                       new(isOpenAI),
 		SupportsReasoningEffort:                     new(!isGrok && !isZai && !isMoonshot && !isTogether && !isCloudflareAIGateway && !isNvidia && !isAntLing),
 		SupportsUsageInStreaming:                    new(true),
 		SupportsFinishReason:                        new(true),

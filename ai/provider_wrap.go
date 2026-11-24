@@ -27,7 +27,13 @@ func (p *openAIProvider) withEndpoint(baseURL string) Provider {
 	}
 	cfg := p.cfg
 	cfg.BaseURL = baseURL
-	return &openAIProvider{cfg: cfg, client: p.client}
+	return &openAIProvider{
+		cfg:               cfg,
+		client:            p.client,
+		compatIdentitySet: p.compatIdentitySet,
+		compatProviderID:  p.compatProviderID,
+		compatBaseURL:     baseURL,
+	}
 }
 
 func (p *openAIResponsesProvider) endpointModel() *Model {

@@ -1288,8 +1288,9 @@ func TestCopilotRuntimeTokenOutranksStoredCredential(t *testing.T) {
 // upstream API leaves read model.compat. github-copilot.json gives
 // claude-haiku-4.5 supportsEagerToolInputStreaming false, so its tools omit
 // eager_input_streaming (.upstream/v0.87.1/packages/ai/src/api/anthropic-messages.ts:209),
-// and gemini-3.8-flash supportsDeveloperRole false, so its instructions use the
-// system role (openai-completions.ts:1225).
+// and gemini-3.8-flash supportsStore false, so its request omits store (the
+// system instruction role is the openai-completions default for every host
+// except OpenAI's).
 func TestNewCopilotProviderCatalogCompat(t *testing.T) {
 	cases := []struct {
 		model string
@@ -1309,6 +1310,9 @@ func TestNewCopilotProviderCatalogCompat(t *testing.T) {
 		{"gemini-3.8-flash", APIOpenAICompletions, func(t *testing.T, body string) {
 			if !strings.Contains(body, `"role":"system"`) || strings.Contains(body, `"role":"developer"`) {
 				t.Errorf("gemini-3.8-flash must send the system role: %s", body)
+			}
+			if strings.Contains(body, `"store"`) {
+				t.Errorf("gemini-3.8-flash must omit store (catalog compat supportsStore=false): %s", body)
 			}
 		}},
 	}

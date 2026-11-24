@@ -14,8 +14,8 @@ import (
 
 // TestRPCCustomModelIDKeepsTheProvidersLimitsCostAndCompat is the caller side of TestStartupCustomModelIDIsACopyOfTheProvidersModel: a pig
 // process started with `--model <models.json provider>/<unknown id>` reports the copied model in get_state, sends a request shaped by its
-// compat flags and output limit, and prices the turn with its rates. Pi 1.5.2 sends `max_tokens` (or `max_completion_tokens`) with the copied
-// model's maxTokens and a system message for supportsDeveloperRole false; a model with no limits sent a one-token limit and a developer message.
+// compat flags and output limit, and prices the turn with its rates. The copied model sends `max_tokens` (not `max_completion_tokens`) with
+// the copied model's maxTokens (3000) and system role; a model with no limits or compat sent a one-token limit in `max_completion_tokens`.
 func TestRPCCustomModelIDKeepsTheProvidersLimitsCostAndCompat(t *testing.T) {
 	serverURL, requests := customModelCompletionsServer(t)
 	config := `{"providers":{"configured":{"baseUrl":"` + serverURL + `/v1","apiKey":"unused","api":"openai-completions","models":[` +
