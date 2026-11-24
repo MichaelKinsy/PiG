@@ -135,7 +135,9 @@ func (decoder *openAIStreamDecoder) decodeChunks() { decoder.chunks = &openAIChu
 // wrapNormalizeChatCompletionStream enables the extra microtask ticks of openai 7.59.0's
 // normalizeChatCompletionStream outer async generator wrapper (lib/chat-completions/streaming.mjs:12-22),
 // which wraps chat.completions.create({stream: true}) but not responses.create.
-func (decoder *openAIStreamDecoder) wrapNormalizeChatCompletionStream() { decoder.normalizeWrapper = true }
+func (decoder *openAIStreamDecoder) wrapNormalizeChatCompletionStream() {
+	decoder.normalizeWrapper = true
+}
 
 // Chunk is the current record's chunk and true when decodeChunks is on and the chunk decode read the record; the caller decodes the other records itself. The chunk's slices are valid until the next Next.
 func (decoder *openAIStreamDecoder) Chunk() (oaiChunk, bool) { return decoder.chunk, decoder.chunkOK }

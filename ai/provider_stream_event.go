@@ -66,19 +66,6 @@ func (builder *assistantStreamBuilder) observeValidProviderEvent(text string) er
 	return builder.observeProviderEventJSON([]byte(text))
 }
 
-// observeDecodedProviderEvent is observeValidProviderEvent for a wire event whose decode already answered validJSONParsesAsValue of its text as parsesAsValue, so an unwanted observer skips it without a scan.
-func (builder *assistantStreamBuilder) observeDecodedProviderEvent(text string, parsesAsValue bool) error {
-	if builder.providerEvent == nil {
-		builder.awaitProviderEvent()
-		return nil
-	}
-	if builder.providerEventWanted != nil && parsesAsValue && !builder.awaitProviderEventUnlessWanted() {
-		return nil
-	}
-	builder.settleDeferred()
-	return builder.observeProviderEventJSON([]byte(text))
-}
-
 func (builder *assistantStreamBuilder) observeProviderEventJSON(raw []byte) error {
 	var data any
 	if err := json.Unmarshal(raw, &data); err != nil {

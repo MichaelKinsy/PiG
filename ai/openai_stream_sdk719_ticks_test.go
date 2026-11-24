@@ -120,16 +120,17 @@ func TestOpenAIStreamDecoderFollowsOpenAI719SuspensionPoints(t *testing.T) {
 // active for chat.completions.create, while Stream.fromSSEResponse (used by responses.create)
 // stays unchanged at 7.19.0..7.59.0 ticks.
 // Measured against openai 7.59.0 on Node v24.22.2:
-//   responses-empty:    start@0 done@7
-//   completions-empty:  start@0 done@8
-//   responses-eof:      start@0 chunk@9  chunk@15 done@22
-//   completions-eof:    start@0 chunk@11 chunk@19 done@27
-//   responses-done:     start@0 chunk@9  chunk@15 done@29
-//   completions-done:   start@0 chunk@11 chunk@19 done@34
-//   responses-badjson:  start@0 chunk@9  error@20
-//   completions-badjson:start@0 chunk@11 error@23
-//   responses-readfail: start@0 chunk@9  error@16
-//   completions-readfail:start@0 chunk@11 error@19
+//
+//	responses-empty:    start@0 done@7
+//	completions-empty:  start@0 done@8
+//	responses-eof:      start@0 chunk@9  chunk@15 done@22
+//	completions-eof:    start@0 chunk@11 chunk@19 done@27
+//	responses-done:     start@0 chunk@9  chunk@15 done@29
+//	completions-done:   start@0 chunk@11 chunk@19 done@34
+//	responses-badjson:  start@0 chunk@9  error@20
+//	completions-badjson:start@0 chunk@11 error@23
+//	responses-readfail: start@0 chunk@9  error@16
+//	completions-readfail:start@0 chunk@11 error@19
 func TestOpenAIChatCompletionsNormalizeWrapperTicks(t *testing.T) {
 	t.Parallel()
 	const oneChunk = `data: {"id":"1","choices":[{"index":0,"delta":{"content":"a"}}]}` + "\n\n"
