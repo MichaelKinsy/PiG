@@ -138953,7 +138953,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/documents/keyed_slot.go#KeyedSlot.Watch"
+        "call:chord/next/documents/keyed_slot.go#KeyedSlot.openKeyWatch"
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestDeliverySchedulerHoldFoldsTheFramesAdvancedWhileItIsOpenIntoOneCallPerWatch",

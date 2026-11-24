@@ -180346,6 +180346,28 @@
       "shapeHash": "sha256:033fea4f2475b2af02b9f7c6eb8a95ecafba229c9d2f90903c094ee7b1924415"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#createEmptyStorageFile",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
+      "name": "createEmptyStorageFile",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string) error"
+      },
+      "shapeHash": "sha256:994416f39888c33ce485b66148e3a3a2f3d65db3841cf51fef67eec1cdc34d1b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#createNewFollowingLinks",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
+      "name": "createNewFollowingLinks",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string, create func(string) (*os.File, error)) (*os.File, error)"
+      },
+      "shapeHash": "sha256:df7472093d43fa37245da237dd6cbbe3bdb36455e80f7602fb549fff61924dc4"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#cursorDescription",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "cursorDescription",
@@ -182225,6 +182247,17 @@
         "type": "func(entry McpServerEntry) string"
       },
       "shapeHash": "sha256:54ea965de765eae14f6bcb7c4f63c68acb1248209e2f31f780c42933aa3ec3ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#statStoragePath",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
+      "name": "statStoragePath",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func(name string) (os.FileInfo, error)"
+      },
+      "shapeHash": "sha256:85ec36c5a122b1cbb332010e0205fa089188ff47a453b6a3e12a1a22382b686e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#stderrTailChars",
