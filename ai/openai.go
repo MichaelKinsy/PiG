@@ -705,7 +705,7 @@ func (c *oaiChunkChoice) UnmarshalJSON(data []byte) error {
 		return &json.UnmarshalTypeError{Value: "null", Type: reflect.TypeFor[oaiChunkChoice]()}
 	}
 	type rawChoice oaiChunkChoice
-	return json.Unmarshal(data, (*rawChoice)(c))
+	return jsstring.UnmarshalKeepingSurrogates(data, (*rawChoice)(c))
 }
 
 // ─── Message conversion ───────────────────────────────────────────────────────

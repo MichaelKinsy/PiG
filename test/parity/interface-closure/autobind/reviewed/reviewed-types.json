@@ -219,10 +219,6 @@
     "go": "chord/next/contracts/host_kind.go#Address",
     "reason": "Pi chord/src/contracts/host-kind.ts:12 Address<K> types `kind` as K[\"kind\"] and `params` as ParamsOfKind<K>, both computed from the host kind's type parameters. Go's contracts.Address has the same three members, Kind string, Params *delta.JsonObject and Key string (host_kind.go), the kind's literal and the params' static types being compile-time only. Locked by TestHostKinds (chord/next/contracts/host_kind_test.go)."
   },
-  "pkg:chord/.#Admission": {
-    "go": "chord/nextnode/http/admission.go#Admission",
-    "reason": "Pi 1.6.0 (packages/chord/src/host/admission.ts:38) pkg:chord/.#Admission is implemented by chord/nextnode/http/admission.go#Admission; autobind cannot decide the TypeScript type-level construct (A4: the upstream declaration of Admission is missing or declared twice in the pinned sources) against Go nominal types. Verified by the package unit and oracle tests ported on the v1.5.2..v1.6.0 follow line."
-  },
   "pkg:chord/.#Admit::call:0": {
     "go": "chord/next/host/host_admission.go#Admit",
     "reason": "Pi 1.6.0 (packages/chord/src/host/admission.ts:53) pkg:chord/.#Admit::call:0 is implemented by chord/next/host/host_admission.go#Admit; autobind cannot decide the TypeScript type-level construct (parameter params: T12: mapped type \"{ [F in keyof ShapeOf<C>[\\\"params\\\"]]: Static<ShapeO...\" against Go type delta.JsonObject) against Go nominal types. Verified by the package unit and oracle tests ported on the v1.5.2..v1.6.0 follow line."

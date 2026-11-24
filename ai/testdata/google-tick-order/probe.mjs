@@ -110,7 +110,7 @@ const cases = [
 
 const model = { id: 'gemini-2.5-flash', name: 'probe', api: 'google-generative-ai', provider: 'google', baseUrl: 'http://probe.invalid/v1beta', reasoning: false, input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 1000, maxTokens: 100 };
 const context = { messages: [{ role: 'user', content: 'go', timestamp: 0 }] };
-const params = { model: model.id, contents: [{ role: 'user', parts: [{ text: 'go' }] }] };
+const params = { model: model.id, contents: [{ role: 'user', parts: [{ text: 'go' }] }], config: { automaticContinuation: false } };
 const realFetch = globalThis.fetch;
 
 // The fetch replacement: resolves from a macrotask (a network callback), like undici's headers arrival.
@@ -186,7 +186,7 @@ async function runProvider(c) {
 }
 
 // The wall clock and generated IDs are the only nondeterministic values.
-const scrub = value => JSON.parse(JSON.stringify(value).replace(/"timestamp":\d+/g, '"timestamp":0'));
+const scrub = value => JSON.parse(JSON.stringify(value).replace(/"timestamp":\d+/g, '"timestamp":0').replace(/"durationMs":\d+/g, '"durationMs":0'));
 
 const out = {
   pi: PIG_UPSTREAM_VERSION, genai: '2.32.0', node: process.version,

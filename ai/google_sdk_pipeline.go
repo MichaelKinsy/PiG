@@ -122,12 +122,9 @@ func googleGenerateContentStream(executor *continuationExecutor, fetched *tslibP
 	}, nil)
 	// F+10: generateContentStreamInternal is async and returns that promise (index.mjs:16665).
 	internal := adopt(generator)
-	// F+11: `const firstStream = await this.generateContentStreamInternal(params)` in generateContentStreamWithContinuation
-	// (index.mjs:16395-16439, default-enabled in @google/genai 2.32.0) wraps firstStream in an outer continuation __asyncGenerator,
-	// whose per-chunk and start/end reactions are folded directly into googleGenerateContentStreamInternal to avoid a third coroutine and extra request cells.
-	withContinuation := passthrough(internal)
-	// F+12: `return await this.generateContentStreamWithContinuation(transformedParams)` in generateContentStream (index.mjs:16152).
-	return passthrough(withContinuation)
+	// F+11: `return await this.generateContentStreamInternal(transformedParams)` in generateContentStream
+	// (index.mjs:16157; Pi google-generative-ai.ts:397 sets `automaticContinuation: false`, bypassing generateContentStreamWithContinuation).
+	return passthrough(internal)
 }
 
 // googleRetryGoogleRequest is retryGoogleRequest(request, options) for a request that does not fail: two async wrappers, each of which awaits the request and returns (google-shared.ts:499-501 and utils/provider-retry.ts:87). Pi's `await` of the result resumes one reaction after it settles, 15 reactions after fetched settled, which is when Pi pushes start.
@@ -135,7 +132,7 @@ func googleRetryGoogleRequest(request *tslibPromise) *tslibPromise {
 	passthrough := func(promise *tslibPromise) *tslibPromise {
 		return promise.then(func(value any) (any, error) { return value, nil }, nil)
 	}
-	// F+13: `async () => { try { return await request(); } ... }`, then F+14: `return await request()` in retryProviderRequest.
+	// F+12: `async () => { try { return await request(); } ... }`, then F+13: `return await request()` in retryProviderRequest.
 	return passthrough(passthrough(request))
 }
 
@@ -225,19 +222,9 @@ func googleProcessStreamResponse(executor *continuationExecutor, response *googl
 	})
 }
 
-// googleGenerateContentStreamInternal is the combined async generator of Models.generateContentStreamInternal
-// (index.mjs:16728-16751) wrapped by Models.generateContentStreamWithContinuation (index.mjs:16395-16439, default-enabled
-// in @google/genai 2.32.0). Folding the outer continuation generator's synchronous-value awaits directly into this body
-// preserves the exact microtask reaction count with zero extra per-chunk allocations:
-//   - start: `yield __await(openHop())` (1 reaction before the first inner next(), index.mjs:16411)
-//   - per chunk: outer `for await` resume (1) + outer `yield __await(state.observe(chunk))` (1) (index.mjs:16411, 16415)
-//   - end: outer `for await` done resume (1) + `return yield __await(void 0)` (1) (index.mjs:16411, 16432)
+// googleGenerateContentStreamInternal is the async generator in Models.generateContentStreamInternal (index.mjs:16728-16751). It awaits each HttpResponse's json() and yields the decoded chunk.
 func googleGenerateContentStreamInternal(executor *continuationExecutor, apiResponse *tslibAsyncIterator, jsonRounds int) *tslibAsyncIterator {
 	return newTslibAsyncGenerator(executor, func(y *tslibYield) (any, error) {
-		// Outer continuation generator: `yield __await(openHop())` before first `firstStream.next()` (index.mjs:16406, 16411).
-		if _, err := y.Await(nil); err != nil {
-			return nil, err
-		}
 		// for (... apiResponse_2_1 = yield __await(apiResponse_2.next()) ...) { ... } with the compiled try/catch/finally (index.mjs:16731-16750)
 		err := y.ForAwait(tslibAsyncValues(apiResponse), func(value any) (bool, error) {
 			chunk := value.(*googleHTTPResponse)
@@ -246,25 +233,11 @@ func googleGenerateContentStreamInternal(executor *continuationExecutor, apiResp
 			if err != nil {
 				return false, err
 			}
-			// Outer continuation generator: `for await` resume on `firstStream.next()` (+1) and `yield __await(state.observe(chunk))` (+1).
-			if _, err := y.Await(nil); err != nil {
-				return false, err
-			}
-			if _, err := y.Await(nil); err != nil {
-				return false, err
-			}
 			// `yield yield __await(typedResp)` (index.mjs:16741)
 			_, err = y.YieldAwaited(parsed)
 			return false, err
 		})
-		if err != nil {
-			return nil, err
-		}
-		// Outer continuation generator: `for await` done resume (+1) and `return yield __await(void 0)` (+1) (index.mjs:16411, 16432).
-		if _, err := y.Await(nil); err != nil {
-			return nil, err
-		}
-		return y.Await(nil)
+		return nil, err
 	})
 }
 

@@ -114500,7 +114500,7 @@
       "id": "pkg:chord/.#memberNames",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:a4d15ec4841b6a68e9ca7f3c7ee59ec27552020776ab6ca6ccce3735cbfac475",
-      "rationale": "Derived by the interface gap detector: memberNames is Go chord/next/contracts/contract.go#MemberNamesOf (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: memberNames is Go chord/next/contracts/contract.go#MemberNamesOf (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/contracts/contract.go#MemberNamesOf"
       ],
@@ -114510,7 +114510,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/contracts/history.go#MemberNames"
+        "call:chord/next/contracts/contract.go#MemberNamesOf"
       ],
       "evidence": [
         "test:chord/next/contracts/contract_test.go#TestMemberNames"
@@ -140235,7 +140235,7 @@
       "id": "pkg:chord/telemetry-ingest#TelemetrySender",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:5955fa6a38ae51315a47ce3f1da54ce075a712ee4e22e60b521efdf317b02f39",
-      "rationale": "Derived by the interface gap detector: TelemetrySender is Go chord/next/telemetryingest/sender.go#Sender (name rule N2), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TelemetrySender is Go chord/next/telemetryingest/sender.go#Sender (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/telemetryingest/sender.go#Sender"
       ],
@@ -140245,10 +140245,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/app/worker.go#closeTelemetry"
+        "call:chord/next/telemetryingest/sender.go#SendPageTelemetry"
       ],
       "evidence": [
-        "reach:chord/nextnode/app/worker.go#closeTelemetry"
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageSenderGivesARefusedBatchUp",
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageSenderSendsItsSpansWithoutMetricsOnceBoundUntilThenTheyWaitInTheRecorder",
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestWorkerSenderSendsSpansAndMetricsToTheWorkerVariant"
       ]
     },
     {
