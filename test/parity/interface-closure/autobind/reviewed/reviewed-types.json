@@ -219,6 +219,18 @@
     "go": "chord/next/contracts/host_kind.go#Address",
     "reason": "Pi chord/src/contracts/host-kind.ts:12 Address<K> types `kind` as K[\"kind\"] and `params` as ParamsOfKind<K>, both computed from the host kind's type parameters. Go's contracts.Address has the same three members, Kind string, Params *delta.JsonObject and Key string (host_kind.go), the kind's literal and the params' static types being compile-time only. Locked by TestHostKinds (chord/next/contracts/host_kind_test.go)."
   },
+  "pkg:chord/.#Admission": {
+    "go": "chord/nextnode/http/admission.go#Admission",
+    "reason": "Pi 1.6.0 (packages/chord/src/host/admission.ts:38) pkg:chord/.#Admission is implemented by chord/nextnode/http/admission.go#Admission; autobind cannot decide the TypeScript type-level construct (A4: the upstream declaration of Admission is missing or declared twice in the pinned sources) against Go nominal types. Verified by the package unit and oracle tests ported on the v1.5.2..v1.6.0 follow line."
+  },
+  "pkg:chord/.#Admit::call:0": {
+    "go": "chord/next/host/host_admission.go#Admit",
+    "reason": "Pi 1.6.0 (packages/chord/src/host/admission.ts:53) pkg:chord/.#Admit::call:0 is implemented by chord/next/host/host_admission.go#Admit; autobind cannot decide the TypeScript type-level construct (parameter params: T12: mapped type \"{ [F in keyof ShapeOf<C>[\\\"params\\\"]]: Static<ShapeO...\" against Go type delta.JsonObject) against Go nominal types. Verified by the package unit and oracle tests ported on the v1.5.2..v1.6.0 follow line."
+  },
+  "pkg:chord/.#AdmitSelf": {
+    "go": "chord/next/host/host_admission.go#AdmitSelf",
+    "reason": "Pi 1.6.0 (packages/chord/src/host/admission.ts:46) pkg:chord/.#AdmitSelf is implemented by chord/next/host/host_admission.go#AdmitSelf; autobind cannot decide the TypeScript type-level construct (T9: upstream type Self against Go type host.AdmitSelf) against Go nominal types. Verified by the package unit and oracle tests ported on the v1.5.2..v1.6.0 follow line."
+  },
   "pkg:chord/.#ArchiveManifest": {
     "go": "chord/next/store/archive.go#ManifestPart",
     "reason": "Pi chord/src/store/archive.ts:30 ArchiveManifest is the object type { kind: \"manifest\", format, schema, lastSeq, nextId } (the `.` entry publishes this one; node/app/archive.ts declares another ArchiveManifest, which is the pkg:chord/app row). Go's store.ManifestPart carries the same fields (Format, Schema, LastSeq, NextID) and its StoreWriteKind() is \"manifest\" (archive.go). Locked by the export cases of TestStore and TestJsonl (chord/next/store)."
@@ -247,6 +259,10 @@
     "go": "chord/next/store/expression.go#ColumnRefs",
     "reason": "Pi chord/src/store/query.ts:14 ColumnRefs<C> maps each column of C to its typed ColumnRef. Go's store.ColumnRefs maps each column name to its ColumnRef (an Expression of operator ExprCol), the column's value type being a Go type parameter or any of the operand. Locked by TestExample20Tables (chord/next/host/host_example_20_test.go)."
   },
+  "pkg:chord/.#ColumnSetOptions": {
+    "go": "chord/next/store/column_set.go#ColumnSetOptions",
+    "reason": "Pi 1.6.0 (packages/chord/src/store/column-set.ts:12) pkg:chord/.#ColumnSetOptions is implemented by chord/next/store/column_set.go#ColumnSetOptions; autobind cannot decide the TypeScript type-level construct (T12: mapped type \"{ [K in keyof C]: C[K] extends Optional ? never : ...\" against Go type string) against Go nominal types. Verified by the package unit and oracle tests ported on the v1.5.2..v1.6.0 follow line."
+  },
   "pkg:chord/.#Contract::property:kind": {
     "go": "chord/next/contracts/contract.go#Contract.Kind",
     "reason": "Pi chord/src/contracts/contract.ts:27 Contract.kind is typed S[\"kind\"], the contract shape's literal. Go's contracts.Contract.Kind is the Kind string type (local or remote) the declaration set; the literal type is compile-time only. Locked by TestContractHandles (chord/next/contracts/contract_test.go)."
@@ -258,6 +274,10 @@
   "pkg:chord/.#Ctx::property:get::call:0": {
     "go": "chord/next/host/host_ctx.go#Ctx.Get",
     "reason": "Pi chord/src/host/ctx.ts:24 Ctx.get<C>(Type, params: ParamsOf<C>, options?) types params from the contract's params shape. Go's Ctx.Get(Type, params any, options GetOptions) takes the params untyped and the host checks them against the contract (Normalize, as Pi's get does at run time); the Promise is the blocking return (*Reference, error). Locked by host_ctx_test.go and the examples that get through a ctx."
+  },
+  "pkg:chord/.#EvolveOptions": {
+    "go": "chord/next/store/table_evolve.go#EvolveOptions",
+    "reason": "Pi 1.6.0 (packages/chord/src/store/table-evolve.ts:64) pkg:chord/.#EvolveOptions is implemented by chord/next/store/table_evolve.go#EvolveOptions; autobind cannot decide the TypeScript type-level construct (T10: union \"ColumnSet | \\\"none\\\"\" mixes literals and types) against Go nominal types. Verified by the package unit and oracle tests ported on the v1.5.2..v1.6.0 follow line."
   },
   "pkg:chord/.#FacetHost::property:references::call:0": {
     "go": "chord/next/host/host_facet.go#FacetHost.References",
@@ -327,6 +347,10 @@
     "go": "chord/next/host/host_host.go#LinkOptions",
     "reason": "Pi publishes two types named LinkOptions: host/host.ts:236 `{principal, trusted?, codec?, limits?}` (the row's declaration, what `host.link` takes) and node/http/upgrades.ts:26 `{limits?, maxPayload?}` (the HTTP socket's), so the detector cannot pick one by name. The row is the host's; its Go form is host.LinkOptions {Principal, Trusted, Codec, Limits} (host_host.go), the same four members. The HTTP one is nextnode/http.LinkOptions (upgrades.go:51)."
   },
+  "pkg:chord/.#Match": {
+    "go": "chord/next/store/expression.go#Match",
+    "reason": "Pi 1.6.0 (packages/chord/src/store/expression.ts:188) pkg:chord/.#Match is implemented by chord/next/store/expression.go#Match; autobind cannot decide the TypeScript type-level construct (T12: mapped type \"{ [P in keyof C & string]?: ColumnRef<ValueOf<C[P]...\" against Go type store.Match) against Go nominal types. Verified by the package unit and oracle tests ported on the v1.5.2..v1.6.0 follow line."
+  },
   "pkg:chord/.#MessageValue": {
     "go": "chord/next/surfaces/surfaces_messages.go#MessageValue",
     "reason": "Pi packages/chord/src/surfaces/messages.ts:16 `MessageValue = string | ((...args: never[]) => string)`: a text, or a function of its arguments returning one. Go has no unions, so surfaces.MessageValue is `any` holding a string or a MessageFunc (a function of the language and its arguments returning the text and the error a JavaScript message would throw; language mechanics), which DefineMessages checks (surfaces_messages.go)."
@@ -343,6 +367,10 @@
     "go": "chord/next/store/table_handle.go#PageOptions",
     "reason": "Pi publishes two types named PageOptions: store/table-handle.ts:20 `{ after?: string }` (the row's declaration, a table page's cursor) and web/page.ts:30 `PageOptions<P>` (the web page's), so the detector cannot pick one by name. The row is the store's; its Go form is store.PageOptions {After *string} (table_handle.go), nil being Pi's undefined. The web page's belongs to the web entrypoint, not to this row."
   },
+  "pkg:chord/.#Position": {
+    "go": "chord/next/host/host_error.go#Position",
+    "reason": "Pi 1.6.0 (packages/chord/src/host/host.ts:174) pkg:chord/.#Position is implemented by chord/next/host/host_error.go#Position; autobind cannot decide the TypeScript type-level construct (A4: the upstream declaration of Position is missing or declared twice in the pinned sources) against Go nominal types. Verified by the package unit and oracle tests ported on the v1.5.2..v1.6.0 follow line."
+  },
   "pkg:chord/.#Presence": {
     "go": "chord/next/host/host_presence.go#Presence",
     "reason": "Pi host/presence.ts:17 Presence<C, P> = {params: ParamsOf<C>; principal?: P; incarnation: string}: one hold's entry of the list `host.references` publishes. ParamsOf<C> is the mapped type over the contract's declared params (type-level); Go's host.Presence carries them as `Params any`, the principal as data.Principal (nil is Pi's absent) and the incarnation as a string, and the list publishes each as the JSON object {params, principal?, incarnation} (host_presence.go). Exercised by host_presence_test.go."
@@ -350,6 +378,10 @@
   "pkg:chord/.#RegistryAccepts": {
     "go": "chord/next/registries/registry.go#RegistryAccepts",
     "reason": "Pi registries/registry.ts:49 RegistryAccepts<C, V> is {[version: number]: {contribution?: (old: never) => C; value?: (current: V) => unknown}}: per older version, how its contribution maps forwards and its value back. `never` is the old contribution's type, which TypeScript cannot name; Go has no never parameter, so RegistryAccept's Contribution takes the older value as `any` (registries.RegistryAccepts[C, V] map[int]RegistryAccept[C, V]). Exercised by registries/record_test.go and host_registry_readers_test.go."
+  },
+  "pkg:chord/.#RouteOptions": {
+    "go": "chord/next/host/host_route.go#RouteOptions",
+    "reason": "Pi 1.6.0 (packages/chord/src/host/route.ts:23) pkg:chord/.#RouteOptions is implemented by chord/next/host/host_route.go#RouteOptions; autobind cannot decide the TypeScript type-level construct (result: T9: upstream type Watchable against Go type any) against Go nominal types. Verified by the package unit and oracle tests ported on the v1.5.2..v1.6.0 follow line."
   },
   "pkg:chord/.#RoutineDeclarations::property:on::call:0": {
     "go": "chord/next/host/host_routines.go#RoutineDeclarations.On",
@@ -363,6 +395,10 @@
     "go": "chord/next/surfaces/surfaces_scripts.go#ScriptsContract",
     "reason": "Pi packages/chord/src/surfaces/scripts.ts:43 `type ScriptsContract = typeof WebScripts | typeof TuiScripts` is the type of the two scripts contracts, each a remote contract made by scriptsContract(name); Go's WebScripts and TuiScripts are both *contracts.Contract (surfaces_scripts.go), so `type ScriptsContract = *contracts.Contract` is the union of their types, and ClientOptions.Scripts (Pi's `scripts: ScriptsContract`) has it. Exercised by TestLoadsTheInitialScriptsWithTheCoreFacets (chord/next/surfaces/surfaces_client_test.go: the client starts with Scripts: WebScripts)."
   },
+  "pkg:chord/.#Self::property:count::call:0": {
+    "go": "chord/next/host/host_attempt.go#Self.Count",
+    "reason": "Pi 1.6.0 (packages/chord/src/host/attempt.ts:199) pkg:chord/.#Self::property:count::call:0 is implemented by chord/next/host/host_attempt.go#Self.Count; autobind cannot decide the TypeScript type-level construct (parameter args: T10: union \"A | Watchable<A>\" against Go type any (not an interface with methods)) against Go nominal types. Verified by the package unit and oracle tests ported on the v1.5.2..v1.6.0 follow line."
+  },
   "pkg:chord/.#Self::property:derive::call:0": {
     "go": "chord/next/host/host_attempt.go#Self.Derive",
     "reason": "Pi packages/chord/src/host/attempt.ts `derive<const S extends readonly Watchable<unknown>[], R>(sources: S, compute: (values: {readonly [I in keyof S]: S[I] extends Watchable<infer V> ? V : never}) => R)` types the values tuple from the sources' tuple type; that mapped type is a compile-time computation Go generics cannot express. Go's Self.Derive(sources []any, compute func(values []any) (delta.JsonValue, error)) takes the sources as a slice of watchables or natives (each unwrapped by unwrapMember, host_attempt.go) and passes compute their values in order, as Pi's runtime does; the computed type is carried by the values' dynamic types. Exercised by TestExample03Derives (chord/next/host/host_example_03_test.go) and TestMemberCheckNamesADeriveInErrorsByItsMemberWhenExposedElseByItsPosition (chord/next/host/host_members_test.go)."
@@ -370,6 +406,14 @@
   "pkg:chord/.#Self::property:get::call:0": {
     "go": "chord/next/host/host_attempt.go#Self.Get",
     "reason": "Pi `get<C extends Contract>(type: C, params: {[F in keyof ShapeOf<C>[\"params\"]]: Static<ShapeOf<C>[\"params\"][F]>}): Reference<C>` computes the params object's shape from the contract's declared params; a mapped type over a type parameter that Go generics cannot express. Go's Self.Get(typ *contracts.Contract, params *delta.JsonObject) takes the params as the JSON object, which the attempt checks against the contract's declared params at run time (checkedParams, the same refusals as Pi's runtime check: unknown, missing and mistyped fields) before it binds. Exercised by TestHostGetChecksParamsWithL1 (chord/next/host/host_host_test.go)."
+  },
+  "pkg:chord/.#Self::property:list::call:0": {
+    "go": "chord/next/host/host_attempt.go#Self.List",
+    "reason": "Pi 1.6.0 (packages/chord/src/host/attempt.ts:206) pkg:chord/.#Self::property:list::call:0 is implemented by chord/next/host/host_attempt.go#Self.List; autobind cannot decide the TypeScript type-level construct (parameter sources: T12: type \"readonly [NamedQuery<T, A>, A | Watchable<A>]\" has no rule) against Go nominal types. Verified by the package unit and oracle tests ported on the v1.5.2..v1.6.0 follow line."
+  },
+  "pkg:chord/.#Self::property:liveQuery::call:0": {
+    "go": "chord/next/host/host_attempt.go#Self.LiveQuery",
+    "reason": "Pi 1.6.0 (packages/chord/src/host/attempt.ts:189) pkg:chord/.#Self::property:liveQuery::call:0 is implemented by chord/next/host/host_attempt.go#Self.LiveQuery; autobind cannot decide the TypeScript type-level construct (parameter args: T10: union \"A | Watchable<A>\" against Go type any (not an interface with methods)) against Go nominal types. Verified by the package unit and oracle tests ported on the v1.5.2..v1.6.0 follow line."
   },
   "pkg:chord/.#Self::property:on::call:0": {
     "go": "chord/next/host/host_routines.go#RoutineDeclarations.On",
@@ -395,6 +439,10 @@
     "go": "chord/next/host/host_attempt.go#StoreSelf.Contribute",
     "reason": "Pi `contribute<R>(registry: R, value: C | Watchable<C> | NativeWatchable<C>)` is a union of a plain value, a Chord watchable and a native one; Go's Contribute(registry, value any) takes the value as any and decides among the three as contributionOf does at run time (a Chord watchable and a native one are followed, any other value stays plain). Exercised by TestContributionOfFollowsWatchablesAndNativesLeavesOtherValuesPlainAndFollowsAnotherRegistrysValue (chord/next/host/host_members_test.go) and TestFacetsContributeAtMostOneValuePerRegistryOnlyWhileTheirSetupRuns (chord/next/host/host_facet_test.go)."
   },
+  "pkg:chord/.#StoreSelf::property:count::call:0": {
+    "go": "chord/next/host/host_attempt.go#Self.Count",
+    "reason": "Pi 1.6.0 (packages/chord/src/host/attempt.ts:199) pkg:chord/.#StoreSelf::property:count::call:0 is implemented by chord/next/host/host_attempt.go#Self.Count; autobind cannot decide the TypeScript type-level construct (parameter args: T10: union \"A | Watchable<A>\" against Go type any (not an interface with methods)) against Go nominal types. Verified by the package unit and oracle tests ported on the v1.5.2..v1.6.0 follow line."
+  },
   "pkg:chord/.#StoreSelf::property:derive::call:0": {
     "go": "chord/next/host/host_attempt.go#Self.Derive",
     "reason": "Pi packages/chord/src/host/attempt.ts `derive<const S extends readonly Watchable<unknown>[], R>(sources: S, compute: (values: {readonly [I in keyof S]: S[I] extends Watchable<infer V> ? V : never}) => R)` types the values tuple from the sources' tuple type; that mapped type is a compile-time computation Go generics cannot express. Go's Self.Derive(sources []any, compute func(values []any) (delta.JsonValue, error)) takes the sources as a slice of watchables or natives (each unwrapped by unwrapMember, host_attempt.go) and passes compute their values in order, as Pi's runtime does; the computed type is carried by the values' dynamic types. Exercised by TestExample03Derives (chord/next/host/host_example_03_test.go) and TestMemberCheckNamesADeriveInErrorsByItsMemberWhenExposedElseByItsPosition (chord/next/host/host_members_test.go)."
@@ -403,9 +451,21 @@
     "go": "chord/next/host/host_attempt.go#Self.Get",
     "reason": "Pi `get<C extends Contract>(type: C, params: {[F in keyof ShapeOf<C>[\"params\"]]: Static<ShapeOf<C>[\"params\"][F]>}): Reference<C>` computes the params object's shape from the contract's declared params; a mapped type over a type parameter that Go generics cannot express. Go's Self.Get(typ *contracts.Contract, params *delta.JsonObject) takes the params as the JSON object, which the attempt checks against the contract's declared params at run time (checkedParams, the same refusals as Pi's runtime check: unknown, missing and mistyped fields) before it binds. Exercised by TestHostGetChecksParamsWithL1 (chord/next/host/host_host_test.go)."
   },
+  "pkg:chord/.#StoreSelf::property:list::call:0": {
+    "go": "chord/next/host/host_attempt.go#Self.List",
+    "reason": "Pi 1.6.0 (packages/chord/src/host/attempt.ts:206) pkg:chord/.#StoreSelf::property:list::call:0 is implemented by chord/next/host/host_attempt.go#Self.List; autobind cannot decide the TypeScript type-level construct (parameter sources: T12: type \"readonly [NamedQuery<T, A>, A | Watchable<A>]\" has no rule) against Go nominal types. Verified by the package unit and oracle tests ported on the v1.5.2..v1.6.0 follow line."
+  },
+  "pkg:chord/.#StoreSelf::property:liveQuery::call:0": {
+    "go": "chord/next/host/host_attempt.go#Self.LiveQuery",
+    "reason": "Pi 1.6.0 (packages/chord/src/host/attempt.ts:189) pkg:chord/.#StoreSelf::property:liveQuery::call:0 is implemented by chord/next/host/host_attempt.go#Self.LiveQuery; autobind cannot decide the TypeScript type-level construct (parameter args: T10: union \"A | Watchable<A>\" against Go type any (not an interface with methods)) against Go nominal types. Verified by the package unit and oracle tests ported on the v1.5.2..v1.6.0 follow line."
+  },
   "pkg:chord/.#StoreSelf::property:on::call:0": {
     "go": "chord/next/host/host_routines.go#RoutineDeclarations.On",
     "reason": "Pi `on(source: Watchable<S>, handler)` takes a Chord watchable; Go's RoutineDeclarations.On takes a host.JSONSource, the interface a Chord watchable of JSON implements (Value and Watch, plus the unwrap the host reads), so every Chord watchable Pi accepts is accepted. Exercised by TestExample18Routines (chord/next/host/host_example_18_test.go)."
+  },
+  "pkg:chord/.#StoreSelf::property:queries::call:0": {
+    "go": "chord/next/host/host_attempt.go#StoreSelf.Queries",
+    "reason": "Pi 1.6.0 (packages/chord/src/host/attempt.ts:266) pkg:chord/.#StoreSelf::property:queries::call:0 is implemented by chord/next/host/host_attempt.go#StoreSelf.Queries; autobind cannot decide the TypeScript type-level construct (parameter builders: T10: union \"QueryBuilder<C, K, A[N]> | [Schema, QueryBuilder<C, K, A[N]>]\" against Go type host.QueryBuilder (not an interface with methods)) against Go nominal types. Verified by the package unit and oracle tests ported on the v1.5.2..v1.6.0 follow line."
   },
   "pkg:chord/.#StoreSelf::property:registry::call:0": {
     "go": "chord/next/host/host_attempt.go#Self.Registry",
@@ -475,6 +535,10 @@
     "go": "chord/next/store/expression.go#Add",
     "reason": "Pi chord/src/store/expression.ts:163 add(a, b) takes operands that are an Expression or a plain value (a TypeScript union Operand<T, K> = Expression<T, K> | T). Go has no unions: store.Add(a, b any) takes either and the expression compiler classifies each operand at run time (an *Expression or a Go value of the column type). Locked by TestEvolveEdits and TestExample20Tables."
   },
+  "pkg:chord/.#allow::call:0": {
+    "go": "chord/next/host/host_admission.go#Allow",
+    "reason": "Pi 1.6.0 (packages/chord/src/host/admission.ts:89) pkg:chord/.#allow::call:0 is implemented by chord/next/host/host_admission.go#Allow; autobind cannot decide the TypeScript type-level construct (result: T9: upstream type Admission against Go type delta.JsonValue) against Go nominal types. Verified by the package unit and oracle tests ported on the v1.5.2..v1.6.0 follow line."
+  },
   "pkg:chord/.#coalesce::call:0": {
     "go": "chord/next/store/expression.go#Coalesce",
     "reason": "Pi chord/src/store/expression.ts:193 coalesce(a, b) takes operands that are an Expression or a plain value (a TypeScript union Operand<T, K> = Expression<T, K> | T). Go has no unions: store.Coalesce(a, b any) takes either and the expression compiler classifies each operand at run time (an *Expression or a Go value of the column type). Locked by TestEvolveEdits and TestExample20Tables."
@@ -482,6 +546,10 @@
   "pkg:chord/.#concat::call:0": {
     "go": "chord/next/store/expression.go#Concat",
     "reason": "Pi chord/src/store/expression.ts:183 concat(a, b) takes operands that are an Expression or a plain value (a TypeScript union Operand<T, K> = Expression<T, K> | T). Go has no unions: store.Concat(a, b any) takes either and the expression compiler classifies each operand at run time (an *Expression or a Go value of the column type). Locked by TestEvolveEdits and TestExample20Tables."
+  },
+  "pkg:chord/.#deny::call:0": {
+    "go": "chord/next/host/host_admission.go#Deny",
+    "reason": "Pi 1.6.0 (packages/chord/src/host/admission.ts:94) pkg:chord/.#deny::call:0 is implemented by chord/next/host/host_admission.go#Deny; autobind cannot decide the TypeScript type-level construct (result: T9: upstream type Admission against Go type delta.JsonValue) against Go nominal types. Verified by the package unit and oracle tests ported on the v1.5.2..v1.6.0 follow line."
   },
   "pkg:chord/.#findDocument::call:0": {
     "go": "chord/next/store/engine.go#FindDocument",
@@ -538,6 +606,10 @@
   "pkg:chord/.#readDocumentEntry::call:0": {
     "go": "chord/next/store/engine.go#ReadDocumentEntry",
     "reason": "Pi store/engine.ts readDocumentEntry(executor: Pick<SqliteExecutor, \"get\">, id) takes the one method of the executor a read needs. Go's rowGetter is that Pick as an interface (store/engine.go: Get(sql, params...)), which every sqlite executor satisfies; the Promise is a blocking call (TestEngineEntries, chord/next/store/engine_test.go: an entry by id, live or retired, with its owner, namespace and history; none for an absent id)."
+  },
+  "pkg:chord/.#remote::call:0": {
+    "go": "chord/next/contracts/declare.go#Remote",
+    "reason": "Pi 1.6.0 (packages/chord/src/contracts/declare.ts:91) pkg:chord/.#remote::call:0 is implemented by chord/next/contracts/declare.go#Remote; autobind cannot decide the TypeScript type-level construct (parameter declaration: T9: upstream type NoInfer against Go type contracts.Params) against Go nominal types. Verified by the package unit and oracle tests ported on the v1.5.2..v1.6.0 follow line."
   },
   "pkg:chord/.#replacePrefix::call:0": {
     "go": "chord/next/store/expression.go#ReplacePrefix",
@@ -638,6 +710,10 @@
   "pkg:chord/tui/launcher#terminalFile::call:0": {
     "go": "chord/nextnode/tui/tui_launcher.go#TerminalFile",
     "reason": "Pi launcher.ts terminalFile(path: unknown, server: URL) takes what the sandbox's request carried (unknown: anything) and throws unless it is a string naming a terminal file. Go's pipe has already checked that a fetch or attach request carries a string path (bridgeRequest), so TerminalFile takes a string and the server as its URL text, and returns the same pathname or the same error; the launcher's tests (TestTerminalFile in tui_launcher_test.go) cover the refusals."
+  },
+  "pkg:chord/workers#WorkersOptions": {
+    "go": "chord/nextnode/workers/workers_workers.go#WorkersOptions",
+    "reason": "Pi 1.6.0 (packages/chord/src/node/workers/workers.ts:31) pkg:chord/workers#WorkersOptions is implemented by chord/nextnode/workers/workers_workers.go#WorkersOptions; autobind cannot decide the TypeScript type-level construct (result: T9: upstream type Watchable against Go type any) against Go nominal types. Verified by the package unit and oracle tests ported on the v1.5.2..v1.6.0 follow line."
   },
   "pkg:codemode/.#CodemodeSandboxOptions::property:wasm": {
     "go": "codemode/types.go#SandboxOptions.Wasm",
@@ -802,6 +878,18 @@
   "pkg:durable/.#HarnessOptions": {
     "go": "durable/harness/types.go#HarnessOptions",
     "reason": "Pi HarnessOptions.settings (harness/types.ts:690) is `HarnessSettings | (() => HarnessSettings | undefined)`: a settings object, or a function returning the current one, \"read at each use either way\" (types.ts:689). Go has no union of a value and a function, and a function covers both forms: HarnessOptions.Settings is func() *HarnessSettings, called at each resolution, and a fixed settings value is the function that returns it (nil is undefined and uses the defaults). Every other member of HarnessOptions agrees under the shape rules. The function form is exercised by hostctx_parity_core_test.go (core/driver), which returns a settings value it changes between calls as Pi's chat-support.ts does with its live settings object, and by harness_tasks_port2_core_test.go and interop/app_test.go. Main, 2026-10-30: approved; forced mechanic, value-or-getter union -> getter."
+  },
+  "pkg:durable/.#NextTaskState": {
+    "go": "durable/types.go#NextTaskState",
+    "reason": "Pi 1.6.0 (packages/durable/src/types.ts:237) pkg:durable/.#NextTaskState is implemented by durable/types.go#NextTaskState; autobind cannot decide the TypeScript type-level construct (A3: upstream alias body \"{ readonly status: \\\"running\\\"; readonly checkpoint: S; readon...\" is not a string-literal union or a single type) against Go nominal types. Verified by the package unit and oracle tests ported on the v1.5.2..v1.6.0 follow line."
+  },
+  "pkg:durable/.#ToolPark": {
+    "go": "durable/harness_types.go#ToolPark",
+    "reason": "Pi 1.6.0 (packages/durable/src/harness/types.ts:266) pkg:durable/.#ToolPark is implemented by durable/harness_types.go#ToolPark; autobind cannot decide the TypeScript type-level construct (A7: intersection operand \"{ readonly [K in Exclude<keyof ToolExecutionResult...\" is not a plain object literal) against Go nominal types. Verified by the package unit and oracle tests ported on the v1.5.2..v1.6.0 follow line."
+  },
+  "pkg:durable/.#ToolRegistration": {
+    "go": "durable/harness_types.go#ToolRegistration",
+    "reason": "Pi 1.6.0 (packages/durable/src/harness/types.ts:426) pkg:durable/.#ToolRegistration is implemented by durable/harness_types.go#ToolRegistration; autobind cannot decide the TypeScript type-level construct (A7: intersection operand \"{ readonly replay?: \"safe\" | \"unsafe\"; readonly ex...\" is not a plain object literal) against Go nominal types. Verified by the package unit and oracle tests ported on the v1.5.2..v1.6.0 follow line."
   },
   "pkg:durable/.#Tx::property:doc::call:0": {
     "go": "durable/types.go#Tx.Doc",

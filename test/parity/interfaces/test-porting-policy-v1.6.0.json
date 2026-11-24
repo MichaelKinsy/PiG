@@ -57,7 +57,6 @@
     "packages/ai/test/fetch-option.test.ts",
     "packages/ai/test/fireworks-model-generation.test.ts",
     "packages/ai/test/fireworks-models.test.ts",
-    "packages/ai/test/generate-models-strict.test.ts",
     "packages/ai/test/github-copilot-anthropic.test.ts",
     "packages/ai/test/github-copilot-oauth.test.ts",
     "packages/ai/test/google-raw-stop-reason.test.ts",
@@ -1165,6 +1164,15 @@
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
     },
     {
+      "path": "packages/ai/test/google-stop-reason-continuation.test.ts",
+      "upstreamTestHash": "sha256:d13917a46c45753350398219f26c75e2f29382b9fafa2305913bbff7e86738b3",
+      "area": "ai",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
+    },
+    {
       "path": "packages/ai/test/google-thinking-disable.test.ts",
       "upstreamTestHash": "sha256:dc899136ae7d5c367b846aa68fc693cbe20fe12a85dfd8b41ff97fb8e6f22b10",
       "area": "providers",
@@ -1627,6 +1635,15 @@
       "rationale": "New in 1.1.0; area and tags follow the sibling tests under packages/ai/test/ until the production-path review."
     },
     {
+      "path": "packages/ai/test/openai-reasoning-replay-e2e.test.ts",
+      "upstreamTestHash": "sha256:6c5fa812f8e2940830590e3a78796ed08f2437101c49a5c3434fdb96eb27cf14",
+      "area": "ai",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (designed-out)."
+    },
+    {
       "path": "packages/ai/test/openai-responses-cache-affinity-e2e.test.ts",
       "upstreamTestHash": "sha256:6e3abfbf6c720a80e801357dfbd1cef776aa874c9692bfeab0c265a01a8f751c",
       "area": "providers",
@@ -1670,6 +1687,15 @@
         "hot-path"
       ],
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
+    },
+    {
+      "path": "packages/ai/test/openai-responses-input-transformations.test.ts",
+      "upstreamTestHash": "sha256:a19b3be047e2026bdeca361093e3c8e37f28add1fba1de08fc6a373112564222",
+      "area": "ai",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
     },
     {
       "path": "packages/ai/test/openai-responses-message-id.test.ts",
@@ -2544,6 +2570,15 @@
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_adapted_test.go) runs in package chord/next/host through exported production functions such as DefineFacet, ExposeKeyed, Expose; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
+      "path": "packages/chord/test/host/admission.test.ts",
+      "upstreamTestHash": "sha256:e2d5809982baaff5adb360e681436d5e7a9f8647d6ba960367929c8908e78c1c",
+      "area": "chord",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
+    },
+    {
       "path": "packages/chord/test/host/attempt.test.ts",
       "upstreamTestHash": "sha256:b08d38ef243b22955b78f3d41f8b633ad0de7114118fa670edb6635283ccf611",
       "area": "extensions",
@@ -2579,6 +2614,15 @@
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_dependencies_test.go) runs in package chord/next/host through exported production functions such as DefineFacet, Expose; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
+      "path": "packages/chord/test/host/events.test.ts",
+      "upstreamTestHash": "sha256:8d51a590078327deda577d9ebf99f395e24b5430f4484e31ffddcb26e74903d8",
+      "area": "chord",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
+    },
+    {
       "path": "packages/chord/test/host/facet.test.ts",
       "upstreamTestHash": "sha256:fef49d564dda4c911046658e3ed763203e0d53ecb0a04e30d32a3261f1039809",
       "area": "extensions",
@@ -2610,11 +2654,29 @@
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_host_test.go, host_spans_test.go, plugins_node_hostoptions_test.go) runs in package chord/next/host, chord/nextnode/plugins through exported production functions such as DefineFacet, NewPluginRuntime, Expose, CreateHost; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
+      "path": "packages/chord/test/host/list.test.ts",
+      "upstreamTestHash": "sha256:e2e8319cb89c49d07c814359c97454ad4d5dfd476f7f5fcf1d674717f27aa350",
+      "area": "chord",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
+    },
+    {
       "path": "packages/chord/test/host/members.test.ts",
       "upstreamTestHash": "sha256:559493b85e49caa9001564f8ff67b4e396979486ed54def6e0f80639925a96fa",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/host/named-query.test.ts",
+      "upstreamTestHash": "sha256:dd67b36022da8ef46103783bc93db699c15dab825591e66ba153fd6cc3fe9dbe",
+      "area": "chord",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
     },
     {
       "path": "packages/chord/test/host/native.test.ts",
@@ -2652,6 +2714,24 @@
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
+      "path": "packages/chord/test/host/query-reader.test.ts",
+      "upstreamTestHash": "sha256:e746cddba9700de1dfb3a7cfc3e5b2cd37308cf984745132a4686a1a7fa3f417",
+      "area": "chord",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
+    },
+    {
+      "path": "packages/chord/test/host/read-declarations.test.ts",
+      "upstreamTestHash": "sha256:c5ff9047c1238b0a924f8fafb343a839847b46d4e8d71a42b0900403c1306632",
+      "area": "chord",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
+    },
+    {
       "path": "packages/chord/test/host/readiness.test.ts",
       "upstreamTestHash": "sha256:39f18a29e80649c1a27841d98a6f7062d72b36a44ed280e639c019f652121788",
       "area": "extensions",
@@ -2664,6 +2744,15 @@
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/host/reference-events.test.ts",
+      "upstreamTestHash": "sha256:047a2d3527709a410450ef546dd346c62f1633df23185538653f5f567f4a0bfe",
+      "area": "chord",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
     },
     {
       "path": "packages/chord/test/host/reference-keys.test.ts",
@@ -2715,6 +2804,15 @@
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_root_test.go, host_spans_test.go) runs in package chord/next/host through exported production functions such as DefineFacet, Sleep; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
+      "path": "packages/chord/test/host/route-admission.test.ts",
+      "upstreamTestHash": "sha256:1294e4e1d6bce4f6fc5337ef7c41272e59d1bb820f0f79d97b95157ed65a3c40",
+      "area": "chord",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
+    },
+    {
       "path": "packages/chord/test/host/route.test.ts",
       "upstreamTestHash": "sha256:3fbbbad76daf095c4dcc1fef7d27a85330ff31587f96b8c808fd9e0c91c39ed1",
       "area": "extensions",
@@ -2741,6 +2839,15 @@
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_staging_test.go, plugins_node_bridged_test.go) runs in package chord/next/host, chord/nextnode/plugins through exported production functions such as DefineFacet, NewPluginRuntime, DefineJob, Expose; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/host/tiling.test.ts",
+      "upstreamTestHash": "sha256:f35e7c7e82364abae71deae86f8c5e8ccfc36513a73a4118165f991cdca33185",
+      "area": "chord",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
     },
     {
       "path": "packages/chord/test/host/unbound-clock.test.ts",
@@ -2885,6 +2992,15 @@
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (blobs_test.go) runs in package chord/nextnode/app through exported production functions such as NewBlobs; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
+      "path": "packages/chord/test/node/app/ephemeral-sign-ins.test.ts",
+      "upstreamTestHash": "sha256:91fe2ffa886d528d1aa064e3beecfddbc4cbecbf87049df4d73cb3d357b0cafe",
+      "area": "chord",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
+    },
+    {
       "path": "packages/chord/test/node/app/ephemeral.test.ts",
       "upstreamTestHash": "sha256:83f382cc04cd8d81cdd0f546ea4f8441dc5b9258d73640b3c9b99513d3a4313c",
       "area": "extensions",
@@ -2960,6 +3076,15 @@
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (secrets_test.go, secrets_umask_unix_test.go) runs in package chord/nextnode/app through exported production functions such as WriteSecret, MatchesHash, ReadSecret, NewToken; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/app/sign-ins.test.ts",
+      "upstreamTestHash": "sha256:1c28192df6bf195d055fea936f2e3fd3c465299f2d5aea9951f40639d74390f1",
+      "area": "chord",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
     },
     {
       "path": "packages/chord/test/node/app/tar.test.ts",
@@ -3547,6 +3672,15 @@
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
+      "path": "packages/chord/test/state/framed.test.ts",
+      "upstreamTestHash": "sha256:fb8a7343c0c546148124fe0b7f728d61706b94e3f5b44092194517aab7c5c5b5",
+      "area": "chord",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
+    },
+    {
       "path": "packages/chord/test/state/native-source.test.ts",
       "upstreamTestHash": "sha256:8142e0a96067cb50197e6d65d15ebe12720a2f3c4eaa4d1d9b0ca5be90b7af0f",
       "area": "extensions",
@@ -3608,6 +3742,15 @@
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/store/column-set.test.ts",
+      "upstreamTestHash": "sha256:5941abf9dc4b575aefb52f473311708954c30e9e6aa36f3366ed3c6c1a6c49a9",
+      "area": "chord",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
     },
     {
       "path": "packages/chord/test/store/columns.test.ts",
@@ -3711,6 +3854,24 @@
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
+      "path": "packages/chord/test/store/read-plan.test.ts",
+      "upstreamTestHash": "sha256:18a296b6cd1e7ca5636f7a9c6e1e9a3475cfa19c1b9f451f62ae77818cff4a60",
+      "area": "chord",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
+    },
+    {
+      "path": "packages/chord/test/store/reads.test.ts",
+      "upstreamTestHash": "sha256:e5c600b8d0bea46f1650405434ef941a0778e1752d3f8f12747c5d12763d791f",
+      "area": "chord",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
+    },
+    {
       "path": "packages/chord/test/store/refusal.test.ts",
       "upstreamTestHash": "sha256:a2206f169e8635646b8afd83b586471cf44a51977e726ec3938f70d225c307f2",
       "area": "extensions",
@@ -3723,6 +3884,15 @@
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/store/skip.test.ts",
+      "upstreamTestHash": "sha256:30a385355362cdd38690d65e1ffeda5985df0dbbfff2637e780fb4cbc76d5c86",
+      "area": "chord",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
     },
     {
       "path": "packages/chord/test/store/sql.test.ts",
@@ -3884,6 +4054,15 @@
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (surfaces_translations_test.go) runs in package chord/next/surfaces through exported production functions such as DefineMessages, TranslationsFacet, ComposeTranslations; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/surfaces/variant.test.ts",
+      "upstreamTestHash": "sha256:25bae84bb8c48a66fee0a428744b555d8d6a4aef0e2e02be0f751856ab7dbaa1",
+      "area": "chord",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
     },
     {
       "path": "packages/chord/test/sync/lines.test.ts",
@@ -4103,6 +4282,15 @@
         "hot-path"
       ],
       "rationale": "Session context, persistence, turn lifecycle, compaction, or recovery."
+    },
+    {
+      "path": "packages/coding-agent/test/agent-session-runtime-diagnostics.test.ts",
+      "upstreamTestHash": "sha256:dd94a4de77eaa77eb9e7dc59c3c51b19972fe466f6061b48eaf99848f1f8e9f6",
+      "area": "coding-agent",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
     },
     {
       "path": "packages/coding-agent/test/agent-session-runtime-events.test.ts",
@@ -4490,6 +4678,15 @@
       "rationale": "Production-path review at Pi b0c64f33c: the Go test calls newConfigSelectorUI, which runConfig (coding/cli/config_command.go) builds the selector screen with, over a real keybindings.json in an agent directory; Pi's test mocks the selector component and the screen the same way."
     },
     {
+      "path": "packages/coding-agent/test/config-selector.test.ts",
+      "upstreamTestHash": "sha256:4b864f86a682131e01721787da83b341dac3912df4725a4a495436470206c30e",
+      "area": "coding-agent",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
+    },
+    {
       "path": "packages/coding-agent/test/config-value-migration.test.ts",
       "upstreamTestHash": "sha256:c6813b0c9217ce396c7f5725b387d8c0cea80282181fd99fc361c52a3ca41a3b",
       "area": "utilities",
@@ -4648,6 +4845,15 @@
         "hot-path"
       ],
       "rationale": "CLI startup, selected execution mode, settings, or command routing."
+    },
+    {
+      "path": "packages/coding-agent/test/export-html-ansi-links.test.ts",
+      "upstreamTestHash": "sha256:1b21d788841be614bcc11e76920f8dfbb5f8df4effbef80b403ca29d34e6797f",
+      "area": "coding-agent",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
     },
     {
       "path": "packages/coding-agent/test/export-html-cjk.test.ts",
@@ -4816,6 +5022,15 @@
         "shouldRunFirstTimeSetup \u203a returns false when settings.json already exists"
       ],
       "rationale": "CLI startup, selected execution mode, settings, or command routing. Four official-distribution cases are designed out, SCRUTINIZED:approved by owner Michael Kinsy on 2026-09-29: Pi shows first-time setup only for its official distribution identity (src/cli/startup-ui.ts:122-140; caller src/main.ts:661), which PiG never has. The mapping row test-mapping-v0.99.1.json#packages/coding-agent/test/first-time-setup.test.ts must list exactly these ids."
+    },
+    {
+      "path": "packages/coding-agent/test/flush-stdout.test.ts",
+      "upstreamTestHash": "sha256:f2db968fb38dc73f32aaf77dbbca587487da9cae75ffdf8ffb030760583d5830",
+      "area": "coding-agent",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (designed-out)."
     },
     {
       "path": "packages/coding-agent/test/footer-data-provider.test.ts",
@@ -5233,6 +5448,15 @@
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
     },
     {
+      "path": "packages/coding-agent/test/model-fallback-diagnostic.test.ts",
+      "upstreamTestHash": "sha256:2e8cdaad2f787c585c2bef3c12e676ef82bd3272420a871cc4f12ac201c8e6dd",
+      "area": "coding-agent",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
+    },
+    {
       "path": "packages/coding-agent/test/model-registry.test.ts",
       "upstreamTestHash": "sha256:65fa26005873512ade1c825da6a19a9936b53ad8407cf81afa949a30679fc0a8",
       "area": "providers",
@@ -5303,6 +5527,15 @@
         "hot-path"
       ],
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
+    },
+    {
+      "path": "packages/coding-agent/test/model-scope-session-replacement.test.ts",
+      "upstreamTestHash": "sha256:38a53ed9dd5881e6d15d4a7ccc8f5f18b780f174a1d364fc4d6e1cdbbd0d5a0e",
+      "area": "coding-agent",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
     },
     {
       "path": "packages/coding-agent/test/model-search.test.ts",
@@ -5624,6 +5857,15 @@
       "rationale": "CLI startup, selected execution mode, settings, or command routing."
     },
     {
+      "path": "packages/coding-agent/test/rpc-replacement-diagnostics.test.ts",
+      "upstreamTestHash": "sha256:7139bc94770b0870446e7ff1b9b3d5c3ad9f920d7bd650cc0d9fa3d152f1f9a0",
+      "area": "coding-agent",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
+    },
+    {
       "path": "packages/coding-agent/test/rpc.test.ts",
       "upstreamTestHash": "sha256:28bb4f005cac1803df42abae071301824efe481598d25f1fabd0ce144203887f",
       "area": "cli",
@@ -5840,6 +6082,15 @@
       "rationale": "Session context, persistence, turn lifecycle, compaction, or recovery."
     },
     {
+      "path": "packages/coding-agent/test/session-selector-selection.test.ts",
+      "upstreamTestHash": "sha256:77b84b0b725caa11021dacce8bc218b0ddab5789d09d85f46da0f133bf6f79ba",
+      "area": "coding-agent",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
+    },
+    {
       "path": "packages/coding-agent/test/session-share.test.ts",
       "upstreamTestHash": "sha256:71aa984f4acc13334627ee14c9cdec957d68e2a3af0d4d83224a10337c0e443c",
       "area": "sessions",
@@ -5892,6 +6143,15 @@
         "hot-path"
       ],
       "rationale": "Main Screen input, message/tool rendering, terminal integration, or selected presentation."
+    },
+    {
+      "path": "packages/coding-agent/test/settings-submenu.test.ts",
+      "upstreamTestHash": "sha256:094f6da2b367181d6b85df19bf159da2672a6df7f258c6997ba0ee2d210a968d",
+      "area": "coding-agent",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
     },
     {
       "path": "packages/coding-agent/test/shell-kill-process-tree.test.ts",
@@ -6097,6 +6357,15 @@
       "rationale": "Session context, persistence, turn lifecycle, compaction, or recovery."
     },
     {
+      "path": "packages/coding-agent/test/suite/print-mode-session-start-events.test.ts",
+      "upstreamTestHash": "sha256:05be79112e4150e3353a17fe7f032657bdf8e8d2271110a642bb493044d1b582",
+      "area": "coding-agent",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
+    },
+    {
       "path": "packages/coding-agent/test/suite/regressions/10285-mcp-tool-renderers.test.ts",
       "upstreamTestHash": "sha256:f671ed96aff84f15b2da5253d12c5262159870fb422d816b0b174670a3baef09",
       "area": "tui",
@@ -6104,6 +6373,15 @@
         "hot-path"
       ],
       "rationale": "Main Screen input, message/tool rendering, terminal integration, or selected presentation: tool call renderers resolved by extensions in the transcript and HTML export."
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/10470-rpc-session-replacement-start-once.test.ts",
+      "upstreamTestHash": "sha256:3bd72952d48d1921387461e1605e0c16b0a8d41537d037cbb6459fae066c4c54",
+      "area": "coding-agent",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/11156-pi-ai-models-virtual-module.test.ts",
@@ -6122,6 +6400,15 @@
         "hot-path"
       ],
       "rationale": "Session context, persistence, turn lifecycle, compaction, or recovery."
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/11264-pi-events-handler-errors.test.ts",
+      "upstreamTestHash": "sha256:f3aacf4587c99e9b6ac3d6d8ad11ffd3e268ec9f7aea2d65b260372d6c2c6be3",
+      "area": "coding-agent",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/11451-thinking-level-after-tree-navigation.test.ts",
@@ -6158,6 +6445,33 @@
         "hot-path"
       ],
       "rationale": "Production-path review at Pi main b2cb62923: the Go tests close the real Runtime (the process's dispose) while an OAuth refresh of an extension provider is in flight, once from a direct credential read and once from the catalog refresh model task runRPCMode starts, and assert the rotated token reaches the stored credentials."
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/12066-find-ancestor-glob.test.ts",
+      "upstreamTestHash": "sha256:ce1668b36def2e803b1df0306393d79bdc5baf49cf2cbe13d6bbea34c61e936c",
+      "area": "coding-agent",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/12119-copy-after-abort-or-error.test.ts",
+      "upstreamTestHash": "sha256:750ec11a77fa9aa9e43b754924ab7f15436696b2ef184af2245029483755dfe3",
+      "area": "coding-agent",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/12124-websocket-connection-limit-retry.test.ts",
+      "upstreamTestHash": "sha256:ac19a61e6b788d002ae0ce2f02e488ad905833a0da06f50ae9c0ea515eef6cc0",
+      "area": "coding-agent",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/1717-2113-agent-session-event-settlement.test.ts",
@@ -7306,6 +7620,15 @@
       "rationale": "New in 1.0.3; area and tags follow the sibling packages/durable/test/env-node.test.ts until the owner reviews the production path."
     },
     {
+      "path": "packages/durable/test/env-node-list-race.test.ts",
+      "upstreamTestHash": "sha256:df8c9c44f217d38f9cc56e8c8484ed3018d02959b937fa24ec844f576385fd35",
+      "area": "durable",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
+    },
+    {
       "path": "packages/durable/test/env-node-spill.test.ts",
       "upstreamTestHash": "sha256:8d28d92e9ee8bf7200cfafff871e50d32909305d855986f8e83c370c16918be0",
       "area": "cli",
@@ -7468,6 +7791,15 @@
       "rationale": "New or changed durable harness test; area and tags follow the sibling tests under packages/durable/test/ (production-path review pending)."
     },
     {
+      "path": "packages/durable/test/harness-hook-tasks.test.ts",
+      "upstreamTestHash": "sha256:efc785543f1a2d338b51c2ced36b6609fb957c098c3bbfb5a550a951ea72c976",
+      "area": "durable",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
+    },
+    {
       "path": "packages/durable/test/harness-host-inputs.test.ts",
       "upstreamTestHash": "sha256:a1e299d1541f4e91654febfe9be2db03e839dc2c0e7c760030faa04d127b5748",
       "area": "cli",
@@ -7576,6 +7908,15 @@
       "rationale": "Production-path review at Pi 1.5.0: task and conversation ownership, abort cascades and queued handle operations; every subagent and background task of a durable session depends on it."
     },
     {
+      "path": "packages/durable/test/harness-park-children.test.ts",
+      "upstreamTestHash": "sha256:ac4a029ffd666ef6018092cc79b953e2a2ee8a77083d3b0ead75a34dc6cd0451",
+      "area": "durable",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
+    },
+    {
       "path": "packages/durable/test/harness-partial-changes.test.ts",
       "upstreamTestHash": "sha256:4f5cb1a0e08ffe0dcd677110be43044d7fcfd89455610adfea3d8bde22061648",
       "area": "cli",
@@ -7664,6 +8005,15 @@
         "hot-path"
       ],
       "rationale": "Production-path review at Pi 1.5.0: the scheduler's retention of ended owners and the chains it reloads; every long-lived durable session depends on it."
+    },
+    {
+      "path": "packages/durable/test/harness-signals.test.ts",
+      "upstreamTestHash": "sha256:6d8d316ccf9ca0c6e13d0bf85d345ac2210362ae5c34d1c9952791f2bdb9cd6f",
+      "area": "durable",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
     },
     {
       "path": "packages/durable/test/harness-sleep.test.ts",
@@ -7765,6 +8115,15 @@
       "rationale": "Telemetry recording, propagation, storage, or rendering (Pi 2ec55d80 and d9025a5f). All cases run; the async-listener case (:911) runs in PiG's own form: a Go commit listener returns nothing from Advance and fails by panic, so the failure that arrives after every span settled is a listener that fails on a later commit (TestDurableTelemetryCountsAListenerFailureThatArrivesAfterEverySpanSettled)."
     },
     {
+      "path": "packages/durable/test/harness-tool-gates.test.ts",
+      "upstreamTestHash": "sha256:1f9be407e6e02bb8a05d336f2c06054572cc959bef76a54929728265bc953c27",
+      "area": "durable",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
+    },
+    {
       "path": "packages/durable/test/harness-tool-hooks.test.ts",
       "upstreamTestHash": "sha256:a2fdc36eb7ffd4d27e00b3023d5ba8ffeb1b5ba376036b0470f1438eadc54ce4",
       "area": "cli",
@@ -7772,6 +8131,15 @@
         "hot-path"
       ],
       "rationale": "New or changed durable harness test; area and tags follow the sibling tests under packages/durable/test/ (production-path review pending)."
+    },
+    {
+      "path": "packages/durable/test/harness-tool-parks.test.ts",
+      "upstreamTestHash": "sha256:ebc466c10eafa660eadffc3ea01a736bba8ecc2d2aeda5de324107b53e1bd128",
+      "area": "durable",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
     },
     {
       "path": "packages/durable/test/harness-tools-recovery.test.ts",
@@ -7820,6 +8188,15 @@
       "designedOutCases": [
         "conversation view window \u203a rejects window bounds that are not integers or put `max` below `min`"
       ]
+    },
+    {
+      "path": "packages/durable/test/images-fit.test.ts",
+      "upstreamTestHash": "sha256:5822be2d2febd24d64c29ee55a9c1898b79955c03a0f73e42ec2eec687ade9ee",
+      "area": "durable",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
     },
     {
       "path": "packages/durable/test/images-wasm-module.test.ts",
@@ -8539,6 +8916,15 @@
       "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/tui/test/ until the production-path review."
     },
     {
+      "path": "packages/tui/test/container.test.ts",
+      "upstreamTestHash": "sha256:f0ae1d5bea790a2e25ebbe84533603b4168887eddbc1eb928a400a4739e81a0f",
+      "area": "tui",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
+    },
+    {
       "path": "packages/tui/test/editor-history-keybindings.test.ts",
       "upstreamTestHash": "sha256:a055311e76a141062038a1a835fae1271108d29034fe0d0eec7521c6c79cb948",
       "area": "tui",
@@ -8692,6 +9078,15 @@
       "rationale": "Main Screen input, message/tool rendering, terminal integration, or selected presentation."
     },
     {
+      "path": "packages/tui/test/overlay-terminal-image.test.ts",
+      "upstreamTestHash": "sha256:6382f92de2696c2c9d63b26d62853a9d22c69e117d5a5681eb0ab49e07c95e10",
+      "area": "tui",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
+    },
+    {
       "path": "packages/tui/test/program-status.test.ts",
       "upstreamTestHash": "sha256:44fbc9ecf0942e5d7c17669f37c876c4b891ad324eb640ad2b5c002d6bfc5b71",
       "area": "tui",
@@ -8755,6 +9150,15 @@
       "rationale": "Main Screen input, message/tool rendering, terminal integration, or selected presentation."
     },
     {
+      "path": "packages/tui/test/slice-graphemes.test.ts",
+      "upstreamTestHash": "sha256:b98e794f3ce2a7d8750324c79b45969c579d292f2995b3743bc0585d7c61a76f",
+      "area": "tui",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
+    },
+    {
       "path": "packages/tui/test/stdin-buffer.test.ts",
       "upstreamTestHash": "sha256:44a15f7c6713cbf57a8ab95930fa6788d6014b7f8e31007412786ce1a2718425",
       "area": "tui",
@@ -8762,6 +9166,15 @@
         "hot-path"
       ],
       "rationale": "Main Screen input, message/tool rendering, terminal integration, or selected presentation."
+    },
+    {
+      "path": "packages/tui/test/suspend-signal.test.ts",
+      "upstreamTestHash": "sha256:c578b4520fb76db127663b5805f62456ae8b406d0a00614eecd4c355bb1129de",
+      "area": "tui",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in Pi 1.6.0; ported/classified on canary/080-p160 (ported)."
     },
     {
       "path": "packages/tui/test/tab-width.test.ts",

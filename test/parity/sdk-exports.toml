@@ -163,7 +163,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-coding-agent: AgentSessionRuntime.setBeforeSessionInvalidate" = { go = "native:AgentSessionRuntime.SetBeforeSessionInvalidate", rust = "native:AgentSessionRuntime::set_before_session_invalidate", python = "native:AgentSessionRuntime.set_before_session_invalidate", lisp = "native:pig:agent-session-runtime-set-before-session-invalidate" }
 "pi-coding-agent: AgentSessionRuntime.setRebindSession" = { go = "native:AgentSessionRuntime.SetRebindSession", rust = "native:AgentSessionRuntime::set_rebind_session", python = "native:AgentSessionRuntime.set_rebind_session", lisp = "native:pig:agent-session-runtime-set-rebind-session" }
 "pi-coding-agent: AgentSessionRuntime.switchSession" = { go = "native:AgentSessionRuntime.SwitchSession", rust = "native:AgentSessionRuntime::switch_session", python = "native:AgentSessionRuntime.switch_session", lisp = "native:pig:agent-session-runtime-switch-session" }
-"pi-coding-agent: AgentSessionRuntime.takeUnreportedDiagnostics" = { go = "unclassified", rust = "unclassified", python = "unclassified", lisp = "unclassified" }
+"pi-coding-agent: AgentSessionRuntime.takeUnreportedDiagnostics" = { go = "native:AgentSessionRuntime.TakeUnreportedDiagnostics", rust = "native:AgentSessionRuntime::take_unreported_diagnostics", python = "native:AgentSessionRuntime.take_unreported_diagnostics", lisp = "native:pig:agent-session-runtime-take-unreported-diagnostics" }
 "pi-coding-agent: ArminComponent" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-coding-agent: ArminComponent.dispose" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-coding-agent: ArminComponent.invalidate" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
@@ -1254,7 +1254,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-tui: TuiAltScreen.setFocus" = { go = "native:TuiAltScreen.SetFocus", rust = "native:TuiAltScreen::set_focus", python = "native:TuiAltScreen.set_focus", lisp = "native:pig:tui-alt-screen-set-focus" }
 "pi-tui: TuiAltScreen.setLayoutRoot" = { go = "native:TuiAltScreen.SetLayoutRoot", rust = "native:TuiAltScreen::set_layout_root", python = "native:TuiAltScreen.set_layout_root", lisp = "native:pig:tui-alt-screen-set-layout-root" }
 "pi-tui: TuiAltScreen.setShowHardwareCursor" = { go = "native:TuiAltScreen.SetShowHardwareCursor", rust = "native:TuiAltScreen::set_show_hardware_cursor", python = "native:TuiAltScreen.set_show_hardware_cursor", lisp = "native:pig:tui-alt-screen-set-show-hardware-cursor" }
-"pi-tui: TuiAltScreen.setSuspendSignalHandler" = { go = "unclassified", rust = "unclassified", python = "unclassified", lisp = "unclassified" }
+"pi-tui: TuiAltScreen.setSuspendSignalHandler" = { go = "divergence:D661", rust = "divergence:D661", python = "divergence:D661", lisp = "divergence:D661" }
 "pi-tui: TuiAltScreen.setTerminalColorSchemeNotifications" = { go = "native:TuiAltScreen.SetTerminalColorSchemeNotifications", rust = "native:TuiAltScreen::set_terminal_color_scheme_notifications", python = "native:TuiAltScreen.set_terminal_color_scheme_notifications", lisp = "native:pig:tui-alt-screen-set-terminal-color-scheme-notifications" }
 "pi-tui: TuiAltScreen.setWheelScrollLines" = { go = "native:TuiAltScreen.SetWheelScrollLines", rust = "native:TuiAltScreen::set_wheel_scroll_lines", python = "native:TuiAltScreen.set_wheel_scroll_lines", lisp = "native:pig:tui-alt-screen-set-wheel-scroll-lines" }
 "pi-tui: TuiAltScreen.showOverlay" = { go = "native:TuiAltScreen.ShowOverlay", rust = "native:TuiAltScreen::show_overlay", python = "native:TuiAltScreen.show_overlay", lisp = "native:pig:tui-alt-screen-show-overlay" }
@@ -1290,7 +1290,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-tui: TuiMainScreen.setClearOnShrink" = { go = "gap:SdkTuiHelpers", rust = "gap:SdkTuiHelpers", python = "gap:SdkTuiHelpers", lisp = "gap:SdkTuiHelpers" }
 "pi-tui: TuiMainScreen.setFocus" = { go = "gap:SdkTuiHelpers", rust = "gap:SdkTuiHelpers", python = "gap:SdkTuiHelpers", lisp = "gap:SdkTuiHelpers" }
 "pi-tui: TuiMainScreen.setShowHardwareCursor" = { go = "gap:SdkTuiHelpers", rust = "gap:SdkTuiHelpers", python = "gap:SdkTuiHelpers", lisp = "gap:SdkTuiHelpers" }
-"pi-tui: TuiMainScreen.setSuspendSignalHandler" = { go = "unclassified", rust = "unclassified", python = "unclassified", lisp = "unclassified" }
+"pi-tui: TuiMainScreen.setSuspendSignalHandler" = { go = "divergence:D661", rust = "divergence:D661", python = "divergence:D661", lisp = "divergence:D661" }
 "pi-tui: TuiMainScreen.setTerminalColorSchemeNotifications" = { go = "gap:SdkTuiHelpers", rust = "gap:SdkTuiHelpers", python = "gap:SdkTuiHelpers", lisp = "gap:SdkTuiHelpers" }
 "pi-tui: TuiMainScreen.showOverlay" = { go = "gap:SdkTuiHelpers", rust = "gap:SdkTuiHelpers", python = "gap:SdkTuiHelpers", lisp = "gap:SdkTuiHelpers" }
 "pi-tui: TuiMainScreen.start" = { go = "gap:SdkTuiHelpers", rust = "gap:SdkTuiHelpers", python = "gap:SdkTuiHelpers", lisp = "gap:SdkTuiHelpers" }

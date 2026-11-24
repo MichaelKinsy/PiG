@@ -138,7 +138,7 @@ None.
 | `AgentSessionRuntime.setBeforeSessionInvalidate` | 0 | served | native:AgentSessionRuntime.SetBeforeSessionInvalidate | native:AgentSessionRuntime::set_before_session_invalidate | native:AgentSessionRuntime.set_before_session_invalidate | native:pig:agent-session-runtime-set-before-session-invalidate |
 | `AgentSessionRuntime.setRebindSession` | 0 | served | native:AgentSessionRuntime.SetRebindSession | native:AgentSessionRuntime::set_rebind_session | native:AgentSessionRuntime.set_rebind_session | native:pig:agent-session-runtime-set-rebind-session |
 | `AgentSessionRuntime.switchSession` | 0 | served | native:AgentSessionRuntime.SwitchSession | native:AgentSessionRuntime::switch_session | native:AgentSessionRuntime.switch_session | native:pig:agent-session-runtime-switch-session |
-| `AgentSessionRuntime.takeUnreportedDiagnostics` | 0 | served |  |  |  |  |
+| `AgentSessionRuntime.takeUnreportedDiagnostics` | 0 | served | native:AgentSessionRuntime.TakeUnreportedDiagnostics | native:AgentSessionRuntime::take_unreported_diagnostics | native:AgentSessionRuntime.take_unreported_diagnostics | native:pig:agent-session-runtime-take-unreported-diagnostics |
 | `ArminComponent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `ArminComponent.dispose` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `ArminComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -1234,7 +1234,7 @@ None.
 | `TuiAltScreen.setFocus` | 0 | served | native:TuiAltScreen.SetFocus | native:TuiAltScreen::set_focus | native:TuiAltScreen.set_focus | native:pig:tui-alt-screen-set-focus |
 | `TuiAltScreen.setLayoutRoot` | 0 | served | native:TuiAltScreen.SetLayoutRoot | native:TuiAltScreen::set_layout_root | native:TuiAltScreen.set_layout_root | native:pig:tui-alt-screen-set-layout-root |
 | `TuiAltScreen.setShowHardwareCursor` | 0 | served | native:TuiAltScreen.SetShowHardwareCursor | native:TuiAltScreen::set_show_hardware_cursor | native:TuiAltScreen.set_show_hardware_cursor | native:pig:tui-alt-screen-set-show-hardware-cursor |
-| `TuiAltScreen.setSuspendSignalHandler` | 0 | served |  |  |  |  |
+| `TuiAltScreen.setSuspendSignalHandler` | 0 | served | divergence:D661 | divergence:D661 | divergence:D661 | divergence:D661 |
 | `TuiAltScreen.setTerminalColorSchemeNotifications` | 0 | served | native:TuiAltScreen.SetTerminalColorSchemeNotifications | native:TuiAltScreen::set_terminal_color_scheme_notifications | native:TuiAltScreen.set_terminal_color_scheme_notifications | native:pig:tui-alt-screen-set-terminal-color-scheme-notifications |
 | `TuiAltScreen.setWheelScrollLines` | 0 | served | native:TuiAltScreen.SetWheelScrollLines | native:TuiAltScreen::set_wheel_scroll_lines | native:TuiAltScreen.set_wheel_scroll_lines | native:pig:tui-alt-screen-set-wheel-scroll-lines |
 | `TuiAltScreen.showOverlay` | 0 | served | native:TuiAltScreen.ShowOverlay | native:TuiAltScreen::show_overlay | native:TuiAltScreen.show_overlay | native:pig:tui-alt-screen-show-overlay |
@@ -1270,7 +1270,7 @@ None.
 | `TuiMainScreen.setClearOnShrink` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `TuiMainScreen.setFocus` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `TuiMainScreen.setShowHardwareCursor` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.setSuspendSignalHandler` | 0 | served |  |  |  |  |
+| `TuiMainScreen.setSuspendSignalHandler` | 0 | served | divergence:D661 | divergence:D661 | divergence:D661 | divergence:D661 |
 | `TuiMainScreen.setTerminalColorSchemeNotifications` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `TuiMainScreen.showOverlay` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `TuiMainScreen.start` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |

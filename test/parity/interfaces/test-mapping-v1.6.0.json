@@ -847,8 +847,13 @@
     },
     {
       "path": "packages/ai/test/google-stop-reason-continuation.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d13917a46c45753350398219f26c75e2f29382b9fafa2305913bbff7e86738b3"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d13917a46c45753350398219f26c75e2f29382b9fafa2305913bbff7e86738b3",
+      "evidence": [
+        "ai/google_stop_reason_continuation_upstream_test.go#TestGoogleContinuationMapsToLengthLikeMaxTokens",
+        "ai/google_stop_reason_continuation_upstream_test.go#TestGoogleContinuationEndsTheTurnAsLengthInsteadOfSendingAContinuationRequest"
+      ],
+      "rationale": "f72f799a4: new in Pi. Both cases are ported; the second one's request count already held in Go (no SDK continuation), its stop reason needed the CONTINUATION arm."
     },
     {
       "path": "packages/ai/test/google-thinking-disable.test.ts",
@@ -1416,8 +1421,12 @@
     },
     {
       "path": "packages/ai/test/openai-reasoning-replay-e2e.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6c5fa812f8e2940830590e3a78796ed08f2437101c49a5c3434fdb96eb27cf14"
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:6c5fa812f8e2940830590e3a78796ed08f2437101c49a5c3434fdb96eb27cf14",
+      "rationale": "Live API e2e test requiring OPENAI_API_KEY against real OpenAI endpoints; unit/recorded coverage is in ai/openai_responses_input_transformations_upstream_test.go.",
+      "protects": "Live API e2e test requiring OPENAI_API_KEY against real OpenAI endpoints; unit/recorded coverage is in ai/openai_responses_input_transformations_upstream_test.go.",
+      "pigTest": "ai/openai_responses_input_transformations_upstream_test.go",
+      "whyNot": "Live API e2e test requiring OPENAI_API_KEY against real OpenAI endpoints; unit/recorded coverage is in ai/openai_responses_input_transformations_upstream_test.go."
     },
     {
       "path": "packages/ai/test/openai-responses-cache-affinity-e2e.test.ts",
@@ -1470,8 +1479,12 @@
     },
     {
       "path": "packages/ai/test/openai-responses-input-transformations.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a19b3be047e2026bdeca361093e3c8e37f28add1fba1de08fc6a373112564222"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a19b3be047e2026bdeca361093e3c8e37f28add1fba1de08fc6a373112564222",
+      "evidence": [
+        "ai/openai_responses_input_transformations_upstream_test.go#TestOpenAIResponsesInputTransformationsUpstream"
+      ],
+      "rationale": "03de604b8: all 5 unit test cases ported with the same inputs and expected diagnostics, plus Azure OpenAI Responses coverage."
     },
     {
       "path": "packages/ai/test/openai-responses-message-id.test.ts",
@@ -2258,7 +2271,10 @@
       "rationale": "Thirteen of the 14 upstream cases run in declare_test.go; the remaining one, the keyed member refused in a remote contract, is designed out under the owner class approval recorded in the release policy (the compiler refuses it: *KeyedMember is no Schema). The two host-keyed cases of Pi 1.5.2 (8a5da3ce6) run in TestHostKeyedMembers: a host-keyed member carries its kind in the data (KeyedSnapshot.Key) and its fingerprint differs from the string-keyed one's (a string-keyed member carries none and keeps its pre-host-key fingerprint, pinned in a further case), and a kind that was not declared is refused ('x: not a declared host kind'). 'refuse a remote declaration without a host address at the type level' runs as the 'a missing host address' row, because upstream asserts the runtime throw. Inside the three it.each tables every row a typed Go declaration can hold is ported; the rows whose input a Go declaration cannot hold are not: remote 'name not a string', 'unknown declaration key', 'a host address that is no function', 'unknown variant key', 'a method under state' and 'a schema under methods' (its Go form is a nil *Method, ported as 'a nil method under methods'), local 'unknown key' and 'a host address' (LocalDeclaration has no such fields). Pi 92e1db6ca adds `queries members (slice 14 \u00a73.1)` (3 cases): TestQueriesMembers (declare_test.go), TestAQueriesMemberIsNoRemoteStateAndAVariantImplementationHoldsOneNamedQueryPerName (declare_types_test.go); Pi 8270d9af6 adds `admission (slice 14 \u00a72.1)` (3 cases): TestAdmission (declare_test.go).",
       "protects": "A keyed member cannot be declared in a remote contract.",
       "pigTest": "chord/next/contracts/declare_types_test.go#TestARemoteVariantsMembersAreTypedSoAKeyedMemberOrMethodCannotBeDeclaredInItsState pins by reflection the types that refuse it: a remote variant's state holds Schema, its methods *Method, and *KeyedMember is assignable to neither.",
-      "whyNot": "The upstream case also expects a runtime error 'keyed members are only in local contracts'. Go has no runtime path to it: VariantDeclaration.State is []Property of Schema, so the declaration does not compile and no value reaches Remote. The type half is pinned; the runtime half cannot exist."
+      "whyNot": "The upstream case also expects a runtime error 'keyed members are only in local contracts'. Go has no runtime path to it: VariantDeclaration.State is []Property of Schema, so the declaration does not compile and no value reaches Remote. The type half is pinned; the runtime half cannot exist.",
+      "designedOutCases": [
+        "keyed members (slice 6a \u00a712) \u203a refuse a keyed member in a remote contract, at the type level and at declaration"
+      ]
     },
     {
       "path": "packages/chord/test/contracts/evolve.test.ts",
@@ -2697,8 +2713,25 @@
     },
     {
       "path": "packages/chord/test/host/admission.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e2d5809982baaff5adb360e681436d5e7a9f8647d6ba960367929c8908e78c1c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e2d5809982baaff5adb360e681436d5e7a9f8647d6ba960367929c8908e78c1c",
+      "evidence": [
+        "chord/next/host/host_admission_test.go#TestAdmissionDenyThenAllow",
+        "chord/next/host/host_admission_test.go#TestAdmissionTheWatchTable",
+        "chord/next/host/host_admission_test.go#TestAdmissionAFailedAdmittedObject",
+        "chord/next/host/host_admission_test.go#TestAdmissionAnAdmissionsRequests",
+        "chord/next/host/host_admission_test.go#TestAdmissionPresenceLingerParkedLongAndRetry",
+        "chord/next/host/host_admission_test.go#TestAdmissionDeclarationErrors",
+        "chord/next/host/host_admission_test.go#TestAdmissionOverALink",
+        "chord/next/host/host_admission_test.go#TestAdmissionAReloadOfAnAdmissionsSource",
+        "chord/next/host/host_admission_test.go#TestAdmissionAReloadOfTheAdmittedType",
+        "chord/next/host/host_admission_test.go#TestAdmissionWhatADenialRemoves",
+        "chord/next/host/host_admission_test.go#TestAdmissionACommitInFlightAtTheCut",
+        "chord/next/host/host_admission_test.go#TestAdmissionANamedQuery",
+        "chord/next/host/host_admission_settle_test.go#TestDecisionSettleWait",
+        "chord/next/host/host_admission_telemetry_test.go#TestAdmissionRecordsItsDecisionOnItsActivationSpan"
+      ],
+      "rationale": "8270d9af6 (slice 14, second part): the 43 cases of the admission (decisions, seals, holds and calls under a denial, reloads, the declaration policy). Ported: the Go tests named in the evidence run these cases."
     },
     {
       "path": "packages/chord/test/host/attempt.test.ts",
@@ -2748,8 +2781,12 @@
     },
     {
       "path": "packages/chord/test/host/events.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8d51a590078327deda577d9ebf99f395e24b5430f4484e31ffddcb26e74903d8"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8d51a590078327deda577d9ebf99f395e24b5430f4484e31ffddcb26e74903d8",
+      "evidence": [
+        "chord/next/host/host_events_test.go#TestEventFlushDeliversATurnsEmitsInOneFlushInOrderStampedWithTheEmitsNow"
+      ],
+      "rationale": "Ported to chord/next/host/host_events_test.go."
     },
     {
       "path": "packages/chord/test/host/facet.test.ts",
@@ -2798,8 +2835,12 @@
     },
     {
       "path": "packages/chord/test/host/list.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e2e8319cb89c49d07c814359c97454ad4d5dfd476f7f5fcf1d674717f27aa350"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e2e8319cb89c49d07c814359c97454ad4d5dfd476f7f5fcf1d674717f27aa350",
+      "evidence": [
+        "chord/next/host/host_list_test.go#TestListPages"
+      ],
+      "rationale": "36c709e72: the two cases `a row moving between two pages sets the list once per page and publishes one frame, diffed from the value before the commit` and `over a link, the last row of a second page moving to the top is one state message: no protocol error, the link stays open`. Ported: both, as subtests of TestListPages (host_list_test.go), under the Pi titles."
     },
     {
       "path": "packages/chord/test/host/members.test.ts",
@@ -2812,8 +2853,37 @@
     },
     {
       "path": "packages/chord/test/host/named-query.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:dd67b36022da8ef46103783bc93db699c15dab825591e66ba153fd6cc3fe9dbe"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:dd67b36022da8ef46103783bc93db699c15dab825591e66ba153fd6cc3fe9dbe",
+      "evidence": [
+        "chord/next/host/host_named_query_test.go#TestNamedQueryTheMemberCheckRefusesAnythingButWhatSelfQueriesReturnedAListedQueryWithoutABuilderAndASecondSchema",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryStagingRefusesTheQueriesAnAttemptRefusesTheNamedBuildersAndTheTable",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryAJoinedQueryReadsAPageAtATimeWithoutALiveRead",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryTheMappingsProjectionGetsOnlyTheColumnsReadsAndPartnerReadsListAlsoWhenTheQueryOrdersOrMatchesByOthers",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryAPublisherWhoseNewCodeDeclaresNoTableServesItsSetNoMore",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryAPageFailsWhenItsSetIsUnboundAndHealsWhenItIsBoundAgain",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryAClubThatRestartsWithTheSessionsGivesItsPagesWatchTheUnservedSet",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryAnUnknownQueryOfAMemberIsInvalidAndARemoteObjectHasNone",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryAPageChecksItsArgumentsByTheContractsSchemaAndWhatTheBuilderReturns",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryATargetIsWhatReadingItReadsAndDecodesAStoredRowAsItsPageDoes",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryAReferenceTellsItsFollowersOfEveryOtherInstanceOfItsObject",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryASetMovedToAnotherPluginsTableInOneReloadIsBoundToTheNewTable",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryAHostThatClosedServesNoSetAnymore",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryTwoTablesOfOneObjectExposingOneSetAreRefusedWhereTheyAreDeclaredNamingBoth",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryStagingAcceptsTheOwnNamedQueryCountedAsAnAttemptDoes",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryAUsedColumnDroppedFailsExactlyTheReadsUsingItBeforeAnySQLRestoredTheyHeal",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryASetExposedNoMoreIsNotServedTwoTablesExposingOneNameAreRefusedNamingBoth",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryAReaderNeedsAStore",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryAJoinedQueryMapsEachRowWithItsPartnersProjectedColumnsInThePartnersOrder",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryAColumnSetAcrossItsPublishersReloadsUnchangedCodeAndAnUnusedColumnAddedNoReaderRestartsEqualRowsSendNothing",
+        "chord/next/host/host_named_query_old_code_test.go#TestNamedQueryAPluginKeepsItsOldCodeWhenItsNewFactoryDeclaresAReadWrongly",
+        "chord/next/host/host_named_query_restart_test.go#TestNamedQueryProvidersRestartAWriteAdmittedBeforeTheSealAndPausedAcrossItPublishesThenNoOldStatementRuns",
+        "chord/next/host/host_named_query_restart_test.go#TestNamedQueryProvidersRestartARemovedProvidersReadsLeaveTheIndexItsReadersKeepTheirRowsAndAnotherOwnersCommitRunsNothing",
+        "chord/next/host/host_named_query_restart_test.go#TestNamedQueryProvidersRestartRunsNoStatementCompiledForTheTableAsItWasNoFailedFrameWhileAnotherOwnerCommits",
+        "chord/next/host/host_named_query_restart_test.go#TestNamedQueryProvidersRestartAListsMoreDuringTheMigrationWaitsForTheSuccessorNoReadOfTheOldStatementIsRegistered",
+        "chord/next/host/host_named_query_restart_test.go#TestNamedQueryProvidersRestartKeepsNothingOfTheOldCodesNamedQueryOnceItsReadersReadTheSuccessors"
+      ],
+      "rationale": "92e1db6ca: the tests of host/named-query.ts and the queries members. Ported: the Go tests named in the evidence run every case of the file."
     },
     {
       "path": "packages/chord/test/host/native.test.ts",
@@ -2866,13 +2936,41 @@
     },
     {
       "path": "packages/chord/test/host/query-reader.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e746cddba9700de1dfb3a7cfc3e5b2cd37308cf984745132a4686a1a7fa3f417"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e746cddba9700de1dfb3a7cfc3e5b2cd37308cf984745132a4686a1a7fa3f417",
+      "evidence": [
+        "chord/next/host/host_query_reader_test.go#TestQueryReaderOpen",
+        "chord/next/host/host_query_reader_test.go#TestQueryReaderProjection",
+        "chord/next/host/host_query_reader_test.go#TestQueryReaderArgumentsThatFollowAValue",
+        "chord/next/host/host_query_reader_test.go#TestQueryReaderArgumentsTheBuilderRefuses",
+        "chord/next/host/host_query_reader_test.go#TestQueryReaderFailures",
+        "chord/next/host/host_query_reader_test.go#TestQueryReaderAColumnSetNobodyServes",
+        "chord/next/host/host_query_reader_test.go#TestQueryReaderReadersBeforeNatives",
+        "chord/next/host/host_query_reader_test.go#TestQueryReaderArgumentsThatHaveNoValueWhenTheReaderOpens",
+        "chord/next/host/host_query_reader_test.go#TestQueryReaderAProvidersRestart",
+        "chord/next/host/host_query_reader_test.go#TestQueryReaderCount",
+        "chord/next/host/host_query_reader_test.go#TestQueryReaderMemory",
+        "chord/next/host/host_query_reader_test.go#TestQueryReaderTheCommitStepChoosesItsReads",
+        "chord/next/host/host_query_reader_queue_test.go#TestQueryReaderQueueTwoMovesWhileAReadRunsReadOnceWithTheLaterTarget",
+        "chord/next/host/host_query_reader_queue_test.go#TestQueryReaderQueueACloseDropsTheQueuedReadAndDetachesTheReading",
+        "chord/next/host/host_query_reader_queue_test.go#TestQueryReaderQueueAMoveBeforeTheFirstReadOnlyWakesItsAttempt"
+      ],
+      "rationale": "92e1db6ca: the tests of host/query-reader.ts. Ported: the Go tests named in the evidence run every case of the file."
     },
     {
       "path": "packages/chord/test/host/read-declarations.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c5ff9047c1238b0a924f8fafb343a839847b46d4e8d71a42b0900403c1306632"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c5ff9047c1238b0a924f8fafb343a839847b46d4e8d71a42b0900403c1306632",
+      "evidence": [
+        "chord/next/host/host_read_declarations_test.go#TestReadDeclarationRefusals",
+        "chord/next/host/host_read_declarations_test.go#TestFirstOf",
+        "chord/next/host/host_read_declarations_test.go#TestListName",
+        "chord/next/host/host_read_declarations_test.go#TestOpeningReadersIsReadyOnceEveryReaderHasAValueAndFollowsNone",
+        "chord/next/host/host_read_declarations_test.go#TestOpeningReadersParksWaitingOnAReadThatFailedWithTheCauseAReloadsReportNamesAndFollowsIt",
+        "chord/next/host/host_read_declarations_test.go#TestOpeningReadersParksLoadingOnAReadThatHasNotRunYetWithACauseTooAndHoldsUpTheFirstPass",
+        "chord/next/host/host_read_declarations_test.go#TestOpeningReadersBreaksOnAReadersOwnCode"
+      ],
+      "rationale": "Pi 7cc21c24: the cases of openReaders (read-declarations.ts): ready once every reader has a value and follows none, parked waiting or loading with a cause, broken by a reader own code. Ported: the Go tests named in the evidence run every case of the file."
     },
     {
       "path": "packages/chord/test/host/readiness.test.ts",
@@ -2894,8 +2992,12 @@
     },
     {
       "path": "packages/chord/test/host/reference-events.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:047a2d3527709a410450ef546dd346c62f1633df23185538653f5f567f4a0bfe"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:047a2d3527709a410450ef546dd346c62f1633df23185538653f5f567f4a0bfe",
+      "evidence": [
+        "chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsAreInstalledAtOnceWhileLoadingAndReceiveOnceTheirReferenceIsLive"
+      ],
+      "rationale": "Ported to chord/next/host/host_reference_events_test.go."
     },
     {
       "path": "packages/chord/test/host/reference-keys.test.ts",
@@ -2963,8 +3065,35 @@
     },
     {
       "path": "packages/chord/test/host/route-admission.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1294e4e1d6bce4f6fc5337ef7c41272e59d1bb820f0f79d97b95157ed65a3c40"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1294e4e1d6bce4f6fc5337ef7c41272e59d1bb820f0f79d97b95157ed65a3c40",
+      "evidence": [
+        "chord/next/host/host_route_admission_test.go#TestRouteAdmissionBeforeTheFirstAllowNothingIsResolvedOrForwardedADeniedHoldStartsNoHostAnAllowLaterBindsIt",
+        "chord/next/host/host_route_admission_test.go#TestRouteAdmissionBeforeTheFirstAllowRouteHandleRetryResolvesNothingWhileEveryHoldOfTheAddressIsDeniedOrUndecided",
+        "chord/next/host/host_route_admission_test.go#TestRouteAdmissionBeforeTheFirstAllowAnAdmissionHoldingATypePlacedBehindItsOwnRouteFailsTheHoldInvalidCycleAThrowingAdmitBreaksIt",
+        "chord/next/host/host_route_admission_test.go#TestRouteAdmissionADecisionThatChangesWhileItIsSettledIsNotAnsweredWithWhatTheSettleReadBeforeADenialBetweenTheReadAndItsContinuationStartsNothing",
+        "chord/next/host/host_route_admission_test.go#TestRouteAdmissionADecisionThatChangesWhileItIsSettledEndsDeniedWheneverTheDenialArrives",
+        "chord/next/host/host_route_admission_test.go#TestRouteAdmissionADenialUnbindsThePrincipalsHoldsReleasedAtTheWorkerReplicasDroppedCallsInFlightForbiddenRevoked",
+        "chord/next/host/host_route_admission_test.go#TestRouteAdmissionADenialIsPerPrincipalAndAddressAnotherPrincipalsHoldsOnTheAddressStayBound",
+        "chord/next/host/host_route_admission_test.go#TestRouteAdmissionOneDecisionPerPrincipalAndAddressIsSharedByItsHoldsAndReleasedWithTheLastGC",
+        "chord/next/host/host_route_admission_test.go#TestRouteAdmissionOneDecisionPerPrincipalAndAddressAFailedSourceLeavesBoundHoldsAloneAndFailsNewOnesWaitingItHealsWithTheSource",
+        "chord/next/host/host_route_admission_test.go#TestRouteAdmissionOneDecisionPerPrincipalAndAddressASourceThatFailsAgainAndAgainStillLeavesTheHoldsForwardedUnderTheLastAllowAlone",
+        "chord/next/host/host_route_admission_test.go#TestRouteAdmissionOneDecisionPerPrincipalAndAddressANewLinkOfTheAddressHoldsNothingWhileTheSourceIsFailedForwardedHoldsWaitUntilItRecoversFailClosed",
+        "chord/next/host/host_route_admission_test.go#TestRouteAdmissionOneDecisionPerPrincipalAndAddressASourceThatFailsWhileTheAddressesLinkIsDownTakesTheForwardedHoldsBackOneThatOnlyLoadsDoesNot",
+        "chord/next/host/host_route_admission_test.go#TestRouteAdmissionTheFenceAfterADenialDropsWhatWasInTransitForTheReleasedHoldAndForwardsItAgainUnderItsIdOnlyAfterThePong",
+        "chord/next/host/host_route_admission_test.go#TestRouteAdmissionTheFenceAfterADenialACallThatCrossedTheDenialOnTheWireIsAnsweredForbiddenRevokedByTheRelayAndForwardedNowhere",
+        "chord/next/host/host_route_admission_test.go#TestRouteAdmissionTheFenceAfterADenialADenialBeforeThePongEndsTheFenceTheNextAllowSendsANewOne",
+        "chord/next/host/host_route_admission_test.go#TestRouteAdmissionTheFenceAfterADenialDenyAndAllowThreeTimesInARowForwardTheHoldOnceAfterTheLastPong",
+        "chord/next/host/host_route_admission_test.go#TestRouteAdmissionTheFenceAfterADenialTheLinkLostBeforeThePongTheNextLinkHoldsWhatTheDecisionAllowsThenWithNoFence",
+        "chord/next/host/host_route_admission_test.go#TestRouteAdmissionAcrossReloadsTheSourcesPluginReloadedToAnEqualAllowNoResolveNoNewUpstreamHoldTheCallAcrossItCompletes",
+        "chord/next/host/host_route_admission_test.go#TestRouteAdmissionAcrossReloadsTheSourceRemovedLeavesBoundHoldsAloneAndFailsNewOnesRestoredItsNewStoreDecidesAgain",
+        "chord/next/host/host_route_admission_test.go#TestRouteAdmissionAcrossReloadsTheSourceReloadedWhileAResolveIsPendingTheHoldBindsOnceTheLinkIsThere",
+        "chord/next/host/host_route_admission_test.go#TestRouteAdmissionAcrossReloadsAnObjectBehindTheRouteReloadedIsAnOrdinaryRebindNoDecisionIsAskedNothingResolved",
+        "chord/next/host/host_route_admission_test.go#TestRouteAdmissionAServersOwnReferenceToAGatedAddressIsWithheldAndAdmittedAsARemoteObject",
+        "chord/next/host/host_route_admission_settle_test.go#TestRouteAdmissionTheVerdictOfAReleasedOrCancelledDecisionTellsNobody",
+        "chord/next/host/host_route_admission_settle_test.go#TestRouteAdmissionAGenuinelyBrokenDecisionIsTold"
+      ],
+      "rationale": "8270d9af6 (slice 14, second part): the 21 cases of the route admission. all 21 run in host_route_admission_test.go and host_route_admission_settle_test.go (the sweep `ends denied whenever the denial arrives: ${turns} turns into the settle` is TestRouteAdmissionADecisionThatChangesWhileItIsSettledEndsDeniedWheneverTheDenialArrives). Ported: the Go tests named in the evidence run every case of the file. Go-only cases of daf305d77 (host_route_admission_goonly_test.go: a source that fails before the first allow; the decision as an event of the relay span) cover branches no Pi case reaches; their sub-mutations (measured by the mutation lane at 69c9909f2ed2, RouteAdmission set, -count=3 -race): 2a and 2b are killed by case 4 (TestRouteAdmissionADecisionThatChangesWhileItIsSettledIsNotAnsweredWithWhatTheSettleReadBeforeADenialBetweenTheReadAndItsContinuationStartsNothing, host_route_admission_test.go:414 `state = live, want failed`; 3 of 3 runs, both codecs); 2c (the askedSettled arm of `moved` dropped) is killed by 14 cases, among them cases 1 (:321), 6 (:569, :508) and 7 (:635); case 5 itself kills none of the three."
     },
     {
       "path": "packages/chord/test/host/route.test.ts",
@@ -3007,8 +3136,20 @@
     },
     {
       "path": "packages/chord/test/host/tiling.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f35e7c7e82364abae71deae86f8c5e8ccfc36513a73a4118165f991cdca33185"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f35e7c7e82364abae71deae86f8c5e8ccfc36513a73a4118165f991cdca33185",
+      "evidence": [
+        "chord/next/host/host_tiling_test.go#TestTilingACommitGroupOfTwoOwners",
+        "chord/next/host/host_tiling_test.go#TestTilingOneCommitSeveralPages",
+        "chord/next/host/host_tiling_test.go#TestTilingARowAnotherOwnersCommitLetsInInTheGroupThatMergedItsPages",
+        "chord/next/host/host_tiling_test.go#TestTilingAPublishersMigrationThatChangesTheOrder",
+        "chord/next/host/host_tiling_test.go#TestTilingSwitchesAndFailures",
+        "chord/next/host/host_tiling_test.go#TestTilingTheInvariantWithTwoOwnersAndCommitGroups",
+        "chord/next/host/host_tiling_go_test.go#TestTilingAPageThatBeginsAtACutRunsLastRowIsLoadedAgain",
+        "chord/next/host/host_tiling_go_test.go#TestTilingPagesThatMeetAtABoundDoNotOverlap",
+        "chord/next/host/host_tiling_go_test.go#TestTilingAFailedPageThatGrewPastItsLimitIsNotCut"
+      ],
+      "rationale": "92e1db6ca: the tests of host/tiling.ts. Ported: the Go tests named in the evidence run every case of the file."
     },
     {
       "path": "packages/chord/test/host/unbound-clock.test.ts",
@@ -3211,8 +3352,14 @@
     },
     {
       "path": "packages/chord/test/node/app/ephemeral-sign-ins.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:91fe2ffa886d528d1aa064e3beecfddbc4cbecbf87049df4d73cb3d357b0cafe"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:91fe2ffa886d528d1aa064e3beecfddbc4cbecbf87049df4d73cb3d357b0cafe",
+      "evidence": [
+        "chord/nextnode/app/ephemeral_sign_ins_test.go#TestEphemeralSignInsEndWithTheirLastLinkAfterTheGracePeriodALinkOpeningMeanwhileKeepsThem",
+        "chord/nextnode/app/ephemeral_sign_ins_test.go#TestEphemeralSignInsEndWhenNoLinkOpensWithinTheGracePeriodOfTheLogin",
+        "chord/nextnode/app/ephemeral_sign_ins_test.go#TestEphemeralSignInsKeepAtMostMaxPastItTheOldestEnds"
+      ],
+      "rationale": "ff7414d51: describe `ephemeral sign-ins`, the three cases with the same inputs and results on EphemeralSignIns. The three Go tests are TestEphemeralSignIns... with the same inputs and results."
     },
     {
       "path": "packages/chord/test/node/app/ephemeral.test.ts",
@@ -3317,8 +3464,21 @@
     },
     {
       "path": "packages/chord/test/node/app/sign-ins.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1c28192df6bf195d055fea936f2e3fd3c465299f2d5aea9951f40639d74390f1"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1c28192df6bf195d055fea936f2e3fd3c465299f2d5aea9951f40639d74390f1",
+      "evidence": [
+        "chord/nextnode/app/sign_ins_upstream_test.go#TestSignInsIssueATokenAsBearerAndCookieListItWithoutItsHashRevokeIt",
+        "chord/nextnode/app/sign_ins_upstream_test.go#TestSignInsRefuseATokenWithAWrongSecretAnUnknownIDAndAForgedCookie",
+        "chord/nextnode/app/sign_ins_upstream_test.go#TestSignInsKeepOnlyTheTokensHashInTheStore",
+        "chord/nextnode/app/sign_ins_upstream_test.go#TestEphemeralSignInsAuthenticateInMemoryAreNotListedAndEndWithTheServerPersistedOnesStay",
+        "chord/nextnode/app/sign_ins_upstream_test.go#TestEphemeralSignInsLiveAtMostTheLimitPastItTheOldestEndsAnIssueCostsTheSameWhateverCameBefore",
+        "chord/nextnode/app/sign_ins_upstream_test.go#TestRollingCookiesRenewABrowsersCookieOnceItIsOlderThanADayWithAFreshSignedExpiry",
+        "chord/nextnode/app/sign_ins_upstream_test.go#TestRollingCookiesDoNotRenewAnEphemeralSignInsCookieNorARevokedSignIns",
+        "chord/nextnode/app/sign_ins_upstream_test.go#TestSignInsEndAPersistedSignInUnusedFor400DaysAtItsNextUse",
+        "chord/nextnode/app/sign_ins_upstream_test.go#TestSignInsAnswerAMalformedTokenOrAPrototypeKeyAsAnIDWithAPlain401ReportingNothing",
+        "chord/nextnode/app/sign_ins_limits_test.go#TestStartServerGivesLimitsEphemeralSignInsToTheKitsSignIns"
+      ],
+      "rationale": "ff7414d51: the nine cases through SignIns; four expectations change: the two Set-Cookie patterns and the two forged cookies are named chord-sign-in, and the cap is given as limits.ephemeralSignIns. The nine Go tests have the same inputs and the same expected results (the patterns `^chord-sign-in=...`, the forged `chord-sign-in=` cookies); the start option is run through the whole app in sign_ins_limits_test.go."
     },
     {
       "path": "packages/chord/test/node/app/tar.test.ts",
@@ -4104,8 +4264,13 @@
     },
     {
       "path": "packages/chord/test/state/framed.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:fb8a7343c0c546148124fe0b7f728d61706b94e3f5b44092194517aab7c5c5b5"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:fb8a7343c0c546148124fe0b7f728d61706b94e3f5b44092194517aab7c5c5b5",
+      "evidence": [
+        "chord/next/state/framed_test.go#TestFramedSourceSetSeveralTimesInOneBatch",
+        "chord/next/state/framed_test.go#TestFramedSourceFailingAndRecoveringInOneBatch"
+      ],
+      "rationale": "36c709e72: the 8 new cases (5 of `a framed source set several times in one batch`, 3 of `a framed source failing and recovering in one batch`). Ported: all 8, as the subtests of TestFramedSourceSetSeveralTimesInOneBatch and TestFramedSourceFailingAndRecoveringInOneBatch (framed_test.go), under the Pi titles."
     },
     {
       "path": "packages/chord/test/state/native-source.test.ts",
@@ -4195,8 +4360,14 @@
     },
     {
       "path": "packages/chord/test/store/column-set.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:5941abf9dc4b575aefb52f473311708954c30e9e6aa36f3366ed3c6c1a6c49a9"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:5941abf9dc4b575aefb52f473311708954c30e9e6aa36f3366ed3c6c1a6c49a9",
+      "evidence": [
+        "chord/next/store/column_set_test.go#TestColumnSetDefine",
+        "chord/next/store/column_set_test.go#TestColumnSetExposes",
+        "chord/next/store/column_set_test.go#TestColumnSetEvolveExposes"
+      ],
+      "rationale": "92e1db6ca: the tests of store/column-set.ts. Ported: the Go tests named in the evidence run every case of the file."
     },
     {
       "path": "packages/chord/test/store/columns.test.ts",
@@ -4335,13 +4506,39 @@
     },
     {
       "path": "packages/chord/test/store/read-plan.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:18a296b6cd1e7ca5636f7a9c6e1e9a3475cfa19c1b9f451f62ae77818cff4a60"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:18a296b6cd1e7ca5636f7a9c6e1e9a3475cfa19c1b9f451f62ae77818cff4a60",
+      "evidence": [
+        "chord/next/store/read_plan_test.go#TestReadPlanExists",
+        "chord/next/store/read_plan_test.go#TestReadPlanExistsNode",
+        "chord/next/store/read_plan_test.go#TestReadPlanJoin",
+        "chord/next/store/read_plan_test.go#TestReadPlanWrittenFor",
+        "chord/next/store/read_plan_rows_test.go#TestReadPlanRowsExists",
+        "chord/next/store/read_plan_rows_test.go#TestReadPlanRowsExistsNode",
+        "chord/next/store/read_plan_rows_test.go#TestReadPlanRowsJoin",
+        "chord/next/store/read_plan_rows_test.go#TestReadPlanRowsUsesAndTheProbe",
+        "chord/next/store/read_plan_rows_test.go#TestReadPlanRowsTableHandle",
+        "chord/next/store/expression_exists_test.go#TestReadPlanExistsData",
+        "chord/next/store/expression_node_test.go#TestReadPlanCheckNode",
+        "chord/next/store/read_test.go#TestRead"
+      ],
+      "rationale": "92e1db6ca: the tests of store/read-plan.ts. Ported: the Go tests named in the evidence run every case of the file."
     },
     {
       "path": "packages/chord/test/store/reads.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e5c600b8d0bea46f1650405434ef941a0778e1752d3f8f12747c5d12763d791f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e5c600b8d0bea46f1650405434ef941a0778e1752d3f8f12747c5d12763d791f",
+      "evidence": [
+        "chord/next/store/reads_test.go#TestReadsBindings",
+        "chord/next/store/reads_test.go#TestReadsRunBelongsToItsRegistration",
+        "chord/next/store/reads_test.go#TestReadsIndexAndRefresh",
+        "chord/next/store/reads_test.go#TestReadsSetsOf",
+        "chord/next/store/reads_test.go#TestReadsRefreshAppliedAgain",
+        "chord/next/store/reads_test.go#TestReadsLoadOverAHeldTable",
+        "chord/next/store/reads_test.go#TestReadsRefreshChoosesEachReadOnce",
+        "chord/next/store/reads_test.go#TestReadsOfAClosedQueryOrRead"
+      ],
+      "rationale": "92e1db6ca: the tests of store/reads.ts. Ported: the Go tests named in the evidence run every case of the file."
     },
     {
       "path": "packages/chord/test/store/refusal.test.ts",
@@ -4364,8 +4561,18 @@
     },
     {
       "path": "packages/chord/test/store/skip.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:30a385355362cdd38690d65e1ffeda5985df0dbbfff2637e780fb4cbc76d5c86"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:30a385355362cdd38690d65e1ffeda5985df0dbbfff2637e780fb4cbc76d5c86",
+      "evidence": [
+        "chord/next/store/skip_test.go#TestSkipsOwnTable",
+        "chord/next/store/skip_test.go#TestSkipsJoinedAndExistsTables",
+        "chord/next/store/skip_oracle_test.go#TestSkipOracleASkippedReadEqualsAFreshRun",
+        "chord/next/store/skip_oracle_test.go#TestSkipOwnTable",
+        "chord/next/store/skip_oracle_test.go#TestSkipJoinedTable",
+        "chord/next/store/skip_oracle_test.go#TestSkipExistsTable",
+        "chord/next/store/skip_oracle_test.go#TestSkipCost"
+      ],
+      "rationale": "92e1db6ca: the tests of store/skip.ts. Ported: the Go tests named in the evidence run every case of the file."
     },
     {
       "path": "packages/chord/test/store/sql.test.ts",
@@ -4585,8 +4792,12 @@
     },
     {
       "path": "packages/chord/test/surfaces/variant.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:25bae84bb8c48a66fee0a428744b555d8d6a4aef0e2e02be0f751856ab7dbaa1"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:25bae84bb8c48a66fee0a428744b555d8d6a4aef0e2e02be0f751856ab7dbaa1",
+      "evidence": [
+        "chord/next/surfaces/surfaces_variant_test.go#TestLiveIn"
+      ],
+      "rationale": "f57cd9484: the three cases of `liveIn` (nothing before it binds or for no reference; follows the variant an admission rebinds; narrows a held and a got reference). Ported: TestLiveIn runs the three as subtests; the third is type-level in Pi (no Go counterpart of the types) and is the documented runtime check (what the narrowing promises at run time)."
     },
     {
       "path": "packages/chord/test/sync/lines.test.ts",
@@ -4931,8 +5142,12 @@
     },
     {
       "path": "packages/coding-agent/test/agent-session-runtime-diagnostics.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:dd94a4de77eaa77eb9e7dc59c3c51b19972fe466f6061b48eaf99848f1f8e9f6"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:dd94a4de77eaa77eb9e7dc59c3c51b19972fe466f6061b48eaf99848f1f8e9f6",
+      "evidence": [
+        "coding/runtime_take_unreported_diagnostics_upstream_test.go#TestTakeUnreportedDiagnosticsReturnsEachDiagnosticOnceAtStartupAndAfterReplacements"
+      ],
+      "rationale": "c47ad0432bb8: 'returns each diagnostic once, at startup and after replacements'. Ported with the same inputs (a settings warning at startup; an extension error added at the next factory call; two replacements) and the same expectations."
     },
     {
       "path": "packages/coding-agent/test/agent-session-runtime-events.test.ts",
@@ -5442,8 +5657,12 @@
     },
     {
       "path": "packages/coding-agent/test/config-selector.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4b864f86a682131e01721787da83b341dac3912df4725a4a495436470206c30e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4b864f86a682131e01721787da83b341dac3912df4725a4a495436470206c30e",
+      "evidence": [
+        "tui/selector_search_selection_upstream_test.go#TestConfigSelectorKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged"
+      ],
+      "rationale": "5bcf370a5293: the case that types tool, moves down, presses Left and Home. Ported with the same inputs and expectation."
     },
     {
       "path": "packages/coding-agent/test/config-value-migration.test.ts",
@@ -5637,8 +5856,12 @@
     },
     {
       "path": "packages/coding-agent/test/export-html-ansi-links.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1b21d788841be614bcc11e76920f8dfbb5f8df4effbef80b403ca29d34e6797f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1b21d788841be614bcc11e76920f8dfbb5f8df4effbef80b403ca29d34e6797f",
+      "evidence": [
+        "internal/codingagent/export/ansi_links_port_test.go#TestAnsiToHTMLConvertsOSC8HyperlinksToAnchors"
+      ],
+      "rationale": "Ported to internal/codingagent/export/ansi_links_port_test.go."
     },
     {
       "path": "packages/coding-agent/test/export-html-cjk.test.ts",
@@ -5834,8 +6057,12 @@
     },
     {
       "path": "packages/coding-agent/test/flush-stdout.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f2db968fb38dc73f32aaf77dbbca587487da9cae75ffdf8ffb030760583d5830"
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:f2db968fb38dc73f32aaf77dbbca587487da9cae75ffdf8ffb030760583d5830",
+      "rationale": "Tests Node stdout drain timer in flush-stdout.ts; designed out in Go because stdout writes flush synchronously via the OS (exit cleanup tested by coding/cli/startup_picker_exit_bytes_linux_test.go#TestStartupResumePickerExitLeavesTheTerminalModesReset).",
+      "protects": "Tests Node stdout drain timer in flush-stdout.ts; designed out in Go because stdout writes flush synchronously via the OS (exit cleanup tested by coding/cli/startup_picker_exit_bytes_linux_test.go#TestStartupResumePickerExitLeavesTheTerminalModesReset).",
+      "pigTest": "coding/cli/startup_picker_exit_bytes_linux_test.go#TestStartupResumePickerExitLeavesTheTerminalModesReset",
+      "whyNot": "Tests Node stdout drain timer in flush-stdout.ts; designed out in Go because stdout writes flush synchronously via the OS (exit cleanup tested by coding/cli/startup_picker_exit_bytes_linux_test.go#TestStartupResumePickerExitLeavesTheTerminalModesReset)."
     },
     {
       "path": "packages/coding-agent/test/footer-data-provider.test.ts",
@@ -6365,8 +6592,12 @@
     },
     {
       "path": "packages/coding-agent/test/model-fallback-diagnostic.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:2e8cdaad2f787c585c2bef3c12e676ef82bd3272420a871cc4f12ac201c8e6dd"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:2e8cdaad2f787c585c2bef3c12e676ef82bd3272420a871cc4f12ac201c8e6dd",
+      "evidence": [
+        "coding/cli/model_fallback_diagnostic_upstream_test.go#TestRPCSwitchSessionReportsTheModelFallbackOnStderr"
+      ],
+      "rationale": "c8c456c85c6e: a saved two-turn session whose model is gone/missing-model; an RPC process started without a session runs switch_session into it; stderr holds 'Warning: Could not restore model gone/missing-model. Using fake/fake-model' (here the fake provider of a models.json with an OpenAI-compatible base URL, the same shape) and stdout does not. The test also runs the OAuth, no-default-model and two-built-in-keys shapes, RPC startup and fork, and print and JSON mode."
     },
     {
       "path": "packages/coding-agent/test/model-registry.test.ts",
@@ -6469,8 +6700,12 @@
     },
     {
       "path": "packages/coding-agent/test/model-scope-session-replacement.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:38a53ed9dd5881e6d15d4a7ccc8f5f18b780f174a1d364fc4d6e1cdbbd0d5a0e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:38a53ed9dd5881e6d15d4a7ccc8f5f18b780f174a1d364fc4d6e1cdbbd0d5a0e",
+      "evidence": [
+        "coding/cli/model_scope_session_replacement_upstream_test.go#TestModelScopeWarningsOnSessionReplacement"
+      ],
+      "rationale": "bacd45b9c adds the regression test: RPC mode with the same models.json and settings.json (enabledModels fake/fake-model and github-copilot/missing-model), one new_session, and the warning on stderr exactly once. The Go test runs the pig binary the same way. It passes on PiG before the port (the builder never printed) and fails with two occurrences under the compiled mutation that prints the scope warnings in the builder, which is Pi's behavior before this commit."
     },
     {
       "path": "packages/coding-agent/test/model-search.test.ts",
@@ -6943,8 +7178,13 @@
     },
     {
       "path": "packages/coding-agent/test/rpc-replacement-diagnostics.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7139bc94770b0870446e7ff1b9b3d5c3ad9f920d7bd650cc0d9fa3d152f1f9a0"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7139bc94770b0870446e7ff1b9b3d5c3ad9f920d7bd650cc0d9fa3d152f1f9a0",
+      "evidence": [
+        "coding/cli/rpc_replacement_diagnostics_upstream_test.go#TestRPCReportsADiagnosticThatFirstAppearsOnNewSessionOnStderrOnce",
+        "test/parity/scenarios/rpc/86-rpc-replacement-diagnostics-stderr.toml"
+      ],
+      "rationale": "c47ad0432bb8: spawns pi --mode rpc with enabledModels naming the faux model, changes the settings to add a missing one, sends new_session and expects the warning once on stderr and nothing about it on stdout. Ported against the pig binary with the same steps."
     },
     {
       "path": "packages/coding-agent/test/rpc.test.ts",
@@ -7253,7 +7493,7 @@
       "upstreamTestHash": "sha256:ae7d224cbff258d61d720d4f6db0b9c2d236a7bacbc38e276921ee43fc9b4507",
       "evidence": [
         "internal/codingagent/session_selector_search_test.go#TestUpstreamSessionSelectorSearch",
-        "internal/codingagent/session_selector_search_test.go#TestSessionSearchRetainsAndClampsSelection",
+        "internal/codingagent/session_selector_search_test.go#TestSessionSearchSelectsTopRowOnQuery",
         "internal/codingagent/session_selector_search_semantics_test.go",
         "test/parity/scenarios/session/20-session-selector-search.toml",
         "test/parity/scenarios/session/21-session-search-resume-picker.toml",
@@ -7266,8 +7506,12 @@
     },
     {
       "path": "packages/coding-agent/test/session-selector-selection.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:77b84b0b725caa11021dacce8bc218b0ddab5789d09d85f46da0f133bf6f79ba"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:77b84b0b725caa11021dacce8bc218b0ddab5789d09d85f46da0f133bf6f79ba",
+      "evidence": [
+        "internal/codingagent/session_selector_search_selection_upstream_test.go#TestSessionSelectorKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged"
+      ],
+      "rationale": "5bcf370a5293: the case that types fix, moves down, presses Left. Ported with the same inputs and expectation."
     },
     {
       "path": "packages/coding-agent/test/session-share.test.ts",
@@ -7341,8 +7585,12 @@
     },
     {
       "path": "packages/coding-agent/test/settings-submenu.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:094f6da2b367181d6b85df19bf159da2672a6df7f258c6997ba0ee2d210a968d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:094f6da2b367181d6b85df19bf159da2672a6df7f258c6997ba0ee2d210a968d",
+      "evidence": [
+        "tui/selector_search_selection_upstream_test.go#TestSelectSubmenuKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged"
+      ],
+      "rationale": "5bcf370a5293: the case that types dark, moves down, presses Left, Home and Enter. Ported with the same inputs and expectation."
     },
     {
       "path": "packages/coding-agent/test/shell-kill-process-tree.test.ts",
@@ -7664,8 +7912,13 @@
     },
     {
       "path": "packages/coding-agent/test/suite/print-mode-session-start-events.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:05be79112e4150e3353a17fe7f032657bdf8e8d2271110a642bb493044d1b582"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:05be79112e4150e3353a17fe7f032657bdf8e8d2271110a642bb493044d1b582",
+      "evidence": [
+        "coding/cli/json_mode_writer_after_session_start_test.go#TestJSONModeWritesSessionStartEventsOfAReplacementInEverySDK",
+        "test/parity/scenarios/json/16-json-session-start-replacement.toml"
+      ],
+      "rationale": "6aab551a79ba adds the one case: JSON print mode on a runtime whose extension appends an entry in session_start (data = the event's reason) and replaces the session with ctx.newSession() from /renew; the output starts with the session header and the entry_appended events of the startup and of the new session are both in it (`[\"startup\", \"new\"]`). Scenario json/16 is that case against the installed Pi with the commit backported (same extension and prompt, output compared byte for byte after masking ids and clocks, runs = 3). TestJSONModeWritesSessionStartEventsOfAReplacementInEverySDK runs it in every SDK through the writer-start fixture's /writer-renew command (Node, Go, Python, Rust, Lisp: each serves ctx.newSession) and asserts two session_start entry_appended and two session_info_changed. It fails on the code before the change (0 of each) and passes after."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/10285-mcp-tool-renderers.test.ts",
@@ -7678,8 +7931,16 @@
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/10470-rpc-session-replacement-start-once.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3bd72952d48d1921387461e1605e0c16b0a8d41537d037cbb6459fae066c4c54"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3bd72952d48d1921387461e1605e0c16b0a8d41537d037cbb6459fae066c4c54",
+      "evidence": [
+        "coding/cli/rpc_session_start_once_upstream_test.go#TestRPCStreamsEntriesAppendedByTheStartupSessionStartUpstream",
+        "coding/cli/rpc_session_start_once_upstream_test.go#TestRPCNewSessionRunsSessionStartOnceUpstream",
+        "coding/cli/rpc_session_start_once_upstream_test.go#TestRPCSwitchSessionRunsSessionStartOnceUpstream",
+        "coding/cli/rpc_session_start_once_upstream_test.go#TestRPCForkRunsSessionStartOnceUpstream",
+        "coding/cli/rpc_session_start_once_upstream_test.go#TestRPCCloneRunsSessionStartOnceUpstream"
+      ],
+      "rationale": "beffcde92dea: five tests (startup event delivery, new_session, switch_session, fork, clone) on a real AgentSessionRuntime with an extension whose session_start handler appends a start-marker entry; each replacement test asserts one session_start and one streamed entry_appended. Ported with the same inputs and expectations on PiG's Runtime; all five are red on the code before the change (startup: no entry_appended; each replacement: two session_start calls)."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/11156-pi-ai-models-virtual-module.test.ts",
@@ -7701,8 +7962,15 @@
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/11264-pi-events-handler-errors.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f3aacf4587c99e9b6ac3d6d8ad11ffd3e268ec9f7aea2d65b260372d6c2c6be3"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f3aacf4587c99e9b6ac3d6d8ad11ffd3e268ec9f7aea2d65b260372d6c2c6be3",
+      "evidence": [
+        "coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsReportsAThrowingHandlerToTheExtensionErrorListenerInsteadOfStderr",
+        "coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsDropsAnErrorFromAHandlerThatFailsAfterItsSessionWasDisposed",
+        "test/extension-conformance/events_handler_errors_test.go#TestConformance_PiEventsHandlerErrorIsAnExtensionError",
+        "test/extension-conformance/events_handler_errors_test.go#TestConformance_PiEventsHandlerErrorAfterTheRunnerWentStaleIsDropped"
+      ],
+      "rationale": "18e99051be24 adds two cases: a throwing handler reaches the runner's onError with the extension's path and does not call console.error; a handler that throws after `session.dispose()` reports nothing (Pi notes the second also fails with only the stale check removed). The Go twins use the same inputs: a handler that panics reaches the error listener and writes nothing to stderr; a handler released after the runner went stale reports nothing. PiG's conformance rows run them in every SDK realm, isolated and packed, with the failure bound to a channel name and a message no SDK defaults to."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/11451-thinking-level-after-tree-navigation.test.ts",
@@ -7744,18 +8012,32 @@
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/12066-find-ancestor-glob.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ce1668b36def2e803b1df0306393d79bdc5baf49cf2cbe13d6bbea34c61e936c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ce1668b36def2e803b1df0306393d79bdc5baf49cf2cbe13d6bbea34c61e936c",
+      "evidence": [
+        "internal/codingagent/tools/find_ancestor_glob_upstream_test.go#TestFindPathGlobsDoNotMatchAboveTheSearchPath"
+      ],
+      "rationale": "282b01c80 adds five cases: a parent folder named src, anchored patterns against a leading **/ (with ./, basename and absolute patterns), glob characters in the search path, smart case under an upper-case search path, and a symlinked search path (a junction on Windows). The Go test runs the same trees and patterns through the find tool with real fd and expects the same lists."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/12119-copy-after-abort-or-error.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:750ec11a77fa9aa9e43b754924ab7f15436696b2ef184af2245029483755dfe3"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:750ec11a77fa9aa9e43b754924ab7f15436696b2ef184af2245029483755dfe3",
+      "evidence": [
+        "coding/session_last_assistant_text_cases_test.go#TestSessionLastAssistantTextCases",
+        "coding/cli/rpc_upstream_test.go#TestRPCModeUpstream",
+        "internal/codingagent/copy_after_abort_or_error_upstream_test.go#TestCopyAfterAProviderErrorCopiesThePreviousAnswer"
+      ],
+      "rationale": "ede360e4d adds three cases: the previous answer after Esc during a tool call, the previous answer after a provider error, and a reply that ended normally without text stays the last reply (undefined). They are the three \"Pi 12119:\" rows of coding/testdata/last_assistant_text_cases.json (the histories Pi's faux provider leaves, the same expected text), run on a Session by TestSessionLastAssistantTextCases and on the installed Pi by TestSessionLastAssistantTextMatchesPi; the provider-error case also runs through a real turn in RPC mode and in the interactive mode, and the Esc case through the resumed history of scenario slash-commands/27. The other rows of the file are Pi's answers from a run of the function at the commit."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/12124-websocket-connection-limit-retry.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ac19a61e6b788d002ae0ce2f02e488ad905833a0da06f50ae9c0ea515eef6cc0"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ac19a61e6b788d002ae0ce2f02e488ad905833a0da06f50ae9c0ea515eef6cc0",
+      "evidence": [
+        "coding/session_websocket_limit_retry_upstream_test.go#TestIssue12124WebSocketConnectionLifetimeRetry"
+      ],
+      "rationale": "bb1a2b3542b5: a tool call, then partial thinking ending with the connection limit error, then recovery; the tool runs once, the failed message is not sent on the retry, auto_retry_start and auto_retry_end carry the error and attempt 1, and the last assistant text is the recovery."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/1717-2113-agent-session-event-settlement.test.ts",
@@ -9151,8 +9433,12 @@
     },
     {
       "path": "packages/durable/test/env-node-list-race.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:df8c9c44f217d38f9cc56e8c8484ed3018d02959b937fa24ec844f576385fd35"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:df8c9c44f217d38f9cc56e8c8484ed3018d02959b937fa24ec844f576385fd35",
+      "evidence": [
+        "durable/env/node/list_race_port_test.go#TestListDirLeavesOutAnEntryRemovedBetweenEnumerationAndLstat"
+      ],
+      "rationale": "Ported to durable/env/node/list_race_port_test.go."
     },
     {
       "path": "packages/durable/test/env-node-spill.test.ts",
@@ -9387,8 +9673,12 @@
     },
     {
       "path": "packages/durable/test/harness-hook-tasks.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:efc785543f1a2d338b51c2ced36b6609fb957c098c3bbfb5a550a951ea72c976"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:efc785543f1a2d338b51c2ced36b6609fb957c098c3bbfb5a550a951ea72c976",
+      "evidence": [
+        "durable/harness/harness_hook_tasks_test.go#TestAfterToolsTasks"
+      ],
+      "rationale": "Ported to durable/harness/harness_hook_tasks_test.go."
     },
     {
       "path": "packages/durable/test/harness-host-inputs.test.ts",
@@ -9527,8 +9817,12 @@
     },
     {
       "path": "packages/durable/test/harness-park-children.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ac4a029ffd666ef6018092cc79b953e2a2ee8a77083d3b0ead75a34dc6cd0451"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ac4a029ffd666ef6018092cc79b953e2a2ee8a77083d3b0ead75a34dc6cd0451",
+      "evidence": [
+        "durable/harness/harness_park_children_test.go#TestParkChildrenNestedCallsWithoutWaiting"
+      ],
+      "rationale": "Ported to durable/harness/harness_park_children_test.go."
     },
     {
       "path": "packages/durable/test/harness-partial-changes.test.ts",
@@ -9645,8 +9939,12 @@
     },
     {
       "path": "packages/durable/test/harness-signals.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6d8d316ccf9ca0c6e13d0bf85d345ac2210362ae5c34d1c9952791f2bdb9cd6f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:6d8d316ccf9ca0c6e13d0bf85d345ac2210362ae5c34d1c9952791f2bdb9cd6f",
+      "evidence": [
+        "durable/harness/harness_signals_test.go#TestDefineSignal"
+      ],
+      "rationale": "Ported to durable/harness/harness_signals_test.go."
     },
     {
       "path": "packages/durable/test/harness-sleep.test.ts",
@@ -9788,8 +10086,12 @@
     },
     {
       "path": "packages/durable/test/harness-tool-gates.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1f9be407e6e02bb8a05d336f2c06054572cc959bef76a54929728265bc953c27"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1f9be407e6e02bb8a05d336f2c06054572cc959bef76a54929728265bc953c27",
+      "evidence": [
+        "durable/harness/harness_tool_gates_test.go#TestToolGatesBeforeToolSleep"
+      ],
+      "rationale": "Ported to durable/harness/harness_tool_gates_test.go."
     },
     {
       "path": "packages/durable/test/harness-tool-hooks.test.ts",
@@ -9802,8 +10104,12 @@
     },
     {
       "path": "packages/durable/test/harness-tool-parks.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ebc466c10eafa660eadffc3ea01a736bba8ecc2d2aeda5de324107b53e1bd128"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ebc466c10eafa660eadffc3ea01a736bba8ecc2d2aeda5de324107b53e1bd128",
+      "evidence": [
+        "durable/harness/harness_tool_parks_test.go#TestToolParksOnASignal"
+      ],
+      "rationale": "Ported to durable/harness/harness_tool_parks_test.go."
     },
     {
       "path": "packages/durable/test/harness-tools-recovery.test.ts",
@@ -9864,8 +10170,14 @@
     },
     {
       "path": "packages/durable/test/images-fit.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:5822be2d2febd24d64c29ee55a9c1898b79955c03a0f73e42ec2eec687ade9ee"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:5822be2d2febd24d64c29ee55a9c1898b79955c03a0f73e42ec2eec687ade9ee",
+      "evidence": [
+        "durable/images/fit/fit_test.go#TestFitImage",
+        "durable/images/fit/fit_test.go#TestFitImages",
+        "durable/images/fit/fit_test.go#TestFitImagesExtension"
+      ],
+      "rationale": "76c79d8bbe: the cases of fitImage, fitImages and the fit-images extension are durable/images/fit/fit_test.go with Pi's inputs and expected results (Photon's encoders are not reproduced, so sizes, types and notes are asserted); the nested-call case is ported as Pi has it, and also run through a Harness."
     },
     {
       "path": "packages/durable/test/images-wasm-module.test.ts",
@@ -10944,8 +11256,12 @@
     },
     {
       "path": "packages/tui/test/container.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f0ae1d5bea790a2e25ebbe84533603b4168887eddbc1eb928a400a4739e81a0f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f0ae1d5bea790a2e25ebbe84533603b4168887eddbc1eb928a400a4739e81a0f",
+      "evidence": [
+        "tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
+      ],
+      "rationale": "b7bb7ca905b8: Pi's Container reuse test; ported."
     },
     {
       "path": "packages/tui/test/editor-history-keybindings.test.ts",
@@ -11186,8 +11502,20 @@
     },
     {
       "path": "packages/tui/test/overlay-terminal-image.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6382f92de2696c2c9d63b26d62853a9d22c69e117d5a5681eb0ab49e07c95e10"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:6382f92de2696c2c9d63b26d62853a9d22c69e117d5a5681eb0ab49e07c95e10",
+      "evidence": [
+        "tui/overlay_terminal_image_upstream_test.go#TestOverlayOverAKittyImageDeletesTheImageAndRedrawsItAfterTheOverlayCloses",
+        "tui/overlay_terminal_image_upstream_test.go#TestOverlayKeepsAnImageWhoseRowsItDoesNotTouch",
+        "tui/overlay_terminal_image_upstream_test.go#TestOverlayKeepsAnImageBesideItThatSharesItsRows",
+        "tui/overlay_terminal_image_upstream_test.go#TestFullscreenOverlayKeepsAnImageBesideItThatSharesItsRows",
+        "tui/overlay_terminal_image_upstream_test.go#TestOverlayHidesAnImageOfUnknownWidthWhenItSharesItsRows",
+        "tui/overlay_terminal_image_upstream_test.go#TestGetImageLineExtentReadsTheCellsAnImageLineCovers",
+        "tui/overlay_terminal_image_upstream_test.go#TestLaterOverlayHidesAnImageInsideAnEarlierOverlay",
+        "tui/overlay_terminal_image_upstream_test.go#TestOverlayHidesAnITerm2ImageWhenItCoversRowsAboveItsImageLine",
+        "tui/overlay_terminal_image_upstream_test.go#TestFullscreenOverlayRemovesKittyPlacementsWhileItCoversThem"
+      ],
+      "rationale": "787005a40: new in Pi (sha256 6382f92de2696c2c9d63b26d62853a9d22c69e117d5a5681eb0ab49e07c95e10); the pin's test inventory does not hold it, so this row is its mapping. All nine cases are ported with Pi's inputs and assertions (:34, :62, :83, :116, :140, :161, :171, :194, :221), and each frame's bytes must equal the bytes Pi 787005a40 writes for it."
     },
     {
       "path": "packages/tui/test/program-status.test.ts",
@@ -11258,8 +11586,12 @@
     },
     {
       "path": "packages/tui/test/slice-graphemes.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b98e794f3ce2a7d8750324c79b45969c579d292f2995b3743bc0585d7c61a76f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b98e794f3ce2a7d8750324c79b45969c579d292f2995b3743bc0585d7c61a76f",
+      "evidence": [
+        "tui/components_grapheme_test.go#TestEditorFullWidthInvalidUTF8DoesNotPanic"
+      ],
+      "rationale": "Ported to tui/components_grapheme_test.go."
     },
     {
       "path": "packages/tui/test/stdin-buffer.test.ts",
@@ -11281,8 +11613,15 @@
     },
     {
       "path": "packages/tui/test/suspend-signal.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c578b4520fb76db127663b5805f62456ae8b406d0a00614eecd4c355bb1129de"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c578b4520fb76db127663b5805f62456ae8b406d0a00614eecd4c355bb1129de",
+      "evidence": [
+        "tui/continue_signal_unix_test.go#TestContinueSignalHandlerRunsOnlyWhileStarted",
+        "tui/continue_signal_unix_test.go#TestContinueSignalListenerIsNotAddedTwice",
+        "tui/continue_signal_unix_test.go#TestContinueSignalHandlerSetWhileStartedAppliesAtOnce",
+        "tui/continue_signal_unix_test.go#TestContinueSignalHandlerSetWhileStoppedAddsNoListener"
+      ],
+      "rationale": "e4f50d76: all 4 initial test cases of packages/tui/test/suspend-signal.test.ts adapted 1:1 in tui/continue_signal_unix_test.go against tui.SetContinueSignalHandler on SIGCONT (D661)."
     },
     {
       "path": "packages/tui/test/tab-width.test.ts",

@@ -10,13 +10,7 @@ import {
   createAllToolDefinitions,
   createLocalBashOperations,
   processImage
-<<<<<<<< HEAD:coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-coding-agent/sdk-bundle/chunk-EPHTXC5S.js
-} from "./chunk-2JZ2X7YW.js";
-|||||||| 7a84748fc:coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-coding-agent/sdk-bundle/chunk-O6UG46RA.js
-} from "./chunk-QHFOACPC.js";
-========
 } from "./chunk-W25FOIG4.js";
->>>>>>>> 0afab5e1ae2a608679fb129cfd92655b1cb4b443:coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-coding-agent/sdk-bundle/chunk-OSE7DX4D.js
 import {
   getPiUserAgent
 } from "./chunk-PNTN457B.js";
@@ -7082,20 +7076,6 @@ function sleep(ms, signal) {
   });
 }
 __name(sleep, "sleep");
-function flushStdout() {
-  return new Promise((resolve8) => {
-    const finish = /* @__PURE__ */ __name((error) => {
-      clearTimeout(timer);
-      if (!error)
-        process.stdout.off("error", finish);
-      resolve8();
-    }, "finish");
-    const timer = setTimeout(finish, 1e3);
-    process.stdout.on("error", finish);
-    process.stdout.write("", finish);
-  });
-}
-__name(flushStdout, "flushStdout");
 
 // pi-dist/pi-coding-agent/utils/tool-result-images.js
 async function normalizeToolResultImages(content, options) {
@@ -16861,7 +16841,6 @@ export {
   printHelp,
   parseFrontmatter,
   stripFrontmatter,
-  flushStdout,
   formatNoModelsAvailableMessage,
   createCompactionSummaryMessage,
   createCustomMessage,

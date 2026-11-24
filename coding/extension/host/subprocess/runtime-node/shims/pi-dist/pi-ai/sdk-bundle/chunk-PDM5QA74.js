@@ -9,13 +9,7 @@ import {
   openAICompletionsApi,
   openrouterProvider,
   typesafeSystemOneApi
-<<<<<<<< HEAD:coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-ai/sdk-bundle/chunk-MGRDZIWI.js
-} from "./chunk-VJVCS27P.js";
-|||||||| 7a84748fc:coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-ai/sdk-bundle/chunk-OLE3SQMS.js
-} from "./chunk-KJACVQTG.js";
-========
 } from "./chunk-IFJNNWID.js";
->>>>>>>> 0afab5e1ae2a608679fb129cfd92655b1cb4b443:coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-ai/sdk-bundle/chunk-PDM5QA74.js
 import {
   envApiKeyAuth,
   lazyOAuth

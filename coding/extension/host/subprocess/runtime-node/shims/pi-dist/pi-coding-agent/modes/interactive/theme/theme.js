@@ -714,7 +714,6 @@ export function getThemeExportColors(themeName) {
 let cachedHighlightThemeFor;
 let cachedCliHighlightTheme;
 function buildCliHighlightTheme(t) {
-    // Pi 562da75f9 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
     return {
         default: (s) => t.fg("text", s),
         keyword: (s) => t.fg("syntaxKeyword", s),

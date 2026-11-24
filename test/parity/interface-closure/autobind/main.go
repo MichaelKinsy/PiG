@@ -390,6 +390,7 @@ var libraryEntries = map[string][]string{
 	"durable:./tool-search":               {"./durable/toolsearch"},
 	"durable:./tools":                     {"./durable/tools"},
 	"durable:./images":                    {"./durable/images"},
+	"durable:./images/fit":                {"./durable/images/fit"},
 	"durable:./images/node":               {"./durable/images/node"},
 	"durable:./images/cloudflare":         {"./durable/images/cloudflare"},
 	"durable:./storage/memory":            {"./durable/storage"},

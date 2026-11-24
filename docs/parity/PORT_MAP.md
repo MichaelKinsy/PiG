@@ -477,6 +477,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/modes/interactive/model-search.ts` | `tui/model_search.go (ModelSearchItem, GetModelSearchText, GetModelSelectorSearchText); GetModelSelectorSearchText feeds tui/model_select.go applyFilter over ModelSelectorItem.Name (raw model name), GetModelSearchText feeds tui/scoped_models_list.go refresh and internal/codingagent/interactive_commands.go modelArgCompletions. tui/model_search_test.go proxy-provider fixture (openrouter/vercel-ai-gateway openai/gpt-5 ids) asserts the upstream 0.99.1 fuzzyFilter order for both functions and the selector` | ✅ |
 | `packages/coding-agent/src/modes/print-mode.ts` | `coding/cli/print_mode.go (one function runs text and json, as upstream does; json streams the session event stream as JSONL while the turn runs; text still prints only the final assistant message; the `bind` closure subscribes the JSON writer before it emits session_start, as rebindSession does since Pi 6aab551a79ba (#12232), so what session_start handlers emit is written at startup and after a replacement: TestJSONModeWritesWhatSessionStartEmitsInEverySDK, TestJSONModeWritesSessionStartEventsOfAReplacementInEverySDK, json/13, json/15). Behavioral coverage: print/01-print-mode-arithmetic, json/01-json-mode-streams-events` | ✅ |
 | `packages/coding-agent/src/modes/rpc/rpc-mode.ts` | `coding/cli/rpc_mode.go + coding/cli/rpc_dispatch.go + coding/cli/rpc_admission.go + coding/cli/rpc_json_diagnostic.go + coding/cli/rpc_ui.go` | ✅ |
+| `packages/coding-agent/src/modes/diagnostics-stderr.ts` | `internal/codingagent/diagnostics_stderr.go` | ✅ |
 | `packages/coding-agent/src/modes/rpc/rpc-types.ts` | `coding/cli/rpc_types.go`, `coding/cli/rpc_ui.go`, `coding/rpcclient/types.go` | ✅ |
 | `packages/coding-agent/src/modes/rpc/rpc-client.ts` | `coding/rpcclient/rpc_client.go + coding/rpcclient/commands.go + coding/rpcclient/types.go + coding/rpcclient/process_unix.go + coding/rpcclient/process_windows.go (RpcClient spawns the pig executable in --mode rpc where upstream spawns node cliPath; typed wire structs replace the TypeScript imports, with raw JSON kept for entries, messages, and events). coding/rpcclient/rpc_client_test.go ports rpc-client-clear-queue/clone/process-exit tests against scripted child processes; rpc_mode_test.go ports rpc.test.ts against a pig binary built in TestMain, using test-faux in place of the live Anthropic model` | ✅ |
 | `packages/coding-agent/src/modes/rpc/jsonl.ts` | `coding/rpcclient/jsonl.go (the RPC types of coding/cli and internal/text/quote_utf16 serve its framing)` | ✅ |
@@ -503,7 +504,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/utils/sleep.ts` | `ai/assistant_retry.go (sleepContext is the awaited, context-cancellable backoff used by the Session-owned retry loop; TestRetryAssistantCallAbortsBackoffSleepViaContext covers cancellation before the timer wait)` | ✅ |
 | `packages/coding-agent/src/utils/tools-manager.ts` | `internal/codingagent/tools/tools.go + tools_manager.go (release redirects, fetchWithRetry, extraction per D14, same-manager additive download coalescing per D81, silent grep/find, bounded distinct ToolStatus causes); the interactive-mode consumer of the ToolStatus callback, interactive_tools_status (live owner-thread status, ordered initial reports, joined cancellation); internal/codingagent/tools/tools_manager_upstream_test.go + tools_manager_latest_test.go + tools_manager_status_test.go + the interactive_tools_status tests + tools/12-managed-tool-status; Linux musl asset selection and the pinned darwin/x64 fd lookup bypass ported` | ✅ |
 | `packages/coding-agent/src/utils/version-check.ts` | `internal/codingagent/selfupdate.go (FetchUpdateManifest is getLatestPiRelease over the configured signed manifest of D39 instead of the pi.dev API, with Retry for the explicit check, the ten-second budget, and the identity and accept headers; CheckForBinaryUpdate is checkForNewPiVersion with PI_SKIP_VERSION_CHECK; ComparePackageVersions and IsNewerPackageVersion follow node-semver valid() with the non-semver string-inequality fallback; formatVersionCheckError is folded into the D39 update-failure message); tests in internal/codingagent/version_check_upstream_test.go` | ✅ |
-| `packages/coding-agent/src/utils/deprecation.ts` | `(designed out: the pinned upstream helper has no imports or callers; Go warning sites retain their caller-specific output policy)` | n/a |
+| `packages/coding-agent/src/utils/flush-stdout.ts` | `(designed out: Go stdout writes flush synchronously via the OS without a Node drain timer; exit cleanup uses tui/terminal_exit_restore.go and coding/cli/startup_picker_exit_bytes_linux_test.go)` | n/a |
 | `packages/coding-agent/src/utils/image-resize-core.ts` | `internal/imageprocessing/images.go` | ✅ |
 | `packages/coding-agent/src/utils/image-resize-worker.ts` | `(Node worker thread: Go uses goroutines in-process; Pi 1.5.2 tags worker replies and ignores Node's own channel messages under node --watch (#10527), which has no counterpart because Go resizes with no worker message channel)` | n/a |
 | `packages/coding-agent/src/utils/json.ts` | `internal/codingagent/model_registry.go (stripJSONComments; strip_json_comments_oracle_test.go)` | ✅ |
@@ -794,6 +795,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/state/native-source.ts` | `chord/next/state/native_source.go` | ✅ |
 | `packages/chord/src/state/watchable.ts` | `chord/next/state/watchable.go, chord/next/state/set.go` | ✅ |
 | `packages/chord/src/state/writable.ts` | `chord/next/state/writable.go` | ✅ |
+| `packages/chord/src/state/framed.ts` | `chord/next/state/framed.go` | ✅ |
 | `packages/chord/src/node/compression.ts` | `chord/nextnode/compression.go` | ✅ |
 | `packages/chord/src/link/binary.ts` | `chord/next/link/binary.go` | ✅ |
 | `packages/chord/src/link/channel.ts` | `chord/next/link/channel.go` | ✅ |
@@ -830,6 +832,13 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/store/jsonl.ts` | `chord/next/store/jsonl.go` | ✅ |
 | `packages/chord/src/store/catalog.ts` | `chord/next/store/catalog.go` | ✅ |
 | `packages/chord/src/store/expression.ts` | `chord/next/store/expression.go` | ✅ |
+| `packages/chord/src/store/column-set.ts` | `chord/next/store/column_set.go` | ✅ |
+| `packages/chord/src/store/open-query.ts` | `chord/next/store/open_query.go` | ✅ |
+| `packages/chord/src/store/page.ts` | `chord/next/store/page.go` | ✅ |
+| `packages/chord/src/store/read-plan.ts` | `chord/next/store/read_plan.go` | ✅ |
+| `packages/chord/src/store/read.ts` | `chord/next/store/read.go` | ✅ |
+| `packages/chord/src/store/reads.ts` | `chord/next/store/reads.go` | ✅ |
+| `packages/chord/src/store/skip.ts` | `chord/next/store/skip.go` | ✅ |
 | `packages/chord/src/store/evaluate.ts` | `chord/next/store/evaluate.go` | ✅ |
 | `packages/chord/src/store/query.ts` | `chord/next/store/query.go`, `chord/next/store/expression.go` | ✅ |
 | `packages/chord/src/store/table.ts` | `chord/next/store/table.go` | ✅ |
@@ -968,12 +977,21 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/host/readiness.ts` | `chord/next/host/host_readiness.go` | ✅ |
 | `packages/chord/src/host/reload-cycle.ts` | `chord/next/host/host_reload_cycle.go` | ✅ |
 | `packages/chord/src/host/unbound-clock.ts` | `chord/next/host/host_unbound_clock.go` | ✅ |
+| `packages/chord/src/host/admission.ts` | `chord/next/host/host_admission.go` | ✅ |
+| `packages/chord/src/host/events.ts` | `chord/next/host/host_events.go` | ✅ |
+| `packages/chord/src/host/list.ts` | `chord/next/host/host_list.go` | ✅ |
+| `packages/chord/src/host/named-query.ts` | `chord/next/host/host_named_query.go` | ✅ |
+| `packages/chord/src/host/query-reader.ts` | `chord/next/host/host_query_reader.go` | ✅ |
+| `packages/chord/src/host/read-declarations.ts` | `chord/next/host/host_read_declarations.go` | ✅ |
+| `packages/chord/src/host/reference-events.ts` | `chord/next/host/host_reference_events.go` | ✅ |
+| `packages/chord/src/host/route-admission.ts` | `chord/next/host/host_route_admission.go` | ✅ |
+| `packages/chord/src/host/tiling.ts` | `chord/next/host/host_tiling.go` | ✅ |
 | `packages/chord/src/node/app/app.ts` | `chord/nextnode/app/app.go, chord/nextnode/app/app_bases.go (App.BasesBuilt and App.BaseWatched), chord/nextnode/plugins/node/host.mjs (exportHostData, importHostData, deleteHostData control requests; their Go side is a pig divergence with no Pi file, D462); Pi 22fe46c7b: AppWeb's fields are unchanged (chord/nextnode/app/app_surfaces.go); Pi 7ae9ff8c7: the ingest facet takes Admit, which the app answers true for every link (chord/nextnode/app/app.go)`; Pi f57cd9484: the server's store is the workers' (app_workers_store_test.go) | ✅ |
 | `packages/chord/src/node/app/archive.ts` | `chord/nextnode/app/archive.go` | ✅ |
 | `packages/chord/src/node/app/blobs.ts` | `chord/nextnode/app/blobs.go` | ✅ |
 | `packages/chord/src/node/app/data.ts` | `chord/nextnode/app/data.go, host_data.mjs` | ✅ |
-| `packages/chord/src/node/app/ephemeral-sessions.ts` | `chord/nextnode/app/ephemeral_sign_ins.go` Sign-ins at ff7414d51: Pi's file is ephemeral-sign-ins.ts from that commit (this row's path is the pin's) | ✅ |
 | `packages/chord/src/node/app/ephemeral.ts` | `chord/nextnode/app/ephemeral.go` | ✅ |
+| `packages/chord/src/node/app/ephemeral-sign-ins.ts` | `chord/nextnode/app/ephemeral_sign_ins.go` | ✅ |
 | `packages/chord/src/node/app/files-copy.ts` | `chord/nextnode/app/files_copy.go` | ✅ |
 | `packages/chord/src/node/app/files-entry.ts` | `(barrel: Go imports the package; the files-entry exports are FilesFacet, Files, FilesFolder, CopyFiles, PrivateDirectory, PrivateStore and the types)` | n/a |
 | `packages/chord/src/node/app/files-index.ts` | `chord/nextnode/app/files_index.go` | ✅ |
@@ -986,7 +1004,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/app/owner.ts` | `chord/nextnode/app/owner.go` | ✅ |
 | `packages/chord/src/node/app/pairing.ts` | `chord/nextnode/app/pairing.go` | ✅ |
 | `packages/chord/src/node/app/secrets.ts` | `chord/nextnode/app/secrets.go` | ✅ |
-| `packages/chord/src/node/app/sessions.ts` | `chord/nextnode/app/sign_ins.go` Sign-ins at ff7414d51: Pi's file is sign-ins.ts from that commit (this row's path is the pin's) | ✅ |
+| `packages/chord/src/node/app/sign-ins.ts` | `chord/nextnode/app/sign_ins.go` | ✅ |
 | `packages/chord/src/node/app/tar.ts` | `chord/nextnode/app/tar.go` | ✅ |
 | `packages/chord/src/node/app/uploads.ts` | `chord/nextnode/app/uploads.go (Accept is the synchronous half of Pi's append, D430)` | ✅ |
 | `packages/chord/src/node/app/users.ts` | `chord/nextnode/app/users.go` | ✅ |
@@ -998,6 +1016,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/surfaces/current.ts` | `chord/nextnode/surfaces/surfaces_current.go` | ✅ |
 | `packages/chord/src/node/surfaces/surface-build.ts` | `chord/nextnode/surfaces/surfaces_build.go; Pi 53af02378: surfaceBuildOptions.resolution` | ✅ |
 | `packages/chord/src/node/surfaces/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
+| `packages/chord/src/surfaces/variant.ts` | `chord/next/surfaces/surfaces_variant.go` | ✅ |
 | `packages/chord/src/node/surfaces/published.ts` | `chord/nextnode/surfaces/surfaces_published.go` (PublishedScripts: set retention, build-failure carry-over, digests, source maps, assets and the rollout Step; chord/nextnode/surfaces/surfaces_published_test.go) | ✅ |
 | `packages/chord/src/node/surfaces/served.ts` | `chord/nextnode/surfaces/surfaces_served.go; Pi da44c4df3: AssetExtensions` | ✅ |
 | `packages/chord/src/node/surfaces/tui.ts` | `chord/nextnode/surfaces/surfaces_tui.go; Pi 53af02378: TuiSurfaceOptions.Tsconfig` | ✅ |
@@ -1183,10 +1202,13 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/codemode/models.ts` | `durable/codemode/models.go` | ✅ |
 | `packages/durable/src/codemode/output.ts` | `durable/codemode/output.go (saveImages decodes with tools.FromBase64, Pi 76c79d8bbe)` | ✅ |
 | `packages/durable/src/images/node-worker.ts` | `durable/images/node/node.go` (the worker goroutine; tests in durable/images/node/worker_test.go) | ✅ |
+| `packages/durable/src/images/fit.ts` | `durable/images/fit/fit.go` | ✅ |
 | `packages/durable/src/search.ts` | `durable/internal/search/search.go` (tests in durable/internal/search/search_test.go) | ✅ |
+| `packages/durable/src/signals.ts` | `durable/signals.go` | ✅ |
 | `packages/durable/src/tool-search/index.ts` | `(barrel re-exports; Go has no barrel exports)` | n/a |
 | `packages/durable/src/tool-search/tool-search.ts` | `durable/toolsearch/` | ✅ |
 | `packages/durable/src/harness/telemetry.ts` | `durable/harness/telemetry.go`; the Durable core's use of the vocabulary: `durable/core/telemetry.go` (notices), `durable/core/session/telemetry.go` (phase spans, metrics), `durable/core/host/cf/src/facade/telemetry.ts` (spans and metrics in the TypeScript host) | ✅ |
+| `packages/durable/src/harness/parks.ts` | `durable/harness/parks.go` | ✅ |
 
 ## `packages/env/src/`
 
