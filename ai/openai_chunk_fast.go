@@ -28,6 +28,9 @@ type openAIChunkDecoder struct {
 	// parsesAsValue is validJSONParsesAsValue of the record the last decode read: false when it holds a number with an exponent or of more
 	// than 300 characters. A record the decode reads is valid JSON, so this stands in for the provider event observer's own scan.
 	parsesAsValue bool
+	// allChoicesHaveFinishReason is true when every choice in the decoded record already carried a finish_reason member
+	// (or choices was absent/empty), so openai 7.59.0's normalizeChatCompletionStream is a no-op for the record.
+	allChoicesHaveFinishReason bool
 }
 
 //perf:hot
@@ -132,6 +135,7 @@ func (d *openAIChunkDecoder) decode(data string) (oaiChunk, bool) {
 		chunk.Model = d.model
 	}
 	d.parsesAsValue = !p.inexact
+	d.allChoicesHaveFinishReason = !p.missingFinishReason
 	return chunk, true
 }
 
@@ -198,6 +202,7 @@ func (p *chunkScanner) choice() (oaiChunkChoice, bool) {
 	var seen [3]bool
 	p.ws()
 	if p.byte('}') {
+		p.missingFinishReason = true
 		return choice, true
 	}
 	for {
@@ -263,7 +268,13 @@ func (p *chunkScanner) choice() (oaiChunkChoice, bool) {
 		if p.byte(',') {
 			continue
 		}
-		return choice, p.byte('}')
+		if !p.byte('}') {
+			return choice, false
+		}
+		if !seen[1] {
+			p.missingFinishReason = true
+		}
+		return choice, true
 	}
 }
 
@@ -354,6 +365,8 @@ type chunkScanner struct {
 	arena *openAIChunkDecoder
 	// inexact marks a number with an exponent or of more than 300 characters, which may overflow a float64.
 	inexact bool
+	// missingFinishReason marks a decoded choice that omitted finish_reason.
+	missingFinishReason bool
 }
 
 func (p *chunkScanner) peek() byte {

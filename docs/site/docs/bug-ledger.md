@@ -2043,12 +2043,14 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d636592](#bf-d636592) | Interactive mode: the terminal stays live after `/name <name>` while an extension's `session_info_changed`… | PiG's own defect | All platforms | Unreleased |
 | [BF-d6464d3](#bf-d6464d3) | Chord: a plugin update's retry that a newer set replaced is cancelled even when the newer set arrives while… | PiG's own defect | All platforms | Unreleased |
 | [BF-d64f8ed](#bf-d64f8ed) | `durable.StorageRequestError` and `durable.SessionFailed` are Pi's error classes of the same names… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-d65dffb](#bf-d65dffb) | fix(ai): port openai 7.59.0 normalizeChatCompletionStream | PiG's own defect | All platforms | Unreleased |
 | [BF-d6613f8](#bf-d6613f8) | A tool call whose arguments were cut inside a surrogate pair (the codemode card cuts a call's arguments at 77… | PiG's own defect | All platforms | Unreleased |
 | [BF-d6aaf72](#bf-d6aaf72) | A `setTimeout(0)` or `setImmediate` callback that an extension queues while an RPC stdin command runs (a… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-d6e0dca](#bf-d6e0dca) | The extension SDK surface matrix and the extension API pages say that `setEditorComponent` and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d71c4e2](#bf-d71c4e2) | Lower- and upper-casing in `tui`, `internal/codingagent` and `internal/nodespawn` keeps a lone UTF-16… | PiG's own defect | Windows | 0.7.0 |
 | [BF-d71c4e2-2](#bf-d71c4e2-2) | A glob filter, model scope or other `internal/minimatch` pattern with a numeric brace range beyond 2^53… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-d73376b](#bf-d73376b) | fix: closing a registry's model tasks joins the native Models collection's own refresh and auth work | PiG's own defect | All platforms | Unreleased |
+| [BF-d76d2a7](#bf-d76d2a7) | fix(ai): port openai 7.59.0 buildURL query and fragment handling | PiG's own defect | All platforms | Unreleased |
 | [BF-d777d4b](#bf-d777d4b) | fix(interactive): SIGTERM and SIGHUP at the stopped TUI of a pending quit end pig at once | PiG's own defect | All platforms | Unreleased |
 | [BF-d7855fd](#bf-d7855fd) | A subprocess extension's message, entry or tool renderer, or tool renderer resolver, that was busy past the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d7bfea6](#bf-d7bfea6) | A git source whose ref has no repository (`git:#v1`) no longer panics, and a ref split out of an opaque-path… | PiG's own defect | All platforms | 0.5.0 |
@@ -30569,6 +30571,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/anthropic_microtask_trace_test.go::TestAnthropicMicrotaskTrace`, `ai/credential_expiry_test.go::TestCredentialExpiryMatchesPi`, `ai/zen_upstream_test.go::TestOpenCodeModelsSmokeUpstream`, `durable/core/driver/remote_errors_session_test.go::TestCoreErrorMatchesStorageRequestErrorAndSessionFailed`, `durable/errors_session_failed_test.go::TestStorageRequestErrorAndSessionFailedMatchErrorsTS`, `durable/storage/storage_request_error_test.go::TestMemoryStorageReadsRejectInvalidRequestsWithStorageRequestError`, `test/parity/runner/binaries_missing_test.go::TestResolveUpstreamPiBinNeverFallsBackToAMiseInstallWithoutOptIn`
 - **Release note:** `durable.StorageRequestError` and `durable.SessionFailed` are Pi's error classes of the same names (`errors.ts`). The built-in storages return a `StorageRequestError` for a read of an unknown conversation, a document without retained history, or a cursor or scan order they did not write; the driver matches both names in a remote error.
 
+### BF-d65dffb
+
+**fix(ai): port openai 7.59.0 normalizeChatCompletionStream**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(ai): port openai 7.59.0 normalizeChatCompletionStream
+- **Root cause:** Ports openai 7.59.0's normalizeChatCompletionStream wrapper (lib/chat-completions/streaming.mjs:1-22, installed by resources/chat/completions/completions.mjs:79-85) for openai-completions streams while leaving Stream.fromSSEResponse / responses.create unchanged:
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d65dffb350` (2026-11-23)
+- **Tests:** `ai/openai_chat_completion_normalize_test.go::TestNormalizeOpenAIChatCompletionChunkEventZeroAllocFastPath`, `ai/openai_stream_sdk719_ticks_test.go::TestOpenAIChatCompletionsNormalizeWrapperTicks`, `ai/provider_stream_events_upstream_test.go::TestProviderStreamEventsUpstream`
+
 ### BF-d6613f8
 
 **A tool call whose arguments were cut inside a surrogate pair (the codemode card cuts a call's arguments at 77…**
@@ -30651,6 +30666,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `d73376b814` (2026-11-11)
 - **Tests:** `ai/models_runtime_drain_test.go::TestModelsDrainJoinsAbandonedRefreshButNotLogin`, `internal/codingagent/model_picker_parity_test.go::TestModelPickerGeminiAuthAndCatalog`, `internal/codingagent/model_selector_native_refresh_owned_test.go::TestModelSelectorNativeProviderRefreshDoesNotOutliveShutdown`
+
+### BF-d76d2a7
+
+**fix(ai): port openai 7.59.0 buildURL query and fragment handling**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(ai): port openai 7.59.0 buildURL query and fragment handling
+- **Root cause:** Splits openaiBuildURL / openaiBuildURLWithDefaultQuery from sdkBuildURL (which remains on @anthropic-ai/sdk 0.129.0 buildURL at client.mjs:386-400 so Anthropic does not regress).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d76d2a7698` (2026-11-23)
+- **Tests:** `ai/azure_request_url_oracle_test.go::TestAzureResponsesRequestURLMatchesSDK`, `ai/azure_request_url_test.go::TestAzureResponsesRequestURL`, `ai/azure_request_url_test.go::TestOpenAIBuildURLRepeatedBaseParamsAndAnthropicIsolation`
 
 ### BF-d777d4b
 

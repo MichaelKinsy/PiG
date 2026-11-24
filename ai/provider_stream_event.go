@@ -66,8 +66,33 @@ func (builder *assistantStreamBuilder) observeValidProviderEvent(text string) er
 	return builder.observeProviderEventJSON([]byte(text))
 }
 
-// observeDecodedProviderEvent is observeValidProviderEvent for a wire event whose decode already answered validJSONParsesAsValue of its text as parsesAsValue, so an unwanted observer skips it without a scan.
-func (builder *assistantStreamBuilder) observeDecodedProviderEvent(text string, parsesAsValue bool) error {
+func (builder *assistantStreamBuilder) observeProviderEventJSON(raw []byte) error {
+	var data any
+	if err := json.Unmarshal(raw, &data); err != nil {
+		return err
+	}
+	return builder.observeProviderEventData(data)
+}
+
+// observeOpenAICompletionsProviderEvent is observeValidProviderEvent for openai-completions,
+// normalizing choices[].finish_reason to null when absent to match openai 7.59.0
+// normalizeChatCompletionStream (lib/chat-completions/streaming.mjs:1-22).
+func (builder *assistantStreamBuilder) observeOpenAICompletionsProviderEvent(text string) error {
+	if builder.providerEvent == nil {
+		builder.awaitProviderEvent()
+		return nil
+	}
+	if builder.providerEventWanted != nil && validJSONParsesAsValue(text) && !builder.awaitProviderEventUnlessWanted() {
+		return nil
+	}
+	builder.settleDeferred()
+	return builder.observeOpenAICompletionsProviderEventJSON([]byte(text))
+}
+
+// observeDecodedOpenAICompletionsProviderEvent is observeDecodedProviderEvent for openai-completions.
+// When allChoicesHaveFinishReason is true, the fast chunk decoder already proved every choice carries
+// finish_reason (or choices is absent/empty), so no normalization pass is needed.
+func (builder *assistantStreamBuilder) observeDecodedOpenAICompletionsProviderEvent(text string, parsesAsValue, allChoicesHaveFinishReason bool) error {
 	if builder.providerEvent == nil {
 		builder.awaitProviderEvent()
 		return nil
@@ -76,15 +101,43 @@ func (builder *assistantStreamBuilder) observeDecodedProviderEvent(text string, 
 		return nil
 	}
 	builder.settleDeferred()
-	return builder.observeProviderEventJSON([]byte(text))
+	if allChoicesHaveFinishReason {
+		return builder.observeProviderEventJSON([]byte(text))
+	}
+	return builder.observeOpenAICompletionsProviderEventJSON([]byte(text))
 }
 
-func (builder *assistantStreamBuilder) observeProviderEventJSON(raw []byte) error {
+func (builder *assistantStreamBuilder) observeOpenAICompletionsProviderEventJSON(raw []byte) error {
 	var data any
 	if err := json.Unmarshal(raw, &data); err != nil {
 		return err
 	}
+	normalizeOpenAIChatCompletionChunkEvent(data)
 	return builder.observeProviderEventData(data)
+}
+
+// normalizeOpenAIChatCompletionChunkEvent mirrors openai 7.59.0 normalizeChatCompletionChunk
+// (lib/chat-completions/streaming.mjs:1-11) in place on a decoded JSON value: when chunk.choices
+// is an array, every object choice lacking a finish_reason key gets finish_reason: nil.
+// Zero allocations when every choice already carries finish_reason or choices is absent/empty/non-array.
+func normalizeOpenAIChatCompletionChunkEvent(data any) {
+	chunk, ok := data.(map[string]any)
+	if !ok {
+		return
+	}
+	choices, ok := chunk["choices"].([]any)
+	if !ok || len(choices) == 0 {
+		return
+	}
+	for _, item := range choices {
+		choice, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		if _, present := choice["finish_reason"]; !present {
+			choice["finish_reason"] = nil
+		}
+	}
 }
 
 // jsonParsesAsValue reports that json.Unmarshal of raw into an any succeeds. A false answer only means it is not certain: raw is not valid JSON, or it holds a number with an exponent or of more than 300 characters, which may overflow a float64.

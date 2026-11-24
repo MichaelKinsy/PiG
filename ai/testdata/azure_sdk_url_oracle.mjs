@@ -1,4 +1,4 @@
-// Probe the pinned openai SDK (7.19.0) AzureOpenAI client's request URL for Azure Responses, matching Pi's createClient (azure-openai-responses.ts:154-171) + resolveAzureConfig (azure-openai-config.ts:72-107).
+// Probe the pinned openai SDK (7.59.0) AzureOpenAI client's request URL for Azure Responses, matching Pi's createClient (azure-openai-responses.ts:154-171) + resolveAzureConfig (azure-openai-config.ts:72-107).
 // Input (stdin): [{baseURL, apiVersion, resolve, resourceName, envBaseURL, modelBaseURL}]
 //   - If resolve is true, runs Pi's normalizeAzureBaseUrl / resolveAzureBaseUrl logic (as in azure-openai-config.ts) first, then passes the resolved baseUrl and apiVersion to new AzureOpenAI({ apiKey, apiVersion, dangerouslyAllowBrowser: true, fetch, baseURL }).
 //   - Otherwise passes baseURL and apiVersion directly to new AzureOpenAI(...).

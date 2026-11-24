@@ -1721,7 +1721,7 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	endpointURL := strings.TrimRight(baseURL, "/")
 	if !p.cfg.BaseURLIsEndpoint && !p.cfg.Codex {
 		var err error
-		if endpointURL, err = sdkBuildURL(baseURL, "/responses"); err != nil {
+		if endpointURL, err = openaiBuildURL(baseURL, "/responses"); err != nil {
 			return nil, err
 		}
 	} else if !p.cfg.BaseURLIsEndpoint {

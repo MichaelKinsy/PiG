@@ -55930,6 +55930,29 @@
       ]
     },
     {
+      "id": "BF-d65dffb",
+      "title": "fix(ai): port openai 7.59.0 normalizeChatCompletionStream",
+      "symptom": "fix(ai): port openai 7.59.0 normalizeChatCompletionStream",
+      "rootCause": "Ports openai 7.59.0's normalizeChatCompletionStream wrapper (lib/chat-completions/streaming.mjs:1-22, installed by resources/chat/completions/completions.mjs:79-85) for openai-completions streams while leaving Stream.fromSSEResponse / responses.create unchanged:",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "d65dffb350",
+          "date": "2026-11-23"
+        }
+      ],
+      "tests": [
+        "ai/openai_chat_completion_normalize_test.go::TestNormalizeOpenAIChatCompletionChunkEventZeroAllocFastPath",
+        "ai/openai_stream_sdk719_ticks_test.go::TestOpenAIChatCompletionsNormalizeWrapperTicks",
+        "ai/provider_stream_events_upstream_test.go::TestProviderStreamEventsUpstream"
+      ]
+    },
+    {
       "id": "BF-d6613f8",
       "title": "A tool call whose arguments were cut inside a surrogate pair (the codemode card cuts a call's arguments at 77…",
       "symptom": "A tool call whose arguments were cut inside a surrogate pair (the codemode card cuts a call's arguments at 77 UTF-16 units) no longer crashes the main screen with `Rendered line N exceeds terminal width`.",
@@ -56091,6 +56114,29 @@
         "ai/models_runtime_drain_test.go::TestModelsDrainJoinsAbandonedRefreshButNotLogin",
         "internal/codingagent/model_picker_parity_test.go::TestModelPickerGeminiAuthAndCatalog",
         "internal/codingagent/model_selector_native_refresh_owned_test.go::TestModelSelectorNativeProviderRefreshDoesNotOutliveShutdown"
+      ]
+    },
+    {
+      "id": "BF-d76d2a7",
+      "title": "fix(ai): port openai 7.59.0 buildURL query and fragment handling",
+      "symptom": "fix(ai): port openai 7.59.0 buildURL query and fragment handling",
+      "rootCause": "Splits openaiBuildURL / openaiBuildURLWithDefaultQuery from sdkBuildURL (which remains on @anthropic-ai/sdk 0.129.0 buildURL at client.mjs:386-400 so Anthropic does not regress).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "d76d2a7698",
+          "date": "2026-11-23"
+        }
+      ],
+      "tests": [
+        "ai/azure_request_url_oracle_test.go::TestAzureResponsesRequestURLMatchesSDK",
+        "ai/azure_request_url_test.go::TestAzureResponsesRequestURL",
+        "ai/azure_request_url_test.go::TestOpenAIBuildURLRepeatedBaseParamsAndAnthropicIsolation"
       ]
     },
     {

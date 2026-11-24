@@ -1852,7 +1852,7 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 	}
 	checkRequestSegments(ctx, APIOpenAICompletions, body)
 
-	endpoint, err := sdkBuildURL(baseURL, "/chat/completions")
+	endpoint, err := openaiBuildURL(baseURL, "/chat/completions")
 	if err != nil {
 		return nil, err
 	}
@@ -2085,6 +2085,7 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 	// below touches the builder.
 	decoder := newOpenAIStreamDecoder(r, builder.publishPending, suspend)
 	decoder.decodeChunks()
+	decoder.wrapNormalizeChatCompletionStream()
 	for decoder.Next() {
 		data := decoder.Event().Data
 
@@ -2115,9 +2116,9 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 		// and answered validJSONParsesAsValue for it.
 		var observeErr error
 		if decodedFast {
-			observeErr = builder.observeDecodedProviderEvent(data, decoder.ChunkParsesAsValue())
+			observeErr = builder.observeDecodedOpenAICompletionsProviderEvent(data, decoder.ChunkParsesAsValue(), decoder.ChunkHasAllFinishReasons())
 		} else {
-			observeErr = builder.observeValidProviderEvent(data)
+			observeErr = builder.observeOpenAICompletionsProviderEvent(data)
 		}
 		if observeErr != nil {
 			fail(StopReasonError, observeErr)
