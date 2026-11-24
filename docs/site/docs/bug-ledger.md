@@ -1517,6 +1517,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9740507-3](#bf-9740507-3) | `pig extension upgrade` is all or nothing | PiG's own defect | All platforms | 0.5.0 |
 | [BF-976af87](#bf-976af87) | The documentation said PiG starts without a first-time setup screen and that Stock PiG has no built-in sprites | PiG's own defect | All platforms | 0.5.0 |
 | [BF-97cd675](#bf-97cd675) | fix(agent): nested records keep a message whatever the spelling of its numbers | PiG's own defect | All platforms | Unreleased |
+| [BF-97d1dfe](#bf-97d1dfe) | A subprocess `before_provider_headers` extension handler can no longer race the agent loop's continuation… | PiG's own defect | All platforms | Unreleased |
 | [BF-97e178f](#bf-97e178f) | Tool-call arguments that arrive as incomplete or malformed JSON are now recovered exactly as Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-983d651](#bf-983d651) | The bash truncation notice for a last line over 50 KB that ends with a newline reports the line's size… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9841da6](#bf-9841da6) | A shutdown that reaches an extension after it registered and before the host marked it ready now ends its run… | PiG's own defect | All platforms | 0.7.0 |
@@ -23238,6 +23239,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `97cd6750b8` (2026-10-10)
 - **Tests:** `agent/message_number_test.go::TestDecodedMessageKeepsNumbersInAnySpelling`, `agent/message_number_test.go::TestDecodedMessageOwnsItsSourceText`, `test/parity/scenarios/rpc/57-rpc-session-number-spelling.toml`
+
+### BF-97d1dfe
+
+**A subprocess `before_provider_headers` extension handler can no longer race the agent loop's continuation…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A subprocess `before_provider_headers` extension handler can no longer race the agent loop's continuation turn when `ModelRuntime.Stream` or `StreamSimple` starts request preparation while the agent turn is still active: previously the spawned request-preparation goroutine could receive the agent loop's `StreamObservation` from `StreamObservationFromContext` and detach its coroutine concurrently with `Yield`, dropping the injected headers with an `iter.Pull` handler panic, crashing `Session.Send`, or permanently deadlocking the turn.
+- **Root cause:** StreamObservationFromContext, callbackObservation, and activeProducer returned the executor's active StreamObservation without checking observation.ownedByCaller(), so a spawned ModelRuntime.start goroutine inheriting the executor via ObservationContext grabbed and detached the agent loop's active continuationTurn concurrently with the owner's Yield.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `97d1dfec0e` (2026-11-23)
+- **Tests:** `ai/stream_observation_owner_test.go::TestForeignGoroutineAwaitExternalDoesNotRaceOrDeadlockOwner`, `ai/stream_observation_owner_test.go::TestForeignGoroutineDataRaceOnDeferred`, `ai/stream_observation_owner_test.go::TestStreamObservationFromContextReturnsNilToForeignGoroutine`, `ai/stream_observation_owner_test.go::TestStreamObservationFromContextReturnsNilToForeignGoroutineDuringProducerTurn`, `coding/session_provider_headers_foreign_observation_test.go::TestBeforeProviderHeadersForeignGoroutineKeepsInjectedHeaderAndNeverRaces`
+- **Release note:** A subprocess `before_provider_headers` extension handler can no longer race the agent loop's continuation turn when `ModelRuntime.Stream` or `StreamSimple` starts request preparation while the agent turn is still active: previously the spawned request-preparation goroutine could receive the agent loop's `StreamObservation` from `StreamObservationFromContext` and detach its coroutine concurrently with `Yield`, dropping the injected headers with an `iter.Pull` handler panic, crashing `Session.Send`, or permanently deadlocking the turn. `StreamObservationFromContext` now requires the calling goroutine to own the active observation (matching `AssistantMessageEventStream.ResultContext`), returning `nil` to any other goroutine so it runs its wait directly.
 
 ### BF-97e178f
 

@@ -40577,6 +40577,32 @@
       ]
     },
     {
+      "id": "BF-97d1dfe",
+      "title": "A subprocess `before_provider_headers` extension handler can no longer race the agent loop's continuation…",
+      "symptom": "A subprocess `before_provider_headers` extension handler can no longer race the agent loop's continuation turn when `ModelRuntime.Stream` or `StreamSimple` starts request preparation while the agent turn is still active: previously the spawned request-preparation goroutine could receive the agent loop's `StreamObservation` from `StreamObservationFromContext` and detach its coroutine concurrently with `Yield`, dropping the injected headers with an `iter.Pull` handler panic, crashing `Session.Send`, or permanently deadlocking the turn.",
+      "rootCause": "StreamObservationFromContext, callbackObservation, and activeProducer returned the executor's active StreamObservation without checking observation.ownedByCaller(), so a spawned ModelRuntime.start goroutine inheriting the executor via ObservationContext grabbed and detached the agent loop's active continuationTurn concurrently with the owner's Yield.",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A subprocess `before_provider_headers` extension handler can no longer race the agent loop's continuation turn when `ModelRuntime.Stream` or `StreamSimple` starts request preparation while the agent turn is still active: previously the spawned request-preparation goroutine could receive the agent loop's `StreamObservation` from `StreamObservationFromContext` and detach its coroutine concurrently with `Yield`, dropping the injected headers with an `iter.Pull` handler panic, crashing `Session.Send`, or permanently deadlocking the turn. `StreamObservationFromContext` now requires the calling goroutine to own the active observation (matching `AssistantMessageEventStream.ResultContext`), returning `nil` to any other goroutine so it runs its wait directly.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "97d1dfec0e",
+          "date": "2026-11-23"
+        }
+      ],
+      "tests": [
+        "ai/stream_observation_owner_test.go::TestForeignGoroutineAwaitExternalDoesNotRaceOrDeadlockOwner",
+        "ai/stream_observation_owner_test.go::TestForeignGoroutineDataRaceOnDeferred",
+        "ai/stream_observation_owner_test.go::TestStreamObservationFromContextReturnsNilToForeignGoroutine",
+        "ai/stream_observation_owner_test.go::TestStreamObservationFromContextReturnsNilToForeignGoroutineDuringProducerTurn",
+        "coding/session_provider_headers_foreign_observation_test.go::TestBeforeProviderHeadersForeignGoroutineKeepsInjectedHeaderAndNeverRaces"
+      ]
+    },
+    {
       "id": "BF-97e178f",
       "title": "Tool-call arguments that arrive as incomplete or malformed JSON are now recovered exactly as Pi's…",
       "symptom": "Tool-call arguments that arrive as incomplete or malformed JSON are now recovered exactly as Pi's partial-json parser recovers them.",
