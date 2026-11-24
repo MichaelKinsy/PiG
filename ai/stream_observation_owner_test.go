@@ -61,11 +61,12 @@ func TestStreamObservationFromContextReturnsNilToForeignGoroutine(t *testing.T) 
 // TestForeignGoroutineAwaitExternalDoesNotRaceOrDeadlockOwner reproduces the exact interleaving seen
 // between the agent loop (RunStreamContinuation -> Yield -> ObservePublishedEvents) and a spawned
 // ModelRuntime.start goroutine (StreamObservationFromContext -> AwaitExternal):
-//   1. The foreign goroutine calls StreamObservationFromContext while the owner still holds its turn.
-//   2. The owner runs Yield and parks in ObservePublishedEvents waiting for the first stream event
-//      (synchronized deterministically via executor.trace.pause — zero sleeps).
-//   3. The foreign goroutine runs AwaitExternal if StreamObservationFromContext returned an observation,
-//      then pushes Start and Done onto the stream.
+//  1. The foreign goroutine calls StreamObservationFromContext while the owner still holds its turn.
+//  2. The owner runs Yield and parks in ObservePublishedEvents waiting for the first stream event
+//     (synchronized deterministically via executor.trace.pause — zero sleeps).
+//  3. The foreign goroutine runs AwaitExternal if StreamObservationFromContext returned an observation,
+//     then pushes Start and Done onto the stream.
+//
 // On the unfixed base:
 //   - under -race: races on continuationTurn.deferred (settleDeferred vs awaitResolvedThen) and deadlocks
 //     sending stepDetach on racePull's unbuffered events channel;
