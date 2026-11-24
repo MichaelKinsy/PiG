@@ -1,4 +1,4 @@
-// Azure OpenAI Responses microtask-tick probe. Pi 1.5.2 / OpenAI 7.19.0.
+// Azure OpenAI Responses microtask-tick probe. Pi 1.5.2 / OpenAI 7.59.0.
 // Usage: node ticks.mjs <ticks.json>
 //
 // Drives the real Pi provider (packages/ai/src/api/azure-openai-responses.ts) and, for the runtime path, the real
@@ -28,7 +28,7 @@ import { join } from 'node:path';
 
 const root = process.env.PI_PACKAGE_ROOT;
 const base = root + '/node_modules/@earendil-works/';
-for (const [path, version] of [[root, PI_PACKAGE_VERSION], [base + 'pi-ai', PI_PACKAGE_VERSION], [base + 'pi-agent-core', PI_PACKAGE_VERSION], [base + '../openai', '7.19.0']]) {
+for (const [path, version] of [[root, PI_PACKAGE_VERSION], [base + 'pi-ai', PI_PACKAGE_VERSION], [base + 'pi-agent-core', PI_PACKAGE_VERSION], [base + '../openai', '7.59.0']]) {
   assert.equal(JSON.parse(await readFile(path + '/package.json', 'utf8')).version, version);
 }
 const GAP_CAP = 64;
@@ -110,4 +110,4 @@ for (const layers of axes.layers) for (const shape of axes.shapes) for (const fi
   results.push(r);
   console.log(JSON.stringify({layers, shape, fixture, gaps: r.events.map(e => e.type + ':' + e.gap + (e.io ? '*' : ''))}));
 }
-await writeFile(process.argv[2], JSON.stringify({piVersion: PIG_UPSTREAM_VERSION, openaiVersion:'7.19.0', gapCap:GAP_CAP, axes, bodies:Object.fromEntries(axes.shapes.map(shape => [shape, records(shape)])), results}, null, 2) + '\n');
+await writeFile(process.argv[2], JSON.stringify({piVersion: PIG_UPSTREAM_VERSION, openaiVersion:'7.59.0', gapCap:GAP_CAP, axes, bodies:Object.fromEntries(axes.shapes.map(shape => [shape, records(shape)])), results}, null, 2) + '\n');

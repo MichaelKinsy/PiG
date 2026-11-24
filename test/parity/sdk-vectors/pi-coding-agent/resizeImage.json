@@ -1,6 +1,6 @@
 {
- "pin": "1.5.2",
- "package": "pi-coding-agent@1.5.2",
+ "pin": "1.6.0",
+ "package": "pi-coding-agent@1.6.0",
  "module": "pi-coding-agent",
  "export": "resizeImage",
  "cases": [
