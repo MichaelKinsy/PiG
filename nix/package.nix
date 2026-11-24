@@ -79,7 +79,7 @@ buildGo127Module {
   # `go mod vendor` refuses workspaces, and `go work vendor` also vendors every `go tool` dependency. The module
   # cache below holds exactly the modules cmd/pig links on each supported platform.
   proxyVendor = true;
-  vendorHash = "sha256-cV0GYvtNVZ5m9XyaJFCDnBM+QJtRP/giZucAgu1bO7Q=";
+  vendorHash = "sha256-eAlMjzUfa2sxMMgs5Hdt85jx38BCtJTfiloQjk4TMck=";
   modBuildPhase = ''
     runHook preBuild
     export GIT_SSL_CAINFO=$NIX_SSL_CERT_FILE
