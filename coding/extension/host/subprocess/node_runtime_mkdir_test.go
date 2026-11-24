@@ -47,7 +47,13 @@ func listTree(t *testing.T, root string) []string {
 		if err != nil {
 			return err
 		}
-		line := fmt.Sprintf("%s\t%s\t%d", filepath.ToSlash(rel), info.Mode(), info.Size())
+		var line string
+		if info.IsDir() {
+			// Directory sizes are filesystem-dependent (e.g. NTFS index B-tree blocks), not content.
+			line = fmt.Sprintf("%s\t%s", filepath.ToSlash(rel), info.Mode())
+		} else {
+			line = fmt.Sprintf("%s\t%s\t%d", filepath.ToSlash(rel), info.Mode(), info.Size())
+		}
 		switch {
 		case info.Mode()&fs.ModeSymlink != 0:
 			target, err := os.Readlink(path)
