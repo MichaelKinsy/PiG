@@ -156,10 +156,6 @@ func replaceThroughTemp(path string, data []byte, mode os.FileMode, existing os.
 		return nil, err
 	}
 	if err = replaceTemp(temp.Name(), path, existing != nil); err != nil {
-		if _, ok := errors.AsType[*keptFilesError](err); ok {
-			keepTemp = true // the temporary file holds data that exists nowhere else
-			return nil, err
-		}
 		if replaceRefused(err) {
 			return err, nil
 		}

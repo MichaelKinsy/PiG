@@ -337,3 +337,47 @@ func TestReplaceWithMoveRetriesRefusedMoveInsideBudgetAndFallsBackInPlace(t *tes
 		}
 	})
 }
+
+// carryVerdict: the entries with their flags and SE_DACL_PROTECTED are the access; SE_DACL_AUTO_INHERITED alone is not.
+func TestCarryVerdict(t *testing.T) {
+	base := access{protected: true, entries: []string{"allow-owner"}}
+	for _, tc := range []struct {
+		name string
+		got  access
+		want error
+	}{
+		{"equal", base, nil},
+		{"only the auto-inherited flag", access{protected: true, autoInherited: true, entries: []string{"allow-owner"}}, errAutoInheritedDiffers},
+		{"other entries", access{protected: true, entries: []string{"allow-everyone"}}, errAccessDiffers},
+		{"an entry more", access{protected: true, entries: []string{"allow-owner", "allow-everyone"}}, errAccessDiffers},
+		{"other entry flags", access{protected: true, entries: []string{"allow-owner-inherit"}}, errAccessDiffers},
+		{"not protected", access{entries: []string{"allow-owner"}}, errAccessDiffers},
+		{"auto-inherited and other entries", access{protected: true, autoInherited: true, entries: []string{"x"}}, errAccessDiffers},
+		{"a NULL DACL", access{protected: true, null: true}, errAccessDiffers},
+		{"no DACL", access{protected: true, absent: true}, errAccessDiffers},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := carryVerdict(base, tc.got); !errors.Is(got, tc.want) || (tc.want == nil) != (got == nil) {
+				t.Fatalf("carryVerdict = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+// The owner and the group are carried as far as the token may set them: the refusals of a token without the right are not errors, every other error is.
+func TestIgnoreOwnerRefusal(t *testing.T) {
+	for _, code := range []syscall.Errno{errInvalidOwner, errInvalidPrimaryGroup, errPrivilegeNotHeld, errAccessDenied} {
+		t.Run(code.Error(), func(t *testing.T) {
+			if err := ignoreOwnerRefusal(&os.PathError{Op: "set owner", Path: "x", Err: code}); err != nil {
+				t.Fatalf("error = %v, want it ignored", err)
+			}
+		})
+	}
+	sharing := syscall.Errno(32) // ERROR_SHARING_VIOLATION
+	if err := ignoreOwnerRefusal(&os.PathError{Op: "set owner", Path: "x", Err: sharing}); !errors.Is(err, sharing) {
+		t.Fatalf("error = %v, want the sharing violation returned", err)
+	}
+	if err := ignoreOwnerRefusal(nil); err != nil {
+		t.Fatalf("error = %v, want nil", err)
+	}
+}

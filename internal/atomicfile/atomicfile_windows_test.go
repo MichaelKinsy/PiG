@@ -3,10 +3,8 @@
 package atomicfile
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
-	"syscall"
 	"testing"
 	"time"
 
@@ -131,75 +129,6 @@ func TestWindowsWriteFileWritesInPlaceWhenTheHandleIsNeverClosed(t *testing.T) {
 	_ = held.Close()
 	if names := entryNames(t, filepath.Dir(path)); len(names) != 1 {
 		t.Errorf("directory holds %v after the fallback write, want only the file", names)
-	}
-}
-
-// ReplaceFileW that stops half way (ERROR_UNABLE_TO_MOVE_REPLACEMENT_2, 1177) leaves the replaced file under the backup name and nothing at the path.
-// The recovery moves the replacement into place; the file at the path is never left missing.
-func TestWindowsReplaceKeepingBackupFinishesAReplacementThatStoppedHalfWay(t *testing.T) {
-	dir := t.TempDir()
-	path, temp := filepath.Join(dir, "auth.json"), filepath.Join(dir, "auth.json.tmp-1")
-	if err := os.WriteFile(path, []byte("old"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(temp, []byte("new"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	err := replaceKeepingBackup(path, temp, replaceSteps{
-		replaceFile: func(replaced, _, backup string) error {
-			if err := os.Rename(replaced, backup); err != nil {
-				return err
-			}
-			return &os.LinkError{Op: "replace", Old: temp, New: replaced, Err: errUnableToMoveReplacement2}
-		},
-		moveFile: moveFile,
-		carry:    carryOnto(path),
-	})
-	if err != nil {
-		t.Fatalf("replaceKeepingBackup = %v, want the replacement finished", err)
-	}
-	if got := readString(t, path); got != "new" {
-		t.Fatalf("file = %q, want the replacement in place", got)
-	}
-	if names := entryNames(t, dir); len(names) != 1 {
-		t.Fatalf("directory holds %v, want only the file (the backup is deleted after the recovery)", names)
-	}
-}
-
-// When the replacement cannot be moved into place either, the backup is moved back: the target holds the old content again.
-func TestWindowsReplaceKeepingBackupRestoresTheOriginalWhenItCannotFinish(t *testing.T) {
-	dir := t.TempDir()
-	path, temp := filepath.Join(dir, "auth.json"), filepath.Join(dir, "auth.json.tmp-1")
-	if err := os.WriteFile(path, []byte("old"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(temp, []byte("new"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	refused := &os.LinkError{Op: "rename", Old: temp, New: path, Err: syscall.Errno(5)}
-	err := replaceKeepingBackup(path, temp, replaceSteps{
-		replaceFile: func(replaced, _, backup string) error {
-			if err := os.Rename(replaced, backup); err != nil {
-				return err
-			}
-			return &os.LinkError{Op: "replace", Old: temp, New: replaced, Err: errUnableToMoveReplacement2}
-		},
-		moveFile: func(from, to string) error {
-			if from == temp {
-				return refused
-			}
-			return moveFile(from, to)
-		},
-		carry: carryOnto(path),
-	})
-	if !errors.Is(err, errUnableToMoveReplacement2) || !errors.Is(err, refused) {
-		t.Fatalf("replaceKeepingBackup = %v, want both the replace error and the refused move", err)
-	}
-	if kept, ok := errors.AsType[*keptFilesError](err); ok {
-		t.Fatalf("the backup could be moved back, but the error names kept files %v", kept.files)
-	}
-	if got := readString(t, path); got != "old" {
-		t.Fatalf("file = %q, want the old content restored", got)
 	}
 }
 

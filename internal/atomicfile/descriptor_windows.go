@@ -70,7 +70,7 @@ func accessOf(descriptor *windows.SECURITY_DESCRIPTOR) (access, error) {
 // It is the Windows form of copying the extended attributes: a temporary file that cannot take the access is an error, which WriteFile answers with
 // an in-place write, as Pi writes, so that the file never has other access than it had.
 func carryAttributes(temp *os.File, path string) error {
-	if err := carryDescriptor(path, temp.Name(), false); err != nil && !errors.Is(err, errAutoInheritedDiffers) {
+	if err := carryDescriptor(path, temp.Name()); err != nil && !errors.Is(err, errAutoInheritedDiffers) {
 		return err
 	}
 	return carryFileAttributes(path, temp.Name())
@@ -111,7 +111,7 @@ func carryFileAttributes(from, to string) error {
 // a token that may not set them (ERROR_INVALID_OWNER, ERROR_INVALID_PRIMARY_GROUP, ERROR_PRIVILEGE_NOT_HELD, or no WRITE_OWNER on the file) leaves them as
 // they are, as chown does on Unix. A file system that keeps no security descriptor (the file at from has none: ERROR_NOT_SUPPORTED, ERROR_INVALID_FUNCTION)
 // has nothing to carry.
-func carryDescriptor(from, to string, live bool) error {
+func carryDescriptor(from, to string) error {
 	source, err := windows.GetNamedSecurityInfo(from, windows.SE_FILE_OBJECT, descriptorParts)
 	if errors.Is(err, windows.ERROR_NOT_SUPPORTED) || errors.Is(err, windows.ERROR_INVALID_FUNCTION) {
 		return nil
@@ -131,9 +131,6 @@ func carryDescriptor(from, to string, live bool) error {
 		asked: func() error { return setAccessAsked(from, to, want) },
 		named: func() error { return setAccessNamed(to, source, want) },
 		read:  func() (access, error) { return readAccess(to) },
-	}
-	if live {
-		calls.named = nil
 	}
 	ownerErr := setOwnerAndGroup(to, source)
 	got, setErr, err := carryAccess(want, calls)
