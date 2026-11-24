@@ -263,6 +263,7 @@ func workerReferences(rel *relayed, key string) int {
 // Pi: "before the first allow › nothing is resolved or forwarded: a denied hold starts no host; an allow later binds it".
 // Covers (part B): relayedHold.withheld (a denial told to a hold that never left the server), providerSide.withheld,
 // relayedHold.admitted (heldBack set, so `loading` goes downstream), path.forward at a first allow.
+// pi: packages/chord/src/host/route-admission.ts
 func TestRouteAdmissionBeforeTheFirstAllowNothingIsResolvedOrForwardedADeniedHoldStartsNoHostAnAllowLaterBindsIt(t *testing.T) {
 	forEachCodec(t, func(t *testing.T) {
 		g := routeGated(t, relayedOptions{}, nil)

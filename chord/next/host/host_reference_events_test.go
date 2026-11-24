@@ -27,6 +27,7 @@ func tickerFacets(probe *tickerProbe) []HostFacet {
 func (p *tickerProbe) sourceCount() int { p.mu.Lock(); defer p.mu.Unlock(); return len(p.sources) }
 func (p *tickerProbe) namedCount() int  { p.mu.Lock(); defer p.mu.Unlock(); return len(p.named) }
 
+// pi: packages/chord/src/host/reference-events.ts
 func TestReferenceEventSubscriptionsAreInstalledAtOnceWhileLoadingAndReceiveOnceTheirReferenceIsLive(t *testing.T) {
 	k := ticking(t, loadedOptions{})
 	var named *Reference

@@ -6597,5 +6597,54 @@
    "old": "return rankA - rankB",
    "new": "return rankB - rankA"
   }
+ ],
+ "packages/chord/src/host/events.ts": [
+  {
+   "file": "chord/next/host/host_events.go",
+   "old": "func (n *eventNode) tapped() bool { return len(n.taps) > 0 }\n",
+   "new": "func (n *eventNode) tapped() bool { return false }\n"
+  }
+ ],
+ "packages/chord/src/host/query-reader.ts": [
+  {
+   "file": "chord/next/host/host_query_reader.go",
+   "old": "\t\t\treturn Opened{Kind: OpenedReady}\n",
+   "new": "\t\t\treturn Opened{Kind: OpenedLoading}\n"
+  }
+ ],
+ "packages/chord/src/host/reference-events.ts": [
+  {
+   "file": "chord/next/host/host_reference_events.go",
+   "old": "\treturn taps\n",
+   "new": "\treturn nil\n"
+  }
+ ],
+ "packages/chord/src/host/route-admission.ts": [
+  {
+   "file": "chord/next/host/host_route_admission.go",
+   "old": "\treturn address.Key + \"\\n\" + a.host.principalKeyOf(principal, a.context)\n",
+   "new": "\treturn address.Key\n"
+  }
+ ],
+ "packages/chord/src/node/app/ephemeral-sign-ins.ts": [
+  {
+   "file": "chord/nextnode/app/ephemeral_sign_ins.go",
+   "old": "\treturn signIn.hash, signIn.principal, true\n",
+   "new": "\treturn \"\", nil, false\n"
+  }
+ ],
+ "packages/chord/src/store/read-plan.ts": [
+  {
+   "file": "chord/next/store/read_plan.go",
+   "old": "\t\treturn \"SELECT count(*) AS count FROM \" + plan.from + filter\n",
+   "new": "\t\treturn \"SELECT 0 AS count FROM \" + plan.from + filter\n"
+  }
+ ],
+ "packages/coding-agent/src/modes/diagnostics-stderr.ts": [
+  {
+   "file": "internal/codingagent/diagnostics_stderr.go",
+   "old": "\t\tprefix, open, closeSeq = \"Error: \", \"\\x1b[31m\", \"\\x1b[39m\"\n",
+   "new": "\t\tprefix, open, closeSeq = \"Err: \", \"\\x1b[31m\", \"\\x1b[39m\"\n"
+  }
  ]
 }

@@ -14,6 +14,7 @@ import (
 
 // Mirrors upstream test/settings-diagnostics.test.ts.
 
+// pi: packages/coding-agent/src/modes/diagnostics-stderr.ts
 func TestCollectSettingsDiagnosticsIncludesTheSettingsFilePath(t *testing.T) {
 	tempDir := t.TempDir()
 	agentDir := filepath.Join(tempDir, "agent")
