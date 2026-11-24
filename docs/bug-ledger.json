@@ -65714,12 +65714,20 @@
       "piIssue": "https://github.com/earendil-works/pi/issues/12272",
       "removeWhen": "Go offers a supported way to restore `SIG_DFL` for SIGTSTP after `signal.Notify`, or a reviewed helper design owns the reset and the stop. Then a SIGTSTP listener can follow terminal ownership as Pi main's does, `TUI.setSuspendSignalHandler` can be ported cleanly across Go and all SDKs, and half 2 and item 3 are gone. When the pin moves past `3107a58d`, this record describes the difference to the pin as well as Pi main.",
       "fixedIn": "Unreleased",
-      "releaseNote": "After an external `kill -TSTP \u003cpid\u003e` (from a supervisor, `pkill -TSTP`, or another pane), pig stops without resetting the terminal, so mouse tracking, hidden cursor, Kitty keyboard flags, bracketed paste, the fullscreen alternate screen, and under `dash` raw terminal settings stay active at the shell prompt until `fg`; previously, `fg` also left the terminal in the shell's state without re-entering or redrawing the TUI. Interactive mode now re-arms raw mode, paste, keyboard, mouse, and screen modes on `fg`—forcing a full redraw on fullscreen and regular ANSI renderers and resuming the session on frontend surfaces (which draws what changed)—including during startup once the terminal is armed, after a background `bg` (which re-stops pig until `fg`), and under shells that restore saved raw terminal settings on `fg`, while leaving external-editor handoffs and `Ctrl+Z` unchanged (follows Pi `e4f50d76`, `3107a58d`; record D661).",
+      "releaseNote": "After an external `kill -TSTP \u003cpid\u003e` (from a supervisor, `pkill -TSTP`, or another pane), pig stops without resetting the terminal, so mouse tracking, hidden cursor, Kitty keyboard flags, bracketed paste, the fullscreen alternate screen, and under `dash` raw terminal settings stay active at the shell prompt until `fg`; previously, `fg` also left the terminal in the shell's state without re-entering or redrawing the TUI. Interactive mode now re-arms raw mode, paste, keyboard, mouse, and screen modes on `fg` (forcing a full redraw on fullscreen and regular ANSI renderers and resuming the session on frontend surfaces, which draws what changed), including during startup once the terminal is armed, after a background `bg` (which re-stops pig until `fg`), and under shells that restore saved raw terminal settings on `fg`, while leaving external-editor handoffs and `Ctrl+Z` unchanged (follows Pi `e4f50d76`, `3107a58d`; record D661).",
       "origin": "release note",
       "commits": [
         {
+          "hash": "a8421da26b",
+          "date": "2026-11-23"
+        },
+        {
           "hash": "f36632c6ee",
           "date": "2026-11-23"
+        },
+        {
+          "hash": "d1b6dce383",
+          "date": "2026-11-24"
         }
       ],
       "tests": [
