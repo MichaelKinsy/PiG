@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 )
 
@@ -118,4 +119,97 @@ func TestRolloutDoesNotReloadARetriedWorkerThatForkedBeforeTheReloadLoop(t *test
 	}
 	t.Run("retry_starts_resolve", func(t *testing.T) { run(t, false) })
 	t.Run("resolve_already_running", func(t *testing.T) { run(t, true) })
+}
+
+// TestRolloutDoesNotReloadAStartingWorkerWaitingInClearStaleLockWithSameScripts holds a non-retried worker's start
+// inside options.Lock (after startChild has read scripts from Plugins.Scripts, before ClearStaleLock and ToWorkerStart)
+// and runs an unrelated rollout with the same scripts. Like Pi (workers.ts:480-488, which sets child.shipped before
+// clearStaleLock), Rollout must skip the starting child because its shipped key already matches, sending no
+// ToWorkerReload and returning no host entry for it.
+func TestRolloutDoesNotReloadAStartingWorkerWaitingInClearStaleLockWithSameScripts(t *testing.T) {
+	f := newFleet(t, fleetOptions{})
+	one := f.get(fixtureNotes, "S1")
+	defer one.Release()
+
+	// Pre-fetch the current worker scripts (v1) so the rollout ships the exact same script set S2 just read in startChild.
+	scripts, err := f.plugins.Scripts("worker", background)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	inLock := make(chan struct{})
+	releaseLock := make(chan struct{})
+	var lockOnce, releaseOnce sync.Once
+	release := func() { releaseOnce.Do(func() { close(releaseLock) }) }
+	defer release()
+
+	var s2Child *child
+	var s2ReloadingAfterFork chan struct{}
+	origLock := f.workers.options.Lock
+	f.workers.options.Lock = func(address contracts.Address) (string, error) {
+		if address.Key == session("S2").Key {
+			lockOnce.Do(func() {
+				f.workers.loop.Run(func() {
+					if record := f.workers.addresses[address.Key]; record != nil {
+						s2Child = record.child
+						if s2Child != nil {
+							s2ReloadingAfterFork = s2Child.reloading
+						}
+					}
+				})
+				close(inLock)
+			})
+			<-releaseLock
+		}
+		return origLock(address)
+	}
+
+	// Start S2 (not a retried failed worker); its startChild reads v1 scripts then pauses in options.Lock.
+	s2 := f.hold(fixtureNotes, "S2")
+	defer s2.Release()
+	<-inLock
+
+	type result struct {
+		hosts []string
+		err   error
+	}
+	finished := make(chan result, 1)
+	go func() {
+		hosts, err := f.workers.Rollout(scripts, background)
+		if err != nil {
+			finished <- result{err: err}
+			return
+		}
+		finished <- result{hosts: listed(hosts)}
+	}()
+
+	// Before releasing S2's lock, wait until either Rollout returned (expected: S1 and S2 both skipped) or a reload was
+	// queued on S2 (the bug).
+	until(t, func() bool {
+		if len(finished) > 0 {
+			return true
+		}
+		var queued bool
+		f.workers.loop.Run(func() {
+			queued = s2Child != nil && s2Child.reloading != s2ReloadingAfterFork
+		})
+		return queued
+	})
+
+	var reloaded bool
+	f.workers.loop.Run(func() {
+		reloaded = s2Child != nil && s2Child.reloading != s2ReloadingAfterFork
+	})
+	release()
+	got := <-finished
+	if got.err != nil {
+		t.Fatal(got.err)
+	}
+	if len(got.hosts) != 0 {
+		t.Fatalf("hosts = %q, want [] (S2 already has the same shipped scripts and must be skipped)", got.hosts)
+	}
+	if reloaded {
+		t.Fatal("Rollout queued a ToWorkerReload on a starting worker waiting in ClearStaleLock with the same scripts")
+	}
+	until(t, func() bool { return refKind(s2) == host.RefStateLive && labelOf(t, s2) == "S2 v1" })
 }
