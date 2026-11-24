@@ -124,6 +124,8 @@ scheduler = new TaskScheduler({
 	session, storage, registry, models: {},
 	agent: async () => ({}), settings: () => ({ contextRetentionMs: 0 }), env: async () => undefined,
 	now, writeAtClose: async () => {}, report: (e) => log.push({ t: "report", message: e.message }),
+	keepsAbandoned: () => false,
+	gated: () => false,
 	settleOutcome: async (tx, record, outcome) => { log.push({ t: "settleOutcome", task: record.id, status: outcome.status }); },
 	withdrawInputs: async (tx, id) => { log.push({ t: "withdraw", conversation: id }); },
 	conversation: async () => undefined, context: BACKGROUND_CONTEXT,

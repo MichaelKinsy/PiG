@@ -225,7 +225,7 @@ func TestCoreAFinishedNestedCallIsADoneSlotWithItsSummaryUntilItsCallerSettles(t
 	}
 	for i, expected := range []want{
 		{true, `{"isError":false}`},
-		{false, `{"isError":true,"error":"Tool missing is not available"}`},
+		{true, `{"isError":true,"error":"Tool missing is not available"}`},
 		{true, `{"isError":false,"usage":` + mustJSONCore(t, usage) + `}`},
 		{true, `{"isError":true,"error":"bad image"}`},
 		{true, `{"isError":true,"error":"` + strings.Repeat("e", 500) + `"}`},

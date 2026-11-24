@@ -167,9 +167,9 @@ func (e *engine) task(id int64, kind string, input *jv.Object, owner int64) *rec
 	version := 1
 	switch kind {
 	case "pi.generation":
-		version = 2 // generation.ts GenerationTask version 2: calls to tools not offered are not tool task results
+		version = 3 // generation.ts GenerationTask version 3 (Pi v1.6.0)
 	case "pi.tool":
-		version = 3 // tool.ts ToolTask version 3: the input may carry unoffered
+		version = 4 // tool.ts ToolTask version 4 (Pi v1.6.0)
 	}
 	return rec.NewTask(id, e.conv, kind, version, input, owner, false, nil)
 }
@@ -192,6 +192,9 @@ func (e *engine) putTask(tx *store.Tx, t *rec.Task, state *jv.Object) {
 		if !started || str(state, "status") == "terminal" || str(state, "status") == "completing" {
 			n.V.Delete("restarts")
 		}
+	}
+	if str(state, "status") == "terminal" || str(state, "status") == "completing" {
+		n.V.Delete("memos")
 	}
 	e.stageTask(tx, n.StampTimes(nil, e.now))
 }
@@ -471,10 +474,14 @@ func (e *engine) settleTool(text, outcome, errMessage string, isError bool) erro
 	if isError {
 		diag = `{"severity":"error","code":"interrupted","message":` + quote(errMessage) + `}`
 	}
-	// A result the recovery writes for a tool that may have run has no duration: nothing measured it.
+	// Pi v1.6.0 tool.ts settle: durationMs is now - current.startedAt for every settled call (including recovery).
 	duration := `"durationMs":0,`
-	if isError {
-		duration = ""
+	if tool := e.tasks[t.tool]; tool != nil {
+		if started, ok := tool.V.Get("startedAt"); ok {
+			if startedAt, ok := started.(float64); ok {
+				duration = `"durationMs":` + num2(e.now-startedAt) + `,`
+			}
+		}
 	}
 	draft := `{"model":[{"role":"toolResult","toolCallId":"call-` + strconv.Itoa(t.call) + `","toolName":"lookup","content":[{"type":"text","text":` + quote(text) +
 		`}],"isError":` + strconv.FormatBool(isError) + `,` + duration + `"timestamp":` + num2(e.now) + `}],"data":{"diagnostics":[` + diag + `]},"kind":"pi.tool-result"}`
@@ -513,17 +520,41 @@ func (e *engine) settleTool(text, outcome, errMessage string, isError bool) erro
 func (e *engine) afterTool(resumed bool) error {
 	t := &e.t
 	g := e.gen(t.gen)
-	running := func(status string) *jv.Object {
-		return state(status, obj("phase", "tools", "assistant", num(t.asst), "tools", []any{num(t.tool)}, "pending", []any{}))
-	}
 	if resumed {
-		if _, err := e.commit(func(tx *store.Tx) error { e.requeueTask(tx, g, running("pending")); return nil }); err != nil {
+		s := jv.Clone(g.State()).(*jv.Object)
+		s.Set("status", "pending")
+		if _, err := e.commit(func(tx *store.Tx) error { e.requeueTask(tx, g, s); return nil }); err != nil {
 			return err
 		}
-	}
-	g = e.gen(t.gen)
-	if _, err := e.commit(func(tx *store.Tx) error { e.putTask(tx, g, running("running")); return nil }); err != nil {
-		return err
+		g = e.gen(t.gen)
+		s2 := jv.Clone(g.State()).(*jv.Object)
+		s2.Set("status", "running")
+		if _, err := e.commit(func(tx *store.Tx) error { e.putTask(tx, g, s2); return nil }); err != nil {
+			return err
+		}
+	} else {
+		g = e.gen(t.gen)
+		if _, err := e.commit(func(tx *store.Tx) error {
+			if str(g.State(), "status") == "waiting" {
+				var memos *jv.Object
+				if m, ok := g.V.Get("memos"); ok && m != nil {
+					memos = m.(*jv.Object).Shallow()
+				} else {
+					memos = obj()
+				}
+				w := &rec.Task{V: g.V.Shallow()}
+				w.V.Set("memos", memos)
+				runState := state("running", obj("phase", "tools", "assistant", num(t.asst), "tools", []any{num(t.tool)}, "pending", []any{}), "wake", obj("reason", "tasks", "ended", []any{num(t.tool)}))
+				e.putTask(tx, w, runState)
+			} else {
+				s := jv.Clone(g.State()).(*jv.Object)
+				s.Set("status", "running")
+				e.putTask(tx, g, s)
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
 	}
 	g = e.gen(t.gen)
 	t.gen = e.st.MintID()
@@ -629,7 +660,14 @@ func (e *engine) interruptedRequest(id int64, cp *jv.Object) error {
 	}
 	// The scheduler wakes the generation once the clock reaches `until`.
 	e.now = until
-	if _, err := e.commit(func(tx *store.Tx) error { e.putTask(tx, e.tasks[id], state("running", retryCheckpoint)); return nil }); err != nil {
+	if _, err := e.commit(func(tx *store.Tx) error {
+		w := &rec.Task{V: e.tasks[id].V.Shallow()}
+		if !w.V.Has("memos") {
+			w.V.Set("memos", obj())
+		}
+		e.putTask(tx, w, state("running", retryCheckpoint, "wake", obj("reason", "time")))
+		return nil
+	}); err != nil {
 		return err
 	}
 	if _, err := e.commit(func(tx *store.Tx) error {

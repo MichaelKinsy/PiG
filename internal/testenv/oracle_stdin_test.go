@@ -25,7 +25,7 @@ func TestOracleScriptsDecodeStdinAsUTF8(t *testing.T) {
 		}
 		if d.IsDir() {
 			switch d.Name() {
-			case "node_modules", ".upstream", ".git", "build", "target":
+			case "node_modules", ".upstream", ".cache", ".git", "build", "target":
 				return filepath.SkipDir
 			case "tmp":
 				// Scratch that git ignores (`tmp/` in .gitignore), not the repository's: a lane keeps a Pi checkout there.

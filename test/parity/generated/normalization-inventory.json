@@ -5833,6 +5833,24 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/interactive-rendering/80-highlight-default-token-text-color.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "plainIdentifier",
+            "capture_end_regex": "(?s)const answer = 42;.*const answer = 42;"
+          },
+          "reason": "Owned visible surface: Fenced code blocks apply the active theme text foreground to unscoped tokens in highlighted code.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/json/01-json-mode-streams-events.toml",
       "transforms": [
         {
@@ -6848,7 +6866,7 @@
             "capture_start": "Only showing models",
             "capture_end": "Model Name: Model Two"
           },
-          "reason": "Owned visible surface: Unbound picker keys reapply the query and select the first match.",
+          "reason": "Owned visible surface: Unbound picker keys that leave the query unchanged keep the selection.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -11084,6 +11102,24 @@
             "capture_end": "zinc.json"
           },
           "reason": "Owned visible surface: Both binaries cycle project overrides in pi config --local and draw the load, unload and inherited states alike.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/selectors/19-login-search-selects-best-match.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Select provider to configure",
+            "capture_end": "(2/17)"
+          },
+          "reason": "Owned visible surface: Typing a query in /login after scrolling highlights the top match and cursor keys keep it.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {

@@ -105,8 +105,8 @@ test("the native host is handoff-equal to pi-durable in every order, at sampled 
 	assert.deepEqual(r.rows.filter(x => !x.ok), [])
 })
 
-test("negative control, native host: a duration on the recovery's interrupted result fails the matrix at the entry it differs in", async () => {
-	const impl = await buildHost("duration", ['if isError {\n\t\tduration = ""', 'if false {\n\t\tduration = ""'])
+test("negative control, native host: a missing duration on the recovery's interrupted result fails the matrix at the entry it differs in", async () => {
+	const impl = await buildHost("duration", ['duration = `"durationMs":` + num2(e.now-startedAt) + `,`', 'if isError { duration = "" } else { duration = `"durationMs":` + num2(e.now-startedAt) + `,` }'])
 	const r = await matrix({ fixture, scenario, candidate: impl, work: join(work, "native-duration"), points: [479], concurrency: 8 })
 	const bad = r.rows.filter(x => !x.ok)
 	assert.ok(bad.length > 0, "the broken host passed")

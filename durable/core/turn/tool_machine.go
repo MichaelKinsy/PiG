@@ -35,7 +35,8 @@ func (g *ToolTask) Impl() *session.TaskImpl {
 
 type toolRun struct {
 	*run
-	input *jv.Object
+	input          *jv.Object
+	settleDuration float64
 }
 
 func (g *ToolTask) newRun(rt *session.Runtime, task *jv.Object, done func(error)) *toolRun {
@@ -54,7 +55,12 @@ func (g *ToolTask) phase(rt *session.Runtime, task *jv.Object, done func(error))
 	case phaseExecute:
 		r.execute(cp)
 	default:
-		done(errors.New("Tool phase " + str(cp, "phase") + " is unknown"))
+		phase := str(cp, "phase")
+		msg := "Tool phase " + phase + " is unknown"
+		if phase == "parked" {
+			msg = "Tool phase parked requires suspendable work (not in the Durable core's contract pin)"
+		}
+		done(errors.New(msg))
 	}
 }
 
@@ -89,8 +95,8 @@ const readCallReturnHops = 3
 const readCallKeptReturnHops = 1
 
 // executeReturnHops is the hops from the host's toolDone (after `await tool.execute()` and `await Promise.allSettled(admissions)`,
-// which the host spends) to finalResult starting: `await progress.stop()` of an idle Progress, its `await this.#inFlight` and its return.
-const executeReturnHops = 2
+// which the host spends) to finalResult starting: Pi v1.6.0 `await attempt.end()` (1) plus `await progress.stop()` of an idle Progress (2).
+const executeReturnHops = 3
 
 // finalResultReturnHops is the hop from finalResult returning the settled result to run resuming (tool.ts run).
 const finalResultReturnHops = 1
@@ -313,7 +319,12 @@ func (c *callRun) intent(*session.Tx, *jv.Object) (*jv.Object, error) {
 	return jobj("status", "running", "checkpoint", intent), nil
 }
 
-func (c *callRun) run() { c.r.runTool(c.call, c.tool, c.final) }
+func (c *callRun) run() {
+	// Pi v1.6.0 tool.ts: `await commitIntent(...)` (1 hop) + `await startAttempt(...)` (1 hop) before `tool.execute()`.
+	c.r.hops(2, c.start)
+}
+
+func (c *callRun) start() { c.r.runTool(c.call, c.tool, c.final) }
 
 // execute is the recovery phase after intent: rerun only when the stored and the current policy both say safe.
 func (r *toolRun) execute(cp *jv.Object) {
@@ -431,8 +442,17 @@ func (r *toolRun) settleThen(call *jv.Object, end ending, build func(slot *delta
 	})
 }
 
-func (r *toolRun) settleCommit(call *jv.Object, end ending, build func(slot *delta.Obj) *jv.Object, durationMs *float64, made bool, then func()) {
+func (r *toolRun) settleCommit(call *jv.Object, end ending, build func(slot *delta.Obj) *jv.Object, measured *float64, made bool, then func()) {
 	r.commit(func(tx *session.Tx, current *jv.Object) (*jv.Object, error) {
+		// Pi v1.6.0 tool.ts settle: the call's whole span (now - startedAt), falling back to measured only for records
+		// created before lifecycle timestamps existed.
+		durationMs := measured
+		if started, ok := current.Get("startedAt"); ok {
+			if startedAt, ok := started.(float64); ok {
+				r.settleDuration = r.now() - startedAt
+				durationMs = &r.settleDuration
+			}
+		}
 		live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
 		if err != nil {
 			return nil, err

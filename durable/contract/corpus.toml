@@ -10,7 +10,7 @@
 
 [pin]
 reference = "earendil-works/pi"
-commit = "b4afdddf44e059c67ccf5097e5317d913521b470"
+commit = "faac585884ae2c013a6b1400f3e9e77f10b34bac"
 release = "1.0.4"
 
 [[scenario]]
@@ -403,7 +403,7 @@ id = "E32"
 family = "example"
 runner = "example"
 source = "packages/durable/test/examples/32-tests-after-edits.ts"
-sha256 = "1357eb15c6fe0164c2025e3739d2379affddfae5c98a8ae3271d31c9b24d9e85"
+sha256 = "ea68bc965cd7d386ad546e98ca001e9ace5f116880a8f1e20911538bcc6e661c"
 owner = "dcore-loop"
 about = "run the tests after the agent's edits"
 levels = ["store", "commit", "context", "output", "order"]
@@ -474,6 +474,136 @@ status = "pending"
 reason = "pending Durable on Chord's store and registries: a Harness over a registry and host.root (6eb99ad6)"
 
 [[scenario]]
+id = "E38"
+family = "example"
+runner = "example"
+source = "packages/durable/test/examples/38-signals.ts"
+sha256 = "bdce4097abaf5deb3d8efd740a7585def88d48c73c6ea1477eec7b36c7145fda"
+owner = "dcore-session"
+about = "typed signals delivered to a live task from outside"
+levels = ["store", "commit", "context", "output", "order"]
+normalisers = []
+status = "pending"
+reason = "pending durable/core v1.6.0 signals/parks/fit-images port: typed task signals (473515f9)"
+
+[[scenario]]
+id = "E39"
+family = "example"
+runner = "example"
+source = "packages/durable/test/examples/39-ask-a-person.ts"
+sha256 = "08da40dbb39986ee6adc8bf69710ebb4128ab8e57f13d385ba92a9166113cdef"
+owner = "dcore-session"
+about = "a plugin task that sleeps on a signal or deadline"
+levels = ["store", "commit", "context", "output", "order"]
+normalisers = []
+status = "pending"
+reason = "pending durable/core v1.6.0 signals/parks/fit-images port: task sleep on signal or deadline (473515f9)"
+
+[[scenario]]
+id = "E40"
+family = "example"
+runner = "example"
+source = "packages/durable/test/examples/40-tool-waits-for-webhook.ts"
+sha256 = "0392381b369df6e35fa7b13eefe1da17e2ca652cd7b2d04d69f3b219fba39ffa"
+owner = "dcore-loop"
+about = "a tool that parks on a signal and cancels on stop"
+levels = ["store", "commit", "context", "output", "order"]
+normalisers = []
+status = "pending"
+reason = "pending durable/core v1.6.0 signals/parks/fit-images port: parked tools and cancel (473515f9)"
+
+[[scenario]]
+id = "E41"
+family = "example"
+runner = "example"
+source = "packages/durable/test/examples/41-tool-polls.ts"
+sha256 = "5ed983f581e21a8e59bd15a1cc3a9bc7e2d98e7ef5b050d8e64dd2d653761484"
+owner = "dcore-loop"
+about = "a tool that polls by parking on time with backoff"
+levels = ["store", "commit", "context", "output", "order"]
+normalisers = []
+status = "pending"
+reason = "pending durable/core v1.6.0 signals/parks/fit-images port: parked tools polling on time (473515f9)"
+
+[[scenario]]
+id = "E42"
+family = "example"
+runner = "example"
+source = "packages/durable/test/examples/42-parallel-children.ts"
+sha256 = "4481e39435081ab69323cb7e0c4fd033d9d72f3853a990aa442dea5a1d66cd76"
+owner = "dcore-loop"
+about = "a tool that starts nested calls without waiting and parks until any ends"
+levels = ["store", "commit", "context", "output", "order"]
+normalisers = []
+status = "pending"
+reason = "pending durable/core v1.6.0 signals/parks/fit-images port: non-waiting nested calls and wait parks (473515f9)"
+
+[[scenario]]
+id = "E43"
+family = "example"
+runner = "example"
+source = "packages/durable/test/examples/43-subagent-waits.ts"
+sha256 = "2cd2ba061292886b68d7f7dc1a2c73d309596dde8a802fb881fbb06de9f6fe6e"
+owner = "dcore-session"
+about = "a subagent tool that parks on its child submission settling"
+levels = ["store", "commit", "context", "output", "order"]
+normalisers = []
+status = "pending"
+reason = "pending durable/core v1.6.0 signals/parks/fit-images port: submission settlement signals (473515f9)"
+
+[[scenario]]
+id = "E44"
+family = "example"
+runner = "example"
+source = "packages/durable/test/examples/44-approval-gate.ts"
+sha256 = "7a766a3b62ff508e1bc9363c5f8ba4713551d8acfa949d9cef10e9f74dc2eba7"
+owner = "dcore-loop"
+about = "beforeTool gates that park a tool call until approved or expired"
+levels = ["store", "commit", "context", "output", "order"]
+normalisers = []
+status = "pending"
+reason = "pending durable/core v1.6.0 signals/parks/fit-images port: beforeTool approval gates (473515f9)"
+
+[[scenario]]
+id = "E45"
+family = "example"
+runner = "example"
+source = "packages/durable/test/examples/45-review-on-yield.ts"
+sha256 = "e2ba7ea7fa8670732ab05b230945387f4f12f4078b94dd08faccdfa0fa39a1c5"
+owner = "dcore-loop"
+about = "an onYield hook task that reviews an answer while input stays open"
+levels = ["store", "commit", "context", "output", "order"]
+normalisers = []
+status = "pending"
+reason = "pending durable/core v1.6.0 signals/parks/fit-images port: onYield hook tasks (473515f9)"
+
+[[scenario]]
+id = "E46"
+family = "example"
+runner = "example"
+source = "packages/durable/test/examples/46-after-tools-terminate.ts"
+sha256 = "828897220c35e2afa41aad6cbe069d72e450e5db991d573a0f8351e0ab22a104"
+owner = "dcore-loop"
+about = "an afterTools hook task that parks and steers or terminates a run"
+levels = ["store", "commit", "context", "output", "order"]
+normalisers = []
+status = "pending"
+reason = "pending durable/core v1.6.0 signals/parks/fit-images port: afterTools hook tasks (473515f9)"
+
+[[scenario]]
+id = "E47"
+family = "example"
+runner = "example"
+source = "packages/durable/test/examples/47-fit-images.ts"
+sha256 = "1d122088e71a98022ab7515760bf51c4d85cdcc9782dfe368f2078e19c850ee6"
+owner = "dcore-loop"
+about = "fitting images to model limits before storing them in the transcript"
+levels = ["store", "commit", "context", "output", "order"]
+normalisers = []
+status = "pending"
+reason = "pending durable/core v1.6.0 signals/parks/fit-images port: fit-images extension (76c79d8b)"
+
+[[scenario]]
 id = "U-codemode-checkpoints"
 family = "upstream-test"
 runner = "vitest"
@@ -488,7 +618,7 @@ id = "U-codemode-describe"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/codemode-describe.test.ts"
-sha256 = "dbcd0ca6a05773f3af8e8cf83ef4f9303a25e9ff0a470c598d6c3843635afaea"
+sha256 = "9b16f48a954ba3b99ef7ea0867eacccde1fbf9ac05235f8f4ecae1baf88ca9d9"
 owner = "dcore-loop"
 levels = ["tests"]
 status = "ready"
@@ -518,7 +648,7 @@ id = "U-codemode"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/codemode.test.ts"
-sha256 = "e6266a8517742be4bbd53b18e72e11a00f1d2fa14132fd93c25714c3b3b9d38d"
+sha256 = "55453420e8773f75caa8f2167c1965e50553e8934c399d352e53555fe1e9662d"
 owner = "dcore-loop"
 levels = ["tests"]
 status = "ready"
@@ -560,6 +690,17 @@ levels = ["tests"]
 status = "ready"
 
 [[scenario]]
+id = "U-env-node-list-race"
+family = "upstream-test"
+runner = "vitest"
+source = "packages/durable/test/env-node-list-race.test.ts"
+sha256 = "df8c9c44f217d38f9cc56e8c8484ed3018d02959b937fa24ec844f576385fd35"
+owner = "dcore-host"
+levels = ["tests"]
+status = "pending"
+reason = "pending durable/core v1.6.0 signals/parks/fit-images port: env node listDir race handling (75ca6e7d)"
+
+[[scenario]]
 id = "U-env-node-spill"
 family = "upstream-test"
 runner = "vitest"
@@ -594,7 +735,7 @@ id = "U-harness-after-run"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-after-run.test.ts"
-sha256 = "a5139218d51a01a5035b351fe8f9af768d618b11ba4c2dac821fb36d675eb590"
+sha256 = "4540fd57ec9013846d2f405aa12b8d339253a3298e953eeade046baf98fbd47b"
 owner = "dcore-loop"
 levels = ["tests"]
 status = "ready"
@@ -740,6 +881,17 @@ levels = ["tests"]
 status = "ready"
 
 [[scenario]]
+id = "U-harness-hook-tasks"
+family = "upstream-test"
+runner = "vitest"
+source = "packages/durable/test/harness-hook-tasks.test.ts"
+sha256 = "efc785543f1a2d338b51c2ced36b6609fb957c098c3bbfb5a550a951ea72c976"
+owner = "dcore-loop"
+levels = ["tests"]
+status = "pending"
+reason = "pending durable/core v1.6.0 signals/parks/fit-images port: afterTools and onYield hook tasks (473515f9)"
+
+[[scenario]]
 id = "U-harness-host-inputs"
 family = "upstream-test"
 runner = "vitest"
@@ -754,10 +906,11 @@ id = "U-harness-idle-scopes"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-idle-scopes.test.ts"
-sha256 = "a35c49e3cde839151be10b09347248b9c6217db527a52e2f57e9079dc2a0b4ff"
+sha256 = "452113d29266ef929d1821c61b29f0c2e3c2aa55ed07a6cfd9f029f8c320b30e"
 owner = "dcore-session"
 levels = ["tests"]
-status = "ready"
+status = "pending"
+reason = "pending durable/core v1.6.0 signals/parks/fit-images port: top-level defineSignal and parked task idle-context test (473515f9)"
 # `incremental idle state equals a full recompute after every step of random nested work` runs under vitest's default 5 s test budget. The
 # reference takes 0.9 s at 8 CPUs, the candidate 1.6 s (2.0 s at most), 1.5-2.1 times as long (5 alternated runs, so no cost bound): enough that a
 # process the host gives about a third of a CPU misses the budget on the candidate alone. At 4 CPUs under the gate's -j 8 it failed 2 of 2 full
@@ -779,7 +932,7 @@ id = "U-harness-input-entries"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-input-entries.test.ts"
-sha256 = "aa2014cafb0206b43d88db21ce76f1aa0dbadca6d7ce757addc7fcb67e557b32"
+sha256 = "576cb9f8347b45287a468a55e6e45972d983edc09904e9e38c0e3e76952e29bf"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
@@ -809,7 +962,7 @@ id = "U-harness-lifecycle"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-lifecycle.test.ts"
-sha256 = "ed0a3bd2725a64ad77a004b2202c0f4565a8f92dbdc9e235bffa676c6e406283"
+sha256 = "1200987a0f39edfcdf5da4d2566aabd575de0267575a7dc4b4c7b36e8edcd9c8"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
@@ -839,7 +992,7 @@ id = "U-harness-nested-tools"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-nested-tools.test.ts"
-sha256 = "d16b5719851e89d329cf2a46ecd82857b59e17ae5cf77448afc7951a0b558503"
+sha256 = "6f99bdf934f6fe865d60dcad419197ffa87a2004defedc542410a8bd968f690e"
 owner = "dcore-loop"
 levels = ["tests"]
 status = "ready"
@@ -868,6 +1021,17 @@ status = "ready"
 # reference and 24.5 s in the candidate, alone. A process the host gives under ~40% of a CPU for that stretch misses the budget. The gate's own
 # load did that (a full run at 5 gates on one host: the candidate ended at 62 s, 1 of 5), so the gate runs the row alone.
 exclusive = true
+
+[[scenario]]
+id = "U-harness-park-children"
+family = "upstream-test"
+runner = "vitest"
+source = "packages/durable/test/harness-park-children.test.ts"
+sha256 = "ac4a029ffd666ef6018092cc79b953e2a2ee8a77083d3b0ead75a34dc6cd0451"
+owner = "dcore-loop"
+levels = ["tests"]
+status = "pending"
+reason = "pending durable/core v1.6.0 signals/parks/fit-images port: parked tool children and settlement signals (473515f9)"
 
 [[scenario]]
 id = "U-harness-partial-changes"
@@ -983,6 +1147,17 @@ cost_test = "scheduler retention forgets ended subagent chains"
 cost_max_ratio = 5
 
 [[scenario]]
+id = "U-harness-signals"
+family = "upstream-test"
+runner = "vitest"
+source = "packages/durable/test/harness-signals.test.ts"
+sha256 = "6d8d316ccf9ca0c6e13d0bf85d345ac2210362ae5c34d1c9952791f2bdb9cd6f"
+owner = "dcore-session"
+levels = ["tests"]
+status = "pending"
+reason = "pending durable/core v1.6.0 signals/parks/fit-images port: signals and parked task wakes (473515f9)"
+
+[[scenario]]
 id = "U-harness-sleep"
 family = "upstream-test"
 runner = "vitest"
@@ -1027,7 +1202,7 @@ id = "U-harness-submissions"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-submissions.test.ts"
-sha256 = "8096a5827e609e6e92b4c1c3202894afea55931c8bcd5daff178aa610e99ec75"
+sha256 = "21aa063f7733cea866476a515124a303711b0dbc9a20a0f118989f2573ae8c11"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
@@ -1095,14 +1270,36 @@ levels = ["tests"]
 status = "ready"
 
 [[scenario]]
+id = "U-harness-tool-gates"
+family = "upstream-test"
+runner = "vitest"
+source = "packages/durable/test/harness-tool-gates.test.ts"
+sha256 = "1f9be407e6e02bb8a05d336f2c06054572cc959bef76a54929728265bc953c27"
+owner = "dcore-loop"
+levels = ["tests"]
+status = "pending"
+reason = "pending durable/core v1.6.0 signals/parks/fit-images port: beforeTool gates (473515f9)"
+
+[[scenario]]
 id = "U-harness-tool-hooks"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-tool-hooks.test.ts"
-sha256 = "2bfa027a92ffdff6b3740711db496d58d3285883340f1988d5e1cde1c79dfe59"
+sha256 = "a2fdc36eb7ffd4d27e00b3023d5ba8ffeb1b5ba376036b0470f1438eadc54ce4"
 owner = "dcore-loop"
 levels = ["tests"]
 status = "ready"
+
+[[scenario]]
+id = "U-harness-tool-parks"
+family = "upstream-test"
+runner = "vitest"
+source = "packages/durable/test/harness-tool-parks.test.ts"
+sha256 = "ebc466c10eafa660eadffc3ea01a736bba8ecc2d2aeda5de324107b53e1bd128"
+owner = "dcore-loop"
+levels = ["tests"]
+status = "pending"
+reason = "pending durable/core v1.6.0 signals/parks/fit-images port: parked tools and cancel (473515f9)"
 
 [[scenario]]
 id = "U-harness-tools-recovery"
@@ -1119,7 +1316,7 @@ id = "U-harness-tools"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-tools.test.ts"
-sha256 = "a52bf251b091be766000210bbda10bc42c8b7f9c2021f4063d01451e4490ae6f"
+sha256 = "8450007f7ea63b67073008b7fe11c15a20f3f780ad73f0bb93dacdd82d1d3b99"
 owner = "dcore-loop"
 levels = ["tests"]
 status = "ready"
@@ -1157,6 +1354,17 @@ sha256 = "cccc828f5697f731c878f37ff04b278e79457d1bc9913d29398f2763395c3183"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
+
+[[scenario]]
+id = "U-images-fit"
+family = "upstream-test"
+runner = "vitest"
+source = "packages/durable/test/images-fit.test.ts"
+sha256 = "5822be2d2febd24d64c29ee55a9c1898b79955c03a0f73e42ec2eec687ade9ee"
+owner = "dcore-loop"
+levels = ["tests"]
+status = "pending"
+reason = "pending durable/core v1.6.0 signals/parks/fit-images port: fitImage/fitImages and fit-images extension (76c79d8b)"
 
 [[scenario]]
 id = "U-images-wasm-module"
@@ -1357,7 +1565,7 @@ id = "U-spec-usage"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/spec-usage.test.ts"
-sha256 = "b83baf391825d0e65207d7ad6c8078d77375f0fe0afd843f56a884343bb139d4"
+sha256 = "f74955f631f22896409b7dfc52abe4dce770fac9193119603f8b517677c3247d"
 owner = "dcore-store"
 levels = ["tests"]
 status = "ready"
@@ -1483,7 +1691,7 @@ id = "U-tools-images"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/tools-images.test.ts"
-sha256 = "5587d0f92d75de10cdfb3fe4b227f51c5238040c34318c20584499c4ad9d6a7c"
+sha256 = "ae800f074a9c959b8be69afb10950f6d6a1fc8f3d0aea254d040e186c21790aa"
 owner = "dcore-loop"
 levels = ["tests"]
 status = "ready"
@@ -1503,7 +1711,7 @@ id = "U-tools"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/tools.test.ts"
-sha256 = "44265beb50c2e905ac87d635b17ad7c1e7569c4b25a18e7e3ba1f38afb93e4f7"
+sha256 = "8d664a5856ac3d9a3c34b0c4e8f973ae4d0d320c63aeadf89629f4b977242eb1"
 owner = "dcore-loop"
 levels = ["tests"]
 status = "ready"
@@ -1523,7 +1731,7 @@ id = "SC"
 family = "storage-conformance"
 runner = "storage-conformance"
 source = "packages/durable/src/testing/storage-conformance.ts"
-sha256 = "9d0b03380f00d6e1428aca703e0bd8131209f14cc2f4885f5810c7883b75edcb"
+sha256 = "193597633583dffe88c370fbc5786d6157c2f6e1c40b9a29a739d3505e571f5d"
 owner = "dcore-store"
 about = "the core's write encoder wrapped as a Storage passes the upstream storage conformance suite (CONTRACT 3.10): the suite registered by memory-storage, jsonl-storage, sqlite-storage, sqlite-cloudflare, sqlite-facade and indexeddb-storage"
 levels = ["tests"]

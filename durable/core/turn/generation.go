@@ -34,16 +34,16 @@ const (
 )
 
 // GenerationDef is the pi.generation definition: first checkpoint {phase: "prepare", attempt: 1}. Version 2 leaves calls to tools not
-// offered in a sequential round's `pending`, flagged `unoffered` in their slots. A version 1 Harness would start their tool tasks
-// unflagged, resolving the name, so it leaves version 2 blocked instead. A version 1 checkpoint has no such calls and is kept as it is.
+// offered in a sequential round's `pending`, flagged `unoffered` in their slots. Version 3 (Pi v1.6.0) adds the `afterTools` and `yield`
+// phases, which this core explicitly rejects as unimplemented suspendable work if encountered in a stored checkpoint. Older checkpoints are kept as they are.
 // Read-only: assigned once at initialization.
 var GenerationDef = &session.TaskDef{
 	Name:    KindGeneration,
-	Version: 2,
+	Version: 3,
 	Initial: func(any) any { return jobj("phase", phasePrepare, "attempt", 1.0) },
 }
 
-// migrateGeneration keeps a version 1 generation as it is.
+// migrateGeneration keeps older generation checkpoints as they are.
 func migrateGeneration(input, checkpoint any, _ int) (any, any, error) { return input, checkpoint, nil }
 
 // jobj builds an ordered object from alternating keys and values.
@@ -163,7 +163,12 @@ func (g *Generation) phase(rt *session.Runtime, task *jv.Object, done func(error
 	case phaseDrain:
 		r.drain(cp)
 	default:
-		done(errors.New("Generation phase " + str(cp, "phase") + " is unknown"))
+		phase := str(cp, "phase")
+		msg := "Generation phase " + phase + " is unknown"
+		if phase == "afterTools" || phase == "yield" {
+			msg = "Generation phase " + phase + " requires suspendable work (not in the Durable core's contract pin)"
+		}
+		done(errors.New(msg))
 	}
 }
 

@@ -11,12 +11,12 @@ export function wrapTool<T extends HostTool>(tool: T, wrapper: (tool: T) => T): 
 export function wrapSection(key: string, wrapper: (section: HostSection) => HostSection): HostWrap { return { section: key, wrap: wrapper } }
 export function defineTask<T extends HostTask["definition"]>(definition: T): { definition: T } { return { definition } }
 
-/** A task an `afterRun` hook asks for, its input typed by the task (define.ts runEndTask). */
-export function runEndTask(task: { definition: { name: string } }, input: unknown): { task: { definition: { name: string } }; input: unknown } { return { task, input } }
+/** A task a hook (`afterTools`, `onYield`, `afterRun`) asks for, its input typed by the task (define.ts hookTask). */
+export function hookTask(task: { definition: { name: string } }, input: unknown): { task: { definition: { name: string } }; input: unknown } { return { task, input } }
 
 /** The built-in tasks the core runs. Extensions name them in `hook()` and read their results; the phases live in the core. */
 const builtin = (name: string, version = 1) => ({ definition: { name, version } })
-export const GenerationTask = builtin("pi.generation", 2)
-/** tool.ts ToolTask, version 3: version 1 had only model-issued calls, so its input becomes `{ kind: "model", ...input }`; version 3 added `unoffered`, absent in version 2 inputs. The checkpoint stays. */
-export const ToolTask = { definition: { name: "pi.tool", version: 3, initial: () => ({ phase: "call" }), migrate: (input: unknown, checkpoint: unknown, fromVersion: number) => ({ input: fromVersion === 1 ? { kind: "model", ...(input as object) } : input, checkpoint }) } }
+export const GenerationTask = builtin("pi.generation", 3)
+/** tool.ts ToolTask, version 4: version 1 had only model-issued calls, so its input becomes `{ kind: "model", ...input }`; version 3 added `unoffered`; version 4 (Pi v1.6.0) added `parked`. The checkpoint stays. */
+export const ToolTask = { definition: { name: "pi.tool", version: 4, initial: () => ({ phase: "call" }), migrate: (input: unknown, checkpoint: unknown, fromVersion: number) => ({ input: fromVersion === 1 ? { kind: "model", ...(input as object) } : input, checkpoint }) } }
 export const CompactionTask = builtin("pi.compaction")

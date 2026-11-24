@@ -10,12 +10,13 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/core/session"
 )
 
-// ToolDef is the pi.tool task definition (tool.ts ToolTask, version 3): input {kind: "model", assistant, callId, unoffered?}, first
-// checkpoint {phase: "call"}. Version 1 had only model-issued calls and no kind (migrateToolTask); version 3 added `unoffered`.
+// ToolDef is the pi.tool task definition (tool.ts ToolTask, version 4): input {kind: "model", assistant, callId, unoffered?}, first
+// checkpoint {phase: "call"}. Version 1 had only model-issued calls and no kind (migrateToolTask); version 3 added `unoffered`;
+// version 4 (Pi v1.6.0) added the `parked` phase, which this core explicitly rejects as unimplemented suspendable work if encountered.
 // Read-only: assigned once at initialization.
 var ToolDef = &session.TaskDef{
 	Name:    KindTool,
-	Version: 3,
+	Version: 4,
 	Initial: func(any) any {
 		o := jv.NewObject()
 		o.Set("phase", "call")

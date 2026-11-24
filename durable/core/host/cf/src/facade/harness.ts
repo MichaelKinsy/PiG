@@ -44,6 +44,7 @@ import type { TelemetryContext } from "@earendil-works/pi-telemetry"
 import { Transaction } from "./session/transaction.ts"
 import { structuredOutputError } from "./structured.ts"
 import { validateToolArguments } from "@earendil-works/pi-ai/utils/validation"
+import { cleanupSessionResources } from "@earendil-works/pi-ai/session-resources"
 import { type ClientIdentity, mergeClientIdentity, PI_ATTRIBUTION } from "@earendil-works/pi-ai/utils/identity"
 
 const errorText = errorMessage
@@ -213,6 +214,7 @@ export class Harness {
   /** The latest value of each document a published notice carried, by record ID: a memory notice of a document held here has its operations only (core/tx.go sentValues). Empty while no commit listener is subscribed, as the core's. */
   private readonly documentValues = new Map<number, Revision>()
   private readonly closeListeners = new Set<() => void>()
+  readonly providerSessionIds = new Set<string>()
   private resumeQueued = false
   private shut = false
   /** The fatal error that discarded the core session (a trap, a failed commit); every later wait rejects with it. */
@@ -345,7 +347,7 @@ export class Harness {
       const resolvedAgents = new Map<number, unknown>()
       const runtimeHostApi = { client, agent: (id: number, context: Context) => harness.resolveAgent(id, undefined, context), watchDoc: (token: any, ...args: unknown[]) => harness.watchDoc(token, ...args), conversation: async (id: number, binding: InvocationBinding, context: Context) => { const found = await harness.conversation(id, context); return found && boundConversation(found, binding) } }
       const runtime: EffectRuntime = {
-        client, registry, get models() { return currentModels() }, env: options.env, report: (error, info, context) => harness.report(error, info as ReportInfo, context), now: options.now, resolvedAgent: id => resolvedAgents.get(id),
+        client, registry, get models() { return currentModels() }, env: options.env, report: (error, info, context) => harness.report(error, info as ReportInfo, context), recordProviderSession: sessionId => { harness.providerSessionIds.add(sessionId) }, now: options.now, resolvedAgent: id => resolvedAgents.get(id),
         hostApi: runtimeHostApi,
         readTarget: () => self.harness,
         spanContext: (span, base) => harness.telemetry.spanContext(span, base),
@@ -483,6 +485,7 @@ export class Harness {
             const models = currentModels()
             const model = models.getModel(payload.model.provider, payload.model.modelId)
             if (model === undefined) throw new Error(`Model ${payload.model.provider}/${payload.model.modelId} is not available`)
+            if (typeof payload.options?.sessionId === "string") harness.providerSessionIds.add(payload.options.sessionId)
             return (models as any).completeSimple(model, payload.context, { ...payload.options, signal: context.abortSignal })
           },
         },
@@ -820,6 +823,13 @@ export class Harness {
     // close event is final, so open transactions end first.
     if (this.client.busy) await this.client.idle()
     const unstored = await this.host.closeAndJoin()
+    // Pi #11961 (harness.ts beforeClose): release process-local provider resources after running tasks join.
+    if (this.providerSessionIds.size > 0) {
+      for (const sessionId of this.providerSessionIds) {
+        contained(() => cleanupSessionResources(sessionId), error => this.report(error, { kind: "host_error", callback: "models" }))
+      }
+      this.providerSessionIds.clear()
+    }
     // session.ts close: after the last publication, the commits admitted before the seal have settled.
     const observers = [...this.commitListeners]
     this.commitListeners.clear()

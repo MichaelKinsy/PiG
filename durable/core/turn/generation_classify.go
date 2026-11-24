@@ -275,6 +275,7 @@ func (r *run) answer(message *jv.Object) {
 						return nil, err
 					}
 					if ok {
+						tx.Await(1) // Pi v1.6.0 generation.ts answer: returning async concludeAnswer()
 						return held, nil
 					}
 				}
@@ -299,6 +300,7 @@ func (r *run) answer(message *jv.Object) {
 					}
 					handOver(live, r.rt.TaskID(), next)
 					live.Delete("generation")
+					tx.Await(1) // Pi v1.6.0 generation.ts answer: returning async concludeAnswer()
 					return result, nil
 				}
 				if err := EndRun(tx, live, r.rt.TaskID(), Answered(entryID)); err != nil {
@@ -309,6 +311,7 @@ func (r *run) answer(message *jv.Object) {
 						return nil, err
 					}
 				}
+				tx.Await(1) // Pi v1.6.0 generation.ts answer: returning async concludeAnswer()
 				return result, nil
 			})
 		})

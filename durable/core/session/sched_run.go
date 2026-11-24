@@ -166,8 +166,7 @@ func (s *Scheduler) decide(tx *Tx, current *jv.Object, previous *phaseResult, st
 	next := st.snapshot.Task(kind)
 	if next != st.task {
 		if next != nil && canReserve(next, current) {
-			cpv, _ := getObj(current, "state").Get("checkpoint")
-			_ = tx.stageTask(with(current, "state", obj("status", StatusPending, "checkpoint", cpv)))
+			_ = tx.stageTask(pendingAgain(current))
 			return decision{kind: decideStop}, nil
 		}
 		if !st.hasRep || st.reported != next {
@@ -425,9 +424,14 @@ func (s *Scheduler) commitState(tx *Tx, inv *invocation, current *jv.Object, nex
 		}
 	}
 	// A state the task committed that differs from its current one is progress: its restart count starts over. The same
-	// checkpoint committed again, for example as intent before an effect, is not.
-	if jv.Equal(getObj(current, "state"), next) {
-		return tx.stageFresh(withState(current, next))
+	// checkpoint committed again, for example as intent before an effect, is not, and keeps the wake (scheduler.ts #commitState).
+	curState := getObj(current, "state")
+	was := curState
+	if curState != nil && curState.Has("wake") {
+		was = without(curState, "wake")
+	}
+	if jv.Equal(was, next) {
+		return tx.stageFresh(withState(current, curState))
 	}
 	return tx.stageFresh(withState(progressed(current), next))
 }

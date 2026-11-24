@@ -39,12 +39,10 @@ func checkNextState(next *durable.NextTaskState[durable.JsonValue, durable.JsonV
 	return nil
 }
 
-// corePinBuiltinVersions are the versions of the built-in tasks the core runs: its contract pin (CONTRACT.md section 1,
-// the pin e7a0df27) has pi.tool at version 3 and pi.generation at version 2. A task the Go harness package creates for the
-// core, such as a nested tool call, is stamped with these, not with the harness definition's newer versions (pi.tool 4 and
-// pi.generation 3 of Pi 473515f9c add the parked, afterTools, and yield phases, which the core does not run): a record
-// newer than the core knows is blocked as task_too_old. A pin bump moves them with the definitions.
-var corePinBuiltinVersions = map[string]int{"pi.tool": 3, "pi.generation": 2}
+// corePinBuiltinVersions are the versions of the built-in tasks the core runs: aligned with Pi v1.6.0 (pi.tool version 4
+// and pi.generation version 3) for store/handoff compatibility while suspendable-work phases (parked, afterTools, yield)
+// remain unimplemented and are explicitly rejected in turn/tool_machine.go and turn/generation.go.
+var corePinBuiltinVersions = map[string]int{"pi.tool": 4, "pi.generation": 3}
 
 // corePinVersion is the version the core stores for a task of def.
 func corePinVersion(def *durable.AnyTaskDefinition) int {
