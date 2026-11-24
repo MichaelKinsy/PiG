@@ -116,3 +116,25 @@ func TestCodexWebSocketConnectionLimitIsRetryable(t *testing.T) {
 		}
 	}
 }
+
+// Pi 0fbdbd3f packages/ai/test/retry.test.ts:82-88 (#10996), node-fetch src/index.js:108:
+// node-fetch formats transport errors as "request to <url> failed, reason: <reason>" (sometimes with an empty reason).
+// The pattern in retry.ts:78 ("request to \\S+ failed, reason:") requires \S in the durable regex engine.
+func TestNodeFetchRequestFailedIsRetryable(t *testing.T) {
+	for _, tc := range []struct {
+		text string
+		want bool
+	}{
+		{"request to https://oauth2.googleapis.com/token failed, reason:", true},
+		{"request to https://oauth2.googleapis.com/token failed, reason: connect ECONNREFUSED 127.0.0.1:9", true},
+		{"request to https://api.example.com/v1/messages failed, reason: socket hang up", true},
+		{"request to https://api.example.com/v1/messages failed, reason: write EPROTO", true},
+		{"request to   failed, reason: empty url", false},
+		{"request to https://api.example.com/v1/messages failed, reason: insufficient_quota", false},
+	} {
+		message := jobj("role", "assistant", "stopReason", "error", "errorMessage", tc.text)
+		if got := IsRetryableAssistantError(message); got != tc.want {
+			t.Errorf("IsRetryableAssistantError(%q) = %v, want %v", tc.text, got, tc.want)
+		}
+	}
+}
