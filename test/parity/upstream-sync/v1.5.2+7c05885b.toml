@@ -1,0 +1,63 @@
+from = "1.5.2+1e34c3b4"
+to = "1.5.2+7c05885b"
+
+[[files]]
+path = "packages/coding-agent/src/utils/flush-stdout.ts"
+change = "added"
+disposition = "designed-out"
+evidence = ["test:coding/cli/startup_picker_exit_bytes_linux_test.go#TestStartupResumePickerExitLeavesTheTerminalModesReset", "test:internal/codingagent/interactive_exit_hint_test.go#TestInteractiveQuitPrintsOneHintAfterTerminalRestore"]
+rationale = "7c05885bc (#12133): flushStdout waits for the writes queued in process.stdout before process.exit(), which drops them. pig has no buffered stdout writer on any exit path: every terminal write is a direct synchronous write to the underlying *os.File (tui/terminal.go:823-834, 862-868, writeString calling os.File.WriteString; no bufio.Writer on stdout). Most CLI exits go through releaseForExit (coding/cli/profiling.go:29-57); the five direct os.Exit paths outside it are also safe because none leaves buffered stdout unwritten: interactive_crash.go:202 (uncaughtOffLoop: calls tui.RestoreTerminalOnExit and tui.RestoreTerminalFromSignal at 194-195, writes crash report to os.Stderr directly at 197), interactive_input.go:132 (emergencyTerminalExit: calls tui.RestoreTerminalOnExit synchronously at 131), interactive_tui.go:617 (exitAtSignal: calls tui.RestoreTerminalOnExit and tui.RestoreTerminalFromSignal synchronously at 605-606), coding/cli/guard.go:35 (guardBinaryIdentity: writes refusal to os.Stderr at 24 before any mode or TUI starts), and coding/cli/login_signals_unix.go:18 / login_signals_windows.go:13 (dieBySignal: called from exitProcessBySignal after releaseForExit or on a second signal in terminal auth commands, which write directly via fmt.Print* on os.Stdout with no TUI or buffered writer). A pipe on stdout never runs the TUI (probe of lane PiExitSignalCheck: 0 of 200 interactive exits lost their final bytes). Nothing in Go corresponds to the one-second timeout or the EPIPE listener."
+oracle = "carried: 7c05885bc (flushStdout is added to utils/sleep.js; the callers below)."
+
+[[files]]
+path = "packages/coding-agent/src/cli/config-selector.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = ["test:coding/cli/startup_picker_exit_bytes_linux_test.go#TestStartupResumePickerExitLeavesTheTerminalModesReset"]
+rationale = "7c05885bc: `pi config` stops its TUI and flushes stdout before it resolves or exits. pig's picker writes the resets synchronously before it returns (see flush-stdout.ts); the same exit bytes are held for the startup pickers by the pseudo-terminal test."
+oracle = "carried: 7c05885bc (cli/config-selector.js)."
+
+[[files]]
+path = "packages/coding-agent/src/cli/session-picker.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = ["test:coding/cli/startup_picker_exit_bytes_linux_test.go#TestStartupResumePickerExitLeavesTheTerminalModesReset"]
+rationale = "7c05885bc: the --resume picker flushes stdout after stopping its TUI, before it resolves a path, resolves null or exits. The test starts `pig --resume`, presses ctrl+c and requires that bracketed paste and the Kitty keyboard flags the picker turned on are turned off in the terminal's last bytes."
+oracle = "carried: 7c05885bc (cli/session-picker.js)."
+
+[[files]]
+path = "packages/coding-agent/src/cli/startup-ui.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = ["test:coding/cli/startup_picker_exit_bytes_linux_test.go#TestStartupResumePickerExitLeavesTheTerminalModesReset"]
+rationale = "7c05885bc: the startup selector, the first-time setup and the startup input flush stdout after ui.stop(). pig writes the terminal's resets synchronously; same reasoning and test as session-picker.ts."
+oracle = "carried: 7c05885bc (cli/startup-ui.js)."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = ["test:internal/codingagent/interactive_exit_hint_test.go#TestInteractiveQuitPrintsOneHintAfterTerminalRestore", "test:coding/cli/interactive_provider_abort_quit_linux_test.go#TestInteractiveQuitWhileABuiltInProviderTurnStreams"]
+rationale = "7c05885bc: the crash exit and the two quit exits flush stdout before process.exit(). pig's exits write the stop sequence and the resume hint synchronously; the existing quit tests hold the terminal's bytes after the stop sequence (the resume hint and the exit sequences, nothing else)."
+oracle = "carried: 7c05885bc (modes/interactive/interactive-mode.js)."
+
+[[files]]
+path = "packages/coding-agent/test/flush-stdout.test.ts"
+change = "added"
+disposition = "designed-out"
+evidence = ["test:coding/cli/startup_picker_exit_bytes_linux_test.go#TestStartupResumePickerExitLeavesTheTerminalModesReset"]
+rationale = "7c05885bc: the cases test flushStdout itself (the callback, the one-second timeout, a 4 MiB write that is queued at exit, a closed stdout). Go has no flushStdout; the observable claim of the fix, that the terminal mode resets of an exit are written, is held by the pseudo-terminal test."
+
+[[files]]
+path = "packages/coding-agent/test/fixtures/flush-stdout-exit.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "7c05885bc: the fixture of flush-stdout.test.ts, which runs flushStdout in a child process."
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "7c05885bc: Pi's changelog entry. pig has no change."

@@ -647,7 +647,7 @@ export default function (pi) {
 // The hint is plain because startQuitPane pins FORCE_COLOR=0 (chalk level 0): Pi prints it as chalk.dim, which adds the dim sequences at any nonzero level, and
 // pig's chalk level follows Pi's, so without the pin the bytes depend on the environment of the test (CI set without a known CI provider gives level 0, a TTY under
 // TERM=xterm-256color without CI gives level 2).
-var quitBytesAfterStop = regexp.MustCompile(`^(\x1b\]0;[^\x07]*\x07)?To resume this session: [^\r\n]*\r\n(\x1b\]9;4;0\x07|\x1b\]0;[^\x07]*\x07|\x1b\[\?25h)*$`)
+var quitBytesAfterStop = regexp.MustCompile(`^(\x1b\]0;[^\x07]*\x07)?To resume this session:\r\n[^\r\n]*\r\n(\x1b\]9;4;0\x07|\x1b\]0;[^\x07]*\x07|\x1b\[\?25h)*$`)
 
 // TestInteractiveQuitWhileABuiltInProviderTurnStreams: the user quits interactive mode (ctrl+c twice, ctrl+d or /quit) while a turn of a built-in provider kind streams:
 // openai-completions through models.json, served by a local listener that shows "alpha beta " and then holds its stream open. No Escape precedes the quit: the quit's own

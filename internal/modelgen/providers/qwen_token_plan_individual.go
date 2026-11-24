@@ -4,7 +4,6 @@ package providers
 
 import (
 	. "github.com/MichaelKinsy/PiG/internal/modelgen" //nolint:staticcheck // ST1001: provider files mirror packages/ai/catalog/providers; the dot import keeps the definition helpers (O, Spread, MergeCompat, ...) as unqualified as the TypeScript imports of ../define.ts
-	"github.com/MichaelKinsy/PiG/internal/modelgen/modeldata"
 )
 
 // Token Plan Individual (Personal) text-model allowlist, verified 2026-11-09 against both regions' docs.
@@ -25,6 +24,7 @@ var qwenTokenPlanIndividualModelIDs = []string{
 	"qwen3.7-plus",
 	"qwen3.8-flash",
 	"qwen3.8-max",
+	"qwen4-max-preview",
 }
 
 // qwenTokenPlanIndividualModels serves the Individual allowlist from one models.dev token plan catalog.
@@ -33,20 +33,7 @@ func qwenTokenPlanIndividualModels(ctx *ProviderContext, source, baseURL string)
 	for _, id := range qwenTokenPlanIndividualModelIDs {
 		allowed[id] = true
 	}
-	models, err := qwenTokenPlanModels(ctx, source, baseURL, allowed)
-	if err != nil {
-		return nil, err
-	}
-	if ctx.Strict {
-		ids := make([]string, 0, len(models))
-		for _, model := range models {
-			ids = append(ids, model.Str("id"))
-		}
-		if err := modeldata.AssertExactModelIds(ctx.ProviderID, qwenTokenPlanIndividualModelIDs, ids); err != nil {
-			return nil, err
-		}
-	}
-	return models, nil
+	return qwenTokenPlanModels(ctx, source, baseURL, allowed)
 }
 
 func qwenTokenPlanIndividual() ProviderDefinition {

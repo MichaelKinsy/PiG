@@ -133,7 +133,7 @@ func TestUpstreamSignalShutdownExtensionCleanup(t *testing.T) {
 		if want := []string{"drainInput", "stop", "dispose"}; !slices.Equal(order, want) {
 			t.Fatalf("order=%v; want %v", order, want)
 		}
-		if want := "\x1b[2mTo resume this session:\x1b[22m pig --session test-session\n"; output != want {
+		if want := "\x1b[2mTo resume this session:\x1b[22m\npig --session test-session\n"; output != want {
 			t.Fatalf("output=%q; want %q", output, want)
 		}
 	})
@@ -179,7 +179,7 @@ func TestUpstreamSignalShutdownExtensionCleanup(t *testing.T) {
 	})
 }
 
-// interactive-mode.ts:4326 writes `${chalk.dim("To resume this session:")} ${resumeCommand}`; at chalk level 0 (FORCE_COLOR=0, --no-color, TERM=dumb,
+// interactive-mode.ts:4516 writes `${chalk.dim("To resume this session:")}\n${resumeCommand}\n` (#12237, Pi 63dec2621); at chalk level 0 (FORCE_COLOR=0, --no-color, TERM=dumb,
 // an unknown TERM) chalk.dim returns the text unchanged. PiG always wrote the dim codes.
 func TestResumeHintIsPlainAtChalkLevelZero(t *testing.T) {
 	setStdoutTTY(t, true)
@@ -192,7 +192,7 @@ func TestResumeHintIsPlainAtChalkLevelZero(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
-	if want := "To resume this session: pig --session test-session\n"; output != want {
+	if want := "To resume this session:\npig --session test-session\n"; output != want {
 		t.Fatalf("output=%q; want %q", output, want)
 	}
 }
