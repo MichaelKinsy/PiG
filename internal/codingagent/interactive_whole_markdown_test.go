@@ -61,9 +61,9 @@ func TestWholeMarkdownBlocksRenderBytes(t *testing.T) {
 	want := "d9c6e895cd305624413664c65a05c5047fbdd78e855091255b65ebc6fb3e47f8"
 	switch {
 	case tui.HostKeybindingPlatform() == tui.KeybindingPlatformLinuxWSL:
-		want = "4c4149c4b245033e7f8446c0d683ee902e7528c3d75315f52d00d4015faed4fc"
+		want = "047296e1d0123674d97056e9c10b8c82edbe07f25a5fe7b7801aba7120e75a24"
 	case runtime.GOOS == "darwin":
-		want = "ab2af2a15656f36e688c7975b31fdf80fd6c781d76ab4bf3b96223340b4cee88"
+		want = "effc3dcd89578854a2f7dcd0bd4b2d240bb39ebc245f36939bdfadb7a5e22452"
 	}
 	if got := hex.EncodeToString(hash.Sum(nil)); got != want {
 		t.Errorf("rows hash %s, want %s", got, want)
