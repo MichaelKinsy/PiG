@@ -628,6 +628,10 @@ func (s *ScopedModelsList) HandleInput(data string) {
 		before := s.searchInput.Text()
 		s.searchInput.HandleInput(data)
 		if s.searchInput.Text() != before {
+			// Ports scoped-models-selector.ts handleInput (Pi 37b74c546, #12246): a non-empty query moves the selection to the top row; toggles and reorders call refresh() too, so the reset lives here and not there.
+			if s.searchInput.Text() != "" {
+				s.cursor = 0
+			}
 			s.refresh()
 			s.Invalidate()
 		}

@@ -128,8 +128,12 @@ func (s *ThinkingSelectorComponent) HandleInput(data string) {
 		return
 	}
 
+	// Ports thinking-selector.ts handleInput (Pi 5bcf370a5, #12334): the list is rebuilt only when the query changed.
+	previousQuery := s.searchInput.Text()
 	s.searchInput.HandleInput(data)
-	s.applyFilter(s.searchInput.Text())
+	if s.searchInput.Text() != previousQuery {
+		s.applyFilter(s.searchInput.Text())
+	}
 	s.Invalidate()
 }
 

@@ -7148,7 +7148,7 @@
       "upstreamTestHash": "sha256:ae7d224cbff258d61d720d4f6db0b9c2d236a7bacbc38e276921ee43fc9b4507",
       "evidence": [
         "internal/codingagent/session_selector_search_test.go#TestUpstreamSessionSelectorSearch",
-        "internal/codingagent/session_selector_search_test.go#TestSessionSearchRetainsAndClampsSelection",
+        "internal/codingagent/session_selector_search_test.go#TestSessionSearchSelectsTopRowOnQuery",
         "internal/codingagent/session_selector_search_semantics_test.go",
         "test/parity/scenarios/session/20-session-selector-search.toml",
         "test/parity/scenarios/session/21-session-search-resume-picker.toml",

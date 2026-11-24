@@ -787,6 +787,8 @@ evidence = [
   "tui/select_page_keys_test.go#TestSelectorComponentsMoveByTheirPage",
   "internal/codingagent/scoped_models_contract_test.go#TestScopedModelsOverlappingBindingsMatchPi",
   "internal/codingagent/scoped_models_contract_test.go#TestScopedModelsIgnoreKeysAfterTheyCancel",
+  "tui/selector_search_selection_upstream_test.go#TestScopedModelsSelectsTheBestMatchAfterTypingAQueryEvenAfterScrolling",
+  "tui/selector_search_selection_upstream_test.go#TestScopedModelsKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged",
 ]
 
 [contract.upstream]
@@ -1618,12 +1620,14 @@ id = "tui/settings-list/search-input-delegation"
 upstream_id = "input:packages/tui/src/components/settings-list.ts#SettingsList.handleInput"
 family = "settings"
 kind = "boundary-transition"
-claim = "an open submenu receives every key; otherwise up and down wrap, empty lists ignore them, up, down, confirm or space (when search is off or empty) and cancel are tested in that order, with the selection page keys moving by one visible page between down and confirm, and every other key goes to the search Input and refilters, returning the selection to the first match; the selection page keys rank between down and confirm, clamp at both ends and ignore an empty list; up, down, the page keys, confirm and cancel are read through the keybinding manager, so a remapped cancel stops the default Escape from cancelling; navigation acts on the filtered rows (a single match does not wrap, an empty filter ignores every key); an open submenu, including one without an input handler, owns every key and the search text and selection survive its closing"
+claim = "an open submenu receives every key; otherwise up and down wrap, empty lists ignore them, up, down, confirm or space (when search is off or empty) and cancel are tested in that order, with the selection page keys moving by one visible page between down and confirm, and every other key goes to the search Input and refilters only when the query text changed (Pi 5bcf370a5, so cursor keys Left/Right/Home/End keep the selection while a changed query returns to the first match); the selection page keys rank between down and confirm, clamp at both ends and ignore an empty list; up, down, the page keys, confirm and cancel are read through the keybinding manager, so a remapped cancel stops the default Escape from cancelling; navigation acts on the filtered rows (a single match does not wrap, an empty filter ignores every key); an open submenu, including one without an input handler, owns every key and the search text and selection survive its closing"
 status = "ported"
 pig_targets = ["tui/settings_list.go#HandleInput", "tui/settings_list.go#applyFilter"]
 evidence = [
   "tui/settings_list_input_test.go#TestSettingsListSearchDelegatesEditingKeysToTheInput",
-  "tui/settings_list_input_test.go#TestSettingsListAnyDelegatedKeyResetsTheSelectionToTheFirstMatch",
+  "tui/settings_list_input_test.go#TestSettingsListADelegatedKeyThatLeavesTheQueryUnchangedKeepsTheSelection",
+  "tui/selector_search_selection_upstream_test.go#TestSettingsListKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged",
+  "tui/selector_search_selection_upstream_test.go#TestSelectorSearchBoundaryTransitions",
   "tui/settings_list_input_test.go#TestSettingsListBoundActionsRunInUpstreamOrder",
   "tui/settings_list_input_test.go#TestSettingsListEmptyAndSingletonNavigationBoundaries",
   "tui/settings_list_input_test.go#TestSettingsListSubmenuReceivesEveryKeyIncludingCancel",
@@ -1649,7 +1653,7 @@ id = "coding-agent/oauth-selector/input-state-machine"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/oauth-selector.ts#OAuthSelectorComponent.handleInput"
 family = "oauth"
 kind = "selector-input-state-machine"
-claim = "OAuthSelectorComponent.handleInput in upstream order: tui.select.up and tui.select.down clamp (no wraparound) and are ignored on an empty filtered list, tui.select.pageUp and tui.select.pageDown move by the eight visible rows clamped to the list bounds and are ignored on an empty list, tui.select.confirm and the search Input's submit (tui.input.submit or LF) call onSelect once for the highlighted provider and nothing when the filtered list is empty, tui.select.cancel calls onCancel once, and every other key edits the fuzzy search and clamps (does not reset) the selection; each earlier branch wins when two actions share a key"
+claim = "OAuthSelectorComponent.handleInput in upstream order: tui.select.up and tui.select.down clamp (no wraparound) and are ignored on an empty filtered list, tui.select.pageUp and tui.select.pageDown move by the eight visible rows clamped to the list bounds and are ignored on an empty list, tui.select.confirm and the search Input's submit (tui.input.submit or LF) call onSelect once for the highlighted provider and nothing when the filtered list is empty, tui.select.cancel calls onCancel once, and every other key delegates to the search Input; when the query text changed it re-filters and selects row 0 for a non-empty query or clamps when cleared, and when the query is unchanged it keeps the selection; each earlier branch wins when two actions share a key"
 status = "ported"
 pig_targets = [
   "tui/oauth_selector.go#HandleInput",
@@ -1662,6 +1666,10 @@ evidence = [
   "tui/select_page_keys_test.go#TestSelectorComponentsMoveByTheirPage",
   "test/parity/scenarios/oauth/17-login-method-search.toml",
   "test/parity/scenarios/oauth/26-login-cancel-returns-to-provider-list.toml",
+  "test/parity/scenarios/selectors/19-login-search-selects-best-match.toml",
+  "tui/selector_search_selection_upstream_test.go#TestOAuthSelectorSelectsTheBestMatchAfterTypingAQueryEvenAfterScrolling",
+  "tui/selector_search_selection_upstream_test.go#TestOAuthSelectorKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged",
+  "tui/selector_search_selection_upstream_test.go#TestSelectorSearchBoundaryTransitions",
 ]
 
 [contract.upstream]
@@ -1766,6 +1774,10 @@ evidence = [
   "internal/codingagent/session_selector_oracle_test.go#TestSessionSelectorInputMatchesPi",
   "test/parity/scenarios/session/20-session-selector-search.toml",
   "test/parity/scenarios/session/37-session-selector-sort-named-delete.toml",
+  "internal/codingagent/session_selector_search_selection_upstream_test.go#TestSessionSelectorSelectsTheBestMatchAfterTypingAQueryEvenAfterScrolling",
+  "internal/codingagent/session_selector_search_selection_upstream_test.go#TestSessionSelectorKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged",
+  "internal/codingagent/session_selector_search_selection_upstream_test.go#TestSessionSelectorKeepsTheTopRowSelectedWhenSessionsArriveAfterTypingAQuery",
+  "internal/codingagent/session_selector_search_selection_upstream_test.go#TestSessionSelectorSearchBoundaryTransitions",
 ]
 
 [contract.upstream]
@@ -2104,7 +2116,7 @@ id = "coding-agent/oauth-selector/boundary-transitions"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/oauth-selector.ts#OAuthSelectorComponent.handleInput"
 family = "selectors"
 kind = "boundary-transition"
-claim = "first row, last row, a single provider, no provider, a list shorter and longer than one page, and a search that matches nothing: up and down clamp at the ends, page keys move by one visible page clamped to the bounds, confirm and the Input's submit select nothing on an empty list, cancel is checked before the search input (a cancel key bound to a letter is not typed), and typing narrows the list while the highlighted index is clamped to the filtered length"
+claim = "first row, last row, a single provider, no provider, a list shorter and longer than one page, and a search that matches nothing: up and down clamp at the ends, page keys move by one visible page clamped to the bounds, confirm and the Input's submit select nothing on an empty list, cancel is checked before the search input (a cancel key bound to a letter is not typed), and typing a non-empty query narrows the list and selects row 0 (best match) while clearing the query clamps the index and keys that leave the query unchanged keep the selection"
 status = "ported"
 pig_targets = [
   "tui/oauth_selector.go#HandleInput",
@@ -2169,6 +2181,7 @@ evidence = [
   "test/parity/scenarios/settings/08-settings-model-thinking-empty-search.toml",
   "tui/select_page_keys_upstream_test.go#TestUpstreamSelectSubmenuPagesWithSelectionPageKeys",
   "tui/select_submenu_contract_test.go#TestSelectSubmenuPageKeysFollowTheKeybindingManager",
+  "tui/selector_search_selection_upstream_test.go#TestSelectSubmenuKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged",
 ]
 
 [contract.upstream]
@@ -2243,7 +2256,7 @@ id = "coding-agent/config-selector/input-state-machine"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ResourceList.handleInput"
 family = "selectors"
 kind = "selector-input-state-machine"
-claim = "ResourceList.handleInput in upstream order: tui.select.up and tui.select.down move to the neighbouring item row (group and subgroup headers are skipped, no wraparound, no move when no item row lies that way), tui.select.pageUp and tui.select.pageDown jump by the visible row count and settle on the nearest item row (pageUp scans forward, pageDown backward, staying put when none), tui.select.cancel calls onCancel before the raw Ctrl+C key calls onExit (so Ctrl+C exits only when cancel is rebound), tui.input.tab switches the write scope only when project mode is available and never reaches the search Input (the selection returns to the first item and the query is re-applied), Space or tui.select.confirm toggle only an item row, and every other key edits the search Input and re-filters (resetting the selection to the first item even when the query is unchanged, and treating a whitespace-only query as empty); empty, single-item and filtered-to-nothing lists ignore every movement and toggle key"
+claim = "ResourceList.handleInput in upstream order: tui.select.up and tui.select.down move to the neighbouring item row (group and subgroup headers are skipped, no wraparound, no move when no item row lies that way), tui.select.pageUp and tui.select.pageDown jump by the visible row count and settle on the nearest item row (pageUp scans forward, pageDown backward, staying put when none), tui.select.cancel calls onCancel before the raw Ctrl+C key calls onExit (so Ctrl+C exits only when cancel is rebound), tui.input.tab switches the write scope only when project mode is available and never reaches the search Input (the selection returns to the first item and the query is re-applied), Space or tui.select.confirm toggle only an item row, and every other key edits the search Input and re-filters (resetting the selection to the first item only when the query text changed, and treating a whitespace-only query as empty); empty, single-item and filtered-to-nothing lists ignore every movement and toggle key"
 status = "ported"
 pig_targets = [
   "tui/config_selector.go#HandleInput",

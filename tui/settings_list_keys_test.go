@@ -7,8 +7,8 @@ import (
 )
 
 // Upstream SettingsList.handleInput acts on up, down, confirm and cancel only. A list with search gives every other key to its
-// search Input and refilters, which returns the selection to the first match (settings-list.ts handleInput, applyFilter; probed
-// against pi-tui 1.0.4: Down then PageUp renders "(1/15)" with search and "(2/15)" without). A list without search ignores them.
+// search Input, which refilters only when the query changed (Pi 5bcf370a5, #12334), so Home and End keep the selection with search
+// as without it: "(2/15)" after Down. A list without search ignores them.
 func TestSettingsListPageAndHomeEndKeysFollowSearchState(t *testing.T) {
 	items := make([]SettingItem, 15)
 	for i := range items {
@@ -21,9 +21,6 @@ func TestSettingsListPageAndHomeEndKeysFollowSearchState(t *testing.T) {
 			sl.HandleInput("\x1b[B")
 			sl.HandleInput(key)
 			want := "(2/15)"
-			if search {
-				want = "(1/15)"
-			}
 			if screen := stripANSI(strings.Join(sl.Render(80), "\n")); !strings.Contains(screen, want) {
 				t.Errorf("%s with search=%v: want %s:\n%s", name, search, want, screen)
 			}

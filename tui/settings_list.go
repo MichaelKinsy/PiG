@@ -474,9 +474,13 @@ func (s *SettingsList) HandleInput(data string) {
 		s.cancelled = true
 		s.done = true
 	case s.searchEnabled:
-		// Every other key belongs to the search Input, and the list refilters after it even when the value is unchanged.
+		// Every other key belongs to the search Input. Ports settings-list.ts handleInput (Pi 5bcf370a5, #12334): the list
+		// refilters only when the query changed, so a cursor key keeps the selection.
+		previousQuery := s.searchInput.GetValue()
 		s.searchInput.HandleInput(data)
-		s.applyFilter()
+		if s.searchInput.GetValue() != previousQuery {
+			s.applyFilter()
+		}
 	}
 	s.Invalidate()
 }

@@ -74,6 +74,9 @@ func TestModelSelectorInputMatchesPi(t *testing.T) {
 		{"a", "\x01", "x", "\x05", "y", "\n"},
 		{"\x18", "q", "\r"},
 		{"\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B"},
+		// Pi 5bcf370a5 (#12334): a key that leaves the query unchanged keeps the selection.
+		{"l", "\x1b[B", "\x1b[B", "\x1b[D", "\x1b[H", "\x1b[C", "\x1b[F", "\r"},
+		{"a", "\x1b[B", "\x1b[Z", "\x1b[D", "\r"},
 	}
 	bindings := []map[string][]string{
 		nil,

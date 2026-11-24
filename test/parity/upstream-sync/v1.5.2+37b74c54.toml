@@ -1,0 +1,54 @@
+from = "1.5.2+cead615b"
+to = "1.5.2+37b74c54"
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "37b74c546921: Pi's changelog line for the search selection of /login, /logout, /scoped-models and /resume. PiG's user-visible change is its own changelog.d fragment."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/selector_search_selection_upstream_test.go#TestOAuthSelectorSelectsTheBestMatchAfterTypingAQueryEvenAfterScrolling", "test:tui/selector_search_selection_upstream_test.go#TestOAuthSelectorSelectsTheBestMatchForAQueryWrittenAtOnce", "test:tui/selector_search_selection_upstream_test.go#TestOAuthSelectorClearingTheQueryKeepsTheRowNumber"]
+rationale = "37b74c546921: filterProviders moves a non-empty query to the top row and keeps the clamp for an empty one. PiG's counterpart is tui/oauth_selector.go applyFilter."
+oracle = "carried: 37b74c546921 (pi-coding-agent/modes/interactive/components/oauth-selector.js)"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/selector_search_selection_upstream_test.go#TestScopedModelsSelectsTheBestMatchAfterTypingAQueryEvenAfterScrolling"]
+rationale = "37b74c546921: a changed search input moves a non-empty query to the top row before refresh(); toggles and reorders also call refresh(), so the reset stays in handleInput. PiG's counterpart is tui/scoped_models_list.go HandleInput."
+oracle = "carried: 37b74c546921 (pi-coding-agent/modes/interactive/components/scoped-models-selector.js)"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/session-selector.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/session_selector_search_selection_upstream_test.go#TestSessionSelectorSelectsTheBestMatchAfterTypingAQueryEvenAfterScrolling", "test:internal/codingagent/session_selector_search_selection_upstream_test.go#TestSessionSelectorKeepsTheTopRowSelectedWhenSessionsArriveAfterTypingAQuery"]
+rationale = "37b74c546921: SessionList.handleSearchInput applies a key to the query, selects the top row for a non-empty query and clears selectionTouched and pendingSelectedPath. PiG's counterpart is internal/codingagent/session_selector.go handleSearchInput."
+oracle = "carried: 37b74c546921 (pi-coding-agent/modes/interactive/components/session-selector.js)"
+
+[[files]]
+path = "packages/coding-agent/test/oauth-selector.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/selector_search_selection_upstream_test.go#TestOAuthSelectorSelectsTheBestMatchAfterTypingAQueryEvenAfterScrolling"]
+rationale = "37b74c546921: scrolls five rows, types openai and presses Enter. Ported with the same providers, keys and expectation."
+
+[[files]]
+path = "packages/coding-agent/test/scoped-models-selector.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/selector_search_selection_upstream_test.go#TestScopedModelsSelectsTheBestMatchAfterTypingAQueryEvenAfterScrolling"]
+rationale = "37b74c546921: scrolls three rows, types gpt-4o and presses Enter. Ported with the same models, keys and expectation."
+
+[[files]]
+path = "packages/coding-agent/test/session-selector-selection.test.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:internal/codingagent/session_selector_search_selection_upstream_test.go#TestSessionSelectorSelectsTheBestMatchAfterTypingAQueryEvenAfterScrolling", "test:internal/codingagent/session_selector_search_selection_upstream_test.go#TestSessionSelectorKeepsTheTopRowSelectedWhenSessionsArriveAfterTypingAQuery"]
+rationale = "37b74c546921: the two selection cases (the best match after scrolling, the top row when sessions arrive after a query), ported with the same sessions, keys and expectations."

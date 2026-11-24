@@ -115,7 +115,8 @@ func TestConfigSelectorMatchesPi(t *testing.T) {
 		{"global": small, "project": projectSmall},
 		{"global": large, "project": small},
 	}
-	base := []string{"\x1b[A", "\x1b[A", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[5~", "\x1b[6~", "\x1b", "\x03", "\x7f", "e", "x", "s", "k", "p", "t", "a", "/", ".", "\x15", "\x17", "z", "l", "\x1b[200~ex \x1b[201~", "\x1b[200~\u0130\x1b[201~", "\x1b[200~ Ex\x1b[201~", "\u0130"}
+	// Left and Home leave the query as it is: Pi 5bcf370a5 (#12334) keeps the selection for them.
+	base := []string{"\x1b[D", "\x1b[H", "\x1b[A", "\x1b[A", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[5~", "\x1b[6~", "\x1b", "\x03", "\x7f", "e", "x", "s", "k", "p", "t", "a", "/", ".", "\x15", "\x17", "z", "l", "\x1b[200~ex \x1b[201~", "\x1b[200~\u0130\x1b[201~", "\x1b[200~ Ex\x1b[201~", "\u0130"}
 	// Pi derives a project override from the SettingsManager's project settings and Pig carries it on the item (OnOverride persists it),
 	// so project-scope toggles are not comparable here: toggle keys only run in global scope, Tab only where no toggle can follow in project scope.
 	toggling := append(append([]string{}, base...), " ", " ", "\r")

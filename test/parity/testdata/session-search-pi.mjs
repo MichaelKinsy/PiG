@@ -33,7 +33,8 @@ for (const dd1 of cases.filter(test => ["DD1 five named sessions", "fuzzy beats 
     for (let i = 0; i < initial; i++) component.handleInput("\x1b[B");
     for (const key of "delta") component.handleInput(key);
     component.handleInput("\r");
-    const index = Math.min(initial, dd1.want.length - 1);
+    // Pi 37b74c546 (#12246): a non-empty query selects the top row (index 0), wherever the selection was.
+    const index = 0;
     assert.equal(selected, `/tmp/${dd1.want[index]}.jsonl`);
     console.log("SESSION_SELECTION " + JSON.stringify([dd1.name, initial, index, selected]));
   }

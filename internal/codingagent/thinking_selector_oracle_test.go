@@ -83,6 +83,8 @@ func TestThinkingSelectorInputMatchesPi(t *testing.T) {
 		{"\x13"},
 		{"\x1b[B", "\x13", "\x1b[B", "\x13"},
 		{"m", "\x1b[D", "x", "\x17", "\r"},
+		// Pi 5bcf370a5 (#12334): a key that leaves the query unchanged does not rebuild the list.
+		{"m", "\x1b[B", "\x1b[D", "\x1b[H", "\x1b[F", "\r"},
 	}
 	bindings := []map[string][]string{
 		nil,

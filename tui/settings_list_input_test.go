@@ -20,8 +20,8 @@ func withBindings(t *testing.T, overrides map[string][]string) {
 	t.Cleanup(func() { SetKeybindings(previous) })
 }
 
-// settings-list.ts handleInput delegates every key the list does not own to the search Input and then refilters, so the Input's
-// editing keys work and the selection returns to the first match.
+// settings-list.ts handleInput delegates every key the list does not own to the search Input and refilters when the query changed,
+// so the Input's editing keys work and a query edit selects the first match.
 func TestSettingsListSearchDelegatesEditingKeysToTheInput(t *testing.T) {
 	list := NewSettingsList(settingsInputItems(), 10, GetSettingsListTheme(), nil, nil, SettingsListOptions{EnableSearch: true})
 	for _, key := range []string{"m", "o", "d", "e"} {
@@ -43,7 +43,8 @@ func TestSettingsListSearchDelegatesEditingKeysToTheInput(t *testing.T) {
 	}
 }
 
-func TestSettingsListAnyDelegatedKeyResetsTheSelectionToTheFirstMatch(t *testing.T) {
+// Pi 5bcf370a5 (#12334): settings-list.ts re-filters only when the query changed, so a key that edits nothing keeps the selection.
+func TestSettingsListADelegatedKeyThatLeavesTheQueryUnchangedKeepsTheSelection(t *testing.T) {
 	list := NewSettingsList(settingsInputItems(), 10, GetSettingsListTheme(), nil, nil, SettingsListOptions{EnableSearch: true})
 	list.HandleInput("m")
 	list.HandleInput("\x1b[B")
@@ -51,9 +52,13 @@ func TestSettingsListAnyDelegatedKeyResetsTheSelectionToTheFirstMatch(t *testing
 	if list.cursor != 2 {
 		t.Fatalf("down twice put the cursor at %d, want 2", list.cursor)
 	}
-	list.HandleInput("\x1b[D") // an Input key that edits nothing still refilters
+	list.HandleInput("\x1b[D") // an Input key that edits nothing does not refilter
+	if list.cursor != 2 {
+		t.Fatalf("a delegated key left the cursor at %d, want 2", list.cursor)
+	}
+	list.HandleInput("x") // a key that changes the query refilters and selects the first match
 	if list.cursor != 0 {
-		t.Fatalf("a delegated key left the cursor at %d, want 0 (applyFilter)", list.cursor)
+		t.Fatalf("a changed query left the cursor at %d, want 0 (applyFilter)", list.cursor)
 	}
 }
 

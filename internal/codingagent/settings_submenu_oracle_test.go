@@ -74,6 +74,8 @@ func TestSettingsSubmenusMatchPi(t *testing.T) {
 		{"z", "z", "z", "\r", "\x1b[A", "\x1b[B"},
 		{"d", "e", "s", "c", " ", "y", "\r"},
 		{"\x1b[B", "x", "\x1b[A", "\x1b[A", "\n"},
+		// Pi 5bcf370a5 (#12334): a key that leaves the query unchanged keeps the selection.
+		{"b", "\x1b[B", "\x1b[D", "\x1b[H", "\x1b[F", "\r"},
 		{"\x1b[B", "\x1b", "\x1b[B"},
 		{"\x19", "\x19"},
 	}

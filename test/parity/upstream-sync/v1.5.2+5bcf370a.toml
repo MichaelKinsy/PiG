@@ -1,0 +1,129 @@
+from = "1.5.2+cead615b"
+to = "1.5.2+5bcf370a"
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "5bcf370a5293: Pi's changelog line for the cursor keys of selector searches. PiG's user-visible change is its own changelog.d fragment."
+
+[[files]]
+path = "packages/tui/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "5bcf370a5293: Pi's changelog line for SettingsList. PiG's user-visible change is its own changelog.d fragment."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/selector_search_selection_upstream_test.go#TestOAuthSelectorKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged"]
+rationale = "5bcf370a5293: the filter runs only when the query text changed. PiG's counterpart is tui/oauth_selector.go HandleInput."
+oracle = "carried: 5bcf370a5293 (pi-coding-agent/modes/interactive/components/oauth-selector.js)"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/selector_search_selection_upstream_test.go#TestScopedModelsKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged"]
+rationale = "5bcf370a5293: the filter runs only when the query text changed. PiG's counterpart is tui/scoped_models_list.go HandleInput."
+oracle = "carried: 37b74c546921 (pi-coding-agent/modes/interactive/components/scoped-models-selector.js, carries 5bcf370a5293 in place)"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/session-selector.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/session_selector_search_selection_upstream_test.go#TestSessionSelectorKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged"]
+rationale = "5bcf370a5293: the filter runs only when the query text changed. PiG's counterpart is internal/codingagent/session_selector.go handleSearchInput."
+oracle = "carried: 37b74c546921 (pi-coding-agent/modes/interactive/components/session-selector.js, carries 5bcf370a5293 in place)"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/config-selector.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/selector_search_selection_upstream_test.go#TestConfigSelectorKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged"]
+rationale = "5bcf370a5293: ResourceList re-filters only when the query text changed. PiG's counterpart is tui/config_selector.go HandleInput."
+oracle = "carried: 5bcf370a5293 (pi-coding-agent/modes/interactive/components/config-selector.js)"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/model-selector.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/selector_search_selection_upstream_test.go#TestModelSelectorKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged", "test:tui/model_select_test.go#TestModelSelectorUnchangedQueryKeyKeepsTheSelection"]
+rationale = "5bcf370a5293: the model selector re-filters only when the query text changed. PiG's counterpart is tui/model_select.go HandleInput."
+oracle = "carried: 5bcf370a5293 (pi-coding-agent/modes/interactive/components/model-selector.js)"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/settings-submenu.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/selector_search_selection_upstream_test.go#TestSelectSubmenuKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged"]
+rationale = "5bcf370a5293: SelectSubmenu re-filters only when the query text changed. PiG's counterpart is tui/select_submenu.go HandleInput."
+oracle = "carried: 5bcf370a5293 (pi-coding-agent/modes/interactive/components/settings-submenu.js)"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/thinking-selector.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/session_selector_search_selection_upstream_test.go#TestThinkingSelectorKeepsItsListWhenACursorKeyLeavesTheQueryUnchanged"]
+rationale = "5bcf370a5293: the thinking selector rebuilds its list only when the query text changed (its selection was already kept by value). PiG's counterpart is internal/codingagent/thinking_selector.go HandleInput."
+oracle = "carried: 5bcf370a5293 (pi-coding-agent/modes/interactive/components/thinking-selector.js)"
+
+[[files]]
+path = "packages/tui/src/components/settings-list.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/selector_search_selection_upstream_test.go#TestSettingsListKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged"]
+rationale = "5bcf370a5293: SettingsList with enableSearch re-filters only when the query text changed. PiG's counterpart is tui/settings_list.go HandleInput."
+oracle = "carried: 5bcf370a5293 (pi-tui/components/settings-list.js)"
+
+[[files]]
+path = "packages/coding-agent/test/oauth-selector.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/selector_search_selection_upstream_test.go#TestOAuthSelectorKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged"]
+rationale = "5bcf370a5293: the case that types open, moves down twice, presses Left and Home. Ported with the same inputs and expectation."
+
+[[files]]
+path = "packages/coding-agent/test/scoped-models-selector.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/selector_search_selection_upstream_test.go#TestScopedModelsKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged"]
+rationale = "5bcf370a5293: the case that types gpt, moves down, presses Left and Enter. Ported with the same inputs and expectation."
+
+[[files]]
+path = "packages/coding-agent/test/session-selector-selection.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/session_selector_search_selection_upstream_test.go#TestSessionSelectorKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged"]
+rationale = "5bcf370a5293: the case that types fix, moves down, presses Left. Ported with the same inputs and expectation."
+
+[[files]]
+path = "packages/coding-agent/test/config-selector.test.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:tui/selector_search_selection_upstream_test.go#TestConfigSelectorKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged"]
+rationale = "5bcf370a5293: the case that types tool, moves down, presses Left and Home. Ported with the same inputs and expectation."
+
+[[files]]
+path = "packages/coding-agent/test/model-selector.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/selector_search_selection_upstream_test.go#TestModelSelectorKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged"]
+rationale = "5bcf370a5293: the case that types alpha, moves down twice, presses Left and Home. Ported with the same inputs and expectation."
+
+[[files]]
+path = "packages/coding-agent/test/settings-submenu.test.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:tui/selector_search_selection_upstream_test.go#TestSelectSubmenuKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged"]
+rationale = "5bcf370a5293: the case that types dark, moves down, presses Left, Home and Enter. Ported with the same inputs and expectation."
+
+[[files]]
+path = "packages/tui/test/settings-list.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/selector_search_selection_upstream_test.go#TestSettingsListKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged"]
+rationale = "5bcf370a5293: types mode, moves down, presses Left and Home, then Enter. Ported with the same items, keys and expectation."
