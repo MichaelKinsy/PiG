@@ -16,7 +16,10 @@ var cellSizeResponsePattern = lazyregexp.New(`^\x1b\[6;(\d+);(\d+)t$`)
 // QueryCellSize writes the cell-size query when the terminal supports images,
 // since only image rendering uses the cell size. Mirrors upstream tui.ts
 // queryCellSize, which start() sends after the terminal starts.
+//
+// QueryCellSize also records renderer-level continue ownership (continue_signal.go) for standalone callers that do not use ProcessTerminal.EnterRawMode.
 func (t *tuiBase) QueryCellSize() {
+	t.continues.beginFor(t.terminal)
 	if GetCapabilities().Images == "" {
 		return
 	}

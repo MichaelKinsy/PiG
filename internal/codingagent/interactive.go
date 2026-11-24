@@ -775,6 +775,12 @@ type InteractiveMode struct {
 // loadHighlightLanguages registers every syntax language. It is a variable so that a test can hold the load while the frames around it run; no other code sets it.
 var loadHighlightLanguages = tui.LoadAllHighlightLanguages
 
+// startupWindowPauseHook, when set by a test, runs in Init right after the TUI starts (between tui-started and interactive-ready); no production code sets it.
+var startupWindowPauseHook func()
+
+// startupTerminalArmedHook, when set by a test, runs in Init right after startTerminal arms the terminal and before openFrontend and startInteractiveTui; no production code sets it.
+var startupTerminalArmedHook func()
+
 // loadRemainingHighlightLanguages registers every syntax language on a task the mode owns (a grammar is decoded when its language is first used), then, on the owner loop, invalidates the cached lines and requests a render, so code highlighted with the startup grammars picks up the rest. A mode that has stopped requests nothing.
 //
 // Pi's import runs on its one event loop, so a frame that the start requests meanwhile (a timer) runs after the continuation that invalidates and requests a render, and the requests are one frame. The task runs beside the owner loop, so the loop leaves a due frame until the continuation has run (grammarLoadPending, runScheduledRender): the grammar load is finite CPU work with no wait on the loop, so the hold ends with it, as Pi's blocked loop ends with the import. Every end of the task lifts it: the continuation, a stopped mode whose continuation cannot be posted, and a load that panics.
@@ -1847,6 +1853,11 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	m.tuiInst.SetOverlayCommandDispatcher(func(command func()) {
 		m.runOnMain(m.runCtx, command)
 	})
+	// Install the SIGCONT handler before the renderer takes the terminal, as Pi's
+	// setSuspendSignalHandler runs immediately before ui.start() (interactive-mode.ts:1041-1043).
+	// tui activates the OS listener only once the renderer starts (ownsTerminal) and clears it at stop.
+	stopContinue := m.installContinueHandler(m.backgroundCtx)
+	m.onStop(func() error { stopContinue(); return nil })
 	mark("pre-raw-mode")
 	m.holdProgramStatusForFrontend()
 	// A frontend may draw instead of the fullscreen renderer, on its own terminal: the alternate screen is entered once it declined (below).
@@ -1865,6 +1876,9 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	mark("raw-mode-entered")
 	m.rawRestore = restore
 	m.rawDrain = drain
+	if startupTerminalArmedHook != nil {
+		startupTerminalArmedHook()
+	}
 	m.openFrontend()
 	if m.opts.Frontend != nil && m.surface == nil && m.altScreen != nil {
 		// The frontend declined: the fullscreen renderer draws, and the terminal starts again on its screen.
@@ -1947,6 +1961,9 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	m.mountInteractiveTui(false)
 	m.startInteractiveTui()
 	mark("tui-started")
+	if startupWindowPauseHook != nil {
+		startupWindowPauseHook()
+	}
 	// Pi sets isInitialized once the TUI started (interactive-mode.ts:998-999): a later failure leaves init() done, and stop() tears the TUI down.
 	m.isInitialized = true
 	m.programStatusReporter().Report()
