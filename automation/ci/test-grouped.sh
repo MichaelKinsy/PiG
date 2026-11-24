@@ -61,6 +61,12 @@ HEAVY_PKGS=(
 SERIAL_PKGS=(
   ./test/perfgate
 )
+# Tree-wide invariant guard packages that the light PR run (TEST_CHANGED_FOR=fast-parallel) always runs, even when the diff did not touch them directly.
+GUARD_PKGS=(
+  ./internal/testenv
+  ./test/ci-images
+  ./test/docs-drift
+)
 
 all_pkgs=$(go list ./...)
 ALL_PKGS=()
@@ -75,6 +81,11 @@ if [[ ${#SERIAL_PKGS[@]} -gt 0 ]]; then
   serial_pkgs=$(go list "${SERIAL_PKGS[@]}")
   SERIAL_PKGS=()
   while IFS= read -r pkg; do SERIAL_PKGS+=("$pkg"); done <<<"$serial_pkgs"
+fi
+if [[ ${#GUARD_PKGS[@]} -gt 0 ]]; then
+  guard_pkgs=$(go list "${GUARD_PKGS[@]}")
+  GUARD_PKGS=()
+  while IFS= read -r pkg; do GUARD_PKGS+=("$pkg"); done <<<"$guard_pkgs"
 fi
 exclude_pkg() {
   local pkg="$1"
@@ -137,7 +148,11 @@ if [[ "$MODE" == changed ]]; then
       *) echo "TEST_CHANGED_RACE must be direct, affected or none" >&2; exit 2 ;;
     esac
     kept=()
-    for pkg in "${FAST_PKGS[@]}"; do in_list "$pkg" "${AFFECTED[@]}" && kept+=("$pkg"); done
+    for pkg in "${FAST_PKGS[@]}"; do
+      if in_list "$pkg" "${AFFECTED[@]}" || { [[ -n "${TEST_CHANGED_FOR:-}" ]] && in_list "$pkg" "${GUARD_PKGS[@]}"; }; then
+        kept+=("$pkg")
+      fi
+    done
     FAST_PKGS=("${kept[@]}")
     kept=()
     for pkg in "${HEAVY_PKGS[@]}"; do [[ -z "${TEST_CHANGED_FOR:-}" ]] && in_list "$pkg" "${AFFECTED[@]}" && kept+=("$pkg"); done

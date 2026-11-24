@@ -40,3 +40,6 @@ automation/ci/*macos*
 automation/ci/ci-tiers.txt
 automation/ci/ci-plan.sh
 automation/make/ci.mk
+# PORT_MAP evidence inputs: portmap-1..12 stay in the queue tier on ordinary PRs, so a PR that edits PORT_MAP.md or the checker itself promotes to the full run.
+docs/parity/PORT_MAP.md
+test/parity/cmd/portmapcheck/*

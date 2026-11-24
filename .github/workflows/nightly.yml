@@ -617,3 +617,45 @@ jobs:
         env:
           CI: '1'
         run: make piglet-strip-tests STRIP_TESTS_SET='${{ matrix.set }}'
+
+  windows-concurrency-stress:
+    name: Windows concurrency stress / atomic writes, locks, pipes and cleanup
+    # High-repetition (-count=20) Windows stress job for atomicfile, pilock, auth-storage locks,
+    # childwait/winpipe overlapped pipes, subprocess extension-host cleanup, and CLI RPC pipe/socket races.
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Keep Go build cache under RUNNER_TEMP
+        shell: pwsh
+        run: |
+          "GOCACHE=$(Join-Path $env:RUNNER_TEMP 'go-build')" >> $env:GITHUB_ENV
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Restore the Go module cache
+        id: cache-gomod
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}\go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+      - name: Run Windows concurrency stress suite
+        shell: bash
+        env:
+          CI: '1'
+          PIG_WIN_STRESS_COUNT: '20'
+          PIG_WIN_STRESS_TIMEOUT: '15m'
+        run: automation/ci/windows-concurrency-stress.sh
