@@ -46,7 +46,7 @@ func (observation *StreamObservation) Context(ctx context.Context) context.Conte
 	return context.WithValue(ctx, streamObservationContextKey{}, observation)
 }
 
-// StreamObservationFromContext returns the host observation, if this callback belongs to a scoped stream continuation. A callback that runs while a provider response turn holds execution belongs to that turn, even when its context was derived from a consumer that is parked in an await: an awaiting host callback must release the turn that is running.
+// StreamObservationFromContext returns the host observation when the calling goroutine owns the active turn of a scoped stream continuation, or nil for any other goroutine. A callback that runs on a provider response turn while that turn holds execution belongs to that turn, even when its context was derived from a consumer that is parked in an await: an awaiting host callback must release the turn that is running, never another goroutine's turn.
 func StreamObservationFromContext(ctx context.Context) *StreamObservation {
 	if ctx == nil {
 		return nil
@@ -67,20 +67,23 @@ func StreamObservationFromContext(ctx context.Context) *StreamObservation {
 	return observation
 }
 
-// callbackObservation resolves the observation a host callback derived from this one awaits through.
+// callbackObservation resolves the observation a host callback derived from this one awaits through, only when the calling goroutine runs that observation's turn.
 func (observation *StreamObservation) callbackObservation() *StreamObservation {
 	executor := observation.turn.executor
 	executor.mu.Lock()
 	active := executor.active
 	executor.mu.Unlock()
 	if active == observation.turn {
-		return observation
+		if observation.ownedByCaller() {
+			return observation
+		}
+		return nil
 	}
 	if producer := executor.activeProducer(); producer != nil {
 		return producer
 	}
-	if observation.suspendedOrResuming() {
-		// No other turn runs, so a nested await is a no-op.
+	if observation.suspendedOrResuming() && observation.ownedByCaller() {
+		// No other turn runs, so a nested await on the owning goroutine is a no-op.
 		return observation
 	}
 	return nil
@@ -93,14 +96,18 @@ func (observation *StreamObservation) suspendedOrResuming() bool {
 	return observation.suspensions > 0 || observation.acquiring || observation.ended
 }
 
-// activeProducer returns the observation of the provider response turn that holds execution, or nil.
+// activeProducer returns the observation of the provider response turn that holds execution when the calling goroutine runs that turn, or nil.
 func (executor *continuationExecutor) activeProducer() *StreamObservation {
 	executor.mu.Lock()
-	defer executor.mu.Unlock()
-	if executor.active == nil {
+	var producer *StreamObservation
+	if executor.active != nil {
+		producer = executor.active.producer
+	}
+	executor.mu.Unlock()
+	if producer == nil || !producer.ownedByCaller() {
 		return nil
 	}
-	return executor.active.producer
+	return producer
 }
 
 // ownedByCaller reports whether the calling goroutine runs the callback this observation scopes.
