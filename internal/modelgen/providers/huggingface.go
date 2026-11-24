@@ -11,7 +11,6 @@ func huggingface() ProviderDefinition {
 			return ModelsDevModels(ctx, "huggingface", ModelsDevOptions{
 				API:     "openai-completions",
 				BaseURL: "https://router.huggingface.co/v1",
-				Compat:  O("supportsDeveloperRole", false),
 			})
 		},
 		Compat: ApiCompatDefaults{"openai-completions": FixedCompat(O("supportsStrictMode", true))},

@@ -44,7 +44,6 @@ func deepseek() ProviderDefinition {
 		Models: func(*ProviderContext) ([]ChatModel, error) { return deepseekModels(), nil },
 		Compat: ApiCompatDefaults{"openai-completions": FixedCompat(O(
 			"supportsStore", false,
-			"supportsDeveloperRole", false,
 			"maxTokensField", "max_tokens",
 			"requiresReasoningContentOnAssistantMessages", true,
 			"thinkingFormat", "deepseek",

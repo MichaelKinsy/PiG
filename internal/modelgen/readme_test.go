@@ -13,7 +13,7 @@ func TestReadmeAddingAProviderExample(t *testing.T) {
 		Models: func(ctx *ProviderContext) ([]ChatModel, error) {
 			return ModelsDevModels(ctx, "example", ModelsDevOptions{API: "openai-completions", BaseURL: "https://api.example.com/v1"})
 		},
-		Compat: ApiCompatDefaults{"openai-completions": FixedCompat(O("supportsStore", false, "supportsDeveloperRole", false))},
+		Compat: ApiCompatDefaults{"openai-completions": FixedCompat(O("supportsStore", false))},
 	}
 	sources := &CatalogSources{ModelsDev: parseObj(t, `{"example":{"models":{
 		"vision":{"id":"vision","name":"Vision","type":"chat","capabilities":{"tools":{"supported":true}},"modalities":{"input":["text","image"],"output":["text"]},
@@ -30,7 +30,7 @@ func TestReadmeAddingAProviderExample(t *testing.T) {
 		t.Fatalf("catalogs = %+v", catalogs)
 	}
 	for _, model := range catalogs[0].Chat {
-		requireJSON(t, model.Object("compat"), `{"supportsStore":false,"supportsDeveloperRole":false}`)
+		requireJSON(t, model.Object("compat"), `{"supportsStore":false}`)
 	}
 	vision, plain := catalogs[0].Chat[0], catalogs[0].Chat[1]
 	if vision.Str("id") != "vision" || plain.Str("id") != "plain" {

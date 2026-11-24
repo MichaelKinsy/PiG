@@ -17,8 +17,7 @@ const openrouterBaseURL = "https://openrouter.ai/api/v1"
 var openrouterMidConvoEffortUnsupportedModelIDs = map[string]bool{"anthropic/claude-opus-5": true}
 
 var (
-	openrouterDeveloperRoleProviders = regexp.MustCompile(`^(anthropic|openai)/`)
-	openrouterAnthropicModels        = regexp.MustCompile(`^~?anthropic/`)
+	openrouterAnthropicModels = regexp.MustCompile(`^~?anthropic/`)
 )
 
 // openrouterCorrectUpstream keeps selected model metadata stable until upstream settles.
@@ -34,7 +33,7 @@ func openrouterCorrectUpstream(model ChatModel) ChatModel {
 		model.Set("maxTokens", 4096)
 	}
 	if strings.HasPrefix(id, "moonshotai/kimi-k2.6") {
-		MergeCompat(model, O("supportsDeveloperRole", false, "requiresReasoningContentOnAssistantMessages", true))
+		MergeCompat(model, O("requiresReasoningContentOnAssistantMessages", true))
 	}
 	if id == "z-ai/glm-5" {
 		model.Set("cost", Spread(model.Object("cost"), O("input", 0.6, "output", 1.9, "cacheRead", 0.119)))
@@ -94,10 +93,6 @@ func openrouter() ProviderDefinition {
 		Compat: ApiCompatDefaults{"openai-completions": func(model *Obj) *Obj {
 			id := model.Str("id")
 			compat := NewObj()
-			// OpenRouter passes developer messages through to Anthropic and OpenAI models only.
-			if !openrouterDeveloperRoleProviders.MatchString(id) {
-				compat.Set("supportsDeveloperRole", false)
-			}
 			compat.Set("thinkingFormat", "openrouter")
 			compat.Set("supportsStrictMode", true)
 			if openrouterAnthropicModels.MatchString(id) {

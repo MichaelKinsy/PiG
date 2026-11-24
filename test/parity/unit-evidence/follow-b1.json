@@ -556,7 +556,7 @@
    "TestCatalogGenerationMatchesPi"
   ],
   "upstream_reference": "packages/ai/catalog/providers/cerebras.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
-  "mutation": "internal/modelgen/providers/cerebras.go: `\"supportsStore\", false, \"supportsDeveloperRole\", false` -> `\"supportsStore\", true, \"supportsDeveloperRole\", false` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+  "mutation": "internal/modelgen/providers/cerebras.go: `\"supportsStore\", false` -> `\"supportsStore\", true` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
  },
  {
   "upstream": "packages/ai/catalog/providers/cerebras.ts",
@@ -565,7 +565,7 @@
    "TestCatalogGenerationMatchesPi"
   ],
   "upstream_reference": "packages/ai/catalog/providers/cerebras.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
-  "mutation": "internal/modelgen/providers/cerebras.go: `\"supportsStore\", false, \"supportsDeveloperRole\", false` -> `\"supportsStore\", false, \"supportsDeveloperRole\", true` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+  "mutation": "internal/modelgen/providers/cerebras.go: `\"supportsStore\", false` -> `\"supportsStore\", false, \"supportsDeveloperRole\", true` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
  },
  {
   "upstream": "packages/ai/catalog/providers/cloudflare-ai-gateway.ts",
@@ -799,7 +799,7 @@
    "TestCatalogGenerationMatchesPi"
   ],
   "upstream_reference": "packages/ai/catalog/providers/huggingface.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
-  "mutation": "internal/modelgen/providers/huggingface.go: `O(\"supportsDeveloperRole\", false)` -> `O(\"supportsDeveloperRole\", true)` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+  "mutation": "internal/modelgen/providers/huggingface.go: `FixedCompat(O(\"supportsStrictMode\", true))` -> `FixedCompat(O(\"supportsStrictMode\", false))` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
  },
  {
   "upstream": "packages/ai/catalog/providers/huggingface.ts",
@@ -997,7 +997,7 @@
    "TestCatalogGenerationMatchesPi"
   ],
   "upstream_reference": "packages/ai/catalog/providers/moonshotai.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; Pi generator output sha256 golden, cmd/gen-models/testdata/catalog-generation)",
-  "mutation": "internal/modelgen/providers/moonshotai.go: `\"supportsStore\", false,\\n\\t\\t\"supportsDeveloperRole\", false,\\n\\t\\t\"supportsReasoningEffort\", false,\\n\\t\\t\"maxTokensField\", \"max_tokens\",\\n\\t)` -> `\"supportsDeveloperRole\", false,\\n\\t\\t\"supportsStore\", false,\\n\\t\\t\"supportsReasoningEffort\", false,\\n\\t\\t\"maxTokensField\", \"max_tokens\",\\n\\t)` (TestCatalogGenerationMatchesPi FAILS)"
+  "mutation": "internal/modelgen/providers/moonshotai.go: `\"supportsStore\", false,\\n\\t\\t\"supportsReasoningEffort\", false,\\n\\t\\t\"maxTokensField\", \"max_tokens\",\\n\\t)` -> `\"supportsStore\", true,\\n\\t\\t\"supportsReasoningEffort\", false,\\n\\t\\t\"maxTokensField\", \"max_tokens\",\\n\\t)` (TestCatalogGenerationMatchesPi FAILS)"
  },
  {
   "upstream": "packages/ai/catalog/providers/nvidia.ts",
@@ -1069,7 +1069,7 @@
    "TestCatalogGenerationMatchesPi"
   ],
   "upstream_reference": "packages/ai/catalog/providers/opencode.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; Pi generator output sha256 golden, cmd/gen-models/testdata/catalog-generation)",
-  "mutation": "internal/modelgen/providers/opencode.go: `O(\"supportsStore\", false, \"supportsDeveloperRole\", false, \"supportsStrictMode\", true)` -> `O(\"supportsStore\", false, \"supportsDeveloperRole\", false, \"supportsStrictMode\", false)` (TestCatalogGenerationMatchesPi FAILS)"
+  "mutation": "internal/modelgen/providers/opencode.go: `O(\"supportsStore\", false, \"supportsStrictMode\", true)` -> `O(\"supportsStore\", false, \"supportsStrictMode\", false)` (TestCatalogGenerationMatchesPi FAILS)"
  },
  {
   "upstream": "packages/ai/catalog/providers/opencode-go.ts",

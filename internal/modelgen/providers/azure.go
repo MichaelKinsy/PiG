@@ -75,10 +75,9 @@ func azure() ProviderDefinition {
 		Finalize: func(model ChatModel, _ *ProviderContext) {
 			EnableOpenAIGrammarTools(model)
 			if model.Str("api") == "openai-completions" {
-				// Azure 400s on DeepSeek's `thinking` field and on every prompt cache parameter, discards a
-				// `developer` system message unbilled once reasoning_effort is set, and honours mid-convo ones (#9645).
+				// Azure 400s on DeepSeek's `thinking` field and on every prompt cache parameter, and honours
+				// mid-convo system messages (#9645).
 				MergeCompat(model, O(
-					"supportsDeveloperRole", false,
 					"supportsMidConvoSystemMessages", true,
 					"thinkingFormat", "openai",
 					"supportsLongCacheRetention", false,

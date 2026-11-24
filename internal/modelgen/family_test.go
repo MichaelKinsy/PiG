@@ -218,9 +218,9 @@ func TestIsKimiK3FamilyID(t *testing.T) {
 }
 
 func TestKimiTables(t *testing.T) {
-	requireJSON(t, KimiOpenAICompat(), `{"supportsStore":false,"supportsDeveloperRole":false,"supportsReasoningEffort":false,"maxTokensField":"max_tokens","supportsStrictMode":false,"thinkingFormat":"deepseek"}`)
+	requireJSON(t, KimiOpenAICompat(), `{"supportsStore":false,"supportsReasoningEffort":false,"maxTokensField":"max_tokens","supportsStrictMode":false,"thinkingFormat":"deepseek"}`)
 	// K3 overrides keep the base key positions and append the new key.
-	requireJSON(t, KimiK3OpenAICompat(), `{"supportsStore":false,"supportsDeveloperRole":false,"supportsReasoningEffort":true,"maxTokensField":"max_tokens","supportsStrictMode":false,"thinkingFormat":"openai","requiresReasoningContentOnAssistantMessages":true}`)
+	requireJSON(t, KimiK3OpenAICompat(), `{"supportsStore":false,"supportsReasoningEffort":true,"maxTokensField":"max_tokens","supportsStrictMode":false,"thinkingFormat":"openai","requiresReasoningContentOnAssistantMessages":true}`)
 	requireJSON(t, KimiK3Cost(), `{"input":3,"output":15,"cacheRead":0.3,"cacheWrite":0}`)
 	if KimiK3MaxTokens != 131072 {
 		t.Fatalf("KimiK3MaxTokens = %d", KimiK3MaxTokens)

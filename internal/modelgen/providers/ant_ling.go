@@ -7,7 +7,6 @@ import . "github.com/MichaelKinsy/PiG/internal/modelgen" //nolint:staticcheck //
 func antLingCompat() *Obj {
 	return O(
 		"supportsStore", false,
-		"supportsDeveloperRole", false,
 		"supportsReasoningEffort", false,
 		"maxTokensField", "max_tokens",
 		"supportsLongCacheRetention", false,
@@ -46,7 +45,6 @@ func antLing() ProviderDefinition {
 		},
 		Compat: ApiCompatDefaults{"openai-completions": FixedCompat(O(
 			"supportsStore", false,
-			"supportsDeveloperRole", false,
 			"supportsReasoningEffort", false,
 			"maxTokensField", "max_tokens",
 			"thinkingFormat", "ant-ling",

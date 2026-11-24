@@ -60,7 +60,6 @@ func cloudflareWorkersAi() ProviderDefinition {
 		Classifiers: func(*ProviderContext) ([]*Obj, error) { return cloudflareWorkersAiClassifierModels(), nil },
 		Compat: ApiCompatDefaults{"openai-completions": FixedCompat(O(
 			"supportsStore", false,
-			"supportsDeveloperRole", false,
 			"supportsStrictMode", true,
 			"supportsLongCacheRetention", false,
 		))},

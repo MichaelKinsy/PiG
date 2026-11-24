@@ -94,7 +94,6 @@ func cloudflareAiGateway() ProviderDefinition {
 		},
 		Compat: ApiCompatDefaults{"openai-completions": FixedCompat(O(
 			"supportsStore", false,
-			"supportsDeveloperRole", false,
 			"supportsReasoningEffort", false,
 			"maxTokensField", "max_tokens",
 			"supportsLongCacheRetention", false,

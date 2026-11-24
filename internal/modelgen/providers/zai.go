@@ -28,7 +28,6 @@ func zaiCodingPlanModels(ctx *ProviderContext, source, baseURL string) ([]ChatMo
 				cost = apiModel.Cost
 			}
 			compat := O(
-				"supportsDeveloperRole", false,
 				"thinkingFormat", "zai",
 			)
 			if thinkingLevelMap != nil {
@@ -51,7 +50,6 @@ func zaiCodingPlanModels(ctx *ProviderContext, source, baseURL string) ([]ChatMo
 func zaiCompletionsCompat() *Obj {
 	return O(
 		"supportsStore", false,
-		"supportsDeveloperRole", false,
 		"supportsReasoningEffort", false,
 		"maxTokensField", "max_tokens",
 		"thinkingFormat", "zai",

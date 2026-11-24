@@ -124,7 +124,6 @@ func githubCopilot() ProviderDefinition {
 					if api == "openai-completions" {
 						result.Set("compat", O(
 							"supportsStore", false,
-							"supportsDeveloperRole", false,
 							"supportsReasoningEffort", source.HasEffortOption(),
 						))
 					}

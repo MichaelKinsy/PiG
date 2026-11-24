@@ -22,7 +22,6 @@ func KimiK3Cost() *Obj {
 func KimiOpenAICompat() *Obj {
 	return O(
 		"supportsStore", false,
-		"supportsDeveloperRole", false,
 		"supportsReasoningEffort", false,
 		"maxTokensField", "max_tokens",
 		"supportsStrictMode", false,
