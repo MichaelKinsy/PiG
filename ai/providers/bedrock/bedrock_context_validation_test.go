@@ -34,7 +34,7 @@ func TestBedrockRequestContextValidation(t *testing.T) {
 			if err != nil || stream == nil {
 				t.Fatalf("stream=%v error=%v, want an aborted stream", stream, err)
 			}
-			if result := stream.Result(); result.StopReason != ai.StopReasonAborted || result.ErrorMessage != "Request aborted" {
+			if result := stream.Result(); result.StopReason != ai.StopReasonAborted || result.ErrorMessage != "Request aborted: This operation was aborted (20)" {
 				t.Fatalf("result=%+v", result)
 			}
 		})
