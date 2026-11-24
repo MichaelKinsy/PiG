@@ -1,0 +1,20 @@
+from = "1.5.2+fcc33744"
+to = "1.5.2+ff897088"
+# Pi ff8970889159 (2026-11-20): fix(chord): deflake the sync batch test and the worker start timer test.
+# Test-only commit touching two Pi test files; no product code changed. Proven not applicable on link 7
+# (ad9b3af73a3f) by code inspection and stress runs (0 failures across 1,120 runs of the worker start-timer test
+# and 400 runs of the bounded-memory sync test).
+
+[[files]]
+path = "packages/chord/test/node/workers/workers.test.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = ["test:chord/nextnode/workers/workers_workers_test.go#TestFailuresStayTheStartTimerCoversOnlyTheStartASlowLoadAfterConnectingIsNotKilled"]
+rationale = "ff8970889: Pi's test previously awaited status === 'starting' plus one setImmediate tick before calling vi.advanceTimersByTimeAsync(120_000), which could fire the 60 s start timer before the forked worker connected; Pi changed it to wait for state.incarnation (set on link handshake after started cleared the timer). The Go counterpart (chord/nextnode/workers/workers_workers_test.go:199-216) already awaits f.childStarted(\"S1\") (record.child.started.isSettled() under the component loop) before fake.advance(120 * time.Second). Verified on ad9b3af73a3f with 0 failures across 600 runs under -race at GOMAXPROCS=2 (2 x 300), 320 parallel -race runs at GOMAXPROCS=2 across 16 processes, 100 plain runs with 16 CPU-burner processes, and 100 plain runs across 16 parallel test processes. Note: by inspection, a narrow race window still exists in Go between control() resolving child.started (workers_workers.go:1127) and c.start()'s deferred timer.Stop() (workers_workers.go:987), which did not reproduce in 1,120 runs; left untouched per red-first rule."
+
+[[files]]
+path = "packages/chord/test/sync/sync.test.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = ["test:chord/sync/sync_test.go#TestBoundedMemory"]
+rationale = "ff8970889: Pi added { timeout: 30_000 } to describe(\"bounded memory\") because uploading 24 x 1 MB through gzip and SQLite exceeded Vitest's 5 s default per-test timeout under suite load. Go's testing package has no 5 s per-test timeout (only the 10 m package default) and TestBoundedMemory (chord/sync/sync_test.go:541-607) uses chordctx.Background() with no deadline. Verified on ad9b3af73a3f with 0 failures across 300 runs under -race at GOMAXPROCS=2 (8 parallel procs) and 100 plain runs across 16 parallel processes on 8 job CPUs."
