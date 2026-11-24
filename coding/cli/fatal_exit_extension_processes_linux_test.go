@@ -44,8 +44,12 @@ func TestInteractiveFatalReplacementExitLeavesNoExtensionProcess(t *testing.T) {
 		env:  []string{"PIG_TEST_FATAL_FLAG=" + flag},
 	})
 	waitReplaceLog(t, p.log, 2, "the startup session_start of both extensions")
+	// Wait until startup bind has finished setupAutocompleteProvider and rendered the initial
+	// frame ([Extensions]) before sending /arm; typing during startup bind can land in the
+	// editor before the autocomplete provider is attached.
+	p.output.waitQuiet(0, []byte("[Extensions]"), 100*time.Millisecond, budget)
 
-	sendSlashSettled(t, p, "/arm", "→ arm", budget)
+	sendSlashCommand(t, p, "/arm", budget)
 	armed := time.Now().Add(budget)
 	for {
 		if _, err := os.Stat(flag); err == nil {
@@ -61,7 +65,7 @@ func TestInteractiveFatalReplacementExitLeavesNoExtensionProcess(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 	}
 
-	typed := sendSlashSettled(t, p, "/new", "→ new", budget)
+	typed := sendSlashCommand(t, p, "/new", budget)
 	select {
 	case <-p.exited:
 	case <-time.After(budget):
@@ -117,24 +121,31 @@ func TestInteractiveFatalReplacementExitLeavesNoExtensionProcess(t *testing.T) {
 	}
 }
 
-// sendSlashSettled clears the editor, types command as one write, and waits until the rendered screen shows both
-// the editor holding exactly command and its settled autocomplete row (wantSelected) before sending Enter. This
-// test checks process cleanup on fatal exit, not typing into a remote editor's in-flight autocomplete menu.
-func sendSlashSettled(t *testing.T, p *interactivePig, command, wantSelected string, budget time.Duration) time.Time {
+// sendSlashCommand clears the editor, types command, waits for the editor row to render command,
+// dismisses any autocomplete popup with Escape (matching autocomplete parity scenarios 14..19), and
+// submits with Enter. Waiting for the popup row ("→ <cmd>") can hang under load when the command
+// lands before setupAutocompleteProvider finishes or without opening a menu; Escape cancels any
+// open or in-flight autocomplete request (editor.ts cancelAutocomplete) and is a no-op when idle
+// with no popup open, so Enter always submits the literal editor text without stale completion.
+func sendSlashCommand(t *testing.T, p *interactivePig, command string, budget time.Duration) time.Time {
 	t.Helper()
 	mark := p.output.mark()
 	p.send("\x15" + command)
 	deadline := time.Now().Add(budget)
 	for {
-		raw := p.output.since(mark)
-		if screenHasExactEditorLine(raw, command) && strings.Contains(string(tools.StripANSI(raw)), wantSelected) {
+		if screenHasExactEditorLine(p.output.since(mark), command) {
 			break
 		}
 		if time.Now().After(deadline) {
-			t.Fatalf("editor never settled on %q with selection %q; screen tail: %q", command, wantSelected, tail(p.output.since(mark), 1500))
+			t.Fatalf("editor never showed %q; screen tail: %q", command, tail(p.output.since(mark), 1500))
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
+	// Send Escape and wait past StdinBuffer's 10 ms defaultEscapeTimeout plus one remote-editor
+	// ui.editor.input round-trip so cancelAutocomplete() runs before Enter arrives (and never
+	// pairs ESC + CR into Alt+Enter / newline).
+	p.send("\x1b")
+	time.Sleep(100 * time.Millisecond)
 	typed := time.Now()
 	p.send("\r")
 	return typed
