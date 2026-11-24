@@ -164,7 +164,7 @@ func TestCopilotResponsesMatchPi(t *testing.T) {
 		t.Fatal(err)
 	}
 	root := testenv.ModuleRoot(t)
-	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/copilot_responses.mjs", filepath.Join(root, ".upstream", "current", "packages", "ai", "src", "auth", "oauth", "github-copilot.ts"))
+	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/copilot_responses.mjs", filepath.Join(root, ".upstream", "current", "packages", "ai", "src", "auth", "oauth", "github-copilot.ts"), filepath.Join(oraclePiAIDist, "providers", "github-copilot.models.js"))
 	cmd.Stdin = bytes.NewReader(payload)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -257,7 +257,7 @@ func runPiCopilotOracle(t *testing.T, probes []copilotResponseProbe) []copilotRe
 		t.Fatal(err)
 	}
 	root := testenv.ModuleRoot(t)
-	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/copilot_responses.mjs", filepath.Join(root, ".upstream", "current", "packages", "ai", "src", "auth", "oauth", "github-copilot.ts"))
+	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/copilot_responses.mjs", filepath.Join(root, ".upstream", "current", "packages", "ai", "src", "auth", "oauth", "github-copilot.ts"), filepath.Join(oraclePiAIDist, "providers", "github-copilot.models.js"))
 	cmd.Stdin = bytes.NewReader(payload)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

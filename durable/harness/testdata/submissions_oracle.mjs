@@ -17,7 +17,7 @@ const load = (path) => import(pathToFileURL(`${packages}durable/src/${path}`).hr
 const { MemoryStorage } = await load("storage/memory.ts");
 const { createSession } = await load("session/session.ts");
 const { admitSubmission } = await load("harness/submissions.ts");
-const { applyBoundary, prepareBoundary, withdrawQueuedInputs } = await load("harness/inbox.ts");
+const { applyBoundary, prepareBoundary, withdrawAbortedInputs } = await load("harness/inbox.ts");
 const { LiveDoc } = await load("harness/live.ts");
 // Pi 0ed1b043 (2ec55d80) reads ctx.telemetry in the scheduler and the harness, so an empty object is no longer a Context.
 const { BACKGROUND_CONTEXT } = await import(pathToFileURL(`${packages}chord/src/context/index.ts`).href);
@@ -64,7 +64,7 @@ async function runProgram(program) {
 						return await applyBoundary(tx, boundary, step.at, step.now);
 					}, ctx);
 				case "withdraw":
-					return await session.commitWith((tx) => withdrawQueuedInputs(tx, conv), ctx);
+					return await session.commitWith((tx) => withdrawAbortedInputs(tx, conv), ctx);
 				default:
 					throw new Error(`unknown op ${step.op}`);
 			}
