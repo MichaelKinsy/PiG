@@ -132,10 +132,7 @@ func sendSlashCommand(t *testing.T, p *interactivePig, command string, budget ti
 	mark := p.output.mark()
 	p.send("\x15" + command)
 	deadline := time.Now().Add(budget)
-	for {
-		if screenHasExactEditorLine(p.output.since(mark), command) {
-			break
-		}
+	for !screenHasExactEditorLine(p.output.since(mark), command) {
 		if time.Now().After(deadline) {
 			t.Fatalf("editor never showed %q; screen tail: %q", command, tail(p.output.since(mark), 1500))
 		}
