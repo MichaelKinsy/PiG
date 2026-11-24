@@ -491,7 +491,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/extensions/llama/provider.js",
-      "sha256": "644df552e941153e2f9f659e505b75a0c09a45150553c2f1ffcbcbe0b500c494"
+      "sha256": "522a4ed8d100f8e7166ccbacfb11cd9f2199eaf633431b54a3153ec0cbbcadcb"
     },
     {
       "path": "pi-dist/pi-coding-agent/extensions/llama/ui.js",
