@@ -7,6 +7,6 @@ import type { Conversation, Harness, Submission } from "../src/facade/harness.ts
 
 type Gaps<Upstream, Facade, Known extends PropertyKey> = [Exclude<keyof Upstream, keyof Facade | Known>, Extract<Known, keyof Facade>] extends [never, never] ? true : never
 
-export const harnessSurface: Gaps<P.Harness, Harness, never> = true
+export const harnessSurface: Gaps<P.Harness, Harness, "signal" | "readSignal"> = true
 export const conversationSurface: Gaps<P.Conversation, Conversation, never> = true
 export const submissionSurface: Gaps<P.Submission, Submission, never> = true

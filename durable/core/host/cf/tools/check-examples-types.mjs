@@ -7,7 +7,7 @@
 //
 //   node tools/check-examples-types.mjs [--keep]      DURABLE_EXAMPLES_PI_SOURCE names another reference checkout
 import { execFileSync } from "node:child_process"
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -31,6 +31,19 @@ for (const rel of ["storage/memory.ts", "storage/sqlite/node.ts", "storage/jsonl
 	mkdirSync(dirname(join(work, "src", rel)), { recursive: true })
 	writeFileSync(join(work, "src", rel), fill(readFileSync(join(cf, "candidate", rel), "utf8")))
 }
+// Skip examples that durable/contract/corpus.toml marks pending (unported upstream features, e.g. v1.6.0 signals/parks):
+// every ready example must type-check against the facade.
+const pendingExamples = new Set()
+const corpusText = readFileSync(join(repo, "durable", "contract", "corpus.toml"), "utf8")
+for (const block of corpusText.split(/^\[\[scenario\]\]$/m).slice(1)) {
+	const src = /^source\s*=\s*"(packages\/durable\/test\/examples\/[^"]+)"/m.exec(block)?.[1]
+	const st = /^status\s*=\s*"([^"]+)"/m.exec(block)?.[1]
+	if (src && st === "pending") pendingExamples.add(src.slice("packages/durable/".length))
+}
+const examples = readdirSync(join(work, "test", "examples"))
+	.filter(f => f.endsWith(".ts") && !pendingExamples.has(`test/examples/${f}`))
+	.sort()
+	.map(f => `test/examples/${f}`)
 const modules = join(cf, "node_modules")
 symlinkSync(modules, join(work, "node_modules"))
 writeFileSync(join(work, "tsconfig.json"), JSON.stringify({
@@ -41,7 +54,7 @@ writeFileSync(join(work, "tsconfig.json"), JSON.stringify({
 			// pi-schema is a dependency of the reference's own sources, not of the host: its source mirror.
 			"@earendil-works/pi-schema": [join(pi, "packages", "schema", "src", "index.ts")], "@earendil-works/pi-schema/formats": [join(pi, "packages", "schema", "src", "formats", "index.ts")] },
 	},
-	include: ["test/examples/*.ts"],
+	include: examples,
 }))
 let status = 0
 try {

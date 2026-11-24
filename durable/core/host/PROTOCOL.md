@@ -186,7 +186,7 @@ Counters: `HostCounters.traps` (core traps caught) and `recycles` (handles repla
 
 ## Not supported by the CF host yet
 
-Nothing of the Harness and Session read surface.
+Pi v1.6.0 task signals (`Harness.signal`, `Harness.readSignal`, tracked in `durable/core/host/cf/test/surface.ts`).
 
 ## Pi 7e15f960..e7a0df27 additions (continue, whenIdle, submit in a commit, turn limit, afterRun, entry reads)
 
