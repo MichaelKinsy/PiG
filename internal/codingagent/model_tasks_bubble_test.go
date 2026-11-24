@@ -11,6 +11,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
+
+	"github.com/MichaelKinsy/PiG/ai"
 )
 
 // A ModelRegistry owns a sync.WaitGroup for the model work it runs, and a WaitGroup belongs to one side of a synctest bubble edge: an Add made inside a
@@ -21,9 +23,23 @@ import (
 // WaitGroup that a bubble used dereferences the current goroutine's missing bubble (runtime synctest_isAssociated), so a registry a bubble used is
 // closed inside it.
 
-// settleModelTasks waits until the registry's task owner holds no work, without closing it. Call it after a test starts model work outside a bubble
-// and before the registry enters one.
-func settleModelTasks(registry *ModelRegistry) { registry.modelTasks.work.Wait() }
+// settleModelTasks waits until the registry's task owner and any backing ai.Models collections hold no work, without closing or draining them. Call it
+// after a test starts model work outside a bubble and before the registry enters one.
+func settleModelTasks(registry *ModelRegistry) {
+	registry.modelTasks.work.Wait()
+	registry.remoteMu.Lock()
+	remote := registry.remoteCollection
+	registry.remoteMu.Unlock()
+	if remote != nil {
+		remote.Close()
+	}
+	registry.nativeMu.Lock()
+	native := registry.nativeModels
+	registry.nativeMu.Unlock()
+	if native != nil {
+		native.Close()
+	}
+}
 
 func TestSettledRegistryMayEnterASynctestBubble(t *testing.T) {
 	registry := &ModelRegistry{}
@@ -46,6 +62,74 @@ func TestSettledRegistryMayEnterASynctestBubble(t *testing.T) {
 		<-ran
 		registry.CloseModelTasks()
 	})
+}
+
+// TestSettleModelTasksJoinsNativeAndRemoteModels verifies that settleModelTasks joins owned work on both registry.nativeModels and
+// registry.remoteCollection (in addition to registry.modelTasks.work) before the registry enters a synctest bubble. Without joining
+// those collections, an outside owned task whose goroutine has not yet called owned.Done() when the bubble adds to the same collection
+// ends the process with "WaitGroup.Add called from inside and outside synctest bubble".
+func TestSettleModelTasksJoinsNativeAndRemoteModels(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		remote bool
+	}{
+		{"nativeModels", false},
+		{"remoteCollection", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			registry := NewModelRegistry(t.TempDir())
+			models := ai.CreateModels()
+			entered, release := make(chan struct{}), make(chan struct{})
+			var finished atomic.Bool
+			var calls atomic.Int32
+			models.SetProvider(&ai.ModelsProvider{
+				ID:   "bubble-owned",
+				Name: "bubble-owned",
+				Auth: ai.ProviderAuth{APIKey: &ai.APIKeyAuth{
+					Name: "test",
+					Resolve: func(context.Context, ai.APIKeyAuthInput) (*ai.AuthResult, error) {
+						if calls.Add(1) == 1 {
+							close(entered)
+							<-release
+							finished.Store(true)
+						}
+						return &ai.AuthResult{Auth: ai.ModelAuth{APIKey: "k"}}, nil
+					},
+				}},
+				RefreshModels: func(ai.RefreshModelsContext) error { return nil },
+			})
+			if tc.remote {
+				registry.remoteMu.Lock()
+				registry.remoteCollection = models
+				registry.remoteMu.Unlock()
+			} else {
+				registry.nativeMu.Lock()
+				registry.nativeModels = models
+				registry.nativeMu.Unlock()
+			}
+			authDone := make(chan error, 1)
+			go func() {
+				_, err := models.GetAuth(t.Context(), "bubble-owned")
+				authDone <- err
+			}()
+			<-entered
+			close(release)
+			if err := <-authDone; err != nil {
+				t.Fatalf("outside GetAuth = %v", err)
+			}
+			settleModelTasks(registry)
+			if !finished.Load() {
+				t.Fatal("settleModelTasks returned before the outside collection operation ended")
+			}
+			synctest.Test(t, func(t *testing.T) {
+				defer settleModelTasks(registry)
+				result := models.Refresh(t.Context(), ai.ModelsRefreshOptions{Providers: []string{"bubble-owned"}})
+				if result.Aborted || len(result.Errors) != 0 {
+					t.Fatalf("inside Refresh = %+v", result)
+				}
+			})
+		})
+	}
 }
 
 // modelTaskStarters are the names tests use to run work on a registry's task owner that can return before the owner is idle: registry methods and the plain

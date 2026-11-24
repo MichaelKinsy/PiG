@@ -164,6 +164,7 @@ func TestLlamaCommandSyncCatalogEndsAtTheSharedFifteenSecondTimeout(t *testing.T
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			session, _ := commandFixture(t, "http://llama.invalid")
+			settleCommandSession(session)
 			transport := http.DefaultClient.Transport
 			http.DefaultClient.Transport = roundTripFunc(func(r *http.Request) (*http.Response, error) {
 				if r.URL.Path == "/models" && !tc.holdCatalog {
@@ -175,6 +176,7 @@ func TestLlamaCommandSyncCatalogEndsAtTheSharedFifteenSecondTimeout(t *testing.T
 			})
 			t.Cleanup(func() { http.DefaultClient.Transport = transport })
 			synctest.Test(t, func(t *testing.T) {
+				defer settleCommandSession(session)
 				result := make(chan error, 1)
 				go func() {
 					_, err := session.syncCatalog(nil, false)
