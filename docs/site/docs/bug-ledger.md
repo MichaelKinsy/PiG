@@ -2358,6 +2358,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f2e59f4-5](#bf-f2e59f4-5) | When a report was too long for its comment, the next unchanged run reused the shortened record and printed no… | PiG's own defect | All platforms | Unreleased |
 | [BF-f32ec14](#bf-f32ec14) | fix(chord): a link end keeps nothing of the queue it handed over | PiG's own defect | All platforms | Unreleased |
 | [BF-f34b545](#bf-f34b545) | Durable: resolving harness settings no longer shares the default retry policy's max agent delay between… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-f36632c](#bf-f36632c) | After an external `kill -TSTP <pid>` (from a supervisor, `pkill -TSTP`, or another pane), pig stops without… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-f3b4045](#bf-f3b4045) | `.gitignore`, `.ignore` and `.fdignore` rules that skills, packages and extension entry discovery read now… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f3ea39b](#bf-f3ea39b) | fix(chord/nextnode/plugins): the driver ends its socket after the frames it wrote are out | PiG's own defect | All platforms | Unreleased |
 | [BF-f40cd6b](#bf-f40cd6b) | LaTeX math treats two surrogate halves that end up side by side in a fraction, a root or next to a named… | PiG's own defect | All platforms | Unreleased |
@@ -34932,6 +34933,22 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `durable/harness/agent_defaults_test.go::TestDefaultPoliciesMatchPiAndResolveByCopy`, `durable/harness/agent_defaults_test.go::TestDefineExtensionReturnsTheExtension`, `durable/harness/harness_conversations_test.go::TestHarnessRootAndConversations`, `durable/harness/harness_tasks_scheduling_test.go::TestTaskClose`, `durable/harness_types_test.go::TestCompactionReasonValuesMatchPi`
 - **Release note:** Durable: resolving harness settings no longer shares the default retry policy's max agent delay between harnesses.
 
+### BF-f36632c
+
+**After an external `kill -TSTP <pid>` (from a supervisor, `pkill -TSTP`, or another pane), pig stops without…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D661)
+- **Symptom:** After an external `kill -TSTP <pid>` (from a supervisor, `pkill -TSTP`, or another pane), pig stops without resetting the terminal, so mouse tracking, hidden cursor, Kitty keyboard flags, bracketed paste, the fullscreen alternate screen, and under `dash` raw terminal settings stay active at the shell prompt until `fg`; previously, `fg` also left the terminal in the shell's state without re-entering or redrawing the TUI.
+- **Root cause:** interactive mode had no SIGCONT re-arm handler tied to process-terminal ownership, so resuming after an external SIGTSTP left the terminal in the shell's state without re-entering or redrawing the TUI
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** https://github.com/earendil-works/pi/issues/12272
+- **Removed when Pi fixes it:** Go offers a supported way to restore `SIG_DFL` for SIGTSTP after `signal.Notify`, or a reviewed helper design owns the reset and the stop. Then a SIGTSTP listener can follow terminal ownership as Pi main's does, `TUI.setSuspendSignalHandler` can be ported cleanly across Go and all SDKs, and half 2 and item 3 are gone. When the pin moves past `3107a58d`, this record describes the difference to the pin as well as Pi main.
+- **Fix commits:** `f36632c6ee` (2026-11-23)
+- **Tests:** `internal/codingagent/interactive_continue_unix_test.go::TestContinueHandlerRearmsOnTheOwnerLoopWhileTheTerminalIsOwned`, `internal/codingagent/interactive_continue_unix_test.go::TestContinueHandlerStopDoesNotHangWhenUITaskChannelIsFull`, `internal/codingagent/interactive_continue_unix_test.go::TestRearmTerminalDoesNotRestoreCookedOrDeadlockOnBlockedReader`, `internal/codingagent/interactive_continue_unix_test.go::TestRearmWithOpsRunsStopStartRenderOnlyWhenForeground`, `internal/codingagent/startup_continue_pty_linux_test.go::TestFrontendSurfaceRearmBalancesKittyStack`, `internal/codingagent/startup_continue_pty_linux_test.go::TestFrontendSurfaceRearmBalancesKittyStackChild`, `internal/codingagent/startup_continue_pty_linux_test.go::TestInitInstallsContinueHandlerBeforeTerminalStart`, `internal/codingagent/startup_continue_pty_linux_test.go::TestInitInstallsContinueHandlerBeforeTerminalStartChild` and 27 more in docs/bug-ledger.json
+- **Release note:** After an external `kill -TSTP <pid>` (from a supervisor, `pkill -TSTP`, or another pane), pig stops without resetting the terminal, so mouse tracking, hidden cursor, Kitty keyboard flags, bracketed paste, the fullscreen alternate screen, and under `dash` raw terminal settings stay active at the shell prompt until `fg`; previously, `fg` also left the terminal in the shell's state without re-entering or redrawing the TUI. Interactive mode now re-arms raw mode, paste, keyboard, mouse, and screen modes on `fg`—forcing a full redraw on fullscreen and regular ANSI renderers and resuming the session on frontend surfaces (which draws what changed)—including during startup once the terminal is armed, after a background `bg` (which re-stops pig until `fg`), and under shells that restore saved raw terminal settings on `fg`, while leaving external-editor handoffs and `Ctrl+Z` unchanged (follows Pi `e4f50d76`, `3107a58d`; record D661).
+
 ### BF-f3b4045
 
 **`.gitignore`, `.ignore` and `.fdignore` rules that skills, packages and extension entry discovery read now…**
@@ -36871,6 +36888,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D657 | Every handler of an event gets its own copy of the payload, in every SDK; Pi's handlers of one emit share one… | [BF-D657](#bf-d657) |
 | D658 | The Go, Rust, Python and Lisp SDKs invoke handlers in request arrival order, but a descheduled thread can run… | [BF-D658](#bf-d658) |
 | D660 | A reply whose model has no known context window starts no threshold compaction, where Pi compacts after every… | [BF-87ea4f9](#bf-87ea4f9) |
+| D661 | After an external SIGTSTP and `fg` pig arms the terminal again; the terminal is not reset before the external… | [BF-f36632c](#bf-f36632c) |
 
 ## Fix-titled commits that are not bugs in a release
 

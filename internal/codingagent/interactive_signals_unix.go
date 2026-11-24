@@ -9,6 +9,7 @@ import (
 	"errors"
 	"os"
 	"os/signal"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -42,6 +43,70 @@ func (m *InteractiveMode) installResizeHandler(ctx context.Context) func() {
 		}
 	}()
 	return func() { signal.Stop(winchCh); stopSize() }
+}
+
+// installContinueHandler arms the terminal again after a continue that the Ctrl+Z path did not arrange: an external kill -TSTP stops the process by the kernel's default action with the terminal armed, the shell takes the tty for its prompt, and fg continues a process whose raw mode, bracketed paste, mouse and keyboard modes are not what the shell left. Returns a stop func.
+//
+// The handler is the terminal ownership's: tui calls it for a SIGCONT only while a renderer owns the terminal, so there is no effect before the first start, after a stop, while an external editor or any child owns the terminal, or while the Ctrl+Z path waits for its own SIGCONT (onSuspendContinue, which restarts the renderer itself). The re-arm runs on the owner loop, and a burst of signals is one re-arm.
+// pig divergence (D661): Pi main stops the TUI from a SIGTSTP listener and then stops the process (interactive-mode.ts handleCtrlZ); a Go program that catches SIGTSTP cannot give the default stop back, so the stop stays the kernel's and the terminal is armed again here at the continue.
+func (m *InteractiveMode) installContinueHandler(ctx context.Context) func() {
+	return tui.SetContinueSignalHandler(m.continueHandler(ctx, m.rearmTerminal))
+}
+
+// continueHandler is the handler tui runs on SIGCONT: it posts rearm to the owner loop, and rearm runs there only if a renderer still owns the terminal.
+// It posts on m.backgroundCtx (falling back to ctx, as onSuspendContinue does) so Stop() cancelling backgroundCtx always unblocks a post waiting on a full
+// uiTaskCh before backgroundTasks.Wait().
+func (m *InteractiveMode) continueHandler(ctx context.Context, rearm func()) func(owned func() bool) {
+	postCtx := m.backgroundCtx
+	if postCtx == nil {
+		postCtx = ctx
+	}
+	var pending atomic.Bool
+	return func(owned func() bool) {
+		if pending.Swap(true) {
+			return
+		}
+		// The post waits for the owner loop and must not hold the signal goroutine.
+		m.backgroundTasks.Go(func() {
+			err := m.postToMain(postCtx, func() {
+				pending.Store(false)
+				if owned() && postCtx.Err() == nil {
+					rearm()
+				}
+			})
+			if err != nil {
+				pending.Store(false)
+			}
+		})
+	}
+}
+
+// rearmTerminal gives the terminal back and takes it again through the operations of the Ctrl+Z resume (stop with PreserveScreen, start, full redraw),
+// so raw mode, bracketed paste, keyboard protocol, mouse modes and the screen are armed again after an external stop and fg without dumping the fullscreen
+// transcript into main-screen scrollback.
+// pig divergence (D661): runs unconditionally on foreground SIGCONT so shells that restore a job's saved raw termios on fg (fish, mksh) still re-arm and redraw.
+// pig divergence (D227): a process not in the foreground of its terminal does not touch it and stops its process group again until fg.
+func (m *InteractiveMode) rearmTerminal() {
+	m.rearmWithOps(m.rearmOperations())
+}
+
+func (m *InteractiveMode) rearmWithOps(ops suspendOperations) {
+	foreground, err := ops.foreground()
+	if err != nil {
+		return
+	}
+	if !foreground {
+		if ops.kill != nil {
+			_ = ops.kill(0)
+		}
+		return
+	}
+	ops.stop()
+	if err := ops.start(); err != nil {
+		m.inputLoopErr = err
+		return
+	}
+	ops.requestRender()
 }
 
 // ignoreSuspendInterrupt changes dispatch-time listener state without discarding pending kernel signals. SIGINT delivered after resume cleanup follows the ordinary interrupt handler, as in Pi's process.removeListener path.
@@ -117,6 +182,52 @@ func (m *InteractiveMode) suspendOperations() suspendOperations {
 		},
 		kill:       suspendKill,
 		foreground: func() (bool, error) { return m.foregroundOrExit(tui.StdinInForeground) },
+	}
+}
+
+// rearmOperations are the stop/start/render operations used after an external SIGTSTP and fg.
+// Unlike Ctrl+Z (suspendOperations), rearm does not hand the terminal to another process: it keeps the stdin reader running
+// (avoiding a deadlock when SIGTSTP caught the reader between poll and read and the shell consumed the pending bytes) and calls
+// tui.RearmRawMode instead of rawRestore+EnterRawMode, preserving both the saved cooked termios (critical under shells like fish/mksh
+// that restore raw termios on fg) and avoiding restoring cooked mode while the reader is active. PreserveScreen keeps fullscreen
+// teardown from dumping the transcript into main-screen scrollback.
+func (m *InteractiveMode) rearmOperations() suspendOperations {
+	return suspendOperations{
+		stop: func() {
+			endStop := m.holdTerminalStop()
+			if m.surface != nil {
+				m.surface.Suspend()
+			} else {
+				m.tuiInst.StopWithOptions(tui.StopOptions{PreserveScreen: true, ExitTerminal: true})
+			}
+			endStop()
+		},
+		start: func() error {
+			if m.altScreen != nil {
+				m.altScreen.BeforeTerminalStart()
+			}
+			if err := tui.RearmRawMode(); err != nil {
+				if m.altScreen != nil {
+					m.altScreen.StopWithOptions(tui.StopOptions{PreserveScreen: true})
+				}
+				m.exitIfDeadTerminal(err)
+				return err
+			}
+			if m.surface != nil {
+				m.surface.Resume()
+			} else {
+				m.tuiInst.Start()
+			}
+			return nil
+		},
+		requestRender: func() {
+			if m.surface == nil {
+				m.tuiInst.ForceFullRender()
+				m.tuiInst.Render()
+			}
+		},
+		foreground: func() (bool, error) { return m.foregroundOrExit(tui.StdinInForeground) },
+		kill:       suspendKill,
 	}
 }
 

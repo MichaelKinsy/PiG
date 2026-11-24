@@ -919,6 +919,9 @@ type tuiBase struct {
 	outMu sync.Mutex
 
 	stopped atomic.Bool // set by Stop(); prevents further Render() calls (RequestRender reads it from component goroutines)
+
+	// continues is whether this renderer owns the terminal, which decides whether a SIGCONT reaches the run's handler (continue_signal.go).
+	continues continueOwnership
 }
 
 // TuiMainScreen is the main-screen renderer: differential rendering into the terminal's
@@ -3164,6 +3167,7 @@ func (t *TuiMainScreen) Start() {
 	t.mu.Lock()
 	t.stopped.Store(false)
 	t.mu.Unlock()
+	t.continues.beginFor(t.terminal)
 	t.HideCursor()
 	if t.colorSchemeNotificationsEnabled() {
 		t.outMu.Lock()
@@ -3185,6 +3189,7 @@ func (t *TuiMainScreen) StopWithOptions(options StopOptions) {
 
 // stopWithOptionsLocked also serves the overflow path, a frame in its writes: mu and outMu are held.
 func (t *TuiMainScreen) stopWithOptionsLocked(options StopOptions) {
+	defer t.continues.end()
 	t.stopped.Store(true)
 	t.pendingWidth = 0
 	t.pendingHeight = 0

@@ -295,6 +295,7 @@ func (t *TuiSurface) Start() {
 	t.started = true
 	t.resend = true
 	t.mu.Unlock()
+	t.continues.begin()
 	if t.colorSchemeNotificationsEnabled() {
 		writeColorSchemeNotifications(t.terminal, true)
 	}
@@ -312,6 +313,7 @@ func (t *TuiSurface) Stop() { t.StopWithOptions(StopOptions{}) }
 // PreserveScreen changes nothing. The components stop reporting their
 // invalidations, and a later start rebuilds every node.
 func (t *TuiSurface) StopWithOptions(StopOptions) {
+	defer t.continues.end()
 	t.mu.Lock()
 	wasStopped := t.stopped.Load()
 	t.stopped.Store(true)
@@ -354,6 +356,7 @@ func (t *TuiSurface) Suspend() {
 	}
 	t.statusTerminal.pause()
 	t.session.Suspend()
+	t.continues.end()
 }
 
 // Resume tells the session that PiG owns the terminal again and draws what
@@ -382,6 +385,7 @@ func (t *TuiSurface) Resume() {
 	}
 	t.mu.Unlock()
 	if render {
+		t.continues.begin()
 		t.Render()
 	}
 }

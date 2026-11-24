@@ -143,6 +143,8 @@ type ProcessTerminal struct {
 	stopGate stopGate
 	// sizeCache is the window size kept between SIGWINCHs while the interactive resize handler holds it.
 	sizeCache terminalSizeCache
+	// continues marks the process terminal owned while raw mode is armed, from before MakeRaw until after RestoreCooked (continue_signal.go).
+	continues continueOwnership
 }
 
 const (
@@ -380,6 +382,32 @@ func EnterRawModeForHandoff() (restore func(), err error) {
 	return processTerminal.enterRawMode(false)
 }
 
+// RearmRawMode re-applies raw termios, bracketed paste, and keyboard protocol queries on the process terminal without overwriting the
+// saved cooked termios state held by the active restore closure (or restoring cooked mode in between). Used when re-arming after an
+// external SIGTSTP and fg: the stdin reader stays running (avoiding a deadlock if SIGTSTP caught the reader between poll and read) and
+// shells that restored raw termios on fg do not cause the saved cooked state to be overwritten with raw termios.
+func RearmRawMode() error {
+	return processTerminal.rearmRawMode()
+}
+
+func (t *ProcessTerminal) rearmRawMode() error {
+	if t.stdin == nil || t.out == nil {
+		return fmt.Errorf("terminal raw mode requires stdin/stdout")
+	}
+	fd := int(t.stdin.Fd())
+	if _, err := MakeRaw(fd); err != nil {
+		return err
+	}
+	t.exitRestored.Store(false)
+	t.stopModesWritten.Store(false)
+	t.openForeignWrites()
+	t.enableVTProcessing()
+	t.disableKeyboardProtocol()
+	t.writeUnlogged("\x1b[?2004h")
+	t.queryAndEnableKittyProtocol()
+	return nil
+}
+
 // EnterRawMode puts this terminal into raw mode and returns a restore closure
 // that drains late extended-key releases before restoring cooked mode.
 func (t *ProcessTerminal) EnterRawMode() (restore func(), err error) {
@@ -420,8 +448,10 @@ func (t *ProcessTerminal) enterRawMode(drainOnRestore bool) (restore func(), err
 		return nil, fmt.Errorf("terminal raw mode requires stdin/stdout")
 	}
 	fd := int(t.stdin.Fd())
+	t.continues.begin()
 	state, err := MakeRaw(fd)
 	if err != nil {
+		t.continues.end()
 		return nil, err
 	}
 	rememberSignalRestore(fd, state)
@@ -440,6 +470,7 @@ func (t *ProcessTerminal) enterRawMode(drainOnRestore bool) (restore func(), err
 		vtRestore()
 	})
 	return func() {
+		defer t.continues.end()
 		unregisterExitRestoreTerminal(t)
 		t.stopProgramStatus()
 		// Stop the terminal generating extended-key sequences before anything

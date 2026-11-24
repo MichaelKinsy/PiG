@@ -399,6 +399,7 @@ func (t *TuiAltScreen) getPrimaryScrollView() *ScrollView {
 // that writes nothing at its start). Like the main-screen renderer's Start it hides the cursor again, as tui.ts start() does once
 // terminal.start() returns.
 func (t *TuiAltScreen) Start() {
+	t.continues.beginFor(t.terminal)
 	t.beforeTerminalStartIfNeeded()
 	t.HideCursor()
 	t.afterTerminalStart()
@@ -409,6 +410,7 @@ func (t *TuiAltScreen) Start() {
 // without the cursor hide: the caller hides it right after its terminal start. The first frame has no earlier frame to throttle against, so the
 // request goes to the render dispatcher's loop at once, which runs it on its next turn.
 func (t *TuiAltScreen) StartRequestingRender() {
+	t.continues.beginFor(t.terminal)
 	t.beforeTerminalStartIfNeeded()
 	t.afterTerminalStart()
 	t.RequestImmediateRender()
@@ -437,6 +439,7 @@ func (t *TuiAltScreen) afterTerminalStart() {
 // main and alternate screens keep independent stacks, so the push lands on the alternate screen's stack and stays there until terminal.stop()
 // pops it (before the screen is left). Start or StartRequestingRender follows the terminal's start.
 func (t *TuiAltScreen) BeforeTerminalStart() {
+	t.continues.beginFor(t.terminal)
 	t.mu.Lock()
 	// Upstream start() sets stopped=false first, then beforeTerminalStart resets
 	// the selection/scrollbar input state so a start->stop->start cycle resumes
@@ -511,6 +514,7 @@ type StopOptions struct {
 func (t *TuiAltScreen) Stop() { t.StopWithOptions(StopOptions{}) }
 
 func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
+	defer t.continues.end()
 	// Pi's stop() removes the exit handler first (tui.ts stop).
 	unregisterExitRestoreAltScreen(t)
 	t.closeSearch()

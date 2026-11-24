@@ -1,0 +1,39 @@
+from = "1.5.2+cead615b"
+to = "1.5.2+e4f50d76"
+
+[[files]]
+path = "packages/tui/src/tui.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = ["test:tui/continue_signal_unix_test.go#TestContinueSignalHandlerRunsOnlyWhileStarted", "test:tui/continue_signal_unix_test.go#TestContinueSignalListenerIsNotAddedTwice", "test:tui/continue_signal_unix_test.go#TestContinueSignalHandlerSetWhileStartedAppliesAtOnce", "test:tui/continue_signal_unix_test.go#TestContinueSignalHandlerSetWhileStoppedAddsNoListener", "test:tui/continue_signal_unix_test.go#TestContinueSignalStartStopDoesNotLeakGoroutines"]
+oracle = "not carried: D661 diverges from Pi's SIGTSTP listener and omits TUI.setSuspendSignalHandler; no parity scenario exercises external SIGTSTP or TUI.setSuspendSignalHandler (the Ctrl+Z scenarios 40-suspend-resume-session and 43-suspend-signal-order are unchanged)."
+rationale = "e4f50d76 (#12283, issue #12272): Pi adds public TUI.setSuspendSignalHandler(handler) registering a SIGTSTP listener while the TUI runs. Under Go 1.27, sigdisable in runtime/signal_unix.go never restores SIG_DFL for SIGTSTP once signal.Notify has been called, so PiG does not catch SIGTSTP and instead implements tui.SetContinueSignalHandler on SIGCONT tied to process-terminal ownership (D661, awaiting owner approval). Expected-absent copies of TUI.setSuspendSignalHandler under D661: tui/renderer.go (TUI), extensions/sdk/tui_alt_screen.go, extensions/sdk-py/pig_sdk/tui_alt_screen.py, extensions/sdk-rs/src/tui_alt_screen.rs, extensions/sdk-lisp/src/tui-alt-screen.lisp, extensions/sdk-ts/pi-pin.d.ts, coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-tui/tui.js, and coding/extension/host/subprocess/runtime-node/runtime.mjs (factoryTui). Calling tui.setSuspendSignalHandler from a Node extension throws TypeError. None of those copies carry setSuspendSignalHandler on the tip (no drift against v1.5.2 pin; future pin bump past e4f50d76 will meet test-sdk-ts / vendor-pi-dist-drift / sdk-exports checks unless updated or recorded under D661)."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = ["test:internal/codingagent/interactive_continue_unix_test.go#TestContinueHandlerRearmsOnTheOwnerLoopWhileTheTerminalIsOwned", "test:internal/codingagent/interactive_continue_unix_test.go#TestRearmWithOpsRunsStopStartRenderOnlyWhenForeground", "test:internal/codingagent/startup_continue_pty_linux_test.go#TestInitOwnsTerminalForSIGCONTAsSoonAsStartTerminalArmsIt", "test:internal/codingagent/startup_continue_pty_linux_test.go#TestSIGCONTUnderRawTermiosRestoringShellRearmsAndRedraws", "test:internal/codingagent/startup_continue_pty_linux_test.go#TestFrontendSurfaceRearmBalancesKittyStack", "test:test/integration/external_sigtstp_pty_linux_test.go#TestExternalSIGTSTPSuspendsLikeCtrlZ", "test:test/integration/external_sigtstp_pty_linux_test.go#TestExternalSIGTSTPUnderDashJobControl", "test:test/integration/external_sigtstp_pty_linux_test.go#TestSIGTSTPInStartupWindowRearmsTerminal", "test:test/integration/external_sigtstp_pty_linux_test.go#TestExternalSIGTSTPAndBareSIGCONTDoNotDumpScrollbackInFullscreen"]
+oracle = "not carried: D661 keeps the kernel default SIGTSTP stop without pre-stop terminal reset and re-arms on SIGCONT; no parity scenario runs external kill -TSTP job control."
+rationale = "e4f50d76 (#12283): Pi wires ui.setSuspendSignalHandler(() => this.handleCtrlZ()) in init and switchTuiMode so an external kill -TSTP resets the terminal before stopping. PiG does not reset the terminal before an external stop (D661, awaiting owner approval); instead InteractiveMode.installContinueHandler runs before startTerminal and re-arms/redraws the terminal on foreground SIGCONT after fg (preserving screen in fullscreen, balancing Kitty keyboard pushes on frontend surfaces, covering fullscreen, regular, dash, startup terminal-arm window, and shells that restore raw termios on fg). Every cited test fails if the port is reverted; regression guards (TestCtrlZKeyKeepsItsModeSequences, TestExternalSIGTSTPKeepsARunGoing, TestSIGTSTPWhileAnExternalEditorOwnsTheTerminal) are kept in external_sigtstp_pty_linux_test.go and not cited here as port evidence."
+
+[[files]]
+path = "packages/tui/test/suspend-signal.test.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:tui/continue_signal_unix_test.go#TestContinueSignalHandlerRunsOnlyWhileStarted", "test:tui/continue_signal_unix_test.go#TestContinueSignalListenerIsNotAddedTwice", "test:tui/continue_signal_unix_test.go#TestContinueSignalHandlerSetWhileStartedAppliesAtOnce", "test:tui/continue_signal_unix_test.go#TestContinueSignalHandlerSetWhileStoppedAddsNoListener"]
+rationale = "e4f50d76: all 4 initial test cases of packages/tui/test/suspend-signal.test.ts adapted 1:1 in tui/continue_signal_unix_test.go against tui.SetContinueSignalHandler on SIGCONT (D661)."
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "e4f50d76: Pi's coding-agent changelog entry for #12283 (pre-stop terminal reset on external SIGTSTP). PiG's user-visible change and remaining pre-stop limitation under D661 are documented in changelog.d/external-sigtstp-rearm-f36632c6ee.md."
+
+[[files]]
+path = "packages/tui/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "e4f50d76: Pi's tui changelog entry adding public API TUI.setSuspendSignalHandler(). Under D661, PiG does not expose TUI.setSuspendSignalHandler on tui.TUI, any native SDK (Go/Python/Rust/Lisp), extensions/sdk-ts/pi-pin.d.ts, vendored pi-dist/pi-tui/tui.js, or Node runtime factoryTui; Go exposes package function tui.SetContinueSignalHandler on SIGCONT instead. User-visible behavior is in changelog.d/external-sigtstp-rearm-f36632c6ee.md."

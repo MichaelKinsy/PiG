@@ -45,6 +45,9 @@ func (m *InteractiveMode) installResizeHandler(ctx context.Context) func() {
 	return func() {}
 }
 
+// installContinueHandler does nothing on Windows: there is no SIGCONT.
+func (m *InteractiveMode) installContinueHandler(context.Context) func() { return func() {} }
+
 // handleSuspend shows a status message on Windows: suspend-to-background needs
 // SIGTSTP job control, which Windows lacks. Mirrors upstream handleCtrlZ's
 // win32 branch (interactive-mode.ts), which calls showStatus.

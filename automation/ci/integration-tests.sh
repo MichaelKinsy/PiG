@@ -37,7 +37,7 @@ case "$CATEGORY" in
         # plus the signal guards and the harness cleanup guards (faux provider, no network).
         # NOTE: TestExt_StartupWithSubagent etc. spawn pig but don't hit the
         # LLM, so they're "fast" for our purposes.
-        PATTERN='^(TestBehavior_|TestSlash|TestShiftEnter|TestExitClean|TestSignalEmits|TestInteractiveSigint|TestExt_StartupWith|TestExt_Subagent|TestExt_NoExtensions|TestExt_StartupWithout|TestExt_Convention|TestExt_Cached|TestHarnessCleanup)'
+        PATTERN='^(TestBehavior_|TestSlash|TestShiftEnter|TestExitClean|TestSignalEmits|TestInteractiveSigint|TestExternalSIGTSTP|TestCtrlZKeyKeepsItsModeSequences|TestSIGTSTP|TestExt_StartupWith|TestExt_Subagent|TestExt_NoExtensions|TestExt_StartupWithout|TestExt_Convention|TestExt_Cached|TestHarnessCleanup)'
         TIMEOUT=300s
         ;;
     parity)
