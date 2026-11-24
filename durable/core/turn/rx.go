@@ -150,6 +150,9 @@ func (p *rxParser) atom() rxNode {
 					n.word = true
 					continue
 				}
+				if isASCIIAlphaNum(e) {
+					panic("turn: unsupported escape")
+				}
 				lo = e
 			}
 			hi := lo
@@ -172,9 +175,16 @@ func (p *rxParser) atom() rxNode {
 		case 'S':
 			return rxNode{kind: rxNotSpace}
 		}
+		if isASCIIAlphaNum(e) {
+			panic("turn: unsupported escape")
+		}
 		return rxNode{kind: rxChar, ch: e}
 	}
 	return rxNode{kind: rxChar, ch: c}
+}
+
+func isASCIIAlphaNum(r rune) bool {
+	return r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9'
 }
 
 func foldASCII(r rune) rune {
