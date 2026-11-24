@@ -2808,6 +2808,11 @@ function isLlamaClassifierModel`],
 // not carried: packages/ai catalog/providers/github-copilot.ts, packages/ai test and CHANGELOG: the package ships none of them; the generated data carries the change.
 // END backport e5c01ca6cb9d
 
+// BEGIN backport c815a3dfe173
+// c815a3dfe173 (#12332): the strict tools flag of GitHub Copilot anthropic-messages models is catalog data: the pi-overlay file catalog/providers/github-copilot.ts (Pi's, at this commit) makes the oracle's github-copilot provider data. No compiled file of the package changes.
+// not carried: packages/ai catalog/providers/github-copilot.ts, packages/ai test and CHANGELOG: the package ships none of them; the generated data carries the change.
+// END backport c815a3dfe173
+
 // BEGIN backport 9a7cfba47
 // 9a7cfba47 (#12312): Enter on an autocomplete menu submits only from the slash command name menu, not from a Tab menu for an absolute path or a command argument.
 patch("9a7cfba47", "pi-tui/components/editor.js", [

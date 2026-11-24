@@ -207,3 +207,81 @@ func TestAnthropicRequestBodyKeepsRootDefsInLegacyToolSchema(t *testing.T) {
 		}
 	})
 }
+
+// Pi c815a3dfe (#12332): GitHub Copilot anthropic-messages models declare compat.supportsStrictTools=true,
+// so constrained tools serialize with strict:true and full input_schema while ordinary tools stay non-strict.
+// Providers whose anthropic-messages models do not set supportsStrictTools (for example OpenRouter and custom
+// gateways) remain unchanged and omit strict.
+func TestAnthropicCopilotStrictToolsSerializedRequest(t *testing.T) {
+	const parameters = `{"type":"object","properties":{"path":{"type":"string"},"offset":{"type":"number"}},"required":["path"],"title":"ReadInput"}`
+	const legacySchema = `{"type":"object","properties":{"path":{"type":"string"},"offset":{"type":"number"}},"required":["path"]}`
+	const strictSchema = `{"type":"object","properties":{"path":{"type":"string"},"offset":{"anyOf":[{"type":"number"},{"type":"null"}]}},"required":["path","offset"],"title":"ReadInput","additionalProperties":false}`
+	tools := []ToolSchema{
+		anthropicStrictTool(t, parameters, false),
+		anthropicStrictTool(t, parameters, true),
+	}
+	tools[0].Name = "ordinary"
+	tools[1].Name = "constrained"
+
+	type serializedTool struct {
+		Name        string          `json:"name"`
+		Strict      *bool           `json:"strict"`
+		InputSchema json.RawMessage `json:"input_schema"`
+	}
+	capture := func(t *testing.T, model *Model) []serializedTool {
+		t.Helper()
+		payload := upstreamAnthropicParams(t, model, Context{
+			Messages: []Message{UserMessage{Content: UserText("Use the tool")}},
+			Tools:    tools,
+		}, StreamOptions{CacheRetention: CacheRetentionNone})
+		var got []serializedTool
+		if err := json.Unmarshal(payload["tools"], &got); err != nil {
+			t.Fatalf("unmarshal tools (%s): %v", payload["tools"], err)
+		}
+		if len(got) != 2 {
+			t.Fatalf("got %d tools, want 2: %s", len(got), payload["tools"])
+		}
+		return got
+	}
+
+	for _, tc := range []struct {
+		provider, id string
+		wantStrict   bool
+	}{
+		{"github-copilot", "claude-haiku-4.5", true},
+		{"github-copilot", "claude-sonnet-5.5", true},
+		{"anthropic", "claude-haiku-4-5", true},
+		{"openrouter", "anthropic/claude-haiku-4.5", false},
+	} {
+		t.Run(tc.provider+"/"+tc.id, func(t *testing.T) {
+			got := capture(t, upstreamCatalogModel(t, tc.provider, tc.id))
+			if got[0].Name != "ordinary" || got[0].Strict != nil {
+				t.Fatalf("ordinary tool = %+v, want strict absent", got[0])
+			}
+			assertShapeJSON(t, got[0].InputSchema, legacySchema)
+			if got[1].Name != "constrained" {
+				t.Fatalf("second tool = %+v, want constrained", got[1])
+			}
+			if tc.wantStrict {
+				if got[1].Strict == nil || !*got[1].Strict {
+					t.Fatalf("constrained tool strict = %v, want true", got[1].Strict)
+				}
+				assertShapeJSON(t, got[1].InputSchema, strictSchema)
+			} else {
+				if got[1].Strict != nil {
+					t.Fatalf("constrained tool strict = %v, want absent", *got[1].Strict)
+				}
+				assertShapeJSON(t, got[1].InputSchema, legacySchema)
+			}
+		})
+	}
+
+	t.Run("custom gateway without flag omits strict", func(t *testing.T) {
+		got := capture(t, customAdaptiveModel(nil))
+		if got[0].Strict != nil || got[1].Strict != nil {
+			t.Fatalf("custom gateway tools = %+v, want strict absent on both", got)
+		}
+		assertShapeJSON(t, got[0].InputSchema, legacySchema)
+		assertShapeJSON(t, got[1].InputSchema, legacySchema)
+	})
+}

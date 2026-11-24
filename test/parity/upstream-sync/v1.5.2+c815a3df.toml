@@ -1,0 +1,13 @@
+from = "1.5.2+cead615b"
+to = "1.5.2+c815a3df"
+# Pi c815a3dfe173 (2026-11-19): feat(ai): send strict tools to Claude on GitHub Copilot (#12332).
+# Carried out of Pi's order: this line already carries e5c01ca6cb9d (same overlay file) and 9a7cfba47 (c815a3dfe's parent in Pi), each with its own ledger; the rest of the commits between cead615b and c815a3df are not taken by this line, so the file below is the only one of this commit's source changes.
+# For the lane that moves the pin past this commit: the pin's own github-copilot.ts then replaces the overlay file automation/gen/catalog-source/pi-overlay/catalog/providers/github-copilot.ts.
+
+[[files]]
+path = "packages/ai/catalog/providers/github-copilot.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi", "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream", "test:ai/anthropic_strict_tool_schema_upstream_test.go#TestAnthropicCopilotStrictToolsSerializedRequest"]
+rationale = "c815a3dfe173 (#12332): the provider overlay declares compat.supportsStrictTools for api anthropic-messages next to the openai-completions and openai-responses entries, so every GitHub Copilot Claude model sends strict: true and the full strict input_schema for tools requesting JSON-schema constrained sampling, matching direct Anthropic. internal/modelgen/providers/github_copilot.go sets the same compat default; the golden hashes of the Copilot files and of the two lists of every model are what Pi's generator writes with the overlay over the pinned mirror (PI_CATALOG_OVERLAY=automation/gen/catalog-source/pi-overlay test/parity/testdata/catalog-generation/equivalence.sh golden)."
+oracle = "carried: c815a3dfe173 (the catalog overlay catalog/providers/github-copilot.ts)"
