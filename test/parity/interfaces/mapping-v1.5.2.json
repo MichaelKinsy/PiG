@@ -141412,9 +141412,9 @@
         "call:chord/nextnode/workers/workers_workers.go#CreateWorkers"
       ],
       "evidence": [
-        "test:chord/nextnode/workers/proof_chord_test.go#TestWorkerMainRunsTheForkedWorkerFromItsStartMessageToItsFirstServedCall",
-        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseAStartsWaitForTheBuildEndsClosedWhenTheBuildAndTheCloseAreBothDone",
-        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseCloseKeepsTheBasesCopyUntilItsWorkersExitedACloserStillFindsItsProgram"
+        "test:chord/nextnode/workers/workers_rollout_retried_test.go#TestRolloutDoesNotReloadARetriedWorkerThatForkedBeforeTheReloadLoop",
+        "test:chord/nextnode/workers/workers_rollout_retried_test.go#TestRolloutDoesNotReloadAStartingWorkerWaitingInClearStaleLockWithSameScripts",
+        "test:chord/nextnode/workers/proof_chord_test.go#TestWorkerMainRunsTheForkedWorkerFromItsStartMessageToItsFirstServedCall"
       ]
     },
     {
