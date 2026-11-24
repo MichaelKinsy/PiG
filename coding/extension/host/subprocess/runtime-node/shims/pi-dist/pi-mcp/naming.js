@@ -26,7 +26,6 @@ export function createMcpToolName(server, tool, isTaken = () => false) {
 export function mcpNamespace(server) {
     return `mcp__${server.replace(/-/g, "_")}`;
 }
-// Pi 3567987250 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
 /**
  * A server's one-line summary for the system prompt: the first line of its configured `description`,
  * else of the instructions it sent in `initialize`; empty when it has neither.

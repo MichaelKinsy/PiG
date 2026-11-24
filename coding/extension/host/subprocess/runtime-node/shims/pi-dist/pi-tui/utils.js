@@ -140,7 +140,6 @@ function finalizeTruncatedResult(prefix, prefixWidth, ellipsis, ellipsisWidth, m
     return pad ? result + " ".repeat(Math.max(0, maxWidth - visibleWidth)) : result;
 }
 /**
- // Pi b7bb7ca905b8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
  * Whether a UTF-16 unit always forms a grapheme cluster on its own: printable ASCII, Latin,
  * punctuation, arrows, box drawing, symbols, kana, CJK ideographs and fullwidth forms. These ranges
  * hold no combining marks, joiners, variation selectors, Hangul jamo or surrogates, so no Unicode

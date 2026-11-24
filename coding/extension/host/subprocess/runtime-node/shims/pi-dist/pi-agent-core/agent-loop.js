@@ -476,7 +476,6 @@ function prepareToolCallArguments(tool, toolCall) {
     };
 }
 async function prepareToolCall(currentContext, assistantMessage, toolCall, config, signal, tools = currentContext.tools ?? []) {
-    // Pi 4438c58ba (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
     // Once aborted, skip preparation and the hooks; callers still record this result, so no call
     // is left without one (#9986).
     if (signal?.aborted) {

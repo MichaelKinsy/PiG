@@ -6,8 +6,8 @@
  * - `pi --mode json "prompt"` - JSON event stream
  */
 import { flushRawStdout, waitForRawStdoutBackpressure, writeRawStdout } from "../core/output-guard.js";
-import { writeDiagnosticsToStderr } from "../core/settings-diagnostics.js";
 import { killTrackedDetachedChildren } from "../utils/shell.js";
+import { writeDiagnosticsToStderr } from "./diagnostics-stderr.js";
 import { toJsonEvent } from "./json-event.js";
 /**
  * Run in print (single-shot) mode.
@@ -53,12 +53,10 @@ export async function runPrintMode(runtimeHost, options) {
     registerSignalHandlers();
     runtimeHost.setRebindSession(async () => {
         await rebindSession();
-        // Pi c47ad0432bb8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         writeDiagnosticsToStderr(runtimeHost.takeUnreportedDiagnostics());
     });
     const rebindSession = async () => {
         session = runtimeHost.session;
-        // Pi 6aab551a79ba (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         // Subscribe before binding so events emitted by session_start handlers (e.g. appended entries) reach the JSON output.
         unsubscribe?.();
         unsubscribeBackpressure?.();

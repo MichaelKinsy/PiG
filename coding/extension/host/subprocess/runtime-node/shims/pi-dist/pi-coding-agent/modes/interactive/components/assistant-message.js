@@ -21,7 +21,6 @@ export class AssistantMessageComponent extends Container {
     timestamp;
     thinkingVisibilityOverrides = new Map();
     markdownSlots = [];
-    // Pi b7bb7ca905b8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
     zoneLines;
     constructor(message, hideThinkingBlock = false, markdownTheme = getMarkdownTheme(), hiddenThinkingLabel = "Thinking...", outputPad = 1, markdownTransformers = [], messageId, timestamp) {
         super();

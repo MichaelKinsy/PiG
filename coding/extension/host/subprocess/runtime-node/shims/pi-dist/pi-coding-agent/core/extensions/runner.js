@@ -200,7 +200,6 @@ export class ExtensionRunner {
     constructor(extensions, runtime, cwd, sessionManager, modelRegistry) {
         this.extensions = extensions;
         this.runtime = runtime;
-        // Pi 18e99051be24 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         // A handler still running when its session is replaced must not report into the replacement's UI.
         this.runtime.reportError = (error) => {
             if (!this.staleMessage)

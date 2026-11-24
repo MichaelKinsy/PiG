@@ -1,15 +1,14 @@
 {
-	"commit": "5f89cc0a7df669813650bfdac498f8ff865e8233",
-	"pin": "b4afdddf44e059c67ccf5097e5317d913521b470",
-	"catchup": "5f89cc0a7df669813650bfdac498f8ff865e8233",
+	"commit": "faac585884ae2c013a6b1400f3e9e77f10b34bac",
+	"pin": "faac585884ae2c013a6b1400f3e9e77f10b34bac",
 	"patches": [
 		{
 			"name": "D636-apply-acquired-pick.patch",
 			"sha256": "be36842369fd837b3330c094623486d1647267a7eae73906ecdf715797a19e7a"
 		}
 	],
-	"piSchema": "1.5.2",
-	"piTelemetry": "1.5.2",
+	"piSchema": "1.6.0",
+	"piTelemetry": "1.6.0",
 	"react": {
 		"react": "19.3.0",
 		"react-dom": "19.3.0",
@@ -950,7 +949,7 @@
 		},
 		{
 			"path": "pi/node_modules/@earendil-works/pi-schema/package.json",
-			"sha256": "b0297552afe555ceb41c87632e3b43aa73a68cf8b8a8847a9383587567b09401"
+			"sha256": "177c64f16d671183f4493429754a56b998379205023f6820e057859ec90d64de"
 		},
 		{
 			"path": "pi/node_modules/@earendil-works/pi-schema/src/annotations.ts",
@@ -1014,7 +1013,7 @@
 		},
 		{
 			"path": "pi/node_modules/@earendil-works/pi-telemetry/package.json",
-			"sha256": "bf7908d77cf617b4cdc0277b10edd69ad837980fd1db5e2824a903dfe20a53a7"
+			"sha256": "491ec2a88fd55455b15cf7b5930ff04f4124a79fa85a6432b0b9d49b6f1006ca"
 		},
 		{
 			"path": "pi/node_modules/@earendil-works/pi-telemetry/src/index.ts",

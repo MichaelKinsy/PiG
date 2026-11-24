@@ -300,7 +300,6 @@ export class TuiAltScreen extends TuiBase {
     }
     scrollBy(lines) {
         this.getPrimaryScrollView().scrollBy(lines);
-        // Pi b7bb7ca905b8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         this.requestViewRender();
     }
     scrollToTop() {
@@ -1507,7 +1506,6 @@ export class TuiAltScreen extends TuiBase {
         let buffer = BEGIN_SYNCHRONIZED_OUTPUT;
         if (fullRedraw) {
             this.fullRedrawCount += 1;
-            // Pi be2744d95 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
             if (this.imageProtocol === "kitty" && hadUploadedKittyImages) {
                 // Kitty frees image data without placements on ED 2, which would break placement-only reuse.
                 // Every row is cleared with EL 2 below, so keep the uploads and skip the screen clear.

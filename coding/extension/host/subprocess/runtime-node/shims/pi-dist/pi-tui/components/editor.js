@@ -635,7 +635,6 @@ export class Editor {
             if (kb.matches(data, "tui.select.confirm")) {
                 const selected = this.autocompleteList.getSelectedItem();
                 if (selected && this.autocompleteProvider) {
-                    // Pi 9a7cfba47 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
                     // Enter runs a slash command only from the command-name menu. Path and argument menus can also have a
                     // "/" prefix ("look at /tmp/fi", "/open /tm"), so the prefix alone does not identify the menu. Read the
                     // context before applying the completion: the completed "/model " already contains a space.

@@ -61,9 +61,8 @@ export class OutputAccumulator {
         }
     }
     snapshot(options = {}) {
-        // Pi 935f0ac0ccfc (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
-        // Clipping drops the partial first line of the retained tail. When the tail is only the end of one over-long line,
-        // that is everything, so show the end of that line instead.
+        // Clipping drops the partial first line of the retained tail. When the tail is only the end of
+        // one over-long line, that is everything, so show the end of that line instead.
         const snapshotText = this.getSnapshotText() || this.tailText;
         const tailTruncation = truncateTail(snapshotText, {
             maxLines: this.maxLines,

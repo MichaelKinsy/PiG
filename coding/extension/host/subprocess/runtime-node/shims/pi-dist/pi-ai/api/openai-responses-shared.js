@@ -1,4 +1,5 @@
 import { calculateCost } from "../models.js";
+import { appendAssistantMessageDiagnostic } from "../utils/diagnostics.js";
 import { shortHash } from "../utils/hash.js";
 import { sanitizeSurrogates } from "../utils/sanitize-unicode.js";
 import { ToolCallArgumentsStream } from "../utils/streaming-json.js";
@@ -158,7 +159,6 @@ export function convertResponsesMessages(model, context, allowedToolCallProvider
             tools: convertResponsesTools(tools, { ...options?.toolOptions, toolSearchResult: true }),
         });
     };
-    const includeInitialSystemMessage = options?.includeSystemPrompt ?? true;
     const pushConfigurationUpdate = (effort) => {
         messages.push({
             type: "configuration_update",
@@ -177,22 +177,20 @@ export function convertResponsesMessages(model, context, allowedToolCallProvider
             const anchorsToolChanges = systemIndex++ >= transcriptTools.foldedSystemMessages;
             if (anchorsToolChanges)
                 appendSystemToolAdditions(msg, `system:${msgIndex}`);
-            if (!isLeadingSystemMessage || includeInitialSystemMessage) {
-                const parts = [isLeadingSystemMessage ? getSystemMessageText(msg) : renderSystemMessageUpdate(msg)];
-                if (anchorsToolChanges) {
-                    // A redefinition is a removal plus an addition of the same name; only true removals are announced.
-                    const added = new Set((msg.toolsAdded ?? []).map((tool) => tool.name));
-                    const removed = (msg.toolsRemoved ?? []).map((tool) => tool.name).filter((name) => !added.has(name));
-                    if (removed.length > 0)
-                        parts.push(renderToolRemovalNotice(removed));
-                    // Recorded after this message's additions, whose notice precedes this removal notice.
-                    for (const name of removed)
-                        unavailableTools.add(name);
-                }
-                const text = parts.filter((part) => part.length > 0).join("\n\n");
-                if (text.length > 0) {
-                    messages.push({ role: instructionRole, content: sanitizeSurrogates(text) });
-                }
+            const parts = [isLeadingSystemMessage ? getSystemMessageText(msg) : renderSystemMessageUpdate(msg)];
+            if (anchorsToolChanges) {
+                // A redefinition is a removal plus an addition of the same name; only true removals are announced.
+                const added = new Set((msg.toolsAdded ?? []).map((tool) => tool.name));
+                const removed = (msg.toolsRemoved ?? []).map((tool) => tool.name).filter((name) => !added.has(name));
+                if (removed.length > 0)
+                    parts.push(renderToolRemovalNotice(removed));
+                // Recorded after this message's additions, whose notice precedes this removal notice.
+                for (const name of removed)
+                    unavailableTools.add(name);
+            }
+            const text = parts.filter((part) => part.length > 0).join("\n\n");
+            if (text.length > 0) {
+                messages.push({ role: instructionRole, content: sanitizeSurrogates(text) });
             }
         }
         else if (msg.role === "user") {
@@ -486,6 +484,7 @@ export async function processResponsesStream(openaiStream, output, stream, model
     const finalizeResponse = (response) => {
         sawTerminalResponseEvent = true;
         backfillReasoningSignatures(response.output ?? []);
+        appendReasoningRemovals(output, response.input_transformations);
         if (response?.id) {
             output.responseId = response.id;
         }
@@ -711,6 +710,33 @@ export async function processResponsesStream(openaiStream, output, stream, model
             throw new Error(`OpenAI Responses stream completed with an unfinished tool call: ${toolCall.name} (${toolCall.id})`);
         }
     }
+}
+/**
+ * Record the replayed reasoning items the API withheld from the model, with the reason for each.
+ * From GPT-6.2 on, OpenAI removes reasoning that follows an edit of earlier input (`prefix_mismatch`)
+ * and reasoning created under another organization, end user, or model. A removal is reported again
+ * on every later request that replays the item.
+ *
+ * `turn_boundary` removals are left out: models that use only current-turn reasoning (all models
+ * before GPT-5.6) report every earlier turn's reasoning item on every request. That is their normal
+ * behavior, and storing it would grow the session quadratically with the conversation.
+ */
+function appendReasoningRemovals(output, transformations) {
+    // Wire input: older servers and proxies omit the field, and Codex tolerates malformed entries too.
+    if (!Array.isArray(transformations))
+        return;
+    const removals = transformations.filter((transformation) => transformation?.type === "reasoning" &&
+        transformation.action === "removed" &&
+        transformation.reason !== "turn_boundary");
+    if (removals.length === 0)
+        return;
+    appendAssistantMessageDiagnostic(output, {
+        type: "openai_input_transformations",
+        timestamp: Date.now(),
+        details: {
+            transformations: removals.map(({ type, id, action, reason }) => ({ type, id, action, reason })),
+        },
+    });
 }
 /** Stream state of a custom tool call that starts with `initialInput`. */
 function customInput(property, initialInput) {

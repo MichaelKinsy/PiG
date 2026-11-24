@@ -118,7 +118,7 @@ const OpenAICompletionsCompatProperties = {
         description: "Whether the provider supports the store field. Default: auto-detected from URL.",
     })),
     supportsDeveloperRole: optionalCompatBoolean({
-        description: "Whether the provider supports the developer role instead of system. Default: auto-detected from URL.",
+        description: "Whether to send system messages of reasoning models (the system prompt and mid-conversation system messages) with the developer role instead of system. Default: true only for api.openai.com.",
     }),
     supportsReasoningEffort: opt(bool({
         description: "Whether the provider supports reasoning_effort. Default: auto-detected from URL.",
@@ -262,7 +262,7 @@ const OpenAIResponsesCompatProperties = {
         default: false,
     })),
     supportsMidConvoEffort: opt(bool({
-        description: "Whether thinking level changes are sent as configuration_update input items instead of changing reasoning.effort, so a change keeps the prompt cache. Only used by the openai-responses API, and ignored with Sign in with ChatGPT on the openai provider.",
+        description: "Whether thinking level changes are sent as configuration_update input items instead of changing reasoning.effort, so a change keeps the prompt cache. Used by the openai-responses and openai-codex-responses APIs, and ignored with Sign in with ChatGPT on the openai provider.",
         default: false,
     })),
     supportsMaxOutputTokens: opt(bool({
@@ -348,7 +348,6 @@ const MistralConversationsCompatProperties = {
         description: "Whether the exact model accepts system messages after the conversation has started. When false, later system messages are folded into the leading system message.",
         default: false,
     }),
-    // Pi 2c2a77f9f3ab (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
     supportsStrictMode: optionalCompatBoolean({
         description: "Whether the model supports strict (schema-constrained) function tools.",
         default: false,
@@ -395,7 +394,7 @@ const ProviderCompatPropertyOverrides = {
         description: "Controls the prompt_cache_key request field for openai-completions and openai-responses: auto keeps each API's default, enabled sends it whenever caching is active, disabled never sends it. Default: auto.",
     }),
     supportsMidConvoEffort: optionalCompatBoolean({
-        description: "Whether thinking level changes are sent inside the conversation instead of changing the request's effort, so a change keeps the prompt cache. Used by the anthropic-messages and openai-responses APIs.",
+        description: "Whether thinking level changes are sent inside the conversation instead of changing the request's effort, so a change keeps the prompt cache. Used by the anthropic-messages, openai-responses, and openai-codex-responses APIs.",
         default: false,
     }),
     supportsLongCacheRetention: optionalCompatBoolean({

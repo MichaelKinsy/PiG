@@ -24,7 +24,7 @@ import {
   keyHint,
   keyText,
   theme
-} from "./chunk-XGLA5YHQ.js";
+} from "./chunk-F4Z3QMHU.js";
 import {
   DEFAULT_MAX_BYTES,
   DEFAULT_MAX_LINES,
@@ -3636,12 +3636,12 @@ var defaultReadOperations = {
   access: /* @__PURE__ */ __name((path4) => fsAccess3(path4, constants5.R_OK), "access"),
   detectImageMimeType: detectSupportedImageMimeTypeFromFile
 };
-async function* readLocalFileChunks(path4, { signal }) {
+async function* readLocalFileChunks(path4) {
   const handle = await fsOpen(path4, "r");
   try {
     const stats = await handle.stat();
     const end = stats.isFile() && stats.size > 0 ? stats.size - 1 : void 0;
-    yield* handle.createReadStream({ end, signal, autoClose: false });
+    yield* handle.createReadStream({ end, autoClose: false });
   } finally {
     await handle.close();
   }

@@ -67,7 +67,7 @@ function ownedSlice(text, start, end = text.length) {
 __name(ownedSlice, "ownedSlice");
 
 // pi-dist/pi-ai/utils/version.js
-var PI_AI_VERSION = "1.5.2";
+var PI_AI_VERSION = "1.6.0";
 
 // pi-dist/pi-ai/utils/identity.js
 import { pigUserAgent } from "../../../pig-identity.mjs";

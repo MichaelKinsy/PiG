@@ -715,6 +715,7 @@ let cachedHighlightThemeFor;
 let cachedCliHighlightTheme;
 function buildCliHighlightTheme(t) {
     return {
+        default: (s) => t.fg("text", s),
         keyword: (s) => t.fg("syntaxKeyword", s),
         built_in: (s) => t.fg("syntaxType", s),
         literal: (s) => t.fg("syntaxNumber", s),

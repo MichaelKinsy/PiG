@@ -61,7 +61,6 @@ const RETRYABLE_PROVIDER_ERROR_PATTERN = buildProviderErrorPattern([
     "connection.?error",
     "connection.?refused",
     "connection.?lost",
-    // Pi 9b88b94e2 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
     // Gateway mid-stream drop relayed as an Anthropic-style `api_error` event,
     // e.g. {"type":"error","error":{"type":"api_error","message":"Connection closed."}} (#12064).
     "connection.?closed",
@@ -71,7 +70,6 @@ const RETRYABLE_PROVIDER_ERROR_PATTERN = buildProviderErrorPattern([
     // google-vertex. The reason is often empty (#10996).
     "request to \\S+ failed, reason:",
     "getaddrinfo",
-    // Pi 4699b5b26 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
     // Bare Node socket error codes, e.g. "read ECONNRESET", "write EPIPE", or
     // "connect ETIMEDOUT 1.2.3.4:443" when a transport reports only the code (#12128).
     // The codes must not be part of a longer identifier.
@@ -89,7 +87,6 @@ const RETRYABLE_PROVIDER_ERROR_PATTERN = buildProviderErrorPattern([
     // WebSocket transports can report close/error text instead of HTTP/fetch text.
     "websocket.?closed",
     "websocket.?error",
-    // Pi bb1a2b3542b5 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
     // Codex 60-minute WebSocket lifetime limit, as code `websocket_connection_limit_reached` or as
     // text "Responses websocket connection limit reached". A retry opens a fresh connection (#12124).
     "websocket.?connection.?limit.?reached",

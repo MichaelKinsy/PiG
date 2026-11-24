@@ -74,10 +74,9 @@ function getApiKeyEnvVars(provider) {
     if (provider === "anthropic") {
         return [ANTHROPIC_AUTH_TOKEN_ENV, ANTHROPIC_OAUTH_TOKEN_ENV, ANTHROPIC_API_KEY_ENV];
     }
+    // Qwen Token Plan: the per-plan variable first, then the region variable both plans used to share.
     const envMap = {
         "ant-ling": "ANT_LING_API_KEY",
-        // Pi 1397070024 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
-        // Qwen Token Plan: the per-plan variable first, then the region variable both plans used to share.
         "qwen-token-plan": ["QWEN_TOKEN_PLAN_TEAM_API_KEY", "QWEN_TOKEN_PLAN_API_KEY"],
         "qwen-token-plan-cn": ["QWEN_TOKEN_PLAN_TEAM_CN_API_KEY", "QWEN_TOKEN_PLAN_CN_API_KEY"],
         "qwen-token-plan-individual": ["QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY", "QWEN_TOKEN_PLAN_API_KEY"],

@@ -41,6 +41,7 @@ import { addMcpServerConfig } from "../../extensions/mcp/config.js";
 import { getChangelogPath, getNewEntries, normalizeChangelogLinks, parseChangelog } from "../../utils/changelog.js";
 import { copyToClipboard, readClipboardFilePaths, readClipboardText } from "../../utils/clipboard.js";
 import { extensionForImageMimeType, readClipboardImage } from "../../utils/clipboard-image.js";
+import { flushStdout } from "../../utils/flush-stdout.js";
 import { parseGitUrl } from "../../utils/git.js";
 import { ensurePngTranscoder } from "../../utils/image-convert.js";
 import { getCwdRelativePath, shortenHomePath } from "../../utils/paths.js";
@@ -238,6 +239,41 @@ function formatLoginProviderCompletionDescription(provider) {
         .join("/");
     return provider.name === provider.id ? authTypes : `${provider.name} · ${authTypes}`;
 }
+/** Assistant diagnostics that list reasoning a provider withheld from the model, by diagnostic type. */
+const REASONING_DROP_DIAGNOSTICS = new Map([
+    [
+        "anthropic_input_transformations",
+        { provider: "Anthropic", droppedType: "thinking_dropped", noun: ["thinking block", "thinking blocks"] },
+    ],
+    [
+        "openai_input_transformations",
+        { provider: "OpenAI", droppedType: "reasoning", noun: ["reasoning item", "reasoning items"] },
+    ],
+]);
+/** Count the reasoning blocks a provider reported as withheld from the request that produced `message`. */
+function getDroppedReasoning(message) {
+    for (const diagnostic of message.diagnostics ?? []) {
+        const kind = REASONING_DROP_DIAGNOSTICS.get(diagnostic.type);
+        if (!kind)
+            continue;
+        // Session data: diagnostics details are untyped JSON.
+        const transformations = diagnostic.details?.transformations;
+        if (!Array.isArray(transformations))
+            continue;
+        const dropped = transformations.filter((transformation) => typeof transformation === "object" &&
+            transformation !== null &&
+            transformation.type === kind.droppedType);
+        if (dropped.length === 0)
+            continue;
+        const reasons = new Set();
+        for (const transformation of dropped) {
+            if (typeof transformation.reason === "string")
+                reasons.add(transformation.reason);
+        }
+        return { diagnostic: kind, count: dropped.length, reasons: [...reasons] };
+    }
+    return undefined;
+}
 export class InteractiveMode {
     runtimeHost;
     renderer;
@@ -385,7 +421,6 @@ export class InteractiveMode {
         this.runtimeHost.setRebindSession(async () => {
             await this.rebindCurrentSession({ renderBeforeBind: true });
             this.themeController.applyFromSettings();
-            // Pi c47ad0432bb8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
             this.showRuntimeDiagnostics(this.runtimeHost.takeUnreportedDiagnostics());
         });
         this.version = VERSION;
@@ -671,6 +706,7 @@ export class InteractiveMode {
         });
         nextUi.setClearOnShrink(clearOnShrink);
         nextUi.onDebug = onDebug;
+        nextUi.setSuspendSignalHandler(() => this.handleCtrlZ());
         if (nextUi instanceof TuiMainScreen && this.mainScreenRenderState) {
             nextUi.restoreRenderState(this.mainScreenRenderState);
         }
@@ -735,6 +771,8 @@ export class InteractiveMode {
         this.defaultEditor.onCtrlD = () => this.handleCtrlD();
         this.defaultEditor.onSubmit = (text) => this.handleStartupSubmit(text);
         this.ui.setFocus(this.editor);
+        // An external SIGTSTP (kill -TSTP) restores the terminal like Ctrl+Z (#12272).
+        this.ui.setSuspendSignalHandler(() => this.handleCtrlZ());
         // Start the UI before initializing extensions so session_start handlers can use interactive dialogs
         this.ui.start();
         this.isInitialized = true;
@@ -1734,6 +1772,7 @@ export class InteractiveMode {
         }
         stopThemeWatcher();
         this.stop("transcript");
+        await flushStdout();
         process.exit(1);
     }
     getCrashExtensionHint(error) {
@@ -3489,42 +3528,30 @@ export class InteractiveMode {
         this.chatContainer.addChild(new Spacer(1));
         this.chatContainer.addChild(new ThemedText(() => theme.fg("warning", `${label}: ${formatTokens(tokens)} tokens billed${cost}`), 1, 0));
     }
-    static countDroppedThinkingBlocks(message) {
-        let count = 0;
-        for (const diagnostic of message.diagnostics ?? []) {
-            if (diagnostic.type !== "anthropic_input_transformations")
-                continue;
-            const transformations = diagnostic.details?.transformations;
-            if (!Array.isArray(transformations))
-                continue;
-            count += transformations.filter((transformation) => typeof transformation === "object" &&
-                transformation !== null &&
-                transformation.type === "thinking_dropped").length;
-        }
-        return count;
-    }
     maybeShowThinkingDropNotice(message) {
         if (!this.settingsManager.getShowCacheMissNotices())
             return;
-        const droppedCount = InteractiveMode.countDroppedThinkingBlocks(message);
-        if (droppedCount === 0)
+        const dropped = getDroppedReasoning(message);
+        if (!dropped)
             return;
-        let previousDroppedCount = 0;
-        // message_end reaches the UI before the current message is persisted,
-        // so the branch's last assistant message is the previous response.
+        // Providers report a withheld block again on every later request that replays it, so only
+        // a count above the previous response's means new losses. message_end reaches the UI before
+        // the current message is persisted, so the branch's last assistant message is the previous response.
         const branch = this.sessionManager.getBranch();
         for (let i = branch.length - 1; i >= 0; i--) {
             const entry = branch[i];
             if (entry.type === "message" && entry.message.role === "assistant") {
-                previousDroppedCount = InteractiveMode.countDroppedThinkingBlocks(entry.message);
+                const previous = getDroppedReasoning(entry.message);
+                if (previous?.diagnostic === dropped.diagnostic && dropped.count <= previous.count)
+                    return;
                 break;
             }
         }
-        if (droppedCount <= previousDroppedCount)
-            return;
-        const noun = droppedCount === 1 ? "thinking block" : "thinking blocks";
+        const { provider, noun: nouns } = dropped.diagnostic;
+        const noun = nouns[dropped.count === 1 ? 0 : 1];
+        const reasons = dropped.reasons.length > 0 ? `: ${dropped.reasons.join(", ")}` : "";
         this.chatContainer.addChild(new Spacer(1));
-        this.chatContainer.addChild(new ThemedText(() => theme.fg("warning", `Anthropic dropped ${droppedCount} ${noun} (details in session)`), 1, 0));
+        this.chatContainer.addChild(new ThemedText(() => theme.fg("warning", `${provider} dropped ${dropped.count} ${noun}${reasons} (details in session)`), 1, 0));
     }
     /**
      * Show a transcript notice when a completed assistant message paid for a
@@ -3636,6 +3663,7 @@ export class InteractiveMode {
             this.themeController.disableAutoSync();
             await this.ui.terminal.drainInput(1000);
             this.stop();
+            await flushStdout();
             // Pi 31b407dc63 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
             killTrackedDetachedChildren();
             process.exit(0);
@@ -3651,8 +3679,10 @@ export class InteractiveMode {
         await this.runtimeHost.dispose();
         const resumeCommand = formatResumeCommand(this.sessionManager);
         if (resumeCommand) {
-            process.stdout.write(`${chalk.dim("To resume this session:")} ${resumeCommand}\n`);
+            // Own line so the command can be selected with a triple-click (#12237).
+            process.stdout.write(`${chalk.dim("To resume this session:")}\n${resumeCommand}\n`);
         }
+        await flushStdout();
         // Pi 31b407dc63 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         // dispose() only starts killing a running `!` command, which on Windows loses the race with
         // exit. After the last await, so it also catches a shell spawned after the abort.

@@ -2,7 +2,6 @@ import { execSync } from "node:child_process";
 import { homedir } from "node:os";
 import { isAbsolute } from "node:path";
 import { pathToFileURL } from "node:url";
-// Pi 787005a40 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
 import { visibleWidth } from "../../pi-tui-utils-lazy.mjs";
 let cachedCapabilities = null;
 let capabilityOverrides = {};
@@ -165,7 +164,6 @@ export function isImageLine(line) {
     // Slow path: sequence elsewhere (multi-row images have cursor-up prefix)
     return line.includes(KITTY_PREFIX) || line.includes(ITERM2_PREFIX);
 }
-// Pi 787005a40 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
 /**
  * Return the cells an image line draws over. Kitty places the image at the line and extends it
  * downward; iTerm2 lines move the cursor up before drawing, so the image ends at the line.

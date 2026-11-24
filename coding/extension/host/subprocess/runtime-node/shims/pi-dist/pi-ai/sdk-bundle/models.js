@@ -10,8 +10,8 @@ import {
   hasApi,
   isModelType,
   modelsAreEqual
-} from "./chunk-XXMZSYZB.js";
-import "./chunk-D4UU5BNJ.js";
+} from "./chunk-35BKLGWE.js";
+import "./chunk-TA77CKFD.js";
 import "./chunk-SHUYVCID.js";
 export {
   AI_TELEMETRY_SCHEMA,

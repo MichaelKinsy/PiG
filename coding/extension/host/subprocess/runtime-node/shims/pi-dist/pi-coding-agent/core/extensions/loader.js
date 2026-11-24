@@ -165,7 +165,6 @@ export function createExtensionRuntime() {
             eventBusUnsubscribers.add(trackedUnsubscribe);
             return trackedUnsubscribe;
         },
-        // Pi 18e99051be24 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         // Nothing can show an error yet. The runner replaces this when it is created.
         reportError: () => { },
         // Pre-bind: queue registrations so bindCore() can flush them once the
@@ -433,8 +432,8 @@ function createExtensionAPI(extension, runtime, cwd, eventBus) {
             },
             on(channel, handler) {
                 assertActive();
-                // Report a throwing handler like other extension errors. The event bus would print it with console.error,
-                // which draws over the interactive TUI (#11264).
+                // Report a throwing handler like other extension errors. The event bus would print it with
+                // console.error, which draws over the interactive TUI (#11264).
                 const reportingHandler = async (data) => {
                     try {
                         await handler(data);

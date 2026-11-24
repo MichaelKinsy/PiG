@@ -107,7 +107,6 @@ export async function execCommand(command, args, cwd, options) {
         stdout += stdoutDecoder.end();
         stderr += stderrDecoder.end();
     }
-    // Pi a83b75a07 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
     // A signal-killed command has no exit code. Use the shell convention, as the bash tool does, so a
     // timeout, an abort or a crash does not read as success (#12088).
     const exitCode = code ?? (proc.signalCode ? 128 + (osConstants.signals[proc.signalCode] ?? 0) : 1);

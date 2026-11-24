@@ -12,7 +12,7 @@ import {
 import {
   CodeHighlighter,
   keyHint
-} from "./chunk-XGLA5YHQ.js";
+} from "./chunk-F4Z3QMHU.js";
 import {
   getDocsPath
 } from "./chunk-JGRZB36T.js";
@@ -232,7 +232,7 @@ import { CODEMODE_SOURCE_GRAMMAR } from "../../pi-codemode/source.js";
 import { Type as Type2 } from "../../../typebox.mjs";
 
 // pi-dist/pi-coding-agent/extensions/codemode/execute.lazy.js
-var loadCodemodeExecutor = /* @__PURE__ */ __name(() => import("./chunk-EPBUJZV4.js"), "loadCodemodeExecutor");
+var loadCodemodeExecutor = /* @__PURE__ */ __name(() => import("./chunk-FDJ7AXHM.js"), "loadCodemodeExecutor");
 
 // pi-dist/pi-coding-agent/extensions/codemode/renderer.js
 import { Container, Spacer, Text } from "../../../pi-tui.mjs";

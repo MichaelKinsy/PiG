@@ -4,7 +4,6 @@
 import { performance } from "node:perf_hooks";
 import { isKeyRelease, matchesKey } from "./keys.js";
 import { parseOscColorResponse, parseTerminalColorSchemeReport, } from "./terminal-colors.js";
-// Pi 787005a40 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
 import { getCapabilities, getImageLineExtent, getMaxKittyImageRows, isImageLine, setCellDimensions, stripImageSequences, } from "./terminal-image.js";
 import { extractSegments, normalizeTerminalOutput, sliceByColumn, sliceWithWidth, visibleWidth } from "./utils.js";
 /**
@@ -91,7 +90,6 @@ function parseSizeValue(value, referenceSize) {
     }
     return undefined;
 }
-// Pi b7bb7ca905b8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
 function sameLines(a, b) {
     if (a === b)
         return true;
@@ -203,7 +201,6 @@ export function compositeTuiLine(baseLine, overlayLine, startCol, overlayWidth, 
         " ".repeat(afterPad);
     return visibleWidth(result) <= totalWidth ? result : sliceByColumn(result, 0, totalWidth, true);
 }
-// Pi 787005a40 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
 /**
  * Drop image placements that intersect an overlay rectangle (`row` is viewport-relative).
  * Terminals draw images above text, so an overlay cannot paint over them. The renderers delete a
@@ -240,6 +237,11 @@ export class TuiBase extends Container {
     inputListeners = new Set();
     /** Global callback for debug key (Shift+Ctrl+D). Called before input is forwarded to focused component. */
     onDebug;
+    suspendSignalHandler;
+    suspendSignalListener = () => this.suspendSignalHandler?.();
+    // From start() until stop(). Unlike `stopped`, false before the first start().
+    ownsTerminal = false;
+    suspendSignalListening = false;
     renderRequested = false;
     /**
      * Whether a render request since the last frame may have changed component output. Only
@@ -653,6 +655,8 @@ export class TuiBase extends Container {
         this.stopped = false;
         process.off("exit", this.exitRestoreHandler);
         process.on("exit", this.exitRestoreHandler);
+        this.ownsTerminal = true;
+        this.updateSuspendSignalListener();
         this.beforeTerminalStart();
         this.terminal.start((data) => this.handleTerminalInput(data), () => this.requestRender());
         this.afterTerminalStart();
@@ -687,6 +691,24 @@ export class TuiBase extends Container {
             this.terminal.write(enabled ? "\x1b[?2031h" : "\x1b[?2031l");
         }
     }
+    setSuspendSignalHandler(handler) {
+        this.suspendSignalHandler = handler;
+        this.updateSuspendSignalListener();
+    }
+    // Listen only while the TUI owns the terminal. After stop(), a child (external editor,
+    // interactive command) owns it, and a listener would keep SIGTSTP from stopping the process.
+    // Only real changes touch the listener: removing the last one restores the default action,
+    // so an off/on pair would let a SIGTSTP in between stop the process with the TUI running.
+    updateSuspendSignalListener() {
+        const listen = this.ownsTerminal && this.suspendSignalHandler !== undefined;
+        if (listen === this.suspendSignalListening)
+            return;
+        this.suspendSignalListening = listen;
+        if (listen)
+            process.on("SIGTSTP", this.suspendSignalListener);
+        else
+            process.off("SIGTSTP", this.suspendSignalListener);
+    }
     queryCellSize() {
         // Only query if terminal supports images (cell size is only used for image rendering)
         if (!getCapabilities().images) {
@@ -707,6 +729,10 @@ export class TuiBase extends Container {
         this.terminal.showCursor();
         this.terminal.stop();
         this.afterTerminalStop(options);
+        // Last, so a SIGTSTP during the restore above is caught (and dropped when the listener
+        // goes) instead of stopping the process with the terminal half restored.
+        this.ownsTerminal = false;
+        this.updateSuspendSignalListener();
     }
     renderNow(force = false) {
         if (force)
@@ -1095,7 +1121,6 @@ export class TuiBase extends Container {
             result.push("");
         }
         const viewportStart = Math.max(0, workingHeight - termHeight);
-        // Pi 787005a40 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         // Composite each overlay, back to front. Hiding images per overlay also hides images drawn by overlays below it.
         for (const { overlayLines, row, col, w } of rendered) {
             hideImagesUnderOverlay(result, { row, col, width: w, height: overlayLines.length }, viewportStart);

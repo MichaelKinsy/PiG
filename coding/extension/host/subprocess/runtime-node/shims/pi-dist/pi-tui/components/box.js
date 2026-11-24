@@ -1,4 +1,3 @@
-// Pi b7bb7ca905b8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
 import { dispatchMouseToChildLines, renderChildLines, } from "../tui.js";
 import { flattenLines, visibleWidth } from "../utils.js";
 /**

@@ -26,7 +26,6 @@ class RadiusLoginMenuComponent extends ExtensionSelectorComponent {
         this.stopAnimationTimer = startBrandAnimation(tui, () => this.animating);
     }
     render(width) {
-        // Pi b7bb7ca905b8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         // Container output is shared across frames; copy before replacing the animated line.
         const lines = [...super.render(width)];
         const { label, text } = this.radiusOption;

@@ -5,6 +5,7 @@ import { ProcessTerminal, setKeybindings, TuiMainScreen } from "../../../pi-tui.
 import { KeybindingsManager } from "../core/keybindings.js";
 import { ConfigSelectorComponent } from "../modes/interactive/components/config-selector.js";
 import { initTheme, stopThemeWatcher } from "../modes/interactive/theme/theme.js";
+import { flushStdout } from "../utils/flush-stdout.js";
 /** Show TUI config selector and return when closed */
 export async function selectConfig(options) {
     // Initialize theme before showing TUI
@@ -14,17 +15,19 @@ export async function selectConfig(options) {
         const ui = new TuiMainScreen(new ProcessTerminal(), options.settingsManager.getShowHardwareCursor(), options.agentDir);
         ui.setClearOnShrink(options.settingsManager.getClearOnShrink());
         let resolved = false;
+        // The caller exits right after; flush the TUI's terminal mode resets first (#12133).
+        const stopUi = () => {
+            ui.stop();
+            stopThemeWatcher();
+            return flushStdout();
+        };
         const selector = new ConfigSelectorComponent(options.resolvedPaths, options.settingsManager, options.cwd, options.agentDir, () => {
             if (!resolved) {
                 resolved = true;
-                ui.stop();
-                stopThemeWatcher();
-                resolve();
+                void stopUi().then(resolve);
             }
         }, () => {
-            ui.stop();
-            stopThemeWatcher();
-            process.exit(0);
+            void stopUi().then(() => process.exit(0));
         }, () => ui.requestRender(), ui.terminal.rows, options.writeScope, options.projectModeAvailable);
         ui.addChild(selector);
         ui.setFocus(selector.getResourceList());

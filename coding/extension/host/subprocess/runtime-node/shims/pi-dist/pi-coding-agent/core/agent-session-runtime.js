@@ -39,7 +39,6 @@ export class AgentSessionRuntime {
     createRuntime;
     _diagnostics;
     _modelFallbackMessage;
-    // Pi c47ad0432bb8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
     /** `type\0message` of every diagnostic takeUnreportedDiagnostics() returned so far. */
     reportedDiagnosticKeys = new Set();
     constructor(_session, _services, createRuntime, _diagnostics = [], _modelFallbackMessage) {

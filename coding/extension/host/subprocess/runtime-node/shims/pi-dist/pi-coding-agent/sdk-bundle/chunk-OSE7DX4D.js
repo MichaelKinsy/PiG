@@ -10,7 +10,7 @@ import {
   createAllToolDefinitions,
   createLocalBashOperations,
   processImage
-} from "./chunk-QHFOACPC.js";
+} from "./chunk-W25FOIG4.js";
 import {
   getPiUserAgent
 } from "./chunk-PNTN457B.js";
@@ -38,7 +38,7 @@ import {
   loadThemeFromPath,
   theme,
   watchWithErrorHandler
-} from "./chunk-XGLA5YHQ.js";
+} from "./chunk-F4Z3QMHU.js";
 import {
   McpServerRegistry,
   createToolNameMatcher,
@@ -2329,43 +2329,47 @@ async function buildSessionInfo(filePath, signal, fileStats) {
     const allMessages = [];
     let name;
     let lastActivityTime;
-    const rl = createInterface({
-      input: createReadStream(filePath, { encoding: "utf8", signal }),
-      crlfDelay: Infinity
-    });
-    for await (const line of rl) {
-      const entry = parseSessionEntryLine(line);
-      if (!entry)
-        continue;
-      if (!header) {
-        if (entry.type !== "session")
-          return null;
-        header = entry;
-        continue;
+    const stream = createReadStream(filePath, { encoding: "utf8" });
+    try {
+      const rl = createInterface({ input: stream, crlfDelay: Infinity });
+      for await (const line of rl) {
+        signal?.throwIfAborted();
+        const entry = parseSessionEntryLine(line);
+        if (!entry)
+          continue;
+        if (!header) {
+          if (entry.type !== "session")
+            return null;
+          header = entry;
+          continue;
+        }
+        if (entry.type === "session_info") {
+          name = entry.name?.trim() || void 0;
+        }
+        if (entry.type !== "message")
+          continue;
+        messageCount++;
+        const activityTime = getMessageActivityTime(entry);
+        if (typeof activityTime === "number") {
+          lastActivityTime = Math.max(lastActivityTime ?? 0, activityTime);
+        }
+        const message = entry.message;
+        if (!isMessageWithContent(message))
+          continue;
+        if (message.role !== "user" && message.role !== "assistant")
+          continue;
+        const textContent = extractTextContent(message);
+        if (!textContent)
+          continue;
+        allMessages.push(textContent);
+        if (!firstMessage && message.role === "user") {
+          firstMessage = textContent;
+        }
       }
-      if (entry.type === "session_info") {
-        name = entry.name?.trim() || void 0;
-      }
-      if (entry.type !== "message")
-        continue;
-      messageCount++;
-      const activityTime = getMessageActivityTime(entry);
-      if (typeof activityTime === "number") {
-        lastActivityTime = Math.max(lastActivityTime ?? 0, activityTime);
-      }
-      const message = entry.message;
-      if (!isMessageWithContent(message))
-        continue;
-      if (message.role !== "user" && message.role !== "assistant")
-        continue;
-      const textContent = extractTextContent(message);
-      if (!textContent)
-        continue;
-      allMessages.push(textContent);
-      if (!firstMessage && message.role === "user") {
-        firstMessage = textContent;
-      }
+    } finally {
+      stream.destroy();
     }
+    signal?.throwIfAborted();
     if (!header)
       return null;
     const cwd = typeof header.cwd === "string" ? header.cwd : "";
@@ -4647,7 +4651,6 @@ function createExtensionRuntime() {
       eventBusUnsubscribers.add(trackedUnsubscribe);
       return trackedUnsubscribe;
     }, "trackEventBusSubscription"),
-    // Pi 18e99051be24 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
     // Nothing can show an error yet. The runner replaces this when it is created.
     reportError: /* @__PURE__ */ __name(() => {
     }, "reportError"),
@@ -8590,7 +8593,7 @@ var AgentSession = class {
   /**
    * Tools of the restored or reloaded loadout that are not registered yet, such as tools of MCP
    * servers that are still connecting. They are activated when they are registered, and dropped when
-   * `setActiveToolsByName()` deactivates a tool or the next agent run starts.
+   * `setActiveToolsByName()` deactivates a tool of that loadout or the next agent run starts.
    */
   _pendingToolNames = /* @__PURE__ */ new Set();
   /** The restored or reloaded loadout that `_pendingToolNames` belongs to. */
@@ -8614,7 +8617,6 @@ var AgentSession = class {
   _extensionShutdownHandler;
   _extensionErrorListener;
   _extensionErrorUnsubscriber;
-  // Pi e03dca7a3843 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
   // Set by bindExtensions(): reload() restarts extensions only if the host started them.
   _extensionsBound = false;
   _modelRuntime;
@@ -11868,7 +11870,6 @@ var defaultModelPerProvider = {
   "amazon-bedrock": "us.anthropic.claude-opus-5-5",
   "ant-ling": "Ring-2.6-1T",
   anthropic: "claude-opus-5-5",
-  // Pi e56d35ce5ece (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
   openai: "gpt-6.2-sol",
   azure: "gpt-6.2-sol",
   "openai-codex": "gpt-6.2-sol",
@@ -16257,7 +16258,6 @@ var AgentSessionRuntime = class {
   createRuntime;
   _diagnostics;
   _modelFallbackMessage;
-  // Pi c47ad0432bb8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
   /** `type\0message` of every diagnostic takeUnreportedDiagnostics() returned so far. */
   reportedDiagnosticKeys = /* @__PURE__ */ new Set();
   constructor(_session, _services, createRuntime, _diagnostics = [], _modelFallbackMessage) {
