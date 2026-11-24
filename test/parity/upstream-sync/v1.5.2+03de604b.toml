@@ -41,26 +41,26 @@ rationale = "03de604b8: live API conformance e2e test (skipIf(!target.apiKey)) a
 [[files]]
 path = "packages/ai/package.json"
 change = "modified"
-disposition = "deferred"
-evidence = []
-rationale = "03de604b8: ported with the openai SDK 7.19.0 to 7.59.0 member (handoffs/next/OPENAI-SDK-7.59-DIFF-2026-11-23.md)."
-oracle = "not carried: tracked by the openai SDK 7.19.0 to 7.59.0 member."
+disposition = "ported"
+evidence = ["test:ai/azure_request_url_oracle_test.go#TestAzureResponsesRequestURLMatchesSDK", "test:ai/azure_request_url_test.go#TestOpenAIBuildURLRepeatedBaseParamsAndAnthropicIsolation", "test:ai/sdk_request_url_oracle_test.go#TestSDKProvidersRequestURLMatchesSDK", "test:ai/openai_chat_completion_normalize_test.go#TestOpenAICompletionsNormalizeFinishReasonOnProviderEvent", "test:ai/openai_chat_completion_normalize_test.go#TestNormalizeOpenAIChatCompletionChunkEventZeroAllocFastPath", "test:ai/openai_stream_sdk719_ticks_test.go#TestOpenAIChatCompletionsNormalizeWrapperTicks"]
+rationale = "03de604b8: bumped openai 7.19.0 -> 7.59.0. Audited all non-.d.ts runtime deltas (A1-A3): A1 (client.mjs:502-554 buildURL query/fragment stripping and repeated baseParams preservation) ported to openaiBuildURL/openaiBuildURLWithDefaultQuery across ai/openai.go, ai/openai_responses.go, ai/azure_openai_responses.go, and ai/openrouter_images.go while keeping @anthropic-ai/sdk 0.129.0 on sdkBuildURL; A2 (lib/chat-completions/streaming.mjs:1-22 normalizeChatCompletionStream) ported with zero-alloc finish_reason:null normalization on OnProviderStreamEvent and +2 ticks/chunk (+1 on completion/error) outer async generator wrapper on chat.completions.create streams (responses.create/fromSSEResponse unchanged); A3 (client.mjs:1273-1340 streamFromBody) probed in Node v24.22.2 on openai 7.19.0 and 7.59.0 and confirmed as a Pi-crash no-op (both 7.19.0 and 7.59.0 throw TypeError: openaiStream is not async iterable on stream:false JSON replies, including toJSON()->false)."
+oracle = "not carried: ai/testdata/sdk pinned to openai@7.59.0; TestAzureResponsesRequestURLMatchesSDK (47/47 EQUAL) and TestSDKProvidersRequestURLMatchesSDK (8440/8440 EQUAL) verify live openai@7.59.0 and @anthropic-ai/sdk@0.129.0 behavior."
 
 [[files]]
 path = "package-lock.json"
 change = "modified"
-disposition = "deferred"
-evidence = []
-rationale = "03de604b8: ported with the openai SDK 7.19.0 to 7.59.0 member."
-oracle = "not carried: tracked by the openai SDK 7.19.0 to 7.59.0 member."
+disposition = "designed-out"
+evidence = ["test:ai/sdk_request_url_oracle_test.go#TestSDKProvidersRequestURLMatchesSDK"]
+rationale = "03de604b8: lockfile update for openai 7.19.0 -> 7.59.0 (no new runtime dependencies; optional google-auth-library peerDependency unreachable). Oracle lockfile ai/testdata/sdk/package-lock.json bumped to openai 7.59.0; all reachable runtime deltas ported (see packages/ai/package.json row)."
+oracle = "not carried: oracle lockfile updated in ai/testdata/sdk/package-lock.json and Pi 1.6.0 ships openai@7.59.0."
 
 [[files]]
 path = "packages/coding-agent/install-lock/package-lock.json"
 change = "modified"
-disposition = "deferred"
-evidence = []
-rationale = "03de604b8: ported with the openai SDK 7.19.0 to 7.59.0 member."
-oracle = "not carried: tracked by the openai SDK 7.19.0 to 7.59.0 member."
+disposition = "designed-out"
+evidence = ["test:ai/sdk_request_url_oracle_test.go#TestSDKProvidersRequestURLMatchesSDK"]
+rationale = "03de604b8: install-lock update for openai 7.19.0 -> 7.59.0 (no runtime code in packages/coding-agent imports openai directly). Runtime deltas closed in ai/ (see packages/ai/package.json row)."
+oracle = "not carried: Pi 1.6.0 ships openai@7.59.0 natively."
 
 [[files]]
 path = "packages/ai/CHANGELOG.md"
