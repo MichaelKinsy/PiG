@@ -510,8 +510,8 @@ class SessionList {
         // Only triggers deletion when the query is empty; otherwise it is forwarded to the input
         if (kb.matches(keyData, "app.session.deleteNoninvasive")) {
             if (this.searchInput.getValue().length > 0) {
-                this.searchInput.handleInput(keyData);
-                this.filterSessions(this.searchInput.getValue());
+                // Pi 37b74c546921 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+                this.handleSearchInput(keyData);
                 return;
             }
             this.startDeleteConfirmationForSelectedSession();
@@ -551,9 +551,26 @@ class SessionList {
         }
         // Pass everything else to search input
         else {
-            this.searchInput.handleInput(keyData);
-            this.filterSessions(this.searchInput.getValue());
+            // Pi 37b74c546921 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+            this.handleSearchInput(keyData);
         }
+    }
+    // Pi 5bcf370a5293 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+    /** Applies a key to the search query; a changed, non-empty query selects the top row, the best match. */
+    handleSearchInput(keyData) {
+        const previousQuery = this.searchInput.getValue();
+        this.searchInput.handleInput(keyData);
+        const query = this.searchInput.getValue();
+        // Cursor keys leave the query as it is and must not move the selection.
+        if (query === previousQuery)
+            return;
+        this.filterSessions(query);
+        if (!query.trim())
+            return;
+        this.selectedIndex = 0;
+        // Untouched, sessions that are still loading keep the selection on the top row instead of on this session.
+        this.selectionTouched = false;
+        this.pendingSelectedPath = undefined;
     }
 }
 /**

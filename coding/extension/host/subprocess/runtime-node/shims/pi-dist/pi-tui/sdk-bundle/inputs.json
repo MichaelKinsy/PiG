@@ -63,7 +63,7 @@
     },
     {
       "path": "pi-dist/pi-tui/components/settings-list.js",
-      "sha256": "ce6d6ce5c9703f57f6b43c494d96a2a5f5eedce4d1cb7e69924fa60c894224af"
+      "sha256": "b6505b68d40eb66b619c99856e1b5f05b1a045f7160f26fec9dd71ede8781876"
     },
     {
       "path": "pi-dist/pi-tui/components/spacer.js",

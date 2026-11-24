@@ -1697,7 +1697,7 @@
         "tui/extension_dialog_bindings_test.go::TestExtensionDialogsMatchPiBindingsAndPalette",
         "tui/login_dialog_oracle_test.go::TestLoginDialogInputMatchesPi",
         "tui/oauth_selector_input_test.go::TestOAuthSelectorInputMatchesPi",
-        "tui/settings_list_input_test.go::TestSettingsListAnyDelegatedKeyResetsTheSelectionToTheFirstMatch",
+        "tui/settings_list_input_test.go::TestSettingsListADelegatedKeyThatLeavesTheQueryUnchangedKeepsTheSelection",
         "tui/settings_list_input_test.go::TestSettingsListBoundActionsRunInUpstreamOrder",
         "tui/settings_list_input_test.go::TestSettingsListEmptyAndSingletonNavigationBoundaries",
         "tui/settings_list_input_test.go::TestSettingsListSearchDelegatesEditingKeysToTheInput",
@@ -2437,7 +2437,7 @@
         "test/parity/scenarios/settings/08-settings-search-editing.toml",
         "tui/extension_dialog_bindings_test.go::TestExtensionDialogsMatchPiBindingsAndPalette",
         "tui/oauth_selector_input_test.go::TestOAuthSelectorInputMatchesPi",
-        "tui/settings_list_input_test.go::TestSettingsListAnyDelegatedKeyResetsTheSelectionToTheFirstMatch",
+        "tui/settings_list_input_test.go::TestSettingsListADelegatedKeyThatLeavesTheQueryUnchangedKeepsTheSelection",
         "tui/settings_list_input_test.go::TestSettingsListBoundActionsRunInUpstreamOrder",
         "tui/settings_list_input_test.go::TestSettingsListEmptyAndSingletonNavigationBoundaries",
         "tui/settings_list_input_test.go::TestSettingsListSearchDelegatesEditingKeysToTheInput",
@@ -17984,7 +17984,7 @@
         "tui/bordered_loader_oracle_test.go::TestBorderedLoaderMatchesPi",
         "tui/cancellable_loader_input_test.go::TestCancellableLoaderCancelFollowsTheBindingAndCallsOnAbortEachPress",
         "tui/cancellable_loader_input_test.go::TestCancellableLoaderCancelWithoutOnAbortOnlyAborts",
-        "tui/settings_list_input_test.go::TestSettingsListAnyDelegatedKeyResetsTheSelectionToTheFirstMatch",
+        "tui/settings_list_input_test.go::TestSettingsListADelegatedKeyThatLeavesTheQueryUnchangedKeepsTheSelection",
         "tui/settings_list_input_test.go::TestSettingsListBoundActionsRunInUpstreamOrder",
         "tui/settings_list_input_test.go::TestSettingsListEmptyAndSingletonNavigationBoundaries",
         "tui/settings_list_input_test.go::TestSettingsListSearchDelegatesEditingKeysToTheInput",
@@ -23433,7 +23433,7 @@
         "tui/model_selector_oracle_test.go::TestModelSelectorInputMatchesPi",
         "tui/oauth_selector_input_test.go::TestOAuthSelectorInputMatchesPi",
         "tui/select_list_oracle_test.go::TestSelectListInputMatchesPi",
-        "tui/settings_list_input_test.go::TestSettingsListAnyDelegatedKeyResetsTheSelectionToTheFirstMatch",
+        "tui/settings_list_input_test.go::TestSettingsListADelegatedKeyThatLeavesTheQueryUnchangedKeepsTheSelection",
         "tui/settings_list_input_test.go::TestSettingsListBoundActionsRunInUpstreamOrder",
         "tui/settings_list_input_test.go::TestSettingsListEmptyAndSingletonNavigationBoundaries",
         "tui/settings_list_input_test.go::TestSettingsListSearchDelegatesEditingKeysToTheInput",
@@ -23823,6 +23823,29 @@
       ],
       "tests": [
         "internal/codingagent/interactive_exit_hint_test.go::TestFrontendExitWritesNoResumeHint"
+      ]
+    },
+    {
+      "id": "BF-6389d44",
+      "title": "Unscoped syntax-highlighted code (plain identifiers, operators, spaces, and punctuation) now takes the active…",
+      "symptom": "Unscoped syntax-highlighted code (plain identifiers, operators, spaces, and punctuation) now takes the active theme text foreground instead of inheriting the terminal default foreground, keeping code readable when the terminal and PiG use contrasting themes.",
+      "rootCause": "cliHighlightTokens omitted the default highlight.js scope, so unscoped tokens emitted no foreground SGR and inherited the terminal default foreground.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Unscoped syntax-highlighted code (plain identifiers, operators, spaces, and punctuation) now takes the active theme text foreground instead of inheriting the terminal default foreground, keeping code readable when the terminal and PiG use contrasting themes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6389d4475f",
+          "date": "2026-11-22"
+        }
+      ],
+      "tests": [
+        "tui/highlight_test.go::TestHighlightCode_ColorsEachLineOfPythonDocstringsIndependently",
+        "tui/syntax_highlight_default_token_upstream_test.go::TestSyntaxHighlightDefaultTokenUpstream"
       ]
     },
     {
@@ -29976,7 +29999,7 @@
         "internal/codingagent/settings_selector_oracle_test.go::TestSettingsSelectorMatchesPi",
         "internal/codingagent/settings_submenu_oracle_test.go::TestSettingsSubmenusMatchPi",
         "test/parity/scenarios/settings/08-settings-search-editing.toml",
-        "tui/settings_list_input_test.go::TestSettingsListAnyDelegatedKeyResetsTheSelectionToTheFirstMatch",
+        "tui/settings_list_input_test.go::TestSettingsListADelegatedKeyThatLeavesTheQueryUnchangedKeepsTheSelection",
         "tui/settings_list_input_test.go::TestSettingsListBoundActionsRunInUpstreamOrder",
         "tui/settings_list_input_test.go::TestSettingsListEmptyAndSingletonNavigationBoundaries",
         "tui/settings_list_input_test.go::TestSettingsListSearchDelegatesEditingKeysToTheInput",
@@ -34057,6 +34080,34 @@
       ]
     },
     {
+      "id": "BF-82903da",
+      "title": "Searching in `/login`, `/logout`, `/scoped-models` and `/resume` highlights the best match when you type a…",
+      "symptom": "Searching in `/login`, `/logout`, `/scoped-models` and `/resume` highlights the best match when you type a query after scrolling down, so Enter picks it and not the entry at the row you had scrolled to; and moving the text cursor in the search field with Left, Right, Home or End no longer moves the highlight back to the first entry in `/model`, `/settings`, the searchable settings submenus and `pig config`.",
+      "rootCause": "selector search handlers clamped the scrolled selection index instead of resetting to row 0 on a non-empty query, and unconditionally re-ran filtering on every delegated key even when the query text did not change",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Searching in `/login`, `/logout`, `/scoped-models` and `/resume` highlights the best match when you type a query after scrolling down, so Enter picks it and not the entry at the row you had scrolled to; and moving the text cursor in the search field with Left, Right, Home or End no longer moves the highlight back to the first entry in `/model`, `/settings`, the searchable settings submenus and `pig config`. Follows Pi 37b74c546921 and 5bcf370a5293. PiG 0.2.0 through 0.7.0 have the search-highlight defect.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "204f9bb05b",
+          "date": "2026-11-22"
+        },
+        {
+          "hash": "82903dacec",
+          "date": "2026-11-22"
+        }
+      ],
+      "tests": [
+        "tui/model_select_test.go::TestModelSelectorUnchangedQueryKeyKeepsTheSelection",
+        "tui/selector_search_selection_upstream_test.go::TestSelectorSearchBoundaryTransitions",
+        "tui/settings_list_input_test.go::TestSettingsListADelegatedKeyThatLeavesTheQueryUnchangedKeepsTheSelection"
+      ]
+    },
+    {
       "id": "BF-8291569",
       "title": "fix(security): refuse a model whose api no provider serves; no request is sent (#481)",
       "symptom": "fix(security): refuse a model whose api no provider serves; no request is sent (#481)",
@@ -36046,7 +36097,7 @@
         "tui/oauth_selector_test.go::TestOAuthSelectorBoundaryTransitions",
         "tui/scoped_models_list_test.go::TestScopedModels_SearchAcceptsKittyAndPasteInput",
         "tui/select_list_oracle_test.go::TestSelectListInputMatchesPi",
-        "tui/settings_list_input_test.go::TestSettingsListAnyDelegatedKeyResetsTheSelectionToTheFirstMatch",
+        "tui/settings_list_input_test.go::TestSettingsListADelegatedKeyThatLeavesTheQueryUnchangedKeepsTheSelection",
         "tui/settings_list_input_test.go::TestSettingsListBoundActionsRunInUpstreamOrder",
         "tui/settings_list_input_test.go::TestSettingsListEmptyAndSingletonNavigationBoundaries",
         "tui/settings_list_input_test.go::TestSettingsListSearchDelegatesEditingKeysToTheInput",
@@ -39942,6 +39993,31 @@
       "tests": [
         "coding/extension/exec_test.go::TestExecCommand_SilentExitKeepsStderrEmpty",
         "coding/extension/exec_test.go::TestExecCommand_SpawnFailureResolvesWithCodeOne"
+      ]
+    },
+    {
+      "id": "BF-9486493",
+      "title": "The OpenAI Codex provider (`openai-codex-responses`) now gets prompt cache hits for the system prompt on…",
+      "symptom": "The OpenAI Codex provider (`openai-codex-responses`) now gets prompt cache hits for the system prompt on GPT-6.2 models instead of invalidating the cache on every turn: the system prompt is sent as the leading `developer` input item and top-level `instructions` is omitted (`ConvertResponsesMessagesOptions.IncludeSystemPrompt` is removed).",
+      "rootCause": "Codex placed the system prompt in top-level instructions rather than as the leading developer input item, and GPT-6.2 appends instructions after input so every turn changed the prefix before it.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The OpenAI Codex provider (`openai-codex-responses`) now gets prompt cache hits for the system prompt on GPT-6.2 models instead of invalidating the cache on every turn: the system prompt is sent as the leading `developer` input item and top-level `instructions` is omitted (`ConvertResponsesMessagesOptions.IncludeSystemPrompt` is removed).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9486493968",
+          "date": "2026-11-22"
+        }
+      ],
+      "tests": [
+        "ai/openai_codex_request_test.go::TestOpenAICodexResponses_RequestMatchesCodexProtocol",
+        "ai/openai_codex_sse_upstream_test.go::TestCodexSSEAndPayloadUpstream",
+        "ai/openai_codex_websocket_key_order_test.go::TestCodexWebSocketFramesKeepPisKeyOrder",
+        "ai/openai_codex_ws_upstream_test.go::TestCodexWebSocketUpstream"
       ]
     },
     {
@@ -52448,7 +52524,7 @@
         "tui/key_csiu_text_test.go::TestTextInputIgnoresModifyOtherKeysText",
         "tui/scoped_models_list_test.go::TestScopedModels_SearchAcceptsKittyAndPasteInput",
         "tui/select_list_oracle_test.go::TestSelectListInputMatchesPi",
-        "tui/settings_list_input_test.go::TestSettingsListAnyDelegatedKeyResetsTheSelectionToTheFirstMatch",
+        "tui/settings_list_input_test.go::TestSettingsListADelegatedKeyThatLeavesTheQueryUnchangedKeepsTheSelection",
         "tui/settings_list_input_test.go::TestSettingsListBoundActionsRunInUpstreamOrder",
         "tui/settings_list_input_test.go::TestSettingsListEmptyAndSingletonNavigationBoundaries",
         "tui/settings_list_input_test.go::TestSettingsListSearchDelegatesEditingKeysToTheInput",
@@ -53361,7 +53437,7 @@
         "tui/cancellable_loader_input_test.go::TestCancellableLoaderCancelWithoutOnAbortOnlyAborts",
         "tui/extension_dialog_bindings_test.go::TestExtensionDialogsMatchPiBindingsAndPalette",
         "tui/oauth_selector_input_test.go::TestOAuthSelectorInputMatchesPi",
-        "tui/settings_list_input_test.go::TestSettingsListAnyDelegatedKeyResetsTheSelectionToTheFirstMatch",
+        "tui/settings_list_input_test.go::TestSettingsListADelegatedKeyThatLeavesTheQueryUnchangedKeepsTheSelection",
         "tui/settings_list_input_test.go::TestSettingsListBoundActionsRunInUpstreamOrder",
         "tui/settings_list_input_test.go::TestSettingsListEmptyAndSingletonNavigationBoundaries",
         "tui/settings_list_input_test.go::TestSettingsListSearchDelegatesEditingKeysToTheInput",
@@ -54689,7 +54765,7 @@
       ],
       "tests": [
         "test/parity/scenarios/settings/08-settings-search-editing.toml",
-        "tui/settings_list_input_test.go::TestSettingsListAnyDelegatedKeyResetsTheSelectionToTheFirstMatch",
+        "tui/settings_list_input_test.go::TestSettingsListADelegatedKeyThatLeavesTheQueryUnchangedKeepsTheSelection",
         "tui/settings_list_input_test.go::TestSettingsListBoundActionsRunInUpstreamOrder",
         "tui/settings_list_input_test.go::TestSettingsListEmptyAndSingletonNavigationBoundaries",
         "tui/settings_list_input_test.go::TestSettingsListSearchDelegatesEditingKeysToTheInput",
@@ -61750,6 +61826,43 @@
         "env/connection_teardown_signal_test.go::TestConnectionTeardownEndsTheDaemonWithSIGTERM",
         "env/ssh_known_hosts_semantics_test.go::TestConcurrentHostKeyChangesToOneFileAreAppliedOneAtATime",
         "env/ssh_timeout_test.go::TestRunSshTimeoutTerminatesTheChildAndFailsWithoutWaitingForItsOutputToClose"
+      ]
+    },
+    {
+      "id": "BF-e6df1cd",
+      "title": "Changing the thinking level mid-conversation on GPT-6 models with the OpenAI Codex provider…",
+      "symptom": "Changing the thinking level mid-conversation on GPT-6 models with the OpenAI Codex provider (`openai-codex-responses`) no longer invalidates the prompt cache: thinking level changes (including switching to `off`, sent as `none`, across direct `StreamSimple` and `ModelRuntime` paths, while ignoring any caller-supplied raw `ReasoningEffort`) are now sent as `configuration_update` input items with a fixed `reasoning.effort` of `medium`, and `maxTokens` is forwarded as `max_output_tokens` (at least 16) unless `compat.supportsMaxOutputTokens` is `false`.",
+      "rootCause": "Codex did not enable supportsMidConvoEffort on GPT-6 models or emit configuration_update items, did not forward maxTokens to max_output_tokens, allowed raw ReasoningEffort to leak into StreamSimple, and only applied the off-to-none rule in direct StreamSimple rather than the shared ModelRuntime simple-stream preparation.",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Changing the thinking level mid-conversation on GPT-6 models with the OpenAI Codex provider (`openai-codex-responses`) no longer invalidates the prompt cache: thinking level changes (including switching to `off`, sent as `none`, across direct `StreamSimple` and `ModelRuntime` paths, while ignoring any caller-supplied raw `ReasoningEffort`) are now sent as `configuration_update` input items with a fixed `reasoning.effort` of `medium`, and `maxTokens` is forwarded as `max_output_tokens` (at least 16) unless `compat.supportsMaxOutputTokens` is `false`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2c7391d451",
+          "date": "2026-11-22"
+        },
+        {
+          "hash": "a5e3bdecaf",
+          "date": "2026-11-22"
+        },
+        {
+          "hash": "e6df1cddad",
+          "date": "2026-11-22"
+        },
+        {
+          "hash": "eae538553e",
+          "date": "2026-11-22"
+        }
+      ],
+      "tests": [
+        "ai/max_thinking_upstream_test.go::TestMaxThinkingUpstream",
+        "ai/openai_codex_developer_item_and_effort_upstream_test.go::TestCodexConfigurationUpdateEffortUpstream",
+        "ai/openai_codex_request_test.go::TestOpenAICodexResponses_RequestMatchesCodexProtocol",
+        "coding/codex_stream_upstream_test.go::TestCodexSimpleStreamPreparationAcrossCallerBoundaries"
       ]
     },
     {
@@ -69978,7 +70091,7 @@
     },
     {
       "id": "D645",
-      "title": "A name that is an `Object.prototype` member is no entry of eighteen Stock lookups, where Pi's plain objects…",
+      "title": "A name that is an `Object.prototype` member is no entry of nineteen Stock lookups, where Pi's plain objects…",
       "entry": "BF-88bbdd2"
     },
     {
@@ -70030,7 +70143,7 @@
   "exemptCommits": {
     "Failure found by the integration build of unreleased work": 2,
     "Fix reverted before release": 2,
-    "Follow-up to unreleased work": 42,
+    "Follow-up to unreleased work": 45,
     "Repair of a merge between development branches": 9,
     "Review follow-up to unreleased work": 4,
     "test-only": 1

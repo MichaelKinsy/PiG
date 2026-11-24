@@ -1269,6 +1269,7 @@ var cachedHighlightThemeFor;
 var cachedCliHighlightTheme;
 function buildCliHighlightTheme(t) {
   return {
+    default: /* @__PURE__ */ __name((s) => t.fg("text", s), "default"),
     keyword: /* @__PURE__ */ __name((s) => t.fg("syntaxKeyword", s), "keyword"),
     built_in: /* @__PURE__ */ __name((s) => t.fg("syntaxType", s), "built_in"),
     literal: /* @__PURE__ */ __name((s) => t.fg("syntaxNumber", s), "literal"),

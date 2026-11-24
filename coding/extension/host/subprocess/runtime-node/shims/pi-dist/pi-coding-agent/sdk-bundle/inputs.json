@@ -603,7 +603,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/config-selector.js",
-      "sha256": "7328b51404e9790a9b89c4fd565267441d11c4cdf014f9f8df914fe469629a48"
+      "sha256": "33e4e6352d38c7c0ebb62d97c07a468747a1c885d1369a4fd0c804e3d22d5832"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/countdown-timer.js",
@@ -683,11 +683,11 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/model-selector.js",
-      "sha256": "8782f53aa2cd10a2317ac8157b83ebae61d45a3be087df5055e25e42221bcbc4"
+      "sha256": "4ab139f4f188b4f9fe024dacf9d46887c0f08c494689d6c156eb6a9fded88d06"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/oauth-selector.js",
-      "sha256": "55d14098ff943f50d4f18013e01b4fdbc0bc736a5e2050b3bb898d14f8eed38e"
+      "sha256": "64c93ad7b076b951862ce4dbd98c240ea9470705be6e20b17db80bd44526c396"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/pi-logo.js",
@@ -703,7 +703,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/scoped-models-selector.js",
-      "sha256": "743d51f7932d9f34f8cae099eb6487d64bee854d87fdfab9abd8f96906eea426"
+      "sha256": "9563e558d688bd2d759e657627263aa8002e9ec27d66504d79b544fc2a0a9248"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/session-selector-search.js",
@@ -711,7 +711,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/session-selector.js",
-      "sha256": "a56a3679a9a9754b3f46e794450da13074cff398460cd6f763fb990832a10e2c"
+      "sha256": "1a2889629f256f3c661652b4c7957ccbe1a48e6823a7a118ab4f53f6e5d29a3e"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/settings-selector.js",
@@ -719,7 +719,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/settings-submenu.js",
-      "sha256": "2e297d4881bf7892e477979da99be81e931fa7f4e85e58be45f4639425e89057"
+      "sha256": "2f707a7137cc5992d47c99c9fc82963d3f8ada840fc4aa1fb0dd2d6f9e14ca27"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/show-images-selector.js",
@@ -743,7 +743,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/thinking-selector.js",
-      "sha256": "0d9c01ee1d43c911b15f962a7273b181f5d6a4dd278220021a61271e9f5ca161"
+      "sha256": "e91e5e47a60eba8cacdc7d1a5e4a1461aea08b95476a49bcdad1062a75093088"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/tool-execution.js",
@@ -811,7 +811,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/theme/theme.js",
-      "sha256": "bf33c87311d26382acb6b38274da1608e4ebdc398859f53f4431ec4a2f379c89"
+      "sha256": "d4975f36bdcab66c6c8e7206d059af55240133ccc5a019e31c0250153c2310bd"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/tui-renderer.js",

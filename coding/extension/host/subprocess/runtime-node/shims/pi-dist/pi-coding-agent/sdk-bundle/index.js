@@ -10,7 +10,7 @@ import {
 } from "./chunk-TQI2362R.js";
 import {
   ArminComponent
-} from "./chunk-3MYHF4IX.js";
+} from "./chunk-M6IUD7SG.js";
 import {
   AgentSession,
   BUG_REPORT_CUSTOM_ENTRY_TYPE,
@@ -124,7 +124,7 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-55VAQGFG.js";
+} from "./chunk-EPHTXC5S.js";
 import {
   CredentialSynchronizationError,
   InMemoryCodingAgentModelsStore,
@@ -163,7 +163,7 @@ import {
   resolveReadPath,
   withFileMutationQueue,
   writeRenderers
-} from "./chunk-QHFOACPC.js";
+} from "./chunk-2JZ2X7YW.js";
 import {
   fetchWithRetry,
   getPiUserAgent
@@ -173,7 +173,7 @@ import {
   TOOL_SEARCH_TOOL_NAME,
   createCodemodeToolDefinition,
   createToolSearchToolDefinition
-} from "./chunk-UFH337D2.js";
+} from "./chunk-V55VLW7G.js";
 import {
   SETTINGS_DEFAULTS,
   addUsageToTotals,
@@ -223,7 +223,7 @@ import {
   setThemeJsonValidator,
   stopThemeWatcher,
   theme
-} from "./chunk-XGLA5YHQ.js";
+} from "./chunk-F4Z3QMHU.js";
 import {
   AuthStorage,
   LIST_MCP_RESOURCES_TOOL,
@@ -4784,8 +4784,7 @@ var SessionList = class {
     }
     if (kb.matches(keyData, "app.session.deleteNoninvasive")) {
       if (this.searchInput.getValue().length > 0) {
-        this.searchInput.handleInput(keyData);
-        this.filterSessions(this.searchInput.getValue());
+        this.handleSearchInput(keyData);
         return;
       }
       this.startDeleteConfirmationForSelectedSession();
@@ -4811,9 +4810,23 @@ var SessionList = class {
         this.onCancel();
       }
     } else {
-      this.searchInput.handleInput(keyData);
-      this.filterSessions(this.searchInput.getValue());
+      this.handleSearchInput(keyData);
     }
+  }
+  // Pi 5bcf370a5293 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+  /** Applies a key to the search query; a changed, non-empty query selects the top row, the best match. */
+  handleSearchInput(keyData) {
+    const previousQuery = this.searchInput.getValue();
+    this.searchInput.handleInput(keyData);
+    const query = this.searchInput.getValue();
+    if (query === previousQuery)
+      return;
+    this.filterSessions(query);
+    if (!query.trim())
+      return;
+    this.selectedIndex = 0;
+    this.selectionTouched = false;
+    this.pendingSelectedPath = void 0;
   }
 };
 async function deleteSessionFile(sessionPath) {
@@ -9024,7 +9037,7 @@ function playEasterEgg3d(tui, egg) {
   if (tui.hasOverlay())
     return true;
   const screen = tui.getScreenLines();
-  import("./chunk-MITNCHVF.js").then((module) => module.playEasterEgg3d(tui, screen, egg), () => {
+  import("./chunk-GNKSSQ6Q.js").then((module) => module.playEasterEgg3d(tui, screen, egg), () => {
   });
   return true;
 }
@@ -9941,8 +9954,11 @@ var ModelSelectorComponent = class extends Container19 {
         this.onSelectAsDefaultCallback(selectedModel.model);
       }
     } else {
+      const previousQuery = this.searchInput.getValue();
       this.searchInput.handleInput(keyData);
-      this.filterModels(this.searchInput.getValue());
+      const query = this.searchInput.getValue();
+      if (query !== previousQuery)
+        this.filterModels(query);
     }
   }
   handleSelect(model) {
@@ -10107,7 +10123,7 @@ var OAuthSelectorComponent = class extends Container20 {
   }
   filterProviders(query) {
     this.filteredProviders = query ? fuzzyFilter4(this.allProviders, query, (provider) => `${provider.name} ${provider.id} ${provider.authType} ${provider.method?.name ?? ""}`) : this.allProviders;
-    this.selectedIndex = Math.max(0, Math.min(this.selectedIndex, Math.max(0, this.filteredProviders.length - 1)));
+    this.selectedIndex = query ? 0 : Math.min(this.selectedIndex, Math.max(0, this.filteredProviders.length - 1));
     this.updateList();
   }
   updateList() {
@@ -10169,8 +10185,11 @@ var OAuthSelectorComponent = class extends Container20 {
     } else if (kb.matches(keyData, "tui.select.cancel")) {
       this.onCancelCallback();
     } else {
+      const previousQuery = this.searchInput.getValue();
       this.searchInput.handleInput(keyData);
-      this.filterProviders(this.searchInput.getValue());
+      const query = this.searchInput.getValue();
+      if (query !== previousQuery)
+        this.filterProviders(query);
     }
   }
 };
@@ -10551,7 +10570,13 @@ var ScopedModelsSelectorComponent = class extends Container21 {
       this.callbacks.onCancel();
       return;
     }
+    const previousQuery = this.searchInput.getValue();
     this.searchInput.handleInput(data);
+    const query = this.searchInput.getValue();
+    if (query === previousQuery)
+      return;
+    if (query)
+      this.selectedIndex = 0;
     this.refresh();
   }
   getSearchInput() {
@@ -10635,8 +10660,11 @@ var SelectSubmenu = class extends Container22 {
       if (isNav) {
         this.selectList.handleInput(data);
       } else {
+        const previousQuery = this.searchInput.getValue();
         this.searchInput.handleInput(data);
-        this.applyFilter(this.searchInput.getValue());
+        const query = this.searchInput.getValue();
+        if (query !== previousQuery)
+          this.applyFilter(query);
       }
     } else {
       this.selectList.handleInput(data);
@@ -11701,8 +11729,11 @@ var ThinkingSelectorComponent = class extends Container25 {
       this.selectList.handleInput(keyData);
       return;
     }
+    const previousQuery = this.searchInput.getValue();
     this.searchInput.handleInput(keyData);
-    this.applyFilter(this.searchInput.getValue());
+    const query = this.searchInput.getValue();
+    if (query !== previousQuery)
+      this.applyFilter(query);
   }
   getSelectList() {
     return this.selectList;
@@ -20875,8 +20906,11 @@ var ResourceList = class {
       }
       return;
     }
+    const previousQuery = this.searchInput.getValue();
     this.searchInput.handleInput(data);
-    this.filterItems(this.searchInput.getValue());
+    const query = this.searchInput.getValue();
+    if (query !== previousQuery)
+      this.filterItems(query);
   }
   toggleResource(item) {
     if (this.writeScope === "project") {

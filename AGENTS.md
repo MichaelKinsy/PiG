@@ -316,7 +316,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `extensions-runtime` | 191 | 190 | 0 | 1 | 0 | 71 | not run |
 | `footer` | 12 | 12 | 0 | 0 | 0 | 9 | not run |
 | `fullscreen` | 20 | 20 | 0 | 0 | 0 | 13 | not run |
-| `interactive-rendering` | 93 | 92 | 1 | 0 | 0 | 42 | not run |
+| `interactive-rendering` | 94 | 93 | 1 | 0 | 0 | 42 | not run |
 | `json` | 19 | 19 | 0 | 0 | 0 | 12 | not run |
 | `model-resolver-selector` | 30 | 30 | 0 | 0 | 0 | 16 | not run |
 | `model-runtime-store-catalog` | 26 | 26 | 0 | 0 | 0 | 24 | not run |
@@ -326,7 +326,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `providers-faux-streaming` | 72 | 71 | 0 | 1 | 0 | 49 | not run |
 | `providers-registry` | 17 | 14 | 0 | 3 | 0 | 28 | not run |
 | `rpc` | 106 | 106 | 0 | 0 | 0 | 33 | not run |
-| `selectors` | 17 | 17 | 0 | 0 | 1 | 15 | not run |
+| `selectors` | 18 | 18 | 0 | 0 | 1 | 15 | not run |
 | `session` | 58 | 58 | 0 | 0 | 0 | 21 | not run |
 | `settings` | 17 | 17 | 0 | 0 | 0 | 21 | not run |
 | `slash-commands` | 39 | 38 | 1 | 0 | 0 | 24 | not run |

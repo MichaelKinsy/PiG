@@ -363,10 +363,14 @@ export class ModelSelectorComponent extends Container {
                 this.onSelectAsDefaultCallback(selectedModel.model);
             }
         }
-        // Pass everything else to search input
+        // Pi 5bcf370a5293 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+        // Pass everything else to search input. Cursor keys leave the query as it is and must not move the selection.
         else {
+            const previousQuery = this.searchInput.getValue();
             this.searchInput.handleInput(keyData);
-            this.filterModels(this.searchInput.getValue());
+            const query = this.searchInput.getValue();
+            if (query !== previousQuery)
+                this.filterModels(query);
         }
     }
     handleSelect(model) {

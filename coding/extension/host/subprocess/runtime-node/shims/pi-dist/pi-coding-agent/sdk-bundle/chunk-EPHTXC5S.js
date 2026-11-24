@@ -10,7 +10,7 @@ import {
   createAllToolDefinitions,
   createLocalBashOperations,
   processImage
-} from "./chunk-QHFOACPC.js";
+} from "./chunk-2JZ2X7YW.js";
 import {
   getPiUserAgent
 } from "./chunk-PNTN457B.js";
@@ -38,7 +38,7 @@ import {
   loadThemeFromPath,
   theme,
   watchWithErrorHandler
-} from "./chunk-XGLA5YHQ.js";
+} from "./chunk-F4Z3QMHU.js";
 import {
   McpServerRegistry,
   createToolNameMatcher,

@@ -191,8 +191,13 @@ export class SettingsList {
             this.onCancel();
         }
         else if (this.searchEnabled && this.searchInput) {
+            // Pi 5bcf370a5293 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+            // Cursor keys leave the query as it is and must not move the selection.
+            const previousQuery = this.searchInput.getValue();
             this.searchInput.handleInput(data);
-            this.applyFilter(this.searchInput.getValue());
+            const query = this.searchInput.getValue();
+            if (query !== previousQuery)
+                this.applyFilter(query);
         }
     }
     getDisplayItems() {

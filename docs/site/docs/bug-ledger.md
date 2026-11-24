@@ -875,6 +875,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6323c8e](#bf-6323c8e) | fix(ai): a Bedrock model outside the catalog is a bedrock-converse-stream model of amazon-bedrock, so its own… | PiG's own defect | All platforms | Unreleased |
 | [BF-633152d](#bf-633152d) | Starting a Go extension no longer fails with `hash <dir> after its build: open …/release/deps/rmeta…: no… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-6334aa7](#bf-6334aa7) | A Piglet frontend that draws the run no longer has the session resume line (`To resume this session: ...`)… | PiG's own defect | All platforms | Unreleased |
+| [BF-6389d44](#bf-6389d44) | Unscoped syntax-highlighted code (plain identifiers, operators, spaces, and punctuation) now takes the active… | PiG's own defect | All platforms | Unreleased |
 | [BF-63b4fc8](#bf-63b4fc8) | `NodeExecutionEnv.Watch` gives a directory replaced at the same path a new watcher, reports changes to the… | A fix Pi shipped that PiG ported | macOS | 0.5.0 |
 | [BF-63bb0b7](#bf-63bb0b7) | `pig extension upgrade` now rewrites a `Context` getter call that is the only argument of a variadic call… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-64373de](#bf-64373de) | A llama.cpp decision classifier whose server reports image input, such as Clef with its `mmproj`, now takes… | PiG's own defect | All platforms | Unreleased |
@@ -1265,6 +1266,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-82253c8](#bf-82253c8) | fix(chord/nextnode/workers): a process's exit joins its output readers and ends its channel | PiG's own defect | All platforms | Unreleased |
 | [BF-8241433](#bf-8241433) | A Mistral stream chunk with a member of an unexpected type is read as Pi's JavaScript reads it instead of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-825b4ab](#bf-825b4ab) | `pig config` no longer clips ` No resources found` and the `(n/total)` scroll row to the terminal width, as… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-82903da](#bf-82903da) | Searching in `/login`, `/logout`, `/scoped-models` and `/resume` highlights the best match when you type a… | PiG's own defect | All platforms | Unreleased |
 | [BF-8291569](#bf-8291569) | fix(security): refuse a model whose api no provider serves; no request is sent (#481) | PiG's own defect | All platforms | Unreleased |
 | [BF-82ca8da](#bf-82ca8da) | On Windows, the host reports the load error of a Node extension that exits right after it sends the error | PiG's own defect | Windows | 0.7.0 |
 | [BF-82d1808](#bf-82d1808) | Subprocess extensions no longer slow down each streamed token in long sessions: the state sent before each… | PiG's own defect | All platforms | 0.5.0 |
@@ -1493,6 +1495,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-93f8b7c](#bf-93f8b7c) | fix(agent): a listener failure at agent_start ends the run as in Pi; failure messages carry the model's api | PiG's own defect | All platforms | Unreleased |
 | [BF-94284ac](#bf-94284ac) | `pig -e git:<repo>@<branch>` no longer stays on its first checkout | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-942bc6c](#bf-942bc6c) | fix(coding-agent): preserve pi.exec spawn errors (Pi) | PiG's own defect | All platforms | Unreleased |
+| [BF-9486493](#bf-9486493) | The OpenAI Codex provider (`openai-codex-responses`) now gets prompt cache hits for the system prompt on… | PiG's own defect | All platforms | Unreleased |
 | [BF-94a2516](#bf-94a2516) | chord: a list or live query whose value was set several times in one commit (a list's row moving from one… | PiG's own defect | All platforms | Unreleased |
 | [BF-94bd9a5](#bf-94bd9a5) | Python SDK: a `setup` callback of `new_session` that leaves out the `data` of `append_custom_entry` or the… | PiG's own defect | All platforms | Unreleased |
 | [BF-94e3498](#bf-94e3498) | On Windows, PiG no longer searches `C:\etc\pig\piglets` or `C:\opt\pig\piglet.yaml` for a Piglet | PiG's own defect | Windows | 0.5.0 |
@@ -2228,6 +2231,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e65ade9](#bf-e65ade9) | `WaitForIdle` on the Harness or a Conversation no longer resumes before the `SubscribeCommits` listeners saw… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-e676d48](#bf-e676d48) | `host.Registry` with a short `ReadyTimeout` no longer fails "did not become live" when the machine delays the… | PiG's own defect | All platforms | Unreleased |
 | [BF-e69d018](#bf-e69d018) | Closing an `env` connection, or losing it, now ends its daemon process with SIGTERM, as in Pi, instead of… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-e6df1cd](#bf-e6df1cd) | Changing the thinking level mid-conversation on GPT-6 models with the OpenAI Codex provider… | PiG's own defect | All platforms | Unreleased |
 | [BF-e73e536](#bf-e73e536) | Codemode scripts no longer fail immediately when both codemode workers are busy, for example with parallel… | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
 | [BF-e75a8b9](#bf-e75a8b9) | The external editor (`ctrl+g`) now edits `prompt.md` inside a private `pi-editor-*` directory under the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e77c2e2](#bf-e77c2e2) | The pi-env daemon left its stdin and stdout non-blocking for whoever shared them when it ended by SIGTERM or… | PiG's own defect | All platforms | Unreleased |
@@ -3753,7 +3757,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `d1f258f335` (2026-10-06), `0ae3fcf17c` (2026-10-07)
-- **Tests:** `internal/codingagent/extension_dialog_remapping_test.go::TestExtensionDialogRemappingThroughOwnerLoop`, `test/parity/scenarios/settings/08-settings-search-editing.toml`, `tui/extension_dialog_bindings_test.go::TestExtensionDialogsMatchPiBindingsAndPalette`, `tui/oauth_selector_input_test.go::TestOAuthSelectorInputMatchesPi`, `tui/settings_list_input_test.go::TestSettingsListAnyDelegatedKeyResetsTheSelectionToTheFirstMatch`, `tui/settings_list_input_test.go::TestSettingsListBoundActionsRunInUpstreamOrder`, `tui/settings_list_input_test.go::TestSettingsListEmptyAndSingletonNavigationBoundaries`, `tui/settings_list_input_test.go::TestSettingsListSearchDelegatesEditingKeysToTheInput` and 3 more in docs/bug-ledger.json
+- **Tests:** `internal/codingagent/extension_dialog_remapping_test.go::TestExtensionDialogRemappingThroughOwnerLoop`, `test/parity/scenarios/settings/08-settings-search-editing.toml`, `tui/extension_dialog_bindings_test.go::TestExtensionDialogsMatchPiBindingsAndPalette`, `tui/oauth_selector_input_test.go::TestOAuthSelectorInputMatchesPi`, `tui/settings_list_input_test.go::TestSettingsListADelegatedKeyThatLeavesTheQueryUnchangedKeepsTheSelection`, `tui/settings_list_input_test.go::TestSettingsListBoundActionsRunInUpstreamOrder`, `tui/settings_list_input_test.go::TestSettingsListEmptyAndSingletonNavigationBoundaries`, `tui/settings_list_input_test.go::TestSettingsListSearchDelegatesEditingKeysToTheInput` and 3 more in docs/bug-ledger.json
 - **Release note:** The login provider list selects with Enter when `tui.select.confirm` is rebound, as Pi's search input submits it, and starts its search cursor at the beginning of a prefilled query.
 
 ### BF-0ae4683
@@ -11503,7 +11507,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `d1f258f335` (2026-10-06), `4d041349a7` (2026-10-07), `ccaade27af` (2026-10-07)
-- **Tests:** `internal/codingagent/thinking_selector_oracle_test.go::TestThinkingSelectorInputMatchesPi`, `test/parity/scenarios/settings/06-thinking-selector-search-editing.toml`, `test/parity/scenarios/settings/08-settings-search-editing.toml`, `tui/bordered_loader_oracle_test.go::TestBorderedLoaderMatchesPi`, `tui/cancellable_loader_input_test.go::TestCancellableLoaderCancelFollowsTheBindingAndCallsOnAbortEachPress`, `tui/cancellable_loader_input_test.go::TestCancellableLoaderCancelWithoutOnAbortOnlyAborts`, `tui/settings_list_input_test.go::TestSettingsListAnyDelegatedKeyResetsTheSelectionToTheFirstMatch`, `tui/settings_list_input_test.go::TestSettingsListBoundActionsRunInUpstreamOrder` and 5 more in docs/bug-ledger.json
+- **Tests:** `internal/codingagent/thinking_selector_oracle_test.go::TestThinkingSelectorInputMatchesPi`, `test/parity/scenarios/settings/06-thinking-selector-search-editing.toml`, `test/parity/scenarios/settings/08-settings-search-editing.toml`, `tui/bordered_loader_oracle_test.go::TestBorderedLoaderMatchesPi`, `tui/cancellable_loader_input_test.go::TestCancellableLoaderCancelFollowsTheBindingAndCallsOnAbortEachPress`, `tui/cancellable_loader_input_test.go::TestCancellableLoaderCancelWithoutOnAbortOnlyAborts`, `tui/settings_list_input_test.go::TestSettingsListADelegatedKeyThatLeavesTheQueryUnchangedKeepsTheSelection`, `tui/settings_list_input_test.go::TestSettingsListBoundActionsRunInUpstreamOrder` and 5 more in docs/bug-ledger.json
 - **Release note:** The cancel hint of extension loaders (`/share`, `/bug`) shows the key bound to `tui.select.cancel` instead of always `escape/ctrl+c`.
 
 ### BF-4d2f44e
@@ -14308,6 +14312,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `6334aa7405` (2026-11-11)
 - **Tests:** `internal/codingagent/interactive_exit_hint_test.go::TestFrontendExitWritesNoResumeHint`
 - **Release note:** A Piglet frontend that draws the run no longer has the session resume line (`To resume this session: ...`) written over or under its exit screen: the host writes nothing to the terminal after the frontend closes. The ANSI renderer prints the hint exactly as before, and a run that fell back from the frontend to the ANSI renderer still prints it.
+
+### BF-6389d44
+
+**Unscoped syntax-highlighted code (plain identifiers, operators, spaces, and punctuation) now takes the active…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Unscoped syntax-highlighted code (plain identifiers, operators, spaces, and punctuation) now takes the active theme text foreground instead of inheriting the terminal default foreground, keeping code readable when the terminal and PiG use contrasting themes.
+- **Root cause:** cliHighlightTokens omitted the default highlight.js scope, so unscoped tokens emitted no foreground SGR and inherited the terminal default foreground.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6389d4475f` (2026-11-22)
+- **Tests:** `tui/highlight_test.go::TestHighlightCode_ColorsEachLineOfPythonDocstringsIndependently`, `tui/syntax_highlight_default_token_upstream_test.go::TestSyntaxHighlightDefaultTokenUpstream`
+- **Release note:** Unscoped syntax-highlighted code (plain identifiers, operators, spaces, and punctuation) now takes the active theme text foreground instead of inheriting the terminal default foreground, keeping code readable when the terminal and PiG use contrasting themes.
 
 ### BF-63b4fc8
 
@@ -17654,7 +17672,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `d1f258f335` (2026-10-06), `70e1841cd8` (2026-10-07), `c8e3d86378` (2026-10-07)
-- **Tests:** `internal/codingagent/settings_selector_oracle_test.go::TestSettingsSelectorMatchesPi`, `internal/codingagent/settings_submenu_oracle_test.go::TestSettingsSubmenusMatchPi`, `test/parity/scenarios/settings/08-settings-search-editing.toml`, `tui/settings_list_input_test.go::TestSettingsListAnyDelegatedKeyResetsTheSelectionToTheFirstMatch`, `tui/settings_list_input_test.go::TestSettingsListBoundActionsRunInUpstreamOrder`, `tui/settings_list_input_test.go::TestSettingsListEmptyAndSingletonNavigationBoundaries`, `tui/settings_list_input_test.go::TestSettingsListSearchDelegatesEditingKeysToTheInput`, `tui/settings_list_input_test.go::TestSettingsListSubmenuReceivesEveryKeyIncludingCancel` and 2 more in docs/bug-ledger.json
+- **Tests:** `internal/codingagent/settings_selector_oracle_test.go::TestSettingsSelectorMatchesPi`, `internal/codingagent/settings_submenu_oracle_test.go::TestSettingsSubmenusMatchPi`, `test/parity/scenarios/settings/08-settings-search-editing.toml`, `tui/settings_list_input_test.go::TestSettingsListADelegatedKeyThatLeavesTheQueryUnchangedKeepsTheSelection`, `tui/settings_list_input_test.go::TestSettingsListBoundActionsRunInUpstreamOrder`, `tui/settings_list_input_test.go::TestSettingsListEmptyAndSingletonNavigationBoundaries`, `tui/settings_list_input_test.go::TestSettingsListSearchDelegatesEditingKeysToTheInput`, `tui/settings_list_input_test.go::TestSettingsListSubmenuReceivesEveryKeyIncludingCancel` and 2 more in docs/bug-ledger.json
 - **Release note:** /settings warnings submenu: a warning the settings never set shows as on and a toggle always reports the warning as set (Pi's `?? true`).
 
 ### BF-713bba5
@@ -19733,6 +19751,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `825b4ab1a6` (2026-11-03)
 - **Tests:** `coding/cli/config_selector_command_test.go::TestConfigSelectorDisablesEnabledMissingPackageMember`, `tui/component_width_table_test.go::TestSelectorDialogListComponentsNeverExceedRenderWidth`, `tui/config_selector_contract_test.go::TestConfigSelectorContractMatchesPi`
 - **Release note:** `pig config` no longer clips ` No resources found` and the `(n/total)` scroll row to the terminal width, as Pi does not; the selector's rows still fit every width at which Pi's fit. Declared Package members whose file is absent stay listed with a ` missing` suffix, recorded as D230.
+
+### BF-82903da
+
+**Searching in `/login`, `/logout`, `/scoped-models` and `/resume` highlights the best match when you type a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Searching in `/login`, `/logout`, `/scoped-models` and `/resume` highlights the best match when you type a query after scrolling down, so Enter picks it and not the entry at the row you had scrolled to; and moving the text cursor in the search field with Left, Right, Home or End no longer moves the highlight back to the first entry in `/model`, `/settings`, the searchable settings submenus and `pig config`.
+- **Root cause:** selector search handlers clamped the scrolled selection index instead of resetting to row 0 on a non-empty query, and unconditionally re-ran filtering on every delegated key even when the query text did not change
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `204f9bb05b` (2026-11-22), `82903dacec` (2026-11-22)
+- **Tests:** `tui/model_select_test.go::TestModelSelectorUnchangedQueryKeyKeepsTheSelection`, `tui/selector_search_selection_upstream_test.go::TestSelectorSearchBoundaryTransitions`, `tui/settings_list_input_test.go::TestSettingsListADelegatedKeyThatLeavesTheQueryUnchangedKeepsTheSelection`
+- **Release note:** Searching in `/login`, `/logout`, `/scoped-models` and `/resume` highlights the best match when you type a query after scrolling down, so Enter picks it and not the entry at the row you had scrolled to; and moving the text cursor in the search field with Left, Right, Home or End no longer moves the highlight back to the first entry in `/model`, `/settings`, the searchable settings submenus and `pig config`. Follows Pi 37b74c546921 and 5bcf370a5293. PiG 0.2.0 through 0.7.0 have the search-highlight defect.
 
 ### BF-8291569
 
@@ -22908,6 +22940,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `942bc6c05b` (2026-10-22)
 - **Tests:** `coding/extension/exec_test.go::TestExecCommand_SilentExitKeepsStderrEmpty`, `coding/extension/exec_test.go::TestExecCommand_SpawnFailureResolvesWithCodeOne`
+
+### BF-9486493
+
+**The OpenAI Codex provider (`openai-codex-responses`) now gets prompt cache hits for the system prompt on…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The OpenAI Codex provider (`openai-codex-responses`) now gets prompt cache hits for the system prompt on GPT-6.2 models instead of invalidating the cache on every turn: the system prompt is sent as the leading `developer` input item and top-level `instructions` is omitted (`ConvertResponsesMessagesOptions.IncludeSystemPrompt` is removed).
+- **Root cause:** Codex placed the system prompt in top-level instructions rather than as the leading developer input item, and GPT-6.2 appends instructions after input so every turn changed the prefix before it.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9486493968` (2026-11-22)
+- **Tests:** `ai/openai_codex_request_test.go::TestOpenAICodexResponses_RequestMatchesCodexProtocol`, `ai/openai_codex_sse_upstream_test.go::TestCodexSSEAndPayloadUpstream`, `ai/openai_codex_websocket_key_order_test.go::TestCodexWebSocketFramesKeepPisKeyOrder`, `ai/openai_codex_ws_upstream_test.go::TestCodexWebSocketUpstream`
+- **Release note:** The OpenAI Codex provider (`openai-codex-responses`) now gets prompt cache hits for the system prompt on GPT-6.2 models instead of invalidating the cache on every turn: the system prompt is sent as the leading `developer` input item and top-level `instructions` is omitted (`ConvertResponsesMessagesOptions.IncludeSystemPrompt` is removed).
 
 ### BF-94a2516
 
@@ -29978,7 +30024,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `d1f258f335` (2026-10-06)
-- **Tests:** `test/parity/scenarios/settings/08-settings-search-editing.toml`, `tui/settings_list_input_test.go::TestSettingsListAnyDelegatedKeyResetsTheSelectionToTheFirstMatch`, `tui/settings_list_input_test.go::TestSettingsListBoundActionsRunInUpstreamOrder`, `tui/settings_list_input_test.go::TestSettingsListEmptyAndSingletonNavigationBoundaries`, `tui/settings_list_input_test.go::TestSettingsListSearchDelegatesEditingKeysToTheInput`, `tui/settings_list_input_test.go::TestSettingsListSubmenuReceivesEveryKeyIncludingCancel`, `tui/settings_list_input_test.go::TestSettingsListWithoutSearchIgnoresOtherKeysAndKeepsSelection`, `tui/settings_list_keys_test.go::TestSettingsListPageAndHomeEndKeysFollowSearchState`
+- **Tests:** `test/parity/scenarios/settings/08-settings-search-editing.toml`, `tui/settings_list_input_test.go::TestSettingsListADelegatedKeyThatLeavesTheQueryUnchangedKeepsTheSelection`, `tui/settings_list_input_test.go::TestSettingsListBoundActionsRunInUpstreamOrder`, `tui/settings_list_input_test.go::TestSettingsListEmptyAndSingletonNavigationBoundaries`, `tui/settings_list_input_test.go::TestSettingsListSearchDelegatesEditingKeysToTheInput`, `tui/settings_list_input_test.go::TestSettingsListSubmenuReceivesEveryKeyIncludingCancel`, `tui/settings_list_input_test.go::TestSettingsListWithoutSearchIgnoresOtherKeysAndKeepsSelection`, `tui/settings_list_keys_test.go::TestSettingsListPageAndHomeEndKeysFollowSearchState`
 - **Release note:** The `/settings` search edits like Pi's search input: the cursor moves with the arrow keys, Ctrl+W, Ctrl+K, Ctrl+Y, paste and the other input keys work, and any key the list does not own returns the selection to the first match. Confirm and cancel keys that a user binds to the same key as up or down now run up or down first, as Pi does.
 
 ### BF-d212cdf
@@ -33118,6 +33164,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `50233fd0d4` (2026-10-10), `e69d0181ec` (2026-10-10)
 - **Tests:** `env/connection_teardown_signal_test.go::TestConnectionTeardownEndsTheDaemonWithSIGTERM`, `env/ssh_known_hosts_semantics_test.go::TestConcurrentHostKeyChangesToOneFileAreAppliedOneAtATime`, `env/ssh_timeout_test.go::TestRunSshTimeoutTerminatesTheChildAndFailsWithoutWaitingForItsOutputToClose`
 - **Release note:** Closing an `env` connection, or losing it, now ends its daemon process with SIGTERM, as in Pi, instead of SIGKILL, so a daemon reached through `ssh` can close its remote side.
+
+### BF-e6df1cd
+
+**Changing the thinking level mid-conversation on GPT-6 models with the OpenAI Codex provider…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Changing the thinking level mid-conversation on GPT-6 models with the OpenAI Codex provider (`openai-codex-responses`) no longer invalidates the prompt cache: thinking level changes (including switching to `off`, sent as `none`, across direct `StreamSimple` and `ModelRuntime` paths, while ignoring any caller-supplied raw `ReasoningEffort`) are now sent as `configuration_update` input items with a fixed `reasoning.effort` of `medium`, and `maxTokens` is forwarded as `max_output_tokens` (at least 16) unless `compat.supportsMaxOutputTokens` is `false`.
+- **Root cause:** Codex did not enable supportsMidConvoEffort on GPT-6 models or emit configuration_update items, did not forward maxTokens to max_output_tokens, allowed raw ReasoningEffort to leak into StreamSimple, and only applied the off-to-none rule in direct StreamSimple rather than the shared ModelRuntime simple-stream preparation.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2c7391d451` (2026-11-22), `a5e3bdecaf` (2026-11-22), `e6df1cddad` (2026-11-22), `eae538553e` (2026-11-22)
+- **Tests:** `ai/max_thinking_upstream_test.go::TestMaxThinkingUpstream`, `ai/openai_codex_developer_item_and_effort_upstream_test.go::TestCodexConfigurationUpdateEffortUpstream`, `ai/openai_codex_request_test.go::TestOpenAICodexResponses_RequestMatchesCodexProtocol`, `coding/codex_stream_upstream_test.go::TestCodexSimpleStreamPreparationAcrossCallerBoundaries`
+- **Release note:** Changing the thinking level mid-conversation on GPT-6 models with the OpenAI Codex provider (`openai-codex-responses`) no longer invalidates the prompt cache: thinking level changes (including switching to `off`, sent as `none`, across direct `StreamSimple` and `ModelRuntime` paths, while ignoring any caller-supplied raw `ReasoningEffort`) are now sent as `configuration_update` input items with a fixed `reasoning.effort` of `medium`, and `maxTokens` is forwarded as `max_output_tokens` (at least 16) unless `compat.supportsMaxOutputTokens` is `false`.
 
 ### BF-e73e536
 
@@ -36801,7 +36861,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D632 | Resource loader operations that overlap wait for each other, where Pi's reloads interleave and can mix their… | [BF-68dfec5](#bf-68dfec5) |
 | D633 | A failed settings save is reported where the change was made, where Pi reports it only in its settings… | [BF-D633](#bf-d633) |
 | D636 | A page applies the language and the theme its user chose earlier when it opens, where Pi applies a stored… | [BF-D636](#bf-d636) |
-| D645 | A name that is an `Object.prototype` member is no entry of eighteen Stock lookups, where Pi's plain objects… | [BF-88bbdd2](#bf-88bbdd2) |
+| D645 | A name that is an `Object.prototype` member is no entry of nineteen Stock lookups, where Pi's plain objects… | [BF-88bbdd2](#bf-88bbdd2) |
 | D647 | A message or entry that an extension renders is drawn as the placeholder `[<customType>]` until the… | [BF-D647](#bf-d647) |
 | D648 | A Rust extension receives U+FFFD for a lone UTF-16 surrogate, and writes it back when it echoes text, where… | [BF-D648](#bf-d648) |
 | D649 | A native extension's settle-tail handler in flight when RPC input ends does not hold the exit, where Pi's… | [BF-D649](#bf-d649) |
@@ -36816,7 +36876,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 
 - Failure found by the integration build of unreleased work: 2
 - Fix reverted before release: 2
-- Follow-up to unreleased work: 42
+- Follow-up to unreleased work: 45
 - Repair of a merge between development branches: 9
 - Review follow-up to unreleased work: 4
 - test-only: 1

@@ -158,7 +158,7 @@ export function convertResponsesMessages(model, context, allowedToolCallProvider
             tools: convertResponsesTools(tools, { ...options?.toolOptions, toolSearchResult: true }),
         });
     };
-    const includeInitialSystemMessage = options?.includeSystemPrompt ?? true;
+    // Pi edfe6b2ef322 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
     const pushConfigurationUpdate = (effort) => {
         messages.push({
             type: "configuration_update",
@@ -177,22 +177,20 @@ export function convertResponsesMessages(model, context, allowedToolCallProvider
             const anchorsToolChanges = systemIndex++ >= transcriptTools.foldedSystemMessages;
             if (anchorsToolChanges)
                 appendSystemToolAdditions(msg, `system:${msgIndex}`);
-            if (!isLeadingSystemMessage || includeInitialSystemMessage) {
-                const parts = [isLeadingSystemMessage ? getSystemMessageText(msg) : renderSystemMessageUpdate(msg)];
-                if (anchorsToolChanges) {
-                    // A redefinition is a removal plus an addition of the same name; only true removals are announced.
-                    const added = new Set((msg.toolsAdded ?? []).map((tool) => tool.name));
-                    const removed = (msg.toolsRemoved ?? []).map((tool) => tool.name).filter((name) => !added.has(name));
-                    if (removed.length > 0)
-                        parts.push(renderToolRemovalNotice(removed));
-                    // Recorded after this message's additions, whose notice precedes this removal notice.
-                    for (const name of removed)
-                        unavailableTools.add(name);
-                }
-                const text = parts.filter((part) => part.length > 0).join("\n\n");
-                if (text.length > 0) {
-                    messages.push({ role: instructionRole, content: sanitizeSurrogates(text) });
-                }
+            const parts = [isLeadingSystemMessage ? getSystemMessageText(msg) : renderSystemMessageUpdate(msg)];
+            if (anchorsToolChanges) {
+                // A redefinition is a removal plus an addition of the same name; only true removals are announced.
+                const added = new Set((msg.toolsAdded ?? []).map((tool) => tool.name));
+                const removed = (msg.toolsRemoved ?? []).map((tool) => tool.name).filter((name) => !added.has(name));
+                if (removed.length > 0)
+                    parts.push(renderToolRemovalNotice(removed));
+                // Recorded after this message's additions, whose notice precedes this removal notice.
+                for (const name of removed)
+                    unavailableTools.add(name);
+            }
+            const text = parts.filter((part) => part.length > 0).join("\n\n");
+            if (text.length > 0) {
+                messages.push({ role: instructionRole, content: sanitizeSurrogates(text) });
             }
         }
         else if (msg.role === "user") {

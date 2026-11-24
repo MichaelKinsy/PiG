@@ -1,5 +1,5 @@
-769d9e917bc29676a1cfd6ea9c39be9ba1082e634cbbca86ac3bf72d01e28747  ./catalog/models.all.json
-c3657b12363b7daafadbdf91101d85e0eeda91e21eca830364c6fba2ae2fb95b  ./catalog/models.json
+f8cdad03017bb7a2b7f9033adf8cb7cad1ebb2d1589ec6dcc13d606a1be707ee  ./catalog/models.all.json
+6bad3356bd7edd0147a096041860e4125326acf10b96fee3faa6c0d1f904abf2  ./catalog/models.json
 3b68461bec3bc6a720c669b59209be99d7d24a7fe94c65b43e0336c47c0e6ea3  ./catalog/providers.json
 77b89ff841fa437fa5e2196d31af51febc444969ceb95b5a73b333c8a834c5d0  ./catalog/providers/amazon-bedrock.all.json
 654ad741900ee04403c58d9aa5dad1edaf552e9baeff5cf51d021aa6caed6935  ./catalog/providers/amazon-bedrock.json
@@ -21,8 +21,8 @@ a666ebc64a15d2652c41c759cc970987ecdf4df653190620a64dbfaeb71c9621  ./catalog/prov
 ad1ce935a86042da1d4f4d2861743ab07e0d78c13da6f66e651de8236f05c64a  ./catalog/providers/deepseek.json
 e5cf70059345754beead8c1fd7f873a2905e5060fedb910bab0b7e6690289228  ./catalog/providers/fireworks.all.json
 5308bc5f5ec2e83bff68c2c552611bdf7e437896c812ea6fc2c9d4010902ff70  ./catalog/providers/fireworks.json
-9b4d5208503714c70947db9293ab11c2c78187b0151b33c03d07052f6aa68b65  ./catalog/providers/github-copilot.all.json
-ab6f5be4c86d471dc8d7fba043ad61a67a8dc82e86f132c11b0143bb45591d4a  ./catalog/providers/github-copilot.json
+d65ceb09f7a91df6435bf5d303b9f0bf4c3dfc3b8e8e00c79c7d4715acf01fb2  ./catalog/providers/github-copilot.all.json
+6339906c34028293bdf92b362a621704fb1af89c77ada38224dde0169618946d  ./catalog/providers/github-copilot.json
 5b187e9d6b3abf88af919054e596250ae129a49ca1bb3954c150cfaef417ae85  ./catalog/providers/google-vertex.all.json
 9fa49bde7545912834eda54246b4329b31f67d14323da0a057566a9442196aee  ./catalog/providers/google-vertex.json
 dd31f061fe6d1dc94e2413f716359fe5a1b3ff88fc770120d7103e5d3720f29d  ./catalog/providers/google.all.json
@@ -47,8 +47,8 @@ f86dc75992ca5b5cc66471eee50367a7147663b3119168c1e0c7eb74e0d92fa2  ./catalog/prov
 8ccb7726f0d05144201acf2209b3409f08c7107e4da6abe6911a0f305a04f145  ./catalog/providers/moonshotai.json
 3cdd97ee971a314cfcac82d4ecfc530dc6a103ac55c72b1b74771b071eefdb76  ./catalog/providers/nvidia.all.json
 f05adbf86328beb2566913a30c53bdf98e1afde9a14778863df6f08ac6688b1a  ./catalog/providers/nvidia.json
-5129894b1239bb463acea7150c34f8d6ee7c382b8b72117dae3c89e056bb0151  ./catalog/providers/openai-codex.all.json
-477356c680f25e26c05f805fb2514f88578064b9918f9f8f5c9e20d2747bbf89  ./catalog/providers/openai-codex.json
+77ce367b66df7a2f5a312957acd4527ae7c36af5246e70ec23e24d74af84002e  ./catalog/providers/openai-codex.all.json
+bdfd41356bebc3679c7666d43831a9917f4eedad860d6a0e5c3f19369698a0c4  ./catalog/providers/openai-codex.json
 f2dfa47877f2a31bb21b1efd1aeb17da403e6ddbdda268be3444e5585946017f  ./catalog/providers/openai.all.json
 86e7f988cf9e8c93f99944cf480e6c4a0e98d241f975ae78fdce9d5753370aeb  ./catalog/providers/openai.json
 771920cce1d96d894189007031b9777af1f81485a66de3e4182c84197b3a1b1d  ./catalog/providers/opencode-go.all.json
@@ -93,7 +93,7 @@ e8cf94f6cd47dce91de2b78a153f88a19e186117fd6e025f6966aca32bbc6a0a  ./data/baseten
 04ef3673924558e806e0c55fdc3952174ba697245fe2fa9800d1f980a926ca80  ./data/cloudflare-workers-ai.json
 7396969d776ff29140ecf1b6e0038b3a97caf4ab8e0b8d5dffa845f3fd129ebc  ./data/deepseek.json
 05139d52e2427217df785976d821687729a08be7cd7a4cdb00a3dbe8151ab242  ./data/fireworks.json
-9517087d43a1c2daefb20d830ec4c9dd6cbf917567cb3a3cb31155abfff1a632  ./data/github-copilot.json
+ac716e7030184c258edf3c740ba53fa42df36341ce0445b4fd988f1531218b0e  ./data/github-copilot.json
 8c0fb957bcc9618456695bdd10dfefba9109046832f72368a200bbfff3f73e59  ./data/google-vertex.json
 a996c4621a640aff572124eae36fa93a11ca41df11e8df39aa07c75296a4ddde  ./data/google.json
 256043df9ebbc257f5a953584f8d22bf2af90170c5168d7b92e91ae266ba4cf9  ./data/groq.json
@@ -106,7 +106,7 @@ a996c4621a640aff572124eae36fa93a11ca41df11e8df39aa07c75296a4ddde  ./data/google.
 88c8343ec62fb19b169f71ed1b1bc9dfb7ab54f14c77b7ed2d230f998de5ab4b  ./data/moonshotai-cn.json
 5485a0e821a48f8a4a6ba88e355d438abc12284332e0f94226f0c2c1b2d1c328  ./data/moonshotai.json
 19bca9c7aa175bec7ea82dce6e1b5bb98309767fb4982083fd4428e99ef8d310  ./data/nvidia.json
-29755658ee3d3c36f4d2578368101180b9daca1e1953a78b4f0a8248284f3a67  ./data/openai-codex.json
+3508571266bc2f2bc325d56340102c50313e9ed6c8ec427662e8fd491fb701df  ./data/openai-codex.json
 127496cff0d40f0d39387f8ce6d0f5fbcf2a99af27b9a4f2ecb0fef3938edcdd  ./data/openai.json
 19a74fe7bef8c34e743c009ede2cf1e7e6a2dac817df5860bf926d76c3bf8148  ./data/opencode-go.json
 78681df11a668408688a89e00d2489416bef9e1305e5c73ee3bf3517de674db5  ./data/opencode.json

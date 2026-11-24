@@ -291,7 +291,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/.manifest.json",
-      "sha256": "27ca7ff87048cabca40efb9b9b96c1bed318d6161529f625ddd76b1856e8952e"
+      "sha256": "39270f4bedd6c393e21914e957a7aeb99a8fe444c2b2f71b16660eaddae62322"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/amazon-bedrock.json",
@@ -335,7 +335,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/github-copilot.json",
-      "sha256": "d19e363abffc70d34c2a5e0bb146399c33c585844acb06fa9a7f628aca176ef7"
+      "sha256": "1b0d84cd0b8e62b52530c672213d98adc7e09cf99a246d448042e5596009727c"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/google-vertex.json",
@@ -387,7 +387,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/openai-codex.json",
-      "sha256": "29755658ee3d3c36f4d2578368101180b9daca1e1953a78b4f0a8248284f3a67"
+      "sha256": "3508571266bc2f2bc325d56340102c50313e9ed6c8ec427662e8fd491fb701df"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/openai.json",
@@ -411,11 +411,11 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/qwen-token-plan-individual-cn.json",
-      "sha256": "c47b5afecd168c89429ea1464b6a547584a039faf095a8a7b67937f298260afc"
+      "sha256": "dd23bb588bb8a7d5c03865eb037a0f95bb47448811f820c50a4022f86867b809"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/qwen-token-plan-individual.json",
-      "sha256": "15f71323e8eaa6ea6000076e33dc0d1ff38526d2ac4caa710c4ce31cc3ff3787"
+      "sha256": "dbfa5f80b40db0907795d573bff41c69183480d3938fbd3dd50c9f76bcfe0c0e"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/qwen-token-plan.json",

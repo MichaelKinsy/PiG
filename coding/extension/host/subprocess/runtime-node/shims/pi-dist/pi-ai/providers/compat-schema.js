@@ -263,7 +263,7 @@ const OpenAIResponsesCompatProperties = {
         default: false,
     })),
     supportsMidConvoEffort: opt(bool({
-        description: "Whether thinking level changes are sent as configuration_update input items instead of changing reasoning.effort, so a change keeps the prompt cache. Only used by the openai-responses API, and ignored with Sign in with ChatGPT on the openai provider.",
+        description: "Whether thinking level changes are sent as configuration_update input items instead of changing reasoning.effort, so a change keeps the prompt cache. Used by the openai-responses and openai-codex-responses APIs, and ignored with Sign in with ChatGPT on the openai provider.",
         default: false,
     })),
     supportsMaxOutputTokens: opt(bool({
@@ -396,7 +396,7 @@ const ProviderCompatPropertyOverrides = {
         description: "Controls the prompt_cache_key request field for openai-completions and openai-responses: auto keeps each API's default, enabled sends it whenever caching is active, disabled never sends it. Default: auto.",
     }),
     supportsMidConvoEffort: optionalCompatBoolean({
-        description: "Whether thinking level changes are sent inside the conversation instead of changing the request's effort, so a change keeps the prompt cache. Used by the anthropic-messages and openai-responses APIs.",
+        description: "Whether thinking level changes are sent inside the conversation instead of changing the request's effort, so a change keeps the prompt cache. Used by the anthropic-messages, openai-responses, and openai-codex-responses APIs.",
         default: false,
     }),
     supportsLongCacheRetention: optionalCompatBoolean({

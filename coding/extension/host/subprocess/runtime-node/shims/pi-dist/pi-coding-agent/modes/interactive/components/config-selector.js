@@ -390,9 +390,13 @@ class ResourceList {
             }
             return;
         }
-        // Pass to search input
+        // Pi 5bcf370a5293 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+        // Pass to search input. Cursor keys leave the query as it is and must not move the selection.
+        const previousQuery = this.searchInput.getValue();
         this.searchInput.handleInput(data);
-        this.filterItems(this.searchInput.getValue());
+        const query = this.searchInput.getValue();
+        if (query !== previousQuery)
+            this.filterItems(query);
     }
     toggleResource(item) {
         if (this.writeScope === "project") {
