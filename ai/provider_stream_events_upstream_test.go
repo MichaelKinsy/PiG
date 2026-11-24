@@ -124,6 +124,8 @@ func TestProviderStreamEventsUpstream(t *testing.T) {
 	// .upstream/v0.99.1/packages/ai/test/openai-completions-provider-stream-event.test.ts:60 (regression for #9784)
 	t.Run("openai-completions exposes provider chunks including OpenRouter metadata", func(t *testing.T) {
 		first := `{"id":"chatcmpl-1","model":"anthropic/claude-sonnet-4.6","choices":[{"index":0,"delta":{"content":"hello"}}]}`
+		// openai 7.59.0 normalizeChatCompletionStream (lib/chat-completions/streaming.mjs:9) sets choice.finish_reason ?? null before openai-completions.ts:545 observes it.
+		firstNormalized := `{"id":"chatcmpl-1","model":"anthropic/claude-sonnet-4.6","choices":[{"index":0,"delta":{"content":"hello"},"finish_reason":null}]}`
 		final := `{"id":"chatcmpl-1","model":"anthropic/claude-sonnet-4.6","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":10,"completion_tokens":2,"total_tokens":12,"cost":0.0012,"is_byok":false},"openrouter_metadata":{"strategy":"direct","region":"iad"}}`
 		server := serveSSE(t, sseFrames(first, final, "[DONE]"))
 		model := &Model{ID: "openrouter/auto", DisplayName: "OpenRouter Auto", Input: []string{"text"}, Capabilities: ModelCapabilities{ContextWindow: 200000, MaxOutputTokens: 8192}, ProviderMeta: ProviderMetadata{API: APIOpenAICompletions, ProviderID: "openrouter", BaseURL: server.URL}}
@@ -137,7 +139,7 @@ func TestProviderStreamEventsUpstream(t *testing.T) {
 		if len(message.Content) != 1 || message.Content[0] != (TextContent{Text: "hello"}) {
 			t.Fatalf("content = %#v (error %q)", message.Content, message.ErrorMessage)
 		}
-		if !reflect.DeepEqual(events, decodedEvents(t, first, final)) {
+		if !reflect.DeepEqual(events, decodedEvents(t, firstNormalized, final)) {
 			t.Fatalf("events = %#v", events)
 		}
 		assertEventModels(t, models, model, 2)

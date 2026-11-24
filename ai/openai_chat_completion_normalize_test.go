@@ -102,3 +102,44 @@ func TestOpenAICompletionsNormalizeFinishReasonOnProviderEvent(t *testing.T) {
 		})
 	}
 }
+
+// TestNormalizeOpenAIChatCompletionChunkEventZeroAllocFastPath checks that
+// normalizeOpenAIChatCompletionChunkEvent allocates 0 times when every choice already carries
+// finish_reason, when choices is empty/absent/non-array, or when the chunk is not an object.
+func TestNormalizeOpenAIChatCompletionChunkEventZeroAllocFastPath(t *testing.T) {
+	alreadyNormalized := []any{
+		decodedJSON(t, `{"id":"1","choices":[{"index":0,"delta":{"content":"hi"},"finish_reason":null}]}`),
+		decodedJSON(t, `{"id":"1","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}`),
+		decodedJSON(t, `{"id":"1","choices":[]}`),
+		decodedJSON(t, `{"id":"1","usage":{}}`),
+		decodedJSON(t, `{"id":"1","choices":{}}`),
+		decodedJSON(t, `42`),
+	}
+	for i, ev := range alreadyNormalized {
+		allocs := testing.AllocsPerRun(100, func() {
+			normalizeOpenAIChatCompletionChunkEvent(ev)
+		})
+		if allocs != 0 {
+			t.Errorf("case %d: normalizeOpenAIChatCompletionChunkEvent allocated %.1f times, want 0", i, allocs)
+		}
+	}
+
+	// Verify the fast decoder sets allChoicesHaveFinishReason accurately without allocations.
+	var d openAIChunkDecoder
+	_, ok := d.decode(`{"id":"1","choices":[{"index":0,"delta":{"content":"hi"},"finish_reason":null}]}`)
+	if !ok || !d.allChoicesHaveFinishReason {
+		t.Fatalf("with finish_reason: ok=%v allChoicesHaveFinishReason=%v, want true/true", ok, d.allChoicesHaveFinishReason)
+	}
+	_, ok = d.decode(`{"id":"1","choices":[{"index":0,"delta":{"content":"hi"}}]}`)
+	if !ok || d.allChoicesHaveFinishReason {
+		t.Fatalf("without finish_reason: ok=%v allChoicesHaveFinishReason=%v, want true/false", ok, d.allChoicesHaveFinishReason)
+	}
+	_, ok = d.decode(`{"id":"1","choices":[]}`)
+	if !ok || !d.allChoicesHaveFinishReason {
+		t.Fatalf("empty choices: ok=%v allChoicesHaveFinishReason=%v, want true/true", ok, d.allChoicesHaveFinishReason)
+	}
+	_, ok = d.decode(`{"id":"1","choices":[{"index":0,"finish_reason":"stop"},{"index":1,"delta":{"content":"x"}}]}`)
+	if !ok || d.allChoicesHaveFinishReason {
+		t.Fatalf("mixed choices: ok=%v allChoicesHaveFinishReason=%v, want true/false", ok, d.allChoicesHaveFinishReason)
+	}
+}

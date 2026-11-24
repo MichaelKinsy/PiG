@@ -9,7 +9,9 @@ import (
 	"testing"
 )
 
-// Oracle: openai 7.19.0 core/streaming.mjs (Pi 1.1.0), traced by driving Stream.fromSSEResponse over a body async iterator whose next and
+// Oracle: openai 7.19.0..7.59.0 core/streaming.mjs (Pi 1.1.0..1.6.0; fromSSEResponse and responses.create are unchanged in 7.59.0,
+// while chat.completions.create wraps Stream[Symbol.asyncIterator] in lib/chat-completions/streaming.mjs normalizeChatCompletionStream
+// adding an outer async function* for-await wrapper of +2 microtask ticks per chunk), traced by driving Stream.fromSSEResponse over a body async iterator whose next and
 // return resolve at once, with synchronous labels and an independent queueMicrotask clock (scratch probe trace-openai-sse.mjs). The
 // controller.abort labels of the trace are omitted: the Go decoder has no controller, and an abort changes nothing that the provider reads.
 // The decoder leaves a body read's awaits to the reader: the native read, then createAbortableSSESource's Promise.race over it and the
@@ -107,6 +109,93 @@ func TestOpenAIStreamDecoderFollowsOpenAI719SuspensionPoints(t *testing.T) {
 			before := tick
 			if decoder.Next() || tick != before+1 {
 				t.Error("a finished JSON iterator adds only its caller's await")
+			}
+		})
+	}
+}
+
+// TestOpenAIChatCompletionsNormalizeWrapperTicks pins the +2 ticks/chunk and +1 tick on
+// completion/error added by openai 7.59.0's normalizeChatCompletionStream outer async generator
+// wrapper (lib/chat-completions/streaming.mjs:12-22) when wrapNormalizeChatCompletionStream() is
+// active for chat.completions.create, while Stream.fromSSEResponse (used by responses.create)
+// stays unchanged at 7.19.0..7.59.0 ticks.
+// Measured against openai 7.59.0 on Node v24.22.2:
+//   responses-empty:    start@0 done@7
+//   completions-empty:  start@0 done@8
+//   responses-eof:      start@0 chunk@9  chunk@15 done@22
+//   completions-eof:    start@0 chunk@11 chunk@19 done@27
+//   responses-done:     start@0 chunk@9  chunk@15 done@29
+//   completions-done:   start@0 chunk@11 chunk@19 done@34
+//   responses-badjson:  start@0 chunk@9  error@20
+//   completions-badjson:start@0 chunk@11 error@23
+//   responses-readfail: start@0 chunk@9  error@16
+//   completions-readfail:start@0 chunk@11 error@19
+func TestOpenAIChatCompletionsNormalizeWrapperTicks(t *testing.T) {
+	t.Parallel()
+	const oneChunk = `data: {"id":"1","choices":[{"index":0,"delta":{"content":"a"}}]}` + "\n\n"
+	const twoChunksEOF = oneChunk + `data: {"id":"1","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}` + "\n\n"
+	const twoChunksDone = twoChunksEOF + "data: [DONE]\n\n"
+	const badJSON = oneChunk + "data: nope\n\n"
+
+	for _, tc := range []struct {
+		name           string
+		chunks         []string
+		chatCompletion bool
+		wantErr        string
+		want           []string
+	}{
+		{"responses-empty", nil, false, "", []string{"start@0", "done@7"}},
+		{"completions-empty", nil, true, "", []string{"start@0", "done@8"}},
+		{"responses-eof", []string{twoChunksEOF}, false, "", []string{"start@0", "chunk@9", "chunk@15", "done@22"}},
+		{"completions-eof", []string{twoChunksEOF}, true, "", []string{"start@0", "chunk@11", "chunk@19", "done@27"}},
+		{"responses-done", []string{twoChunksDone}, false, "", []string{"start@0", "chunk@9", "chunk@15", "done@29"}},
+		{"completions-done", []string{twoChunksDone}, true, "", []string{"start@0", "chunk@11", "chunk@19", "done@34"}},
+		{"responses-badjson", []string{badJSON}, false, "Error reading response: malformed server-sent event JSON.", []string{"start@0", "chunk@9", "error@20"}},
+		{"completions-badjson", []string{badJSON}, true, "Error reading response: malformed server-sent event JSON.", []string{"start@0", "chunk@11", "error@23"}},
+		{"responses-readfail", []string{oneChunk, readFailure}, false, "wire failed", []string{"start@0", "chunk@9", "error@16"}},
+		{"completions-readfail", []string{oneChunk, readFailure}, true, "wire failed", []string{"start@0", "chunk@11", "error@19"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tick := 0
+			var trace []string
+			mark := func(label string) { trace = append(trace, fmt.Sprintf("%s@%d", label, tick)) }
+			index := 0
+			reader := &openAITestChunkReader{
+				read: func() ([]byte, error) {
+					tick += 3
+					if index == len(tc.chunks) {
+						return nil, io.EOF
+					}
+					chunk := tc.chunks[index]
+					index++
+					if chunk == readFailure {
+						return nil, errors.New("wire failed")
+					}
+					return []byte(chunk), nil
+				},
+				close: func() error { return nil },
+			}
+			decoder := newOpenAIStreamDecoder(reader, nil, func() { tick++ })
+			if tc.chatCompletion {
+				decoder.decodeChunks()
+				decoder.wrapNormalizeChatCompletionStream()
+			}
+			mark("start")
+			for decoder.Next() {
+				mark("chunk")
+			}
+			errText := ""
+			if decoder.Err() != nil {
+				errText = decoder.Err().Error()
+				mark("error")
+			} else {
+				mark("done")
+			}
+			if errText != tc.wantErr {
+				t.Fatalf("err = %q, want %q", errText, tc.wantErr)
+			}
+			if !reflect.DeepEqual(trace, tc.want) {
+				t.Fatalf("trace = %v, want %v", trace, tc.want)
 			}
 		})
 	}

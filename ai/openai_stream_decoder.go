@@ -29,6 +29,10 @@ type openAIStreamDecoder struct {
 	chunks  *openAIChunkDecoder
 	chunk   oaiChunk
 	chunkOK bool
+	// normalizeWrapper models openai 7.59.0 normalizeChatCompletionStream's outer async function*
+	// (lib/chat-completions/streaming.mjs:12-22) on chat.completions.create streams: +2 ticks per
+	// yielded chunk (for-await + AsyncGeneratorYield) and +1 tick on completion/rejection.
+	normalizeWrapper bool
 }
 
 // openAIStreamRecordReuse is the largest record buffer the decoder keeps for the next record.
@@ -86,12 +90,18 @@ func (decoder *openAIStreamDecoder) Next() bool {
 		if !errors.Is(err, context.Canceled) && (err == nil || !strings.Contains(err.Error(), "FetchRequestCanceledException")) {
 			decoder.err = err
 		}
+		if decoder.normalizeWrapper {
+			openAIStreamSuspend(decoder.suspend) // normalizeChatCompletionStream's for-await awaits inner completion/rejection.
+		}
 		return false
 	}
 	if sse.Data == "[DONE]" {
-		// 7.19 breaks at the sentinel; the loop's AsyncIteratorClose returns _iterSSEMessages without aborting the request, so the body is not read to its end.
+		// 7.19..7.59 breaks at the sentinel; the loop's AsyncIteratorClose returns _iterSSEMessages without aborting the request, so the body is not read to its end.
 		decoder.messages.close(true)
 		openAIStreamSuspend(decoder.suspend) // AsyncIteratorClose awaits _iterSSEMessages.return().
+		if decoder.normalizeWrapper {
+			openAIStreamSuspend(decoder.suspend) // normalizeChatCompletionStream's for-await awaits inner completion.
+		}
 		decoder.done = true
 		decoder.finished = true
 		return false
@@ -99,12 +109,19 @@ func (decoder *openAIStreamDecoder) Next() bool {
 	if err := decoder.parse(&sse); err != nil {
 		decoder.messages.close(false)
 		openAIStreamSuspend(decoder.suspend) // AsyncIteratorClose awaits _iterSSEMessages.return().
+		if decoder.normalizeWrapper {
+			openAIStreamSuspend(decoder.suspend) // normalizeChatCompletionStream's for-await awaits inner rejection.
+		}
 		decoder.err = err
 		decoder.finished = true
 		return false
 	}
 	decoder.current = sse
 	openAIStreamSuspend(decoder.suspend) // AsyncGeneratorYield awaits the JSON value.
+	if decoder.normalizeWrapper {
+		openAIStreamSuspend(decoder.suspend) // normalizeChatCompletionStream's for-await awaits inner chunk.
+		openAIStreamSuspend(decoder.suspend) // normalizeChatCompletionStream's AsyncGeneratorYield awaits normalized chunk.
+	}
 	return true
 }
 
@@ -115,12 +132,22 @@ func (decoder *openAIStreamDecoder) Err() error             { return decoder.err
 // decodeChunks makes the decoder decode each record as a chat completion chunk (parseOpenAIChunkFast) as it checks it. A record the chunk decode reads is valid JSON without a top-level "error" member, which is everything parse checks for an event that is neither "error" nor "thread.*", so json.Valid and the member probe are skipped for it.
 func (decoder *openAIStreamDecoder) decodeChunks() { decoder.chunks = &openAIChunkDecoder{} }
 
+// wrapNormalizeChatCompletionStream enables the extra microtask ticks of openai 7.59.0's
+// normalizeChatCompletionStream outer async generator wrapper (lib/chat-completions/streaming.mjs:12-22),
+// which wraps chat.completions.create({stream: true}) but not responses.create.
+func (decoder *openAIStreamDecoder) wrapNormalizeChatCompletionStream() { decoder.normalizeWrapper = true }
+
 // Chunk is the current record's chunk and true when decodeChunks is on and the chunk decode read the record; the caller decodes the other records itself. The chunk's slices are valid until the next Next.
 func (decoder *openAIStreamDecoder) Chunk() (oaiChunk, bool) { return decoder.chunk, decoder.chunkOK }
 
 // ChunkParsesAsValue is validJSONParsesAsValue of the current record when Chunk answers true, which the chunk decode read off while it scanned the record.
 func (decoder *openAIStreamDecoder) ChunkParsesAsValue() bool {
 	return decoder.chunkOK && decoder.chunks.parsesAsValue
+}
+
+// ChunkHasAllFinishReasons reports whether the fast-decoded chunk already carries finish_reason on every choice (or has no choices).
+func (decoder *openAIStreamDecoder) ChunkHasAllFinishReasons() bool {
+	return decoder.chunkOK && decoder.chunks.allChoicesHaveFinishReason
 }
 
 func (decoder *openAIStreamDecoder) parse(sse *serverSentEvent) error {
