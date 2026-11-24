@@ -49,6 +49,11 @@ func TestUpstreamSessionSelectorRename(t *testing.T) {
 		}
 		renameCaseRecord(t, 79, "enters rename mode on Ctrl+R and submits with Enter")
 	})
+	// .upstream/v1.6.0/packages/coding-agent/test/session-selector-rename.test.ts:112
+	t.Run("keeps the renamed session selected when the reload starts with another session", func(t *testing.T) {
+		TestUpstreamSessionSelectorKeepsTheRenamedSessionSelectedWhenTheReloadStartsWithAnotherSession(t)
+		renameCaseRecord(t, 112, "keeps the renamed session selected when the reload starts with another session")
+	})
 }
 
 func renameCaseRecord(t testing.TB, site int, name string) {
