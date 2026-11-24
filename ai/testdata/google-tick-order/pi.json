@@ -1,7 +1,7 @@
 {
  "pi": "1.6.0",
  "genai": "2.32.0",
- "node": "v24.19.0",
+ "node": "v24.22.2",
  "cap": 160,
  "note": "stamp = (seg, tick); see probe.mjs header. array order within a stamp is execution order.",
  "cases": [
@@ -33,12 +33,12 @@
     },
     {
      "seg": 1,
-     "tick": 13,
+     "tick": 12,
      "ev": "sdk-resolved"
     },
     {
      "seg": 1,
-     "tick": 24,
+     "tick": 20,
      "ev": "chunk",
      "index": 0,
      "text": null,
@@ -47,7 +47,7 @@
     },
     {
      "seg": 1,
-     "tick": 29,
+     "tick": 23,
      "ev": "sdk-end"
     }
    ],
@@ -384,7 +384,7 @@
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 5
+      "durationMs": 0
      }
     },
     {
@@ -428,7 +428,7 @@
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 5
+      "durationMs": 0
      }
     },
     {
@@ -472,7 +472,7 @@
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 5
+      "durationMs": 0
      }
     },
     {
@@ -510,7 +510,7 @@
     },
     {
      "seg": 1,
-     "tick": 13,
+     "tick": 12,
      "ev": "sdk-resolved"
     },
     {
@@ -521,7 +521,7 @@
     },
     {
      "seg": 2,
-     "tick": 10,
+     "tick": 8,
      "ev": "chunk",
      "index": 0,
      "text": null,
@@ -530,7 +530,7 @@
     },
     {
      "seg": 2,
-     "tick": 15,
+     "tick": 11,
      "ev": "sdk-end"
     }
    ],
@@ -873,7 +873,7 @@
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 2
+      "durationMs": 0
      }
     },
     {
@@ -917,7 +917,7 @@
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 2
+      "durationMs": 0
      }
     },
     {
@@ -961,7 +961,7 @@
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 2
+      "durationMs": 0
      }
     },
     {
@@ -1003,12 +1003,12 @@
     },
     {
      "seg": 1,
-     "tick": 13,
+     "tick": 12,
      "ev": "sdk-resolved"
     },
     {
      "seg": 1,
-     "tick": 25,
+     "tick": 21,
      "ev": "chunk",
      "index": 0,
      "text": null,
@@ -1017,7 +1017,7 @@
     },
     {
      "seg": 1,
-     "tick": 30,
+     "tick": 24,
      "ev": "sdk-end"
     }
    ],
@@ -1354,7 +1354,7 @@
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 2
+      "durationMs": 0
      }
     },
     {
@@ -1398,7 +1398,7 @@
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 2
+      "durationMs": 0
      }
     },
     {
@@ -1442,7 +1442,7 @@
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 2
+      "durationMs": 0
      }
     },
     {
@@ -1484,7 +1484,7 @@
     },
     {
      "seg": 1,
-     "tick": 13,
+     "tick": 12,
      "ev": "sdk-resolved"
     },
     {
@@ -1501,7 +1501,7 @@
     },
     {
      "seg": 3,
-     "tick": 10,
+     "tick": 8,
      "ev": "chunk",
      "index": 0,
      "text": null,
@@ -1510,7 +1510,7 @@
     },
     {
      "seg": 3,
-     "tick": 15,
+     "tick": 11,
      "ev": "sdk-end"
     }
    ],
@@ -1859,7 +1859,7 @@
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 3
+      "durationMs": 0
      }
     },
     {
@@ -1903,7 +1903,7 @@
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 3
+      "durationMs": 0
      }
     },
     {
@@ -1947,7 +1947,7 @@
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 3
+      "durationMs": 0
      }
     },
     {
@@ -1985,12 +1985,12 @@
     },
     {
      "seg": 1,
-     "tick": 13,
+     "tick": 12,
      "ev": "sdk-resolved"
     },
     {
      "seg": 1,
-     "tick": 24,
+     "tick": 20,
      "ev": "chunk",
      "index": 0,
      "text": "one",
@@ -1999,7 +1999,7 @@
     },
     {
      "seg": 1,
-     "tick": 33,
+     "tick": 27,
      "ev": "chunk",
      "index": 1,
      "text": " two",
@@ -2008,7 +2008,7 @@
     },
     {
      "seg": 1,
-     "tick": 38,
+     "tick": 30,
      "ev": "sdk-end"
     }
    ],
@@ -2432,7 +2432,7 @@
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 2
+      "durationMs": 0
      }
     },
     {
@@ -2472,7 +2472,7 @@
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 2
+      "durationMs": 0
      }
     },
     {
@@ -2514,12 +2514,12 @@
     },
     {
      "seg": 1,
-     "tick": 13,
+     "tick": 12,
      "ev": "sdk-resolved"
     },
     {
      "seg": 1,
-     "tick": 24,
+     "tick": 20,
      "ev": "chunk",
      "index": 0,
      "text": "one",
@@ -2528,7 +2528,7 @@
     },
     {
      "seg": 1,
-     "tick": 34,
+     "tick": 28,
      "ev": "chunk",
      "index": 1,
      "text": " two",
@@ -2537,7 +2537,7 @@
     },
     {
      "seg": 1,
-     "tick": 39,
+     "tick": 31,
      "ev": "sdk-end"
     }
    ],
@@ -2961,7 +2961,7 @@
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 2
+      "durationMs": 0
      }
     },
     {
@@ -3001,7 +3001,7 @@
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 2
+      "durationMs": 0
      }
     },
     {
@@ -3039,7 +3039,7 @@
     },
     {
      "seg": 1,
-     "tick": 13,
+     "tick": 12,
      "ev": "sdk-resolved"
     },
     {
@@ -3050,7 +3050,7 @@
     },
     {
      "seg": 2,
-     "tick": 10,
+     "tick": 8,
      "ev": "chunk",
      "index": 0,
      "text": "one",
@@ -3059,7 +3059,7 @@
     },
     {
      "seg": 2,
-     "tick": 19,
+     "tick": 15,
      "ev": "chunk",
      "index": 1,
      "text": " two",
@@ -3068,7 +3068,7 @@
     },
     {
      "seg": 2,
-     "tick": 24,
+     "tick": 18,
      "ev": "sdk-end"
     }
    ],
@@ -3498,7 +3498,7 @@
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 3
+      "durationMs": 0
      }
     },
     {
@@ -3538,7 +3538,7 @@
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 3
+      "durationMs": 0
      }
     },
     {
@@ -3580,7 +3580,7 @@
     },
     {
      "seg": 1,
-     "tick": 13,
+     "tick": 12,
      "ev": "sdk-resolved"
     },
     {
@@ -3591,7 +3591,7 @@
     },
     {
      "seg": 2,
-     "tick": 10,
+     "tick": 8,
      "ev": "chunk",
      "index": 0,
      "text": "one",
@@ -3606,7 +3606,7 @@
     },
     {
      "seg": 3,
-     "tick": 10,
+     "tick": 8,
      "ev": "chunk",
      "index": 1,
      "text": " two",
@@ -3615,7 +3615,7 @@
     },
     {
      "seg": 3,
-     "tick": 15,
+     "tick": 11,
      "ev": "sdk-end"
     }
    ],
@@ -4051,7 +4051,7 @@
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 4
+      "durationMs": 0
      }
     },
     {
@@ -4091,7 +4091,7 @@
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 4
+      "durationMs": 0
      }
     },
     {
@@ -4133,12 +4133,12 @@
     },
     {
      "seg": 1,
-     "tick": 13,
+     "tick": 12,
      "ev": "sdk-resolved"
     },
     {
      "seg": 1,
-     "tick": 24,
+     "tick": 20,
      "ev": "chunk",
      "index": 0,
      "text": "one",
@@ -4153,7 +4153,7 @@
     },
     {
      "seg": 2,
-     "tick": 10,
+     "tick": 8,
      "ev": "chunk",
      "index": 1,
      "text": " two",
@@ -4162,7 +4162,7 @@
     },
     {
      "seg": 2,
-     "tick": 15,
+     "tick": 11,
      "ev": "sdk-end"
     }
    ],
@@ -4592,7 +4592,7 @@
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 2
+      "durationMs": 0
      }
     },
     {
@@ -4632,7 +4632,7 @@
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 2
+      "durationMs": 0
      }
     },
     {
@@ -4674,12 +4674,12 @@
     },
     {
      "seg": 1,
-     "tick": 13,
+     "tick": 12,
      "ev": "sdk-resolved"
     },
     {
      "seg": 1,
-     "tick": 24,
+     "tick": 20,
      "ev": "chunk",
      "index": 0,
      "text": "hmm",
@@ -4688,7 +4688,7 @@
     },
     {
      "seg": 1,
-     "tick": 34,
+     "tick": 28,
      "ev": "chunk",
      "index": 1,
      "text": "done",
@@ -4697,7 +4697,7 @@
     },
     {
      "seg": 1,
-     "tick": 39,
+     "tick": 31,
      "ev": "sdk-end"
     }
    ],
@@ -5227,7 +5227,7 @@
       "timestamp": 0,
       "responseId": "g3",
       "rawStopReason": "STOP",
-      "durationMs": 2
+      "durationMs": 0
      }
     },
     {
@@ -5272,7 +5272,7 @@
       "timestamp": 0,
       "responseId": "g3",
       "rawStopReason": "STOP",
-      "durationMs": 2
+      "durationMs": 0
      }
     },
     {
@@ -5317,7 +5317,7 @@
       "timestamp": 0,
       "responseId": "g3",
       "rawStopReason": "STOP",
-      "durationMs": 2
+      "durationMs": 0
      }
     },
     {
@@ -5362,7 +5362,7 @@
       "timestamp": 0,
       "responseId": "g3",
       "rawStopReason": "STOP",
-      "durationMs": 2
+      "durationMs": 0
      }
     },
     {
