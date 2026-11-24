@@ -111,11 +111,10 @@ func TestInitOwnsTerminalForSIGCONTAsSoonAsStartTerminalArmsIt(t *testing.T) {
 			t.Setenv("PIG_TEST_STARTUP_TUI_MODE", mode)
 			captured := runInitPTYChild(t, "TestInitOwnsTerminalForSIGCONTAsSoonAsStartTerminalArmsItChild", startupArmedContinueChildEnv)
 			const sentinel = "ARMED_WINDOW_SENTINEL"
-			idx := bytes.Index(captured, []byte(sentinel))
-			if idx < 0 {
+			_, after, ok := bytes.Cut(captured, []byte(sentinel))
+			if !ok {
 				t.Fatalf("missing %s in child output", sentinel)
 			}
-			after := captured[idx+len(sentinel):]
 			if !bytes.Contains(after, []byte("\x1b[?2004h")) {
 				t.Fatalf("mode=%s: SIGCONT right after startTerminal did not re-emit bracketed-paste enable: %q", mode, tailBytes(after, 400))
 			}
@@ -175,11 +174,10 @@ func TestInitOwnsTerminalForSIGCONTAsSoonAsStartTerminalArmsItChild(t *testing.T
 func TestSIGCONTUnderRawTermiosRestoringShellRearmsAndRedraws(t *testing.T) {
 	captured := runInitPTYChild(t, "TestSIGCONTUnderRawTermiosRestoringShellRearmsAndRedrawsChild", rawRestoredShellContinueChildEnv)
 	const sentinel = "RAW_SHELL_FG_SENTINEL"
-	idx := bytes.Index(captured, []byte(sentinel))
-	if idx < 0 {
+	_, after, ok := bytes.Cut(captured, []byte(sentinel))
+	if !ok {
 		t.Fatalf("missing %s in child output", sentinel)
 	}
-	after := captured[idx+len(sentinel):]
 	if !bytes.Contains(after, []byte("\x1b[?2004h")) {
 		t.Fatalf("SIGCONT with raw termios already restored did not re-enable bracketed paste: %q", tailBytes(after, 400))
 	}
