@@ -14,6 +14,11 @@ import (
 // They are numbers, not x/sys/windows names, so that the decision is one function that a test on any platform can run; only the Windows build calls it.
 var windowsTransientCodes = [...]syscall.Errno{5, 32, 33, 1175, 1176}
 
+// TransientWindowsCode reports whether err is, or wraps, one of [windowsTransientCodes].
+func TransientWindowsCode(err error) bool {
+	return transientWindowsCode(err)
+}
+
 // transientWindowsCode reports whether err is, or wraps, one of [windowsTransientCodes].
 func transientWindowsCode(err error) bool {
 	for _, code := range windowsTransientCodes {

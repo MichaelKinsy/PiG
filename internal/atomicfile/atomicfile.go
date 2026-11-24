@@ -41,7 +41,7 @@ func SetInPlaceReporter(report func(path string, cause error)) {
 // also to a target that does not exist yet (a chain of links ends at the file the last one names, which is created; a loop is ELOOP), so the rename
 // replaces the target and the link stays; the mode and, where the process may set them, the owner and group are kept, and so are the
 // extended attributes of the file (on Linux they hold POSIX ACLs; on macOS the user's attributes), and on Windows the replaced file's DACL entries with
-// their flags and SE_DACL_PROTECTED (and its owner and group where the token may set them), attributes and streams, and its SE_DACL_AUTO_INHERITED flag
+// their flags and SE_DACL_PROTECTED (and its owner and group where the token may set them), user-settable attributes, and its SE_DACL_AUTO_INHERITED flag
 // where the file system takes it back (D651). In place is the answer where
 //   - the file has more than one hard link (a rename would leave the other names with the old bytes);
 //   - an extended attribute, or on Windows the DACL's entries or SE_DACL_PROTECTED, cannot be given to the temporary file for a reason other than a file
@@ -52,9 +52,8 @@ func SetInPlaceReporter(report func(path string, cause error)) {
 //
 // A file the caller may not write (a read-only file) is refused as an in-place write would refuse it, and a write that fails for a real reason (a
 // full disk, an I/O error) is an error, in place or not. On Windows a rename another process's open handle refuses is retried for
-// [fsretry.RenameBudget] before its error is returned, and a rename that fails is never turned into an in-place write there; a replacement that left
-// other access than the file had is undone from the backup and is an error. Any [*fs.PathError] naming the resolved target or its temporary sibling
-// reports path as given, as os.WriteFile and Node's writeFileSync do.
+// [fsretry.RenameBudget] before its error is returned, and a rename that fails is never turned into an in-place write there. Any [*fs.PathError] naming
+// the resolved target or its temporary sibling reports path as given, as os.WriteFile and Node's writeFileSync do.
 func WriteFile(path string, data []byte, perm os.FileMode) error {
 	// pig divergence (D651): replaced through a private temporary file and a rename, in place where that is refused; Pi writes the file in place.
 	given := path
