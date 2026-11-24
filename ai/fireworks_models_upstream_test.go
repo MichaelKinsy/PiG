@@ -62,7 +62,7 @@ func TestFireworksModels(t *testing.T) {
 			if m.API != APIOpenAICompletions || m.BaseURL != "https://api.fireworks.ai/inference/v1" {
 				t.Fatalf("model = %+v", m)
 			}
-			assertCatalogJSON(t, m.Compat, `{"supportsStore":false,"supportsDeveloperRole":false,"supportsStrictMode":true,"requiresReasoningContentOnAssistantMessages":true,"thinkingFormat":"openai","supportsMidConvoSystemMessages":true,"supportsMidConvoToolAdditions":true,"sendSessionAffinityHeaders":true,"supportsLongCacheRetention":false}`)
+			assertCatalogJSON(t, m.Compat, `{"supportsStore":false,"supportsStrictMode":true,"requiresReasoningContentOnAssistantMessages":true,"thinkingFormat":"openai","supportsMidConvoSystemMessages":true,"supportsMidConvoToolAdditions":true,"sendSessionAffinityHeaders":true,"supportsLongCacheRetention":false}`)
 			assertCatalogJSON(t, m.ThinkingLevelMap, `{"off":null,"minimal":null,"low":"low","medium":null,"high":"high","xhigh":null,"max":"max"}`)
 		}
 		p := fireworksCatalogPayload(t, "accounts/fireworks/models/kimi-k3", StreamOptions{Thinking: ThinkingLevelMax})
