@@ -349,7 +349,6 @@ const MistralConversationsCompatProperties = {
         description: "Whether the exact model accepts system messages after the conversation has started. When false, later system messages are folded into the leading system message.",
         default: false,
     }),
-    // Pi 2c2a77f9f3ab (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
     supportsStrictMode: optionalCompatBoolean({
         description: "Whether the model supports strict (schema-constrained) function tools.",
         default: false,

@@ -7,9 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand/v2"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -199,21 +197,8 @@ func randomExtensions(rng *rand.Rand, tools []json.RawMessage) []describeExt {
 	return append([]describeExt{}, picked...)
 }
 
-// namespaceOracleSkip skips a test that needs Pi's code mode namespaces declared by extensions (Pi 5e24c6b1f, after the committed
-// pin 1.5.2): the pin's mirror has describe.ts with prefix namespaces and cannot answer. `make test-carried-oracles` runs the test
-// against the tree of that commit (pioracle.OverrideTreeEnv), where a tree without the work fails it (pioracle.SkipAtPin); a pin
-// that reaches the commit runs it in every run, and this skip, the make target's entry and CARRIED_ORACLE_* go with that pin bump.
-func namespaceOracleSkip(t testing.TB) {
-	t.Helper()
-	source, err := os.ReadFile(filepath.Join(pioracle.Packages(t), "durable", "src", "codemode", "describe.ts"))
-	if err != nil || !strings.Contains(string(source), "export function namespacesOf(") {
-		pioracle.SkipAtPin(t, "the pin's Pi mirror has prefix namespaces (Pi 5e24c6b1f declares them in extensions, after the committed pin): run make test-carried-oracles")
-	}
-}
-
 func askDescribePi(t *testing.T, ops []describeOp) []describeAnswer {
 	t.Helper()
-	namespaceOracleSkip(t)
 	input, err := json.Marshal(ops)
 	if err != nil {
 		t.Fatal(err)
@@ -269,7 +254,6 @@ func extensionsOf(in []describeExt) []*durable.Extension {
 }
 
 func TestDescribeMatchesPiOnSeededToolSets(t *testing.T) {
-	namespaceOracleSkip(t)
 	rng := rand.New(rand.NewPCG(20261117, 3))
 	ops := []describeOp{{Op: "constants"}, {Op: "description", Models: false}, {Op: "description", Models: true}}
 	type setup struct {

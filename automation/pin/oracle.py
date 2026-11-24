@@ -167,7 +167,8 @@ def generate_catalog_data(source: Path, work: Path) -> Path:
                 shutil.copytree(ai / name, copy / name)
             else:
                 shutil.copy2(ai / name, copy / name)
-        shutil.copytree(CATALOG_OVERLAY, copy, dirs_exist_ok=True)
+        if CATALOG_OVERLAY.is_dir():
+            shutil.copytree(CATALOG_OVERLAY, copy, dirs_exist_ok=True)
         shutil.rmtree(copy / "src" / "providers" / "data")
         env = {**os.environ, "CATALOG_FIXTURES": str(fixtures), "CATALOG_FETCHED_AT": meta["fetchedAt"]}
         done = subprocess.run([node, "--import", node_import_specifier(CATALOG_REPLAY), "catalog/generate.ts", "--strict"], cwd=copy, env=env, capture_output=True, text=True, check=False, timeout=600)

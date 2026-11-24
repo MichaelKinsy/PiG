@@ -4,7 +4,7 @@
 import { setKeybindings } from "../../../pi-tui.mjs";
 import { KeybindingsManager } from "../core/keybindings.js";
 import { SessionSelectorComponent } from "../modes/interactive/components/session-selector.js";
-import { flushStdout } from "../utils/sleep.js";
+import { flushStdout } from "../utils/flush-stdout.js";
 import { createStartupTui, startStartupTui } from "./startup-ui.js";
 /** Show TUI session selector and return selected session path or null if cancelled */
 export async function selectSession(currentSessionsLoader, allSessionsLoader, settingsManager) {

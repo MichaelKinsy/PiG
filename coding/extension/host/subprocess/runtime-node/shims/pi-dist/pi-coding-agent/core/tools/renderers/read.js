@@ -80,7 +80,6 @@ function formatCompactReadCall(classification, args, theme) {
         expandHint);
 }
 function formatReadResult(args, result, options, theme, showImages, _cwd, isError) {
-    // Pi 4be4cb4f5e9c (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
     const unsupportedBy = result.details?.imageUnsupportedByModel;
     const imageWarning = unsupportedBy
         ? `\n${theme.fg("warning", `[${unsupportedBy} does not support images; it saw a placeholder instead]`)}`

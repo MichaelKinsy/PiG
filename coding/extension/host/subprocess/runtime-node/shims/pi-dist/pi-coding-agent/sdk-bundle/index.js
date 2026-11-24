@@ -63,7 +63,6 @@ import {
   findExactModelReferenceMatch,
   findTurnStartIndex,
   flushRawStdout,
-  flushStdout,
   formatCacheWarmingStatus,
   formatCacheWarmingUsage,
   formatHttpIdleTimeoutMs,
@@ -124,7 +123,7 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-EPHTXC5S.js";
+} from "./chunk-OSE7DX4D.js";
 import {
   CredentialSynchronizationError,
   InMemoryCodingAgentModelsStore,
@@ -163,7 +162,7 @@ import {
   resolveReadPath,
   withFileMutationQueue,
   writeRenderers
-} from "./chunk-2JZ2X7YW.js";
+} from "./chunk-W25FOIG4.js";
 import {
   fetchWithRetry,
   getPiUserAgent
@@ -3881,6 +3880,23 @@ Fell back to the system theme.`);
   }
 };
 
+// pi-dist/pi-coding-agent/utils/flush-stdout.js
+var STDOUT_FLUSH_TIMEOUT_MS = 1e3;
+function flushStdout() {
+  return new Promise((resolve7) => {
+    const finish = /* @__PURE__ */ __name((error) => {
+      clearTimeout(timer);
+      if (!error)
+        process.stdout.off("error", finish);
+      resolve7();
+    }, "finish");
+    const timer = setTimeout(finish, STDOUT_FLUSH_TIMEOUT_MS);
+    process.stdout.on("error", finish);
+    process.stdout.write("", finish);
+  });
+}
+__name(flushStdout, "flushStdout");
+
 // pi-dist/pi-coding-agent/cli/startup-ui.js
 var OFFICIAL_PACKAGE_NAME = "@earendil-works/pi-coding-agent";
 var OFFICIAL_APP_NAME = "pi";
@@ -4529,7 +4545,6 @@ var SessionList = class {
   filteredSessions = [];
   selectedIndex = 0;
   selectionTouched = false;
-  // Pi a635f3901 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
   // Session to select once it appears, while a progressive reload has not yet delivered it
   pendingSelectedPath;
   searchInput;
@@ -4590,7 +4605,6 @@ var SessionList = class {
     this.nameFilter = nameFilter;
     this.filterSessions(this.searchInput.getValue());
   }
-  // Pi a635f3901 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
   /**
    * @param partial true when more sessions are still loading; a selected session missing from a
    * partial list stays the selection target until it arrives
@@ -4813,7 +4827,6 @@ var SessionList = class {
       this.handleSearchInput(keyData);
     }
   }
-  // Pi 5bcf370a5293 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
   /** Applies a key to the search query; a changed, non-empty query selects the top row, the best match. */
   handleSearchInput(keyData) {
     const previousQuery = this.searchInput.getValue();
@@ -5251,15 +5264,6 @@ async function resolveProjectTrusted(options) {
 __name(resolveProjectTrusted, "resolveProjectTrusted");
 
 // pi-dist/pi-coding-agent/core/settings-diagnostics.js
-import chalk4 from "../../../chalk/source/index.js";
-function writeDiagnosticsToStderr(diagnostics) {
-  for (const diagnostic of diagnostics) {
-    const color = diagnostic.type === "error" ? chalk4.red : diagnostic.type === "warning" ? chalk4.yellow : chalk4.dim;
-    const prefix = diagnostic.type === "error" ? "Error: " : diagnostic.type === "warning" ? "Warning: " : "";
-    console.error(color(`${prefix}${diagnostic.message}`));
-  }
-}
-__name(writeDiagnosticsToStderr, "writeDiagnosticsToStderr");
 function collectSettingsDiagnostics(settingsManager) {
   return settingsManager.drainErrors().map(({ scope, path: path6, error }) => ({
     type: "warning",
@@ -6668,7 +6672,7 @@ var builtInExtensions = [
 var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-KRQWQAEI.js"), "loadMcpCommand");
 
 // pi-dist/pi-coding-agent/migrations.js
-import chalk5 from "../../../chalk/source/index.js";
+import chalk4 from "../../../chalk/source/index.js";
 import { existsSync as existsSync4, mkdirSync, readdirSync, readFileSync as readFileSync3, renameSync, rmSync, writeFileSync as writeFileSync2 } from "fs";
 import { dirname, join as join5 } from "path";
 var MIGRATION_GUIDE_URL = "https://github.com/earendil-works/pi/blob/main/packages/coding-agent/CHANGELOG.md#extensions-migration";
@@ -6758,10 +6762,10 @@ function migrateCommandsToPrompts(baseDir, label) {
   if (existsSync4(commandsDir) && !existsSync4(promptsDir)) {
     try {
       renameSync(commandsDir, promptsDir);
-      console.log(chalk5.green(`Migrated ${label} commands/ \u2192 prompts/`));
+      console.log(chalk4.green(`Migrated ${label} commands/ \u2192 prompts/`));
       return true;
     } catch (err) {
-      console.log(chalk5.yellow(`Warning: Could not migrate ${label} commands/ to prompts/: ${err instanceof Error ? err.message : err}`));
+      console.log(chalk4.yellow(`Warning: Could not migrate ${label} commands/ to prompts/: ${err instanceof Error ? err.message : err}`));
     }
   }
   return false;
@@ -6815,7 +6819,7 @@ function migrateToolsToBin() {
     }
   }
   if (movedAny) {
-    console.log(chalk5.green(`Migrated managed binaries tools/ \u2192 bin/`));
+    console.log(chalk4.green(`Migrated managed binaries tools/ \u2192 bin/`));
   }
 }
 __name(migrateToolsToBin, "migrateToolsToBin");
@@ -6858,13 +6862,13 @@ async function showDeprecationWarnings(warnings) {
   if (warnings.length === 0)
     return;
   for (const warning of warnings) {
-    console.log(chalk5.yellow(`Warning: ${warning}`));
+    console.log(chalk4.yellow(`Warning: ${warning}`));
   }
-  console.log(chalk5.yellow(`
+  console.log(chalk4.yellow(`
 Move your extensions to the extensions/ directory.`));
-  console.log(chalk5.yellow(`Migration guide: ${MIGRATION_GUIDE_URL}`));
-  console.log(chalk5.yellow(`Documentation: ${EXTENSIONS_DOC_URL}`));
-  console.log(chalk5.dim(`
+  console.log(chalk4.yellow(`Migration guide: ${MIGRATION_GUIDE_URL}`));
+  console.log(chalk4.yellow(`Documentation: ${EXTENSIONS_DOC_URL}`));
+  console.log(chalk4.dim(`
 Press any key to continue...`));
   await new Promise((resolve7) => {
     process.stdin.setRawMode?.(true);
@@ -6887,6 +6891,17 @@ function runMigrations(cwd) {
   return { migratedAuthProviders, deprecationWarnings };
 }
 __name(runMigrations, "runMigrations");
+
+// pi-dist/pi-coding-agent/modes/diagnostics-stderr.js
+import chalk5 from "../../../chalk/source/index.js";
+function writeDiagnosticsToStderr(diagnostics) {
+  for (const diagnostic of diagnostics) {
+    const color = diagnostic.type === "error" ? chalk5.red : diagnostic.type === "warning" ? chalk5.yellow : chalk5.dim;
+    const prefix = diagnostic.type === "error" ? "Error: " : diagnostic.type === "warning" ? "Warning: " : "";
+    console.error(color(`${prefix}${diagnostic.message}`));
+  }
+}
+__name(writeDiagnosticsToStderr, "writeDiagnosticsToStderr");
 
 // pi-dist/pi-coding-agent/modes/interactive/interactive-mode.js
 import * as crypto2 from "node:crypto";
@@ -8015,6 +8030,7 @@ async function shareViaGist(tmpFile, context) {
       proc.stderr?.on("data", (data) => {
         stderr += data.toString();
       });
+      proc.on("error", (error) => resolve7({ stdout, stderr: stderr || error.message, code: null }));
       proc.on("close", (code) => resolve7({ stdout, stderr, code }));
     });
     if (loader.signal.aborted)
@@ -8333,7 +8349,6 @@ var AssistantMessageComponent = class extends Container11 {
   timestamp;
   thinkingVisibilityOverrides = /* @__PURE__ */ new Map();
   markdownSlots = [];
-  // Pi b7bb7ca905b8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
   zoneLines;
   constructor(message, hideThinkingBlock = false, markdownTheme = getMarkdownTheme(), hiddenThinkingLabel = "Thinking...", outputPad = 1, markdownTransformers = [], messageId, timestamp) {
     super();
@@ -13255,7 +13270,6 @@ var UserMessageComponent = class extends Container29 {
   markdownTransformers;
   messageId;
   timestamp;
-  // Pi b7bb7ca905b8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
   zoneLines;
   constructor(text, markdownTheme = getMarkdownTheme(), outputPad = 1, markdownTransformers = [], messageId, timestamp) {
     super();
@@ -13707,6 +13721,37 @@ function formatLoginProviderCompletionDescription(provider) {
   return provider.name === provider.id ? authTypes : `${provider.name} \xB7 ${authTypes}`;
 }
 __name(formatLoginProviderCompletionDescription, "formatLoginProviderCompletionDescription");
+var REASONING_DROP_DIAGNOSTICS = /* @__PURE__ */ new Map([
+  [
+    "anthropic_input_transformations",
+    { provider: "Anthropic", droppedType: "thinking_dropped", noun: ["thinking block", "thinking blocks"] }
+  ],
+  [
+    "openai_input_transformations",
+    { provider: "OpenAI", droppedType: "reasoning", noun: ["reasoning item", "reasoning items"] }
+  ]
+]);
+function getDroppedReasoning(message) {
+  for (const diagnostic of message.diagnostics ?? []) {
+    const kind = REASONING_DROP_DIAGNOSTICS.get(diagnostic.type);
+    if (!kind)
+      continue;
+    const transformations = diagnostic.details?.transformations;
+    if (!Array.isArray(transformations))
+      continue;
+    const dropped = transformations.filter((transformation) => typeof transformation === "object" && transformation !== null && transformation.type === kind.droppedType);
+    if (dropped.length === 0)
+      continue;
+    const reasons = /* @__PURE__ */ new Set();
+    for (const transformation of dropped) {
+      if (typeof transformation.reason === "string")
+        reasons.add(transformation.reason);
+    }
+    return { diagnostic: kind, count: dropped.length, reasons: [...reasons] };
+  }
+  return void 0;
+}
+__name(getDroppedReasoning, "getDroppedReasoning");
 var InteractiveMode = class _InteractiveMode {
   static {
     __name(this, "InteractiveMode");
@@ -14120,6 +14165,7 @@ var InteractiveMode = class _InteractiveMode {
     });
     nextUi.setClearOnShrink(clearOnShrink);
     nextUi.onDebug = onDebug;
+    nextUi.setSuspendSignalHandler(() => this.handleCtrlZ());
     if (nextUi instanceof TuiMainScreen3 && this.mainScreenRenderState) {
       nextUi.restoreRenderState(this.mainScreenRenderState);
     }
@@ -14177,6 +14223,7 @@ var InteractiveMode = class _InteractiveMode {
     this.defaultEditor.onCtrlD = () => this.handleCtrlD();
     this.defaultEditor.onSubmit = (text) => this.handleStartupSubmit(text);
     this.ui.setFocus(this.editor);
+    this.ui.setSuspendSignalHandler(() => this.handleCtrlZ());
     this.ui.start();
     this.isInitialized = true;
     this.programStatus.report();
@@ -16725,38 +16772,27 @@ ${message}`, ["Yes", "No"], opts, {
     this.chatContainer.addChild(new Spacer28(1));
     this.chatContainer.addChild(new ThemedText(() => theme.fg("warning", `${label}: ${formatTokens(tokens)} tokens billed${cost}`), 1, 0));
   }
-  static countDroppedThinkingBlocks(message) {
-    let count = 0;
-    for (const diagnostic of message.diagnostics ?? []) {
-      if (diagnostic.type !== "anthropic_input_transformations")
-        continue;
-      const transformations = diagnostic.details?.transformations;
-      if (!Array.isArray(transformations))
-        continue;
-      count += transformations.filter((transformation) => typeof transformation === "object" && transformation !== null && transformation.type === "thinking_dropped").length;
-    }
-    return count;
-  }
   maybeShowThinkingDropNotice(message) {
     if (!this.settingsManager.getShowCacheMissNotices())
       return;
-    const droppedCount = _InteractiveMode.countDroppedThinkingBlocks(message);
-    if (droppedCount === 0)
+    const dropped = getDroppedReasoning(message);
+    if (!dropped)
       return;
-    let previousDroppedCount = 0;
     const branch = this.sessionManager.getBranch();
     for (let i = branch.length - 1; i >= 0; i--) {
       const entry = branch[i];
       if (entry.type === "message" && entry.message.role === "assistant") {
-        previousDroppedCount = _InteractiveMode.countDroppedThinkingBlocks(entry.message);
+        const previous = getDroppedReasoning(entry.message);
+        if (previous?.diagnostic === dropped.diagnostic && dropped.count <= previous.count)
+          return;
         break;
       }
     }
-    if (droppedCount <= previousDroppedCount)
-      return;
-    const noun = droppedCount === 1 ? "thinking block" : "thinking blocks";
+    const { provider, noun: nouns } = dropped.diagnostic;
+    const noun = nouns[dropped.count === 1 ? 0 : 1];
+    const reasons = dropped.reasons.length > 0 ? `: ${dropped.reasons.join(", ")}` : "";
     this.chatContainer.addChild(new Spacer28(1));
-    this.chatContainer.addChild(new ThemedText(() => theme.fg("warning", `Anthropic dropped ${droppedCount} ${noun} (details in session)`), 1, 0));
+    this.chatContainer.addChild(new ThemedText(() => theme.fg("warning", `${provider} dropped ${dropped.count} ${noun}${reasons} (details in session)`), 1, 0));
   }
   /**
    * Show a transcript notice when a completed assistant message paid for a
@@ -20530,7 +20566,7 @@ __name(validateThemeJson, "validateThemeJson");
 
 // pi-dist/pi-coding-agent/package-manager-cli.js
 import { existsSync as existsSync8, mkdirSync as mkdirSync5, mkdtempSync as mkdtempSync3, readdirSync as readdirSync2, readFileSync as readFileSync11, renameSync as renameSync3, rmSync as rmSync7, writeFileSync as writeFileSync6 } from "node:fs";
-import { join as join14, resolve as resolve6 } from "node:path";
+import { delimiter, dirname as dirname6, join as join14, resolve as resolve6 } from "node:path";
 import { ModelsError } from "../../pi-ai/sdk-bundle/index.js";
 import { Markdown as Markdown8 } from "../../../pi-tui.mjs";
 import chalk7 from "../../../chalk/source/index.js";
@@ -21404,11 +21440,19 @@ async function runManagedNpmCi(stageDir) {
     throw new Error(`npm ${args.join(" ")} exited with code ${code ?? "unknown"}`);
 }
 __name(runManagedNpmCi, "runManagedNpmCi");
+function getManagedReleaseVerifyEnv() {
+  const nodeDir = dirname6(process.execPath);
+  const pathKey = Object.keys(process.env).find((key) => key.toLowerCase() === "path") ?? "PATH";
+  const currentPath = process.env[pathKey] ?? "";
+  return { ...process.env, [pathKey]: [nodeDir, currentPath].filter(Boolean).join(delimiter) };
+}
+__name(getManagedReleaseVerifyEnv, "getManagedReleaseVerifyEnv");
 function verifyManagedRelease(releaseDir, expectedVersion) {
   const binPath = join14(releaseDir, "node_modules", ".bin", process.platform === "win32" ? `${APP_NAME}.cmd` : APP_NAME);
   const result = spawnProcessSync(binPath, ["--version"], {
     encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"]
+    stdio: ["ignore", "pipe", "pipe"],
+    env: getManagedReleaseVerifyEnv()
   });
   if (result.error || result.status !== 0) {
     const reason = result.error?.message || result.stderr.trim() || `exit code ${result.status ?? "unknown"}`;

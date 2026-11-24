@@ -886,27 +886,6 @@ model-data-check: ## Check the published model data against the pinned Pi source
 		printf '%s\n' "$$out" | grep -q -- '--- PASS: TestPublishedModelDataValidates ' || { echo "model-data-check: TestPublishedModelDataValidates did not pass" >&2; exit 1; }; \
 		if printf '%s\n' "$$out" | grep -q -- '--- SKIP'; then echo "model-data-check: a test of the check skipped; a skip is not a pass" >&2; exit 1; fi
 
-# Oracle tests of Pi work the Go port carries ahead of the committed pin: Pi 473515f9c, suspendable work (signals, tool parks, hook tasks, the
-# generation at task version 3), and Pi 5e24c6b1f, code mode namespaces declared by extensions (Extension.namespace). The pin's own Pi has none
-# of it, so these tests (durable/harness/suspendable_oracle_test.go and the scripted-session comparisons of durable/interop, which skip through
-# skipWithoutSuspendableWork; durable/codemode namespaceOracleSkip) skip there and run here against the later commit, which contains the earlier.
-# The run reads that commit's Pi in the build store and writes nothing in the tree: `pin.py override-tree` builds, once, the commit's source build
-# (its frozen closure is automation/pin/frozen/<commit>.*) and an install of its packs, and PIG_PI_OVERRIDE_TREE names that tree to the tests
-# (internal/pioracle). .upstream/current, the oracle link and durable/interop/node_modules stay the pin's whether the run ends, fails or is
-# killed; `make test-carried-oracles-guard` proves it. Drop the targets, the variables and the skips when a pin bump reaches 5e24c6b1f.
-CARRIED_ORACLE_REF := 5e24c6b1f9b5e3049ec07b2101a105b11d1d1b4f
-CARRIED_ORACLE_TESTS := ^(TestAdmitSubmissionMatchesPiOnSeededPrograms|TestAdmitInputEntryMatchesPiOnSeededPrograms|TestWakeRecordMemosMatchPi|TestDescribeMatchesPiOnSeededToolSets|TestCodemodeDeclarationsMatchPi)$$
-CARRIED_INTEROP_TESTS := ^(TestScriptedSessionStoresMatchPiDurable|TestSecondScriptedSessionStoresMatchPiDurable|TestScriptedSessionsViewIdentically|TestScriptedSessionJsonlFilesMatchPiDurable|TestUnawaitedJobCommittedAfterTheAnswerChangesOnlyOrder)$$
-
-test-carried-oracles: ## Run the oracle tests of Pi work carried ahead of the pin (suspendable work, Pi 473515f9c; code mode namespaces, Pi 5e24c6b1f) against that Pi build
-	@tree=$$(PI_UPSTREAM_REF=$(CARRIED_ORACLE_REF) $(PIN_TOOL) override-tree) || exit $$?; \
-		PIG_PI_OVERRIDE_TREE="$$tree" go test -count=1 -run '$(CARRIED_ORACLE_TESTS)' ./durable/harness ./durable/codemode && \
-		PIG_PI_OVERRIDE_TREE="$$tree" go test -count=1 -run '$(CARRIED_INTEROP_TESTS)' ./durable/interop
-
-test-carried-oracles-guard: upstream-mirror ## Run test-carried-oracles to its end, failing and killed, and require the tree's own Pi (git status, .upstream/current, the oracle link, durable/interop/node_modules) to be what it was
-	@python3 -B automation/pin/carried_guard.py
-.PHONY: test-carried-oracles test-carried-oracles-guard
-
 pin-show: ## Show the effective upstream Pi pin and whether PI_UPSTREAM_REF overrides it
 	@$(PIN_TOOL) show
 

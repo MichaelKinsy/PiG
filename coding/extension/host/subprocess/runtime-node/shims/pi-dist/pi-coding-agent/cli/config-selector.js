@@ -5,7 +5,7 @@ import { ProcessTerminal, setKeybindings, TuiMainScreen } from "../../../pi-tui.
 import { KeybindingsManager } from "../core/keybindings.js";
 import { ConfigSelectorComponent } from "../modes/interactive/components/config-selector.js";
 import { initTheme, stopThemeWatcher } from "../modes/interactive/theme/theme.js";
-import { flushStdout } from "../utils/sleep.js";
+import { flushStdout } from "../utils/flush-stdout.js";
 /** Show TUI config selector and return when closed */
 export async function selectConfig(options) {
     // Initialize theme before showing TUI

@@ -12,8 +12,8 @@
  */
 import * as crypto from "node:crypto";
 import { flushRawStdout, takeOverStdout, waitForRawStdoutBackpressure, writeRawStdout, } from "../../core/output-guard.js";
-import { writeDiagnosticsToStderr } from "../../core/settings-diagnostics.js";
 import { killTrackedDetachedChildren } from "../../utils/shell.js";
+import { writeDiagnosticsToStderr } from "../diagnostics-stderr.js";
 import { theme } from "../interactive/theme/theme.js";
 import { toJsonEvent } from "../json-event.js";
 import { attachJsonlLineReader, serializeJsonLine } from "./jsonl.js";
@@ -229,13 +229,11 @@ export async function runRpcMode(runtimeHost) {
     });
     runtimeHost.setRebindSession(async () => {
         await rebindSession();
-        // Pi c47ad0432bb8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         // stderr, never stdout: stdout carries the RPC protocol.
         writeDiagnosticsToStderr(runtimeHost.takeUnreportedDiagnostics());
     });
     const rebindSession = async () => {
         session = runtimeHost.session;
-        // Pi beffcde92dea (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         // Subscribe before binding so events emitted by session_start handlers (e.g. appended entries) reach the client.
         unsubscribe?.();
         unsubscribeBackpressure?.();

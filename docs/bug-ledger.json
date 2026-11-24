@@ -63916,7 +63916,6 @@
         }
       ],
       "tests": [
-        "automation/pin/test_carried_guard.py",
         "durable/harness/wake_memos_pi_oracle_test.go::TestWakeRecordMemosMatchPi",
         "internal/pioracle/source_test.go::TestARunAtThePinReadsTheRepositorysPi",
         "internal/pioracle/source_test.go::TestARunThatNamesAnotherPiReadsOnlyItsTree",

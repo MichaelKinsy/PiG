@@ -163,7 +163,7 @@ export class AgentSession {
     /**
      * Tools of the restored or reloaded loadout that are not registered yet, such as tools of MCP
      * servers that are still connecting. They are activated when they are registered, and dropped when
-     * `setActiveToolsByName()` deactivates a tool or the next agent run starts.
+     * `setActiveToolsByName()` deactivates a tool of that loadout or the next agent run starts.
      */
     _pendingToolNames = new Set();
     /** The restored or reloaded loadout that `_pendingToolNames` belongs to. */
@@ -187,7 +187,6 @@ export class AgentSession {
     _extensionShutdownHandler;
     _extensionErrorListener;
     _extensionErrorUnsubscriber;
-    // Pi e03dca7a3843 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
     // Set by bindExtensions(): reload() restarts extensions only if the host started them.
     _extensionsBound = false;
     _modelRuntime;
@@ -3713,7 +3712,6 @@ export class AgentSession {
             const msg = m;
             // Skip messages without text from a turn that did not end normally: aborted, failed or only
             // calling tools (#12119). A reply that ended normally stays the last reply even without text.
-            // Pi ede360e4d (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
             if (msg.stopReason !== "stop" && !msg.content.some((c) => c.type === "text" && c.text.trim()))
                 return false;
             return true;

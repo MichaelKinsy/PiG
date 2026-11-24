@@ -365,7 +365,7 @@ export class Markdown implements Component {
 		this.cachedLines = undefined;
 	}
 
-	render(width: number): string[] {
+	render(width: number): readonly string[] {
 		// Check cache
 		if (this.cachedLines && this.cachedText === this.text && this.cachedWidth === width) {
 			return this.cachedLines;
@@ -454,7 +454,11 @@ export class Markdown implements Component {
 		const rightMargin = " ".repeat(this.paddingX);
 		const bgFn = this.defaultTextStyle?.bgColor;
 		const lines: string[] = [];
-		for (const line of this.renderToken(token, contentWidth, nextTokenType)) {
+		// Image lines skip wrapping, so split them here: hard breaks after an image must stay separate rows.
+		const tokenLines = this.renderToken(token, contentWidth, nextTokenType).flatMap((line) =>
+			isImageLine(line) ? line.split("\n") : [line],
+		);
+		for (const line of tokenLines) {
 			if (isImageLine(line)) {
 				lines.push(line);
 				continue;

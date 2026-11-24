@@ -94,7 +94,7 @@ func TestWakeRecordMemosMatchPi(t *testing.T) {
 		return decoded
 	}
 
-	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/wake_memos_oracle.mjs", suspendableOraclePackages(t))
+	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/wake_memos_oracle.mjs", pioracle.Packages(t))
 	cmd.Env = append(cmd.Environ(), "PI_INTEROP_DIR="+pioracle.Project(t))
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

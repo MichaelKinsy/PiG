@@ -14,7 +14,6 @@ export class UserMessageComponent extends Container {
     markdownTransformers;
     messageId;
     timestamp;
-    // Pi b7bb7ca905b8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
     zoneLines;
     constructor(text, markdownTheme = getMarkdownTheme(), outputPad = 1, markdownTransformers = [], messageId, timestamp) {
         super();

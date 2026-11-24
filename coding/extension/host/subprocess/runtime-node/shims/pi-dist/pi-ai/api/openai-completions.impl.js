@@ -1179,7 +1179,6 @@ rawUsage, model) {
         output: outputTokens,
         cacheRead: cacheReadTokens,
         cacheWrite: cacheWriteTokens,
-        // Pi 86918f9eeb (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         reasoning: rawUsage.completion_tokens_details?.reasoning_tokens || rawUsage.reasoning_tokens || 0,
         totalTokens: input + outputTokens + cacheReadTokens + cacheWriteTokens,
         cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
@@ -1257,7 +1256,6 @@ function detectCompat(model) {
         isAntLing ||
         isZai;
     const isGrok = provider === "xai" || baseUrl.includes("api.x.ai");
-    // Pi b82477b7b (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
     // The developer role is OpenAI's. Other hosts' chat templates often reject it (#10741),
     // and every host accepts system, so only OpenAI's own API gets developer by default.
     const isOpenAI = provider === "openai" || baseUrl.includes("api.openai.com");

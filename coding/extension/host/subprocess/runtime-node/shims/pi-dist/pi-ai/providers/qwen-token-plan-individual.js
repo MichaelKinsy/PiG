@@ -5,7 +5,6 @@ import { QWEN_TOKEN_PLAN_INDIVIDUAL_MODELS } from "./qwen-token-plan-individual.
 export function qwenTokenPlanIndividualProvider() {
     return createProvider({
         id: "qwen-token-plan-individual",
-        // Pi 1397070024 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         name: "Qwen Token Plan Individual",
         baseUrl: "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
         auth: {

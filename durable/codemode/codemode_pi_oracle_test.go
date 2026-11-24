@@ -82,7 +82,6 @@ func canonical(t *testing.T, raw []byte) any {
 }
 
 func TestCodemodeDeclarationsMatchPi(t *testing.T) {
-	namespaceOracleSkip(t)
 	yes, no := true, false
 	budgets := []*int{nil, new(0), new(1), new(40), new(150), new(400), new(3000), new(100000)}
 	variants := []codemodeOptions{

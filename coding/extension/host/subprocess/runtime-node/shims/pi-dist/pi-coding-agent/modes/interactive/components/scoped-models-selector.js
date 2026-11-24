@@ -326,8 +326,6 @@ export class ScopedModelsSelectorComponent extends Container {
             this.callbacks.onCancel();
             return;
         }
-        // Pi 37b74c546921 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
-        // Pi 5bcf370a5293 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         // Pass everything else to search input. A new query moves the selection to the top row, so the best match is
         // highlighted; toggles and reorders call refresh() too, so the reset lives here and not there. Cursor keys
         // leave the query as it is and must not move the selection.

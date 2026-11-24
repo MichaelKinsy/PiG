@@ -380,7 +380,7 @@ pig_targets = [
 ]
 evidence = [
   "internal/codingagent/reload_resources_test.go#TestReloadRefreshesExtensionShortcuts",
-  "internal/codingagent/reload_resources_test.go#TestReloadRefreshesRealSubprocessShortcuts",
+  "internal/codingagent/reload_resources_node_test.go#TestReloadRefreshesRealSubprocessShortcuts",
   "internal/codingagent/interactive_command_error_test.go#TestInteractiveShortcutDiagnosticOwnership",
   "test/parity/scenarios/extensions-runtime/10-shortcut-reload-authority.toml",
   "internal/codingagent/extension_shortcut_contract_test.go#TestExtensionShortcutDispatchMatchesPi",
@@ -2348,6 +2348,8 @@ evidence = [
   "test/parity/scenarios/custom-editor-precedence.toml",
   "internal/codingagent/custom_editor_keybindings_test.go#TestPR7680AutocompletePageKeysWinOverTheImagePasteShortcut",
   "internal/codingagent/select_page_keys_test.go#TestCustomEditorGivesSelectionPageKeysToAnOpenAutocomplete",
+  "internal/codingagent/keybindings_inventory_test.go#TestAppKeybindingDefinitionsMatchUpstreamInventory",
+  "internal/codingagent/keybindings_platform_test.go#TestKeybindingDefinitionsApplyPlatformDefaults",
 ]
 
 [contract.upstream]
@@ -4632,9 +4634,9 @@ pig_targets = [
   "tui/tool_execution.go#FormatReadHeader"
 ]
 evidence = [
-  "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
-  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
-  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsRandomMatchPi",
+  "internal/codingagent/read_write_cards_contract_syntax_highlight_test.go#TestReadWriteCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsRandomMatchPi",
   "tui/read_header_string_range_test.go#TestFormatReadLineRangeMatchesPi",
   "internal/codingagent/compact_read_test.go#TestClassifyCompactRead",
   "test/parity/scenarios/tools/24-tool-cards.toml",
@@ -4662,8 +4664,8 @@ pig_targets = [
   "internal/codingagent/compact_read.go#pigDocsLabel"
 ]
 evidence = [
-  "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
-  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "internal/codingagent/read_write_cards_contract_syntax_highlight_test.go#TestReadWriteCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
   "internal/codingagent/compact_read_test.go#TestClassifyCompactRead",
   "test/parity/scenarios/tools/27-read-write-tool-cards.toml"
 ]
@@ -4689,10 +4691,10 @@ pig_targets = [
   "tui/tool_execution.go#FormatWriteHeaderArgs"
 ]
 evidence = [
-  "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
-  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
-  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsRandomMatchPi",
-  "internal/codingagent/interactive_events_write_stream_oracle_test.go#TestInteractiveStreamedWriteCardMatchesPiOracle",
+  "internal/codingagent/read_write_cards_contract_syntax_highlight_test.go#TestReadWriteCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsRandomMatchPi",
+  "internal/codingagent/interactive_events_write_stream_oracle_syntax_highlight_test.go#TestInteractiveStreamedWriteCardMatchesPiOracle",
   "internal/codingagent/code_highlighter_rows_test.go#TestCompleteWriteRowReusesItsHighlightingAcrossRedraws",
   "internal/codingagent/write_highlight_cache_test.go#TestWriteHighlightCacheHoldsWhatUpstreamHolds",
   "test/parity/scenarios/tools/24-tool-cards.toml",
@@ -4721,8 +4723,8 @@ pig_targets = [
   "internal/codingagent/write_highlight_cache.go#rebuildWriteHighlightCacheFull"
 ]
 evidence = [
-  "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
-  "internal/codingagent/interactive_events_write_stream_oracle_test.go#TestInteractiveStreamedWriteCardMatchesPiOracle",
+  "internal/codingagent/read_write_cards_contract_syntax_highlight_test.go#TestReadWriteCardsMatchPi",
+  "internal/codingagent/interactive_events_write_stream_oracle_syntax_highlight_test.go#TestInteractiveStreamedWriteCardMatchesPiOracle",
   "internal/codingagent/write_highlight_cache_test.go#TestWriteHighlightCacheHoldsWhatUpstreamHolds",
   "test/parity/scenarios/tools/27-read-write-tool-cards.toml",
   "internal/codingagent/write_stream_prefix_contract_test.go#TestInteractiveStreamedWriteCardMatchesPiAtTheLeadingBlockBoundary"
@@ -4746,7 +4748,7 @@ pig_targets = [
   "internal/codingagent/tool_builtin_renderers.go#builtInToolRenderers"
 ]
 evidence = [
-  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
   "test/parity/scenarios/tools/24-tool-cards.toml"
 ]
 
@@ -4768,7 +4770,7 @@ pig_targets = [
   "internal/codingagent/tool_builtin_renderers.go#builtInToolRenderers"
 ]
 evidence = [
-  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
   "test/parity/scenarios/tools/24-tool-cards.toml"
 ]
 
@@ -4790,7 +4792,7 @@ pig_targets = [
   "internal/codingagent/tool_builtin_renderers.go#builtInToolRenderers"
 ]
 evidence = [
-  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
   "test/parity/scenarios/tools/24-tool-cards.toml"
 ]
 
@@ -4815,10 +4817,10 @@ pig_targets = [
   "internal/codingagent/tool_render_shell.go#toolResultTextOutput"
 ]
 evidence = [
-  "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
-  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
-  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsRandomMatchPi",
-  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPiAfterTheHighlightLanguageLoad",
+  "internal/codingagent/read_write_cards_contract_syntax_highlight_test.go#TestReadWriteCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsRandomMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPiAfterTheHighlightLanguageLoad",
   "test/parity/scenarios/tools/24-tool-cards.toml",
   "test/parity/scenarios/tools/27-read-write-tool-cards.toml",
   "internal/codingagent/read_truncation_view_test.go#TestReadTruncationViewOfTheToolsOwnDetails"
@@ -4844,9 +4846,9 @@ pig_targets = [
   "internal/codingagent/tool_builtin_renderers.go#typedTruncationView"
 ]
 evidence = [
-  "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
-  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
-  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsRandomMatchPi",
+  "internal/codingagent/read_write_cards_contract_syntax_highlight_test.go#TestReadWriteCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsRandomMatchPi",
   "test/parity/scenarios/tools/27-read-write-tool-cards.toml",
   "internal/codingagent/read_truncation_view_test.go#TestReadTruncationViewOfTheToolsOwnDetails"
 ]
@@ -4869,9 +4871,9 @@ pig_targets = [
   "internal/codingagent/tool_builtin_renderers.go#writeRenderResult"
 ]
 evidence = [
-  "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
-  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
-  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsRandomMatchPi",
+  "internal/codingagent/read_write_cards_contract_syntax_highlight_test.go#TestReadWriteCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsRandomMatchPi",
   "test/parity/scenarios/tools/24-tool-cards.toml",
   "test/parity/scenarios/tools/27-read-write-tool-cards.toml"
 ]
@@ -4894,8 +4896,8 @@ pig_targets = [
   "internal/codingagent/tool_builtin_renderers.go#writeRenderResult"
 ]
 evidence = [
-  "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
-  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "internal/codingagent/read_write_cards_contract_syntax_highlight_test.go#TestReadWriteCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
   "test/parity/scenarios/tools/27-read-write-tool-cards.toml"
 ]
 
@@ -4917,7 +4919,7 @@ pig_targets = [
   "internal/codingagent/tool_builtin_renderers.go#listRenderResult"
 ]
 evidence = [
-  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
   "test/parity/scenarios/tools/24-tool-cards.toml"
 ]
 
@@ -4939,7 +4941,7 @@ pig_targets = [
   "internal/codingagent/tool_builtin_renderers.go#listRenderResult"
 ]
 evidence = [
-  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
   "test/parity/scenarios/tools/24-tool-cards.toml"
 ]
 
@@ -4961,7 +4963,7 @@ pig_targets = [
   "internal/codingagent/tool_builtin_renderers.go#listRenderResult"
 ]
 evidence = [
-  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
   "test/parity/scenarios/tools/24-tool-cards.toml"
 ]
 
@@ -4983,7 +4985,7 @@ pig_targets = [
   "internal/codingagent/tool_builtin_renderers.go#editRenderResult"
 ]
 evidence = [
-  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
   "test/parity/scenarios/tools/24-tool-cards.toml"
 ]
 
@@ -5006,7 +5008,7 @@ pig_targets = [
 ]
 evidence = [
   "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinEditCallPreviewMatchesPi",
-  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
   "test/parity/scenarios/tools/24-tool-cards.toml"
 ]
 
@@ -5028,7 +5030,7 @@ pig_targets = [
   "internal/codingagent/tool_builtin_renderers.go#shellRenderCall"
 ]
 evidence = [
-  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
   "test/parity/scenarios/tools/24-tool-cards.toml"
 ]
 
@@ -5050,7 +5052,7 @@ pig_targets = [
   "internal/codingagent/tool_builtin_renderers.go#shellRenderResult"
 ]
 evidence = [
-  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
   "test/parity/scenarios/tools/24-tool-cards.toml"
 ]
 
@@ -5072,7 +5074,7 @@ pig_targets = [
   "internal/codingagent/tool_codemode_renderer.go#codemodeRenderCall"
 ]
 evidence = [
-  "internal/codingagent/codemode_cards_oracle_test.go#TestCodemodeCardsMatchPi",
+  "internal/codingagent/codemode_cards_oracle_syntax_highlight_test.go#TestCodemodeCardsMatchPi",
   "test/parity/scenarios/tools/25-codemode-cards.toml",
   "internal/codingagent/tool_codemode_timer_test.go#TestCodemodeRowShowsElapsedWhileRunningAndTookOnceFinished",
   "internal/codingagent/code_highlighter_rows_test.go#TestCodemodeRowReusesItsScriptHighlightingAcrossRedraws",
@@ -5096,7 +5098,7 @@ pig_targets = [
   "internal/codingagent/tool_codemode_renderer.go#codemodeRenderResult"
 ]
 evidence = [
-  "internal/codingagent/codemode_cards_oracle_test.go#TestCodemodeCardsMatchPi",
+  "internal/codingagent/codemode_cards_oracle_syntax_highlight_test.go#TestCodemodeCardsMatchPi",
   "test/parity/scenarios/tools/25-codemode-cards.toml",
   "internal/codingagent/tool_codemode_timer_test.go#TestCodemodeRowShowsElapsedWhileRunningAndTookOnceFinished",
   "internal/codingagent/empty_mimetype_image_divergence_test.go#TestEmptyMimeTypeImageDiffersFromPi",
@@ -5204,6 +5206,32 @@ path = "packages/coding-agent/src/modes/interactive/components/radius-login-sele
 start = "\toverride render(width: number): string[] {\n\t\tconst lines = super.render(width);"
 end = "\t\treturn lines;\n\t}\n\n\tprivate stopAnimation"
 sha256 = "4504d04e2a6dda9f9610553a26af8185358c58be6de5561206dcc5e735d5c6b9"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/oauth-selector/render-animated-row"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/oauth-selector.ts#OAuthSelectorComponent.render"
+family = "selectors"
+kind = "render-layout"
+claim = "render rebuilds the list before delegating to the container exactly while the selector has a TUI to animate in and the selected row is a preferred partner's (Radius, OpenRouter): that row is the accent arrow and the brand style at the time of the frame, so successive frames differ; with any other row selected, or without a TUI, a frame is the list the last key built (selected row in the accent style, the partner rows in the text style with their mark); dispose ends the per-frame render requests"
+status = "ported"
+pig_targets = [
+  "tui/oauth_selector.go#Render",
+  "tui/oauth_selector.go#selectedBrandStyle",
+]
+evidence = [
+  "tui/oauth_selector_render_contract_test.go#TestOAuthSelectorRenderRebuildsTheSelectedPartnerRowForEachFrame",
+  "tui/oauth_selector_partner_test.go#TestOAuthSelectorShowsTheBrandStyleOnlyOnTheSelectedPartnerRow",
+  "tui/oauth_selector_partner_test.go#TestOAuthSelectorKeepsTheAccentStyleWithoutATUI",
+  "tui/oauth_selector_partner_test.go#TestOAuthSelectorAnimatesAPartnerRowUntilDisposed",
+  "test/parity/scenarios/oauth/33-login-partner-rows-release-brand-style.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts"
+start = "\toverride render(width: number): string[] {\n\t\t// The list is built from styled text"
+end = "\t/** Stops the brand animation. */"
+sha256 = "2ce3030c01c53e36405fc761bcb8dff18c611ff82c9663105c04a8360856bc1a"
 keybindings = []
 
 [[contract]]
@@ -5362,7 +5390,7 @@ evidence = [
   "tui/render_tool_path_oracle_test.go#TestRenderToolPathMatchesPi",
   "tui/render_tool_path_contract_test.go#TestRenderToolPathBoundariesMatchPi",
   "tui/tool_path_render_pi_test.go#TestRenderToolPathHonorsPiGeneratedExpectations",
-  "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
+  "internal/codingagent/read_write_cards_contract_syntax_highlight_test.go#TestReadWriteCardsMatchPi",
   "test/parity/scenarios/tools/26-render-tool-path.toml",
   "test/parity/scenarios/tools/27-read-write-tool-cards.toml",
   "test/parity/scenarios/tools/28-render-tool-path-boundaries.toml",
@@ -5417,7 +5445,7 @@ pig_targets = [
 ]
 evidence = [
   "tui/read_header_string_range_test.go#TestFormatReadLineRangeMatchesPi",
-  "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
+  "internal/codingagent/read_write_cards_contract_syntax_highlight_test.go#TestReadWriteCardsMatchPi",
   "test/parity/scenarios/tools/27-read-write-tool-cards.toml"
 ]
 
@@ -5962,7 +5990,7 @@ pig_targets = [
 ]
 evidence = [
   "tui/tool_execution_definition_test.go#TestDefinitionCardSelfShell",
-  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
   "test/parity/scenarios/interactive-rendering/10-edit-tool-diff.toml",
   "test/parity/scenarios/interactive-rendering/03-tool-execution-bash.toml",
   "test/parity/scenarios/extensions-runtime/24-tool-renderers-collapsed.toml",
@@ -7298,3 +7326,127 @@ end = "\n\n\trequestRender(force = false): void {"
 sha256 = "a41d73a127962410af68ce65abee17a1c1530e3b348359d240dbb9179ca569d2"
 keybindings = [
 ]
+
+[[contract]]
+id = "tui/tui-base/request-render-throttle"
+upstream_id = "render:packages/tui/src/tui.ts#TuiBase.renderNow"
+family = "tui-components"
+kind = "render-scheduling"
+claim = "Porting guard for the frame scheduler: requestRender marks a frame as requested once and schedules it on the next tick, a forced request resets the render state and asks for an immediate frame that cancels a throttled one, cancelRenderTimer clears the one timer, and scheduleRender arms one setTimeout for max(0, MIN_RENDER_INTERVAL_MS - time since the last frame began) whose callback records the frame time, draws, and schedules again when a request arrived while it drew. PiG keeps this range as a line-for-line port (RequestRender, scheduleRenderLocked) and arms the timer in one place (armFrameLocked, which cuts the delay to whole milliseconds as Node's setTimeout does); any change of this range upstream is reviewed against that port and against whatever paces frames beside it before the hash is updated"
+status = "ported"
+pig_targets = [
+  "tui/tui.go#RequestRender",
+  "tui/tui.go#scheduleRenderLocked",
+  "tui/tui.go#armFrameLocked",
+]
+evidence = [
+  "tui/render_scheduler_test.go#TestTUIRequestRender_RespectsMinInterval",
+  "tui/render_scheduler_test.go#TestThrottledFrameWaitsTheWholeMillisecondsLeftOfTheInterval",
+  "tui/render_scheduler_test.go#TestOwnerDeadlineOfAThrottledFrameIsTheWholeMillisecondsLeftOfTheInterval",
+  "test/parity/scenarios/interactive-rendering/68-no-frame-after-reply.toml",
+  "test/parity/scenarios/interactive-rendering/46-bash-execution-running-spinner.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/tui.ts"
+start = "\trequestRender(force = false): void {"
+end = "\n\n\tprivate handleTerminalInput(data: string): void {"
+sha256 = "7a1d4eeae07b1697b0b0052af3199853a3db677e046133e051f008fb4f568951"
+keybindings = [
+]
+
+[[contract]]
+id = "tui/tui-base/render-interval-state"
+upstream_id = "render:packages/tui/src/tui.ts#TuiBase.renderNow"
+family = "tui-components"
+kind = "render-scheduling"
+claim = "Porting guard for the frame scheduler's state: one requested flag, one immediate-frame flag, one timer, the time the last frame began, and the constant MIN_RENDER_INTERVAL_MS = 16. PiG's minRenderInterval is that constant; a change of the fields or of the value upstream is reviewed against the port and against whatever paces frames beside it before the hash is updated"
+status = "ported"
+pig_targets = [
+  "tui/tui.go#minRenderInterval",
+  "tui/tui.go#scheduleRenderLocked",
+]
+evidence = [
+  "tui/render_scheduler_test.go#TestTUIRequestRender_RespectsMinInterval",
+  "test/parity/scenarios/interactive-rendering/68-no-frame-after-reply.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/tui.ts"
+start = "\tprivate renderRequested = false;"
+end = "\n\tprivate showHardwareCursor = false;"
+sha256 = "ee38b030fdb9aa8f829f137707ec88351ed0ce8d7ba3cd114a07db516944c20a"
+keybindings = [
+]
+
+[[contract]]
+id = "tui/alt-screen/screen-writer-frame-output"
+upstream_id = "render:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.doRender"
+family = "fullscreen"
+kind = "render-layout"
+claim = "porting guard of the screen writer (D624, internal/screenwriter): the frame grammar the writer reads, a synchronized update holding cursor addresses, rows erased at column 1 and followed by a line of text, SGR and the hyperlink close, an erase of the screen and the cursor shown or hidden, is what this method writes; a changed hash means the grammar and the writer's sequence table must be reviewed against the new range, then the pinned counts of TestScreenWriterShowsTheRenderersScreens (frames of Pi's fixture and the frames the writer has no rule for) re-pinned"
+status = "ported"
+pig_targets = [
+  "internal/screenwriter/writer.go#Translate",
+  "internal/screenwriter/sequence.go#outside",
+]
+evidence = [
+  "tui/screen_writer_oracle_test.go#TestScreenWriterShowsTheRenderersScreens",
+  "tui/terminal_screen_writer_test.go#TestScreenWriterTerminalShowsTheSameScreens",
+  "test/parity/scenarios/fullscreen/01-conversation-fullscreen.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/tui-alt-screen.ts"
+start = "protected override doRender(): void {"
+end = "this.currentLayout = nextLayout;\n\t}"
+sha256 = "0407a20896b5757a9e85671306cbc42acdb40eccadaabe398c9296d64a6af9e3"
+keybindings = []
+
+[[contract]]
+id = "tui/alt-screen/screen-writer-enter-exit-writes"
+upstream_id = "render:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.doRender"
+family = "fullscreen"
+kind = "render-layout"
+claim = "porting guard of the screen writer (D624): the writes that enter the alternate screen (erase, home, cursor hidden), prepare the stop (Kitty images deleted, mouse off, autowrap on) and leave it, with the document repainted on the main screen or not, are the ones the writer passes through and takes as the end of its screen; a changed hash means the writer's handling of entering and leaving (internal/screenwriter, TestScreenWriterAlternateScreenEnterAndLeave and TestScreenWriterExit) must be reviewed against the new range"
+status = "ported"
+pig_targets = [
+  "internal/screenwriter/writer.go#other",
+  "tui/terminal_screen_writer.go#newTerminalScreenWriter",
+]
+evidence = [
+  "tui/terminal_screen_writer_test.go#TestScreenWriterAlternateScreenEnterAndLeave",
+  "tui/terminal_screen_writer_test.go#TestScreenWriterExit",
+  "test/parity/scenarios/fullscreen/01-conversation-fullscreen.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/tui-alt-screen.ts"
+start = "\t\tthis.terminal.write(\n\t\t\t`${ENTER_ALT_SCREEN}${DISABLE_AUTOWRAP}"
+end = "this.terminal.write(buffer);\n\t\t}\n\t\tif (this.savedCapabilities) {"
+sha256 = "e2457bbe3de532fc36afc5c3bc819e30faa4955289528efd372e99df46689929"
+keybindings = []
+
+[[contract]]
+id = "tui/terminal/screen-writer-write-sites"
+upstream_id = "input:packages/tui/src/terminal.ts#ProcessTerminal.handleKeyboardProtocolNegotiationSequence"
+family = "tui-components"
+kind = "terminal-output-writes"
+claim = "porting guard of the screen writer (D624): every process.stdout.write site of ProcessTerminal (start, stop, restore on exit, cursor, title, progress, program status, and write itself) lies in this range, and the writer sees all of them below ProcessTerminal.write or, for a write that goes past it, through WriteToTerminal; a changed hash means the table of sequences that change nothing the writer keeps (internal/screenwriter sequence.go) and the writes past the terminal must be reviewed against the new range"
+status = "ported"
+pig_targets = [
+  "internal/screenwriter/sequence.go#outside",
+  "tui/terminal_screen_writer.go#screenWriterWrittenPast",
+]
+evidence = [
+  "internal/screenwriter/writer_test.go#TestOutsideTable",
+  "tui/terminal_screen_writer_test.go#TestScreenWriterWritesPastTheTerminal",
+  "test/parity/scenarios/tui-components/14-terminal-negotiation-framing.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/terminal.ts"
+start = "\tprivate writeLogPath = (() => {"
+end = "\n\tprivate clearProgressInterval(): boolean {"
+sha256 = "77585eb1bacc3fce65b70a6d58d12e15c15981c2b30930205c040c752900c8fc"
+keybindings = []

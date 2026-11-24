@@ -33,7 +33,6 @@ import { isStdoutTakenOver } from "./output-guard.js";
 import { readPiManifest } from "./pi-manifest.js";
 import { BUILTIN_PATH_PREFIX, getResourcePathKey } from "./source-info.js";
 const NETWORK_TIMEOUT_MS = 10000;
-// Pi b513b64d8ac8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
 /** End of a captured command's output kept for its error message. */
 const CAPTURED_OUTPUT_TAIL_CHARS = 8000;
 /** Output of git, or of ssh run by git, that failed because it could not ask for credentials. */

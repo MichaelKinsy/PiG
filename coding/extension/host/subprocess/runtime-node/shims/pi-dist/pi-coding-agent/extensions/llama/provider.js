@@ -75,7 +75,6 @@ function isChatModel(model) {
  * from the `images` list of data URLs, not from TypeSafe's `assets`.
  */
 function toPiClassifierModel(model, serverUrl, cachedContextWindow) {
-    // Pi 5799e217e (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
     const decision = isDecisionModel(model);
     const image = decision && model.architecture?.input_modalities?.includes("image") === true;
     return {

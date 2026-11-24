@@ -89,7 +89,7 @@ class PackageListTests(unittest.TestCase):
         self.assertEqual(len(roots), len(set(roots)))
 
 
-APPS_RECORD = "\nOutside the packages: `apps/p3` holds design documents only. `apps/p2` is ported on its own line.\n"
+APPS_RECORD = "\nOutside the packages: `apps/p2`, `apps/p2-mac`, and `apps/p3` are tracked outside the packages.\n"
 
 
 def build_apps(root: pathlib.Path, files, record=APPS_RECORD):
@@ -106,29 +106,32 @@ def run_listing(listing: str):
 
 
 class AppsTests(unittest.TestCase):
-    RECORDED = ["apps/p2/src/main.ts", "apps/p3/docs/a.md", "apps/p3/docs/part/b.html"]
+    RECORDED = ["apps/p2/src/main.ts", "apps/p2-mac/Package.swift", "apps/p3/src/main.ts"]
+    SYNTHETIC_DOCS_APPS = (drift.App("apps/p2"), drift.App("apps/docs-only", "apps/docs-only/docs", frozenset({".html", ".md"})))
+    SYNTHETIC_DOCS_RECORDED = ["apps/p2/src/main.ts", "apps/docs-only/docs/a.md", "apps/docs-only/docs/part/b.html"]
 
     def test_documents_under_the_documents_directory_pass(self):
+        self.assertEqual(drift.apps_problems(self.SYNTHETIC_DOCS_RECORDED, apps=self.SYNTHETIC_DOCS_APPS), [])
         self.assertEqual(drift.apps_problems(self.RECORDED), [])
 
     def test_a_path_outside_the_documents_directory_fails(self):
-        for path in ("apps/p3/docsx/a.ts", "apps/p3/docsx/a.md", "apps/p3/docs.md", "apps/p3/src/main.ts", "apps/p3/package.json"):
+        for path in ("apps/docs-only/docsx/a.ts", "apps/docs-only/docsx/a.md", "apps/docs-only/docs.md", "apps/docs-only/src/main.ts", "apps/docs-only/package.json"):
             with self.subTest(path=path):
-                problems = drift.apps_problems([*self.RECORDED, path])
+                problems = drift.apps_problems([*self.SYNTHETIC_DOCS_RECORDED, path], apps=self.SYNTHETIC_DOCS_APPS)
                 self.assertEqual(len(problems), 1, problems)
-                self.assertIn(f"apps/p3 holds a path outside apps/p3/docs/ ({path})", problems[0])
-                self.assertIn("Start a port line for apps/p3", problems[0])
+                self.assertIn(f"apps/docs-only holds a path outside apps/docs-only/docs/ ({path})", problems[0])
+                self.assertIn("Start a port line for apps/docs-only", problems[0])
                 self.assertIn('docs/parity/PORT_MAP.md "Package scope"', problems[0])
 
     def test_a_file_in_the_documents_directory_that_is_not_a_document_fails(self):
-        for path in ("apps/p3/docs/tool.ts", "apps/p3/docs/part/run.sh", "apps/p3/docs/Makefile", "apps/p3/docs/a.md.js"):
+        for path in ("apps/docs-only/docs/tool.ts", "apps/docs-only/docs/part/run.sh", "apps/docs-only/docs/Makefile", "apps/docs-only/docs/a.md.js"):
             with self.subTest(path=path):
-                problems = drift.apps_problems([*self.RECORDED, path])
+                problems = drift.apps_problems([*self.SYNTHETIC_DOCS_RECORDED, path], apps=self.SYNTHETIC_DOCS_APPS)
                 self.assertEqual(len(problems), 1, problems)
-                self.assertIn(f"apps/p3/docs/ holds a file that is not a document ({path}; documents are .html, .md)", problems[0])
+                self.assertIn(f"apps/docs-only/docs/ holds a file that is not a document ({path}; documents are .html, .md)", problems[0])
 
     def test_a_directory_under_apps_that_is_not_recorded_fails(self):
-        for path in ("apps/p2-mac/Sources/a.swift", "apps/p4/docs/a.md"):
+        for path in ("apps/p4/docs/a.md", "apps/p3-mac/Package.swift"):
             with self.subTest(path=path):
                 root = "/".join(path.split("/")[:2])
                 problems = drift.apps_problems([*self.RECORDED, path])
@@ -142,7 +145,7 @@ class AppsTests(unittest.TestCase):
             build_apps(root, self.RECORDED)
             result = run(root)
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("Pi's apps/ directories are as recorded (apps/p2, apps/p3; 3 path names read)", result.stdout)
+            self.assertIn("Pi's apps/ directories are as recorded (apps/p2, apps/p2-mac, apps/p3; 3 path names read)", result.stdout)
             self.assertEqual(run(root, "--apps").returncode, 0)
 
     def test_a_mirror_without_apps_says_it_was_not_checked(self):
@@ -153,23 +156,17 @@ class AppsTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("apps is absent: Pi's apps/ directories were not checked", result.stdout)
 
-    def test_the_mirror_fails_on_code_an_unrecorded_directory_and_a_removed_app(self):
-        cases = {
-            "apps/p3/server/main.ts": "apps/p3 holds a path outside apps/p3/docs/ (apps/p3/server/main.ts)",
-            "apps/p3/docs/tool.ts": "apps/p3/docs/ holds a file that is not a document (apps/p3/docs/tool.ts",
-            "apps/p2-mac/Package.swift": "Pi added apps/p2-mac: record its disposition in",
-        }
-        for extra, message in cases.items():
-            with self.subTest(extra=extra), tempfile.TemporaryDirectory() as tmp:
-                root = pathlib.Path(tmp)
-                build_apps(root, [*self.RECORDED, extra])
-                for arguments in ((), ("--apps",)):
-                    result = run(root, *arguments)
-                    self.assertEqual(result.returncode, 1, result.stdout)
-                    self.assertIn(message, result.stderr)
+    def test_the_mirror_fails_on_an_unrecorded_directory_and_a_removed_app(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = pathlib.Path(tmp)
-            build_apps(root, ["apps/p2/src/main.ts"])
+            build_apps(root, [*self.RECORDED, "apps/p4/Package.swift"])
+            for arguments in ((), ("--apps",)):
+                result = run(root, *arguments)
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn("Pi added apps/p4: record its disposition in", result.stderr)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            build_apps(root, ["apps/p2/src/main.ts", "apps/p2-mac/Package.swift"])
             result = run(root)
             self.assertEqual(result.returncode, 1, result.stdout)
             self.assertIn("apps/p3 is recorded but the upstream mirror has no file under it", result.stderr)
@@ -177,19 +174,21 @@ class AppsTests(unittest.TestCase):
     def test_the_mirror_fails_when_the_record_is_lost(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = pathlib.Path(tmp)
-            build_apps(root, self.RECORDED, record="\nOutside the packages: `apps/p2` is ported on its own line.\n")
+            build_apps(root, self.RECORDED, record="\nOutside the packages: `apps/p2` and `apps/p2-mac` are tracked outside the packages.\n")
             result = run(root)
             self.assertEqual(result.returncode, 1, result.stdout)
             self.assertIn('"Package scope" lost its record of apps/p3', result.stderr)
             self.assertNotIn("lost its record of apps/p2", result.stderr)
 
     def test_a_listing_from_a_clone_is_checked_without_a_mirror(self):
-        clean = run_listing("apps/p3/docs/a.md\napps/p3/docs/part/b.html\n")
-        self.assertEqual(clean.returncode, 0, clean.stderr)
-        self.assertIn("2 path names read, 2 documents", clean.stdout)
-        code = run_listing("apps/p3/docs/a.md\napps/p3/docsx/a.ts\n")
-        self.assertEqual(code.returncode, 1, code.stdout)
-        self.assertIn("apps/p3 holds a path outside apps/p3/docs/ (apps/p3/docsx/a.ts)", code.stderr)
+        problems, note = drift.listing_apps_problems("apps/docs-only/docs/a.md\napps/docs-only/docs/part/b.html\n", apps=self.SYNTHETIC_DOCS_APPS)
+        self.assertEqual(problems, [])
+        self.assertIn("2 path names read, 2 documents", note)
+        problems, _ = drift.listing_apps_problems("apps/docs-only/docs/a.md\napps/docs-only/docsx/a.ts\n", apps=self.SYNTHETIC_DOCS_APPS)
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn("apps/docs-only holds a path outside apps/docs-only/docs/ (apps/docs-only/docsx/a.ts)", problems[0])
+        problems, _ = drift.listing_apps_problems("", apps=self.SYNTHETIC_DOCS_APPS)
+        self.assertTrue(any("nothing was checked" in p for p in problems), problems)
         empty = run_listing("")
         self.assertEqual(empty.returncode, 1, empty.stdout)
         self.assertIn("nothing was checked", empty.stderr)

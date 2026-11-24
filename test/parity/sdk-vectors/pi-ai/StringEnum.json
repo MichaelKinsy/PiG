@@ -1,6 +1,6 @@
 {
- "pin": "1.5.2",
- "package": "pi-ai@1.5.2",
+ "pin": "1.6.0",
+ "package": "pi-ai@1.6.0",
  "module": "pi-ai",
  "export": "StringEnum",
  "cases": [

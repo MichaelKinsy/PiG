@@ -527,10 +527,6 @@
     "go": "chord/next/store/expression.go#Min",
     "reason": "Pi store/expression.ts min<K extends \"int\" | \"num\">(a: Operand<number, K>, b: Operand<number, K>): Expression<number, K> is the smaller of two operands; an Operand is `Expression<number, K> | number` (a union, with K a phantom type parameter). Go has no unions or phantom parameters, so store.Min(a, b any) takes each operand as an *Expression or a number and builds the same expression node (expression.go), which the evaluator checks (expression_test.go, evaluate_test.go)."
   },
-  "pkg:chord/.#oneOf::call:0": {
-    "go": "chord/next/contracts/schema.go#OneOf",
-    "reason": "Pi contracts/schema.ts:119 oneOf<const V extends Literal[]>(...values: V): LiteralsSchema<V[number]> returns a LiteralsSchema, an interface that narrows Schema to the union of the literals' types (type-level: its runtime value is {anyOf: lits}). Go's OneOf[V Literal](values ...V) returns the contracts.Schema whose Node is the same anyOf of literal schemas, one per value in order (schema.go), the literal type being the generic parameter. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go)."
-  },
   "pkg:chord/.#opt::call:0": {
     "go": "chord/next/store/columns.go#Opt",
     "reason": "Pi store/columns.ts opt<S extends ColumnSchema>(schema: S): Optional<S> wraps a column in an Optional (a nullable column). Go has no wrapper object (pkg:chord/.#Optional is designed out: the optional schema is the wrapped schema with its Optional flag set), so store.Opt(ColumnSchema) returns the ColumnSchema with the flag set, which is every member Optional has (store/columns.go; columns_test.go)."

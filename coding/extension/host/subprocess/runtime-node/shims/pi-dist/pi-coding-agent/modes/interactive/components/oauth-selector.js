@@ -110,7 +110,6 @@ export class OAuthSelectorComponent extends Container {
         this.filteredProviders = query
             ? fuzzyFilter(this.allProviders, query, (provider) => `${provider.name} ${provider.id} ${provider.authType} ${provider.method?.name ?? ""}`)
             : this.allProviders;
-        // Pi 37b74c546921 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         // A query moves the selection to the top row, so the best match is highlighted.
         this.selectedIndex = query ? 0 : Math.min(this.selectedIndex, Math.max(0, this.filteredProviders.length - 1));
         this.updateList();
@@ -194,7 +193,6 @@ export class OAuthSelectorComponent extends Container {
         else if (kb.matches(keyData, "tui.select.cancel")) {
             this.onCancelCallback();
         }
-        // Pi 5bcf370a5293 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         // Pass everything else to search input. Cursor keys leave the query as it is and must not move the selection.
         else {
             const previousQuery = this.searchInput.getValue();

@@ -20,7 +20,6 @@ function renderCached(context, component, width) {
     }
     let lines = widths.get(safeWidth);
     if (!lines) {
-        // Pi b7bb7ca905b8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         lines = context.reusableOutput?.get(component)?.get(safeWidth) ?? component.render(safeWidth);
         widths.set(safeWidth, lines);
     }

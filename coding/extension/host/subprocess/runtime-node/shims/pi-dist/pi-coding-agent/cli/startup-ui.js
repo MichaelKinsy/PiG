@@ -11,7 +11,7 @@ import { FirstTimeSetupComponent, } from "../modes/interactive/components/first-
 import { SYSTEM_THEME_NAME } from "../modes/interactive/theme/system-theme.js";
 import { getTerminalTheme, initTheme, loadThemeFromPath, markTerminalColorsPending, resolveThemeSetting, setRegisteredThemes, setTerminalColors, setTheme, } from "../modes/interactive/theme/theme.js";
 import { requestTerminalColors } from "../modes/interactive/theme/theme-controller.js";
-import { flushStdout } from "../utils/sleep.js";
+import { flushStdout } from "../utils/flush-stdout.js";
 const OFFICIAL_PACKAGE_NAME = "@earendil-works/pi-coding-agent";
 const OFFICIAL_APP_NAME = "pi";
 const OFFICIAL_CONFIG_DIR_NAME = ".pi";

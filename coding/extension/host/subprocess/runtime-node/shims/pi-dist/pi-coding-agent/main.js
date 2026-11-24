@@ -34,13 +34,14 @@ import { restoreStdout, takeOverStdout } from "./core/output-guard.js";
 import { resolveProjectTrusted } from "./core/project-trust.js";
 import { formatMissingSessionCwdPrompt, getMissingSessionCwdIssue, getMissingSessionCwdOptions, MissingSessionCwdError, } from "./core/session-cwd.js";
 import { assertValidSessionId, SessionManager } from "./core/session-manager.js";
-import { collectSettingsDiagnostics, deduplicateDiagnostics, writeDiagnosticsToStderr } from "./core/settings-diagnostics.js";
+import { collectSettingsDiagnostics, deduplicateDiagnostics } from "./core/settings-diagnostics.js";
 import { SettingsManager } from "./core/settings-manager.js";
 import { printTimings, resetTimings, time } from "./core/timings.js";
 import { hasTrustRequiringProjectResources, ProjectTrustStore } from "./core/trust-manager.js";
 import { builtInExtensions } from "./extensions/index.js";
 import { loadMcpCommand } from "./extensions/mcp/cli.lazy.js";
 import { runMigrations, showDeprecationWarnings } from "./migrations.js";
+import { writeDiagnosticsToStderr } from "./modes/diagnostics-stderr.js";
 import { InteractiveMode, runPrintMode, runRpcMode } from "./modes/index.js";
 import { initTheme, setThemeJsonValidator, stopThemeWatcher } from "./modes/interactive/theme/theme.js";
 import { validateThemeJson } from "./modes/interactive/theme/theme-schema.js";
@@ -636,7 +637,6 @@ export async function main(args, options) {
     const resolvedSkillPaths = resolveCliPaths(cwd, parsed.skills);
     const resolvedPromptTemplatePaths = resolveCliPaths(cwd, parsed.promptTemplates);
     const resolvedThemePaths = resolveCliPaths(cwd, parsed.themes);
-    // Pi b513b64d8ac8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
     // Interactive mode installs and refreshes packages again on /reload, /new, /resume and /fork while the TUI
     // draws on the terminal, where git and npm output would corrupt its screen (#11264). Their output is
     // captured, and until the TUI starts each install is announced on stderr instead.
@@ -719,7 +719,6 @@ export async function main(args, options) {
             })),
         ];
         const modelPatterns = parsed.models ?? settingsManager.getEnabledModels();
-        // Pi bacd45b9c (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         const { scopedModels, diagnostics: modelScopeDiagnostics } = modelPatterns && modelPatterns.length > 0
             ? await resolveModelScopeWithDiagnostics(modelPatterns, modelRuntime, {
                 signal: AbortSignal.timeout(15_000),
@@ -757,7 +756,6 @@ export async function main(args, options) {
         if (created.session.model && cliThinkingOverride) {
             created.session.setThinkingLevel(created.session.thinkingLevel);
         }
-        // Pi c8c456c85c6e (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         // "Could not restore model x/y. Using a/b." is set again on /resume and /fork. As a diagnostic, every
         // mode reports it at startup and after each replacement. Without any model, the message is login
         // guidance instead: interactive mode shows it at startup, the other modes exit with it below.
@@ -782,7 +780,6 @@ export async function main(args, options) {
     setCapabilityOverrides(settingsManager.getTerminalCapabilityOverrides());
     applyHttpProxySettings(settingsManager.getGlobalSettings().httpProxy);
     configureHttpDispatcher(settingsManager.getHttpIdleTimeoutMs());
-    // Pi c47ad0432bb8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
     // Taking them marks them reported, so the modes do not report them again after a session replacement.
     const startupDiagnostics = deduplicateDiagnostics([
         ...startupSettingsDiagnostics,

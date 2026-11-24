@@ -10,7 +10,6 @@ export const defaultModelPerProvider = {
     "amazon-bedrock": "us.anthropic.claude-opus-5-5",
     "ant-ling": "Ring-2.6-1T",
     anthropic: "claude-opus-5-5",
-    // Pi e56d35ce5ece (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
     openai: "gpt-6.2-sol",
     azure: "gpt-6.2-sol",
     "openai-codex": "gpt-6.2-sol",

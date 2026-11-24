@@ -1,4 +1,4 @@
-// Pi 1.1.0 / @google/genai 2.21.0: exact partial-message observation and microtask order for the google-generative-ai provider.
+// Pi 1.1.0 / @google/genai 2.32.0: exact partial-message observation and microtask order for the google-generative-ai provider.
 //
 // Usage: node probe.mjs <pi.json> [inputs.json]
 //   env PI_PACKAGE_ROOT  installed @earendil-works/pi-coding-agent 1.1.0 (its dependency tree provides pi-ai, pi-agent-core and @google/genai)
@@ -29,7 +29,7 @@ import { createInterface } from 'node:readline';
 
 const root = process.env.PI_PACKAGE_ROOT;
 const base = root + '/node_modules/@earendil-works/';
-for (const [path, version] of [[root + '/package.json', PI_PACKAGE_VERSION], [base + 'pi-ai/package.json', PI_PACKAGE_VERSION], [base + 'pi-agent-core/package.json', PI_PACKAGE_VERSION], [root + '/node_modules/@google/genai/package.json', '2.21.0']]) {
+for (const [path, version] of [[root + '/package.json', PI_PACKAGE_VERSION], [base + 'pi-ai/package.json', PI_PACKAGE_VERSION], [base + 'pi-agent-core/package.json', PI_PACKAGE_VERSION], [root + '/node_modules/@google/genai/package.json', '2.32.0']]) {
   assert.equal(JSON.parse(await readFile(path, 'utf8')).version, version, path);
 }
 const ticksEnabled = process.env.PROBE_TICKS !== '0';
@@ -282,7 +282,7 @@ if (process.env.PROBE_SKIP_RPC !== '1') {
   }
 }
 if (process.argv[3]) {
-  await writeFile(process.argv[3], JSON.stringify({piVersion: PIG_UPSTREAM_VERSION, genaiVersion: '2.21.0', axes, bodies, laterBody}, null, 2) + '\n');
+  await writeFile(process.argv[3], JSON.stringify({piVersion: PIG_UPSTREAM_VERSION, genaiVersion: '2.32.0', axes, bodies, laterBody}, null, 2) + '\n');
 }
 // Generated tool-call ids are `read_<ms>_<counter>` (google-generative-ai.ts:199). The clock and the process-wide counter are not part of the contract, so the oracle
 // stores `read_T_N`; assistant timestamps stay raw (the Go comparator canonicalizes them as the OpenAI oracle's does).
@@ -290,5 +290,5 @@ const canonicalId = value => JSON.stringify(value).replace(/_\d{13}_\d+"/g, '_T_
 // One case per line keeps diffs reviewable.
 const lines = outputs.map(o => '  ' + canonicalId(o));
 const rpcLines = rpc.map(o => '  ' + canonicalId(o));
-await writeFile(process.argv[2], `{"piVersion":${JSON.stringify(PIG_UPSTREAM_VERSION)},"genaiVersion":"2.21.0","cases":[\n${lines.join(',\n')}\n],"rpc":[\n${rpcLines.join(',\n')}\n]}\n`);
+await writeFile(process.argv[2], `{"piVersion":${JSON.stringify(PIG_UPSTREAM_VERSION)},"genaiVersion":"2.32.0","cases":[\n${lines.join(',\n')}\n],"rpc":[\n${rpcLines.join(',\n')}\n]}\n`);
 process.exit(0);

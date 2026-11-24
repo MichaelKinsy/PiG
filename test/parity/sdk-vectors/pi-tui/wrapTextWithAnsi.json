@@ -1,6 +1,6 @@
 {
- "pin": "1.5.2",
- "package": "pi-tui@1.5.2",
+ "pin": "1.6.0",
+ "package": "pi-tui@1.6.0",
  "module": "pi-tui",
  "export": "wrapTextWithAnsi",
  "cases": [

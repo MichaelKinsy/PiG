@@ -223,7 +223,6 @@ class SessionList {
     filteredSessions = [];
     selectedIndex = 0;
     selectionTouched = false;
-    // Pi a635f3901 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
     // Session to select once it appears, while a progressive reload has not yet delivered it
     pendingSelectedPath;
     searchInput;
@@ -283,7 +282,6 @@ class SessionList {
         this.nameFilter = nameFilter;
         this.filterSessions(this.searchInput.getValue());
     }
-    // Pi a635f3901 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
     /**
      * @param partial true when more sessions are still loading; a selected session missing from a
      * partial list stays the selection target until it arrives
@@ -510,7 +508,6 @@ class SessionList {
         // Only triggers deletion when the query is empty; otherwise it is forwarded to the input
         if (kb.matches(keyData, "app.session.deleteNoninvasive")) {
             if (this.searchInput.getValue().length > 0) {
-                // Pi 37b74c546921 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
                 this.handleSearchInput(keyData);
                 return;
             }
@@ -518,7 +515,6 @@ class SessionList {
             return;
         }
         this.selectionTouched = true;
-        // Pi a635f3901 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         this.pendingSelectedPath = undefined;
         // Up arrow
         if (kb.matches(keyData, "tui.select.up")) {
@@ -551,11 +547,9 @@ class SessionList {
         }
         // Pass everything else to search input
         else {
-            // Pi 37b74c546921 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
             this.handleSearchInput(keyData);
         }
     }
-    // Pi 5bcf370a5293 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
     /** Applies a key to the search query; a changed, non-empty query selects the top row, the best match. */
     handleSearchInput(keyData) {
         const previousQuery = this.searchInput.getValue();
@@ -838,7 +832,6 @@ export class SessionSelectorComponent extends Container {
                 else {
                     this.allSessions = sessions;
                 }
-                // Pi a635f3901 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
                 if (scope === this.scope)
                     this.sessionList.setSessions(sessions, showCwd, true);
             }
@@ -912,7 +905,6 @@ export class SessionSelectorComponent extends Container {
         const loading = (this.scope === "current" ? this.currentLoad : this.allLoad) !== null;
         this.header.setScope(this.scope);
         this.header.setLoading(loading);
-        // Pi a635f3901 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         this.sessionList.setSessions(sessions ?? [], this.scope === "all", loading || sessions === null);
         this.requestRender();
         if (sessions === null && !loading)

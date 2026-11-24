@@ -32,7 +32,7 @@ import {
   uuidv7,
   validateToolArguments,
   validateToolCall
-} from "./chunk-2JJ4LEYR.js";
+} from "./chunk-6EXNEHUS.js";
 import {
   StreamingJsonParser,
   ToolCallArgumentsStream,
@@ -76,7 +76,7 @@ import {
   resolveTranscriptTools,
   toToolDeclaration,
   withoutInitialSystemMessage
-} from "./chunk-XXMZSYZB.js";
+} from "./chunk-35BKLGWE.js";
 import {
   PI_AI_VERSION,
   PI_ATTRIBUTION,
@@ -94,7 +94,7 @@ import {
   mergeClientIdentity,
   renderSystemMessageUpdate,
   withClientIdentity
-} from "./chunk-D4UU5BNJ.js";
+} from "./chunk-TA77CKFD.js";
 import "./chunk-SHUYVCID.js";
 export {
   AI_TELEMETRY_SCHEMA,

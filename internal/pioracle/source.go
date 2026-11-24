@@ -10,7 +10,7 @@ import (
 
 // OverrideTreeEnv names the Pi an oracle test compares with when it is not the pin's: the tree `pin.py override-tree` builds in
 // the build store for another Pi commit (automation/pin/vendor.py override_tree): `packages`, the packages of that commit's
-// source build, and durable/interop/node_modules, an install of that build's packs. make test-carried-oracles sets it for the
+// source build, and durable/interop/node_modules, an install of that build's packs. A run at another Pi commit sets it for the
 // tests of Pi work the Go port carries ahead of the pin. The tree is read where it is: nothing of it is installed or linked
 // into the repository, so a run that sets the variable leaves the repository's own Pi (the mirror, the oracle link,
 // durable/interop/node_modules) as it was.

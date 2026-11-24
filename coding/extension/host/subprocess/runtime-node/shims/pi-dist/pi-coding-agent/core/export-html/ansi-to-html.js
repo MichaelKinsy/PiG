@@ -192,7 +192,6 @@ function applySgrCode(params, style) {
         i++;
     }
 }
-// Pi 0e1e3fc81 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
 // Match escape sequences: SGR (ESC[...m), other CSI sequences, OSC sequences, and APC sequences (terminated by BEL or ST)
 const ANSI_REGEX = /\x1b\[([\d;]*)m|\x1b\[[0-?]*[ -/]*[@-~]|\x1b\]([^\x07\x1b]*)(?:\x07|\x1b\\)|\x1b_[^\x07\x1b]*(?:\x07|\x1b\\)/g;
 // OSC 8 hyperlink payload: "8;params;url"

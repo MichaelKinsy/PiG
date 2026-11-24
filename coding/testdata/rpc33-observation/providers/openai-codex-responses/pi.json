@@ -1,5 +1,5 @@
 {
-  "piVersion": "1.5.2",
+  "piVersion": "1.6.0",
   "api": "openai-codex-responses",
   "node": "v24.19.0",
   "runs": 8,
