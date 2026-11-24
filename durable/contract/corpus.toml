@@ -909,7 +909,8 @@ source = "packages/durable/test/harness-idle-scopes.test.ts"
 sha256 = "452113d29266ef929d1821c61b29f0c2e3c2aa55ed07a6cfd9f029f8c320b30e"
 owner = "dcore-session"
 levels = ["tests"]
-status = "ready"
+status = "pending"
+reason = "pending durable/core v1.6.0 signals/parks/fit-images port: top-level defineSignal and parked task idle-context test (473515f9)"
 # `incremental idle state equals a full recompute after every step of random nested work` runs under vitest's default 5 s test budget. The
 # reference takes 0.9 s at 8 CPUs, the candidate 1.6 s (2.0 s at most), 1.5-2.1 times as long (5 alternated runs, so no cost bound): enough that a
 # process the host gives about a third of a CPU misses the budget on the candidate alone. At 4 CPUs under the gate's -j 8 it failed 2 of 2 full

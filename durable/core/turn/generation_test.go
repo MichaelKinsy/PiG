@@ -853,9 +853,10 @@ func TestToolRoundResumesAHopAfterItsOutcomes(t *testing.T) {
 	before := len(r.hops)
 	r.toolRuns[0].then(mustParse(t, `{"output":[{"type":"text","text":"hello world"}]}`), nil)
 	r.run()
-	// The tool machine's own two five-hop chains come first.
+	// Pi v1.6.0: tool machine (6 = executeReturnHops 3 + finalResult 1 + hooks 2, then 5 settle), then finishToolRound:
+	// roundSlots (3+1), afterTools (agent 2 + hooks 1), endToolRound (outcomes 1, roundSlots 3+1, agent 2).
 	got := r.hops[before:]
-	want := []int{5, 5, 1, 3, 2, 1, 2}
+	want := []int{6, 5, 3, 1, 2, 1, 1, 3, 1, 2}
 	if len(got) < len(want) || fmt.Sprint(got[:len(want)]) != fmt.Sprint(want) {
 		t.Fatalf("hops after the tool's result = %v, want a prefix %v", got, want)
 	}

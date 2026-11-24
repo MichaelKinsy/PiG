@@ -115,6 +115,7 @@ const LATER = {
 	"env-node-list-race": "pending durable/core v1.6.0 signals/parks/fit-images port: env node listDir race handling (75ca6e7d)",
 	"harness-hook-tasks": "pending durable/core v1.6.0 signals/parks/fit-images port: afterTools and onYield hook tasks (473515f9)",
 	"harness-park-children": "pending durable/core v1.6.0 signals/parks/fit-images port: parked tool children and settlement signals (473515f9)",
+	"harness-idle-scopes": "pending durable/core v1.6.0 signals/parks/fit-images port: top-level defineSignal and parked task idle-context test (473515f9)",
 	"harness-signals": "pending durable/core v1.6.0 signals/parks/fit-images port: signals and parked task wakes (473515f9)",
 	"harness-tool-gates": "pending durable/core v1.6.0 signals/parks/fit-images port: beforeTool gates (473515f9)",
 	"harness-tool-parks": "pending durable/core v1.6.0 signals/parks/fit-images port: parked tools and cancel (473515f9)",

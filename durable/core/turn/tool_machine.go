@@ -25,7 +25,6 @@ const (
 	defaultMaxLines = 2000
 )
 
-
 // ToolTask implements the pi.tool task over a Host.
 type ToolTask struct{ Host *Host }
 
@@ -96,8 +95,8 @@ const readCallReturnHops = 3
 const readCallKeptReturnHops = 1
 
 // executeReturnHops is the hops from the host's toolDone (after `await tool.execute()` and `await Promise.allSettled(admissions)`,
-// which the host spends) to finalResult starting: `await progress.stop()` of an idle Progress, its `await this.#inFlight` and its return.
-const executeReturnHops = 2
+// which the host spends) to finalResult starting: Pi v1.6.0 `await attempt.end()` (1) plus `await progress.stop()` of an idle Progress (2).
+const executeReturnHops = 3
 
 // finalResultReturnHops is the hop from finalResult returning the settled result to run resuming (tool.ts run).
 const finalResultReturnHops = 1
@@ -320,7 +319,12 @@ func (c *callRun) intent(*session.Tx, *jv.Object) (*jv.Object, error) {
 	return jobj("status", "running", "checkpoint", intent), nil
 }
 
-func (c *callRun) run() { c.r.runTool(c.call, c.tool, c.final) }
+func (c *callRun) run() {
+	// Pi v1.6.0 tool.ts: `await commitIntent(...)` (1 hop) + `await startAttempt(...)` (1 hop) before `tool.execute()`.
+	c.r.hops(2, c.start)
+}
+
+func (c *callRun) start() { c.r.runTool(c.call, c.tool, c.final) }
 
 // execute is the recovery phase after intent: rerun only when the stored and the current policy both say safe.
 func (r *toolRun) execute(cp *jv.Object) {

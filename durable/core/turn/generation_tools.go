@@ -58,97 +58,160 @@ func (r *run) tools(cp *jv.Object) {
 // finishToolRound runs when the round's tools are terminal: it applies their controls, appends a handoff's reset, and then
 // ends the run at the final boundary (terminate), ends it at a queued reset, or hands it to the next generation at the
 // postTools boundary, in the handoff's new context when there is one (spec section 8.5).
+type roundEnd struct {
+	r         *run
+	assistant ID
+	ids       []ID
+	results   []any
+	controls  []*jv.Object
+	live      *jv.Object
+	terminate bool
+	newest    ID
+	added     []any
+	handoff   any
+	maxTurns  int
+	afterRun  bool
+}
+
 func (r *run) finishToolRound(assistant ID, toolList []any) {
 	ids := make([]ID, len(toolList))
 	for i, v := range toolList {
 		f, _ := v.(float64)
 		ids[i] = ID(f)
 	}
-	r.outcomes(ids, func(outcomes []*jv.Object, err error) {
-		if err != nil {
-			r.fail(err)
-			return
-		}
-		controls := make([]*jv.Object, len(ids))
-		for i, outcome := range outcomes {
-			if str(outcome, "status") == "completed" {
-				controls[i] = objField(objField(outcome, "result"), "control")
+	e := &roundEnd{r: r, assistant: assistant, ids: ids}
+	// Pi v1.6.0 generation.ts finishToolRound: roundSlots (snapshot + 1 async hop), then afterTools, then endToolRound
+	// (outcomes, then roundSlots again: snapshot + 1 async hop).
+	r.snapshot(LiveDef, e.gotSlotsFirst)
+}
+
+func (e *roundEnd) gotSlotsFirst(live *jv.Object) {
+	e.live = live
+	e.r.hops(1, e.runAfterTools)
+}
+
+func (e *roundEnd) runAfterTools() {
+	var results []any
+	if list, ok := arrayField(e.live, "tools"); ok {
+		for _, slot := range objectsOf(list) {
+			if slot.Has("entry") {
+				v, _ := slot.Get("entry")
+				results = append(results, v)
 			}
 		}
-		r.snapshot(LiveDef, func(live *jv.Object) {
-			var slots []*jv.Object
-			var results []any
-			if list, ok := arrayField(live, "tools"); ok {
-				slots = objectsOf(list)
-			}
-			for _, slot := range slots {
-				if slot.Has("entry") {
-					e, _ := slot.Get("entry")
-					results = append(results, e)
-				}
-			}
-			if results == nil {
-				results = []any{}
-			}
-			r.eachHook("afterTools", func() *jv.Object { return jobj("assistant", float64(assistant), "results", results) }, func(any) bool { return false }, func(err error) {
-				if err != nil {
-					r.fail(err)
-					return
-				}
-				// In call order, the slots' order; a slot without a task (faulted or orphaned before it got one) has no control.
-				controlOf := map[ID]*jv.Object{}
-				for i, id := range ids {
-					controlOf[id] = controls[i]
-				}
-				ordered := make([]*jv.Object, len(slots))
-				for i, slot := range slots {
-					if slot.Has("taskId") {
-						ordered[i] = controlOf[ID(num(slot, "taskId"))]
-					}
-				}
-				// Every call of the round must ask to terminate.
-				terminate := len(slots) > 0
-				for _, ctl := range ordered {
-					if ctl == nil || !mustTrue(ctl, "terminate") {
-						terminate = false
-					}
-				}
-				var added []any
-				var handoff any
-				for _, ctl := range ordered {
-					if ctl == nil {
-						continue
-					}
-					if a, ok := arrayField(ctl, "addTools"); ok {
-						added = append(added, a...)
-					}
-					// The last handoff in call order wins.
-					if v, ok := ctl.Get("handoff"); ok && v != nil {
-						handoff = v
-					}
-				}
-				newest := assistant
-				for _, e := range results {
-					if id, _ := e.(float64); ID(id) > newest {
-						newest = ID(id)
-					}
-				}
-				// Read from the phase's agent, as every agent field; a `configure()` during the round applies at its end.
-				r.agent(func(agent *Agent) {
-					commit := func(afterRun bool) {
-						r.commitDone(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
-							return r.finishCommit(tx, assistant, newest, terminate, afterRun, agent.MaxTurns, handoff, added)
-						})
-					}
-					if terminate {
-						r.asksAfterRun(commit)
-						return
-					}
-					commit(false)
-				})
-			})
-		})
-	})
+	}
+	if results == nil {
+		results = []any{}
+	}
+	e.results = results
+	e.r.eachHook("afterTools", e.afterToolsPayload, ignoreHookResult, e.afterToolsDone)
+}
+
+func ignoreHookResult(any) bool { return false }
+
+func (e *roundEnd) afterToolsPayload() *jv.Object {
+	return jobj("assistant", float64(e.assistant), "results", e.results)
+}
+
+func (e *roundEnd) afterToolsDone(err error) {
+	if err != nil {
+		e.r.fail(err)
+		return
+	}
+	e.r.outcomes(e.ids, e.gotOutcomes)
+}
+
+func (e *roundEnd) gotOutcomes(outcomes []*jv.Object, err error) {
+	if err != nil {
+		e.r.fail(err)
+		return
+	}
+	controls := make([]*jv.Object, len(e.ids))
+	for i, outcome := range outcomes {
+		if str(outcome, "status") == "completed" {
+			controls[i] = objField(objField(outcome, "result"), "control")
+		}
+	}
+	e.controls = controls
+	e.r.snapshot(LiveDef, e.gotSlotsSecond)
+}
+
+func (e *roundEnd) gotSlotsSecond(live *jv.Object) {
+	e.live = live
+	e.r.hops(1, e.finishEnd)
+}
+
+func (e *roundEnd) finishEnd() {
+	var slots []*jv.Object
+	var results []any
+	if list, ok := arrayField(e.live, "tools"); ok {
+		slots = objectsOf(list)
+	}
+	for _, slot := range slots {
+		if slot.Has("entry") {
+			v, _ := slot.Get("entry")
+			results = append(results, v)
+		}
+	}
+	// In call order, the slots' order; a slot without a task (faulted or orphaned before it got one) has no control.
+	controlOf := map[ID]*jv.Object{}
+	for i, id := range e.ids {
+		controlOf[id] = e.controls[i]
+	}
+	ordered := make([]*jv.Object, len(slots))
+	for i, slot := range slots {
+		if slot.Has("taskId") {
+			ordered[i] = controlOf[ID(num(slot, "taskId"))]
+		}
+	}
+	// Every call of the round must ask to terminate.
+	terminate := len(slots) > 0
+	for _, ctl := range ordered {
+		if ctl == nil || !mustTrue(ctl, "terminate") {
+			terminate = false
+		}
+	}
+	var added []any
+	var handoff any
+	for _, ctl := range ordered {
+		if ctl == nil {
+			continue
+		}
+		if a, ok := arrayField(ctl, "addTools"); ok {
+			added = append(added, a...)
+		}
+		// The last handoff in call order wins.
+		if v, ok := ctl.Get("handoff"); ok && v != nil {
+			handoff = v
+		}
+	}
+	newest := e.assistant
+	for _, v := range results {
+		if id, _ := v.(float64); ID(id) > newest {
+			newest = ID(id)
+		}
+	}
+	e.terminate, e.newest, e.added, e.handoff = terminate, newest, added, handoff
+	// Read from the phase's agent, as every agent field; a `configure()` during the round applies at its end.
+	e.r.agent(e.gotAgent)
+}
+
+func (e *roundEnd) gotAgent(agent *Agent) {
+	e.maxTurns = agent.MaxTurns
+	if e.terminate {
+		e.r.asksAfterRun(e.commitFinish)
+		return
+	}
+	e.commitFinish(false)
+}
+
+func (e *roundEnd) commitFinish(afterRun bool) {
+	e.afterRun = afterRun
+	e.r.commitDone(e.commitTx)
+}
+
+func (e *roundEnd) commitTx(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
+	return e.r.finishCommit(tx, e.assistant, e.newest, e.terminate, e.afterRun, e.maxTurns, e.handoff, e.added)
 }
 
 func mustTrue(o *jv.Object, key string) bool {

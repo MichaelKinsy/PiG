@@ -47,6 +47,8 @@ export interface EffectRuntime {
   env?: (target: { conversationId: number; cwd?: string; read: unknown }, context: Context) => unknown | Promise<unknown>
   /** `HarnessOptions.onReport`: extension failures that do not fail the calling operation. */
   report(error: unknown, info: { kind: string }, context?: Context): void
+  /** Track provider session IDs used by model calls so Harness.close cleans up their process-local resources (Pi #11961). */
+  recordProviderSession?(sessionId: string): void
   /** `HarnessOptions.now`, the Harness clock a tool's `api.now()` reads; `Date.now` when absent. */
   now?: () => number
   /** Credentials for a wire-plane request (`model_http`'s `auth`): headers to add. */
@@ -160,6 +162,7 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
       // Each request gets its own copy of the list, as Pi's generation does (generation.ts streamSimple call): the kept list grows
       // in place when a later request of the conversation extends it.
       const options = withSignal(p.options, signal, contextOf(signal, p.span).telemetry)
+      if (typeof options.sessionId === "string") rt.recordProviderSession?.(options.sessionId)
       if (p.onPayload) {
         // generation.ts's last option: pi-ai calls it with each request body it builds, and the core answers with the beforeProviderRequest chain's result.
         let next = 0
@@ -325,7 +328,7 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
     for (const request of asked.tasks) {
       try {
         const name = request.task.definition.name
-        if (name.startsWith("pi.")) throw new Error(`An afterRun hook cannot start the built-in task ${name}`)
+        if (name.startsWith("pi.")) throw new Error(`A hook cannot start the built-in task ${name}`)
         const installed = registry.find(name)
         if (installed === undefined) throw new Error(`Task ${name} is not installed`)
         const input = copyJson(request.input, { omitUndefinedProperties: true })

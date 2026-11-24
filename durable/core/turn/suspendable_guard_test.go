@@ -13,32 +13,59 @@ import (
 // for store/handoff compatibility, and must explicitly reject stored checkpoints in those unimplemented suspendable-work
 // phases rather than mis-executing them.
 func TestSuspendablePhasesAreExplicitlyRejected(t *testing.T) {
-	rt := &session.Runtime{}
-	gen := (&turn.Generation{}).Impl()
-	for _, phase := range []string{"afterTools", "yield"} {
-		task := jv.NewObject()
-		state := jv.NewObject()
-		cp := jv.NewObject()
-		cp.Set("phase", phase)
-		state.Set("checkpoint", cp)
-		task.Set("state", state)
-		var got error
-		gen.Phase(rt, task, func(err error) { got = err })
-		if got == nil || !strings.Contains(got.Error(), "suspendable work") || !strings.Contains(got.Error(), phase) {
-			t.Fatalf("generation phase %q err = %v, want explicit suspendable work rejection", phase, got)
-		}
-	}
-
-	tool := (&turn.ToolTask{}).Impl()
-	task := jv.NewObject()
-	state := jv.NewObject()
-	cp := jv.NewObject()
-	cp.Set("phase", "parked")
-	state.Set("checkpoint", cp)
-	task.Set("state", state)
-	var got error
-	tool.Phase(rt, task, func(err error) { got = err })
-	if got == nil || !strings.Contains(got.Error(), "suspendable work") || !strings.Contains(got.Error(), "parked") {
-		t.Fatalf("tool phase parked err = %v, want explicit suspendable work rejection", got)
+	for _, tc := range []struct {
+		kind  string
+		phase string
+	}{
+		{turn.KindGeneration, "afterTools"},
+		{turn.KindGeneration, "yield"},
+		{turn.KindTool, "parked"},
+	} {
+		t.Run(tc.kind+"-"+tc.phase, func(t *testing.T) {
+			r := newRig(t)
+			var taskID session.ID
+			r.commit(func(tx *session.Tx) error {
+				if _, err := tx.CreateRootConversation(); err != nil {
+					return err
+				}
+				var def *session.TaskDef
+				if tc.kind == turn.KindGeneration {
+					def = turn.GenerationDef
+				} else {
+					def = turn.ToolDef
+				}
+				id, err := tx.CreateTask(def, jv.NewObject(), session.TaskOptions{
+					ConversationID: session.RootConversationID,
+				})
+				if err != nil {
+					return err
+				}
+				taskID = id
+				return nil
+			})
+			r.commit(func(tx *session.Tx) error {
+				rec, err := tx.Task(taskID)
+				if err != nil {
+					return err
+				}
+				cp := jv.NewObject()
+				cp.Set("phase", tc.phase)
+				st := jv.NewObject()
+				st.Set("status", session.StatusPending)
+				st.Set("checkpoint", cp)
+				next := rec.Shallow()
+				next.Set("state", st)
+				return tx.SetTask(next)
+			})
+			r.resume()
+			rec, err := r.mem.Task(taskID)
+			if err != nil || rec == nil {
+				t.Fatalf("task %d: %v, %v", taskID, rec, err)
+			}
+			got := jv.Stringify(rec)
+			if !strings.Contains(got, `"status":"faulted"`) || !strings.Contains(got, "suspendable work") || !strings.Contains(got, tc.phase) {
+				t.Fatalf("task = %s, want faulted with explicit suspendable work rejection for %q", got, tc.phase)
+			}
+		})
 	}
 }
