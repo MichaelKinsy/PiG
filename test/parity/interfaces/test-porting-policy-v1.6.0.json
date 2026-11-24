@@ -1166,7 +1166,7 @@
     {
       "path": "packages/ai/test/google-stop-reason-continuation.test.ts",
       "upstreamTestHash": "sha256:d13917a46c45753350398219f26c75e2f29382b9fafa2305913bbff7e86738b3",
-      "area": "ai",
+      "area": "providers",
       "tags": [
         "hot-path"
       ],
@@ -1637,7 +1637,7 @@
     {
       "path": "packages/ai/test/openai-reasoning-replay-e2e.test.ts",
       "upstreamTestHash": "sha256:6c5fa812f8e2940830590e3a78796ed08f2437101c49a5c3434fdb96eb27cf14",
-      "area": "ai",
+      "area": "providers",
       "tags": [
         "hot-path"
       ],
@@ -1691,7 +1691,7 @@
     {
       "path": "packages/ai/test/openai-responses-input-transformations.test.ts",
       "upstreamTestHash": "sha256:a19b3be047e2026bdeca361093e3c8e37f28add1fba1de08fc6a373112564222",
-      "area": "ai",
+      "area": "providers",
       "tags": [
         "hot-path"
       ],
@@ -2572,7 +2572,7 @@
     {
       "path": "packages/chord/test/host/admission.test.ts",
       "upstreamTestHash": "sha256:e2d5809982baaff5adb360e681436d5e7a9f8647d6ba960367929c8908e78c1c",
-      "area": "chord",
+      "area": "extensions",
       "tags": [
         "hot-path"
       ],
@@ -2616,7 +2616,7 @@
     {
       "path": "packages/chord/test/host/events.test.ts",
       "upstreamTestHash": "sha256:8d51a590078327deda577d9ebf99f395e24b5430f4484e31ffddcb26e74903d8",
-      "area": "chord",
+      "area": "extensions",
       "tags": [
         "hot-path"
       ],
@@ -2656,7 +2656,7 @@
     {
       "path": "packages/chord/test/host/list.test.ts",
       "upstreamTestHash": "sha256:e2e8319cb89c49d07c814359c97454ad4d5dfd476f7f5fcf1d674717f27aa350",
-      "area": "chord",
+      "area": "extensions",
       "tags": [
         "hot-path"
       ],
@@ -2672,7 +2672,7 @@
     {
       "path": "packages/chord/test/host/named-query.test.ts",
       "upstreamTestHash": "sha256:dd67b36022da8ef46103783bc93db699c15dab825591e66ba153fd6cc3fe9dbe",
-      "area": "chord",
+      "area": "extensions",
       "tags": [
         "hot-path"
       ],
@@ -2716,7 +2716,7 @@
     {
       "path": "packages/chord/test/host/query-reader.test.ts",
       "upstreamTestHash": "sha256:e746cddba9700de1dfb3a7cfc3e5b2cd37308cf984745132a4686a1a7fa3f417",
-      "area": "chord",
+      "area": "extensions",
       "tags": [
         "hot-path"
       ],
@@ -2725,7 +2725,7 @@
     {
       "path": "packages/chord/test/host/read-declarations.test.ts",
       "upstreamTestHash": "sha256:c5ff9047c1238b0a924f8fafb343a839847b46d4e8d71a42b0900403c1306632",
-      "area": "chord",
+      "area": "extensions",
       "tags": [
         "hot-path"
       ],
@@ -2748,7 +2748,7 @@
     {
       "path": "packages/chord/test/host/reference-events.test.ts",
       "upstreamTestHash": "sha256:047a2d3527709a410450ef546dd346c62f1633df23185538653f5f567f4a0bfe",
-      "area": "chord",
+      "area": "extensions",
       "tags": [
         "hot-path"
       ],
@@ -2806,7 +2806,7 @@
     {
       "path": "packages/chord/test/host/route-admission.test.ts",
       "upstreamTestHash": "sha256:1294e4e1d6bce4f6fc5337ef7c41272e59d1bb820f0f79d97b95157ed65a3c40",
-      "area": "chord",
+      "area": "extensions",
       "tags": [
         "hot-path"
       ],
@@ -2843,7 +2843,7 @@
     {
       "path": "packages/chord/test/host/tiling.test.ts",
       "upstreamTestHash": "sha256:f35e7c7e82364abae71deae86f8c5e8ccfc36513a73a4118165f991cdca33185",
-      "area": "chord",
+      "area": "extensions",
       "tags": [
         "hot-path"
       ],
@@ -2994,7 +2994,7 @@
     {
       "path": "packages/chord/test/node/app/ephemeral-sign-ins.test.ts",
       "upstreamTestHash": "sha256:91fe2ffa886d528d1aa064e3beecfddbc4cbecbf87049df4d73cb3d357b0cafe",
-      "area": "chord",
+      "area": "extensions",
       "tags": [
         "hot-path"
       ],
@@ -3080,7 +3080,7 @@
     {
       "path": "packages/chord/test/node/app/sign-ins.test.ts",
       "upstreamTestHash": "sha256:1c28192df6bf195d055fea936f2e3fd3c465299f2d5aea9951f40639d74390f1",
-      "area": "chord",
+      "area": "extensions",
       "tags": [
         "hot-path"
       ],
@@ -3674,7 +3674,7 @@
     {
       "path": "packages/chord/test/state/framed.test.ts",
       "upstreamTestHash": "sha256:fb8a7343c0c546148124fe0b7f728d61706b94e3f5b44092194517aab7c5c5b5",
-      "area": "chord",
+      "area": "extensions",
       "tags": [
         "hot-path"
       ],
@@ -3746,7 +3746,7 @@
     {
       "path": "packages/chord/test/store/column-set.test.ts",
       "upstreamTestHash": "sha256:5941abf9dc4b575aefb52f473311708954c30e9e6aa36f3366ed3c6c1a6c49a9",
-      "area": "chord",
+      "area": "extensions",
       "tags": [
         "hot-path"
       ],
@@ -3856,7 +3856,7 @@
     {
       "path": "packages/chord/test/store/read-plan.test.ts",
       "upstreamTestHash": "sha256:18a296b6cd1e7ca5636f7a9c6e1e9a3475cfa19c1b9f451f62ae77818cff4a60",
-      "area": "chord",
+      "area": "extensions",
       "tags": [
         "hot-path"
       ],
@@ -3865,7 +3865,7 @@
     {
       "path": "packages/chord/test/store/reads.test.ts",
       "upstreamTestHash": "sha256:e5c600b8d0bea46f1650405434ef941a0778e1752d3f8f12747c5d12763d791f",
-      "area": "chord",
+      "area": "extensions",
       "tags": [
         "hot-path"
       ],
@@ -3888,7 +3888,7 @@
     {
       "path": "packages/chord/test/store/skip.test.ts",
       "upstreamTestHash": "sha256:30a385355362cdd38690d65e1ffeda5985df0dbbfff2637e780fb4cbc76d5c86",
-      "area": "chord",
+      "area": "extensions",
       "tags": [
         "hot-path"
       ],
@@ -4058,7 +4058,7 @@
     {
       "path": "packages/chord/test/surfaces/variant.test.ts",
       "upstreamTestHash": "sha256:25bae84bb8c48a66fee0a428744b555d8d6a4aef0e2e02be0f751856ab7dbaa1",
-      "area": "chord",
+      "area": "extensions",
       "tags": [
         "hot-path"
       ],
@@ -4286,7 +4286,7 @@
     {
       "path": "packages/coding-agent/test/agent-session-runtime-diagnostics.test.ts",
       "upstreamTestHash": "sha256:dd94a4de77eaa77eb9e7dc59c3c51b19972fe466f6061b48eaf99848f1f8e9f6",
-      "area": "coding-agent",
+      "area": "sessions",
       "tags": [
         "hot-path"
       ],
@@ -4680,7 +4680,7 @@
     {
       "path": "packages/coding-agent/test/config-selector.test.ts",
       "upstreamTestHash": "sha256:4b864f86a682131e01721787da83b341dac3912df4725a4a495436470206c30e",
-      "area": "coding-agent",
+      "area": "sessions",
       "tags": [
         "hot-path"
       ],
@@ -4849,7 +4849,7 @@
     {
       "path": "packages/coding-agent/test/export-html-ansi-links.test.ts",
       "upstreamTestHash": "sha256:1b21d788841be614bcc11e76920f8dfbb5f8df4effbef80b403ca29d34e6797f",
-      "area": "coding-agent",
+      "area": "sessions",
       "tags": [
         "hot-path"
       ],
@@ -5026,7 +5026,7 @@
     {
       "path": "packages/coding-agent/test/flush-stdout.test.ts",
       "upstreamTestHash": "sha256:f2db968fb38dc73f32aaf77dbbca587487da9cae75ffdf8ffb030760583d5830",
-      "area": "coding-agent",
+      "area": "sessions",
       "tags": [
         "hot-path"
       ],
@@ -5450,7 +5450,7 @@
     {
       "path": "packages/coding-agent/test/model-fallback-diagnostic.test.ts",
       "upstreamTestHash": "sha256:2e8cdaad2f787c585c2bef3c12e676ef82bd3272420a871cc4f12ac201c8e6dd",
-      "area": "coding-agent",
+      "area": "sessions",
       "tags": [
         "hot-path"
       ],
@@ -5531,7 +5531,7 @@
     {
       "path": "packages/coding-agent/test/model-scope-session-replacement.test.ts",
       "upstreamTestHash": "sha256:38a53ed9dd5881e6d15d4a7ccc8f5f18b780f174a1d364fc4d6e1cdbbd0d5a0e",
-      "area": "coding-agent",
+      "area": "sessions",
       "tags": [
         "hot-path"
       ],
@@ -5859,7 +5859,7 @@
     {
       "path": "packages/coding-agent/test/rpc-replacement-diagnostics.test.ts",
       "upstreamTestHash": "sha256:7139bc94770b0870446e7ff1b9b3d5c3ad9f920d7bd650cc0d9fa3d152f1f9a0",
-      "area": "coding-agent",
+      "area": "sessions",
       "tags": [
         "hot-path"
       ],
@@ -6084,7 +6084,7 @@
     {
       "path": "packages/coding-agent/test/session-selector-selection.test.ts",
       "upstreamTestHash": "sha256:77b84b0b725caa11021dacce8bc218b0ddab5789d09d85f46da0f133bf6f79ba",
-      "area": "coding-agent",
+      "area": "sessions",
       "tags": [
         "hot-path"
       ],
@@ -6147,7 +6147,7 @@
     {
       "path": "packages/coding-agent/test/settings-submenu.test.ts",
       "upstreamTestHash": "sha256:094f6da2b367181d6b85df19bf159da2672a6df7f258c6997ba0ee2d210a968d",
-      "area": "coding-agent",
+      "area": "sessions",
       "tags": [
         "hot-path"
       ],
@@ -6359,7 +6359,7 @@
     {
       "path": "packages/coding-agent/test/suite/print-mode-session-start-events.test.ts",
       "upstreamTestHash": "sha256:05be79112e4150e3353a17fe7f032657bdf8e8d2271110a642bb493044d1b582",
-      "area": "coding-agent",
+      "area": "sessions",
       "tags": [
         "hot-path"
       ],
@@ -6377,7 +6377,7 @@
     {
       "path": "packages/coding-agent/test/suite/regressions/10470-rpc-session-replacement-start-once.test.ts",
       "upstreamTestHash": "sha256:3bd72952d48d1921387461e1605e0c16b0a8d41537d037cbb6459fae066c4c54",
-      "area": "coding-agent",
+      "area": "sessions",
       "tags": [
         "hot-path"
       ],
@@ -6404,7 +6404,7 @@
     {
       "path": "packages/coding-agent/test/suite/regressions/11264-pi-events-handler-errors.test.ts",
       "upstreamTestHash": "sha256:f3aacf4587c99e9b6ac3d6d8ad11ffd3e268ec9f7aea2d65b260372d6c2c6be3",
-      "area": "coding-agent",
+      "area": "sessions",
       "tags": [
         "hot-path"
       ],
@@ -6449,7 +6449,7 @@
     {
       "path": "packages/coding-agent/test/suite/regressions/12066-find-ancestor-glob.test.ts",
       "upstreamTestHash": "sha256:ce1668b36def2e803b1df0306393d79bdc5baf49cf2cbe13d6bbea34c61e936c",
-      "area": "coding-agent",
+      "area": "sessions",
       "tags": [
         "hot-path"
       ],
@@ -6458,7 +6458,7 @@
     {
       "path": "packages/coding-agent/test/suite/regressions/12119-copy-after-abort-or-error.test.ts",
       "upstreamTestHash": "sha256:750ec11a77fa9aa9e43b754924ab7f15436696b2ef184af2245029483755dfe3",
-      "area": "coding-agent",
+      "area": "sessions",
       "tags": [
         "hot-path"
       ],
@@ -6467,7 +6467,7 @@
     {
       "path": "packages/coding-agent/test/suite/regressions/12124-websocket-connection-limit-retry.test.ts",
       "upstreamTestHash": "sha256:ac19a61e6b788d002ae0ce2f02e488ad905833a0da06f50ae9c0ea515eef6cc0",
-      "area": "coding-agent",
+      "area": "sessions",
       "tags": [
         "hot-path"
       ],
@@ -7622,7 +7622,7 @@
     {
       "path": "packages/durable/test/env-node-list-race.test.ts",
       "upstreamTestHash": "sha256:df8c9c44f217d38f9cc56e8c8484ed3018d02959b937fa24ec844f576385fd35",
-      "area": "durable",
+      "area": "cli",
       "tags": [
         "hot-path"
       ],
@@ -7793,7 +7793,7 @@
     {
       "path": "packages/durable/test/harness-hook-tasks.test.ts",
       "upstreamTestHash": "sha256:efc785543f1a2d338b51c2ced36b6609fb957c098c3bbfb5a550a951ea72c976",
-      "area": "durable",
+      "area": "cli",
       "tags": [
         "hot-path"
       ],
@@ -7910,7 +7910,7 @@
     {
       "path": "packages/durable/test/harness-park-children.test.ts",
       "upstreamTestHash": "sha256:ac4a029ffd666ef6018092cc79b953e2a2ee8a77083d3b0ead75a34dc6cd0451",
-      "area": "durable",
+      "area": "cli",
       "tags": [
         "hot-path"
       ],
@@ -8009,7 +8009,7 @@
     {
       "path": "packages/durable/test/harness-signals.test.ts",
       "upstreamTestHash": "sha256:6d8d316ccf9ca0c6e13d0bf85d345ac2210362ae5c34d1c9952791f2bdb9cd6f",
-      "area": "durable",
+      "area": "cli",
       "tags": [
         "hot-path"
       ],
@@ -8117,7 +8117,7 @@
     {
       "path": "packages/durable/test/harness-tool-gates.test.ts",
       "upstreamTestHash": "sha256:1f9be407e6e02bb8a05d336f2c06054572cc959bef76a54929728265bc953c27",
-      "area": "durable",
+      "area": "cli",
       "tags": [
         "hot-path"
       ],
@@ -8135,7 +8135,7 @@
     {
       "path": "packages/durable/test/harness-tool-parks.test.ts",
       "upstreamTestHash": "sha256:ebc466c10eafa660eadffc3ea01a736bba8ecc2d2aeda5de324107b53e1bd128",
-      "area": "durable",
+      "area": "cli",
       "tags": [
         "hot-path"
       ],
@@ -8192,7 +8192,7 @@
     {
       "path": "packages/durable/test/images-fit.test.ts",
       "upstreamTestHash": "sha256:5822be2d2febd24d64c29ee55a9c1898b79955c03a0f73e42ec2eec687ade9ee",
-      "area": "durable",
+      "area": "cli",
       "tags": [
         "hot-path"
       ],
