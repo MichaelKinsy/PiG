@@ -20,6 +20,8 @@ const fragments = [
 	"websocket closed", "stream ended before message_stop", "retry delay", "please retry your request", "ResourceExhausted", "insufficient_quota", "billing", "quota exceeded", "out of budget", "GoUsageLimitError",
 	"400 (no body)", "413 status code (no body)", "github-copilot API error (413): {\"message\":\"failed to parse request\",\"code\":\"\"}", "custom API error (413): Payload Too Large", "413", "413: x", "4130", "x API error (400): invalid value 413", "400", "502", "x502y", "502x", "1429", "_503_", "(504)", "req_011CU503xyz", "stream disconnected before completion: stream closed before response.completed", "subscription_sharing_workplace_individual_usage_limit_exceeded 429", "x", "", "é😀", "context window exceeds limit", "too large for model with 1000 maximum context length", "prompt has 1,000 tokens, but the configured context size is 500 tokens",
 	"range of input length should be", "model_context_window_exceeded", "prompt too long; exceeded max context length",
+	"request to https://oauth2.googleapis.com/token failed, reason:",
+	"request to https://api.example.com/v1/messages failed, reason: socket hang up",
 ];
 const noise = ["", " ", "\n", "X", " – ", "abc ", "ÉÀ", "İ", "ſ", "K"];
 for (let i = 0; i < 700; i++) {
