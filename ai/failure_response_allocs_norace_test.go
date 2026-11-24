@@ -5,6 +5,8 @@ package ai
 import (
 	"os"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 )
 
 // failedRequestAllocs is what one failed HTTP request allocates with this test's transport and no decider: every allocation of the process while the request is made and
@@ -23,15 +25,32 @@ var failedRequestAllocs = map[string]float64{"openai-completions": 212, "openai-
 // (os.Getenv allocates 0 on Unix and 2 on Windows for UTF-16 conversion).
 var failedRequestEnvLookups = map[string]float64{"openai-completions": 2, "openai-responses": 1, "anthropic": 2, "google": 0}
 
+// failedRequestGoroutineIDLookups is the number of currentGoroutineID calls each provider's failed-request path makes
+// (0 allocs on Linux/macOS amd64/arm64 via fast_gc.go, 1 alloc per call via runtime.Stack on Windows / slow_other.go).
+// openai-completions and openai-responses enter responseTurn before inspecting resp.StatusCode, calling currentGoroutineID
+// twice (native_body_iterator.go:138 and provider_streams.go:149 via ownedByCaller); anthropic and google reject 429 before responseTurn.
+var failedRequestGoroutineIDLookups = map[string]float64{"openai-completions": 2, "openai-responses": 2, "anthropic": 0, "google": 0}
+
 func TestFailedRequestAllocationsWithoutDeciderMatchTheLineBeforeTheSeam(t *testing.T) {
+	// Finish goroutineid offset proof before measuring goidLookupAllocs so platforms with fast_gc.go measure 0
+	// even when this test runs first in a fresh process, while slow_other.go (Windows) measures 1 per call.
+	for goroutineid.Proving() {
+		done := make(chan struct{})
+		go func() {
+			_ = currentGoroutineID()
+			close(done)
+		}()
+		<-done
+	}
 	envLookupAllocs := testing.AllocsPerRun(100, func() { _ = os.Getenv("PI_CACHE_RETENTION") })
+	goidLookupAllocs := testing.AllocsPerRun(100, func() { _ = currentGoroutineID() })
 	for _, tc := range failedRequestProviders {
 		t.Run(tc.name, func(t *testing.T) {
 			provider := tc.build()
 			transport := rateLimitedTransport()
 			got := testing.AllocsPerRun(200, func() { runFailedRequest(t, provider, transport, false) })
-			want := failedRequestAllocs[tc.name] + failedRequestEnvLookups[tc.name]*envLookupAllocs
-			t.Logf("allocs/op %s = %v (want %v; envLookupAllocs=%v)", tc.name, got, want, envLookupAllocs)
+			want := failedRequestAllocs[tc.name] + failedRequestEnvLookups[tc.name]*envLookupAllocs + failedRequestGoroutineIDLookups[tc.name]*goidLookupAllocs
+			t.Logf("allocs/op %s = %v (want %v; envLookupAllocs=%v goidLookupAllocs=%v)", tc.name, got, want, envLookupAllocs, goidLookupAllocs)
 			if got != want {
 				t.Fatalf("allocs/op = %v, want %v (the line before the seam)", got, want)
 			}
