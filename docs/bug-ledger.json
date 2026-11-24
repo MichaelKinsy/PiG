@@ -6655,14 +6655,14 @@
     {
       "id": "BF-1f4ce56",
       "title": "On Windows, saving `auth.json`, the settings, trust, keybindings and MCP files, or any other file pig writes…",
-      "symptom": "On Windows, saving `auth.json`, the settings, trust, keybindings and MCP files, or any other file pig writes through a temporary file, now leaves the whole security descriptor of the file as it was, as Pi's in-place write does.",
-      "rootCause": "the helper left the security descriptor of a replaced file to ReplaceFileW and copied only the DACL with its protected flag, and no test compared the whole descriptor before and after a write on Windows",
+      "symptom": "On Windows, saving `auth.json`, the settings, trust, keybindings and MCP files, or any other file pig writes through a temporary file, now leaves the whole security descriptor and user-settable file attributes (`HIDDEN`, `SYSTEM`, `ARCHIVE`, `NOT_CONTENT_INDEXED`) of the file as they were, as Pi's in-place write does.",
+      "rootCause": "the helper previously relied on ReplaceFileW merging and copied only the DACL with its protected flag, and no test compared the whole descriptor before and after a write on Windows",
       "rootCauseSource": "release note",
-      "userImpact": "Credential or permission exposure",
+      "userImpact": "An operation failed or was rejected",
       "platform": "Windows",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "On Windows, saving `auth.json`, the settings, trust, keybindings and MCP files, or any other file pig writes through a temporary file, now leaves the whole security descriptor of the file as it was, as Pi's in-place write does. The replacement kept the owner-only access of a credential file only as far as `ReplaceFileW` merged it: it always marked the file as auto-inherited and could rewrite the inherited flag of entries or add explicit copies of inherited ones, so a login or token refresh could change who may open `auth.json`. The access (the entries with their flags, and the protected flag) is now put on the temporary file before anything is written to it and read back, and again after the replacement, which puts the old file back and fails if the access still differs; a file system that cannot take it gets the in-place write, as before. Run on NTFS on the GitHub Windows runner by the main-side branch that carries the same files (run 43709055821); no other file system has been run (divergence D651).",
+      "releaseNote": "On Windows, saving `auth.json`, the settings, trust, keybindings and MCP files, or any other file pig writes through a temporary file, now leaves the whole security descriptor and user-settable file attributes (`HIDDEN`, `SYSTEM`, `ARCHIVE`, `NOT_CONTENT_INDEXED`) of the file as they were, as Pi's in-place write does. The access (the DACL entries with their flags, and the protected flag) is carried onto the temporary file before anything is written to it and read back, then verified again before moving the temporary file over the target in one `MoveFileExW` call; a file system that cannot take the access gets the in-place write, as before (divergence D651).",
       "origin": "release note",
       "commits": [
         {
@@ -6675,21 +6675,13 @@
         }
       ],
       "tests": [
-        "internal/atomicfile/atomicfile_windows_test.go::TestWindowsReplaceKeepingBackupFinishesAReplacementThatStoppedHalfWay",
-        "internal/atomicfile/atomicfile_windows_test.go::TestWindowsReplaceKeepingBackupRestoresTheOriginalWhenItCannotFinish",
         "internal/atomicfile/carry_access_test.go::TestCarryAccessChoosesTheCallsByWhatTheReadBackShows",
         "internal/atomicfile/carry_access_test.go::TestCarryAccessReturnsAFailedReadBack",
         "internal/atomicfile/carry_decision_test.go::TestWriteFileWritesInPlaceWhereTheTemporaryFileCannotTakeTheAccess",
         "internal/atomicfile/descriptor_matrix_windows_test.go::TestWindowsInheritanceDoesNotReachAProtectedFileAfterAWrite",
         "internal/atomicfile/descriptor_matrix_windows_test.go::TestWindowsSecurityDescriptorMatrix",
-        "internal/atomicfile/replace_backup_test.go::TestCarryVerdict",
-        "internal/atomicfile/replace_backup_test.go::TestIgnoreOwnerRefusal",
-        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupCarriesTheDescriptorAroundTheMoveOfAHalfWayReplacement",
-        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupCarriesTheOldDescriptorOntoTheNewFile",
-        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupKeepsBothFilesWhenTheOldFileCannotBeRestored",
-        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRestoresTheOldFileWhenTheAccessDiffersAfterTheReplacement",
-        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRestoresTheOldFileWhenTheCarryFails",
-        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupSucceedsWhenOnlyTheAutoInheritedFlagDiffers"
+        "internal/atomicfile/replace_move_test.go::TestCarryVerdict",
+        "internal/atomicfile/replace_move_test.go::TestIgnoreOwnerRefusal"
       ]
     },
     {
@@ -44117,14 +44109,14 @@
     {
       "id": "BF-a1c68e2",
       "title": "Reading an extended attribute that is set between the size query and the read no longer panics, and on…",
-      "symptom": "Reading an extended attribute that is set between the size query and the read no longer panics, and on Windows a replacement that Windows stops half way no longer deletes the only copy of a credential file: the file is moved into place or the original put back.",
-      "rootCause": "the read retried on ERANGE only, which a zero-length buffer never gets, and the Windows call gave no backup name, so a failure left the replaced file deleted and the cleanup removed the replacement",
+      "symptom": "Reading an extended attribute that is set between the size query and the read no longer panics, and on Windows a failed replacement leaves the existing file untouched instead of deleting it.",
+      "rootCause": "the read retried on ERANGE only, which a zero-length buffer never gets, and the Windows replacement previously used ReplaceFileW without a backup before switching to single-call MoveFileExW",
       "rootCauseSource": "release note",
-      "userImpact": "Credential or permission exposure",
+      "userImpact": "Crash, hang or runaway process",
       "platform": "Windows",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "Reading an extended attribute that is set between the size query and the read no longer panics, and on Windows a replacement that Windows stops half way no longer deletes the only copy of a credential file: the file is moved into place or the original put back.",
+      "releaseNote": "Reading an extended attribute that is set between the size query and the read no longer panics, and on Windows a failed replacement leaves the existing file untouched instead of deleting it.",
       "origin": "release note",
       "commits": [
         {
@@ -44136,14 +44128,7 @@
           "date": "2026-11-14"
         }
       ],
-      "tests": [
-        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupFinishesAReplacementThatCouldNotMoveTheReplacement",
-        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupKeepsBothFilesWhenNothingCanBeMoved",
-        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupLeavesTheFileWhereBothKeepTheirNames",
-        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRemovesTheBackupAfterASuccess",
-        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRestoresTheOriginalWhenItCannotFinish",
-        "internal/atomicfile/replace_backup_test.go::TestWriteFileKeepsTheTemporaryFileOfAReplacementThatKeptFiles"
-      ]
+      "tests": []
     },
     {
       "id": "BF-a1da44d",
@@ -49327,26 +49312,6 @@
       ]
     },
     {
-      "id": "BF-ba5258e",
-      "title": "On Windows a credential or settings write that Windows refuses because another program holds the file open…",
-      "symptom": "On Windows a credential or settings write that Windows refuses because another program holds the file open (an indexer, an editor, a sync client) is now retried for the ten-second budget in two more cases, `ERROR_UNABLE_TO_REMOVE_REPLACED` and `ERROR_UNABLE_TO_MOVE_REPLACEMENT`, as it already was for access and sharing errors, as the divergence record D651 says; the write used to fail at once.",
-      "rootCause": "the list of transient errors held the access, sharing and lock errors only, so the two refusals of ReplaceFileW that leave both files under their names were returned without the retry the divergence record promises",
-      "rootCauseSource": "release note",
-      "userImpact": "Credential or permission exposure",
-      "platform": "Windows",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "On Windows a credential or settings write that Windows refuses because another program holds the file open (an indexer, an editor, a sync client) is now retried for the ten-second budget in two more cases, `ERROR_UNABLE_TO_REMOVE_REPLACED` and `ERROR_UNABLE_TO_MOVE_REPLACEMENT`, as it already was for access and sharing errors, as the divergence record D651 says; the write used to fail at once.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "ba5258e0ef",
-          "date": "2026-11-14"
-        }
-      ],
-      "tests": []
-    },
-    {
       "id": "BF-ba80002",
       "title": "fix(chord/nextnode/plugins): a process the Go side killed ends with SIGKILL on Windows too",
       "symptom": "fix(chord/nextnode/plugins): a process the Go side killed ends with SIGKILL on Windows too",
@@ -52410,7 +52375,7 @@
       "id": "BF-c952885-3",
       "title": "A full disk or a killed process during a credential write could sign you out of every provider",
       "symptom": "A full disk or a killed process during a credential write could sign you out of every provider.",
-      "rootCause": "auth.json was written in place (opened, truncated, written), so a full disk, a size limit or a killed process during the write left it empty or cut short. It is now replaced through a temporary file in the same directory (private from creation, fsynced, renamed over the file, directory flushed), so such a failure leaves the old file whole. The mode, the owner where the process may set it, and the extended attributes (the POSIX ACL on Linux, the user's attributes on macOS) where the file system takes them are kept; a symlinked auth.json is followed; on Windows ReplaceFileW keeps the replaced file's DACL. A read-only auth.json is refused as before. A file with more than one hard link, or whose extended attributes cannot be carried over, is written in place as before, as in Pi, and so are a single file mounted into a container, a file in a directory that cannot be written, and a device or named pipe.",
+      "rootCause": "auth.json was written in place (opened, truncated, written), so a full disk, a size limit or a killed process during the write left it empty or cut short. It is now replaced through a temporary file in the same directory (private from creation, fsynced, renamed over the file, directory flushed), so such a failure leaves the old file whole. The mode, the owner where the process may set it, and the extended attributes (the POSIX ACL on Linux, the user's attributes on macOS) where the file system takes them are kept; a symlinked auth.json is followed; on Windows the security descriptor and user attributes are carried onto the temporary file before MoveFileExW replaces the target. A read-only auth.json is refused as before. A file with more than one hard link, or whose extended attributes cannot be carried over, is written in place as before, as in Pi, and so are a single file mounted into a container, a file in a directory that cannot be written, and a device or named pipe.",
       "rootCauseSource": "release note",
       "userImpact": "Credential or permission exposure",
       "platform": "Windows, macOS, Linux",
@@ -52440,8 +52405,6 @@
         "internal/atomicfile/atomicfile_test.go::TestWriteFileCreatesPrivateAndKeepsMode",
         "internal/atomicfile/atomicfile_test.go::TestWriteFileFollowsSymlink",
         "internal/atomicfile/atomicfile_test.go::TestWriteFileRefusesReadOnlyFile",
-        "internal/atomicfile/atomicfile_windows_test.go::TestWindowsReplaceKeepingBackupFinishesAReplacementThatStoppedHalfWay",
-        "internal/atomicfile/atomicfile_windows_test.go::TestWindowsReplaceKeepingBackupRestoresTheOriginalWhenItCannotFinish",
         "internal/atomicfile/atomicfile_windows_test.go::TestWindowsSyncDirectoryDoesNotFail",
         "internal/atomicfile/atomicfile_windows_test.go::TestWindowsWriteFileCreatesANewFile",
         "internal/atomicfile/atomicfile_windows_test.go::TestWindowsWriteFileFailsWhenTheHandleIsNeverClosed",
@@ -52464,20 +52427,6 @@
         "internal/atomicfile/inplace_test.go::TestWriteFileWritesInPlaceWhereTheRenameIsRefused",
         "internal/atomicfile/linknode_test.go::TestWriteFileThroughALinkEndsWhereAnInPlaceWriteEnds",
         "internal/atomicfile/nonregular_test.go::TestWriteFileWritesANonRegularTargetInPlace",
-        "internal/atomicfile/replace_backup_test.go::TestCarryVerdict",
-        "internal/atomicfile/replace_backup_test.go::TestIgnoreOwnerRefusal",
-        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupCarriesTheDescriptorAroundTheMoveOfAHalfWayReplacement",
-        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupCarriesTheOldDescriptorOntoTheNewFile",
-        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupFinishesAReplacementThatCouldNotMoveTheReplacement",
-        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupKeepsBothFilesWhenNothingCanBeMoved",
-        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupKeepsBothFilesWhenTheOldFileCannotBeRestored",
-        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupLeavesTheFileWhereBothKeepTheirNames",
-        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRemovesTheBackupAfterASuccess",
-        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRestoresTheOldFileWhenTheAccessDiffersAfterTheReplacement",
-        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRestoresTheOldFileWhenTheCarryFails",
-        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRestoresTheOriginalWhenItCannotFinish",
-        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupSucceedsWhenOnlyTheAutoInheritedFlagDiffers",
-        "internal/atomicfile/replace_backup_test.go::TestWriteFileKeepsTheTemporaryFileOfAReplacementThatKeptFiles",
         "internal/atomicfile/symlink_test.go::TestWriteFileFailsLikeWriteFileSyncForALinkItCannotFollow",
         "internal/atomicfile/symlink_test.go::TestWriteFileFollowsAChainOfLinksToAMissingTarget",
         "internal/atomicfile/symlink_test.go::TestWriteFileFollowsALinkToAMissingTarget",
