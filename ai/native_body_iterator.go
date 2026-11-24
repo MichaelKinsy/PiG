@@ -135,7 +135,7 @@ func (stream *AssistantMessageEventStream) responseContinuation(body func(*conti
 	}
 	var err error
 	turn.run(func(turn *continuationTurn) {
-		observation := &StreamObservation{turn: turn}
+		observation := &StreamObservation{turn: turn, owner: currentGoroutineID()}
 		executor.mu.Lock()
 		turn.producer = observation
 		executor.mu.Unlock()
