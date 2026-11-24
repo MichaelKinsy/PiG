@@ -171,6 +171,7 @@ var fileSymlinkCallers = map[string]string{
 	"coding/extension/host/runtimecell/sdk_tree_memo_test.go::TestSDKTreeHashIsTheHashOfTheFilesWhereverItIsAnsweredFrom":                                      "file link; the staged SDK tree hash must see a file link appear or replace a file (the memo hashes files, not directory links)",
 	"coding/extension/host/runtimecell/sdk_tree_memo_test.go::TestStagedSDKHashFollowsEveryChangeOfASizeATimeOrTheFiles":                                       "file link; the staged SDK tree hash must see a file link appear or replace a file (the memo hashes files, not directory links)",
 	"coding/extension/host/runtimecell/sdk_tree_memo_test.go::TestStagedSDKHashDoesNotAnswerToWhatTheHashIgnores":                                              "file link; the staged SDK tree hash must see a file link appear or replace a file (the memo hashes files, not directory links)",
+	"coding/mcpext/storage_create_race_internal_test.go::TestFileAuthStorageBackendCreatesOwnerOnlyAndFollowsDanglingSymlink":                                  "dangling file link; the create must follow the link and create its target file, which a junction cannot express",
 }
 
 // Windows-building tests keep Symlink for file links only, so the directory-link behavior they exercise runs on a stock Windows host.
