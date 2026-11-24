@@ -3,7 +3,6 @@
 package plugins
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 // Ports the Linux-only case of packages/chord/test/node/plugins/watcher.test.ts (`it.skipIf(process.platform !==
@@ -69,33 +69,99 @@ func fifo(t *testing.T, path string) {
 }
 
 // readerWaits reports whether a reader has the pipe at path open (a non-blocking open for writing succeeds; it then reads
-// nothing).
+// nothing). Because closing the write end sends EOF to a waiting reader, call this only to assert that no reader waits or
+// to drain readers during cleanup.
 func readerWaits(path string) bool {
-	fd, err := syscall.Open(path, syscall.O_WRONLY|syscall.O_NONBLOCK, 0)
+	file, err := os.OpenFile(path, os.O_WRONLY|syscall.O_NONBLOCK, 0)
 	if err != nil {
 		return false
 	}
-	_ = syscall.Close(fd)
+	_ = file.Close()
 	return true
 }
 
-// writeWhenRead writes text into the pipe at path once a reader has it open (a non-blocking open for writing fails until
-// then), and closes it: that reader reads text.
-func writeWhenRead(t *testing.T, path, text string) {
-	t.Helper()
-	var fd int
-	eventually(t, 10*time.Second, "a reader on "+path, func() bool {
-		var err error
-		fd, err = syscall.Open(path, syscall.O_WRONLY|syscall.O_NONBLOCK, 0)
-		if err != nil && !errors.Is(err, syscall.ENXIO) {
-			t.Fatal(err)
+// pipeWatcherState summarizes the watcher's base-comparison state for diagnostics when waiting on a pipe times out.
+func pipeWatcherState(f *watcherFixture, path string) string {
+	var summary string
+	f.run(func() {
+		w := f.watcher
+		comp := w.comparing[path]
+		again := false
+		if comp != nil {
+			again = comp.again
 		}
-		return err == nil
+		summary = fmt.Sprintf("closed=%v comparers=%d comparing=%d queue=%d pathComparing=%v pathAgain=%v base=%v",
+			w.closed, w.comparers, len(w.comparing), len(w.queue), comp != nil, again, len(w.differing) > 0)
 	})
-	if _, err := syscall.Write(fd, []byte(text)); err != nil {
+	return summary
+}
+
+// drainPipeOnCleanup unblocks any comparison still reading path if the test ends early (for example on a failed assertion),
+// so watcherOverNotifier's later watcher.join() cleanup returns instead of hanging on a reader blocked in model.HashFile.
+func drainPipeOnCleanup(t *testing.T, f *watcherFixture, path string) {
+	t.Helper()
+	t.Cleanup(func() {
+		if !f.ComparingBase() {
+			return
+		}
+		f.close()
+		deadline := time.Now().Add(testbudget.Wait(t))
+		ticker := time.NewTicker(5 * time.Millisecond)
+		defer ticker.Stop()
+		for f.ComparingBase() {
+			readerWaits(path)
+			if !f.ComparingBase() || time.Now().After(deadline) {
+				return
+			}
+			<-ticker.C
+		}
+	})
+}
+
+// writeWhenRead opens the named pipe at path once for writing (blocking until a reader opens it), writes text, and closes
+// it: that reader reads text. Opening once in blocking mode pairs with the reader without an extra open-and-close probe
+// that would deliver an early EOF. On timeout it opens a non-blocking reader to release the blocked writer goroutine before
+// failing with the watcher's state.
+func writeWhenRead(t *testing.T, f *watcherFixture, path, text string) {
+	t.Helper()
+	type openResult struct {
+		file *os.File
+		err  error
+	}
+	opened := make(chan openResult, 1)
+	go func() {
+		file, err := os.OpenFile(path, os.O_WRONLY, 0)
+		opened <- openResult{file: file, err: err}
+	}()
+	bound := testbudget.Wait(t)
+	timer := time.NewTimer(bound)
+	defer timer.Stop()
+	var res openResult
+	select {
+	case res = <-opened:
+	case <-timer.C:
+		// Open a non-blocking reader and hold it open until the blocked O_WRONLY open returns, then close both ends so the
+		// helper goroutine never leaks.
+		rfile, rerr := os.OpenFile(path, os.O_RDONLY|syscall.O_NONBLOCK, 0)
+		if rerr == nil {
+			res = <-opened
+			if res.err == nil {
+				_ = res.file.Close()
+			}
+			_ = rfile.Close()
+		}
+		t.Fatalf("timed out after %v waiting for a reader on %s (%s)", bound, path, pipeWatcherState(f, path))
+	}
+	if res.err != nil {
+		t.Fatal(res.err)
+	}
+	if _, err := res.file.WriteString(text); err != nil {
+		_ = res.file.Close()
 		t.Fatal(err)
 	}
-	_ = syscall.Close(fd)
+	if err := res.file.Close(); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // Ports watcher.test.ts "reads one path in order: a second comparison waits for the first, held on a pipe, and decides"
@@ -105,17 +171,16 @@ func TestTheBaseMarkReadsOnePathInOrderASecondComparisonWaitsForTheFirstHeldOnAP
 	root := realOf(t, tempRoot(t))
 	pipe := filepath.Join(root, "held.ts")
 	fifo(t, pipe)
+	drainPipeOnCleanup(t, f, pipe)
 	// The first comparison opens the pipe and waits for a writer; a second one is queued behind it (a comparison stays
 	// held on purpose until writeWhenRead below, so do not wait for ComparingBase to clear).
 	f.recordBase(model.BaseInputs{pipe: hashOf("as built")})
 	f.mark(pipe)
-	// Wait for the first comparison to have opened the pipe before writing to it.
-	eventually(t, 5*time.Second, "a reader on "+pipe, func() bool { return readerWaits(pipe) })
 	// The first read gets other bytes: marked. (Two readers at once would split this: one of them gets nothing.)
-	writeWhenRead(t, pipe, "other bytes")
+	writeWhenRead(t, f, pipe, "other bytes")
 	f.baseIs(true)
 	// Only now does the second read open the pipe, and it decides: the recorded bytes.
-	writeWhenRead(t, pipe, "as built")
+	writeWhenRead(t, f, pipe, "as built")
 	f.baseIs(false)
 }
 
@@ -128,8 +193,9 @@ func TestTheBaseMarkRenewsNothingForABurstOfAttributeChangesOnAnAncestorAndRenew
 	}
 	pipe := filepath.Join(root, "ancestor", "dir", "held.ts")
 	fifo(t, pipe)
+	drainPipeOnCleanup(t, f, pipe)
 	f.recordBase(model.BaseInputs{pipe: hashOf("as built")})
-	writeWhenRead(t, pipe, "as built")
+	writeWhenRead(t, f, pipe, "as built")
 	f.settle()
 	if f.marks().Base {
 		t.Fatal("base set at the record")
@@ -157,7 +223,7 @@ func TestTheBaseMarkRenewsNothingForABurstOfAttributeChangesOnAnAncestorAndRenew
 	if err := os.Rename(filepath.Join(root, "moved"), filepath.Join(root, "ancestor")); err != nil {
 		t.Fatal(err)
 	}
-	writeWhenRead(t, pipe, "as built")
+	writeWhenRead(t, f, pipe, "as built")
 	f.baseIs(false)
 }
 
