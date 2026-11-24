@@ -32550,17 +32550,6 @@
       "shapeHash": "sha256:f648a6d1e1af1a8e16ed656bb9ac13ee30f6bab27b5d311182953c262f51385b"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.observeOpenAICompletionsProviderEventJSON",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "assistantStreamBuilder.observeOpenAICompletionsProviderEventJSON",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(raw []byte) error"
-      },
-      "shapeHash": "sha256:6e0666e3477490a8602e762f71982b6ab5d1d7e45a44824f68e0f939a89b29ab"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.observeProviderEvent",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "assistantStreamBuilder.observeProviderEvent",
@@ -32589,9 +32578,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(raw []byte) error"
+        "type": "func(raw []byte, normalizeOpenAICompletions bool) error"
       },
-      "shapeHash": "sha256:6e0666e3477490a8602e762f71982b6ab5d1d7e45a44824f68e0f939a89b29ab"
+      "shapeHash": "sha256:ae1a628c2a2a2493ff3fe4f7e54c96860f85274a77311a408b0392eb425e7734"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.observeValidProviderEvent",
@@ -53835,6 +53824,17 @@
       "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#nullChoiceFinishReason",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "nullChoiceFinishReason",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#numberOrFalsy",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "numberOrFalsy",
@@ -53899,6 +53899,17 @@
         "type": "oaiChunkChoice"
       },
       "shapeHash": "sha256:af89424720ff38a1024986852ad662858a1c2c2f16278c0435a2e16fe70dc934"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#oaiChunkChoice.UnmarshalJSON",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "oaiChunkChoice.UnmarshalJSON",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(data []byte) error"
+      },
+      "shapeHash": "sha256:2e7a46ef7c2011cd2aa41a3ad171f9b6f5461f06a15b57547cff43508937a222"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#oaiContentPart",

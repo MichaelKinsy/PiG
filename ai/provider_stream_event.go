@@ -50,7 +50,7 @@ func (builder *assistantStreamBuilder) observeProviderEvent(raw []byte) error {
 		return nil
 	}
 	builder.settleDeferred()
-	return builder.observeProviderEventJSON(raw)
+	return builder.observeProviderEventJSON(raw, false)
 }
 
 // observeValidProviderEvent is observeProviderEvent for the text of a wire event that the adapter's decoder already accepted with json.Valid, so deciding whether an unwanted observer may skip it does not validate it again.
@@ -63,13 +63,16 @@ func (builder *assistantStreamBuilder) observeValidProviderEvent(text string) er
 		return nil
 	}
 	builder.settleDeferred()
-	return builder.observeProviderEventJSON([]byte(text))
+	return builder.observeProviderEventJSON([]byte(text), false)
 }
 
-func (builder *assistantStreamBuilder) observeProviderEventJSON(raw []byte) error {
+func (builder *assistantStreamBuilder) observeProviderEventJSON(raw []byte, normalizeOpenAICompletions bool) error {
 	var data any
 	if err := json.Unmarshal(raw, &data); err != nil {
 		return err
+	}
+	if normalizeOpenAICompletions {
+		normalizeOpenAIChatCompletionChunkEvent(data)
 	}
 	return builder.observeProviderEventData(data)
 }
@@ -86,7 +89,7 @@ func (builder *assistantStreamBuilder) observeOpenAICompletionsProviderEvent(tex
 		return nil
 	}
 	builder.settleDeferred()
-	return builder.observeOpenAICompletionsProviderEventJSON([]byte(text))
+	return builder.observeProviderEventJSON([]byte(text), true)
 }
 
 // observeDecodedOpenAICompletionsProviderEvent is observeDecodedProviderEvent for openai-completions.
@@ -101,19 +104,7 @@ func (builder *assistantStreamBuilder) observeDecodedOpenAICompletionsProviderEv
 		return nil
 	}
 	builder.settleDeferred()
-	if allChoicesHaveFinishReason {
-		return builder.observeProviderEventJSON([]byte(text))
-	}
-	return builder.observeOpenAICompletionsProviderEventJSON([]byte(text))
-}
-
-func (builder *assistantStreamBuilder) observeOpenAICompletionsProviderEventJSON(raw []byte) error {
-	var data any
-	if err := json.Unmarshal(raw, &data); err != nil {
-		return err
-	}
-	normalizeOpenAIChatCompletionChunkEvent(data)
-	return builder.observeProviderEventData(data)
+	return builder.observeProviderEventJSON([]byte(text), !allChoicesHaveFinishReason)
 }
 
 // normalizeOpenAIChatCompletionChunkEvent mirrors openai 7.59.0 normalizeChatCompletionChunk

@@ -69,7 +69,7 @@ func (clock *googleRoundClock) stamp(event string) googleTickStamp {
 }
 
 // TestGoogleSDKPipelineMatchesNodeTickOrder replays every delivery case of the oracle through the reaction model of the SDK (fetch settling through the two tslib generators and the Web Streams reader) and requires the same (segment, round) for the call, the resolution of generateContentStream, each chunk and the end.
-// upstream: @google/genai 2.21.0 dist/node/index.mjs:13765-13860, 15309-15315, 15768-15855
+// upstream: @google/genai 2.32.0 dist/node/index.mjs:13985-14066, 16143-16153, 16395-16439, 16665-16754
 func TestGoogleSDKPipelineMatchesNodeTickOrder(t *testing.T) {
 	var oracle googleTickOracle
 	data, err := os.ReadFile("testdata/google-tick-order/pi.json")
