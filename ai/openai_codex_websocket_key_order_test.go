@@ -48,13 +48,50 @@ func TestCodexWebSocketFramesKeepPisKeyOrder(t *testing.T) {
 
 	mu.Lock()
 	defer mu.Unlock()
-	const head = `{"type":"response.create","model":"gpt-5.1-codex","store":false,"stream":true,"instructions":"You are a helpful assistant.","input":`
+	const head = `{"type":"response.create","model":"gpt-5.1-codex","store":false,"stream":true,"input":`
 	const tail = `,"text":{"verbosity":"low"},"include":["reasoning.encrypted_content"],"prompt_cache_key":"s-order","tool_choice":"auto","parallel_tool_calls":true`
 	want := []string{
-		head + `[{"role":"user","content":[{"type":"input_text","text":"Say hello"}]}]` + tail + `}`,
+		head + `[{"role":"developer","content":"You are a helpful assistant."},{"role":"user","content":[{"type":"input_text","text":"Say hello"}]}]` + tail + `}`,
 		head + `[{"role":"user","content":[{"type":"input_text","text":"Now finish"}]}]` + tail + `,"previous_response_id":"resp_1"}`,
 	}
 	if len(frames) != 2 || frames[0] != want[0] || frames[1] != want[1] {
+		t.Fatalf("frames:\n%q\nwant:\n%q", frames, want)
+	}
+}
+
+func TestCodexWebSocketFramesPinMaxOutputTokensWireOrder(t *testing.T) {
+	var mu sync.Mutex
+	var frames []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := (&websocket.Upgrader{}).Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer func() { _ = conn.Close() }()
+		_, data, err := conn.ReadMessage()
+		if err != nil {
+			return
+		}
+		mu.Lock()
+		frames = append(frames, string(data))
+		mu.Unlock()
+		_ = conn.WriteMessage(websocket.TextMessage, []byte(codexWSTerminal("resp_max")))
+	}))
+	t.Cleanup(func() {
+		CloseOpenAICodexWebSocketSessions()
+		ResetOpenAICodexWebSocketDebugStats()
+		server.Close()
+	})
+	provider := NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{APIKey: codexTestToken(t, "acc_test"), Model: "gpt-6.2-sol", ProviderID: "openai-codex", BaseURL: server.URL}).(*openAIResponsesProvider)
+	options := StreamOptions{Transport: TransportWebSocketCached, SessionID: "s-order-max", MaxTokens: 5000}
+	messages := []Message{UserMessage{Content: UserText("Say hello"), Timestamp: 1}}
+	codexWSResult(t, provider, NormalizeContext(Context{SystemPrompt: "You are a helpful assistant.", Messages: messages}), options)
+
+	mu.Lock()
+	defer mu.Unlock()
+	// packages/ai/src/api/openai-codex-responses.ts:601-614: max_output_tokens follows parallel_tool_calls.
+	want := `{"type":"response.create","model":"gpt-6.2-sol","store":false,"stream":true,"input":[{"role":"developer","content":"You are a helpful assistant."},{"role":"user","content":[{"type":"input_text","text":"Say hello"}]}],"text":{"verbosity":"low"},"include":["reasoning.encrypted_content"],"prompt_cache_key":"s-order-max","tool_choice":"auto","parallel_tool_calls":true,"max_output_tokens":5000}`
+	if len(frames) != 1 || frames[0] != want {
 		t.Fatalf("frames:\n%q\nwant:\n%q", frames, want)
 	}
 }

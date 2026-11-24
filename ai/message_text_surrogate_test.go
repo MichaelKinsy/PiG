@@ -39,10 +39,6 @@ func TestMessageTextSanitizesLoneSurrogatesOnTheWire(t *testing.T) {
 				}
 				for _, role := range []string{"system", "user-text", "assistant", "user-block"} {
 					expected := role + ": " + want
-					if role == "system" && tc.provider == "openai-codex" {
-						// openai-codex-responses.ts:552 sends the system message text as it is, so its lone surrogate stays: the body carries its escape, which decodes to U+FFFD.
-						expected = "system: unpaired \ufffd end"
-					}
 					if !jsonContainsText(decoded, expected) {
 						t.Errorf("%s text was not sanitized: %v", role, decoded)
 					}

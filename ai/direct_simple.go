@@ -49,7 +49,7 @@ func streamSimpleAs(ctx context.Context, api API, model *Model, transcript Trans
 		// upstream: mistral-conversations.ts:streamSimple builds its MistralOptions from the base options and the reasoning level only: the raw promptMode and reasoningEffort of MistralOptions are not read.
 		options.PromptMode, options.ReasoningEffort = "", ""
 	}
-	applyOmittedReasoningFor(api, &options)
+	applyOmittedReasoningFor(api, model, &options)
 	if api == APIBedrockConverseStream {
 		// upstream: packages/ai/src/api/bedrock-converse-stream.ts:streamSimple builds BedrockOptions from buildBaseOptions, the tool choice and the reasoning level and budgets only: region, profile, bearer token, thinking display, interleaved thinking and request metadata are dropped, and without a reasoning level so are the budgets.
 		options.Region, options.Profile, options.BearerToken, options.ThinkingDisplay, options.InterleavedThinking, options.RequestMetadata, options.RequestMetadataOrder = "", "", "", "", nil, nil, nil
@@ -148,12 +148,28 @@ func directAPIKnown(api API) bool {
 	return false
 }
 
-// ApplyOmittedReasoning sets the native thinking options a simple stream sends when `reasoning` is omitted: Anthropic disables thinking and Google and Vertex send `thinking: { enabled: false }` unless the caller supplied native thinking.
+// ApplyOmittedReasoning sets the native thinking options a simple stream sends for its API: Anthropic disables thinking when `reasoning` is omitted, Google and Vertex send `thinking: { enabled: false }` unless the caller supplied native thinking, and OpenAI Codex computes `reasoningEffort` from `Thinking` alone (sending `"none"` on reasoning models when omitted/off so `configuration_update` keeps the prompt cache).
 func ApplyOmittedReasoning(model *Model, options *StreamOptions) {
-	applyOmittedReasoningFor(model.ProviderMeta.API, options)
+	applyOmittedReasoningFor(model.ProviderMeta.API, model, options)
 }
 
-func applyOmittedReasoningFor(api API, options *StreamOptions) {
+func applyOmittedReasoningFor(api API, model *Model, options *StreamOptions) {
+	if api == APIOpenAICodexResponses {
+		// openai-codex-responses.ts streamSimple computes reasoningEffort from options.reasoning alone;
+		// a caller's raw ReasoningEffort must not leak through, and off/omitted is sent as effort "none"
+		// on reasoning models so with configuration_update items switching to off keeps the prompt cache (#12269).
+		options.ReasoningEffort = ""
+		clamped := ThinkingOff
+		if options.Thinking != "" {
+			clamped = ClampThinkingLevel(model, ModelThinkingLevel(options.Thinking))
+		}
+		if clamped != ThinkingOff {
+			options.ReasoningEffort = string(clamped)
+		} else if model != nil && model.ProviderMeta.Reasoning {
+			options.ReasoningEffort = "none"
+		}
+		return
+	}
 	if options.Thinking != "" {
 		return
 	}

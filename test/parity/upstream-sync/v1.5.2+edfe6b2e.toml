@@ -1,0 +1,33 @@
+from = "1.5.2+cead615b"
+to = "1.5.2+edfe6b2e"
+# Pi edfe6b2ef322 (2026-11-20): fix(ai): send Codex system prompt as leading developer item (#12273).
+
+[[files]]
+path = "packages/ai/src/api/openai-codex-responses.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/openai_codex_developer_item_and_effort_upstream_test.go#TestCodexSystemPromptAsLeadingDeveloperItemUpstream", "test:ai/openai_responses_payload_oracle_test.go#TestOpenAICodexResponsesPayloadMatchesPi", "test:ai/openai_codex_websocket_frame_oracle_test.go#TestCodexWebSocketFramesMatchPi"]
+rationale = "edfe6b2ef322 (#12273): Codex now sends the system prompt as the leading developer input item through convertResponsesMessages and omits top-level instructions from the request body and wire struct. ai/openai_responses.go removes respRequest.Instructions and the Codex instructions builder, and passes convertAnchored without the includeSystemPrompt gate."
+oracle = "carried: edfe6b2ef322 (pi-ai/api/openai-codex-responses.js)"
+
+[[files]]
+path = "packages/ai/src/api/openai-responses-shared.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/openai_codex_developer_item_and_effort_upstream_test.go#TestOpenAIResponsesSharedPathUnchangedMatrix", "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi"]
+rationale = "edfe6b2ef322 (#12273): ConvertResponsesMessagesOptions removes IncludeSystemPrompt, and convertAnchored always emits the leading system message with the instruction role when non-empty."
+oracle = "carried: edfe6b2ef322 (pi-ai/api/openai-responses-shared.js)"
+
+[[files]]
+path = "packages/ai/test/openai-codex-stream.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/openai_codex_developer_item_and_effort_upstream_test.go#TestCodexSystemPromptAsLeadingDeveloperItemUpstream", "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream", "test:ai/openai_codex_sse_upstream_test.go#TestCodexSSEAndPayloadUpstream"]
+rationale = "edfe6b2ef322 (#12273): ported the system-prompt-as-developer-item regression test (with and without system prompt) and updated the websocket delta, previous_response_not_found fallback, and zstd input index assertions."
+
+[[files]]
+path = "packages/ai/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "edfe6b2ef322: Pi changelog entry; PiG carries its own changelog.d fragment."

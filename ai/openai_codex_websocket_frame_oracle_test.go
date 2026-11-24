@@ -86,7 +86,8 @@ func TestCodexWebSocketFramesMatchPi(t *testing.T) {
 	}
 
 	defer CloseOpenAICodexWebSocketSessions()
-	provider := NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{APIKey: token, Model: "gpt-5.2", ProviderID: "openai-codex", BaseURL: server.URL})
+	// Match the Pi test model (reasoning: false) so both emit role:"system" for the leading system item (packages/ai/src/api/openai-codex-responses.ts:555).
+	provider := NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{APIKey: token, Model: "gpt-5.2", ProviderID: "openai-codex", BaseURL: server.URL, ModelMetadata: &Model{ID: "gpt-5.2", ProviderMeta: ProviderMetadata{API: APIOpenAICodexResponses, ProviderID: "openai-codex", BaseURL: server.URL, Reasoning: false}, Input: []string{"text"}}})
 	tools := mustTools(t, `[{"name":"lookup","description":"Look up","parameters":`+schema+`}]`)
 	options := StreamOptions{Transport: TransportAuto, SessionID: "session-ws"}
 	one := UserMessage{Content: UserText("one"), Timestamp: 1}
@@ -108,8 +109,8 @@ func TestCodexWebSocketFramesMatchPi(t *testing.T) {
 	if second.StopReason != StopReasonStop {
 		t.Fatalf("second: %s", second.ErrorMessage)
 	}
-	// The third turn changes instructions, a member other than input, so the bodies differ by JSON text and the request carries the
-	// full context (requestBodiesMatchExceptInput, openai-codex-responses.ts:1434-1444).
+	// The third turn changes the system prompt, which changes the leading developer item in input, so the prefix no longer matches and
+	// the request carries the full context (openai-codex-responses.ts).
 	thirdContext := NormalizeContext(Context{SystemPrompt: "be terse", Messages: append(slices.Clone(secondMessages), *second, UserMessage{Content: UserText("three"), Timestamp: 3}), Tools: tools})
 	thirdStream, err := provider.Stream(t.Context(), thirdContext, options)
 	if err != nil {

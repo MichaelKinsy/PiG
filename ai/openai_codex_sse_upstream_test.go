@@ -288,9 +288,13 @@ func TestCodexSSEAndPayloadUpstream(t *testing.T) {
 					t.Error("not zstd")
 				}
 				body := codexUpstreamBody(t, r)
-				var input []struct{ Content []struct{ Text string } }
-				if err := json.Unmarshal(body["input"], &input); err != nil || len(input) == 0 || len(input[0].Content) == 0 || input[0].Content[0].Text != text {
+				var rawInput []json.RawMessage
+				var userItem struct{ Content []struct{ Text string } }
+				if err := json.Unmarshal(body["input"], &rawInput); err != nil || len(rawInput) < 2 {
 					t.Fatalf("input=%s err=%v", body["input"], err)
+				}
+				if err := json.Unmarshal(rawInput[1], &userItem); err != nil || len(userItem.Content) == 0 || userItem.Content[0].Text != text {
+					t.Fatalf("input[1]=%s err=%v", rawInput[1], err)
 				}
 				return codexUpstreamHTTP(codexUpstreamSSE("completed", nil)), nil
 			}))

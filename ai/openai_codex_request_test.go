@@ -72,8 +72,8 @@ func TestOpenAICodexResponses_RequestMatchesCodexProtocol(t *testing.T) {
 		t.Fatal("terminal error = nil, want probe HTTP error")
 	}
 
-	if got := capturedBody["instructions"]; got != "system prompt" {
-		t.Errorf("instructions = %v, want system prompt", got)
+	if got, ok := capturedBody["instructions"]; ok {
+		t.Errorf("instructions = %v, want omitted", got)
 	}
 	if got := capturedBody["text"]; !jsonObjectsEqual(got, map[string]any{"verbosity": "low"}) {
 		t.Errorf("text = %#v, want low verbosity", got)
@@ -93,15 +93,16 @@ func TestOpenAICodexResponses_RequestMatchesCodexProtocol(t *testing.T) {
 	if got := capturedBody["prompt_cache_key"]; got != "sess" {
 		t.Errorf("prompt_cache_key = %v, want sess", got)
 	}
-	if _, ok := capturedBody["max_output_tokens"]; ok {
-		t.Errorf("max_output_tokens = %v, want omitted", capturedBody["max_output_tokens"])
+	if got := capturedBody["max_output_tokens"]; got != float64(1000) {
+		t.Errorf("max_output_tokens = %v, want 1000", got)
 	}
 	input, _ := capturedBody["input"].([]any)
-	for _, raw := range input {
-		item, _ := raw.(map[string]any)
-		if item["role"] == "system" || item["role"] == "developer" {
-			t.Errorf("input contains top-level instruction role: %#v", item)
-		}
+	if len(input) < 2 {
+		t.Fatalf("input len = %d, want at least 2", len(input))
+	}
+	firstItem, _ := input[0].(map[string]any)
+	if firstItem["role"] != "developer" || firstItem["content"] != "system prompt" {
+		t.Errorf("input[0] = %#v, want leading developer system prompt", firstItem)
 	}
 
 	if got := capturedHeader.Get("chatgpt-account-id"); got != "acct_test" {

@@ -120,4 +120,27 @@ func TestApplyOmittedReasoning(t *testing.T) {
 	if options.ThinkingEnabled != nil || options.GoogleThinking != nil {
 		t.Errorf("other API changed: %+v", options)
 	}
+
+	// packages/ai/src/api/openai-codex-responses.ts streamSimple (Pi fcc33744b):
+	// omitted reasoning on a reasoning Codex model sets ReasoningEffort="none" and clears any leaked raw ReasoningEffort.
+	codexReasoning := &Model{
+		Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh},
+		ProviderMeta: ProviderMetadata{API: APIOpenAICodexResponses, Reasoning: true},
+	}
+	options = StreamOptions{ReasoningEffort: "high"}
+	ApplyOmittedReasoning(codexReasoning, &options)
+	if options.ReasoningEffort != "none" {
+		t.Errorf("codex omitted reasoning = %q, want none", options.ReasoningEffort)
+	}
+	options = StreamOptions{Thinking: ThinkingLevelMax, ReasoningEffort: "low"}
+	ApplyOmittedReasoning(codexReasoning, &options)
+	if options.ReasoningEffort != "high" {
+		t.Errorf("codex clamped max reasoning = %q, want high", options.ReasoningEffort)
+	}
+	codexPlain := &Model{ProviderMeta: ProviderMetadata{API: APIOpenAICodexResponses, Reasoning: false}}
+	options = StreamOptions{ReasoningEffort: "high"}
+	ApplyOmittedReasoning(codexPlain, &options)
+	if options.ReasoningEffort != "" {
+		t.Errorf("codex non-reasoning omitted = %q, want empty", options.ReasoningEffort)
+	}
 }

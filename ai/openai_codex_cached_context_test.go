@@ -117,8 +117,9 @@ func TestCodexSecondRequestOfASessionFollowsTheRawTransport(t *testing.T) {
 				}
 				return
 			}
-			if second.PreviousResponseID != "" || len(second.Input) != 3 || stats.CachedContextRequests != 0 || stats.DeltaRequests != 0 || stats.FullContextRequests != 2 {
-				t.Errorf("second request: previous_response_id %q, %d input items; stats %+v, want the full context (3 items, no previous_response_id), no cached-context request, 2 full", second.PreviousResponseID, len(second.Input), stats)
+			// packages/ai/src/api/openai-codex-responses.ts:555 (Pi edfe6b2ef): full context includes the leading developer item (4 items).
+			if second.PreviousResponseID != "" || len(second.Input) != 4 || stats.CachedContextRequests != 0 || stats.DeltaRequests != 0 || stats.FullContextRequests != 2 {
+				t.Errorf("second request: previous_response_id %q, %d input items; stats %+v, want the full context (4 items, no previous_response_id), no cached-context request, 2 full", second.PreviousResponseID, len(second.Input), stats)
 			}
 		})
 	}

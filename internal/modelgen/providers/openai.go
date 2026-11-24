@@ -49,13 +49,6 @@ var openaiNoneReasoningModelIDs = map[string]bool{
 	"gpt-6-luna":    true,
 }
 
-// OpenAI documents configuration_update for the GPT-6 family.
-// https://developers.openai.com/api/docs/guides/reasoning
-var openaiMidConvoEffortModelIDs = map[string]bool{
-	"gpt-6-astra": true, "gpt-6-sol": true, "gpt-6-luna": true, "gpt-6.1-sol": true, "gpt-6.1-terra": true,
-	"gpt-6.2-astra": true, "gpt-6.2-sol": true,
-}
-
 // Not listed by models.dev.
 func openaiGPT5ChatLatest() ChatModel {
 	return O(
@@ -159,7 +152,7 @@ func openai() ProviderDefinition {
 			if model.Object("cost").Num("cacheWrite") > 0 {
 				MergeCompat(model, O("supportsExplicitPromptCacheMode", true))
 			}
-			if openaiMidConvoEffortModelIDs[id] {
+			if OpenAIMidConvoEffortModelIDs[id] {
 				MergeCompat(model, O("supportsMidConvoEffort", true))
 			}
 			WithInputLimits(model, O("maxRequestBytes", 512*1024*1024, "images", O("maxPerRequest", 1500)))

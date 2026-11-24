@@ -727,11 +727,11 @@ func codexUsesCachedContext(transport Transport) bool {
 }
 
 // startCodexWebSocket streams the request over the Codex WebSocket. A nil stream with a nil error falls back to SSE; fallback is the transport failure that caused it, or nil when the session's WebSocket is already disabled.
-func (p *openAIResponsesProvider) startCodexWebSocket(ctx context.Context, endpoint string, body []byte, apiKey, accountID, cacheSessionID string, grammarProps map[string]string, opts StreamOptions) (stream *AssistantMessageEventStream, fallback, err error) {
-	return p.startCodexWebSocketAttempt(ctx, endpoint, body, apiKey, accountID, cacheSessionID, grammarProps, opts, true, true)
+func (p *openAIResponsesProvider) startCodexWebSocket(ctx context.Context, endpoint string, body []byte, apiKey, accountID, cacheSessionID string, grammarProps map[string]string, configurationUpdateEffort string, opts StreamOptions) (stream *AssistantMessageEventStream, fallback, err error) {
+	return p.startCodexWebSocketAttempt(ctx, endpoint, body, apiKey, accountID, cacheSessionID, grammarProps, configurationUpdateEffort, opts, true, true)
 }
 
-func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context, endpoint string, body []byte, apiKey, accountID, cacheSessionID string, grammarProps map[string]string, opts StreamOptions, retryConnectionLimit, retryMissingContinuation bool) (stream *AssistantMessageEventStream, fallback, err error) {
+func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context, endpoint string, body []byte, apiKey, accountID, cacheSessionID string, grammarProps map[string]string, configurationUpdateEffort string, opts StreamOptions, retryConnectionLimit, retryMissingContinuation bool) (stream *AssistantMessageEventStream, fallback, err error) {
 	if codexWebSocketFallbackActive(cacheSessionID) {
 		recordCodexWebSocketSSEFallback(cacheSessionID)
 		return nil, nil, nil
@@ -783,7 +783,7 @@ func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context
 			return nil, nil, errCodexAborted
 		}
 		if wasReused {
-			return p.startCodexWebSocketAttempt(ctx, endpoint, body, apiKey, accountID, cacheSessionID, grammarProps, opts, retryConnectionLimit, retryMissingContinuation)
+			return p.startCodexWebSocketAttempt(ctx, endpoint, body, apiKey, accountID, cacheSessionID, grammarProps, configurationUpdateEffort, opts, retryConnectionLimit, retryMissingContinuation)
 		}
 		recordCodexWebSocketFailure(cacheSessionID, err)
 		recordCodexWebSocketSSEFallback(cacheSessionID)
@@ -829,6 +829,7 @@ func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context
 	builder := newAssistantStreamBuilder(ctx, APIOpenAICodexResponses, p.cfg.ProviderID, p.cfg.Model)
 	builder.modelCost = opts.ModelCost
 	builder.requestServiceTier = requestServiceTierOf(opts)
+	builder.setResponseMetadata("", "", "", configurationUpdateEffort, nil)
 	builder.setProviderEventObserver(opts, providerEventModel(p.cfg.ModelMetadata, APIOpenAICodexResponses, p.cfg.ProviderID, p.cfg.Model))
 	var messageType int
 	var first []byte
@@ -872,7 +873,7 @@ func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context
 			return nil, nil, errCodexAborted
 		}
 		if wasReused {
-			return p.startCodexWebSocketAttempt(ctx, endpoint, body, apiKey, accountID, cacheSessionID, grammarProps, opts, retryConnectionLimit, retryMissingContinuation)
+			return p.startCodexWebSocketAttempt(ctx, endpoint, body, apiKey, accountID, cacheSessionID, grammarProps, configurationUpdateEffort, opts, retryConnectionLimit, retryMissingContinuation)
 		}
 		recordCodexWebSocketFailure(cacheSessionID, err)
 		recordCodexWebSocketSSEFallback(cacheSessionID)
@@ -891,13 +892,13 @@ func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context
 			acquired.entry.continuation = nil
 		}
 		acquired.release(false)
-		return p.startCodexWebSocketAttempt(ctx, endpoint, body, apiKey, accountID, cacheSessionID, grammarProps, opts, retryConnectionLimit, false)
+		return p.startCodexWebSocketAttempt(ctx, endpoint, body, apiKey, accountID, cacheSessionID, grammarProps, configurationUpdateEffort, opts, retryConnectionLimit, false)
 	}
 	// connectionLimitBeforeStart := !websocketStarted && isWebSocketConnectionLimitReachedError(error) (openai-codex-responses.ts:362): a started stream keeps its error.
 	if code == "websocket_connection_limit_reached" && !websocketStarted {
 		acquired.release(false)
 		if retryConnectionLimit {
-			return p.startCodexWebSocketAttempt(ctx, endpoint, body, apiKey, accountID, cacheSessionID, grammarProps, opts, false, retryMissingContinuation)
+			return p.startCodexWebSocketAttempt(ctx, endpoint, body, apiKey, accountID, cacheSessionID, grammarProps, configurationUpdateEffort, opts, false, retryMissingContinuation)
 		}
 		message := "Codex error: websocket_connection_limit_reached"
 		if _, mapped := mapCodexWebSocketEventFrame(first); mapped != nil {

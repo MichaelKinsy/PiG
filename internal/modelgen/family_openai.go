@@ -59,6 +59,16 @@ var OpenAIToolSearchModelIDs = map[string]bool{
 	"gpt-6.2-astra": true, "gpt-6.2-sol": true,
 }
 
+// OpenAI documents configuration_update for the GPT-6 family; the Codex backend applies it to the
+// same models (verified November 2026).
+// https://developers.openai.com/api/docs/guides/reasoning
+
+// OpenAIMidConvoEffortModelIDs are the models that take reasoning effort changes as configuration_update input items.
+var OpenAIMidConvoEffortModelIDs = map[string]bool{
+	"gpt-6-astra": true, "gpt-6-sol": true, "gpt-6-luna": true, "gpt-6.1-sol": true, "gpt-6.1-terra": true,
+	"gpt-6.2-astra": true, "gpt-6.2-sol": true,
+}
+
 // OpenAIMidConvoModelIDs are the models that accept mid-conversation developer messages.
 var OpenAIMidConvoModelIDs = func() map[string]bool {
 	ids := map[string]bool{"gpt-5.4": true, "gpt-5.4-mini": true, "gpt-5.4-pro": true, "gpt-5.5": true}

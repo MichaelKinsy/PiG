@@ -616,15 +616,24 @@ func newRequestOptionsProvider(provider ai.Provider, providerID string, configur
 	return &requestOptionsProvider{Provider: provider, providerID: providerID, configured: maps.Clone(configured)}
 }
 
+// prepareSimpleStreamOptions is the one simple-stream option lowering shared by ModelRuntime.StreamSimple, requestOptionsProvider.SimpleStreamOptions, and builtinStreamSimple.
+// Every API module's streamSimple except pi-messages.ts (:432-444) lowers omitted/simple reasoning and clamps maxTokens with buildBaseOptions; pi-messages sends the caller's options.
+func prepareSimpleStreamOptions(model *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions) ai.StreamOptions {
+	if model == nil || model.ProviderMeta.API == ai.APIPiMessages {
+		return options
+	}
+	ai.ApplyOmittedReasoning(model, &options)
+	options.MaxTokens = ai.ClampMaxTokensToContext(model, transcript, cmp.Or(options.MaxTokens, model.Capabilities.MaxOutputTokens))
+	return options
+}
+
 // SimpleStreamOptions prepares the request options of a simple stream the way ModelRuntime.StreamSimple does for a registry-built provider (start): an omitted reasoning level sends the API's native thinking off, and the output budget stays within the room the context window leaves (simple-options.ts buildBaseOptions). A provider of extension-registered stream callbacks or a native provider prepares its own options.
 func (provider *requestOptionsProvider) SimpleStreamOptions(model *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions) ai.StreamOptions {
 	switch provider.Provider.(type) {
 	case *registeredStreamProvider, *nativeModelProvider:
 		return options
 	}
-	ai.ApplyOmittedReasoning(model, &options)
-	options.MaxTokens = ai.ClampMaxTokensToContext(model, transcript, cmp.Or(options.MaxTokens, model.Capabilities.MaxOutputTokens))
-	return options
+	return prepareSimpleStreamOptions(model, transcript, options)
 }
 
 // Stream merges the configured headers under the request's and runs the request's header transform (before_provider_headers) on the result, as ModelRuntime applyAuth does for a registry-built provider. The built-in OpenCode providers add the session header below both, as providers/opencode.ts withOpenCodeSessionHeader does; a direct pi-ai call that the extension bridge streams through BuildModel carries no attribution, as under Pi.

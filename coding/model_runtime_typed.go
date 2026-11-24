@@ -183,6 +183,15 @@ func (runtime *ModelRuntime) failedStream(ctx context.Context, model *ai.Model, 
 
 // builtinStream is the stream function of a built-in or legacy-registered provider: it builds the model's API provider from its catalog entry.
 func (runtime *ModelRuntime) builtinStream(id string) ai.ModelsStreamFunction {
+	return runtime.builtinStreamMode(id, false)
+}
+
+// builtinStreamSimple is the simple-stream function of a built-in or legacy-registered provider: it shares prepareSimpleStreamOptions with ModelRuntime.StreamSimple.
+func (runtime *ModelRuntime) builtinStreamSimple(id string) ai.ModelsStreamFunction {
+	return runtime.builtinStreamMode(id, true)
+}
+
+func (runtime *ModelRuntime) builtinStreamMode(id string, simple bool) ai.ModelsStreamFunction {
 	return func(ctx context.Context, model *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 		entry := icodingagent.NativeModelEntry(model)
 		// pig additive (D36): the provider's TLS opt-in reaches the transport its API builds.
@@ -192,6 +201,9 @@ func (runtime *ModelRuntime) builtinStream(id string) ai.ModelsStreamFunction {
 			return nil, err
 		}
 		options.IsReasoning = model.ProviderMeta.Reasoning || model.Capabilities.MaxThinking != ""
+		if simple {
+			options = prepareSimpleStreamOptions(model, transcript, options)
+		}
 		return provider.Stream(ctx, transcript, options)
 	}
 }

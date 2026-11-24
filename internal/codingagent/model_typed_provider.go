@@ -115,7 +115,7 @@ func (r *ModelRegistry) GetTypedProvider(id string, fallback ai.ModelsStreamFunc
 		if !registered && !configured {
 			return nil
 		}
-		base = &ai.ModelsProvider{ID: id, Name: id, GetModels: func() ([]*ai.Model, error) { return nil, nil }, Stream: fallback, StreamSimple: fallback}
+		base = &ai.ModelsProvider{ID: id, Name: id, GetModels: func() ([]*ai.Model, error) { return nil, nil }, Stream: fallback, StreamSimple: r.simpleFallback(id, fallback)}
 	}
 	var input *ProviderConfigInput
 	compose := r.composeNativeProvider

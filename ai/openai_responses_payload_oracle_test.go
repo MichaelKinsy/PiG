@@ -73,6 +73,7 @@ func checkResponsesPayload(t *testing.T, api string) {
 		add(`"supportsMaxOutputTokens":` + boolean())
 		add(`"supportsStrictMode":` + boolean())
 		add(`"supportsMidConvoSystemMessages":` + boolean())
+		add(`"supportsMidConvoEffort":` + boolean())
 		add(`"supportsLongCacheRetention":` + boolean())
 		add(`"supportsDeveloperRole":` + boolean())
 		add(`"supportsOpenAIGrammarTools":` + boolean())

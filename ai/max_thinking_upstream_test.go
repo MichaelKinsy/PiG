@@ -65,13 +65,30 @@ func TestMaxThinkingUpstream(t *testing.T) {
 			t.Fatal(got)
 		}
 	})
-	// .upstream/v0.99.1/packages/ai/test/max-thinking.test.ts:70
-	for _, id := range []string{"gpt-5.6-sol", "gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6.2-astra", "gpt-6.2-sol"} {
-		t.Run("sends max to the Codex Responses API for "+id, func(t *testing.T) {
+	// packages/ai/test/max-thinking.test.ts:88 (Pi fcc33744b)
+	t.Run("sends max as reasoning.effort to the Codex Responses API for gpt-5.6-sol", func(t *testing.T) {
+		m := mustGeneratedModel(t, "openai-codex", "gpt-5.6-sol")
+		p := NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{APIKey: codexTestToken(t, "acc_test"), Model: m.ID, ProviderID: m.Provider, BaseURL: m.BaseURL, Compat: m.Compat})
+		payload := captureCatalogPayload(t, p, StreamOptions{Thinking: ThinkingLevelMax, IsReasoning: m.Reasoning, Transport: TransportSSE})
+		assertCatalogJSON(t, payload["reasoning"], `{"effort":"max","summary":"auto"}`)
+	})
+	for _, id := range []string{"gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6.2-astra", "gpt-6.2-sol"} {
+		t.Run("sends max as a configuration_update item to the Codex Responses API for "+id, func(t *testing.T) {
 			m := mustGeneratedModel(t, "openai-codex", id)
-			p := NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{APIKey: codexTestToken(t, "acc_test"), Model: m.ID, ProviderID: m.Provider, BaseURL: m.BaseURL, Compat: m.Compat})
+			// Remove this local override once catalog regeneration sets SupportsMidConvoEffort on generated GPT-6 Codex models.
+			compat := m.Compat
+			if compat == nil {
+				compat = &OpenAIResponsesCompat{}
+			}
+			compatCopy := *compat
+			compatCopy.SupportsMidConvoEffort = new(true)
+			p := NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{APIKey: codexTestToken(t, "acc_test"), Model: m.ID, ProviderID: m.Provider, BaseURL: m.BaseURL, Compat: &compatCopy})
 			payload := captureCatalogPayload(t, p, StreamOptions{Thinking: ThinkingLevelMax, IsReasoning: m.Reasoning, Transport: TransportSSE})
-			assertCatalogJSON(t, payload["reasoning"], `{"effort":"max","summary":"auto"}`)
+			input, _ := payload["input"].([]any)
+			if len(input) == 0 {
+				t.Fatalf("empty input in payload: %#v", payload)
+			}
+			assertCatalogJSON(t, input[len(input)-1], `{"type":"configuration_update","reasoning":{"effort":"max"}}`)
 		})
 	}
 }

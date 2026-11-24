@@ -26,7 +26,7 @@ func TestRequestTypesEncodeAsTheirMarshalJSON(t *testing.T) {
 		ResponsesTool{Type: "function", Name: "read", Description: text, Parameters: map[string]any{"type": "object", "b": 1, "a": 2}, parameterOrder: schemaObjectOrder{"": {"type", "b", "a"}}, Strict: json.RawMessage("null"), DeferLoading: true},
 		ResponsesTool{Type: "custom", Name: "g", Format: &ResponsesToolFormat{Type: "grammar", Syntax: "lark", Definition: text}},
 		respRequest{Model: "m", Input: json.RawMessage(`[{"role":"user","content":"<x> & y"}]`), Stream: true, Store: &strict, Tools: []ResponsesTool{{Type: "function", Name: "n"}}, ToolChoice: "auto", Reasoning: &respReasoning{Effort: "high"}},
-		respRequest{Model: "m", Input: json.RawMessage(`[]`), Stream: true, Instructions: text, Text: map[string]string{"verbosity": "low"}, Include: []string{"reasoning.encrypted_content"}, codex: true},
+		respRequest{Model: "m", Input: json.RawMessage(`[]`), Stream: true, PromptCacheKey: text, Text: map[string]string{"verbosity": "low"}, Include: []string{"reasoning.encrypted_content"}, codex: true},
 		ResponsesInputItem{Type: "tool_search_call", CallID: "c", Execution: "client", Status: "completed", Arguments: json.RawMessage(`{"query":"a <b>","limit":1}`)},
 		ResponsesInputItem{Type: "tool_search_output", CallID: "c", Execution: "client", Status: "completed", Tools: []ResponsesTool{{Type: "function", Name: "n"}}},
 		ResponsesInputItem{Type: "reasoning", ID: "rs_1", stored: json.RawMessage(`{"id":"rs_1","type":"reasoning","x":"a <b> & c","summary":[]}`)},

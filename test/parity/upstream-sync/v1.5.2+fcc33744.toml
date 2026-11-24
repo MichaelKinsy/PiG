@@ -1,0 +1,87 @@
+from = "1.5.2+edfe6b2e"
+to = "1.5.2+fcc33744"
+# Pi fcc33744b072 (2026-11-20): fix(ai,coding-agent): keep Codex prompt cache across thinking level changes (#12269).
+
+[[files]]
+path = "packages/ai/catalog/families/openai.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi", "test:internal/modelgen/providers/openai_codex_mid_convo_effort_test.go#TestOpenAICodexMidConvoEffortCompat"]
+rationale = "fcc33744b072 (#12269): exports shared OPENAI_MID_CONVO_EFFORT_MODEL_IDS (OpenAIMidConvoEffortModelIDs in internal/modelgen/family_openai.go) for GPT-6 models."
+oracle = "carried: fcc33744b072 (the catalog overlay catalog/families/openai.ts)"
+
+[[files]]
+path = "packages/ai/catalog/providers/openai.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "fcc33744b072 (#12269): uses shared OPENAI_MID_CONVO_EFFORT_MODEL_IDS (OpenAIMidConvoEffortModelIDs in internal/modelgen/providers/openai.go)."
+oracle = "carried: fcc33744b072 (the catalog overlay catalog/providers/openai.ts)"
+
+[[files]]
+path = "packages/ai/catalog/providers/openai-codex.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi", "test:internal/modelgen/providers/openai_codex_mid_convo_effort_test.go#TestOpenAICodexMidConvoEffortCompat"]
+rationale = "fcc33744b072 (#12269): enables compat.supportsMidConvoEffort: true on GPT-6 openai-codex models in internal/modelgen/providers/openai_codex.go."
+oracle = "carried: fcc33744b072 (the catalog overlay catalog/providers/openai-codex.ts)"
+
+[[files]]
+path = "packages/ai/src/api/openai-codex-responses.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/openai_codex_developer_item_and_effort_upstream_test.go#TestCodexConfigurationUpdateEffortUpstream", "test:ai/max_thinking_upstream_test.go#TestMaxThinkingUpstream", "test:ai/openai_responses_payload_oracle_test.go#TestOpenAICodexResponsesPayloadMatchesPi"]
+rationale = "fcc33744b072 (#12269): enables configuration_update effort items with fixed reasoning.effort medium on openai-codex-responses (including off -> none in StreamSimple and providerThinkingLevel on both SSE and WebSocket outputs), and forwards maxTokens as max_output_tokens (at least 16) unless compat.supportsMaxOutputTokens is false."
+oracle = "carried: fcc33744b072 (pi-ai/api/openai-codex-responses.js)"
+
+[[files]]
+path = "packages/ai/src/providers/compat-schema.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/compat_schema_exports_test.go#TestCompatSchemaExportsMatchPi"]
+rationale = "fcc33744b072 (#12269): updates supportsMidConvoEffort descriptions in internal/codingagent/configschema/compat_a.go and compat_b.go to include openai-codex-responses."
+oracle = "carried: fcc33744b072 (pi-ai/providers/compat-schema.js)"
+
+[[files]]
+path = "packages/coding-agent/schemas/models.schema.json"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/render_test.go#TestRenderedSchemasAreByteEqualToThePinnedPiPackage"]
+rationale = "fcc33744b072 (#12269): schema regenerated from configschema (integrator commits generated schemas/models.schema.json)."
+oracle = "carried: fcc33744b072 (pi-coding-agent/schemas/models.schema.json)"
+
+[[files]]
+path = "packages/coding-agent/docs/models-configuration.md"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/references_test.go#TestModelsConfigurationReferenceMatchesThePinnedPiPage"]
+rationale = "fcc33744b072 (#12269): docs page regenerated from configschema (integrator commits generated docs)."
+oracle = "carried: fcc33744b072 (pi-coding-agent/docs/models-configuration.md)"
+
+[[files]]
+path = "packages/ai/test/max-thinking.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/max_thinking_upstream_test.go#TestMaxThinkingUpstream"]
+rationale = "fcc33744b072 (#12269): split gpt-5.6-sol (reasoning.effort: max) from the 7 GPT-6 models (configuration_update: max)."
+
+[[files]]
+path = "packages/ai/test/openai-codex-stream.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/openai_codex_developer_item_and_effort_upstream_test.go#TestCodexConfigurationUpdateEffortUpstream"]
+rationale = "fcc33744b072 (#12269): ported all 5 new tests (mid-convo configuration_update SSE, off -> none via streamSimple, fallback without supportsMidConvoEffort, maxTokens -> max_output_tokens with clamp and opt-out, and websocket-cached delta continuity across thinking-level changes)."
+
+[[files]]
+path = "packages/ai/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "fcc33744b072: Pi changelog entry; PiG carries its own changelog.d fragment."
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "fcc33744b072: Pi changelog entry; PiG carries its own changelog.d fragment."

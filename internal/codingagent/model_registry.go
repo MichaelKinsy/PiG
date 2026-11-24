@@ -402,8 +402,9 @@ type ModelRegistry struct {
 	nativeInputs         map[string]*ProviderConfigInput
 	nativeAvailable      map[string]bool
 	credentialOperations map[string][]chan struct{}
-	// apiStream returns a provider's API stream function: the implementation a composed registration runs for a model whose api neither its streamSimple nor its base serves. Guarded by nativeMu.
-	apiStream func(id string) ai.ModelsStreamFunction
+	// apiStream and apiSimpleStream return a provider's API stream/streamSimple functions: the implementations a composed registration runs for a model whose api neither its streamSimple nor its base serves. Guarded by nativeMu.
+	apiStream       func(id string) ai.ModelsStreamFunction
+	apiSimpleStream func(id string) ai.ModelsStreamFunction
 }
 
 // SetAPIStream installs the API stream functions of composed registrations, Pi's getApiProvider(model.api) (provider-composer.ts:597-602).
@@ -413,10 +414,28 @@ func (r *ModelRegistry) SetAPIStream(fn func(id string) ai.ModelsStreamFunction)
 	r.apiStream = fn
 }
 
+// SetAPISimpleStream installs the API simple-stream functions of composed registrations.
+func (r *ModelRegistry) SetAPISimpleStream(fn func(id string) ai.ModelsStreamFunction) {
+	r.nativeMu.Lock()
+	defer r.nativeMu.Unlock()
+	r.apiSimpleStream = fn
+}
+
 // apiStreamFor returns id's API stream function, or nil when none is installed.
 func (r *ModelRegistry) apiStreamFor(id string) ai.ModelsStreamFunction {
 	r.nativeMu.Lock()
 	fn := r.apiStream
+	r.nativeMu.Unlock()
+	if fn == nil {
+		return nil
+	}
+	return fn(id)
+}
+
+// apiSimpleStreamFor returns id's API simple-stream function, or nil when none is installed.
+func (r *ModelRegistry) apiSimpleStreamFor(id string) ai.ModelsStreamFunction {
+	r.nativeMu.Lock()
+	fn := r.apiSimpleStream
 	r.nativeMu.Unlock()
 	if fn == nil {
 		return nil
