@@ -41,7 +41,7 @@ func provBOpenCodeAPIs(protocol, baseURL, aisdk string) string {
 
 func TestProvBOpencode(t *testing.T) {
 	// Pi source: providers/opencode.ts opencodeApi + opencodeModels + finalizeOpencodeModel
-	defaults := `{"supportsStore":false,"supportsDeveloperRole":false,"supportsStrictMode":true`
+	defaults := `{"supportsStore":false,"supportsStrictMode":true`
 	sources := &CatalogSources{ModelsDev: provBModelsDev(t, map[string][]provBSpec{"opencode": {
 		// Native protocols come before Chat Completions when models.dev lists several.
 		{ID: "alpha", API: `{"chat-completions":{"base_url":"` + provBZen + `"},"responses":{"base_url":"` + provBZen + `"}}`},
@@ -124,7 +124,7 @@ func TestProvBOpencode(t *testing.T) {
 
 func TestProvBOpencodeGo(t *testing.T) {
 	// Pi source: providers/opencode-go.ts (opencodeModels and finalizeOpencodeModel of providers/opencode.ts with OpenCode Go's rules)
-	defaults := `{"supportsStore":false,"supportsDeveloperRole":false,"supportsStrictMode":true`
+	defaults := `{"supportsStore":false,"supportsStrictMode":true`
 	sources := &CatalogSources{ModelsDev: provBModelsDev(t, map[string][]provBSpec{"opencode-go": {
 		{ID: "kimi-k2.6", API: provBOpenCodeAPIs("chat-completions", provBGoV1, "")},
 		// Only "opencode:deepseek-v4-flash" is rejected; the Go endpoint takes long cache retention.
@@ -206,13 +206,13 @@ func TestProvBOpenRouter(t *testing.T) {
 	provBCheck(t, models, []provBWant{
 		// Developer messages pass through to Anthropic and OpenAI models only; Anthropic ones take cache_control.
 		{"anthropic/claude-x", "compat", `{` + tail + `,"cacheControlFormat":"anthropic","sendSessionAffinityHeaders":true}`},
-		{"~anthropic/claude-latest", "compat", `{"supportsDeveloperRole":false,` + tail + `,"cacheControlFormat":"anthropic","sendSessionAffinityHeaders":true}`},
+		{"~anthropic/claude-latest", "compat", `{` + tail + `,"cacheControlFormat":"anthropic","sendSessionAffinityHeaders":true}`},
 		{"openai/gpt-x", "compat", `{` + tail + `,"sendSessionAffinityHeaders":true}`},
-		{"meta/llama-x", "compat", `{"supportsDeveloperRole":false,` + tail + `,"sendSessionAffinityHeaders":true}`},
+		{"meta/llama-x", "compat", `{` + tail + `,"sendSessionAffinityHeaders":true}`},
 		// Corrections.
 		{"moonshotai/kimi-k2.5", "cost", `{"input":0.41,"output":2.06,"cacheRead":0.07,"cacheWrite":0}`},
 		{"moonshotai/kimi-k2.5", "maxTokens", "4096"},
-		{"moonshotai/kimi-k2.6", "compat", `{"supportsDeveloperRole":false,` + tail + `,"sendSessionAffinityHeaders":true,"requiresReasoningContentOnAssistantMessages":true}`},
+		{"moonshotai/kimi-k2.6", "compat", `{` + tail + `,"sendSessionAffinityHeaders":true,"requiresReasoningContentOnAssistantMessages":true}`},
 		{"moonshotai/kimi-k3.1-pro", "maxTokens", "131072"},
 		{"~moonshotai/kimi-latest", "maxTokens", "131072"},
 		{"z-ai/glm-5", "cost", `{"input":0.6,"output":1.9,"cacheRead":0.119,"cacheWrite":0}`},
@@ -249,8 +249,8 @@ func TestProvBQwenTokenPlans(t *testing.T) {
 	}
 	cn := []provBSpec{{ID: "cn-only"}, {ID: "qwen3.8-max-preview", Status: "deprecated"}}
 	sources := &CatalogSources{ModelsDev: provBModelsDev(t, map[string][]provBSpec{"alibaba-token-plan": intl, "alibaba-token-plan-cn": cn})}
-	withLevels := `{"supportsStrictMode":true,"thinkingFormat":"qwen","supportsDeveloperRole":false,"supportsStore":false,"supportsReasoningEffort":true}`
-	without := `{"supportsStrictMode":true,"thinkingFormat":"qwen","supportsDeveloperRole":false,"supportsStore":false,"supportsReasoningEffort":false}`
+	withLevels := `{"supportsStrictMode":true,"thinkingFormat":"qwen","supportsStore":false,"supportsReasoningEffort":true}`
+	without := `{"supportsStrictMode":true,"thinkingFormat":"qwen","supportsStore":false,"supportsReasoningEffort":false}`
 	fallback := `{"minimal":null,"low":null,"medium":null,"high":"high","xhigh":null,"max":"max"}`
 
 	catalog, err := provBBuild(t, "qwen-token-plan", sources, true)
@@ -325,7 +325,7 @@ func TestProvBQwenTokenPlans(t *testing.T) {
 
 func TestProvBTogether(t *testing.T) {
 	// Pi source: providers/together.ts
-	base := `"supportsStore":false,"supportsDeveloperRole":false`
+	base := `"supportsStore":false`
 	compat := func(effort, format string) string {
 		return `{` + base + `,"supportsReasoningEffort":` + effort + `,"maxTokensField":"max_tokens","thinkingFormat":"` + format + `","supportsLongCacheRetention":false,"supportsStrictMode":false}`
 	}
@@ -482,7 +482,7 @@ func TestProvBZai(t *testing.T) {
 	// supportsReasoningEffort and zaiToolStream follow the models: only models with verified effort levels take the effort;
 	// the GLM-4.5 generation rejects tool_stream.
 	compat := func(effort, toolStream bool) string {
-		out := `{"supportsStore":false,"supportsDeveloperRole":false,"supportsReasoningEffort":`
+		out := `{"supportsStore":false,"supportsReasoningEffort":`
 		if effort {
 			out += "true"
 		} else {

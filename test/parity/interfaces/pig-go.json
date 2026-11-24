@@ -43149,9 +43149,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[80]ModelCompat"
+        "type": "[78]ModelCompat"
       },
-      "shapeHash": "sha256:b0aa9450b333430eeba43b81cfe299325bc3a4c342cd498337a06c05d619ee5a"
+      "shapeHash": "sha256:4c7cef2b0a702c294728189c4618395519fb346c23d03686f680323f690a4fa0"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedFalse",

@@ -51,7 +51,6 @@ func moonshotModels(ctx *ProviderContext, source string, baseURL string) ([]Chat
 func moonshotCompletionsCompat() *Obj {
 	return O(
 		"supportsStore", false,
-		"supportsDeveloperRole", false,
 		"supportsReasoningEffort", false,
 		"maxTokensField", "max_tokens",
 	)

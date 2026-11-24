@@ -7,7 +7,6 @@ import . "github.com/MichaelKinsy/PiG/internal/modelgen" //nolint:staticcheck //
 func togetherBaseCompat() *Obj {
 	return O(
 		"supportsStore", false,
-		"supportsDeveloperRole", false,
 		"supportsReasoningEffort", false,
 		"maxTokensField", "max_tokens",
 		"supportsStrictMode", false,
@@ -61,7 +60,6 @@ func together() ProviderDefinition {
 		},
 		Compat: ApiCompatDefaults{"openai-completions": FixedCompat(O(
 			"supportsStore", false,
-			"supportsDeveloperRole", false,
 			"supportsReasoningEffort", false,
 			"maxTokensField", "max_tokens",
 			"thinkingFormat", "together",

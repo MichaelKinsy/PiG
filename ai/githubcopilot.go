@@ -740,7 +740,7 @@ func NewCopilotProvider(cfg CopilotProviderConfig) (Provider, error) {
 	// upstream: packages/ai/src/api/openai-completions.ts:getCompat
 	// Each leaf reads the selected model's compat (github-copilot.json carries
 	// forceAdaptiveThinking, supportsEagerToolInputStreaming, supportsStore,
-	// supportsDeveloperRole, supportsReasoningEffort, supportsStrictMode, ...).
+	// supportsReasoningEffort, supportsStrictMode, ...).
 	metadata := cfg.ModelMetadata
 	if metadata == nil {
 		if generated, ok := LookupModelExact("github-copilot/" + cfg.Model); ok {

@@ -44,7 +44,6 @@ func nvidia() ProviderDefinition {
 				Headers: O("NVCF-POLL-SECONDS", "3600"),
 				Compat: O(
 					"supportsStore", false,
-					"supportsDeveloperRole", false,
 					"supportsReasoningEffort", false,
 					"maxTokensField", "max_tokens",
 					"supportsStrictMode", false,
@@ -73,7 +72,6 @@ func nvidia() ProviderDefinition {
 		},
 		Compat: ApiCompatDefaults{"openai-completions": FixedCompat(O(
 			"supportsStore", false,
-			"supportsDeveloperRole", false,
 			"supportsReasoningEffort", false,
 			"maxTokensField", "max_tokens",
 			"supportsLongCacheRetention", false,

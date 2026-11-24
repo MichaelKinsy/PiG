@@ -183,6 +183,18 @@ type openAIProvider struct {
 	cfg    OpenAIConfig
 	client *http.Client
 
+	// compatProviderID and compatBaseURL preserve the model's own provider ID
+	// and base URL as given before NewOpenAIProvider applies HTTP defaults, so
+	// detectOpenAICompletionsCompat mirrors Pi's detectCompat(model) (which
+	// reads model.provider and model.baseUrl directly). When both ProviderID
+	// and BaseURL are omitted, NewOpenAIProvider defaults both to OpenAI direct
+	// (matching prompt_cache_key on the defaulted BaseURL). When constructed
+	// via a struct literal, compatIdentitySet is false and compat() reads
+	// p.cfg.ProviderID and p.cfg.BaseURL.
+	compatIdentitySet bool
+	compatProviderID  string
+	compatBaseURL     string
+
 	compatOnce     sync.Once
 	resolvedCompat *OpenAICompat
 }
@@ -191,13 +203,19 @@ type openAIProvider struct {
 // overlaid with the model's own. It is never nil.
 func (p *openAIProvider) compat() *OpenAICompat {
 	p.compatOnce.Do(func() {
-		p.resolvedCompat = getOpenAICompletionsCompat(p.cfg.ProviderID, p.cfg.BaseURL, p.cfg.Model, p.cfg.Compat)
+		providerID, baseURL := p.cfg.ProviderID, p.cfg.BaseURL
+		if p.compatIdentitySet {
+			providerID, baseURL = p.compatProviderID, p.compatBaseURL
+		}
+		p.resolvedCompat = getOpenAICompletionsCompat(providerID, baseURL, p.cfg.Model, p.cfg.Compat)
 	})
 	return p.resolvedCompat
 }
 
 // NewOpenAIProvider creates a Provider backed by the OpenAI Completions API.
 func NewOpenAIProvider(cfg OpenAIConfig) Provider {
+	compatProviderID := cfg.ProviderID
+	compatBaseURL := cfg.BaseURL
 	cfg = withAzureEndpoint(cfg)
 	if cfg.BaseURL == "" {
 		cfg.BaseURL = "https://api.openai.com/v1"
@@ -205,7 +223,17 @@ func NewOpenAIProvider(cfg OpenAIConfig) Provider {
 	if cfg.ProviderID == "" {
 		cfg.ProviderID = "openai"
 	}
-	return &openAIProvider{cfg: cfg, client: newStreamingHTTPClient(cfg.Insecure)}
+	if compatProviderID == "" && compatBaseURL == "" {
+		compatProviderID = cfg.ProviderID
+		compatBaseURL = cfg.BaseURL
+	}
+	return &openAIProvider{
+		cfg:               cfg,
+		client:            newStreamingHTTPClient(cfg.Insecure),
+		compatIdentitySet: true,
+		compatProviderID:  compatProviderID,
+		compatBaseURL:     compatBaseURL,
+	}
 }
 
 func (p *openAIProvider) ID() string { return p.cfg.ProviderID }

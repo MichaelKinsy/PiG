@@ -32,9 +32,14 @@ func (e *azureCompletionsEndpoint) resolve(p *openAIProvider, opts StreamOptions
 	if err != nil {
 		return nil, err
 	}
-	// The compat stays the one resolved from the model's own base URL, as getCompat reads model.baseUrl.
-	resolved := &openAIProvider{cfg: p.cfg, client: p.client}
-	resolved.compatOnce.Do(func() { resolved.resolvedCompat = p.compat() })
+	// Match Pi's resolveAzureModel (providers/azure.ts:8-10): pass the resolved baseUrl so detectCompat reads it.
+	resolved := &openAIProvider{
+		cfg:               p.cfg,
+		client:            p.client,
+		compatIdentitySet: p.compatIdentitySet,
+		compatProviderID:  p.compatProviderID,
+		compatBaseURL:     baseURL,
+	}
 	resolved.cfg.BaseURL = baseURL
 	resolved.cfg.GetBaseURL = nil
 	resolved.cfg.requestModel = ResolveAzureDeploymentName(p.cfg.Model, options)

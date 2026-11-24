@@ -113,7 +113,6 @@ function toPiModel(model, serverUrl, props, cachedContextWindow) {
         maxTokens: contextWindow,
         compat: {
             supportsStore: false,
-            supportsDeveloperRole: false,
             supportsReasoningEffort: false,
             supportsUsageInStreaming: true,
             supportsStrictMode: false,

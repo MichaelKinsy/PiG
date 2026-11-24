@@ -117,8 +117,9 @@ const OpenAICompletionsCompatProperties = {
     supportsStore: opt(bool({
         description: "Whether the provider supports the store field. Default: auto-detected from URL.",
     })),
+    // Pi b82477b7b (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
     supportsDeveloperRole: optionalCompatBoolean({
-        description: "Whether the provider supports the developer role instead of system. Default: auto-detected from URL.",
+        description: "Whether to send system messages of reasoning models (the system prompt and mid-conversation system messages) with the developer role instead of system. Default: true only for api.openai.com.",
     }),
     supportsReasoningEffort: opt(bool({
         description: "Whether the provider supports reasoning_effort. Default: auto-detected from URL.",

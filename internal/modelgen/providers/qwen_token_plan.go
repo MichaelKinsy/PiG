@@ -16,7 +16,6 @@ const cnBaseURL = "https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1"
 func qwenTokenPlanCompat() *Obj {
 	return O(
 		"thinkingFormat", "qwen",
-		"supportsDeveloperRole", false,
 		"supportsStore", false,
 		"supportsReasoningEffort", true,
 	)

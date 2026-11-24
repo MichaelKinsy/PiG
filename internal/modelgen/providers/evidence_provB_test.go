@@ -185,8 +185,8 @@ func TestProvBMoonshotai(t *testing.T) {
 		t.Fatal(err)
 	}
 	models := provBModelsOf(catalog)
-	k2Compat := `{"supportsStore":false,"supportsDeveloperRole":false,"supportsReasoningEffort":false,"maxTokensField":"max_tokens","supportsStrictMode":false,"thinkingFormat":"deepseek"`
-	k3Compat := `{"supportsStore":false,"supportsDeveloperRole":false,"supportsReasoningEffort":true,"maxTokensField":"max_tokens","supportsStrictMode":false,"thinkingFormat":"openai","requiresReasoningContentOnAssistantMessages":true,"supportsMidConvoSystemMessages":true,"supportsMidConvoToolAdditions":true}`
+	k2Compat := `{"supportsStore":false,"supportsReasoningEffort":false,"maxTokensField":"max_tokens","supportsStrictMode":false,"thinkingFormat":"deepseek"`
+	k3Compat := `{"supportsStore":false,"supportsReasoningEffort":true,"maxTokensField":"max_tokens","supportsStrictMode":false,"thinkingFormat":"openai","requiresReasoningContentOnAssistantMessages":true,"supportsMidConvoSystemMessages":true,"supportsMidConvoToolAdditions":true}`
 	provBCheck(t, models, []provBWant{
 		{"kimi-k3.1-pro-highspeed", "reasoning", "true"},
 		{"kimi-k3.1-pro-highspeed", "cost", `{"input":6,"output":30,"cacheRead":0.6,"cacheWrite":0}`},
@@ -236,7 +236,7 @@ func TestProvBNvidia(t *testing.T) {
 	}
 	provBIDsEqual(t, provBIDs(catalog), "acme/Model.One", "acme/named", "acme/plain")
 	models := provBModelsOf(catalog)
-	compat := `{"supportsStore":false,"supportsDeveloperRole":false,"supportsReasoningEffort":false,"maxTokensField":"max_tokens","supportsLongCacheRetention":false,"supportsStrictMode":false}`
+	compat := `{"supportsStore":false,"supportsReasoningEffort":false,"maxTokensField":"max_tokens","supportsLongCacheRetention":false,"supportsStrictMode":false}`
 	provBCheck(t, models, []provBWant{
 		{"acme/Model.One", "name", `"acme/Model.One"`},
 		{"acme/named", "name", `"Pretty Name"`},

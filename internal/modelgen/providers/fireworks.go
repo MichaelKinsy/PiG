@@ -26,7 +26,6 @@ func fireworksAnthropicCompat() *Obj {
 func fireworksOpenAICompat() *Obj {
 	return O(
 		"supportsStore", false,
-		"supportsDeveloperRole", false,
 		"sendSessionAffinityHeaders", true,
 		"supportsLongCacheRetention", false,
 	)

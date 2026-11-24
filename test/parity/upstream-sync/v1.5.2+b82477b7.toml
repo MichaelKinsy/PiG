@@ -1,0 +1,234 @@
+from = "1.5.2+cead615b"
+to = "1.5.2+b82477b7"
+
+[[files]]
+path = "packages/ai/src/api/openai-completions.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/openai_completions_instruction_role_test.go#TestOpenAICompletionsInstructionRoleDefaultsToSystem"]
+rationale = "b82477b7b (#12134, closes #10741 #12101): detectCompat defaults supportsDeveloperRole to true only when provider is openai or baseUrl includes api.openai.com; all other OpenAI-compatible hosts get system. ai/openai_completions_compat.go carries the same isOpenAI check."
+oracle = "carried: b82477b7b (pi-ai/api/openai-completions.js)"
+
+[[files]]
+path = "packages/ai/src/providers/compat-schema.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/compat_developer_role_test.go#TestOpenAICompletionsCompatSupportsDeveloperRoleDescription"]
+rationale = "b82477b7b: OpenAICompletionsCompatProperties supportsDeveloperRole description updated to state system default and true only for api.openai.com. internal/codingagent/configschema/compat_a.go carries the same description."
+oracle = "carried: b82477b7b (pi-ai/providers/compat-schema.js)"
+
+[[files]]
+path = "packages/coding-agent/src/extensions/llama/provider.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/llama/provider_compat_role_test.go#TestToPiModelOmitsRedundantSupportsDeveloperRole"]
+rationale = "b82477b7b: toPiModel removes redundant supportsDeveloperRole: false from llama.cpp compat. internal/codingagent/llama/provider.go removes SupportsDeveloperRole from ModelCompat."
+oracle = "carried: b82477b7b (pi-coding-agent/extensions/llama/provider.js)"
+
+[[files]]
+path = "packages/ai/catalog/families/kimi.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/modelgen/providers/catalog_developer_role_test.go#TestCatalogOmitsRedundantSupportsDeveloperRole"]
+rationale = "b82477b7b: removes redundant supportsDeveloperRole: false from KIMI_OPENAI_COMPAT. Mirrored in internal/modelgen/family_kimi.go."
+oracle = "carried: b82477b7b (pi-overlay/catalog/families/kimi.ts)"
+
+[[files]]
+path = "packages/ai/catalog/providers/ant-ling.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/modelgen/providers/catalog_developer_role_test.go#TestCatalogOmitsRedundantSupportsDeveloperRole"]
+rationale = "b82477b7b: removes redundant supportsDeveloperRole: false. Mirrored in internal/modelgen/providers/ant_ling.go."
+oracle = "carried: b82477b7b (pi-overlay/catalog/providers/ant-ling.ts)"
+
+[[files]]
+path = "packages/ai/catalog/providers/azure.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/modelgen/providers/catalog_developer_role_test.go#TestCatalogOmitsRedundantSupportsDeveloperRole"]
+rationale = "b82477b7b: removes redundant supportsDeveloperRole: false in azure finalize. Mirrored in internal/modelgen/providers/azure.go."
+oracle = "carried: b82477b7b (pi-overlay/catalog/providers/azure.ts)"
+
+[[files]]
+path = "packages/ai/catalog/providers/baseten.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/modelgen/providers/catalog_developer_role_test.go#TestCatalogOmitsRedundantSupportsDeveloperRole"]
+rationale = "b82477b7b: removes redundant supportsDeveloperRole: false. Mirrored in internal/modelgen/providers/baseten.go."
+oracle = "carried: b82477b7b (pi-overlay/catalog/providers/baseten.ts)"
+
+[[files]]
+path = "packages/ai/catalog/providers/cerebras.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/modelgen/providers/catalog_developer_role_test.go#TestCatalogOmitsRedundantSupportsDeveloperRole"]
+rationale = "b82477b7b: removes redundant supportsDeveloperRole: false. Mirrored in internal/modelgen/providers/cerebras.go."
+oracle = "carried: b82477b7b (pi-overlay/catalog/providers/cerebras.ts)"
+
+[[files]]
+path = "packages/ai/catalog/providers/cloudflare-ai-gateway.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/modelgen/providers/catalog_developer_role_test.go#TestCatalogOmitsRedundantSupportsDeveloperRole"]
+rationale = "b82477b7b: removes redundant supportsDeveloperRole: false. Mirrored in internal/modelgen/providers/cloudflare_ai_gateway.go."
+oracle = "carried: b82477b7b (pi-overlay/catalog/providers/cloudflare-ai-gateway.ts)"
+
+[[files]]
+path = "packages/ai/catalog/providers/cloudflare-workers-ai.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/modelgen/providers/catalog_developer_role_test.go#TestCatalogOmitsRedundantSupportsDeveloperRole"]
+rationale = "b82477b7b: removes redundant supportsDeveloperRole: false. Mirrored in internal/modelgen/providers/cloudflare_workers_ai.go."
+oracle = "carried: b82477b7b (pi-overlay/catalog/providers/cloudflare-workers-ai.ts)"
+
+[[files]]
+path = "packages/ai/catalog/providers/deepseek.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/modelgen/providers/catalog_developer_role_test.go#TestCatalogOmitsRedundantSupportsDeveloperRole"]
+rationale = "b82477b7b: removes redundant supportsDeveloperRole: false. Mirrored in internal/modelgen/providers/deepseek.go."
+oracle = "carried: b82477b7b (pi-overlay/catalog/providers/deepseek.ts)"
+
+[[files]]
+path = "packages/ai/catalog/providers/fireworks.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/modelgen/providers/catalog_developer_role_test.go#TestCatalogOmitsRedundantSupportsDeveloperRole"]
+rationale = "b82477b7b: removes redundant supportsDeveloperRole: false. Mirrored in internal/modelgen/providers/fireworks.go."
+oracle = "carried: b82477b7b (pi-overlay/catalog/providers/fireworks.ts)"
+
+[[files]]
+path = "packages/ai/catalog/providers/github-copilot.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/modelgen/providers/catalog_developer_role_test.go#TestCatalogOmitsRedundantSupportsDeveloperRole"]
+rationale = "b82477b7b: removes redundant supportsDeveloperRole: false from openai-completions branch. Mirrored in internal/modelgen/providers/github_copilot.go."
+oracle = "carried: b82477b7b (pi-overlay/catalog/providers/github-copilot.ts)"
+
+[[files]]
+path = "packages/ai/catalog/providers/huggingface.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/modelgen/providers/catalog_developer_role_test.go#TestCatalogOmitsRedundantSupportsDeveloperRole"]
+rationale = "b82477b7b: removes redundant supportsDeveloperRole: false. Mirrored in internal/modelgen/providers/huggingface.go."
+oracle = "carried: b82477b7b (pi-overlay/catalog/providers/huggingface.ts)"
+
+[[files]]
+path = "packages/ai/catalog/providers/moonshotai.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/modelgen/providers/catalog_developer_role_test.go#TestCatalogOmitsRedundantSupportsDeveloperRole"]
+rationale = "b82477b7b: removes redundant supportsDeveloperRole: false. Mirrored in internal/modelgen/providers/moonshotai.go."
+oracle = "carried: b82477b7b (pi-overlay/catalog/providers/moonshotai.ts)"
+
+[[files]]
+path = "packages/ai/catalog/providers/nvidia.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/modelgen/providers/catalog_developer_role_test.go#TestCatalogOmitsRedundantSupportsDeveloperRole"]
+rationale = "b82477b7b: removes redundant supportsDeveloperRole: false. Mirrored in internal/modelgen/providers/nvidia.go."
+oracle = "carried: b82477b7b (pi-overlay/catalog/providers/nvidia.ts)"
+
+[[files]]
+path = "packages/ai/catalog/providers/opencode.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/modelgen/providers/catalog_developer_role_test.go#TestCatalogOmitsRedundantSupportsDeveloperRole"]
+rationale = "b82477b7b: removes redundant supportsDeveloperRole: false. Mirrored in internal/modelgen/providers/opencode.go."
+oracle = "carried: b82477b7b (pi-overlay/catalog/providers/opencode.ts)"
+
+[[files]]
+path = "packages/ai/catalog/providers/openrouter.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/modelgen/providers/catalog_developer_role_test.go#TestCatalogOmitsRedundantSupportsDeveloperRole"]
+rationale = "b82477b7b: removes redundant supportsDeveloperRole: false and the anthropic/openai exception. Mirrored in internal/modelgen/providers/openrouter.go."
+oracle = "carried: b82477b7b (pi-overlay/catalog/providers/openrouter.ts)"
+
+[[files]]
+path = "packages/ai/catalog/providers/qwen-token-plan.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/modelgen/providers/catalog_developer_role_test.go#TestCatalogOmitsRedundantSupportsDeveloperRole"]
+rationale = "b82477b7b: removes redundant supportsDeveloperRole: false. Mirrored in internal/modelgen/providers/qwen_token_plan.go."
+oracle = "carried: b82477b7b (pi-overlay/catalog/providers/qwen-token-plan.ts)"
+
+[[files]]
+path = "packages/ai/catalog/providers/together.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/modelgen/providers/catalog_developer_role_test.go#TestCatalogOmitsRedundantSupportsDeveloperRole"]
+rationale = "b82477b7b: removes redundant supportsDeveloperRole: false. Mirrored in internal/modelgen/providers/together.go."
+oracle = "carried: b82477b7b (pi-overlay/catalog/providers/together.ts)"
+
+[[files]]
+path = "packages/ai/catalog/providers/zai.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/modelgen/providers/catalog_developer_role_test.go#TestCatalogOmitsRedundantSupportsDeveloperRole"]
+rationale = "b82477b7b: removes redundant supportsDeveloperRole: false. Mirrored in internal/modelgen/providers/zai.go."
+oracle = "carried: b82477b7b (pi-overlay/catalog/providers/zai.ts)"
+
+[[files]]
+path = "packages/coding-agent/docs/models-configuration.md"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/references_test.go#TestModelsConfigurationReferenceMatchesTheCommittedPage"]
+rationale = "b82477b7b: models-configuration.md repeats the updated supportsDeveloperRole description. Regenerated by make generate-schemas from compat_a.go."
+oracle = "carried: b82477b7b (pi-coding-agent/docs/models-configuration.md)"
+
+[[files]]
+path = "packages/ai/test/openai-completions-tool-choice.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/openai_completions_instruction_role_test.go#TestOpenAICompletionsInstructionRoleDefaultsToSystem"]
+rationale = "b82477b7b: instruction role cases (api.openai.com developer; groq, custom host, openrouter, azure, xiaomi system) and catalog compat assertions ported."
+
+[[files]]
+path = "packages/ai/test/fireworks-models.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/fireworks_models_upstream_test.go#TestFireworksModels"]
+rationale = "b82477b7b: removes supportsDeveloperRole: false from expected fireworks compat."
+
+[[files]]
+path = "packages/ai/test/together-models.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/catalog_options_upstream_test.go#TestTogetherModels"]
+rationale = "b82477b7b: removes supportsDeveloperRole: false from expected together compat."
+
+[[files]]
+path = "packages/ai/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "b82477b7b: Pi package README documentation; PiG maintains its own docs and compat schema."
+
+[[files]]
+path = "packages/ai/catalog/README.md"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/modelgen/readme_test.go#TestReadmeAddingAProviderExample"]
+rationale = "b82477b7b: example snippet in Pi catalog README; internal/modelgen/readme_test.go mirrors the updated example without supportsDeveloperRole: false."
+
+[[files]]
+path = "packages/ai/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "b82477b7b: Pi changelog entry; PiG carries its own changelog.d fragment."
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "b82477b7b: Pi coding-agent changelog entry; PiG carries its own changelog.d fragment."
+
+[[files]]
+path = "scripts/model-catalog-minimum-version.mjs"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "b82477b7b: raises Pi's hosted catalog minimum version from 1.2.1 to 1.5.3. No minimum-version pin exists in this repository; released pig binaries fetch overlays from pi-in-go.dev (/api/models/providers/<id>, User-Agent pig/<version>, D64/D65) and accept any catalog whose Last-Modified is later than the bundled generatedAt (internal/codingagent/remote_catalog_provider.go:207-236, 268-281, 409-415). Publishing a regenerated catalog to pi-in-go.dev without server-side version gating is an owner decision (see internal/modelgen/README.md:59-62)."

@@ -10,6 +10,6 @@ func cerebras() ProviderDefinition {
 		Models: func(ctx *ProviderContext) ([]ChatModel, error) {
 			return ModelsDevModels(ctx, "cerebras", ModelsDevOptions{API: "openai-completions", BaseURL: "https://api.cerebras.ai/v1"})
 		},
-		Compat: ApiCompatDefaults{"openai-completions": FixedCompat(O("supportsStore", false, "supportsDeveloperRole", false))},
+		Compat: ApiCompatDefaults{"openai-completions": FixedCompat(O("supportsStore", false))},
 	}
 }

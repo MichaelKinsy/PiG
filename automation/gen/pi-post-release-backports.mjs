@@ -3268,6 +3268,60 @@ patch("073b0bae8", "pi-ai/models.js", [
 ]);
 // END backport 073b0bae8
 
+// BEGIN backport b82477b7b
+// b82477b7b (#12134, closes #10741 #12101): openai-completions defaults supportsDeveloperRole to true only for api.openai.com.
+// The 18 catalog files (families/kimi.ts and 17 providers/*.ts) are carried in automation/gen/catalog-source/pi-overlay/catalog/.
+// not carried: packages/ai/test/openai-completions-tool-choice.test.ts, packages/ai/test/fireworks-models.test.ts, packages/ai/test/together-models.test.ts (TypeScript tests; the package ships none; Go counterparts are in ai/).
+// not carried: packages/ai/README.md, packages/ai/catalog/README.md, packages/ai/CHANGELOG.md, packages/coding-agent/CHANGELOG.md (package docs/changelogs not read by runtime or oracle tests).
+// not carried: scripts/model-catalog-minimum-version.mjs (pi.dev catalog server minimum-version pin; not part of the npm packages).
+patch("b82477b7b", "pi-ai/api/openai-completions.js", [
+    [`    const isOpenRouterDeveloperRoleModel = isOpenRouter && (model.id.startsWith("anthropic/") || model.id.startsWith("openai/"));
+    const cacheControlFormat = provider === "openrouter" && model.id.startsWith("anthropic/") ? "anthropic" : undefined;
+    return {
+        supportsStore: !isNonStandard,
+        supportsDeveloperRole: isOpenRouterDeveloperRoleModel || (!isNonStandard && !isOpenRouter),
+`, `    ${note("b82477b7b").trim()}
+    // The developer role is OpenAI's. Other hosts' chat templates often reject it (#10741),
+    // and every host accepts system, so only OpenAI's own API gets developer by default.
+    const isOpenAI = provider === "openai" || baseUrl.includes("api.openai.com");
+    const cacheControlFormat = provider === "openrouter" && model.id.startsWith("anthropic/") ? "anthropic" : undefined;
+    return {
+        supportsStore: !isNonStandard,
+        supportsDeveloperRole: isOpenAI,
+`],
+]);
+
+// b82477b7b (#12134): compat-schema supportsDeveloperRole description for openai-completions.
+patch("b82477b7b", "pi-ai/providers/compat-schema.js", [
+    [`    supportsDeveloperRole: optionalCompatBoolean({
+        description: "Whether the provider supports the developer role instead of system. Default: auto-detected from URL.",
+    }),
+`, `    ${note("b82477b7b").trim()}
+    supportsDeveloperRole: optionalCompatBoolean({
+        description: "Whether to send system messages of reasoning models (the system prompt and mid-conversation system messages) with the developer role instead of system. Default: true only for api.openai.com.",
+    }),
+`],
+]);
+
+// b82477b7b (#12134): models-configuration.md supportsDeveloperRole description for openai-completions.
+patch("b82477b7b", "pi-coding-agent/docs/models-configuration.md", [
+    [`| \`supportsDeveloperRole\` | boolean |  | Whether the provider supports the developer role instead of system. Default: auto-detected from URL. |`,
+     `| \`supportsDeveloperRole\` | boolean |  | Whether to send system messages of reasoning models (the system prompt and mid-conversation system messages) with the developer role instead of system. Default: true only for api.openai.com. |`],
+]);
+
+// b82477b7b (#12134): llama provider toPiModel omits redundant supportsDeveloperRole: false.
+patch("b82477b7b", "pi-coding-agent/extensions/llama/provider.js", [
+    [`        compat: {
+            supportsStore: false,
+            supportsDeveloperRole: false,
+            supportsReasoningEffort: false,
+`, `        compat: {
+            supportsStore: false,
+            supportsReasoningEffort: false,
+`],
+]);
+// END backport b82477b7b
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 // Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.

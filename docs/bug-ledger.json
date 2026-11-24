@@ -21128,6 +21128,43 @@
       "tests": []
     },
     {
+      "id": "BF-58c210c",
+      "title": "Ports Pi's fix b82477b7b (#12134): Groq Qwen reasoning models no longer fail with `400 Unexpected message…",
+      "symptom": "Ports Pi's fix b82477b7b (#12134): Groq Qwen reasoning models no longer fail with `400 Unexpected message role` when their chat template rejects the `developer` role, because `openai-completions` now defaults `supportsDeveloperRole` to `true` only for provider `openai`, `api.openai.com` endpoints, and bare `OpenAIConfig` defaulting to `openai` / `api.openai.com`.",
+      "rootCause": "detectOpenAICompletionsCompat defaulted supportsDeveloperRole to true for standard OpenAI-compatible hosts and OpenRouter openai/anthropic models instead of limiting the developer role default to provider openai and api.openai.com.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Ports Pi's fix b82477b7b (#12134): Groq Qwen reasoning models no longer fail with `400 Unexpected message role` when their chat template rejects the `developer` role, because `openai-completions` now defaults `supportsDeveloperRole` to `true` only for provider `openai`, `api.openai.com` endpoints, and bare `OpenAIConfig` defaulting to `openai` / `api.openai.com`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "58c210c508",
+          "date": "2026-11-23",
+          "pr": "12134"
+        },
+        {
+          "hash": "6e265d4046",
+          "date": "2026-11-23",
+          "pr": "12134"
+        },
+        {
+          "hash": "855a70ed39",
+          "date": "2026-11-23",
+          "pr": "12134"
+        }
+      ],
+      "tests": [
+        "ai/openai_completions_instruction_role_test.go::TestOpenAICompletionsInstructionRoleDefaultsToSystem",
+        "ai/openai_completions_instruction_role_test.go::TestOpenAICompletionsInstructionRoleRealPathsWithoutCatalogCompat",
+        "internal/codingagent/configschema/compat_developer_role_test.go::TestOpenAICompletionsCompatSupportsDeveloperRoleDescription",
+        "internal/codingagent/llama/provider_compat_role_test.go::TestToPiModelOmitsRedundantSupportsDeveloperRole",
+        "internal/modelgen/providers/catalog_developer_role_test.go::TestCatalogOmitsRedundantSupportsDeveloperRole"
+      ]
+    },
+    {
       "id": "BF-58c30ec",
       "title": "Chord: a parked call whose caller aborts is rejected inside the abort, and a flush that runs in the same…",
       "symptom": "Chord: a parked call whose caller aborts is rejected inside the abort, and a flush that runs in the same section no longer sends the cancelled call.",

@@ -7,7 +7,6 @@ import . "github.com/MichaelKinsy/PiG/internal/modelgen" //nolint:staticcheck //
 func basetenBaseCompat() *Obj {
 	return O(
 		"supportsStore", false,
-		"supportsDeveloperRole", false,
 		"supportsReasoningEffort", false,
 		"supportsUsageInStreaming", true,
 		"maxTokensField", "max_tokens",

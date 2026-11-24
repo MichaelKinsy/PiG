@@ -778,6 +778,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-57dc298](#bf-57dc298) | On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an… | PiG's own defect | Linux | Unreleased |
 | [BF-57ee33b](#bf-57ee33b) | A model an extension registers with `registerProvider` reaches `ctx.modelRegistry`, `ctx.model` and RPC as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-57f113b](#bf-57f113b) | A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event… | PiG's own defect | All platforms | Unreleased |
+| [BF-58c210c](#bf-58c210c) | Ports Pi's fix b82477b7b (#12134): Groq Qwen reasoning models no longer fail with `400 Unexpected message… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-58c30ec](#bf-58c30ec) | Chord: a parked call whose caller aborts is rejected inside the abort, and a flush that runs in the same… | PiG's own defect | All platforms | Unreleased |
 | [BF-58f6697](#bf-58f6697) | Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id`… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-59456ae](#bf-59456ae) | Pressing a key in a subprocess extension's overlay no longer freezes interactive mode when the key reaches… | PiG's own defect | All platforms | 0.5.0 |
@@ -12968,6 +12969,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `57f113ba40` (2026-11-09)
 - **Tests:** None recorded.
 - **Release note:** A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event showing the partial message as it was when the provider pushed the event, and with the stream's result as it was when the provider ended it. The SDK queued the event the provider pushed and a goroutine or thread encoded it later, so a provider that appended to its shared partial message right after a `Push` could have the host receive the later text (under load every `text_delta` showed the finished message), and in the Go SDK the encoder's read of the provider's map was a data race with the provider's writes. `Push` and `End` now take the event, and the result, at the call (the Go SDK encodes the event on the provider's goroutine; the Python and Lisp SDKs queue a copy), so the host sees each event as it was at the push, which is stronger than Pi's own guarantee (D615): Pi's consumer reads the shared message at its own turn, so after a synchronous burst of pushes or between microtask awaits it shows later changes. The event and the message the provider reads back (`Events()`, `result()`) are still its own objects, and a value of a kind JSON has no copy of (a lock, a cycle) ends the request instead of raising in the provider's `Push`. The Rust SDK takes the event by value and is unchanged.
+
+### BF-58c210c
+
+**Ports Pi's fix b82477b7b (#12134): Groq Qwen reasoning models no longer fail with `400 Unexpected message…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** Ports Pi's fix b82477b7b (#12134): Groq Qwen reasoning models no longer fail with `400 Unexpected message role` when their chat template rejects the `developer` role, because `openai-completions` now defaults `supportsDeveloperRole` to `true` only for provider `openai`, `api.openai.com` endpoints, and bare `OpenAIConfig` defaulting to `openai` / `api.openai.com`.
+- **Root cause:** detectOpenAICompletionsCompat defaulted supportsDeveloperRole to true for standard OpenAI-compatible hosts and OpenRouter openai/anthropic models instead of limiting the developer role default to provider openai and api.openai.com.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `58c210c508` (2026-11-23, #12134), `6e265d4046` (2026-11-23, #12134), `855a70ed39` (2026-11-23, #12134)
+- **Tests:** `ai/openai_completions_instruction_role_test.go::TestOpenAICompletionsInstructionRoleDefaultsToSystem`, `ai/openai_completions_instruction_role_test.go::TestOpenAICompletionsInstructionRoleRealPathsWithoutCatalogCompat`, `internal/codingagent/configschema/compat_developer_role_test.go::TestOpenAICompletionsCompatSupportsDeveloperRoleDescription`, `internal/codingagent/llama/provider_compat_role_test.go::TestToPiModelOmitsRedundantSupportsDeveloperRole`, `internal/modelgen/providers/catalog_developer_role_test.go::TestCatalogOmitsRedundantSupportsDeveloperRole`
+- **Release note:** Ports Pi's fix b82477b7b (#12134): Groq Qwen reasoning models no longer fail with `400 Unexpected message role` when their chat template rejects the `developer` role, because `openai-completions` now defaults `supportsDeveloperRole` to `true` only for provider `openai`, `api.openai.com` endpoints, and bare `OpenAIConfig` defaulting to `openai` / `api.openai.com`.
 
 ### BF-58c30ec
 

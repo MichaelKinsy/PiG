@@ -232,7 +232,7 @@ func TestOpenAICompletionsToolChoiceCatalogUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/ai/test/openai-completions-tool-choice.test.ts:1225
 	t.Run("stores OpenRouter Kimi K2.6 reasoning replay compat in built-in metadata", func(t *testing.T) {
 		c := toolChoiceModel(t, "openrouter", "moonshotai/kimi-k2.6", false).ProviderMeta.Compat
-		if c == nil || c.SupportsDeveloperRole == nil || *c.SupportsDeveloperRole || c.RequiresReasoningContentOnAssistantMessages == nil || !*c.RequiresReasoningContentOnAssistantMessages {
+		if c == nil || c.RequiresReasoningContentOnAssistantMessages == nil || !*c.RequiresReasoningContentOnAssistantMessages {
 			t.Fatalf("compat=%#v", c)
 		}
 	})
@@ -249,7 +249,7 @@ func TestOpenAICompletionsToolChoiceCatalogUpstream(t *testing.T) {
 	t.Run("stores Qwen Token Plan reasoning replay compat in built-in metadata", func(t *testing.T) {
 		for _, p := range []string{"qwen-token-plan", "qwen-token-plan-cn", "qwen-token-plan-individual", "qwen-token-plan-individual-cn"} {
 			c := toolChoiceModel(t, p, "qwen3.7-max", false).ProviderMeta.Compat
-			if c == nil || c.ThinkingFormat != "qwen" || c.RequiresReasoningContentOnAssistantMessages != nil || c.SupportsDeveloperRole == nil || *c.SupportsDeveloperRole || c.SupportsStore == nil || *c.SupportsStore {
+			if c == nil || c.ThinkingFormat != "qwen" || c.RequiresReasoningContentOnAssistantMessages != nil || c.SupportsStore == nil || *c.SupportsStore {
 				t.Fatalf("%s compat=%#v", p, c)
 			}
 		}

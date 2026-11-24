@@ -740,7 +740,7 @@ func TestTranscriptToolChangesOpenAICompletionsRequests(t *testing.T) {
 		{
 			name: "folds OpenAI-compatible updates into the system prompt without native support", providerID: "custom-provider", transcript: foldContext(),
 			tools:  []string{"late_tool"},
-			shape:  []string{"developer", "user"},
+			shape:  []string{"system", "user"},
 			system: []string{foldedPrompt},
 		},
 	} {

@@ -143,7 +143,7 @@ func TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream(t *testing.T) {
 	t.Run("uses Ant Ling compatibility metadata", func(t *testing.T) {
 		model := toolChoiceModel(t, "ant-ling", "Ring-2.6-1T", false)
 		c := model.ProviderMeta.Compat
-		if c == nil || c.SupportsStore == nil || *c.SupportsStore || c.SupportsDeveloperRole == nil || *c.SupportsDeveloperRole || c.SupportsReasoningEffort == nil || *c.SupportsReasoningEffort || c.MaxTokensField != "max_tokens" || c.ThinkingFormat != "ant-ling" || c.SupportsLongCacheRetention == nil || *c.SupportsLongCacheRetention || c.SupportsStrictMode == nil || !*c.SupportsStrictMode || c.RequiresReasoningContentOnAssistantMessages != nil {
+		if c == nil || c.SupportsStore == nil || *c.SupportsStore || c.SupportsReasoningEffort == nil || *c.SupportsReasoningEffort || c.MaxTokensField != "max_tokens" || c.ThinkingFormat != "ant-ling" || c.SupportsLongCacheRetention == nil || *c.SupportsLongCacheRetention || c.SupportsStrictMode == nil || !*c.SupportsStrictMode || c.RequiresReasoningContentOnAssistantMessages != nil {
 			t.Fatalf("compat=%#v", c)
 		}
 		request := toolChoiceHi()
@@ -174,9 +174,9 @@ func TestOpenAICompletionsToolChoiceInstructionRolesUpstream(t *testing.T) {
 	}{
 		// .upstream/v0.87.1/packages/ai/test/openai-completions-tool-choice.test.ts:1153
 		{"uses system messages for non-OpenAI/Anthropic OpenRouter reasoning model instructions", "openrouter", "deepseek/deepseek-v4-pro", "system", false},
-		// .upstream/v0.87.1/packages/ai/test/openai-completions-tool-choice.test.ts:1175
-		{"keeps developer messages for OpenAI and Anthropic OpenRouter batch instructions/openai", "openrouter", "openai/gpt-5.2-codex", "developer", false},
-		{"keeps developer messages for OpenAI and Anthropic OpenRouter batch instructions/anthropic", "openrouter", "anthropic/claude-fable-5.1:batch", "developer", false},
+		// Pi b82477b7b (#12134): OpenRouter openai/* and anthropic/* models now default to system.
+		{"uses system messages for OpenRouter openai reasoning model instructions", "openrouter", "openai/gpt-5.2-codex", "system", false},
+		{"uses system messages for OpenRouter anthropic reasoning model instructions", "openrouter", "anthropic/claude-fable-5.1:batch", "system", false},
 		// .upstream/v0.87.1/packages/ai/test/openai-completions-tool-choice.test.ts:1202
 		{"keeps developer messages for OpenAI reasoning model instructions", "openai", "gpt-5.5", "developer", true},
 	} {
