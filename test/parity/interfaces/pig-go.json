@@ -32528,17 +32528,6 @@
       "shapeHash": "sha256:7f76bcab122097a4b9c2f4fdd7d313adce84534597d1ca44f9fcd3ecc49abdec"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.observeDecodedProviderEvent",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "assistantStreamBuilder.observeDecodedProviderEvent",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(text string, parsesAsValue bool) error"
-      },
-      "shapeHash": "sha256:29c7dc61e631b4d43f7841d2609216f28984d4e596f1655aee5f193f08b5d7c1"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.observeOpenAICompletionsProviderEvent",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "assistantStreamBuilder.observeOpenAICompletionsProviderEvent",
