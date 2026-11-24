@@ -13,7 +13,7 @@ overrides whose locks carry each pack's sha512.
   vendor.py check --rebuild   also pack the pinned build again and require the vendored bytes (members and gzip) to equal it
 
 check_installed is the same gate on a consumer's node_modules, and override_tree builds, outside the repository, the packs and
-the install of another Pi commit for a run that compares with it (make test-carried-oracles).
+the install of another Pi commit for a run that compares with it.
 """
 from __future__ import annotations
 

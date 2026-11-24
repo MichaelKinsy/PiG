@@ -1111,12 +1111,6 @@ jobs:
       - name: Check the Durable core budget
         shell: bash
         run: automation/ci/with-isolated-pig-home.sh make durable-core-budget
-      # test-carried-oracles: the oracle tests of Pi 473515f9c (suspendable work) and 5e24c6b1f (code mode namespaces), which the Go port carries ahead of the committed pin, run against the tree of
-      # the later commit in the build store (pin.py override-tree; its frozen closure is in automation/pin/frozen): the pin's own Pi has none of that work, so the same tests skip in every other job.
-      # The guard target runs them to the end, failing and killed, and requires the tree's own Pi to be what it was. The oracle build of that commit is cached by the key above, which hashes the frozen closures.
-      - name: Run the oracle tests of carried Pi work
-        shell: bash
-        run: automation/ci/with-isolated-pig-home.sh make test-carried-oracles-guard
       - name: Save the Go module cache
         if: ${{ env.CACHE_SAVE == 'true' && steps.cache-gomod.outcome == 'success' && steps.cache-gomod.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

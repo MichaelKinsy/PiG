@@ -364,7 +364,7 @@ func piAdmissionOutcomes(t *testing.T, programs [][]admitStep) [][]admitOutcome 
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/submissions_oracle.mjs", suspendableOraclePackages(t))
+	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/submissions_oracle.mjs", pioracle.Packages(t))
 	cmd.Env = append(cmd.Environ(), "PI_INTEROP_DIR="+pioracle.Project(t))
 	cmd.Stdin = bytes.NewReader(payload)
 	var stderr bytes.Buffer

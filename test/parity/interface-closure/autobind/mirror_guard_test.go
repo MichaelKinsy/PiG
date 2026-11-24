@@ -185,7 +185,7 @@ func TestUpdateOverThePinnedMirrorWritesTheLedger(t *testing.T) {
 }
 
 // Over the pinned mirror a failed check reads as before (without naming the mirror); over another Pi's mirror (for example left by
-// make test-carried-oracles) it fails before deriving any gaps, naming the wrong mirror and the fix instead of printing a false table.
+// a run at another Pi commit) it fails before deriving any gaps, naming the wrong mirror and the fix instead of printing a false table.
 func TestAFailedCheckNamesAMirrorThatIsNotThePinnedBuild(t *testing.T) {
 	root, reach := mirrorFixture(t)
 	args := []string{"-root", root, "-reach", reach, "-out", filepath.Join(root, "build/interface-gaps")}
