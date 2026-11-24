@@ -5,7 +5,7 @@ package turn
 
 // A small backtracking matcher for the case-insensitive JavaScript patterns of pi-ai's overflow and retry classifiers
 // (utils/overflow.ts, utils/retry.ts). The core cannot import regexp (it uses sync), so the subset those patterns use is
-// implemented here: literals, `.`, `\d`, `\s`, character classes of ranges, `\d` and `\w`, groups `(?:…)`, the negative
+// implemented here: literals, `.`, `\d`, `\s`, `\S`, character classes of ranges, `\d` and `\w`, groups `(?:…)`, the negative
 // lookbehind `(?<!…)` and lookahead `(?!…)`, alternation, the quantifiers `*`, `+` and `?`, and the `^` and `$` anchors. Matching is unanchored search over code points, folding ASCII letters
 // only, as the non-Unicode `i` flag does for a pattern of ASCII letters.
 
@@ -16,6 +16,7 @@ const (
 	rxAny
 	rxDigit
 	rxSpace
+	rxNotSpace
 	rxClass
 	rxGroup
 	rxStart
@@ -168,6 +169,8 @@ func (p *rxParser) atom() rxNode {
 			return rxNode{kind: rxDigit}
 		case 's':
 			return rxNode{kind: rxSpace}
+		case 'S':
+			return rxNode{kind: rxNotSpace}
 		}
 		return rxNode{kind: rxChar, ch: e}
 	}
@@ -200,6 +203,8 @@ func (n *rxNode) one(r rune) bool {
 		return r >= '0' && r <= '9'
 	case rxSpace:
 		return jsSpace(r)
+	case rxNotSpace:
+		return !jsSpace(r)
 	case rxClass:
 		if n.digits && r >= '0' && r <= '9' {
 			return true
