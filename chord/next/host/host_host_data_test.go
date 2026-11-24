@@ -1048,10 +1048,8 @@ func TestHostDataReviewRound3AReloadDuringAnImportTheSuccessorLoadsAfterItAQueue
 	reloading := hdGo(func() (ReloadReport, error) {
 		return h.Reload([]HostFacet{{Name: "@test/app", Facet: DefineFacet(w.setup(hdMeta, hdLabelsV2))}}, background, ReloadOptions{})
 	})
-	hdEventually(t, "the reload under way", func() bool {
-		var started bool
-		h.(*chordHost).enter(func() { started = h.(*chordHost).reloading != nil })
-		return started
+	hdEventually(t, "the board restart waiting for the delete to release its line", func() bool {
+		return hdWaitingOnLine(h, "test.board") > 0
 	})
 	release()
 	_, err := hdAwait(t, "the delete", deleting)
@@ -1060,7 +1058,19 @@ func TestHostDataReviewRound3AReloadDuringAnImportTheSuccessorLoadsAfterItAQueue
 	must(t, err)
 	_, err = hdAwait(t, "the import", importing)
 	must(t, err)
-	hdEventually(t, "the board showing the import", func() bool {
+	deliveredOn(h)
+	hdEventually(t, "the board showing the import on v2", func() bool {
+		var v2Live bool
+		h.(*chordHost).enter(func() {
+			for _, object := range h.(*chordHost).objectList() {
+				if object.owner() == "test.board" {
+					v2Live = object.phase.kind == objectLive && object.declaredTable("test.board:labels") == hdLabelsV2
+				}
+			}
+		})
+		if !v2Live {
+			return false
+		}
 		value, err := live.board.Member("meta").Value()
 		return err == nil && nexttest.JSONEqual(value, jsonObject("title", "one"))
 	})
