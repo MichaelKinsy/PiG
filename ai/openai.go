@@ -1824,7 +1824,7 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 	}
 	checkRequestSegments(ctx, APIOpenAICompletions, body)
 
-	endpoint, err := sdkBuildURL(baseURL, "/chat/completions")
+	endpoint, err := openaiBuildURL(baseURL, "/chat/completions")
 	if err != nil {
 		return nil, err
 	}

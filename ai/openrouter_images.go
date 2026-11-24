@@ -97,7 +97,7 @@ func generateOpenRouterImages(ctx context.Context, model ImageModel, imagesCtx I
 		requestCtx, cancel = context.WithTimeout(requestCtx, time.Duration(options.TimeoutMs)*time.Millisecond)
 		defer cancel()
 	}
-	requestURL, err := sdkBuildURL(model.BaseURL, endpoint)
+	requestURL, err := openaiBuildURL(model.BaseURL, endpoint)
 	if err != nil {
 		out.StopReason = ImagesStopReasonError
 		out.ErrorMessage = err.Error()

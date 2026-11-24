@@ -36,15 +36,10 @@ type sdkQueryParam struct {
 	name, value string
 }
 
-// sdkBuildURL is `client.buildURL(path)` of the Stainless-generated openai and @anthropic-ai/sdk clients (openai/client.mjs buildURL, @anthropic-ai/sdk/client.mjs buildURL) for a client built with baseURL: new URL(baseURL + path) with one slash dropped where both meet, then, when the base carried a query, the pairs of `Object.fromEntries(url.searchParams)` written back through qs. The error is the constructor's TypeError message.
+// sdkBuildURL is `client.buildURL(path)` of `@anthropic-ai/sdk` (0.129.0, client.mjs:386-400) for a client built with baseURL:
+// `new URL(baseURL + path)` with one slash dropped where both meet, then, when the URL carries a query, the pairs of
+// `Object.fromEntries(url.searchParams)` written back through qs. The error is the constructor's TypeError message.
 func sdkBuildURL(baseURL, path string) (string, error) {
-	return sdkBuildURLWithDefaultQuery(baseURL, path)
-}
-
-// sdkBuildURLWithDefaultQuery is `client.buildURL(path)` with `defaultQuery` (openai/client.mjs:468-482, openai/azure.mjs:41):
-// `new URL(baseURL + path)` with one slash dropped where both meet, then `{ ...Object.fromEntries(url.searchParams), ...defaultQuery }`
-// written back through qs.
-func sdkBuildURLWithDefaultQuery(baseURL, path string, defaultQuery ...sdkQueryParam) (string, error) {
 	if strings.HasSuffix(baseURL, "/") && strings.HasPrefix(path, "/") {
 		path = path[1:]
 	}
@@ -53,18 +48,133 @@ func sdkBuildURLWithDefaultQuery(baseURL, path string, defaultQuery ...sdkQueryP
 		return "", err
 	}
 	pairs := nodeurl.SearchPairs(parsed.Query)
-	if len(pairs) == 0 && len(defaultQuery) == 0 {
+	if len(pairs) == 0 {
 		return parsed.Href(), nil
 	}
-	// Object.fromEntries keeps the last value of a repeated name at the first one's position; spreading defaultQuery overrides
-	// any matching pathQuery name in place and appends new names at the end; the object then enumerates integer-like names first.
-	members := make([]sdkQueryParam, 0, len(pairs)+len(defaultQuery))
+	members := make([]sdkQueryParam, 0, len(pairs))
 	for _, pair := range pairs {
+		members = setSDKQueryParam(members, pair[0], pair[1])
+	}
+	return parsed.WithSearch(stringifySDKQuery(members)), nil
+}
+
+// openaiBuildURL is `client.buildURL(path)` of openai 7.59.0 (client.mjs:502-554) without defaultQuery.
+func openaiBuildURL(baseURL, path string) (string, error) {
+	return openaiBuildURLWithDefaultQuery(baseURL, path)
+}
+
+// openaiBuildURLWithDefaultQuery is `client.buildURL(path)` of openai 7.59.0 (client.mjs:502-554, azure.mjs:41):
+// when baseURL contains '?', parse baseURL first, capture its search params, clear search and hash before appending path
+// (dropping one slash where base.pathname and path meet), then merge `{ ...baseQuery, ...pathQuery, ...defaultQuery }`
+// through qs and restore repeated baseQuery keys (not overridden by pathQuery or defaultQuery) via URLSearchParams.
+func openaiBuildURLWithDefaultQuery(baseURL, path string, defaultQuery ...sdkQueryParam) (string, error) {
+	var (
+		parsed     nodeurl.URL
+		baseParams [][2]string
+		hasBase    bool
+		err        error
+	)
+	if strings.Contains(baseURL, "?") {
+		base, err := nodeurl.ParseURL(baseURL)
+		if err != nil {
+			return "", err
+		}
+		baseParams = nodeurl.SearchPairs(base.Query)
+		hasBase = true
+		cleanBase := base.WithoutQuery().WithoutHash()
+		joinedPath := path
+		if strings.HasSuffix(base.Pathname, "/") && strings.HasPrefix(joinedPath, "/") {
+			joinedPath = joinedPath[1:]
+		}
+		parsed, err = nodeurl.ParseURL(cleanBase.Href() + joinedPath)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		joinedPath := path
+		if strings.HasSuffix(baseURL, "/") && strings.HasPrefix(joinedPath, "/") {
+			joinedPath = joinedPath[1:]
+		}
+		parsed, err = nodeurl.ParseURL(baseURL + joinedPath)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	pathPairs := nodeurl.SearchPairs(parsed.Query)
+	if len(baseParams) == 0 && len(pathPairs) == 0 && len(defaultQuery) == 0 {
+		return parsed.Href(), nil
+	}
+
+	// overridingQuery = { ...pathQuery, ...defaultQuery }
+	// query = { ...baseQuery, ...overridingQuery }
+	// Object.fromEntries keeps the last value of a repeated name at the first one's position; spreading overrides in place and appends new names at the end; JS object enumeration puts integer-like keys first.
+	overridingKeys := make(map[string]struct{}, len(pathPairs)+len(defaultQuery))
+	for _, pair := range pathPairs {
+		overridingKeys[pair[0]] = struct{}{}
+	}
+	for _, param := range defaultQuery {
+		overridingKeys[param.name] = struct{}{}
+	}
+
+	members := make([]sdkQueryParam, 0, len(baseParams)+len(pathPairs)+len(defaultQuery))
+	for _, pair := range baseParams {
+		members = setSDKQueryParam(members, pair[0], pair[1])
+	}
+	for _, pair := range pathPairs {
 		members = setSDKQueryParam(members, pair[0], pair[1])
 	}
 	for _, param := range defaultQuery {
 		members = setSDKQueryParam(members, param.name, param.value)
 	}
+	qsText := stringifySDKQuery(members)
+
+	if hasBase && len(baseParams) > 1 {
+		seen := make(map[string]struct{}, len(baseParams))
+		repeated := make(map[string]struct{})
+		for _, pair := range baseParams {
+			key := pair[0]
+			if _, wasSeen := seen[key]; wasSeen {
+				if _, overridden := overridingKeys[key]; !overridden {
+					repeated[key] = struct{}{}
+				}
+			}
+			seen[key] = struct{}{}
+		}
+		if len(repeated) > 0 {
+			// url.search = this.stringifyQuery(query); then iterate url.searchParams skipping repeated keys,
+			// then append repeated keys from baseParams, serialized via URLSearchParams.toString() (FormURLEncode).
+			withQS, err := nodeurl.ParseURL(parsed.WithSearch(qsText))
+			if err != nil {
+				return "", err
+			}
+			var merged strings.Builder
+			writePair := func(k, v string) {
+				if merged.Len() > 0 {
+					merged.WriteByte('&')
+				}
+				merged.WriteString(nodeurl.FormURLEncode(k))
+				merged.WriteByte('=')
+				merged.WriteString(nodeurl.FormURLEncode(v))
+			}
+			for _, pair := range nodeurl.SearchPairs(withQS.Query) {
+				if _, isRep := repeated[pair[0]]; !isRep {
+					writePair(pair[0], pair[1])
+				}
+			}
+			for _, pair := range baseParams {
+				if _, isRep := repeated[pair[0]]; isRep {
+					writePair(pair[0], pair[1])
+				}
+			}
+			return withQS.WithSearch(merged.String()), nil
+		}
+	}
+
+	return parsed.WithSearch(qsText), nil
+}
+
+func stringifySDKQuery(members []sdkQueryParam) string {
 	jsstring.SortOwnKeys(members, func(m sdkQueryParam) string { return m.name })
 	var query strings.Builder
 	for i, m := range members {
@@ -73,7 +183,7 @@ func sdkBuildURLWithDefaultQuery(baseURL, path string, defaultQuery ...sdkQueryP
 		}
 		query.WriteString(qsEncode(m.name) + "=" + qsEncode(m.value))
 	}
-	return parsed.WithSearch(query.String()), nil
+	return query.String()
 }
 
 func setSDKQueryParam(members []sdkQueryParam, name, value string) []sdkQueryParam {

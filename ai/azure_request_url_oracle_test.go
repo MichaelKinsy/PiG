@@ -159,19 +159,19 @@ func assertAzureURLOracleRowsMatchSDK(t *testing.T, rows []azureURLOracleRow) {
 		default:
 			if gotURL != *want.URL {
 				differing++
-				t.Errorf("%s (resolved=%q):\n  Go      %s\n  SDK719  %s", row.Name, want.ResolvedBaseURL, gotURL, *want.URL)
+				t.Errorf("%s (resolved=%q):\n  Go      %s\n  SDK759  %s", row.Name, want.ResolvedBaseURL, gotURL, *want.URL)
 			} else {
-				t.Logf("%s | resolved=%s | go=%s | sdk719=%s | EQUAL", row.Name, want.ResolvedBaseURL, gotURL, *want.URL)
+				t.Logf("%s | resolved=%s | go=%s | sdk759=%s | EQUAL", row.Name, want.ResolvedBaseURL, gotURL, *want.URL)
 			}
 		}
 	}
 	t.Logf("azure-openai-responses oracle: %d ran, %d skipped, %d differing", ran, skipped, differing)
 	if differing > 0 {
-		t.Fatalf("%d Azure URL oracle rows differ from openai 7.19.0", differing)
+		t.Fatalf("%d Azure URL oracle rows differ from openai 7.59.0", differing)
 	}
 }
 
-// TestAzureResponsesRequestURLMatchesSDK compares the request URL Go's azure-openai-responses provider sends with the URL pinned openai 7.19.0 AzureOpenAI builds for the same Pi-resolved base URL and apiVersion.
+// TestAzureResponsesRequestURLMatchesSDK compares the request URL Go's azure-openai-responses provider sends with the URL pinned openai 7.59.0 AzureOpenAI builds for the same Pi-resolved base URL and apiVersion.
 func TestAzureResponsesRequestURLMatchesSDK(t *testing.T) {
 	assertAzureURLOracleRowsMatchSDK(t, azureURLOracleRows())
 }
