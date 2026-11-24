@@ -348,6 +348,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-28e26ff](#bf-28e26ff) | fix(ext): a before_provider_headers handler's returned map changes no header, as in Pi, and the conformance… | PiG's own defect | All platforms | Unreleased |
 | [BF-28f8b3b](#bf-28f8b3b) | fix(tui): editor wrap of a one-grapheme segment wider than the width no longer overflows the stack (D158) | PiG's own defect | All platforms | Unreleased |
 | [BF-2921bea](#bf-2921bea) | fix(delta-nonchord): cite the platform-default test for keybindings.ts, test the microsecond rounding of span… | PiG's own defect | All platforms | Unreleased |
+| [BF-296ad4d](#bf-296ad4d) | A Chord worker rollout no longer lists a retried failed worker twice or sends it a duplicate reload for the… | PiG's own defect | All platforms | Unreleased |
 | [BF-2a055a7](#bf-2a055a7) | An extension dialog (`select`, `confirm`, `input`, `editor`) opened while a focused `ctx.ui.custom` component… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2a0a44d](#bf-2a0a44d) | Installing a Chord plugin works with npm 12: `npm pack --json` prints an object keyed by package name there… | PiG's own defect | All platforms | Unreleased |
 | [BF-2a0b22d](#bf-2a0b22d) | LaTeX math that holds a lone UTF-16 surrogate (`$x\ud83d$`, a script, fraction, root, accent, `\text{}`… | PiG's own defect | All platforms | Unreleased |
@@ -7024,6 +7025,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `2921bea59c` (2026-11-08)
 - **Tests:** `internal/codingagent/custom_editor_oracle_test.go::TestCustomEditorMatchesPi`, `internal/codingagent/kitty_unbound_test.go::TestKittyEncodedAppKeysFollowEachPlatformColumn`, `internal/codingagent/remote_editor_hooks_oracle_test.go::TestDelegatedEditorHooksMatchPi`, `telemetry/telemetry_now_test.go::TestInMemoryRoundsEventAndEndTimesToTheMicrosecond`
+
+### BF-296ad4d
+
+**A Chord worker rollout no longer lists a retried failed worker twice or sends it a duplicate reload for the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Chord worker rollout no longer lists a retried failed worker twice or sends it a duplicate reload for the scripts it just started with, and no longer sends a duplicate reload to a starting worker waiting on a stale lock when a rollout ships the same script set (since v0.7.0).
+- **Root cause:** Workers.Rollout released the component loop around c.route.Retry without skipping retried addresses in its reload loop, and startChild set spawned.shipped after options.Lock and ClearStaleLock instead of directly after Plugins.Scripts.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1adf8da8a4` (2026-11-23), `296ad4db9c` (2026-11-23)
+- **Tests:** None recorded.
+- **Release note:** A Chord worker rollout no longer lists a retried failed worker twice or sends it a duplicate reload for the scripts it just started with, and no longer sends a duplicate reload to a starting worker waiting on a stale lock when a rollout ships the same script set (since v0.7.0).
 
 ### BF-2a055a7
 
