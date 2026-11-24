@@ -41,6 +41,7 @@ func failLiveOf(self Self) {
 	failLive(self, data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil))
 }
 
+// pi: packages/chord/src/host/events.ts
 func TestEventFlushDeliversATurnsEmitsInOneFlushInOrderStampedWithTheEmitsNow(t *testing.T) {
 	k := ticking(t, loadedOptions{})
 	ticker := mustGet(t, k.Host, Ticker, jsonObject())

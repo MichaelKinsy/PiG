@@ -18,6 +18,7 @@ import (
 // the read's failed run (`load` never fails). The idle barrier is what Pi's `await flushed()` after a changed binding waits
 // for: a test joins the tasks started so far through `storeseam.ReadTasks`, with no polling.
 
+// pi: packages/chord/src/store/reads.ts
 func TestReadsTasks(t *testing.T) {
 	t.Run("a task runs under a context its parent's end and the index's close both cancel", func(t *testing.T) {
 		for _, byClose := range []bool{false, true} {

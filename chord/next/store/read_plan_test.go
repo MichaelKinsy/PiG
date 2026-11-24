@@ -77,6 +77,7 @@ func rpJSON(t *testing.T, node WhereNode) string {
 	return string(text)
 }
 
+// pi: packages/chord/src/store/read-plan.ts
 func TestReadPlanExists(t *testing.T) {
 	f := rpFixtures(t)
 

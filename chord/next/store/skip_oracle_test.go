@@ -452,6 +452,7 @@ func randomWrite(t *testing.T, d *oracleDefs, r *oracleRandom, changes func(tabl
 	}
 }
 
+// pi: packages/chord/src/store/skip.ts
 func TestSkipOracleASkippedReadEqualsAFreshRun(t *testing.T) {
 	for _, seed := range []uint32{1, 2, 3, 4, 5, 6, 7, 8} {
 		t.Run(fmt.Sprintf("randomized writes, single and grouped commits (seed %d)", seed), func(t *testing.T) {

@@ -17,6 +17,7 @@ import (
 // test/host/named-query.test.ts and query-reader.test.ts (they wait for the store's read engine). Pi's checks of the
 // builders' and the sources' shapes (an object of functions, `[[query, args]]`) are typed in Go and have no check.
 
+// pi: packages/chord/src/host/read-declarations.ts
 func TestReadDeclarationRefusals(t *testing.T) {
 	cases := []struct {
 		name string

@@ -12,6 +12,7 @@ import (
 // runs `recompile` on another goroutine, which wrote the plan under the query's lock while the constructor wrote it with
 // none (a data race) and could then be overwritten by the constructor's older compile (a query that stays compiled for a
 // binding that is gone). Both compile under one lock now, so the later compile is the one that stays.
+// pi: packages/chord/src/store/open-query.ts
 func TestOpenQueryABindingChangingWhileTheQueryIsMadeLeavesItCompiledForTheBindingThatStays(t *testing.T) {
 	w := newReadsWorld(t)
 	bound := Bound{Table: w.tags.Sql.Table, Definition: w.tags.Definition}
