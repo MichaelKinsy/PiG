@@ -10,8 +10,13 @@ const { writeRenderers } = await import(`${D}/core/tools/renderers/write.js`);
 const { editRenderers } = await import(`${D}/core/tools/renderers/edit.js`);
 const { KeybindingsManager } = await import(`${D}/core/keybindings.js`);
 const tui = await import(`${SHIMS}/pi-tui.mjs`);
+import { createRequire } from "node:module";
+const req = createRequire(`${D}/package.json`);
+const realTui = await import(req.resolve("@earendil-works/pi-tui"));
 initTheme("dark");
-tui.setKeybindings(new KeybindingsManager({}, "/nonexistent/keybindings.json"));
+const kb = new KeybindingsManager({}, "/nonexistent/keybindings.json");
+tui.setKeybindings(kb);
+if (typeof realTui.setKeybindings === "function") realTui.setKeybindings(kb);
 const W = 100;
 const renderers = { read: readRenderers, write: writeRenderers, edit: editRenderers };
 const sub = (v) => JSON.parse(JSON.stringify(v).replaceAll("{{CWD}}", CWD).replaceAll("{{HOME}}", HOME));
@@ -132,7 +137,7 @@ for (const c of cases) {
   const lines = [];
   for (const raw of c.steps) {
     const s = sub(raw);
-    const mk = (tool) => ({ args: s.args ?? undefined, toolCallId: "c", invalidate() { invalidated++; }, state, cwd: CWD, executionStarted: true, argsComplete: true, isPartial: false, expanded: false, showImages: true, isError: false, ...s.ctx });
+    const mk = (tool) => ({ args: s.args ?? undefined, toolCallId: "c", invalidate() { invalidated++; }, state, cwd: CWD, executionStarted: true, argsComplete: true, isPartial: false, expanded: false, showImages: true, isError: false, outputPad: 1, ...s.ctx });
     if (s.op === "wait") { await sleep(150); lines.push(null); continue; }
     if (s.op === "call") { last[`call:${s.tool}`] = renderers[s.tool].renderCall(s.args ?? undefined, theme, { ...mk(), lastComponent: last[`call:${s.tool}`] }); }
     if (s.op === "result") {

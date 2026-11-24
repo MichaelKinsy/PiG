@@ -15,6 +15,9 @@ import (
 // /hotkeys and a slash command's Append add a Markdown to the chat that is whole when it is built and stays in the
 // transcript. They finish it, so it keeps no memo for a next streamed delta; the rows must be what they were with the
 // memos. The hash covers both blocks at several widths and themes, and was taken on the tree before the change.
+// It was taken again on the tree that carries Pi 562da75f9, which sets default: (s) => t.fg("text", s) in
+// buildCliHighlightTheme (packages/coding-agent/src/modes/interactive/theme/theme.ts:894), wrapping unscoped code tokens
+// in the theme text foreground escape.
 func TestWholeMarkdownBlocksRenderBytes(t *testing.T) {
 	restoreStartupTheme(t)
 	previous := tui.GetTUIKeybindings()
@@ -43,7 +46,7 @@ func TestWholeMarkdownBlocksRenderBytes(t *testing.T) {
 			}
 		}
 	}
-	const wantAppended = "0f08cbaba866abe3dd27bed5695bc18ab62de0177df41aec2c7ca4994c75ea48"
+	const wantAppended = "66447a6926008181da7a5892d125fc76ab18b7b8c817f4c4c4a553688ba6227e"
 	if got := hex.EncodeToString(appended.Sum(nil)); got != wantAppended {
 		t.Errorf("appended rows hash %s, want %s", got, wantAppended)
 	}
@@ -55,7 +58,7 @@ func TestWholeMarkdownBlocksRenderBytes(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		return
 	}
-	want := "6c6e446dd091ddae67cc390a41ffa268a9c7418088c7a9c5274abd08eb345e76"
+	want := "d9c6e895cd305624413664c65a05c5047fbdd78e855091255b65ebc6fb3e47f8"
 	switch {
 	case tui.HostKeybindingPlatform() == tui.KeybindingPlatformLinuxWSL:
 		want = "4c4149c4b245033e7f8446c0d683ee902e7528c3d75315f52d00d4015faed4fc"

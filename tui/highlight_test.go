@@ -82,12 +82,12 @@ func TestHighlightCode_ColorsEachLineOfPythonDocstringsIndependently(t *testing.
 		"",
 		ansi + "line two\x1b[39m",
 		ansi + "\"\"\"\x1b[39m",
-		"after",
+		ActiveTheme().GetFgAnsi("text") + "after\x1b[39m",
 	}
 	if got := HighlightCode(code, "python"); !slices.Equal(got, want) {
 		t.Errorf("HighlightCode = %q, want %q", got, want)
 	}
-	if got := HighlightCode(code, "python"); !slices.Equal(got, want) {
+	if got := GetMarkdownTheme().HighlightCode(code, "python"); !slices.Equal(got, want) {
 		t.Errorf("markdown theme highlightCode = %q, want %q", got, want)
 	}
 }

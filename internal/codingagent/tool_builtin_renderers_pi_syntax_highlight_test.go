@@ -17,12 +17,12 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-// TestBuiltInRenderersMatchPi104 renders every case of the committed Pi 1.0.4 probe
-// (testdata/pi104-render-probe/render-probe.mjs, run against Pi's built renderers)
+// TestBuiltInRenderersMatchPi renders every case of the committed Pi 1.5.2+562da75f9 probe
+// (testdata/pi-render-probe/render-probe.mjs, run against Pi's built renderers)
 // through PiG's built-in read, write and edit renderers and compares the rows.
 // Pi: packages/coding-agent/src/core/extensions/types.ts:463 (ToolRenderResultOptions.isPartial).
-func TestBuiltInRenderersMatchPi104(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join("testdata", "pi104-render-probe", "builtin-renderers.golden.json"))
+func TestBuiltInRenderersMatchPi(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("testdata", "pi-render-probe", "builtin-renderers.golden.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

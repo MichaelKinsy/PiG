@@ -125,6 +125,15 @@ func mutateHighlightSample(code string, mutation int) string {
 	return jsstring.FromUTF16(units)
 }
 
+// d645ReasonMLConstructorCases lists the exact corpus ids where reasonml emits hljs-constructor
+// and Pi's plain-object lookup (syntax-highlight.ts:102, D645 row 19) diverges from PiG since Pi 562da75f9.
+var d645ReasonMLConstructorCases = map[string]bool{
+	"markup/reasonml/functions.txt":        true,
+	"markup/reasonml/pattern-matching.txt": true,
+	"detect/reasonml/default.txt":          true,
+	"pig/634":                              true,
+}
+
 // TestHighlightMatchesPiOracle replays Pi's highlighting of the highlight.js 10.7.3 test inputs and the PiG cases: language support, the highlight.js HTML, highlightCode and the Markdown theme's highlightCode, before and after every language loads, then mutated samples in every language.
 func TestHighlightMatchesPiOracle(t *testing.T) {
 	withTrueColor(t, true)
@@ -163,11 +172,25 @@ func TestHighlightMatchesPiOracle(t *testing.T) {
 				fail("%s %s (%s): highlight.js HTML differs from Pi %s", expected.Stage, c.ID, c.Lang, oracle.Pi)
 			}
 		}
+		// D645 (row 19, visible since Pi 562da75f9): Pi's getScopeFormatter reads theme["constructor"]
+		// on a plain object and gets Object.prototype.constructor instead of falling back to theme.default.
+		// PiG's HighlightTheme.formatter returns (nil, false) for "constructor" and colors hljs-constructor
+		// tokens with theme.default. Only these 4 reasonml corpus ids (8 cases: highlightCode and Markdown)
+		// are allowed to differ from Pi; fail if any other case differs or if any of these stops differing.
+		allowedD645 := expected.Stage == "all" && d645ReasonMLConstructorCases[c.ID]
 		if got := highlightDigest(strings.Join(highlightCodeUncached(registry, c.Code, c.Lang, ActiveTheme()), "\n")); got != expected.Lines {
-			fail("%s %s (%s): highlightCode differs from Pi %s", expected.Stage, c.ID, c.Lang, oracle.Pi)
+			if !allowedD645 {
+				fail("%s %s (%s): highlightCode differs from Pi %s", expected.Stage, c.ID, c.Lang, oracle.Pi)
+			}
+		} else if allowedD645 {
+			fail("%s %s (%s): D645 allowance expected highlightCode to differ from Pi %s, but digests matched", expected.Stage, c.ID, c.Lang, oracle.Pi)
 		}
 		if got := highlightDigest(strings.Join(highlightCodeUncached(registry, c.Code, c.Lang, ActiveTheme()), "\n")); got != expected.Markdown {
-			fail("%s %s (%s): Markdown highlightCode differs from Pi %s", expected.Stage, c.ID, c.Lang, oracle.Pi)
+			if !allowedD645 {
+				fail("%s %s (%s): Markdown highlightCode differs from Pi %s", expected.Stage, c.ID, c.Lang, oracle.Pi)
+			}
+		} else if allowedD645 {
+			fail("%s %s (%s): D645 allowance expected Markdown highlightCode to differ from Pi %s, but digests matched", expected.Stage, c.ID, c.Lang, oracle.Pi)
 		}
 	}
 	for _, expected := range oracle.Mutations {

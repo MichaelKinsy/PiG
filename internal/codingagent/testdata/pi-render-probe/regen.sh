@@ -1,5 +1,5 @@
 #!/bin/sh
-# Regenerates builtin-renderers.golden.json from a built Pi 1.0.4 (pi-coding-agent dist and the pi-tui.mjs shim).
+# Regenerates builtin-renderers.golden.json from a built Pi 1.5.2+562da75f9 (pi-coding-agent dist and the pi-tui.mjs shim).
 # Usage: regen.sh <pi-coding-agent dist dir> <shims dir> > builtin-renderers.golden.json
 set -e
 dir=$(dirname "$0")

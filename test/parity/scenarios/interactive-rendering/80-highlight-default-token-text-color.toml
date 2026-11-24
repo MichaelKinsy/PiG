@@ -1,0 +1,44 @@
+# Upstream evidence: Pi 562da75f9 (#12347, issue #11092) sets `default: (s) => t.fg("text", s)` in buildCliHighlightTheme (packages/coding-agent/src/modes/interactive/theme/theme.ts).
+# Without this, unscoped tokens (plain identifiers, operators, spaces, punctuation) emit no foreground SGR and inherit the terminal default foreground.
+# With this, a fenced typescript code block in an assistant reply wraps plain tokens with the active theme text foreground and resets with SGR 39.
+# Requires the 562da75f9 backport block in automation/gen/pi-post-release-backports.mjs so the pinned Pi 1.5.2 oracle carries the new behavior.
+
+name = "80-highlight-default-token-text-color"
+description = "Fenced code blocks apply the active theme text foreground to unscoped tokens in highlighted code."
+covers = [
+  "packages/coding-agent/src/modes/interactive/theme/theme.ts",
+  "packages/coding-agent/src/utils/syntax-highlight.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent", "TERM=tmux-256color", "COLORTERM=truecolor"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1", "TERM=tmux-256color", "COLORTERM=truecolor"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "plainIdentifier"
+capture_end_regex = "(?s)const answer = 42;.*const answer = 42;"
+
+[[tmux.steps]]
+keys = ["reply with exactly:\n```typescript\nplainIdentifier\nconst answer = 42;\n```", "Enter"]
+settle_seconds = 4
+wait_contains = ["plainIdentifier", "const answer = 42;"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+escaped_output_equal = true
+both_contain = ["plainIdentifier", "const answer = 42;"]
+runtime_ratio_max = 2.0
+runs = 3
