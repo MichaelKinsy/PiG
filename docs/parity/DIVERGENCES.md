@@ -3479,7 +3479,7 @@ Evidence: the kill (a child process of the test binary stopped at a seam and kil
 
 Parity allowance: none needed beyond the evidence above.
 
-SCRUTINIZED:approved 2026-11-18 text-sha256:c802940b9a8e8a1f, first approved 2026-11-08, amended 2026-11-10 for Pi 1.5.2 host data, amended 2026-11-17 for the final text (two stores, the two commits with the intent, one export point) by principle (owner decision 29), extends OWNER-DECISIONS #19
+SCRUTINIZED:approved 2026-11-24 text-sha256:258f9da3a68cb636, first approved 2026-11-08, amended 2026-11-10 for Pi 1.5.2 host data, amended 2026-11-17 for the final text (two stores, the two commits with the intent, one export point) by principle (owner decision 29), extends OWNER-DECISIONS #19
 
 ## D464 FormatNumber and FormatTime take closed option types and return errors (P1-3)
 
@@ -3989,7 +3989,7 @@ Scope: `coding/extension` (`ExecCommand`, both output pipes) and `internal/codin
 
 Owner decision: approved. The owner said "proceed with recommendations" (2026-11-12T23:22:43Z, owner decisions of 0.8.0), and the recommendation recorded there for this item is "D631 exec/bash child stdio: KEEP PIPES, record D631 as a numbered divergence with both effects locked by tests against the Pi oracle."
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:ae844caf2125d2d2, first approved 2026-11-12, re-approved by principle (owner decision 29) in the 2026-11-20 records review
+SCRUTINIZED:approved 2026-11-24 text-sha256:9a2341a6dfa02dd1, first approved 2026-11-12, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 Remove when: PiG gives the commands of `pi.exec` and the bash tool socket pairs on Unix (stdin included where the bash tool gives one), or Node gives its children pipes.
 
@@ -4120,7 +4120,7 @@ Pi bug: yes, at Pi 1.5.2 and at Pi 275dde410065. For a name that is a member of 
 Owner decision: the owner's line of 2026-11-13T03:33:12Z (`## 2026-11-13T03:33:12Z owner: brand + experience`, quoted in D483 as "We replace pi with pig everywhere bro and for anything you think we can make a meaningful improvement to the experience do it"). Its application to these five sites was relayed in the project channel on 2026-11-13T08:57:55Z, verbatim: "YES: the five Stock prototype-lookup sites are covered by the owner's 03:33:12Z line: PiG does not port those defects; one class record + a row and pinning test per site; add the same class elsewhere to the private upstream draft." Rows 6 to 15 are under the owner's rule of 2026-11-13T22:52:04Z as it was relayed to the lanes: every bug found is fixed and not only recorded, and a Pi bug that PiG can cure is cured, invisibly to Pi interop where possible, else as a numbered divergence with an upstream draft; the rule names "the constructor/__proto__ class EVERYWHERE" as such a bug. One exception was ruled on 2026-11-13 and is not a row: a `__proto__` member of streamed tool arguments stays dropped, as Pi's parser drops it (`ai/streaming_json.go`), because it must not reach extension JavaScript as an own key.
 By owner principle (decision 29, 2026-11-17), checked by Claude and Tern; rows 16 to 18 under the owner's fix-all-bugs rule of 2026-11-13T22:52:04Z
 
-SCRUTINIZED:approved 2026-11-17 text-sha256:b78e167a4ed2221c (for the class: rows 1 to 5 by the YES of 2026-11-13T08:57:55Z quoted above, rows 6 to 18 by the owner's rule of 2026-11-13T22:52:04Z)
+SCRUTINIZED:approved 2026-11-24 text-sha256:89924fe6bd03d6a9 (for the class: rows 1 to 5 by the YES of 2026-11-13T08:57:55Z quoted above, rows 6 to 18 by the owner's rule of 2026-11-13T22:52:04Z)
 
 Scope: exactly the nineteen rows of the table, in Stock (`internal/latex`, `tui`, `coding/extension`, `internal/codingagent/prompts`, `coding/mcpext`, `internal/codingagent`, `internal/configvalue`, `coding`, `ai`, `internal/typebox`, `internal/evals`), and for row 14 the Node extension runtime's `pi.getSettings()`. Not in this record:
 
@@ -4334,7 +4334,7 @@ Scope: pig's writes of the listed files through `internal/atomicfile`. Pi's file
 
 Owner decision: approved 2026-11-14T14:10:39Z ("proceed", handoffs/0.8.0/OWNER-DECISIONS.md, entry `## 2026-11-14T14:10:39Z owner: "proceed" (on Claude's recommendations of 13:2xZ)`); the line, verbatim: "D651 APPROVED, both parts: (1) auth.json, settings, trust, keybindings and the MCP config replaced through a private temp file + rename where that changes nothing but the inode; Pi's in-place write kept for hard links, uncarriable ACL/xattrs, bind-mounted single files and unwritable directories; (2) a 5 s refresh of the async lock so a live refresher is never taken over (single-use refresh token spent once)."
 
-SCRUTINIZED:approved 2026-11-20 text-sha256:f57e77c3ca8a278a, first approved 2026-11-14, re-approved by principle (owner decision 29) in the 2026-11-20 records review
+SCRUTINIZED:approved 2026-11-24 text-sha256:05b179fa88aa0452, first approved 2026-11-14, re-approved by principle (owner decision 29) in the 2026-11-20 records review
 
 Remove when: (A) Pi writes these files through a temporary file and a rename, or otherwise keeps a failed write from truncating them; (C) Pi renews its async lock faster than its sync stale window, or raises the sync stale window to at least twice the async heartbeat.
 
@@ -4511,7 +4511,7 @@ Scope: `tui` (`SetContinueSignalHandler`, `RearmRawMode`, terminal ownership in 
 
 Owner decision: the reviewer of the 0.8.0 line initially approved the mechanism (SIGCONT listener, default stop kept) on the condition that this text names both halves, the unchanged Ctrl+Z path and the Go mechanic; a 2026-11-20 ruling moved this work after 0.8.0, and the owner order of 2026-11-24T06:23Z pulled Pi 1.6.0 (`faac585884ae`) into 0.8.0. The wording, the `TUI.setSuspendSignalHandler` disposition, and bare-SIGCONT behavior await the owner's decision.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-24 text-sha256:32466f2ab9901810
 
 Remove when: Go offers a supported way to restore `SIG_DFL` for SIGTSTP after `signal.Notify`, or a reviewed helper design owns the reset and the stop. Then a SIGTSTP listener can follow terminal ownership as Pi main's does, `TUI.setSuspendSignalHandler` can be ported cleanly across Go and all SDKs, and half 2 and item 3 are gone. When the pin moves past `3107a58d`, this record describes the difference to the pin as well as Pi main.
 

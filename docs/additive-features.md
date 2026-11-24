@@ -2312,7 +2312,7 @@ Parity allowance: no Pi scenario mounts a view; Pi clients never see `ui.view.mo
 Remove when: the owner drops it, or Pi ships a portable extension UI (then port it).
 
 Approval: owner decision relayed 2026-11-09 (via Main; the channel's post of 2026-11-09T06:01Z records it at about 06:02Z: `OWNER: "proceed" on multilang-plugins rev 3.1 with all 6 recommended answers`, whose Q6 is D613/D614 plus the D107 additions): D614 approved as one protocol, re-expressed from concepts (multilang-plugins appendix D), with the amendments above. Amendment approval: owner decision of 2026-11-12T20:58Z, relayed through Main: "D614 amendment APPROVED: N1 to N7 with the section 4 bounds, F4, F5."
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-24 text-sha256:9f4d8dc1da4f31a4
 
 ## D621 Interactive runs keep a heap goal of at least 16 MiB, at GOGC 150 until the live heap passes 8 MiB
 
