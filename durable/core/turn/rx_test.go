@@ -35,3 +35,50 @@ func TestRxNonSpaceClass(t *testing.T) {
 		}
 	}
 }
+
+func TestCompileRxRejectsUnsupportedAlphanumericEscapes(t *testing.T) {
+	for _, pattern := range []string{
+		`\W`,
+		`\D`,
+		`\b`,
+		`\B`,
+		`\w`,
+		`\1`,
+		`[\S]`,
+		`[\W]`,
+		`[\D]`,
+		`[\s]`,
+		`[\1]`,
+	} {
+		panicked := false
+		func() {
+			defer func() {
+				if recover() != nil {
+					panicked = true
+				}
+			}()
+			compileRx(pattern)
+		}()
+		if !panicked {
+			t.Errorf("compileRx(%q) did not panic; unsupported alphanumeric escape must fail compilation", pattern)
+		}
+	}
+
+	// Punctuation escapes remain literals.
+	for _, tc := range []struct {
+		pattern, match, nomatch string
+	}{
+		{`\(413\)`, "(413)", "413"},
+		{`\.`, ".", "a"},
+		{`\[a\]`, "[a]", "a"},
+		{`[\-]`, "-", "a"},
+	} {
+		prog := compileRx(tc.pattern)
+		if !prog.matchRx(tc.match) {
+			t.Errorf("compileRx(%q).matchRx(%q) = false, want true", tc.pattern, tc.match)
+		}
+		if prog.matchRx(tc.nomatch) {
+			t.Errorf("compileRx(%q).matchRx(%q) = true, want false", tc.pattern, tc.nomatch)
+		}
+	}
+}
