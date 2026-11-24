@@ -11,18 +11,27 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// Pi writes a file in place, so a write leaves the whole security descriptor of the file as it was. A replacement has to give the new file the old file's
-// descriptor, and Windows has three kinds of part in it:
+// Pi writes a file in place, so a write leaves the whole security descriptor and file attributes of the file as they were. A replacement has to give the
+// temporary file the old file's descriptor and user-settable attributes before moving it into place, and Windows has three kinds of part in a security descriptor:
 //   - the access: the DACL's entries with each entry's flags, and SE_DACL_PROTECTED. They decide who may open the file, so a replacement that changes
 //     them changes the security of the file, and a replacement that cannot keep them is not made (see [carryDescriptor]);
 //   - the bookkeeping: SE_DACL_AUTO_INHERITED, which only says that the entries were set by a program that keeps inherited entries up to date. A file system may
 //     set it whatever the caller asked for, so a carry that leaves only that flag different is a success ([errAutoInheritedDiffers]);
 //   - the owner and the group, which are carried as far as the caller's token may set them, as on Unix.
 //
-// RUN 43699097748 (the first on Windows) decided the calls; what is still NOT shown is marked NOT SHOWN BY RUN where it is used (setAccessAsked).
+// In addition, user-settable Win32 file attributes (HIDDEN, SYSTEM, NOT_CONTENT_INDEXED) that MoveFileExW does not copy from the destination are
+// carried onto the temporary file before the move. FILE_ATTRIBUTE_ARCHIVE is intentionally not copied from a cleared old file: a newly written file
+// keeps ARCHIVE set so backup software sees that its content changed, matching an in-place write.
 
 // descriptorParts are the parts of a security descriptor a replacement carries.
 const descriptorParts = windows.OWNER_SECURITY_INFORMATION | windows.GROUP_SECURITY_INFORMATION | windows.DACL_SECURITY_INFORMATION
+
+// carriedFileAttributes are the user-settable Win32 file attributes that a MoveFileExW replacement carries from the existing file onto the temporary file.
+// Read-only files are already rejected by WriteFile's write probe; FILE_ATTRIBUTE_ARCHIVE stays set on the new content as an in-place write leaves it;
+// COMPRESSED and ENCRYPTED require FSCTL/EFS APIs and are documented in D651.
+const carriedFileAttributes = windows.FILE_ATTRIBUTE_HIDDEN |
+	windows.FILE_ATTRIBUTE_SYSTEM |
+	windows.FILE_ATTRIBUTE_NOT_CONTENT_INDEXED
 
 // accessOf reads the access of a descriptor GetNamedSecurityInfo returned.
 func accessOf(descriptor *windows.SECURITY_DESCRIPTOR) (access, error) {
@@ -56,25 +65,53 @@ func accessOf(descriptor *windows.SECURITY_DESCRIPTOR) (access, error) {
 	return state, nil
 }
 
-// carryAttributes gives the temporary file the access (and, as far as the token may, the owner and group) of the file it will replace, before any data is
-// written to it and before it replaces anything. It is the Windows form of copying the extended attributes: a temporary file that cannot take the access is
-// an error, which WriteFile answers with an in-place write, as Pi writes, so that the file never has other access than it had.
+// carryAttributes gives the temporary file the access (and, as far as the token may, the owner and group) and user-settable file attributes
+// (HIDDEN, SYSTEM, NOT_CONTENT_INDEXED) of the file it will replace, before any data is written to it and before it replaces anything.
+// It is the Windows form of copying the extended attributes: a temporary file that cannot take the access is an error, which WriteFile answers with
+// an in-place write, as Pi writes, so that the file never has other access than it had.
 func carryAttributes(temp *os.File, path string) error {
-	if err := carryDescriptor(path, temp.Name(), false); err != nil && !errors.Is(err, errAutoInheritedDiffers) {
+	if err := carryDescriptor(path, temp.Name()); err != nil && !errors.Is(err, errAutoInheritedDiffers) {
 		return err
 	}
-	return nil
+	return carryFileAttributes(path, temp.Name())
 }
 
-// carryDescriptor gives the file at to the security descriptor of the file at from and reads the descriptor of to back ([carryAccess] decides which calls).
-// live says that to is the file at the name callers open, not a temporary file that no one has opened: there the call that runs inheritance
-// ([setAccessNamed]) is not made, so that the file never holds the parent's current inheritable entries; a source that was auto-inherited then keeps the flag
-// only when the file already has it (ReplaceFileW leaves it set) or the request for auto-inheritance sets it. It returns nil when the access and
-// SE_DACL_AUTO_INHERITED are as from's, [errAutoInheritedDiffers] when only SE_DACL_AUTO_INHERITED is not, and any other error when the access is not:
-// whatever the calls themselves reported, the read-back decides. The owner and the group are not read back: a token that may not set them (ERROR_INVALID_OWNER,
-// ERROR_INVALID_PRIMARY_GROUP, ERROR_PRIVILEGE_NOT_HELD, or no WRITE_OWNER on the file) leaves them as they are, as chown does on Unix. A file system that
-// keeps no security descriptor (the file at from has none: ERROR_NOT_SUPPORTED, ERROR_INVALID_FUNCTION) has nothing to carry.
-func carryDescriptor(from, to string, live bool) error {
+// carryFileAttributes copies HIDDEN, SYSTEM and NOT_CONTENT_INDEXED from from onto to without clearing FILE_ATTRIBUTE_ARCHIVE on to.
+func carryFileAttributes(from, to string) error {
+	srcPtr, err := windows.UTF16PtrFromString(from)
+	if err != nil {
+		return err
+	}
+	srcAttrs, err := windows.GetFileAttributes(srcPtr)
+	if err != nil {
+		return err
+	}
+	want := srcAttrs & carriedFileAttributes
+	dstPtr, err := windows.UTF16PtrFromString(to)
+	if err != nil {
+		return err
+	}
+	dstAttrs, err := windows.GetFileAttributes(dstPtr)
+	if err != nil {
+		return err
+	}
+	next := (dstAttrs &^ carriedFileAttributes) | want
+	if next == dstAttrs {
+		return nil
+	}
+	if next == 0 {
+		next = windows.FILE_ATTRIBUTE_NORMAL
+	}
+	return windows.SetFileAttributes(dstPtr, next)
+}
+
+// carryDescriptor gives the temporary file at to the security descriptor of the file at from and reads the descriptor of to back ([carryAccess] decides
+// which calls). It returns nil when the access and SE_DACL_AUTO_INHERITED are as from's, [errAutoInheritedDiffers] when only SE_DACL_AUTO_INHERITED is
+// not, and any other error when the access is not: whatever the calls themselves reported, the read-back decides. The owner and the group are not read back:
+// a token that may not set them (ERROR_INVALID_OWNER, ERROR_INVALID_PRIMARY_GROUP, ERROR_PRIVILEGE_NOT_HELD, or no WRITE_OWNER on the file) leaves them as
+// they are, as chown does on Unix. A file system that keeps no security descriptor (the file at from has none: ERROR_NOT_SUPPORTED, ERROR_INVALID_FUNCTION)
+// has nothing to carry.
+func carryDescriptor(from, to string) error {
 	source, err := windows.GetNamedSecurityInfo(from, windows.SE_FILE_OBJECT, descriptorParts)
 	if errors.Is(err, windows.ERROR_NOT_SUPPORTED) || errors.Is(err, windows.ERROR_INVALID_FUNCTION) {
 		return nil
@@ -94,9 +131,6 @@ func carryDescriptor(from, to string, live bool) error {
 		asked: func() error { return setAccessAsked(from, to, want) },
 		named: func() error { return setAccessNamed(to, source, want) },
 		read:  func() (access, error) { return readAccess(to) },
-	}
-	if live {
-		calls.named = nil
 	}
 	ownerErr := setOwnerAndGroup(to, source)
 	got, setErr, err := carryAccess(want, calls)

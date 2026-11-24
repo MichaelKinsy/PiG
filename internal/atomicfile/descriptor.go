@@ -1,13 +1,14 @@
 package atomicfile
 
 import (
+	"context"
 	"errors"
 	"slices"
 	"syscall"
 )
 
-// What a replacement must keep of a file's security descriptor is decided here, on every platform, so that a test can drive every branch without Windows.
-// The Win32 calls that read and set a descriptor are in descriptor_windows.go.
+// What a replacement must keep of a file's security descriptor and how the Windows replacement orders the descriptor carry and the move are decided here,
+// on every platform, so that tests can drive every branch without Windows. The Win32 calls live in descriptor_windows.go and replace_windows.go.
 
 // Errors of Windows (winerror.h) that a token gets for an owner or a group it may not give a file. They are numbers so that the decision is the same code on
 // every platform and a test can inject them.
@@ -18,8 +19,43 @@ const (
 	errPrivilegeNotHeld    = syscall.Errno(1314) // ERROR_PRIVILEGE_NOT_HELD
 )
 
+// MoveFileExW flags used by the Windows replacement (winbase.h). Defined here as constants so the step logic and its cross-platform tests verify the exact
+// flags passed to MoveFileExW without needing a Windows build.
+const (
+	moveReplaceExisting = 0x1 // MOVEFILE_REPLACE_EXISTING
+	moveWriteThrough    = 0x8 // MOVEFILE_WRITE_THROUGH
+)
+
+// errAutoInheritedDiffers is what a carry of a security descriptor returns when the entries of the DACL and SE_DACL_PROTECTED, which decide who may open the
+// file, are as the old file's but SE_DACL_AUTO_INHERITED is not: a file system may set that bookkeeping flag whatever the caller asked for. It is not a
+// failure; a carry that returns any other error did not give the file the old access.
+var errAutoInheritedDiffers = errors.New("the security descriptor has the access of the old file but not its SE_DACL_AUTO_INHERITED flag")
+
 // errAccessDiffers is what a carry of a security descriptor returns when the access of the file is not the access it was to be given.
 var errAccessDiffers = errors.New("the DACL's entries or SE_DACL_PROTECTED are not those of the old file")
+
+// windowsMoveSteps are the calls a Windows replacement performs: carrying the existing file's security descriptor onto the temporary file (when the target
+// existed), then moving the temporary file over the target in one MoveFileExW call with MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH, retried under
+// fsretry.Retry while another process holds the target open.
+type windowsMoveSteps struct {
+	carry func(from, to string) error
+	move  func(from, to string, flags uint32) error
+	retry func(ctx context.Context, op func() error) error
+}
+
+// replaceWithMove carries the existing target's security descriptor onto temp (tolerating only a difference in SE_DACL_AUTO_INHERITED) and then moves temp
+// over path in a single MoveFileExW call with MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH, retried through steps.retry. Because ReplaceFileW is not
+// used, path is never left without a file between two renames; if the carry or move fails, path still holds the old file intact and the caller removes temp.
+func replaceWithMove(ctx context.Context, temp, path string, existed bool, steps windowsMoveSteps) error {
+	if existed {
+		if err := steps.carry(path, temp); err != nil && !errors.Is(err, errAutoInheritedDiffers) {
+			return err
+		}
+	}
+	return steps.retry(ctx, func() error {
+		return steps.move(temp, path, moveReplaceExisting|moveWriteThrough)
+	})
+}
 
 // access is the part of a security descriptor that decides who may open a file, and the flag that records how the DACL was set.
 type access struct {
@@ -58,8 +94,7 @@ type carryCalls struct {
 	// SE_DACL_AUTO_INHERITED) in the control of the descriptor given. It is tried only for a descriptor that has SE_DACL_AUTO_INHERITED.
 	asked func() error
 	// named is SetNamedSecurityInfo, which the Windows job showed sets SE_DACL_AUTO_INHERITED but also runs inheritance, which can add entries to an
-	// unprotected DACL and rewrites the inherited flag of the entries of a protected one. It is nil for the file at the name callers open: the window in which
-	// that file would hold the parent's current inheritable entries is not opened there.
+	// unprotected DACL and rewrites the inherited flag of the entries of a protected one.
 	named func() error
 	read  func() (access, error)
 }

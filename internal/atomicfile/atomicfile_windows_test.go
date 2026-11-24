@@ -3,10 +3,8 @@
 package atomicfile
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
-	"syscall"
 	"testing"
 	"time"
 
@@ -103,9 +101,8 @@ func TestWindowsWriteFileWaitsOutAHandleHeldWithoutDeleteSharing(t *testing.T) {
 	}
 }
 
-// A hold that outlasts fsretry.RenameBudget fails with the error Windows gave, the old content is intact and no temporary file or backup is left: the
-// write is never turned into an in-place one on Windows.
-func TestWindowsWriteFileFailsWhenTheHandleIsNeverClosed(t *testing.T) {
+// A hold that outlasts fsretry.RenameBudget falls back to an in-place write as Pi writes it (auth-storage.ts:141), reporting the refusal once and removing the temporary file.
+func TestWindowsWriteFileWritesInPlaceWhenTheHandleIsNeverClosed(t *testing.T) {
 	if testing.Short() {
 		t.Skipf("waits the retry budget of %v", fsretry.RenameBudget)
 	}
@@ -120,91 +117,18 @@ func TestWindowsWriteFileFailsWhenTheHandleIsNeverClosed(t *testing.T) {
 	defer func() { _ = held.Close() }()
 	reported := windowsReportedPaths(t)
 
-	err = WriteFile(path, []byte("new"), 0o600)
-	if err == nil {
-		t.Fatal("WriteFile succeeded while another handle holds the file without delete sharing")
+	if err := WriteFile(path, []byte("new"), 0o600); err != nil {
+		t.Fatalf("WriteFile while another handle holds the file without delete sharing = %v, want in-place fallback", err)
 	}
-	if !fsretry.TransientRename(err) {
-		t.Errorf("error = %v, want the access, sharing or ReplaceFileW refusal Windows gave", err)
+	if got := readString(t, path); got != "new" {
+		t.Errorf("file = %q after the fallback write, want the new content written in place", got)
 	}
-	if got := readString(t, path); got != "old" {
-		t.Errorf("file = %q after the failed write, want the old content intact", got)
-	}
-	if len(*reported) != 0 {
-		t.Errorf("in-place writes reported = %v, want none: a refusal is never turned into an in-place write on Windows", *reported)
+	if len(*reported) != 1 || (*reported)[0] != path {
+		t.Errorf("in-place writes reported = %v, want one line naming %s", *reported, path)
 	}
 	_ = held.Close()
 	if names := entryNames(t, filepath.Dir(path)); len(names) != 1 {
-		t.Errorf("directory holds %v after the failed write, want only the file", names)
-	}
-}
-
-// ReplaceFileW that stops half way (ERROR_UNABLE_TO_MOVE_REPLACEMENT_2, 1177) leaves the replaced file under the backup name and nothing at the path.
-// The recovery moves the replacement into place; the file at the path is never left missing.
-func TestWindowsReplaceKeepingBackupFinishesAReplacementThatStoppedHalfWay(t *testing.T) {
-	dir := t.TempDir()
-	path, temp := filepath.Join(dir, "auth.json"), filepath.Join(dir, "auth.json.tmp-1")
-	if err := os.WriteFile(path, []byte("old"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(temp, []byte("new"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	err := replaceKeepingBackup(path, temp, replaceSteps{
-		replaceFile: func(replaced, _, backup string) error {
-			if err := os.Rename(replaced, backup); err != nil {
-				return err
-			}
-			return &os.LinkError{Op: "replace", Old: temp, New: replaced, Err: errUnableToMoveReplacement2}
-		},
-		moveFile: moveFile,
-		carry:    carryOnto(path),
-	})
-	if err != nil {
-		t.Fatalf("replaceKeepingBackup = %v, want the replacement finished", err)
-	}
-	if got := readString(t, path); got != "new" {
-		t.Fatalf("file = %q, want the replacement in place", got)
-	}
-	if names := entryNames(t, dir); len(names) != 1 {
-		t.Fatalf("directory holds %v, want only the file (the backup is deleted after the recovery)", names)
-	}
-}
-
-// When the replacement cannot be moved into place either, the backup is moved back: the target holds the old content again.
-func TestWindowsReplaceKeepingBackupRestoresTheOriginalWhenItCannotFinish(t *testing.T) {
-	dir := t.TempDir()
-	path, temp := filepath.Join(dir, "auth.json"), filepath.Join(dir, "auth.json.tmp-1")
-	if err := os.WriteFile(path, []byte("old"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(temp, []byte("new"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	refused := &os.LinkError{Op: "rename", Old: temp, New: path, Err: syscall.Errno(5)}
-	err := replaceKeepingBackup(path, temp, replaceSteps{
-		replaceFile: func(replaced, _, backup string) error {
-			if err := os.Rename(replaced, backup); err != nil {
-				return err
-			}
-			return &os.LinkError{Op: "replace", Old: temp, New: replaced, Err: errUnableToMoveReplacement2}
-		},
-		moveFile: func(from, to string) error {
-			if from == temp {
-				return refused
-			}
-			return moveFile(from, to)
-		},
-		carry: carryOnto(path),
-	})
-	if !errors.Is(err, errUnableToMoveReplacement2) || !errors.Is(err, refused) {
-		t.Fatalf("replaceKeepingBackup = %v, want both the replace error and the refused move", err)
-	}
-	if kept, ok := errors.AsType[*keptFilesError](err); ok {
-		t.Fatalf("the backup could be moved back, but the error names kept files %v", kept.files)
-	}
-	if got := readString(t, path); got != "old" {
-		t.Fatalf("file = %q, want the old content restored", got)
+		t.Errorf("directory holds %v after the fallback write, want only the file", names)
 	}
 }
 

@@ -20,13 +20,11 @@ func TestTransientRenameClassifiesWindowsErrors(t *testing.T) {
 		"access denied":     link(windows.ERROR_ACCESS_DENIED),
 		"sharing violation": link(windows.ERROR_SHARING_VIOLATION),
 		"lock violation":    link(windows.ERROR_LOCK_VIOLATION),
-		"replaced file could not be removed (1175)": syscall.Errno(1175),
-		"replacement could not be moved (1176)":     syscall.Errno(1176),
-		"EPERM":                                     link(syscall.EPERM),
-		"EACCES":                                    link(syscall.EACCES),
-		"EBUSY":                                     link(syscall.EBUSY),
-		"bare errno":                                windows.ERROR_ACCESS_DENIED,
-		"wrapped":                                   errors.Join(errors.New("context"), link(windows.ERROR_SHARING_VIOLATION)),
+		"EPERM":             link(syscall.EPERM),
+		"EACCES":            link(syscall.EACCES),
+		"EBUSY":             link(syscall.EBUSY),
+		"bare errno":        windows.ERROR_ACCESS_DENIED,
+		"wrapped":           errors.Join(errors.New("context"), link(windows.ERROR_SHARING_VIOLATION)),
 	} {
 		if !TransientRename(err) {
 			t.Errorf("%s: TransientRename = false, want a retry", name)

@@ -32,6 +32,12 @@ func Rename(ctx context.Context, oldpath, newpath string, wait func(context.Cont
 // Retry runs op, a rename or a replacement of a file, and retries it as Rename does: while TransientRename classifies its failure as a transient
 // lock, until it succeeds or RenameBudget is spent.
 func Retry(ctx context.Context, wait func(context.Context, time.Duration) error, op func() error) error {
+	return RetryWith(ctx, TransientRename, wait, op)
+}
+
+// RetryWith runs op and retries it while retryable classifies its failure as transient, using RenameFirstDelay..RenameMaxDelay up to RenameBudget.
+// Retry calls RetryWith with TransientRename; cross-platform tests pass TransientWindowsCode and a fake wait to exercise this exact loop without Windows.
+func RetryWith(ctx context.Context, retryable func(error) bool, wait func(context.Context, time.Duration) error, op func() error) error {
 	if wait == nil {
 		wait = waitTimer
 	}
@@ -39,7 +45,7 @@ func Retry(ctx context.Context, wait func(context.Context, time.Duration) error,
 	remaining := RenameBudget
 	for {
 		err := op()
-		if err == nil || !TransientRename(err) || remaining <= 0 {
+		if err == nil || !retryable(err) || remaining <= 0 {
 			return err
 		}
 		pause := min(delay, remaining)

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 	"unsafe"
@@ -105,22 +104,6 @@ func changed(before, after seen) string {
 	return strings.Join(parts, ", ")
 }
 
-// accessSet is what the entries of a DACL (in SDDL, each with its flags) let a principal do, as the ruling on the carry defines access: each entry's type,
-// rights and trustee, and the flags that say how far it reaches below the file (everything but the inherited flag), without the order and without
-// duplicates. ReplaceFileW adds explicit copies of inherited entries and clears the inherited flag, and neither changes who may open the file.
-func accessSet(aces string) string {
-	var kept []string
-	for _, ace := range strings.Split(strings.Trim(aces, "()"), ")(") {
-		fields := strings.Split(ace, ";")
-		if len(fields) > 1 {
-			fields[1] = strings.ReplaceAll(fields[1], "ID", "")
-		}
-		kept = append(kept, strings.Join(fields, ";"))
-	}
-	slices.Sort(kept)
-	return strings.Join(slices.Compact(kept), "")
-}
-
 // observation is the state of one file after one step of a route.
 type observation struct {
 	step  string
@@ -133,15 +116,6 @@ type recording struct{ observations []observation }
 func (r *recording) note(step, path string) {
 	state, err := snapshot(path)
 	r.observations = append(r.observations, observation{step: step, state: state, err: err})
-}
-
-func (r *recording) find(step string) (seen, bool) {
-	for _, o := range r.observations {
-		if o.step == step && o.err == nil {
-			return o.state, true
-		}
-	}
-	return seen{}, false
 }
 
 func (r *recording) String() string {
@@ -364,96 +338,23 @@ func replacementFor(t testing.TB, path, data string, carried bool) (string, erro
 	return file.Name(), nil
 }
 
-// noteReplaceFile is ReplaceFileW with the file at path recorded after it.
-func noteReplaceFile(rec *recording) func(replaced, replacement, backup string) error {
-	return func(replaced, replacement, backup string) error {
-		err := replaceFile(replaced, replacement, backup)
-		rec.note("path after ReplaceFileW", replaced)
-		return err
-	}
-}
-
 func routes() []route {
 	return []route{
 		{"WriteFile", true, func(t testing.TB, path, data string, rec *recording) error {
 			return WriteFile(path, []byte(data), 0o600)
 		}},
-		{"ReplaceFileW and the steps of replace", true, func(t testing.TB, path, data string, rec *recording) error {
+		{"carry, then MoveFileEx", true, func(t testing.TB, path, data string, rec *recording) error {
 			temp, err := replacementFor(t, path, data, true)
 			if err != nil {
 				return err
 			}
-			rec.note("replacement after the carry onto it", temp)
-			return replaceKeepingBackup(path, temp, replaceSteps{
-				replaceFile: noteReplaceFile(rec),
-				moveFile:    moveFile,
-				carry: func(from, to string) error {
-					err := carryOnto(path)(from, to)
-					rec.note("path after the carry from the backup", to)
-					return err
-				},
-			})
-		}},
-		{"ReplaceFileW that stops half way (1177)", true, func(t testing.TB, path, data string, rec *recording) error {
-			temp, err := replacementFor(t, path, data, true)
-			if err != nil {
-				return err
-			}
-			rec.note("replacement after the carry onto it", temp)
-			return replaceKeepingBackup(path, temp, replaceSteps{
-				replaceFile: func(replaced, replacement, backup string) error {
-					if err := os.Rename(replaced, backup); err != nil {
-						return err
-					}
-					rec.note("backup after the half-way ReplaceFileW", backup)
-					return &os.LinkError{Op: "replace", Old: replacement, New: replaced, Err: errUnableToMoveReplacement2}
-				},
-				moveFile: moveFile,
-				carry: func(from, to string) error {
-					err := carryOnto(path)(from, to)
-					rec.note("file after the carry from the backup", to)
-					return err
-				},
-			})
-		}},
-		{"the file system without ReplaceFileW (carry, then MoveFileEx)", true, func(t testing.TB, path, data string, rec *recording) error {
-			temp, err := replacementFor(t, path, data, true)
-			if err != nil {
-				return err
-			}
-			if err := carryDescriptor(path, temp, false); err != nil && !errors.Is(err, errAutoInheritedDiffers) {
+			if err := carryDescriptor(path, temp); err != nil && !errors.Is(err, errAutoInheritedDiffers) {
 				return err
 			}
 			rec.note("replacement after the second carry", temp)
 			return moveFile(temp, path)
 		}},
-		{"ReplaceFileW alone (nothing carried, through the steps)", false, func(t testing.TB, path, data string, rec *recording) error {
-			temp, err := replacementFor(t, path, data, false)
-			if err != nil {
-				return err
-			}
-			rec.note("replacement as created", temp)
-			err = replaceKeepingBackup(path, temp, replaceSteps{
-				replaceFile: noteReplaceFile(rec),
-				moveFile:    moveFile,
-				carry:       func(string, string) error { return nil },
-			})
-			if err != nil {
-				_ = os.Remove(temp)
-			}
-			return err
-		}},
 	}
-}
-
-// uncuredRoute is the route that carries nothing: what ReplaceFileW does to a descriptor by itself.
-func uncuredRoute() route {
-	for _, r := range routes() {
-		if strings.HasPrefix(r.name, "ReplaceFileW alone") {
-			return r
-		}
-	}
-	panic("no uncured route")
 }
 
 // cellReport is one row of the table printed when a cell differs.
@@ -503,14 +404,6 @@ func TestWindowsSecurityDescriptorMatrix(t *testing.T) {
 					report.changes[i] = changed(before, report.after[i])
 				}
 				reports = append(reports, report)
-				if r.name == "ReplaceFileW and the steps of replace" {
-					// Between ReplaceFileW and the carry from the backup the file may have other ACE flags (the inherited flag of an entry dropped) and explicit copies
-					// of inherited entries: RUN 43699097748 showed both. What the ruling calls access is who may do what: SE_DACL_PROTECTED and the entries' type,
-					// rights and trustee. The final assertion below is the whole descriptor.
-					if between, ok := rec.find("path after ReplaceFileW"); ok && (accessSet(between.aces) != accessSet(before.aces) || between.protected != before.protected) {
-						t.Errorf("between ReplaceFileW and the carry the file had other access (SE_DACL_PROTECTED, or the entries' type, rights and trustee) than the file it replaced (changed: %s):%s", changed(before, between), rec)
-					}
-				}
 				if r.asserted && (report.changes[0] != "" || report.changes[1] != "") {
 					t.Errorf("the write changed the security descriptor (first write: [%s], second write: [%s]):%s", report.changes[0], report.changes[1], rec)
 					failed = true
@@ -553,9 +446,8 @@ func TestWindowsWriteFileOfANewFileGivesTheStoresDescriptor(t *testing.T) {
 // TestWindowsInheritanceDoesNotReachAProtectedFileAfterAWrite decides what an auto-inherited flag on a protected DACL means for access. A file whose DACL is
 // protected and holds an owner-only entry is written; then the directory that holds it gets an inheritable entry for Everyone through
 // SetNamedSecurityInfo, the call that propagates inheritance to existing children. The file's entries must not change and Everyone must get nothing.
-// The first route is the store's; the second is ReplaceFileW alone, which leaves the flag as ReplaceFileW sets it.
 func TestWindowsInheritanceDoesNotReachAProtectedFileAfterAWrite(t *testing.T) {
-	for _, r := range []route{routes()[0], uncuredRoute()} {
+	for _, r := range routes() {
 		t.Run(r.name, func(t *testing.T) {
 			message, reached := inheritanceVerdict(t, r)
 			t.Log(message)
@@ -679,8 +571,7 @@ func carryProbes() []carryProbe {
 			}
 			return windows.SetNamedSecurityInfo(to, windows.SE_FILE_OBJECT, info, nil, nil, dacl, nil)
 		}},
-		{"carryDescriptor onto a temporary file (what the cure calls: the three calls in their order, owner and group where they differ, read back)", func(from, to string) error { return carryDescriptor(from, to, false) }},
-		{"carryDescriptor onto the live file (what the cure calls on the path: no SetNamedSecurityInfo)", func(from, to string) error { return carryDescriptor(from, to, true) }},
+		{"carryDescriptor onto a temporary file (the three calls in their order, owner and group where they differ, read back)", func(from, to string) error { return carryDescriptor(from, to) }},
 	}
 }
 
@@ -711,7 +602,7 @@ func probeCarryRoutes(t *testing.T) {
 			rows = append(rows, fmt.Sprintf("      victim after the move %s (error: %v)", describe(victim), moveErr))
 		})
 	}
-	for _, r := range []route{routes()[0], uncuredRoute()} {
+	for _, r := range routes() {
 		t.Run("probe/inheritance/"+r.name, func(t *testing.T) {
 			message, _ := inheritanceVerdict(t, r)
 			rows = append(rows, "  the parent-inheritable-Everyone test, "+message)
