@@ -25,6 +25,7 @@ var (
 
 func kindOf(ref *host.Reference) host.RefStateKind { return ref.State().Value().Kind }
 
+// pi: packages/chord/src/surfaces/variant.ts
 func TestLiveIn(t *testing.T) {
 	t.Run("is the reference while it is live in the variant, nothing before it binds or for no reference", func(t *testing.T) {
 		desk := deskfix.New(t)

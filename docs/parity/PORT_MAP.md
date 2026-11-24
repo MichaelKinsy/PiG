@@ -1059,7 +1059,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/sync/lines.ts` | `chord/sync/lines.go` | ✅ |
 | `packages/chord/src/sync/remote.ts` | `chord/sync/remote.go` | ✅ |
 | `packages/chord/src/sync/state.ts` | `chord/sync/state.go` | ✅ |
-| `packages/chord/src/telemetry-ingest/batch.ts` | `chord/next/telemetryingest/batch.go, decode.go, encode.go`, `chord/nextnode/surfaces/client/pi/chord/src/telemetry-ingest/batch.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
+| `packages/chord/src/telemetry-ingest/batch.ts` | `chord/next/telemetryingest/batch.go`, `chord/nextnode/surfaces/client/pi/chord/src/telemetry-ingest/batch.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/telemetry-ingest/facet.ts` | `chord/next/telemetryingest/facet.go (Pi 7ae9ff8c7: IngestOptions.Admit)` | ✅ |
 | `packages/chord/src/telemetry-ingest/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/chord/src/telemetry-ingest/recorder.ts` | `chord/next/telemetryingest/recorder.go`, `chord/nextnode/surfaces/client/pi/chord/src/telemetry-ingest/recorder.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |

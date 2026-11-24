@@ -50,6 +50,7 @@ func fetched(t *testing.T, store *ChordStore, read *RegisteredRead) ReadRun {
 	return run
 }
 
+// pi: packages/chord/src/store/read.ts
 func TestRead(t *testing.T) {
 	store, f, table, bindings := readFixture(t)
 	visible := NewQuery(f.Sessions).Where(func(s, _ ColumnRefs) Condition {
