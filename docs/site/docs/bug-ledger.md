@@ -1811,7 +1811,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b99457f](#bf-b99457f) | `tool_search` and codemode tool search match Chinese, Japanese and Korean queries: each such character is a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b9db06c](#bf-b9db06c) | fix(subprocess): keep a user_bash operations object alive while its exec runs | PiG's own defect | All platforms | Unreleased |
 | [BF-ba3bf8f](#bf-ba3bf8f) | fix(chord): state.Batch.AssertOutside is a section of the host, so a caller's goroutine never reads the… | PiG's own defect | All platforms | Unreleased |
-| [BF-ba5258e](#bf-ba5258e) | On Windows a credential or settings write that Windows refuses because another program holds the file open… | PiG's own defect | Windows | Unreleased |
 | [BF-ba80002](#bf-ba80002) | fix(chord/nextnode/plugins): a process the Go side killed ends with SIGKILL on Windows too | PiG's own defect | Windows | Unreleased |
 | [BF-ba8b6b7](#bf-ba8b6b7) | `/logout` reads stored credentials with Pi's 15-second signal, so an unreadable `auth.json` reports "Could… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ba9c37b](#bf-ba9c37b) | Starting `pig` no longer waits for the daily cleanup of the extension cache | PiG's own defect | All platforms | 0.5.0 |
@@ -5852,14 +5851,14 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 **On Windows, saving `auth.json`, the settings, trust, keybindings and MCP files, or any other file pig writes…**
 
 - **Source:** PiG's own defect
-- **Symptom:** On Windows, saving `auth.json`, the settings, trust, keybindings and MCP files, or any other file pig writes through a temporary file, now leaves the whole security descriptor of the file as it was, as Pi's in-place write does.
-- **Root cause:** the helper left the security descriptor of a replaced file to ReplaceFileW and copied only the DACL with its protected flag, and no test compared the whole descriptor before and after a write on Windows
-- **User impact:** Credential or permission exposure
+- **Symptom:** On Windows, saving `auth.json`, the settings, trust, keybindings and MCP files, or any other file pig writes through a temporary file, now leaves the whole security descriptor and user-settable file attributes (`HIDDEN`, `SYSTEM`, `NOT_CONTENT_INDEXED`; `ARCHIVE` stays set on rewritten content) of the file as they were, as Pi's in-place write does.
+- **Root cause:** the helper previously relied on ReplaceFileW merging and copied only the DACL with its protected flag, and no test compared the whole descriptor before and after a write on Windows
+- **User impact:** An operation failed or was rejected
 - **Platform:** Windows
 - **Fixed in:** Unreleased
 - **Fix commits:** `1f4ce560a8` (2026-11-15), `950803e7b7` (2026-11-15)
-- **Tests:** `internal/atomicfile/atomicfile_windows_test.go::TestWindowsReplaceKeepingBackupFinishesAReplacementThatStoppedHalfWay`, `internal/atomicfile/atomicfile_windows_test.go::TestWindowsReplaceKeepingBackupRestoresTheOriginalWhenItCannotFinish`, `internal/atomicfile/carry_access_test.go::TestCarryAccessChoosesTheCallsByWhatTheReadBackShows`, `internal/atomicfile/carry_access_test.go::TestCarryAccessReturnsAFailedReadBack`, `internal/atomicfile/carry_decision_test.go::TestWriteFileWritesInPlaceWhereTheTemporaryFileCannotTakeTheAccess`, `internal/atomicfile/descriptor_matrix_windows_test.go::TestWindowsInheritanceDoesNotReachAProtectedFileAfterAWrite`, `internal/atomicfile/descriptor_matrix_windows_test.go::TestWindowsSecurityDescriptorMatrix`, `internal/atomicfile/replace_backup_test.go::TestCarryVerdict` and 7 more in docs/bug-ledger.json
-- **Release note:** On Windows, saving `auth.json`, the settings, trust, keybindings and MCP files, or any other file pig writes through a temporary file, now leaves the whole security descriptor of the file as it was, as Pi's in-place write does. The replacement kept the owner-only access of a credential file only as far as `ReplaceFileW` merged it: it always marked the file as auto-inherited and could rewrite the inherited flag of entries or add explicit copies of inherited ones, so a login or token refresh could change who may open `auth.json`. The access (the entries with their flags, and the protected flag) is now put on the temporary file before anything is written to it and read back, and again after the replacement, which puts the old file back and fails if the access still differs; a file system that cannot take it gets the in-place write, as before. Run on NTFS on the GitHub Windows runner by the main-side branch that carries the same files (run 43709055821); no other file system has been run (divergence D651).
+- **Tests:** `internal/atomicfile/carry_access_test.go::TestCarryAccessChoosesTheCallsByWhatTheReadBackShows`, `internal/atomicfile/carry_access_test.go::TestCarryAccessReturnsAFailedReadBack`, `internal/atomicfile/carry_decision_test.go::TestWriteFileWritesInPlaceWhereTheTemporaryFileCannotTakeTheAccess`, `internal/atomicfile/descriptor_matrix_windows_test.go::TestWindowsInheritanceDoesNotReachAProtectedFileAfterAWrite`, `internal/atomicfile/descriptor_matrix_windows_test.go::TestWindowsSecurityDescriptorMatrix`, `internal/atomicfile/replace_move_test.go::TestCarryVerdict`, `internal/atomicfile/replace_move_test.go::TestIgnoreOwnerRefusal`
+- **Release note:** On Windows, saving `auth.json`, the settings, trust, keybindings and MCP files, or any other file pig writes through a temporary file, now leaves the whole security descriptor and user-settable file attributes (`HIDDEN`, `SYSTEM`, `NOT_CONTENT_INDEXED`; `ARCHIVE` stays set on rewritten content) of the file as they were, as Pi's in-place write does. The access (the DACL entries with their flags, and the protected flag) is carried onto the temporary file before anything is written to it and read back, then verified again before moving the temporary file over the target in one `MoveFileExW` call; a file system that cannot take the access gets the in-place write, as before (divergence D651).
 
 ### BF-1f7fa2f
 
@@ -24851,14 +24850,14 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 **Reading an extended attribute that is set between the size query and the read no longer panics, and on…**
 
 - **Source:** PiG's own defect
-- **Symptom:** Reading an extended attribute that is set between the size query and the read no longer panics, and on Windows a replacement that Windows stops half way no longer deletes the only copy of a credential file: the file is moved into place or the original put back.
-- **Root cause:** the read retried on ERANGE only, which a zero-length buffer never gets, and the Windows call gave no backup name, so a failure left the replaced file deleted and the cleanup removed the replacement
-- **User impact:** Credential or permission exposure
+- **Symptom:** Reading an extended attribute that is set between the size query and the read no longer panics, and on Windows a failed replacement leaves the existing file untouched instead of deleting it.
+- **Root cause:** the read retried on ERANGE only, which a zero-length buffer never gets, and the Windows replacement previously used ReplaceFileW without a backup before switching to single-call MoveFileExW
+- **User impact:** Crash, hang or runaway process
 - **Platform:** Windows
 - **Fixed in:** Unreleased
 - **Fix commits:** `58e14d8f3f` (2026-11-14), `a1c68e2beb` (2026-11-14)
-- **Tests:** `internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupFinishesAReplacementThatCouldNotMoveTheReplacement`, `internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupKeepsBothFilesWhenNothingCanBeMoved`, `internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupLeavesTheFileWhereBothKeepTheirNames`, `internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRemovesTheBackupAfterASuccess`, `internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRestoresTheOriginalWhenItCannotFinish`, `internal/atomicfile/replace_backup_test.go::TestWriteFileKeepsTheTemporaryFileOfAReplacementThatKeptFiles`
-- **Release note:** Reading an extended attribute that is set between the size query and the read no longer panics, and on Windows a replacement that Windows stops half way no longer deletes the only copy of a credential file: the file is moved into place or the original put back.
+- **Tests:** None recorded.
+- **Release note:** Reading an extended attribute that is set between the size query and the read no longer panics, and on Windows a failed replacement leaves the existing file untouched instead of deleting it.
 
 ### BF-a1da44d
 
@@ -27350,20 +27349,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `ba3bf8fc0a` (2026-11-07)
 - **Tests:** `chord/next/state/batch_assert_outside_own_test.go::TestAssertOutsideFromACallersGoroutineWaitsForTheCommitRunningOnTheLoop`, `chord/next/surfaces/surfaces_follower_cancel_test.go::TestCancellingAFollowersContextBeforeItsPickWatchBindsEndsQuietly`
 
-### BF-ba5258e
-
-**On Windows a credential or settings write that Windows refuses because another program holds the file open…**
-
-- **Source:** PiG's own defect
-- **Symptom:** On Windows a credential or settings write that Windows refuses because another program holds the file open (an indexer, an editor, a sync client) is now retried for the ten-second budget in two more cases, `ERROR_UNABLE_TO_REMOVE_REPLACED` and `ERROR_UNABLE_TO_MOVE_REPLACEMENT`, as it already was for access and sharing errors, as the divergence record D651 says; the write used to fail at once.
-- **Root cause:** the list of transient errors held the access, sharing and lock errors only, so the two refusals of ReplaceFileW that leave both files under their names were returned without the retry the divergence record promises
-- **User impact:** Credential or permission exposure
-- **Platform:** Windows
-- **Fixed in:** Unreleased
-- **Fix commits:** `ba5258e0ef` (2026-11-14)
-- **Tests:** None recorded.
-- **Release note:** On Windows a credential or settings write that Windows refuses because another program holds the file open (an indexer, an editor, a sync client) is now retried for the ten-second budget in two more cases, `ERROR_UNABLE_TO_REMOVE_REPLACED` and `ERROR_UNABLE_TO_MOVE_REPLACEMENT`, as it already was for access and sharing errors, as the divergence record D651 says; the write used to fail at once.
-
 ### BF-ba80002
 
 **fix(chord/nextnode/plugins): a process the Go side killed ends with SIGKILL on Windows too**
@@ -28888,12 +28873,12 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 - **Source:** PiG's own defect
 - **Symptom:** A full disk or a killed process during a credential write could sign you out of every provider.
-- **Root cause:** auth.json was written in place (opened, truncated, written), so a full disk, a size limit or a killed process during the write left it empty or cut short. It is now replaced through a temporary file in the same directory (private from creation, fsynced, renamed over the file, directory flushed), so such a failure leaves the old file whole. The mode, the owner where the process may set it, and the extended attributes (the POSIX ACL on Linux, the user's attributes on macOS) where the file system takes them are kept; a symlinked auth.json is followed; on Windows ReplaceFileW keeps the replaced file's DACL. A read-only auth.json is refused as before. A file with more than one hard link, or whose extended attributes cannot be carried over, is written in place as before, as in Pi, and so are a single file mounted into a container, a file in a directory that cannot be written, and a device or named pipe.
+- **Root cause:** auth.json was written in place (opened, truncated, written), so a full disk, a size limit or a killed process during the write left it empty or cut short. It is now replaced through a temporary file in the same directory (private from creation, fsynced, renamed over the file, directory flushed), so such a failure leaves the old file whole. The mode, the owner where the process may set it, and the extended attributes (the POSIX ACL on Linux, the user's attributes on macOS) where the file system takes them are kept; a symlinked auth.json is followed; on Windows the security descriptor and user attributes are carried onto the temporary file before MoveFileExW replaces the target. A read-only auth.json is refused as before. A file with more than one hard link, or whose extended attributes cannot be carried over, is written in place as before, as in Pi, and so are a single file mounted into a container, a file in a directory that cannot be written, and a device or named pipe.
 - **User impact:** Credential or permission exposure
 - **Platform:** Windows, macOS, Linux
 - **Fixed in:** Unreleased
 - **Fix commits:** `c9528855cf` (2026-11-15, #488)
-- **Tests:** `ai/auth_compromised_persist_test.go::TestRefreshedCredentialSurvivesALockTakenMeanwhile`, `ai/auth_in_place_test.go::TestCredentialWritesGoInPlaceThroughAHardLink`, `ai/auth_pi_lock_test.go::TestAuthStorageModifierPersistsItsCredentialAfterTheLockWasTaken`, `ai/auth_takeover_same_provider_upstream_test.go::TestAuthStorageTakeoverSameProviderLastWriterWinsLikePiUpstream`, `ai/auth_write_failure_test.go::TestCredentialWriteThatFailsLeavesEveryProvider`, `automation/ci/bugledger/corrections_test.go::TestACorrectionForAnEntryTheLedgerDoesNotHaveFailsTheCheckAndTheGenerator`, `automation/ci/bugledger/corrections_test.go::TestACorrectionThatIsMalformedFailsTheGenerator`, `automation/ci/bugledger/corrections_test.go::TestACorrectionThatRepeatsWhatTheGeneratorDerivesFailsTheCheck` and 60 more in docs/bug-ledger.json
+- **Tests:** `ai/auth_compromised_persist_test.go::TestRefreshedCredentialSurvivesALockTakenMeanwhile`, `ai/auth_in_place_test.go::TestCredentialWritesGoInPlaceThroughAHardLink`, `ai/auth_pi_lock_test.go::TestAuthStorageModifierPersistsItsCredentialAfterTheLockWasTaken`, `ai/auth_takeover_same_provider_upstream_test.go::TestAuthStorageTakeoverSameProviderLastWriterWinsLikePiUpstream`, `ai/auth_write_failure_test.go::TestCredentialWriteThatFailsLeavesEveryProvider`, `automation/ci/bugledger/corrections_test.go::TestACorrectionForAnEntryTheLedgerDoesNotHaveFailsTheCheckAndTheGenerator`, `automation/ci/bugledger/corrections_test.go::TestACorrectionThatIsMalformedFailsTheGenerator`, `automation/ci/bugledger/corrections_test.go::TestACorrectionThatRepeatsWhatTheGeneratorDerivesFailsTheCheck` and 43 more in docs/bug-ledger.json
 - **Release note:** A full disk or a killed process during a credential write could sign you out of every provider. `auth.json` was rewritten in place, so a write that stopped half way left it empty or cut short, and the next login or token refresh then saved a file holding that one provider. The file is now replaced as a whole through a temporary file in the same directory, so where it can be replaced a failed write leaves the old file untouched. A file that exists keeps its mode, owner (where pig may set it), extended attributes (the POSIX ACL on Linux, the user's attributes on macOS) where the file system takes them, exactly the access it had (an ACL the directory would hand a new file is not added), a symlinked `auth.json` and, on Windows, its access rights; a file that does not exist yet gets the mode that is asked for with your umask taken out, as in Pi. pig replaces a file only when that changes nothing but the file itself: where a credential file cannot be replaced atomically, for example a single file mounted into a container, a file in a directory pig cannot write into, a file with more than one hard link, a file whose extended attributes cannot be carried over, or a device or named pipe, pig writes it in place as before, as Pi does, and the debug log (`PIG_DEBUG`) says so. That guarantee does not cover an in-place write: one that fails half way can still leave the file empty or cut short, as before.
 
 ### BF-c96c624
