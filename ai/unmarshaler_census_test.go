@@ -69,6 +69,7 @@ var unmarshalerCensus = map[string]readCensusRow{
 	}, units: 5},
 
 	"ai.geminiFunctionCall": {table: readCensusStream + " (google-generative-ai rows: the name and the arguments of a called function)"},
+	"ai.oaiChunkChoice":     {table: readCensusStream + " (openai-completions rows: choice delta content, reasoning and tool call arguments)"},
 	"ai.anthStartInput":     {open: "the input of a tool_use block as content_block_start gives it (the anthropic stream); the rows of " + readCensusStream + " start a call with an empty input"},
 
 	"ai.anthBlockIndex": {other: readCensusNumber}, "ai.piMessagesContentIndex": {other: readCensusNumber}, "ai.usageInt": {other: readCensusNumber},
