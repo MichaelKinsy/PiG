@@ -38,7 +38,7 @@ func TestLlamaProviderRefreshMatchesPi(t *testing.T) {
 	pick := func(items ...string) string { return items[rng.Intn(len(items))] }
 	// A stored model keeps whatever compat object it was saved with, including none, partial members and unknown ones.
 	storedCompat := func() string {
-		return pick(`,"compat":{"supportsStore":false,"supportsDeveloperRole":false,"supportsReasoningEffort":false,"supportsUsageInStreaming":true,"supportsStrictMode":false,"maxTokensField":"max_tokens"}`,
+		return pick(`,"compat":{"supportsStore":false,"supportsReasoningEffort":false,"supportsUsageInStreaming":true,"supportsStrictMode":false,"maxTokensField":"max_tokens"}`,
 			`,"compat":{"supportsStore":false,"supportsDeveloperRole":false,"supportsReasoningEffort":false,"supportsUsageInStreaming":true,"supportsStrictMode":false,"maxTokensField":"max_tokens"}`, ``, `,"compat":{}`, `,"compat":{"supportsStore":true}`, `,"compat":{"maxTokensField":"max_completion_tokens","custom":1}`)
 	}
 	args := func() string {

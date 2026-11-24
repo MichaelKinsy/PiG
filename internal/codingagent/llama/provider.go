@@ -57,7 +57,6 @@ type ModelCost struct {
 // ModelCompat mirrors the openai-completions compat object toPiModel builds.
 type ModelCompat struct {
 	SupportsStore            bool   `json:"supportsStore"`
-	SupportsDeveloperRole    bool   `json:"supportsDeveloperRole"`
 	SupportsReasoningEffort  bool   `json:"supportsReasoningEffort"`
 	SupportsUsageInStreaming bool   `json:"supportsUsageInStreaming"`
 	SupportsStrictMode       bool   `json:"supportsStrictMode"`
