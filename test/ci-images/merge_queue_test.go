@@ -144,7 +144,15 @@ type workflowFile struct {
 		If             string
 		Needs          any
 		TimeoutMinutes int `yaml:"timeout-minutes"`
-		Steps          []struct {
+		Strategy       struct {
+			Matrix struct {
+				OS      []string
+				Group   []string
+				Shard   []string
+				Include any
+			}
+		}
+		Steps []struct {
 			Name string
 			If   string
 			Uses string

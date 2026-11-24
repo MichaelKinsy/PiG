@@ -25,6 +25,16 @@ func TestTimingGatesAreReportOnlyInCIAndBlockingInTheReleaseRun(t *testing.T) {
 	if got := strings.Count(string(workflow), "PIG_PERF_TIMING_REPORT_ONLY"); got != 1 {
 		t.Errorf("ci.yml names PIG_PERF_TIMING_REPORT_ONLY %d times, want the one workflow-level assignment and no job or step override", got)
 	}
+	nightly, err := os.ReadFile(filepath.Join(root, ".github/workflows/nightly.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !topLevel.Match(nightly) {
+		t.Error("nightly.yml must set PIG_PERF_TIMING_REPORT_ONLY: '1' in its workflow-level env")
+	}
+	if got := strings.Count(string(nightly), "PIG_PERF_TIMING_REPORT_ONLY"); got != 1 {
+		t.Errorf("nightly.yml names PIG_PERF_TIMING_REPORT_ONLY %d times, want the one workflow-level assignment and no job or step override", got)
+	}
 	runner, err := os.ReadFile(filepath.Join(root, "automation/perf/timing_gates.py"))
 	if err != nil {
 		t.Fatal(err)

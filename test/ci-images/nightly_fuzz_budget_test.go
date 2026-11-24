@@ -3,6 +3,7 @@
 package ciimages
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -74,8 +75,74 @@ func TestNightlyFuzzJobTimeoutCoversEveryTarget(t *testing.T) {
 	if targets == 0 {
 		t.Fatal("found no Fuzz targets")
 	}
-	need := fuzzSetup + time.Duration(targets)*(fuzztime+fuzzTargetOverhead)
+	shards := 1
+	if len(job.Strategy.Matrix.Shard) > 0 {
+		shards = len(job.Strategy.Matrix.Shard)
+		for i, spec := range job.Strategy.Matrix.Shard {
+			want := fmt.Sprintf("%d/%d", i+1, shards)
+			if spec != want {
+				t.Errorf("fuzz matrix shard[%d] = %q, want %q", i, spec, want)
+			}
+		}
+	}
+	maxPerShard := (targets + shards - 1) / shards
+	need := fuzzSetup + time.Duration(maxPerShard)*(fuzztime+fuzzTargetOverhead)
 	if have := time.Duration(job.TimeoutMinutes) * time.Minute; have < need {
-		t.Errorf("the fuzz job's timeout is %v, but %d targets at %v plus %v of build each need %v; raise timeout-minutes of the job (or split the job)", have, targets, fuzztime, fuzzTargetOverhead, need)
+		t.Errorf("the fuzz job's timeout is %v, but %d targets across %d shards (up to %d per shard) at %v plus %v of build each need %v; raise timeout-minutes of the job (or split the job further)", have, targets, shards, maxPerShard, fuzztime, fuzzTargetOverhead, need)
+	}
+}
+
+// TestNightlyRaceMacOSPackingCoversEveryShard verifies that the packed macOS nightly race matrix covers every single-package
+// shard of cli (1..7/7), tui (1..8/8), and codingagent (1..12/12) exactly once while staying at or under 20 macOS jobs
+// (4 waves at GitHub's 5-job macOS concurrency cap, down from 35 jobs / 7 waves).
+func TestNightlyRaceMacOSPackingCoversEveryShard(t *testing.T) {
+	job, ok := readWorkflow(t, "nightly.yml").Jobs["race"]
+	if !ok {
+		t.Fatal("nightly.yml has no race job")
+	}
+	macJobs := 0
+	for _, osName := range job.Strategy.Matrix.OS {
+		if osName == "macos-15" {
+			macJobs += len(job.Strategy.Matrix.Group)
+		}
+	}
+	wantShards := map[string]int{
+		"cli":         7,
+		"tui":         8,
+		"codingagent": 12,
+	}
+	seen := map[string]map[string]int{
+		"cli":         {},
+		"tui":         {},
+		"codingagent": {},
+	}
+	includes, _ := job.Strategy.Matrix.Include.([]any)
+	for _, raw := range includes {
+		row, _ := raw.(map[string]any)
+		if fmt.Sprint(row["os"]) != "macos-15" {
+			continue
+		}
+		macJobs++
+		group := fmt.Sprint(row["group"])
+		if _, sharded := wantShards[group]; !sharded {
+			continue
+		}
+		for shard := range strings.FieldsSeq(fmt.Sprint(row["shard"])) {
+			seen[group][shard]++
+		}
+	}
+	if macJobs > 20 {
+		t.Errorf("nightly macOS race matrix has %d jobs, want <= 20 (packed to <= 4 waves of 5)", macJobs)
+	}
+	for group, total := range wantShards {
+		if len(seen[group]) != total {
+			t.Errorf("macOS %s covers %d distinct shards (%v), want %d", group, len(seen[group]), seen[group], total)
+		}
+		for k := 1; k <= total; k++ {
+			key := fmt.Sprintf("%d/%d", k, total)
+			if seen[group][key] != 1 {
+				t.Errorf("macOS %s shard %s appears %d times, want 1", group, key, seen[group][key])
+			}
+		}
 	}
 }

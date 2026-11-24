@@ -49,7 +49,7 @@ func readCacheDietWorkflow(t *testing.T, name string) cacheDietWorkflow {
 // security.yml restore with actions/cache/restore and save with actions/cache/save under CACHE_SAVE, which no pull request, merge queue or push run satisfies.
 func TestBigCachesSaveOnlyFromMainAndReleaseDispatch(t *testing.T) {
 	const want = "${{ (github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')) || (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/release/')) }}"
-	for _, name := range []string{"ci.yml", "security.yml"} {
+	for _, name := range []string{"ci.yml", "security.yml", "nightly.yml"} {
 		workflow := readCacheDietWorkflow(t, name)
 		if got := workflow.Env["CACHE_SAVE"]; got != want {
 			t.Errorf("%s: env CACHE_SAVE = %q, want %q", name, got, want)

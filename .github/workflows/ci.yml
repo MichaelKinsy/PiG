@@ -435,10 +435,11 @@ jobs:
   preflight-platforms:
     name: Linux / preflight-platforms
     # Cross-platform vet half of the compile gate: vets every platform declared in automation/ci/vet-tags.txt
-    # (windows/amd64, windows/arm64, android/arm64) in parallel with Linux / preflight (build + native + tagged vet).
-    # Windows, macOS and the Node loader wait for both preflight jobs so a cross-platform compile break stops them.
-    needs: [changes, bookkeeping]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || (needs.changes.outputs.os-parallel == 'true' && needs.bookkeeping.result != 'skipped')) }}
+    # (windows/amd64, windows/arm64, android/arm64). Starts as soon as Pre-flight verdict and Changed paths succeed,
+    # running in parallel with Bookkeeping instead of behind it so Windows, macOS and Node loader wait only for
+    # Linux / preflight after Bookkeeping finishes (saving ~10-15 min of critical-path latency without dropping any gate).
+    needs: [changes, verdict]
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.verdict.result == 'success' && needs.changes.outputs.product == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -491,9 +492,10 @@ jobs:
         # changed files without the repository-wide lint and module-size).
         include: ${{ fromJSON(needs.changes.outputs.linux) }}
     steps:
+      # Only build (lint-changed), test-fast (ci-test-changed), alloc-ratchet (alloc-baseline-changed), and contracts (test-porting-release) read git history; every other Linux shard uses a shallow checkout.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
+          fetch-depth: ${{ (matrix.shard == 'build' || matrix.shard == 'test-fast' || matrix.shard == 'alloc-ratchet' || matrix.shard == 'contracts') && 0 || 1 }}
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
@@ -698,11 +700,48 @@ jobs:
           key: cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml', 'automation/ci/test-warm.sh') }}
           restore-keys: |
             cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-
+      # Restore prebuilt test-fixtures Rust target (tmp/test-fixtures/rust-target) so test-fixtures.sh reuses compiled crates instead of cold-building rust-sdk-fixture in every test shard.
+      - name: Restore the test-fixtures Rust target
+        id: cache-test-fixtures-rust
+        if: startsWith(matrix.shard, 'test-')
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: tmp/test-fixtures/rust-target
+          key: test-fixtures-rust-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('test/extension-conformance/testdata/rust-sdk-fixture/Cargo.lock', 'test/extension-conformance/testdata/rust-sdk-fixture/Cargo.toml', 'extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml') }}
+          restore-keys: |
+            test-fixtures-rust-${{ runner.os }}-${{ env.RUST_VERSION }}-
+      # Warm the Go build cache flag sets and only the Rust targets this shard actually exercises; test-fast owns warming all Rust targets when saving the shared Cargo cache.
+      # Export PIG_GO_WARMED=1 once Go flag sets are warmed so test-grouped.sh does not repeat the same four `go list -export` passes immediately afterwards.
       - name: Warm the fixture caches
         if: startsWith(matrix.shard, 'test-')
+        shell: bash
         env:
           CI: '1'
-        run: make test-warm
+          SHARD: ${{ matrix.shard }}
+          CARGO_HIT: ${{ steps.cache-the-cargo-registry-and-test-targets.outputs.cache-hit }}
+        run: |
+          set -euo pipefail
+          if [ "$SHARD" = test-fast ] && [ "$CACHE_SAVE" = true ] && [ "$CARGO_HIT" != true ]; then
+            make test-warm
+          else
+            go list -export -f '' ./... >/dev/null
+            go list -trimpath -export -f '' ./... >/dev/null
+            CGO_ENABLED=0 go list -trimpath -export -f '' ./... >/dev/null
+            (cd piglets/porter/extensions/pig-porter && GOWORK=off CGO_ENABLED=0 go list -trimpath -export -f '' ./... >/dev/null)
+            if [ "$CARGO_HIT" != true ]; then
+              targets=()
+              case "$SHARD" in
+                test-fast) targets=(runtimecell env-oracle) ;;
+                test-cli-*) targets=(cli) ;;
+                test-subprocess) targets=(subprocess) ;;
+                test-conformance-*) targets=(conformance) ;;
+              esac
+              if [ "${#targets[@]}" -gt 0 ]; then
+                ./automation/ci/test-warm.sh --rust-only "${targets[@]}"
+              fi
+            fi
+          fi
+          echo "PIG_GO_WARMED=1" >> "$GITHUB_ENV"
       # golangci-lint keys its analysis cache on file content, so a restored cache serves only unchanged packages. The key rolls weekly.
       - name: Name the lint cache week
         id: lintweek
@@ -773,7 +812,7 @@ jobs:
           path: ~/.npm
           key: node-cache-${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('extensions/sdk-ts/package-lock.json', 'test/parity/interface-extractor/package-lock.json', 'automation/images/ci-parity/package-lock.json', 'automation/images/npm-runtime/package-lock.json') }}
       - name: Save the Cargo registry and test targets
-        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-the-cargo-registry-and-test-targets.outcome == 'success' && steps.cache-the-cargo-registry-and-test-targets.outputs.cache-hit != 'true' }}
+        if: ${{ matrix.shard == 'test-fast' && env.CACHE_SAVE == 'true' && steps.cache-the-cargo-registry-and-test-targets.outcome == 'success' && steps.cache-the-cargo-registry-and-test-targets.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
@@ -781,6 +820,12 @@ jobs:
             ~/.cargo/git
             ~/.cache/pig-dev/cargo-target
           key: cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml', 'automation/ci/test-warm.sh') }}
+      - name: Save the test-fixtures Rust target
+        if: ${{ startsWith(matrix.shard, 'test-') && env.CACHE_SAVE == 'true' && steps.cache-test-fixtures-rust.outcome == 'success' && steps.cache-test-fixtures-rust.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: tmp/test-fixtures/rust-target
+          key: test-fixtures-rust-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('test/extension-conformance/testdata/rust-sdk-fixture/Cargo.lock', 'test/extension-conformance/testdata/rust-sdk-fixture/Cargo.toml', 'extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml') }}
       - name: Save the Python SDK venv
         if: ${{ (matrix.shard == 'toolchains') && env.CACHE_SAVE == 'true' && steps.cache-python-sdk-venv.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -1288,6 +1333,7 @@ jobs:
           "GOCACHE=$(Join-Path $env:RUNNER_TEMP 'go-build')" >> $env:GITHUB_ENV
           "PIG_PI_BUILD_STORE=$(Join-Path $env:RUNNER_TEMP 'pi-builds')" >> $env:GITHUB_ENV
           "PIG_TEST_CELL_CACHE=$(Join-Path $env:RUNNER_TEMP 'cell-cache')" >> $env:GITHUB_ENV
+          "PIG_TEST_CARGO_CACHE=$(Join-Path $env:RUNNER_TEMP 'cargo-target')" >> $env:GITHUB_ENV
           Write-Output "RUNNER_TEMP=$env:RUNNER_TEMP"
           Get-PSDrive -PSProvider FileSystem | Format-Table Name, Used, Free
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -1410,11 +1456,30 @@ jobs:
           '{"id":"state","type":"get_state"}' | & .\bin\pig.exe --mode rpc --model test-faux/faux-1 --no-session --no-extensions | Out-File -Encoding utf8 (Join-Path $acceptanceRoot 'rpc.jsonl')
           if ($LASTEXITCODE -ne 0) { throw "Windows RPC smoke failed" }
           if ((Get-Content -Raw (Join-Path $acceptanceRoot 'rpc.jsonl')) -notmatch '"type":"response"') { throw "Windows RPC response missing" }
+      - name: Restore the pinned SBCL installer
+        id: cache-pinned-sbcl
+        if: startsWith(matrix.shard, 'extension-') || startsWith(matrix.shard, 'cli-')
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}\sbcl-installer
+          key: sbcl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-sbcl.ps1') }}
       - name: Install the pinned SBCL
         # The Lisp SDK rows run in the extension jobs and in cmd/pig's TestReplacedSession2860AcrossSDKs, which starts every SDK's realization and fails without sbcl; SBCL's official Windows installer is checked against the lock's SHA-256.
         if: startsWith(matrix.shard, 'extension-') || startsWith(matrix.shard, 'cli-')
         shell: pwsh
-        run: ./automation/ci/install-sbcl.ps1 -GithubEnv
+        run: ./automation/ci/install-sbcl.ps1 -Cache (Join-Path $env:RUNNER_TEMP 'sbcl-installer') -GithubEnv
+      - name: Restore the Cargo registry and test targets
+        id: cache-cargo
+        if: startsWith(matrix.shard, 'cli-') || startsWith(matrix.shard, 'extension-')
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ${{ runner.temp }}\cargo-target
+          key: cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml', 'automation/ci/test-warm.sh') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-
       - name: Warm the Rust SDK Cargo target
         # Builds pig-sdk and its dependencies into the job's SharedCargoTargetDir before go test starts, so no test compiles the Rust SDK cold inside its 120 s wait budget.
         if: startsWith(matrix.shard, 'cli-') || startsWith(matrix.shard, 'extension-')
@@ -1547,6 +1612,21 @@ jobs:
         with:
           path: ${{ runner.temp }}\pi-builds
           key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
+      - name: Save the pinned SBCL installer
+        if: ${{ (startsWith(matrix.shard, 'extension-') || startsWith(matrix.shard, 'cli-')) && env.CACHE_SAVE == 'true' && steps.cache-pinned-sbcl.outcome == 'success' && steps.cache-pinned-sbcl.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}\sbcl-installer
+          key: sbcl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-sbcl.ps1') }}
+      - name: Save the Cargo registry and test targets
+        if: ${{ (startsWith(matrix.shard, 'cli-') || startsWith(matrix.shard, 'extension-')) && env.CACHE_SAVE == 'true' && steps.cache-cargo.outcome == 'success' && steps.cache-cargo.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ${{ runner.temp }}\cargo-target
+          key: cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml', 'automation/ci/test-warm.sh') }}
 
   macos:
     name: macOS ${{ matrix.shard }}
@@ -1605,6 +1685,11 @@ jobs:
           key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
           restore-keys: |
             gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+      - name: Age the restored Go build cache
+        id: age
+        if: matrix.shard == 'native'
+        shell: bash
+        run: automation/ci/gocache-trim.sh age
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
@@ -1642,6 +1727,19 @@ jobs:
           echo "PIG_SBCL=$prefix/bin/sbcl" >> "$GITHUB_ENV"
           echo "SBCL_HOME=$prefix/lib/sbcl" >> "$GITHUB_ENV"
           echo "$prefix/bin" >> "$GITHUB_PATH"
+      - name: Restore the pinned zstd
+        id: cache-pinned-zstd
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-zstd
+          key: zstd-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-zstd.sh') }}
+      - name: Install the pinned zstd
+        shell: bash
+        run: |
+          set -euo pipefail
+          zstd="$(automation/ci/install-zstd.sh)"
+          echo "PIG_ZSTD=$zstd" >> "$GITHUB_ENV"
+          echo "PIG_REQUIRE_ZSTD=1" >> "$GITHUB_ENV"
       - name: Restore the Pi oracle build
         id: cache-pi-oracle-build
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -1688,6 +1786,18 @@ jobs:
           test "$(node --version)" = "v$(cat .node-version)"
           test "$(npm --version)" = "$NPM_VERSION"
           python3 automation/pin/pin.py check-oracle
+      - name: Restore the Cargo registry and test targets
+        id: cache-cargo
+        if: matrix.shard != 'native'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/Library/Caches/pig-dev/cargo-target
+          key: cargo-${{ runner.os }}-${{ runner.arch }}-${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml', 'automation/ci/test-warm.sh') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-${{ runner.arch }}-${{ env.RUST_VERSION }}-
       - name: Warm the Rust SDK Cargo targets
         # Builds pig-sdk and its dependencies into each unit's SharedCargoTargetDir before go test starts, so no test compiles the Rust SDK cold inside its 120 s wait budget.
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' && matrix.shard != 'native' }}
@@ -1780,8 +1890,27 @@ jobs:
         with:
           path: ~/go/pkg/mod
           key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+      - name: Save the pinned zstd
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-pinned-zstd.outcome == 'success' && steps.cache-pinned-zstd.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-zstd
+          key: zstd-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-zstd.sh') }}
+      - name: Save the Cargo registry and test targets
+        if: ${{ matrix.shard != 'native' && env.CACHE_SAVE == 'true' && steps.cache-cargo.outcome == 'success' && steps.cache-cargo.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/Library/Caches/pig-dev/cargo-target
+          key: cargo-${{ runner.os }}-${{ runner.arch }}-${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml', 'automation/ci/test-warm.sh') }}
+      - name: Keep only the Go build cache entries this job used
+        if: ${{ !cancelled() && steps.age.outcome == 'success' && env.CACHE_SAVE == 'true' }}
+        shell: bash
+        run: automation/ci/gocache-trim.sh trim
       - name: Save the Go build cache
-        if: ${{ !cancelled() && env.CACHE_SAVE == 'true' }}
+        if: ${{ !cancelled() && steps.age.outcome == 'success' && env.CACHE_SAVE == 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/Library/Caches/go-build

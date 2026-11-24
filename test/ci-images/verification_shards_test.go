@@ -187,10 +187,13 @@ func TestLinuxShardsRetainEveryCheck(t *testing.T) {
 		t.Fatal("the bookkeeping job does not run make ci-bookkeeping")
 	}
 	got = append(got, leaves("ci-bookkeeping")...)
-	for _, waiting := range []string{"preflight", "preflight-platforms", "linux", "node-runtime", "chord", "durable-cf-host", "durable-contract", "android"} {
+	for _, waiting := range []string{"preflight", "linux", "node-runtime", "chord", "durable-cf-host", "durable-contract", "android"} {
 		if !slices.Contains(jobs[waiting].Needs, "bookkeeping") {
 			t.Errorf("%s does not wait for the bookkeeping job, so a bookkeeping failure would not stop it", waiting)
 		}
+	}
+	if !slices.Contains(jobs["preflight-platforms"].Needs, "verdict") {
+		t.Errorf("preflight-platforms does not wait for the verdict job")
 	}
 	for _, gated := range []string{"windows", "macos", "node-loader"} {
 		if !slices.Contains(jobs[gated].Needs, "preflight") {
@@ -1088,17 +1091,16 @@ func TestFastAndDefaultModesRunTheFaultGroupWithItsTag(t *testing.T) {
 func TestOSParallelJobsKeepTheCheapFirstOrderOnMain(t *testing.T) {
 	jobs := verificationJobs(t)
 	gate := map[string]string{
-		"preflight":           "bookkeeping",
-		"preflight-platforms": "bookkeeping",
-		"linux":               "bookkeeping",
-		"node-runtime":        "bookkeeping",
-		"chord":               "bookkeeping",
-		"durable-cf-host":     "bookkeeping",
-		"durable-contract":    "bookkeeping",
-		"android":             "bookkeeping",
-		"windows":             "preflight",
-		"macos":               "preflight",
-		"node-loader":         "preflight",
+		"preflight":        "bookkeeping",
+		"linux":            "bookkeeping",
+		"node-runtime":     "bookkeeping",
+		"chord":            "bookkeeping",
+		"durable-cf-host":  "bookkeeping",
+		"durable-contract": "bookkeeping",
+		"android":          "bookkeeping",
+		"windows":          "preflight",
+		"macos":            "preflight",
+		"node-loader":      "preflight",
 	}
 	for name, need := range gate {
 		job, ok := jobs[name]

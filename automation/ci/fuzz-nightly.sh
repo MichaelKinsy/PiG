@@ -5,8 +5,8 @@
 # //go:build line is read so build-tagged targets are listed and run with their tag; unsupported build expressions fail
 # loudly. A package whose targets cannot be listed fails the run instead of dropping out of it. A failure leaves its
 # input under the package's testdata/fuzz directory; the workflow uploads it.
-# Budget note: the nightly fuzz job limit stays 90 minutes (108 targets took 70 minutes, leaving about 19 minutes with
-# the 109th); at about 120 targets the job is to be split in two by this script's own grouping rather than given a longer limit.
+# PIG_FUZZ_SHARD=<k>/<n> selects shard k of n (1-based) by deterministic target index across the sorted target list, so
+# the nightly workflow splits the fuzz job across parallel runners and keeps every shard well within its timeout.
 set -euo pipefail
 
 list_only=0
@@ -21,6 +21,21 @@ fi
 
 fuzztime="${PIG_FUZZ_TIME:-30s}"
 parallel="${PIG_FUZZ_PARALLEL:-4}"
+shard_spec="${PIG_FUZZ_SHARD:-}"
+shard_idx=0
+shard_total=0
+if [ -n "$shard_spec" ]; then
+	if [[ ! "$shard_spec" =~ ^[1-9][0-9]*/[1-9][0-9]*$ ]]; then
+		echo "fuzz-nightly: invalid PIG_FUZZ_SHARD '$shard_spec' (want <k>/<n>)" >&2
+		exit 2
+	fi
+	shard_idx="${shard_spec%/*}"
+	shard_total="${shard_spec#*/}"
+	if [ "$shard_idx" -gt "$shard_total" ]; then
+		echo "fuzz-nightly: invalid PIG_FUZZ_SHARD '$shard_spec' (shard > total)" >&2
+		exit 2
+	fi
+fi
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 skip_file="${PIG_FUZZ_SKIP_FILE:-$script_dir/fuzz-nightly-skip.txt}"
 
@@ -98,6 +113,7 @@ ran=0
 listed_count=0
 skipped=0
 empty_dirs=0
+target_index=0
 failed=()
 declare -A seen_targets=()
 
@@ -131,6 +147,10 @@ for key in "${sorted_groups[@]}"; do
 		if [ -n "${skip_reasons[$target_id]+x}" ]; then
 			echo "fuzz-nightly: skipped $target_id: ${skip_reasons[$target_id]}"
 			skipped=$((skipped + 1))
+			continue
+		fi
+		target_index=$((target_index + 1))
+		if [ "$shard_total" -gt 0 ] && [ "$(( (target_index - 1) % shard_total + 1 ))" -ne "$shard_idx" ]; then
 			continue
 		fi
 		if [ "$list_only" -eq 1 ]; then

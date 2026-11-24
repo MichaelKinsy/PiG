@@ -1,9 +1,11 @@
 # SPDX-License-Identifier: MIT
 #
 # Installs the pinned SBCL on Windows: the official installer the sbcl windows/amd64 row of toolchains.lock names, verified against that
-# row's SHA-256 before it runs. With -GithubEnv the install location joins PATH and SBCL_HOME / PIG_SBCL are exported to later steps.
+# row's SHA-256 before it runs. When -Cache is given, the MSI is cached there and reused on a matching SHA-256 instead of re-downloading.
+# With -GithubEnv the install location joins PATH and SBCL_HOME / PIG_SBCL are exported to later steps.
 param(
   [string]$Lock = (Join-Path $PSScriptRoot '..\dev\toolchains.lock'),
+  [string]$Cache = '',
   [switch]$GithubEnv
 )
 $ErrorActionPreference = 'Stop'
@@ -11,19 +13,38 @@ $ProgressPreference = 'SilentlyContinue'
 $row = Get-Content $Lock | Where-Object { $_ -notmatch '^\s*#' } | ForEach-Object { , ($_ -split "`t") } | Where-Object { $_[0] -eq 'sbcl' -and $_[2] -eq 'windows' -and $_[3] -eq 'amd64' } | Select-Object -First 1
 if (-not $row) { throw "toolchains.lock has no sbcl windows/amd64 row" }
 $version, $url, $sha = $row[1], $row[5], $row[6]
-$installer = Join-Path ([IO.Path]::GetTempPath()) "sbcl-$version.msi"
-for ($attempt = 1; $attempt -le 5; $attempt++) {
-  try {
-    Invoke-WebRequest -Uri $url -OutFile $installer -MaximumRedirection 10 -UserAgent 'curl/8' -UseBasicParsing -TimeoutSec 300
-    break
-  } catch {
-    Write-Host "download attempt $attempt of $url failed: $($_.Exception.Message)"
-    Start-Sleep -Seconds (5 * $attempt)
+if ($Cache) {
+  New-Item -ItemType Directory -Force -Path $Cache | Out-Null
+  $installer = Join-Path $Cache "sbcl-$version.msi"
+} else {
+  $installer = Join-Path ([IO.Path]::GetTempPath()) "sbcl-$version.msi"
+}
+$haveCached = $false
+if (Test-Path $installer) {
+  if ((Get-FileHash -Algorithm SHA256 $installer).Hash.ToLower() -eq $sha) {
+    $haveCached = $true
+  } else {
+    Remove-Item -Force $installer
   }
 }
-if (-not (Test-Path $installer)) { throw "could not download $url" }
-$actual = (Get-FileHash -Algorithm SHA256 $installer).Hash.ToLower()
-if ($actual -ne $sha) { throw "$url has SHA-256 $actual, expected $sha" }
+if (-not $haveCached) {
+  for ($attempt = 1; $attempt -le 5; $attempt++) {
+    try {
+      Invoke-WebRequest -Uri $url -OutFile $installer -MaximumRedirection 10 -UserAgent 'curl/8' -UseBasicParsing -TimeoutSec 300
+      break
+    } catch {
+      Write-Host "download attempt $attempt of $url failed: $($_.Exception.Message)"
+      if (Test-Path $installer) { Remove-Item -Force $installer }
+      Start-Sleep -Seconds (5 * $attempt)
+    }
+  }
+  if (-not (Test-Path $installer)) { throw "could not download $url" }
+  $actual = (Get-FileHash -Algorithm SHA256 $installer).Hash.ToLower()
+  if ($actual -ne $sha) {
+    Remove-Item -Force $installer
+    throw "$url has SHA-256 $actual, expected $sha"
+  }
+}
 $log = Join-Path ([IO.Path]::GetTempPath()) 'sbcl-msi.log'
 $process = Start-Process msiexec -ArgumentList '/i', $installer, '/qn', '/norestart', '/log', $log -Wait -PassThru
 if ($process.ExitCode -ne 0) { Get-Content $log -Tail 40; throw "msiexec exited $($process.ExitCode)" }

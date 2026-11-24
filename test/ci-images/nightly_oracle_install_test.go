@@ -62,7 +62,7 @@ func TestNightlyRaceJobInstallsThePinnedSBCL(t *testing.T) {
 				}
 			}
 		}
-		if strings.HasPrefix(step.Uses, "actions/cache@") && step.With["path"] == "~/.cache/pig-sbcl" {
+		if (strings.HasPrefix(step.Uses, "actions/cache@") || strings.HasPrefix(step.Uses, "actions/cache/restore@")) && step.With["path"] == "~/.cache/pig-sbcl" {
 			caches = true
 		}
 	}

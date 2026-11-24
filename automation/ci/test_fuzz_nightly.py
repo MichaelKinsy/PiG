@@ -214,5 +214,24 @@ class FuzzNightlyTests(unittest.TestCase):
         )
 
 
+    def test_sharding_partitions_all_targets_exactly_once(self) -> None:
+        seen = []
+        for k in (1, 2, 3):
+            res = run_fuzz_nightly(BASE_FILES, args=["--list"], env_extra={"PIG_FUZZ_SHARD": f"{k}/3"})
+            self.assertEqual(0, res.returncode, f"shard {k}/3 failed: {res.stderr}")
+            lines = [ln for ln in res.stdout.splitlines() if "\t" in ln]
+            seen.extend(lines)
+        all_res = run_fuzz_nightly(BASE_FILES, args=["--list"])
+        all_lines = [ln for ln in all_res.stdout.splitlines() if "\t" in ln]
+        self.assertEqual(sorted(all_lines), sorted(seen))
+        self.assertEqual(len(all_lines), len(seen))
+
+    def test_invalid_shard_fails_loudly(self) -> None:
+        for bad in ("0/3", "4/3", "abc", "1/0"):
+            res = run_fuzz_nightly(BASE_FILES, args=["--list"], env_extra={"PIG_FUZZ_SHARD": bad})
+            self.assertNotEqual(0, res.returncode, f"expected invalid shard {bad!r} to fail")
+            self.assertIn("PIG_FUZZ_SHARD", res.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

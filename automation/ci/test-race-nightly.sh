@@ -9,7 +9,7 @@
 # PIG_RACE_GROUP picks a share for one nightly job (ai, rest, host, coding, cli, libs, hljs, photonimage, parity, shared; each is a job of the nightly matrix), or every package when unset.
 # The -timeout of every run is PIG_RACE_TIMEOUT (default 60m), set in race-timeout.sh, which make test-changed's -race runs read too.
 # A path with its own go.mod runs as that module (GOWORK=off), as `make test-sdk-go` does, unless its entry is marked `workspace`: a module that only builds inside a go.work (it needs its siblings' unreleased code) runs in the workspace its directory finds.
-# PIG_RACE_SHARD=<k>/<n> runs shard k of n of the tests of a group that is one package (automation/ci/test-shard-pattern.sh), for the cli group.
+# PIG_RACE_SHARD=<k>/<n> (or space-separated list of <k>/<n> shards, e.g. "1/8 2/8") runs each listed shard of the tests of a group that is one package (automation/ci/test-shard-pattern.sh), each in its own go test process and timeout.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -37,17 +37,36 @@ if [[ $matched -eq 0 ]]; then echo "test-race-nightly: unknown PIG_RACE_GROUP ${
 cd "$root"
 # shellcheck source=automation/ci/race-timeout.sh
 source "$root/automation/ci/race-timeout.sh"
-run=()
-shard="${PIG_RACE_SHARD:-}"
-if [[ -n "$shard" ]]; then
-  if [[ ! "$shard" =~ ^[1-9][0-9]*/[1-9][0-9]*$ || ${#packages[@]} -ne 1 || ${#modules[@]} -ne 0 ]]; then
-    echo "test-race-nightly: PIG_RACE_SHARD=<k>/<n> needs a group of exactly one package (group ${group}, shard ${shard})" >&2
+shard_spec="${PIG_RACE_SHARD:-}"
+if [[ -n "$shard_spec" ]]; then
+  read -r -a shards <<< "$shard_spec"
+  if [[ ${#packages[@]} -ne 1 || ${#modules[@]} -ne 0 ]]; then
+    echo "test-race-nightly: PIG_RACE_SHARD=<k>/<n> needs a group of exactly one package (group ${group}, shard ${shard_spec})" >&2
     exit 2
   fi
-  run=(-run "$(automation/ci/test-shard-pattern.sh "${shard%/*}" "${shard#*/}" "${packages[0]}")")
-fi
-if [[ ${#packages[@]} -gt 0 ]]; then
-  go test -race -count=1 -timeout "$PIG_RACE_TIMEOUT" "${run[@]+"${run[@]}"}" "${packages[@]}"
+  for shard in "${shards[@]}"; do
+    if [[ ! "$shard" =~ ^[1-9][0-9]*/[1-9][0-9]*$ ]]; then
+      echo "test-race-nightly: PIG_RACE_SHARD=<k>/<n> needs a group of exactly one package (group ${group}, shard ${shard_spec})" >&2
+      exit 2
+    fi
+  done
+  status=0
+  for shard in "${shards[@]}"; do
+    echo "::group::${group} shard ${shard}"
+    if pattern=$(automation/ci/test-shard-pattern.sh "${shard%/*}" "${shard#*/}" "${packages[0]}"); then
+      go test -race -count=1 -timeout "$PIG_RACE_TIMEOUT" -run "$pattern" "${packages[0]}" || status=1
+    else
+      status=1
+    fi
+    echo "::endgroup::"
+  done
+  if [[ $status -ne 0 ]]; then
+    exit "$status"
+  fi
+else
+  if [[ ${#packages[@]} -gt 0 ]]; then
+    go test -race -count=1 -timeout "$PIG_RACE_TIMEOUT" "${packages[@]}"
+  fi
 fi
 for module in "${modules[@]+"${modules[@]}"}"; do
   if [[ " ${workspace_modules[*]+"${workspace_modules[*]}"} " == *" $module "* ]]; then

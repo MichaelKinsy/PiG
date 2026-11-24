@@ -23,11 +23,17 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # Same cache-save policy as ci.yml: nightly on main and release dispatches save caches; canary/branch dispatches restore main's caches without saving or evicting them.
+  CACHE_SAVE: ${{ (github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')) || (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/release/')) }}
+  # Wall-clock and speed-ratio gates only warn on shared runners (internal/testenv.TimingGate); count, size and allocation gates still block. make test-timing runs them blocking on quiet hardware before a release.
+  PIG_PERF_TIMING_REPORT_ONLY: '1'
+
 jobs:
   race:
     name: Race / ${{ matrix.os }} / ${{ matrix.group }}${{ matrix.shard && format(' / {0}', matrix.shard) || '' }}
     runs-on: ${{ matrix.os }}
-    # automation/ci/race-packages.txt names the packages of each group. The cli group is one package whose whole -race run took 38 minutes on a 56-core slice, so it runs as seven shards of its tests (PIG_RACE_SHARD): every shard's -run pattern must stay under automation/ci/test-shard-pattern.sh's 24,000-character limit with room for growth (at seven shards the longest pattern is 14,421 characters; recompute by measuring automation/ci/test-shard-pattern.sh k n ./coding/cli for each shard k of n). The tui and codingagent groups are single packages whose whole -race runs exceeded or approached Go's 60-minute per-package timeout on macOS (tui timed out at 1h0m0s; internal/codingagent took 3,274 s) and exceeded half an hour on Linux (tui 1,880 s, internal/codingagent 1,818 s), so both run sharded via PIG_RACE_SHARD on both Linux and macOS: tui in 8 shards (max pattern 17,081 chars, matching automation/ci/test-shard-weights.txt; recompute with automation/ci/test-shard-pattern.sh k 8 ./tui) and codingagent in 12 shards (max pattern 17,098 chars; recompute with automation/ci/test-shard-pattern.sh k 12 ./internal/codingagent). The parity and conformance groups run on Linux only (conformance is test/extension-conformance in four shards, PIG_RACE_SHARD): the parity group holds the long parity-tool test packages (closure 483 s and sdksurface 1406 s under -race on 8 CPUs). The shared group holds the packages that use sync, atomic, channels or context cancellation without starting a goroutine themselves (race-packages.txt) and runs on both Linux and macOS.
+    # automation/ci/race-packages.txt names the packages of each group. The cli group is one package whose whole -race run took 38 minutes on a 56-core slice, so it runs as seven shards of its tests (PIG_RACE_SHARD): every shard's -run pattern must stay under automation/ci/test-shard-pattern.sh's 24,000-character limit with room for growth (at seven shards the longest pattern is 14,421 characters; recompute by measuring automation/ci/test-shard-pattern.sh k n ./coding/cli for each shard k of n). The tui and codingagent groups are single packages whose whole -race runs exceeded or approached Go's 60-minute per-package timeout on macOS (tui timed out at 1h0m0s; internal/codingagent took 3,274 s) and exceeded half an hour on Linux (tui 1,880 s, internal/codingagent 1,818 s), so both run sharded via PIG_RACE_SHARD on both Linux and macOS: tui in 8 shards (max pattern 17,081 chars, matching automation/ci/test-shard-weights.txt; recompute with automation/ci/test-shard-pattern.sh k 8 ./tui) and codingagent in 12 shards (max pattern 17,098 chars; recompute with automation/ci/test-shard-pattern.sh k 12 ./internal/codingagent). On macOS (5 concurrent runner cap), the 27 single-package shards (7 cli + 8 tui + 12 codingagent) are packed into 11 balanced multi-shard jobs (4 cli, 3 tui, 4 codingagent; 19 total macOS race jobs instead of 35, cutting 7 waves to 4 while keeping every shard in its own go test process and timeout). The parity and conformance groups run on Linux only (conformance is test/extension-conformance in four shards, PIG_RACE_SHARD): the parity group holds the long parity-tool test packages (closure 483 s and sdksurface 1406 s under -race on 8 CPUs). The shared group holds the packages that use sync, atomic, channels or context cancellation without starting a goroutine themselves (race-packages.txt) and runs on both Linux and macOS.
     timeout-minutes: 90
     strategy:
       fail-fast: false
@@ -49,13 +55,10 @@ jobs:
           - {os: ubuntu-24.04, group: cli, shard: 5/7}
           - {os: ubuntu-24.04, group: cli, shard: 6/7}
           - {os: ubuntu-24.04, group: cli, shard: 7/7}
-          - {os: macos-15, group: cli, shard: 1/7}
-          - {os: macos-15, group: cli, shard: 2/7}
-          - {os: macos-15, group: cli, shard: 3/7}
-          - {os: macos-15, group: cli, shard: 4/7}
-          - {os: macos-15, group: cli, shard: 5/7}
-          - {os: macos-15, group: cli, shard: 6/7}
-          - {os: macos-15, group: cli, shard: 7/7}
+          - {os: macos-15, group: cli, shard: "1/7 2/7"}
+          - {os: macos-15, group: cli, shard: "3/7 4/7"}
+          - {os: macos-15, group: cli, shard: "5/7 6/7"}
+          - {os: macos-15, group: cli, shard: "7/7"}
           - {os: ubuntu-24.04, group: tui, shard: 1/8}
           - {os: ubuntu-24.04, group: tui, shard: 2/8}
           - {os: ubuntu-24.04, group: tui, shard: 3/8}
@@ -64,14 +67,9 @@ jobs:
           - {os: ubuntu-24.04, group: tui, shard: 6/8}
           - {os: ubuntu-24.04, group: tui, shard: 7/8}
           - {os: ubuntu-24.04, group: tui, shard: 8/8}
-          - {os: macos-15, group: tui, shard: 1/8}
-          - {os: macos-15, group: tui, shard: 2/8}
-          - {os: macos-15, group: tui, shard: 3/8}
-          - {os: macos-15, group: tui, shard: 4/8}
-          - {os: macos-15, group: tui, shard: 5/8}
-          - {os: macos-15, group: tui, shard: 6/8}
-          - {os: macos-15, group: tui, shard: 7/8}
-          - {os: macos-15, group: tui, shard: 8/8}
+          - {os: macos-15, group: tui, shard: "1/8 2/8 3/8"}
+          - {os: macos-15, group: tui, shard: "4/8 5/8 6/8"}
+          - {os: macos-15, group: tui, shard: "7/8 8/8"}
           - {os: ubuntu-24.04, group: codingagent, shard: 1/12}
           - {os: ubuntu-24.04, group: codingagent, shard: 2/12}
           - {os: ubuntu-24.04, group: codingagent, shard: 3/12}
@@ -84,31 +82,45 @@ jobs:
           - {os: ubuntu-24.04, group: codingagent, shard: 10/12}
           - {os: ubuntu-24.04, group: codingagent, shard: 11/12}
           - {os: ubuntu-24.04, group: codingagent, shard: 12/12}
-          - {os: macos-15, group: codingagent, shard: 1/12}
-          - {os: macos-15, group: codingagent, shard: 2/12}
-          - {os: macos-15, group: codingagent, shard: 3/12}
-          - {os: macos-15, group: codingagent, shard: 4/12}
-          - {os: macos-15, group: codingagent, shard: 5/12}
-          - {os: macos-15, group: codingagent, shard: 6/12}
-          - {os: macos-15, group: codingagent, shard: 7/12}
-          - {os: macos-15, group: codingagent, shard: 8/12}
-          - {os: macos-15, group: codingagent, shard: 9/12}
-          - {os: macos-15, group: codingagent, shard: 10/12}
-          - {os: macos-15, group: codingagent, shard: 11/12}
-          - {os: macos-15, group: codingagent, shard: 12/12}
+          - {os: macos-15, group: codingagent, shard: "1/12 2/12 3/12"}
+          - {os: macos-15, group: codingagent, shard: "4/12 5/12 6/12"}
+          - {os: macos-15, group: codingagent, shard: "7/12 8/12 9/12"}
+          - {os: macos-15, group: codingagent, shard: "10/12 11/12 12/12"}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 1
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: .go-version
-          cache: true
+          cache: false
+      - name: Restore the Go module cache
+        id: cache-gomod
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.os == 'macOS' && '~/Library/Caches/go-build' || '~/.cache/go-build' }}
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
-          cache: npm
-          cache-dependency-path: extensions/sdk-ts/package-lock.json
+      - name: Restore the npm cache
+        id: cache-npm
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm
+          key: node-cache-${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('extensions/sdk-ts/package-lock.json', 'test/parity/interface-extractor/package-lock.json', 'automation/images/ci-parity/package-lock.json', 'automation/images/npm-runtime/package-lock.json') }}
+          restore-keys: |
+            node-cache-${{ runner.os }}-${{ runner.arch }}-npm-
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
@@ -119,6 +131,12 @@ jobs:
           set -euo pipefail
           brew install bash
           echo "$(brew --prefix bash)/bin" >> "$GITHUB_PATH"
+      - name: Restore the Pi oracle build
+        id: cache-pi-oracle-build
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-dev/pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
       - name: Install native test tools, Rust and the pinned Pi oracle
         # The Rust and npm pins are read from ci.yml, their one source (make compliance).
         shell: bash
@@ -127,10 +145,11 @@ jobs:
           if [ "$RUNNER_OS" = Linux ]; then
             automation/ci/install-native-test-packages.sh
           else
-            brew install fd ripgrep tmux
+            HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew install fd ripgrep tmux
           fi
           rust="$(awk '/^  RUST_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
           npm_version="$(awk '/^  NPM_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
+          echo "RUST_VERSION=$rust" >> "$GITHUB_ENV"
           rustup toolchain install "$rust" --profile minimal
           rustup default "$rust"
           automation/ci/install-npm-toolchain.sh
@@ -145,7 +164,8 @@ jobs:
           make upstream-mirror
       # The Lisp SDK realization of cmd/pig's TestReplacedSession2860AcrossSDKs (in the cli shards) and the Lisp conformance rows fail without the pinned SBCL, as in ci.yml's Linux and macOS jobs: the same cache and install step.
       - name: Restore the pinned SBCL
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cache-pinned-sbcl
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pig-sbcl
           key: sbcl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-sbcl.sh') }}
@@ -160,7 +180,8 @@ jobs:
           echo "$prefix/bin" >> "$GITHUB_PATH"
       # Install the pinned zstd (internal/zstdblob.PinnedCLIVersion) into ~/.cache/pig-zstd and cache it by pin. Setting PIG_REQUIRE_ZSTD=1 makes the frame tests fail instead of skipping if the binary is missing.
       - name: Restore the pinned zstd
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cache-pinned-zstd
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pig-zstd
           key: zstd-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-zstd.sh') }}
@@ -171,6 +192,18 @@ jobs:
           zstd="$(automation/ci/install-zstd.sh)"
           echo "PIG_ZSTD=$zstd" >> "$GITHUB_ENV"
           echo "PIG_REQUIRE_ZSTD=1" >> "$GITHUB_ENV"
+      - name: Restore the Cargo registry and test targets
+        id: cache-cargo
+        if: matrix.group == 'cli' || matrix.group == 'rest' || matrix.group == 'host' || matrix.group == 'conformance' || matrix.group == 'libs'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ${{ runner.os == 'macOS' && '~/Library/Caches/pig-dev/cargo-target' || '~/.cache/pig-dev/cargo-target' }}
+          key: cargo-${{ runner.os }}-${{ runner.os == 'macOS' && format('{0}-', runner.arch) || '' }}${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml', 'automation/ci/test-warm.sh') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-${{ runner.os == 'macOS' && format('{0}-', runner.arch) || '' }}${{ env.RUST_VERSION }}-
       - name: Warm the Rust SDK Cargo targets
         # Builds pig-sdk and its dependencies (and Pi's env daemon for libs) into each group's SharedCargoTargetDir before go test starts, so no race test compiles the Rust SDK cold inside its 120 s wait budget.
         if: matrix.group == 'cli' || matrix.group == 'rest' || matrix.group == 'host' || matrix.group == 'conformance' || matrix.group == 'libs'
@@ -194,31 +227,62 @@ jobs:
           PIG_RACE_GROUP: ${{ matrix.group }}
           PIG_RACE_SHARD: ${{ matrix.shard }}
         run: make test-race-nightly
+      - name: Save the pinned SBCL
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-pinned-sbcl.outcome == 'success' && steps.cache-pinned-sbcl.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-sbcl
+          key: sbcl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-sbcl.sh') }}
+      - name: Save the pinned zstd
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-pinned-zstd.outcome == 'success' && steps.cache-pinned-zstd.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-zstd
+          key: zstd-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-zstd.sh') }}
 
   fuzz:
-    name: Fuzz / every target 30s
+    name: Fuzz / shard ${{ matrix.shard }} (30s)
     runs-on: ubuntu-24.04
-    # The targets run one after the other, 30 s of fuzzing and about 11 s of build and corpus work each (41 s measured): 47 targets were 32 minutes, so a 30 minute limit cancelled
-    # the run at the 41st on 11-05, 11-06 and 11-08; the Pi-pinned tree has 111 targets, which are 83 minutes without the setup and 88 with it (5 minutes for the checkout, Go setup and first build), so the limit is 90. test/ci-images/nightly_fuzz_budget_test.go keeps the limit above the targets' sum as targets are added.
-    timeout-minutes: 90
+    # Split across 3 parallel shards via PIG_FUZZ_SHARD so every target runs 30 s (~38 targets per shard, ~33 min with setup vs 90 min monolithic). test/ci-images/nightly_fuzz_budget_test.go keeps each shard's timeout above its targets' sum as targets are added.
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1/3, 2/3, 3/3]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 1
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: .go-version
-          cache: true
+          cache: false
+      - name: Restore the Go module cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
       - name: Fuzz every target
         env:
           CI: '1'
           PIG_FUZZ_TIME: 30s
+          PIG_FUZZ_SHARD: ${{ matrix.shard }}
         run: make fuzz-nightly
       - name: Keep failing inputs
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: fuzz-failures-${{ github.sha }}
+          name: fuzz-failures-${{ strategy.job-index }}-${{ github.sha }}
           path: '**/testdata/fuzz/**'
           if-no-files-found: ignore
 
@@ -229,11 +293,26 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 1
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: .go-version
-          cache: true
+          cache: false
+      - name: Restore the Go module cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
       # internal/pioracle runs Pi's vendored modules in Node, so the job needs the pinned Node and nothing else.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -253,12 +332,29 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 1
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: .go-version
-          cache: true
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+          cache: false
+      - name: Restore the Go module cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+      - name: Restore the Pi-Bolt toolchain
+        id: cache-pig-bolt
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pig-bolt-test
           key: pig-bolt-toolchain-${{ hashFiles('piglets/pig-bolt/extensions/boltruntime/lock.go') }}
@@ -266,6 +362,12 @@ jobs:
         env:
           CI: '1'
         run: make test-pig-bolt-build
+      - name: Save the Pi-Bolt toolchain
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-pig-bolt.outcome == 'success' && steps.cache-pig-bolt.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-bolt-test
+          key: pig-bolt-toolchain-${{ hashFiles('piglets/pig-bolt/extensions/boltruntime/lock.go') }}
 
   allocations:
     name: Allocation ratchet / allocs per op
@@ -274,16 +376,43 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 1
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: .go-version
-          cache: true
+          cache: false
+      - name: Restore the Go module cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
       # The Node-cell, Node-host and clipboard benchmarks start node; Pi requires at least the Node floor in minimumNodeRuntimeVersion (coding/extension/host/subprocess/builder_node.go) and the runner image's Node is not pinned, so the job uses .node-version like the other Node jobs.
       # The subprocess host benchmarks start Node extension runtimes; their baseline entries were measured on the pinned Node.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
+      - name: Restore the npm cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm
+          key: node-cache-${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('extensions/sdk-ts/package-lock.json', 'test/parity/interface-extractor/package-lock.json', 'automation/images/ci-parity/package-lock.json', 'automation/images/npm-runtime/package-lock.json') }}
+          restore-keys: |
+            node-cache-${{ runner.os }}-${{ runner.arch }}-npm-
+      - name: Restore the Pi oracle build
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-dev/pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
       # BenchmarkDecodeFileEntryPiFixture reads Pi's large-session.jsonl from .upstream/current. The mirror takes the pinned oracle's provider data (mirror-upstream.sh), so the steps are the race job's: the npm toolchain, the oracle, the mirror. The toolchain's bin directory stays off the later steps' PATH, which the measured benchmarks run under.
       - name: Install the pinned Pi oracle and mirror its source
         shell: bash
@@ -307,15 +436,42 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 1
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: .go-version
-          cache: true
+          cache: false
+      - name: Restore the Go module cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
       # The matrix runs the tests of ./ai/, whose Pi-oracle tests start node, and the stripped binary loads a TypeScript extension: the pinned Node, as in the race job.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
+      - name: Restore the npm cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm
+          key: node-cache-${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('extensions/sdk-ts/package-lock.json', 'test/parity/interface-extractor/package-lock.json', 'automation/images/ci-parity/package-lock.json', 'automation/images/npm-runtime/package-lock.json') }}
+          restore-keys: |
+            node-cache-${{ runner.os }}-${{ runner.arch }}-npm-
+      - name: Restore the Pi oracle build
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-dev/pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
       # The Pi-oracle tests of ./ai/ need the oracle and the locked npm trees of the oracle tests, and npm on PATH: the race job's steps for its ai group.
       - name: Install native test tools and the pinned Pi oracle
         shell: bash
@@ -343,11 +499,26 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 1
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: .go-version
-          cache: true
+          cache: false
+      - name: Restore the Go module cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
       - name: List the strip tag sets
         id: sets
         run: echo "sets=$(go run ./automation/ci/stripmatrix -print-sets -sets all)" >> "$GITHUB_OUTPUT"
@@ -365,15 +536,42 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 1
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: .go-version
-          cache: true
+          cache: false
+      - name: Restore the Go module cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
       # The tests of ./coding/... start node (the Pi-oracle tests and the Node extension host), sbcl (the Lisp SDK rows) and the pinned zstd (the frame tests): the pinned Node and oracle, as in the strip-matrix job, and the pinned SBCL and zstd, as in the race job.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
+      - name: Restore the npm cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm
+          key: node-cache-${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('extensions/sdk-ts/package-lock.json', 'test/parity/interface-extractor/package-lock.json', 'automation/images/ci-parity/package-lock.json', 'automation/images/npm-runtime/package-lock.json') }}
+          restore-keys: |
+            node-cache-${{ runner.os }}-${{ runner.arch }}-npm-
+      - name: Restore the Pi oracle build
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-dev/pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
       - name: Install native test tools and the pinned Pi oracle
         shell: bash
         run: |
@@ -388,7 +586,8 @@ jobs:
           make upstream-mirror
       # The Lisp SDK rows under ./coding/... need the pinned SBCL, as in the race job: the same cache and install step.
       - name: Restore the pinned SBCL
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cache-pinned-sbcl
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pig-sbcl
           key: sbcl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-sbcl.sh') }}
@@ -402,7 +601,8 @@ jobs:
           echo "$prefix/bin" >> "$GITHUB_PATH"
       # Install the pinned zstd (internal/zstdblob.PinnedCLIVersion) into ~/.cache/pig-zstd and cache it by pin. Setting PIG_REQUIRE_ZSTD=1 makes the frame tests fail instead of skipping if the binary is missing.
       - name: Restore the pinned zstd
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cache-pinned-zstd
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pig-zstd
           key: zstd-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-zstd.sh') }}
