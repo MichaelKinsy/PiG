@@ -6646,5 +6646,61 @@
    "old": "\t\tprefix, open, closeSeq = \"Error: \", \"\\x1b[31m\", \"\\x1b[39m\"\n",
    "new": "\t\tprefix, open, closeSeq = \"Err: \", \"\\x1b[31m\", \"\\x1b[39m\"\n"
   }
+ ],
+ "packages/chord/src/state/framed.ts": [
+  {
+   "file": "chord/next/state/framed.go",
+   "old": "func (f *FramedSource) Ready() bool { return f.state == framedHasValue }\n",
+   "new": "func (f *FramedSource) Ready() bool { return false }\n"
+  }
+ ],
+ "packages/chord/src/store/open-query.ts": [
+  {
+   "file": "chord/next/store/open_query.go",
+   "old": "\treturn query.compiled\n",
+   "new": "\treturn Compiled{}\n"
+  }
+ ],
+ "packages/chord/src/store/page.ts": [
+  {
+   "file": "chord/next/store/page.go",
+   "old": "\treturn StoredPage{Stored: stored, Next: &next}, nil\n",
+   "new": "\treturn StoredPage{Stored: stored}, nil\n"
+  }
+ ],
+ "packages/chord/src/store/read.ts": [
+  {
+   "file": "chord/next/store/read.go",
+   "old": "\t\treturn ReadRun{Kind: \"count\", Count: count}, nil\n",
+   "new": "\t\treturn ReadRun{Kind: \"count\", Count: 0}, nil\n"
+  }
+ ],
+ "packages/chord/src/store/reads.ts": [
+  {
+   "file": "chord/next/store/reads.go",
+   "old": "\treturn slices.Clone(reads.byTable[table])\n",
+   "new": "\treturn nil\n"
+  }
+ ],
+ "packages/chord/src/store/skip.ts": [
+  {
+   "file": "chord/next/store/skip.go",
+   "old": "\t\treturn change.Assigned == nil || slices.ContainsFunc(change.Assigned, func(name string) bool { return columns[name] })\n",
+   "new": "\t\treturn false\n"
+  }
+ ],
+ "packages/chord/src/host/read-declarations.ts": [
+  {
+   "file": "chord/next/host/host_read_declarations.go",
+   "old": "\t\treturn declarationError(\"%s: self.%s: { first: n } is required, a positive integer\", label, declaration)\n",
+   "new": "\t\treturn nil\n"
+  }
+ ],
+ "packages/chord/src/host/tiling.ts": [
+  {
+   "file": "chord/next/host/host_tiling.go",
+   "old": "\treturn len(t.pages) == 0 || t.pages[len(t.pages)-1].through == nil\n",
+   "new": "\treturn false\n"
+  }
  ]
 }

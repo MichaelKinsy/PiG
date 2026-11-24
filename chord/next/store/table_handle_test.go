@@ -59,6 +59,7 @@ func filledHandle(t *testing.T, count int, owner ...*testOwner) (*ChordStore, *T
 	return store, edits, definition
 }
 
+// pi: packages/chord/src/store/page.ts
 func TestTableHandle(t *testing.T) {
 	t.Run("reads outside a transaction", func(t *testing.T) {
 		t.Run("get takes a key object and reads committed rows as stored", func(t *testing.T) {
