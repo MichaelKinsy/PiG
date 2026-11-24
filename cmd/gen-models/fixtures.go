@@ -178,7 +178,7 @@ func generationTime() string {
 }
 
 // piOverlayCommit is the Pi commit the files of pi-overlay come from (git show <commit>:packages/ai/catalog/<path>).
-const piOverlayCommit = "cead615b48b80d1c61eecab2f0b576d16eeaf4c5"
+const piOverlayCommit = "faac585884ae2c013a6b1400f3e9e77f10b34bac"
 
 const isoMillis = "2006-01-02T15:04:05.000Z"
 

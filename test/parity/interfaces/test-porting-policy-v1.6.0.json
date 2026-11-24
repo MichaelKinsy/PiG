@@ -1,5 +1,5 @@
 {
-  "upstreamVersion": "1.5.2",
+  "upstreamVersion": "1.6.0",
   "baselineCommit": "0e6ed0048282a15531ea1652a5833de4da4dd1a7",
   "baselinePorted": [
     "packages/agent/test/agent-loop.test.ts",
@@ -485,7 +485,7 @@
   "entries": [
     {
       "path": "packages/agent/test/agent-loop.test.ts",
-      "upstreamTestHash": "sha256:704708e5eb837a37bfb83c76d70efa925b20ea5c5cc6a2ddd3cb7301da2c6fa3",
+      "upstreamTestHash": "sha256:eb766af0aac26afb16956811a235ec6d83a73f1948c5cdb14fb004522478dc86",
       "area": "tools",
       "tags": [
         "hot-path"
@@ -629,7 +629,7 @@
     },
     {
       "path": "packages/ai/test/anthropic-message-threads.test.ts",
-      "upstreamTestHash": "sha256:c3c9855ef1f514fe9246f75f7a9acec233b6a6b7cad68c228bee9dc80d43a18b",
+      "upstreamTestHash": "sha256:dab78091c5641dbffd93cc3ff50d7ce99723b4bfa47af92973f24d4545a0ca97",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -683,7 +683,7 @@
     },
     {
       "path": "packages/ai/test/anthropic-strict-tool-schema.test.ts",
-      "upstreamTestHash": "sha256:121d976168c2330e41702e4c0a87bc673dbf210979e8812f1b8d3f69ee201512",
+      "upstreamTestHash": "sha256:a9b8cb2d1c80985883ae7b2e7d4f69d5369728be1f328a8948c5a846952fbecc",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -897,7 +897,7 @@
     },
     {
       "path": "packages/ai/test/cache-retention.test.ts",
-      "upstreamTestHash": "sha256:12c858b08949b9e939c833e8a7ea0a2668d2f12f4b31d16071ab581d41cc4044",
+      "upstreamTestHash": "sha256:4e38f7f5b6a021e3060bbca2022db7e0a622e4bd43227723b068b8def09b2231",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -979,7 +979,7 @@
     },
     {
       "path": "packages/ai/test/constrained-sampling.test.ts",
-      "upstreamTestHash": "sha256:4d09fe921cefa6e8912d1de859a692e6d12bd74ef89f7a7a2ea508e41b8795aa",
+      "upstreamTestHash": "sha256:7d14e5b50c4ae1d4e2b368874aea613e19cf94d63232246fa74db5558c842cf8",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -1060,7 +1060,7 @@
     },
     {
       "path": "packages/ai/test/fetch-option.test.ts",
-      "upstreamTestHash": "sha256:02a7a27d74e9ea0deef7285632d422981f5029efdec6ad1949cae6d04228b598",
+      "upstreamTestHash": "sha256:3dccef1cbc1a84d1299a6b2aae290e04f782b0df28bf31d85c9325146b1bd578",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -1076,19 +1076,12 @@
     },
     {
       "path": "packages/ai/test/fireworks-models.test.ts",
-      "upstreamTestHash": "sha256:6aaefbde5864cad03fa28a7d0483c18a32ec829c25299f9212c101870a3d3a3e",
+      "upstreamTestHash": "sha256:d810f57c33ae7757503da655f034449587e31b828ae9b3376e3e0da886791e3a",
       "area": "providers",
       "tags": [
         "hot-path"
       ],
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
-    },
-    {
-      "path": "packages/ai/test/generate-models-strict.test.ts",
-      "upstreamTestHash": "sha256:00458d0fd5df2cc234f5b1d10b9130e14b9b620509e134e449828f49f7e99ec9",
-      "area": "utilities",
-      "tags": [],
-      "rationale": "Supporting pure path/configuration formatting or build-time catalog checks; not a per-turn mechanism."
     },
     {
       "path": "packages/ai/test/github-copilot-anthropic.test.ts",
@@ -1200,7 +1193,7 @@
     },
     {
       "path": "packages/ai/test/google-vertex-api-key-resolution.test.ts",
-      "upstreamTestHash": "sha256:ec2bfb9015483d4986b859f8f1ddb96d487fad909b0b934237ef8330086cef59",
+      "upstreamTestHash": "sha256:3874427500aeedbeba3e29f83e2b8de405d9615c2c76ddc3ebbcb434ec0053c1",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -1302,7 +1295,7 @@
     },
     {
       "path": "packages/ai/test/llama-cpp-classify.test.ts",
-      "upstreamTestHash": "sha256:e9e35ee4cf7ec298db7818007b22d1c161c8057dc9cc1fa9f7e446e74d18a1bc",
+      "upstreamTestHash": "sha256:14e9cca55ae7b561a971c179812a6869dc8526eebf79602bf0cd9112cdacc7cd",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -1311,7 +1304,7 @@
     },
     {
       "path": "packages/ai/test/max-thinking.test.ts",
-      "upstreamTestHash": "sha256:a3a8a0a55df874880f187ecc1bb89f3208194b1e58526bba360881490c658156",
+      "upstreamTestHash": "sha256:73d8a8bf3a434140ad5e903e4c3a510220a595d62d226037b4c22767cda829fc",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -1365,7 +1358,7 @@
     },
     {
       "path": "packages/ai/test/mistral-tool-schema.test.ts",
-      "upstreamTestHash": "sha256:9e913e9c49c2a9a2d1cfd4dc8d137a154e005b9291d06489e52136b92e5db24e",
+      "upstreamTestHash": "sha256:ccb6531721b3ef0729a3dec3c3ce525b34725a94127d402be9c164390a7a87c5",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -1392,7 +1385,7 @@
     },
     {
       "path": "packages/ai/test/model-data-validation.test.ts",
-      "upstreamTestHash": "sha256:90d87127f9fec167e10736691c74a1b02c3aa71e86a9994c956890258dcc2fa5",
+      "upstreamTestHash": "sha256:9b9d6888bfb1156cd4e37b94cd9f5f9a0a73ba1925853dd5aa4a15a5244f5f41",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -1491,7 +1484,7 @@
     },
     {
       "path": "packages/ai/test/openai-codex-stream.test.ts",
-      "upstreamTestHash": "sha256:f959812c62a9dc54489b7496c4a25ed22bf1e24956115729d9cd5b25ef3240cc",
+      "upstreamTestHash": "sha256:1d415d7eb52a73adb5fdae8585cf61dea93af737d55c394051db63ef382c412e",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -1599,7 +1592,7 @@
     },
     {
       "path": "packages/ai/test/openai-completions-tool-choice.test.ts",
-      "upstreamTestHash": "sha256:eb4565b4c9c70544f230f8b7151aa061d4d608c13ff1ae1eed5b7f2fbde63da2",
+      "upstreamTestHash": "sha256:64ae15a9456c174b081ced6a2594c141f3d7af31865a84b71bed43d597463044",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -1653,7 +1646,7 @@
     },
     {
       "path": "packages/ai/test/openai-responses-compat.test.ts",
-      "upstreamTestHash": "sha256:d0e872d02d22bf4cd424696c4630d80583ef96c5f02829ec16b7847a8cadd818",
+      "upstreamTestHash": "sha256:1cc17c87778c7b81af57a58bd909b4027f470e912db52fc18a55fe13fee51b26",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -1885,7 +1878,7 @@
     },
     {
       "path": "packages/ai/test/providers.test.ts",
-      "upstreamTestHash": "sha256:85d073665733efab0007b92b629e22a2c90cdde047ebc85dc63555461265f92d",
+      "upstreamTestHash": "sha256:b7d92f4c1085cda49fa45d617a5d116ef8f693713fd5c0baa00ec32df2415333",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -1894,7 +1887,7 @@
     },
     {
       "path": "packages/ai/test/qwen-token-plan-models.test.ts",
-      "upstreamTestHash": "sha256:ccbbb158c71cb09d291d1e6f311a717ef4954c5d8a57c3c2cc9c05e4f657d764",
+      "upstreamTestHash": "sha256:a13858ba688f5da854b48d4ca9f625cb60a0fa4480f07a42cfcc1094894148fe",
       "area": "providers",
       "tags": [],
       "rationale": "Explicit example extension or Worker-only adapter; not a Stock native text-session mechanism. Retain the underlying test disposition."
@@ -1946,7 +1939,7 @@
     },
     {
       "path": "packages/ai/test/retry.test.ts",
-      "upstreamTestHash": "sha256:1e5c229c06082014f8b3cb809b402fc3322646f57f4fc1e147ebb5740c7eb697",
+      "upstreamTestHash": "sha256:4305c1ee39496ef112f5064d649e34f526c10961e28a7a70a79493b29b455b18",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -2000,7 +1993,7 @@
     },
     {
       "path": "packages/ai/test/supports-xhigh.test.ts",
-      "upstreamTestHash": "sha256:e30dc68887932d35b027a4885e10ebf6483df997a5d5961cefe8e0679b73e11c",
+      "upstreamTestHash": "sha256:860e331cccf16789c4bde6822556a35a27ed0f3c5dd2f4ac9403ce01fb328429",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -2045,7 +2038,7 @@
     },
     {
       "path": "packages/ai/test/together-models.test.ts",
-      "upstreamTestHash": "sha256:c976aee257ff591a027c97f2cab923b074e5ee2166b557d5f8a480f02228e3aa",
+      "upstreamTestHash": "sha256:21104de3083ed7bd428f4bac88f0cbdf5b2b690f7aa14f98b9b752757c6d86a2",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -2241,21 +2234,21 @@
     },
     {
       "path": "packages/chord/test/contracts/accepts.test.ts",
-      "upstreamTestHash": "sha256:e59f226491cb3a143e3bb5a7b26c02ae3b062e0e328417b41adbbe83c986dd5c",
+      "upstreamTestHash": "sha256:abb5da7d5f1f85343b72f1d50fdd4e943b373840493b66c2936f68817abfac67",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
       "path": "packages/chord/test/contracts/contract.test.ts",
-      "upstreamTestHash": "sha256:d9a04b63f3e80861aa7d973df83da66075b509e7108e09367c305eadc940a887",
+      "upstreamTestHash": "sha256:bbf5e174b748a674f89c19d34196b51ec8896c60e24586dea9f645b72f2ec7fd",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
       "path": "packages/chord/test/contracts/declare.test.ts",
-      "upstreamTestHash": "sha256:00a2b2c11e4590e8e94c15f2dad761c036f57a50070d1747982878485f164eb7",
+      "upstreamTestHash": "sha256:ef5617b64c0fd2ca8768812f4171916259dfbb548e9c096713cf6f5f821713dd",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. SCRUTINIZED:approved by owner 2026-10-29 class approval (TypeScript type-level checks, verified per row): the designed-out case 'refuse a keyed member in a remote contract, at the type level and at declaration' is enforced in Go by the type system: Keyed() returns *contracts.KeyedMember, which is not a contracts.TSchema, so contracts.Prop, VariantDeclaration.State and RemoteEditor.State refuse it at compile time (`cannot use contracts.Keyed(contracts.Str()) (value of type *contracts.KeyedMember) as contracts.TSchema value in argument to contracts.Prop`); upstream's runtime throw has no Go counterpart.",
@@ -2265,14 +2258,14 @@
     },
     {
       "path": "packages/chord/test/contracts/evolve.test.ts",
-      "upstreamTestHash": "sha256:0157519b735afb2a3bb9472986578e79c0b88bd1cf6401d5a49eb0c480883dc9",
+      "upstreamTestHash": "sha256:4f9bbe3d1be3db19e5a2ebdbb2889796abcc8fc6e970ddeafc7b5f3ac1f8e8a9",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; its package is imported by non-chord production code (chord/next/contracts), so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (derived_runtime_test.go, evolve_test.go) runs in package chord/next/contracts through exported production functions such as Prop, NewMethod, TakesNoArgs, CheckAccepts; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/contracts/fingerprint.test.ts",
-      "upstreamTestHash": "sha256:ba9581e830968ec447bb7143627165ca596f6937e3941b822e5ba21425d6f1ed",
+      "upstreamTestHash": "sha256:f444c6bb1f4dbdf4ae29c363d8131f0cab122bca827f73aff0244907f19e21d2",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; its package is imported by non-chord production code (chord/next/contracts), so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (fingerprint_test.go) runs in package chord/next/contracts through exported production functions such as Prop, Hash64, Union, NewMethod; no export_test seam or test-only stand-in replaces the code under test."
@@ -2300,7 +2293,7 @@
     },
     {
       "path": "packages/chord/test/contracts/schema.test.ts",
-      "upstreamTestHash": "sha256:73bb6fd4ffc79261823d042c75a4f5abfc03861b73455ef1ff9b2cfee5efec29",
+      "upstreamTestHash": "sha256:0f4f9d54be0ca6943b116d7fe9a92ddd2fd3a2d787ef0fad64b14dea8e0abac7",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; its package is imported by non-chord production code (chord/next/contracts), so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (schema_test.go) runs in package chord/next/contracts through exported production functions such as NewMethod, Bytes, Prop, Keyed; no export_test seam or test-only stand-in replaces the code under test."
@@ -2345,7 +2338,7 @@
     },
     {
       "path": "packages/chord/test/data/principal.test.ts",
-      "upstreamTestHash": "sha256:6bd737329d34b7a713827133bd787f242ec673fed2d913b9d9a574d4d406f40d",
+      "upstreamTestHash": "sha256:541b24f376e5104f686c19dceb77eea70f5b8a47753f10fafde8a6b1d243c3f4",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (principal_test.go) runs in package chord/next/data through exported production functions such as PrincipalKey, CanonicalJson, NewPrincipalKeyFunction, SamePrincipal; no export_test seam or test-only stand-in replaces the code under test."
@@ -2545,7 +2538,7 @@
     },
     {
       "path": "packages/chord/test/host/adapted.test.ts",
-      "upstreamTestHash": "sha256:7ad0408d1f6c667669727a5a278a88ec15c4d737689ef7aaad04521bcdf37e37",
+      "upstreamTestHash": "sha256:67da196135971bec1af8dbef5f156081b07c8007e2cbb7649c5e12d2b7dd6b75",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_adapted_test.go) runs in package chord/next/host through exported production functions such as DefineFacet, ExposeKeyed, Expose; no export_test seam or test-only stand-in replaces the code under test."
@@ -2580,7 +2573,7 @@
     },
     {
       "path": "packages/chord/test/host/dependencies.test.ts",
-      "upstreamTestHash": "sha256:4ff56ce57e1f1f92f10007efa137b2914ce88cad55b71204d1e760e31968e35b",
+      "upstreamTestHash": "sha256:0ec16609b4d3216542db60b1a13e3062cc95c95a0e8bcf76e828a6e14a5b717b",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_dependencies_test.go) runs in package chord/next/host through exported production functions such as DefineFacet, Expose; no export_test seam or test-only stand-in replaces the code under test."
@@ -2604,21 +2597,21 @@
     },
     {
       "path": "packages/chord/test/host/host-data.test.ts",
-      "upstreamTestHash": "sha256:8bdfa586e1f1dc3fcf5b526dc19810f92d631aeda29b682e86b53425d463f92a",
+      "upstreamTestHash": "sha256:3cd2fe417d335382419242b827da5774b58134d4be8ef270aed566b4d50077f7",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
       "path": "packages/chord/test/host/host.test.ts",
-      "upstreamTestHash": "sha256:5a3ef416cd4d5d6822984e03e9f473a112e71ee5584a4ae5bdae321bde4fe497",
+      "upstreamTestHash": "sha256:ae3aca32f547d9d3c546578c10ab25658bc8269cb45e999d0e8b5695c93b35f0",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_host_test.go, host_spans_test.go, plugins_node_hostoptions_test.go) runs in package chord/next/host, chord/nextnode/plugins through exported production functions such as DefineFacet, NewPluginRuntime, Expose, CreateHost; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/host/members.test.ts",
-      "upstreamTestHash": "sha256:402275f4746bf2d1ca6d5e3093f876616920b39f3fe140961c0ce8b277a4109f",
+      "upstreamTestHash": "sha256:559493b85e49caa9001564f8ff67b4e396979486ed54def6e0f80639925a96fa",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
@@ -2632,7 +2625,7 @@
     },
     {
       "path": "packages/chord/test/host/object.test.ts",
-      "upstreamTestHash": "sha256:54aa7584f8748ed1704d041635cfabcce685b8824de1e91b242ef2a6cc68dd67",
+      "upstreamTestHash": "sha256:dc6673b9ba2db5f2ea355412e69a4fdd83ed54ca8a5d38931969d9f89e45b321",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_object_reload_test.go, host_object_test.go, host_old_work_test.go) runs in package chord/next/host through exported production functions such as DefineFacet, Expose, DefineJob, Awaiting; no export_test seam or test-only stand-in replaces the code under test."
@@ -2681,14 +2674,14 @@
     },
     {
       "path": "packages/chord/test/host/reference-source.test.ts",
-      "upstreamTestHash": "sha256:79b50f2e28198a3f3920a2336524c984e7645eb10eeb002ebf2ac1d57a704336",
+      "upstreamTestHash": "sha256:42a27b05753130e80f9e4420e97cd44845731e32016c0cba35efa31965b3f129",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
       "path": "packages/chord/test/host/reference.test.ts",
-      "upstreamTestHash": "sha256:97a8a2ff546a571ff778293577f1a42e63a6aa88352704853acaac5b3fce78e5",
+      "upstreamTestHash": "sha256:8e36b7b80a7f36514bab53a00b985882b60a94018334b8b4434a483479c62e48",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_reference_test.go) runs in package chord/next/host through exported production functions such as Expose, DefineFacet, UntilAborted; no export_test seam or test-only stand-in replaces the code under test."
@@ -2723,7 +2716,7 @@
     },
     {
       "path": "packages/chord/test/host/route.test.ts",
-      "upstreamTestHash": "sha256:e97e7a65d309971cb353a82f0d818fb3e062e10c309c23422816737f19b3ba93",
+      "upstreamTestHash": "sha256:3fbbbad76daf095c4dcc1fef7d27a85330ff31587f96b8c808fd9e0c91c39ed1",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_route_test.go) runs in package chord/next/host through exported production functions such as DefineFacet; no export_test seam or test-only stand-in replaces the code under test."
@@ -2744,7 +2737,7 @@
     },
     {
       "path": "packages/chord/test/host/staging.test.ts",
-      "upstreamTestHash": "sha256:0da374000229e4ab06e931d5683a4436a74de73565f7a3926efe022ae0fe9dbd",
+      "upstreamTestHash": "sha256:f72913a369ca62f92be00a529230faa1ac946c636615ee99d50d5dafc5ea28cf",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_staging_test.go, plugins_node_bridged_test.go) runs in package chord/next/host, chord/nextnode/plugins through exported production functions such as DefineFacet, NewPluginRuntime, DefineJob, Expose; no export_test seam or test-only stand-in replaces the code under test."
@@ -2816,7 +2809,7 @@
     },
     {
       "path": "packages/chord/test/link/channel.test.ts",
-      "upstreamTestHash": "sha256:0a5b3d552e3874df97ffc525ecf9d4d2e6952a521741b6500ba37d9c0e58d656",
+      "upstreamTestHash": "sha256:2fb30a060b185cb186fdd82627e40f56473c74dd98d2609757c76f971a78490e",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_channel_test.go, channel_test.go) runs in package chord/next/host, chord/next/link through exported production functions such as NewChannel, MemoryLinkPair, Sleep, NewHandling; no export_test seam or test-only stand-in replaces the code under test."
@@ -2844,7 +2837,7 @@
     },
     {
       "path": "packages/chord/test/link/message.test.ts",
-      "upstreamTestHash": "sha256:ea2ee944fae53fb74db283000f5b6257875b8fcd33e4535b69ec0ad0f023e148",
+      "upstreamTestHash": "sha256:85d84b67d477aed4a8a31e186708b8340d4e311b3a8b2de641eac216d14be619",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (message_test.go, message_trace_test.go) runs in package chord/next/link through exported production functions such as CheckMessage, JsonPart, NewDeflatedPart, DescribeMessage; no export_test seam or test-only stand-in replaces the code under test."
@@ -2892,15 +2885,8 @@
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (blobs_test.go) runs in package chord/nextnode/app through exported production functions such as NewBlobs; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
-      "path": "packages/chord/test/node/app/ephemeral-sessions.test.ts",
-      "upstreamTestHash": "sha256:fab1945f8e105433609797ebe1e35d35ba97a4ff6b0ca5e4f112fed332fe9fea",
-      "area": "extensions",
-      "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (ephemeral_sessions_test.go) runs in package chord/nextnode/app through exported production functions such as NewEphemeralSessions; no export_test seam or test-only stand-in replaces the code under test."
-    },
-    {
       "path": "packages/chord/test/node/app/ephemeral.test.ts",
-      "upstreamTestHash": "sha256:ec253d3829821e05710a789b9f34c2ac6a43a7111f5ba81a44cdb88ad3a71e35",
+      "upstreamTestHash": "sha256:83f382cc04cd8d81cdd0f546ea4f8441dc5b9258d73640b3c9b99513d3a4313c",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (ephemeral_upstream_test.go) runs in package chord/nextnode/app through exported production functions such as StartServer, EphemeralLoginFacet; no export_test seam or test-only stand-in replaces the code under test."
@@ -2956,14 +2942,14 @@
     },
     {
       "path": "packages/chord/test/node/app/owner.test.ts",
-      "upstreamTestHash": "sha256:9d486441db82ea400bf24dfc845197d27f1d1e9d4be8a3289daa2a824ec6fb36",
+      "upstreamTestHash": "sha256:79388254e828849a675f1bcc7bca4042937bee8e0a18f6381456466a25b2c6e2",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (owner_upstream_test.go) runs in package chord/nextnode/app through exported production functions such as OwnerFacet, OwnerTokenFile; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/node/app/pairing.test.ts",
-      "upstreamTestHash": "sha256:b80b2cf65d8b194475143fcede004c85192b64475b00c08a8d75ac05fdfb554b",
+      "upstreamTestHash": "sha256:40578180cd843d57a51c3c53c1718f501b469272b22d1c02826f38125dabffae",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (pairing_upstream_test.go) runs in package chord/nextnode/app through exported production functions such as NewPairings, PairingFacet; no export_test seam or test-only stand-in replaces the code under test."
@@ -2974,13 +2960,6 @@
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (secrets_test.go, secrets_umask_unix_test.go) runs in package chord/nextnode/app through exported production functions such as WriteSecret, MatchesHash, ReadSecret, NewToken; no export_test seam or test-only stand-in replaces the code under test."
-    },
-    {
-      "path": "packages/chord/test/node/app/sessions.test.ts",
-      "upstreamTestHash": "sha256:80ef31c8fdfc51eed65bf752cb66e2e3839dfa8846cac85d4c345d5e4487c77f",
-      "area": "extensions",
-      "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (sessions_upstream_test.go) runs in package chord/nextnode/app through exported production functions such as HashToken; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/node/app/tar.test.ts",
@@ -3089,7 +3068,7 @@
     },
     {
       "path": "packages/chord/test/node/http/upgrades.test.ts",
-      "upstreamTestHash": "sha256:d1f3e8418288b32b48125780e8ae716dd49214093ecde7e7e2ab92d175d85fe8",
+      "upstreamTestHash": "sha256:20164c01a00aef528417c3269c6a86e9fabd713132fff6338b4bb1d3a1028efe",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (upgrades_test.go) runs in package chord/nextnode/http through exported production functions such as HeaderGet; no export_test seam or test-only stand-in replaces the code under test."
@@ -3124,14 +3103,14 @@
     },
     {
       "path": "packages/chord/test/node/plugins/install.test.ts",
-      "upstreamTestHash": "sha256:ae9f02459719ce69b1f910b53a22187379796cca8304a21ffbc80ae7bb123472",
+      "upstreamTestHash": "sha256:19f3c9937185275f3f7430842fa9445187ffb9c2bb7c24718e1bad2b27a5bea4",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (plugins_install_test.go) runs in package chord/nextnode/plugins through exported production functions such as InstallPlugin, InstallDependencies, DiscoverPlugins, BuildFacet; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/node/plugins/plugins.test.ts",
-      "upstreamTestHash": "sha256:b00546e1faa4fd0d109e111bff74edb7276c158a5d7c318d5e5cb1902d71693a",
+      "upstreamTestHash": "sha256:e4e759686a997a8a70f386020e908b022e0fca6ee868b9b1418a63b5e1edd131",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (plugins_endtoend_test.go, plugins_examples_test.go, plugins_node_bridged_test.go, plugins_node_test.go, plugins_plugins_test.go, plugins_runtime_test.go) runs in package chord/nextnode/plugins through exported production functions such as NewPluginRuntime, InstallDependencies, CreatePlugins, InstallPlugin; no export_test seam or test-only stand-in replaces the code under test."
@@ -3166,7 +3145,7 @@
     },
     {
       "path": "packages/chord/test/node/react/hooks.test.ts",
-      "upstreamTestHash": "sha256:8becb1af90184457de3a89fb1711ea0ba1f313e19d629c1a8c5a2116323697ce",
+      "upstreamTestHash": "sha256:9c418811bf562e47b4b5de13709ce4b5c6d09368873dd2c6ea913309bfcb1161",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (app_web_browser_test.go) runs in package chord/nextnode/app through exported production functions such as of the package (methods of its exported types); no export_test seam or test-only stand-in replaces the code under test."
@@ -3236,14 +3215,14 @@
     },
     {
       "path": "packages/chord/test/node/surfaces/bundle.test.ts",
-      "upstreamTestHash": "sha256:320d3595a23da8e5c2b3a42a5a6e5ba725afa56ba504b7b83b776096d9c0c7ef",
+      "upstreamTestHash": "sha256:98c04da50186c30f7af11257a4b120f984046088c32e4f6108d6375ac2e2d807",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (surfaces_bundle_test.go) runs in package chord/nextnode/surfaces through exported production functions such as BuildBase, ProcessConditions; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/node/surfaces/surface-build.test.ts",
-      "upstreamTestHash": "sha256:9f4ea7be0779c23f752917cdca187ac3e1d14e0b11615a1d2fb672e17aa8a57b",
+      "upstreamTestHash": "sha256:0e20743b6e1023fcae43a9ed98f77939a4f77b92d18d047c21196e923990704c",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 1.5.1, 284e63d9c) has no PiG product consumer outside chord/next beyond durable's imports; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordSurfaceBuild151, Pi 1.5.1): the Go evidence (surfaces_build_test.go, surfaces_build_linux_test.go) runs in package chord/nextnode/surfaces on the production surfaceBuild: newSurfaceBuild is the constructor NewWebSurface and NewTuiSurface call, and build, built, file, parts and step are the methods their routes, the app's bases and the rollout call. The tests load a real host with ScriptsFacet and a real plugins component and build real files with esbuild; no stand-in replaces the code under test. The tests are internal (the unexported surfaceBuild) because Pi's SurfaceBuild is not exported either."
@@ -3257,7 +3236,7 @@
     },
     {
       "path": "packages/chord/test/node/surfaces/web.test.ts",
-      "upstreamTestHash": "sha256:ea587206867b0ecb99a576b6c08ce4ea4c3e19572f639321a7f3ccaaa6cbc5eb",
+      "upstreamTestHash": "sha256:049d1df54e1889d87d07b408258a689b3af39dece74dc148e5a232f1f4ca61f8",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (app_surfaces_test.go) runs in package chord/nextnode/app through exported production functions such as of the package (methods of its exported types); no export_test seam or test-only stand-in replaces the code under test."
@@ -3285,7 +3264,7 @@
     },
     {
       "path": "packages/chord/test/node/tui/launcher.test.ts",
-      "upstreamTestHash": "sha256:d12ab9479e4422ccf72ad917eceead4740c351bc1b6c385c8fb0892fb86d3c87",
+      "upstreamTestHash": "sha256:c6df0cc4d01aecca1491f91dad32e75fb3ea18a91ccc0480644ac9063d5732a4",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (tui_kit_upstream_test.go) runs in package chord/nextnode/tui through exported production functions such as Attach; no export_test seam or test-only stand-in replaces the code under test."
@@ -3313,7 +3292,7 @@
     },
     {
       "path": "packages/chord/test/node/web/page.test.ts",
-      "upstreamTestHash": "sha256:bf7d5a585b21af094470ffd57cb986b866607feea95329446bc3729d60e0b6a7",
+      "upstreamTestHash": "sha256:e7fa69246fdc0abcfa8cfeefc8cc27c5b5f0e18b05f35ac74405717fe896e885",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (app_web_browser_test.go) runs in package chord/nextnode/app through exported production functions such as of the package (methods of its exported types); no export_test seam or test-only stand-in replaces the code under test."
@@ -3327,7 +3306,7 @@
     },
     {
       "path": "packages/chord/test/node/workers/base.test.ts",
-      "upstreamTestHash": "sha256:4584527c75bd829adf33ed0b9c5cc59adabc43351e439b23a24ec0d71ca32682",
+      "upstreamTestHash": "sha256:37cda442c98e30308ba77a102360d313ed4df604052402f846a63d2e4c8b0d76",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Owner hold (2026-11-08): this file is not designed out; every case is ported in PiG form (plugins_workerbase_test.go, surfaces_bundle_test.go, plugins_build_test.go, workers_workers_test.go), each stating what it protects."
@@ -3348,7 +3327,7 @@
     },
     {
       "path": "packages/chord/test/node/workers/lock.test.ts",
-      "upstreamTestHash": "sha256:d867c8df557729d75b865949bae00ac9648da05364fe7d7eddbcf7f50dd946eb",
+      "upstreamTestHash": "sha256:32a6667edf26a8f28f9a307caaa65552176a0fac6f47acc10058fd5d89b7dadf",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (workers_lock_test.go) runs in package chord/nextnode/workers through exported production functions such as ProcessLock; no export_test seam or test-only stand-in replaces the code under test."
@@ -3362,14 +3341,14 @@
     },
     {
       "path": "packages/chord/test/node/workers/process.test.ts",
-      "upstreamTestHash": "sha256:3d2965a061584446c91dd22387b730f28f5d78879874dffa793f742802a49279",
+      "upstreamTestHash": "sha256:ff17c64e0f614a8f1e148175dc61ee608445c4e139f61f29c8b1ecb1986cf9eb",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..b556cfe5) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
       "path": "packages/chord/test/node/workers/workers.test.ts",
-      "upstreamTestHash": "sha256:90df78d9356a176c8ced59c9816e1d34b26549227e5926cb5d8acd2dc6a383e9",
+      "upstreamTestHash": "sha256:3e7efffd36db613157468533302e70a982a7113166e05667da1762636e67cef8",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (workers_rollout_blocked_unix_test.go, workers_rollout_test.go, workers_workers_test.go) runs in package chord/nextnode/workers through exported production functions such as of the package (methods of its exported types); no export_test seam or test-only stand-in replaces the code under test."
@@ -3422,63 +3401,63 @@
     },
     {
       "path": "packages/chord/test/remote/calls.test.ts",
-      "upstreamTestHash": "sha256:76761bad6a17f31315542cc0a91072a6245866ea7c1db9c9999f62675a67ce5d",
+      "upstreamTestHash": "sha256:453654106c882c05cdca7cad0db127f5e830fe17eddf93e4dd7c3e67bacae522",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
       "path": "packages/chord/test/remote/consumer.test.ts",
-      "upstreamTestHash": "sha256:0d0a5542d166f9979bfbfcb0b791048858b9055a9336fd2597527b21a224ec3e",
+      "upstreamTestHash": "sha256:d34bed5734b324630430492575b5d90976fe022be9687d6daa73ceddb9de5201",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (remote_consumer_test.go) runs in package chord/next/host through exported production functions such as DefineFacet, Sleep; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/remote/hold.test.ts",
-      "upstreamTestHash": "sha256:a095726e41fa26f03d6f0067400df0af5635ca90cf0bdb6f68c657a87cd9d160",
+      "upstreamTestHash": "sha256:5b87192d49c1a5896fdd6c6fea863e8e0ac79da5c8a372c388d79c5777226731",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (remote_hold_kept_test.go, remote_hold_reload_test.go, remote_hold_test.go) runs in package chord/next/host through exported production functions such as DefineFacet, Expose, Sleep, DefineJob; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/remote/host-link.test.ts",
-      "upstreamTestHash": "sha256:17413b4d8362afbd7c44e039828062f336815b8ab96c521a5069bef548d4fe6d",
+      "upstreamTestHash": "sha256:78daa83ed3a0c0a17e34427a7d875c355bc517947435961702c2e9e3fdaec543",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
       "path": "packages/chord/test/remote/path.test.ts",
-      "upstreamTestHash": "sha256:eb561879506fa4afc5c7208f399c7f21b1ae3257cfb23c6c49493cd3be6164ad",
+      "upstreamTestHash": "sha256:c6a7d1815607c0bd385c6782de342d047edcbdb8a0cad9c37ce353962d4ff42b",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
       "path": "packages/chord/test/remote/provider.test.ts",
-      "upstreamTestHash": "sha256:1a6c594059ef8fba2092041bc3a67bf6ce047d35140d7607248a62ee7eb07143",
+      "upstreamTestHash": "sha256:26b358073d13341a799f6e913c63f5e24f94ff6648a36a3c77a117092185ac01",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (remote_provider_test.go) runs in package chord/next/host through exported production functions such as DefineFacet, Expose; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/remote/relay.test.ts",
-      "upstreamTestHash": "sha256:4703e080e11777bbb5bd03b770807a9bda8ba76592b4d05cb1ed39ff8623e91f",
+      "upstreamTestHash": "sha256:7b6abc3c80cd1bc3c313a9e71abd48ccdd9354f7a880fdfa5e9567d7ba617a4f",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (remote_relay_test.go) runs in package chord/next/host through exported production functions such as DefineFacet, Sleep; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/remote/remote-object.test.ts",
-      "upstreamTestHash": "sha256:4fa596ec91d2fcfaf5ae40e78233dba2fabeec9516e2957ea83a635ac5e6d8df",
+      "upstreamTestHash": "sha256:f537faed0f9f60ed2b21b5a8b3fe50e148d2d392ec111cdd8afb04eaa5466c62",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (remote_remote_object_test.go) runs in package chord/next/host through exported production functions such as DefineFacet, Expose; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/remote/replica.test.ts",
-      "upstreamTestHash": "sha256:cd1b49616bc07bad285ba1d2bb0249dd585125e7a41b2011c88d400ea92c9ca4",
+      "upstreamTestHash": "sha256:9c1fbda7251b541a0a127aa2a69991f75d05ca6a4ce754835ec78d69c0d5059f",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
@@ -3562,7 +3541,7 @@
     },
     {
       "path": "packages/chord/test/state/derive.test.ts",
-      "upstreamTestHash": "sha256:310a73a70cf3f632d7188805bf901b00a4fb1b5053f88e159a16f41d145fd659",
+      "upstreamTestHash": "sha256:0bf870b2f679169ec295fe2c1bb68cdd3b641c9b13a21c5984b83712f6075d7f",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
@@ -3712,7 +3691,7 @@
     },
     {
       "path": "packages/chord/test/store/live-query.test.ts",
-      "upstreamTestHash": "sha256:c8f5fe3c9eb996a99d97890a61443f2699e2b8783ba197a829b7e63298ebd308",
+      "upstreamTestHash": "sha256:795bbf31bf0cddd849a1e4c576b6e22d45e36c529e630d40e93d5694112e8892",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; its package is imported by non-chord production code (chord/next/store), so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_live_query_test.go, live_query_test.go) runs in package chord/next/host, chord/next/store through exported production functions such as DefineFacet, NewQueryRefresh; no export_test seam or test-only stand-in replaces the code under test."
@@ -3754,7 +3733,7 @@
     },
     {
       "path": "packages/chord/test/store/store.test.ts",
-      "upstreamTestHash": "sha256:45469109892a61c040ac30d7df4268f241b90e97b79e0b24784cd4e04af5fffc",
+      "upstreamTestHash": "sha256:4a81fac8d5d290ee7be4cca7202dd02091f798a8efe360e909ad6599afe27aef",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; its package is imported by non-chord production code (chord/next/store), so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (group_commit_test.go, store_test.go) runs in package chord/next/store through exported production functions such as Read, CreateDocument, ChangeDocument, SqliteBackend; no export_test seam or test-only stand-in replaces the code under test."
@@ -3831,14 +3810,14 @@
     },
     {
       "path": "packages/chord/test/surfaces/client.test.ts",
-      "upstreamTestHash": "sha256:227e4ce02a1dbcd614060684dff02eff2be8da27a6a641879fab174278af1edc",
+      "upstreamTestHash": "sha256:a4dd6f169d49f402f7d93172875fc8b9eadf3003a2a6a1356b52953a31125dab",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (surfaces_client_test.go) runs in package chord/next/surfaces through exported production functions such as StartClient; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/surfaces/connection.test.ts",
-      "upstreamTestHash": "sha256:b30dd3c9989390028c4ef27fb7365b5ee437f6155df14337b1986667b7a85274",
+      "upstreamTestHash": "sha256:3bd833ef25180fb16357bf1aa693ff15bc84626e54821f83b6a33dfb7d0bc24f",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (surfaces_connection_test.go) runs in package chord/next/surfaces through exported production functions such as KeepConnected; no export_test seam or test-only stand-in replaces the code under test."
@@ -3915,14 +3894,14 @@
     },
     {
       "path": "packages/chord/test/sync/sync.test.ts",
-      "upstreamTestHash": "sha256:205560922cb58d3488db139a10ac5e85835daed045d005ed8977200b924c048b",
+      "upstreamTestHash": "sha256:b0ef56a0b3e58eae20ba386aa7a17c10b7889d29844f78849b72249b4ecc8dc7",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (sync_test.go) runs in package chord/sync through exported production functions such as PullSession, UploadSession, NewFlushScheduler, RemoteHistoryOf; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/telemetry-ingest/facet.test.ts",
-      "upstreamTestHash": "sha256:52be8bdf165741a144b10be8cef383b2c730f019169f1d3eac11d4998540f34a",
+      "upstreamTestHash": "sha256:d39215677621a13b3d5b6599515e512e56baea4bc8262dbcd80b37191c2d4be4",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (ingest_upstream_test.go) runs in package chord/next/telemetryingest through exported production functions such as SendPageTelemetry, IngestFacet, NewRecorder, SendWorkerTelemetry; no export_test seam or test-only stand-in replaces the code under test."
@@ -3936,7 +3915,7 @@
     },
     {
       "path": "packages/chord/test/telemetry-ingest/sender.test.ts",
-      "upstreamTestHash": "sha256:e6d0c1c57d9e7515d7cd4558f02075091c504ea14cee0240694152a23aed11ab",
+      "upstreamTestHash": "sha256:e17dbb9742f428c36d0b866d4a49b21076e0048a6f089a5a4e5524502f23bd31",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (ingest_upstream_test.go) runs in package chord/next/telemetryingest through exported production functions such as SendPageTelemetry, IngestFacet, NewRecorder, SendWorkerTelemetry; no export_test seam or test-only stand-in replaces the code under test."
@@ -3968,7 +3947,7 @@
     },
     {
       "path": "packages/chord/test/telemetry.test.ts",
-      "upstreamTestHash": "sha256:e2411807ef5c1a744489182c765f92fbb54395eaa52bfc6e9d8964fe781b60df",
+      "upstreamTestHash": "sha256:4d6bc3a22fe2a8fa8545dacb196d97c5e953d3defc1173898bc421e9e84fec32",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_telemetry_test.go, telemetry_upstream_test.go) runs in package chord/next/host, chord/next/telemetry through exported production functions such as Metrics, NewOpenSpan, ParentOf, Untraced; no export_test seam or test-only stand-in replaces the code under test."
@@ -3982,7 +3961,7 @@
     },
     {
       "path": "packages/chord/test/tui/scope.test.ts",
-      "upstreamTestHash": "sha256:c2e06b4a37798ddbc10313923edd0069be510089a17191bdf6858c74617e9cdc",
+      "upstreamTestHash": "sha256:bfcb249a675446605bca3d51d9b76eb5fea31a2eb9f30815c2aa05a7fb379720",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (tui_scope_test.go) runs in package chord/next/tui through exported production functions such as PageState, Registry, OptimisticLast, WatchMember; no export_test seam or test-only stand-in replaces the code under test."
@@ -4127,7 +4106,7 @@
     },
     {
       "path": "packages/coding-agent/test/agent-session-runtime-events.test.ts",
-      "upstreamTestHash": "sha256:96f8d2678b03949a60ffc5ac82f9d992b0cda3832c2c9c1073d8ae28e3a8817b",
+      "upstreamTestHash": "sha256:23c558ac4f253eefcb9fc7373c93db84b89756bc29858dd66a393d718e4fa9ff",
       "area": "sessions",
       "tags": [
         "hot-path"
@@ -4172,7 +4151,7 @@
     },
     {
       "path": "packages/coding-agent/test/assistant-message.test.ts",
-      "upstreamTestHash": "sha256:fe7c16aff97cdc92b3aa75e3bb2c3b3d1b2a8bc026f2faee46d9d85e0041d780",
+      "upstreamTestHash": "sha256:da69e854f8d7a83ea1a8ee96ce4f9689d5ccbea9784bd79ba4baeb1f5d91573a",
       "area": "tui",
       "tags": [
         "hot-path"
@@ -4226,7 +4205,7 @@
     },
     {
       "path": "packages/coding-agent/test/auth-url-copy.test.ts",
-      "upstreamTestHash": "sha256:4c12cfd1304ac65cebcee28c25ca1a4fe8fde89f775c0340aa9d8a8535b78613",
+      "upstreamTestHash": "sha256:af615a4a3c6048f684bc82d2a498ec45726fe0ecc8dc579a7a18d57a123457ba",
       "area": "tui",
       "tags": [
         "hot-path"
@@ -4325,7 +4304,7 @@
     },
     {
       "path": "packages/coding-agent/test/changelog.test.ts",
-      "upstreamTestHash": "sha256:81c4c210ca10c0204d64a3deb6b3c8953a69a224da9aa517cefb7bf8d74ee255",
+      "upstreamTestHash": "sha256:47cf4e21fa4461891ef92e6c912c95907224f602c5989b5a9b84e3203239c799",
       "area": "cli",
       "tags": [
         "hot-path"
@@ -4494,7 +4473,7 @@
     },
     {
       "path": "packages/coding-agent/test/config-schemas.test.ts",
-      "upstreamTestHash": "sha256:9d8e48372b1f898bf66472387e9d803a2c6758b0227555628552efc627713820",
+      "upstreamTestHash": "sha256:f331ed134b641ddaf2e4a00f0f153de652c250a082574db3c63b170b308be2a0",
       "area": "cli",
       "tags": [
         "hot-path"
@@ -4654,7 +4633,7 @@
     },
     {
       "path": "packages/coding-agent/test/exec.test.ts",
-      "upstreamTestHash": "sha256:30aac8adea984e3b1541f59442d836cc3f6661ff58a84949dd7fb9a6f01ae365",
+      "upstreamTestHash": "sha256:81b280ba8de112d865d18319119083bb95aac3c50bf06337ac6693b38dd4c3e6",
       "area": "tools",
       "tags": [
         "hot-path"
@@ -4717,7 +4696,7 @@
     },
     {
       "path": "packages/coding-agent/test/export-html-whitespace.test.ts",
-      "upstreamTestHash": "sha256:b6563a8cdfdcd1f8219dd6ec08ac5c8e307c80ea1f6c5f68adf074112b17d518",
+      "upstreamTestHash": "sha256:5fad69a38714c299a9c561d370d848e5d465df3419b789a446de497679f1a305",
       "area": "cli",
       "tags": [
         "hot-path"
@@ -4976,7 +4955,7 @@
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-assistant-diagnostics.test.ts",
-      "upstreamTestHash": "sha256:a7903ba4e536f809ed4bc7fa30a11d52841cf64dc1d4ec0a3a7c137b18128b94",
+      "upstreamTestHash": "sha256:992c26b66c516478f87788b2e47ce3dc96711ff85c1364da607e44a4366c2c20",
       "area": "tui",
       "tags": [
         "hot-path"
@@ -5138,7 +5117,7 @@
     },
     {
       "path": "packages/coding-agent/test/llama-extension.test.ts",
-      "upstreamTestHash": "sha256:147bf8054795d16e4df53c55adb29c7bec0e095b81c7c205d6f41908469f1b1e",
+      "upstreamTestHash": "sha256:6e1763e18290a10cb8f592633e2917778d9fde12f2969e99ad060045b7f20f18",
       "area": "extensions",
       "tags": [
         "hot-path"
@@ -5264,7 +5243,7 @@
     },
     {
       "path": "packages/coding-agent/test/model-resolver.test.ts",
-      "upstreamTestHash": "sha256:78438893a684b898d42a35b0f50124baccd0dac5666c8aab240b66f71ff4d685",
+      "upstreamTestHash": "sha256:ab0442330126e76e128fcdeec7e02ad5d3ddd7fe16e62c251e2054da1b8f8ec0",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -5336,7 +5315,7 @@
     },
     {
       "path": "packages/coding-agent/test/model-selector.test.ts",
-      "upstreamTestHash": "sha256:112df6e3e0dd7f5190cddde0bf002d430aca928de8c475a37cf9a484893a9872",
+      "upstreamTestHash": "sha256:4750c1cfdaf89a8b614269813ad8faf3339b012255003814c5aa7b72aad8a8c5",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -5363,7 +5342,7 @@
     },
     {
       "path": "packages/coding-agent/test/oauth-selector.test.ts",
-      "upstreamTestHash": "sha256:601f760ecab96aa2a6aeda80da60a6607610232ae2881683a302ad61e8808f3a",
+      "upstreamTestHash": "sha256:30be89cefc8c9e3efeac17f91ed76a33310d6240bfcba4b03c6ccf0493762e55",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -5381,7 +5360,7 @@
     },
     {
       "path": "packages/coding-agent/test/package-command-paths.test.ts",
-      "upstreamTestHash": "sha256:0e013778ab051b8e1d4d0db5a1edd56eb24be40b70ff3c925b968c02774e2834",
+      "upstreamTestHash": "sha256:1ac24d33a88f5b07124972039c7e83110e04021b896daa67cfe2973bce6c0bd8",
       "area": "utilities",
       "tags": [],
       "rationale": "Supporting pure path/configuration formatting or build-time catalog checks; not a per-turn mechanism."
@@ -5406,7 +5385,7 @@
     },
     {
       "path": "packages/coding-agent/test/package-manager.test.ts",
-      "upstreamTestHash": "sha256:004bb0febd7357adc3ccae45cf112e0b9984dd8258b348169c8eee4632f73b3b",
+      "upstreamTestHash": "sha256:65c67695538648a6008dcc7872b50bae4eedc4ee3eccea406de12e5ccf1bbb08",
       "area": "cli",
       "tags": [
         "hot-path"
@@ -5542,7 +5521,7 @@
     },
     {
       "path": "packages/coding-agent/test/read-streaming.test.ts",
-      "upstreamTestHash": "sha256:0cfc40a0f2899ce8193af328bdfbe0992ac135d39dc6b43438c8400667ffb7a5",
+      "upstreamTestHash": "sha256:cd54cf1599f45e767fb60f62cd196b08abda5fa43275662cf36f07336773eb33",
       "area": "tools",
       "tags": [
         "hot-path"
@@ -5664,7 +5643,7 @@
     },
     {
       "path": "packages/coding-agent/test/scoped-models-selector.test.ts",
-      "upstreamTestHash": "sha256:2c8cfd507d9f0ba54f273d659e02d91373ed9a76cf48426fdccdf85b3e33d497",
+      "upstreamTestHash": "sha256:8cee383c80f5233f7fe09738f7a8a99095695e55da3cefc2756e8234c54efd3f",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -5781,7 +5760,7 @@
     },
     {
       "path": "packages/coding-agent/test/session-manager/file-operations.test.ts",
-      "upstreamTestHash": "sha256:3d8cb64b64311818394a4b7f6cd87f4e19b4dfde0c9b0899e965a0ba35a3f94e",
+      "upstreamTestHash": "sha256:4a835fe325b8f1c8e1dacef9e162b22a36118ab841f94a113a2d052250f72719",
       "area": "sessions",
       "tags": [
         "hot-path"
@@ -5835,7 +5814,7 @@
     },
     {
       "path": "packages/coding-agent/test/session-selector-path-delete.test.ts",
-      "upstreamTestHash": "sha256:85351c5f1b8a76aea913059aae9f115e35bee5e8a2e31224ff3d13438e795810",
+      "upstreamTestHash": "sha256:abf76fa56532f56a1e9b46d8b8075f27cc06fc546e7f4cc8e637e3473152e5a9",
       "area": "sessions",
       "tags": [
         "hot-path"
@@ -5844,7 +5823,7 @@
     },
     {
       "path": "packages/coding-agent/test/session-selector-rename.test.ts",
-      "upstreamTestHash": "sha256:065648e89d3898fa6a5ebfac26fb606cea21b1aa54b8f189afc1d504943f6791",
+      "upstreamTestHash": "sha256:af451f1ffd1e91ff687d1f286e7582e42a29c1b5e8bfc42da797ee9916807ad4",
       "area": "sessions",
       "tags": [
         "hot-path"
@@ -6038,7 +6017,7 @@
     },
     {
       "path": "packages/coding-agent/test/suite/agent-session-mcp.test.ts",
-      "upstreamTestHash": "sha256:16737be52cd9ac132b39c9781d303d182ea4a318e6f309a4102478517ecc804c",
+      "upstreamTestHash": "sha256:403285f5d821d8923fcb726802de65e3cd5083aeeb6a8b4b57d46845d260299f",
       "area": "sessions",
       "tags": [
         "hot-path"
@@ -6335,7 +6314,7 @@
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/5080-signal-shutdown-extension-cleanup.test.ts",
-      "upstreamTestHash": "sha256:dc293909a32b9342204913947a39ef00108fc395a8601dcc35e453eb9d04f479",
+      "upstreamTestHash": "sha256:1211a07e0b3784febc8eac3d319fc08c81bfdd49fa2a00187fccd5a1d7fdd2dd",
       "area": "extensions",
       "tags": [
         "hot-path"
@@ -6695,7 +6674,7 @@
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/7829-invalid-settings-warning.test.ts",
-      "upstreamTestHash": "sha256:6460c0490bd1e17a00d96b3e6e2ef909944a0f5a2b8e3f24c127788fd2220118",
+      "upstreamTestHash": "sha256:b01d8904a082f5a18ef3529e7f65e1ec872b468b27e78f459a8d0b164371f379",
       "area": "cli",
       "tags": [
         "hot-path"
@@ -6965,7 +6944,7 @@
     },
     {
       "path": "packages/coding-agent/test/syntax-highlight.test.ts",
-      "upstreamTestHash": "sha256:52c3b6ce095cc1a6888af94734e6cd5048b9f5b40ba7fc90536e9d8c6ffcb158",
+      "upstreamTestHash": "sha256:739773343a0697aa352ef93b8a71d53ede063f9bcf1396d76411834f6fcf5a49",
       "area": "tui",
       "tags": [
         "hot-path"
@@ -7091,7 +7070,7 @@
     },
     {
       "path": "packages/coding-agent/test/tool-renderer-examples.test.ts",
-      "upstreamTestHash": "sha256:ce780a390395fda981a8744082fdbd89279379c31e7dbeb5bdee753e1b62be9f",
+      "upstreamTestHash": "sha256:32280ab0f2eca5835d8d76b42e1c18eb7e4e4b5a91d2a5aebf8c18a2a5401015",
       "area": "tui",
       "tags": [
         "hot-path"
@@ -7136,7 +7115,7 @@
     },
     {
       "path": "packages/coding-agent/test/tools.test.ts",
-      "upstreamTestHash": "sha256:1c25e117e5ccd1df1d572f1300995a9dc458ac4d5e454ed0511da32069f14457",
+      "upstreamTestHash": "sha256:65f338dfcbba0dbbc2d3dd218d3899a2f2c1851b7087db07d5dd18170b3341a6",
       "area": "tools",
       "tags": [
         "hot-path"
@@ -7206,7 +7185,7 @@
     },
     {
       "path": "packages/coding-agent/test/user-message.test.ts",
-      "upstreamTestHash": "sha256:41d082bde7b8e9da8ad11925dc65613751bc168f4c840251c967e2fa18d2e34f",
+      "upstreamTestHash": "sha256:879e54188c178f2294b13dbedea63fe67b9bb77db6ca5824400f7f1e398d367c",
       "area": "tui",
       "tags": [
         "hot-path"
@@ -7265,7 +7244,7 @@
     },
     {
       "path": "packages/durable/test/codemode-describe.test.ts",
-      "upstreamTestHash": "sha256:dbcd0ca6a05773f3af8e8cf83ef4f9303a25e9ff0a470c598d6c3843635afaea",
+      "upstreamTestHash": "sha256:9b16f48a954ba3b99ef7ea0867eacccde1fbf9ac05235f8f4ecae1baf88ca9d9",
       "area": "tools",
       "tags": [
         "hot-path"
@@ -7292,7 +7271,7 @@
     },
     {
       "path": "packages/durable/test/codemode.test.ts",
-      "upstreamTestHash": "sha256:e6266a8517742be4bbd53b18e72e11a00f1d2fa14132fd93c25714c3b3b9d38d",
+      "upstreamTestHash": "sha256:55453420e8773f75caa8f2167c1965e50553e8934c399d352e53555fe1e9662d",
       "area": "tools",
       "tags": [
         "hot-path"
@@ -7355,7 +7334,7 @@
     },
     {
       "path": "packages/durable/test/harness-after-run.test.ts",
-      "upstreamTestHash": "sha256:a5139218d51a01a5035b351fe8f9af768d618b11ba4c2dac821fb36d675eb590",
+      "upstreamTestHash": "sha256:4540fd57ec9013846d2f405aa12b8d339253a3298e953eeade046baf98fbd47b",
       "area": "cli",
       "tags": [
         "hot-path"
@@ -7499,7 +7478,7 @@
     },
     {
       "path": "packages/durable/test/harness-idle-scopes.test.ts",
-      "upstreamTestHash": "sha256:a35c49e3cde839151be10b09347248b9c6217db527a52e2f57e9079dc2a0b4ff",
+      "upstreamTestHash": "sha256:452113d29266ef929d1821c61b29f0c2e3c2aa55ed07a6cfd9f029f8c320b30e",
       "area": "sessions",
       "tags": [
         "hot-path"
@@ -7517,7 +7496,7 @@
     },
     {
       "path": "packages/durable/test/harness-input-entries.test.ts",
-      "upstreamTestHash": "sha256:aa2014cafb0206b43d88db21ce76f1aa0dbadca6d7ce757addc7fcb67e557b32",
+      "upstreamTestHash": "sha256:576cb9f8347b45287a468a55e6e45972d983edc09904e9e38c0e3e76952e29bf",
       "area": "sessions",
       "tags": [
         "hot-path"
@@ -7544,7 +7523,7 @@
     },
     {
       "path": "packages/durable/test/harness-lifecycle.test.ts",
-      "upstreamTestHash": "sha256:ed0a3bd2725a64ad77a004b2202c0f4565a8f92dbdc9e235bffa676c6e406283",
+      "upstreamTestHash": "sha256:1200987a0f39edfcdf5da4d2566aabd575de0267575a7dc4b4c7b36e8edcd9c8",
       "area": "cli",
       "tags": [
         "hot-path"
@@ -7571,7 +7550,7 @@
     },
     {
       "path": "packages/durable/test/harness-nested-tools.test.ts",
-      "upstreamTestHash": "sha256:d16b5719851e89d329cf2a46ecd82857b59e17ae5cf77448afc7951a0b558503",
+      "upstreamTestHash": "sha256:6f99bdf934f6fe865d60dcad419197ffa87a2004defedc542410a8bd968f690e",
       "area": "cli",
       "tags": [
         "hot-path"
@@ -7724,7 +7703,7 @@
     },
     {
       "path": "packages/durable/test/harness-submissions.test.ts",
-      "upstreamTestHash": "sha256:8096a5827e609e6e92b4c1c3202894afea55931c8bcd5daff178aa610e99ec75",
+      "upstreamTestHash": "sha256:21aa063f7733cea866476a515124a303711b0dbc9a20a0f118989f2573ae8c11",
       "area": "cli",
       "tags": [
         "hot-path"
@@ -7787,7 +7766,7 @@
     },
     {
       "path": "packages/durable/test/harness-tool-hooks.test.ts",
-      "upstreamTestHash": "sha256:2bfa027a92ffdff6b3740711db496d58d3285883340f1988d5e1cde1c79dfe59",
+      "upstreamTestHash": "sha256:a2fdc36eb7ffd4d27e00b3023d5ba8ffeb1b5ba376036b0470f1438eadc54ce4",
       "area": "cli",
       "tags": [
         "hot-path"
@@ -7805,7 +7784,7 @@
     },
     {
       "path": "packages/durable/test/harness-tools.test.ts",
-      "upstreamTestHash": "sha256:a52bf251b091be766000210bbda10bc42c8b7f9c2021f4063d01451e4490ae6f",
+      "upstreamTestHash": "sha256:8450007f7ea63b67073008b7fe11c15a20f3f780ad73f0bb93dacdd82d1d3b99",
       "area": "cli",
       "tags": [
         "hot-path"
@@ -8013,7 +7992,7 @@
     },
     {
       "path": "packages/durable/test/spec-usage.test.ts",
-      "upstreamTestHash": "sha256:b83baf391825d0e65207d7ad6c8078d77375f0fe0afd843f56a884343bb139d4",
+      "upstreamTestHash": "sha256:f74955f631f22896409b7dfc52abe4dce770fac9193119603f8b517677c3247d",
       "area": "cli",
       "tags": [
         "hot-path"
@@ -8121,7 +8100,7 @@
     },
     {
       "path": "packages/durable/test/tools-images.test.ts",
-      "upstreamTestHash": "sha256:5587d0f92d75de10cdfb3fe4b227f51c5238040c34318c20584499c4ad9d6a7c",
+      "upstreamTestHash": "sha256:ae800f074a9c959b8be69afb10950f6d6a1fc8f3d0aea254d040e186c21790aa",
       "area": "cli",
       "tags": [
         "hot-path"
@@ -8139,7 +8118,7 @@
     },
     {
       "path": "packages/durable/test/tools.test.ts",
-      "upstreamTestHash": "sha256:44265beb50c2e905ac87d635b17ad7c1e7569c4b25a18e7e3ba1f38afb93e4f7",
+      "upstreamTestHash": "sha256:8d664a5856ac3d9a3c34b0c4e8f973ae4d0d320c63aeadf89629f4b977242eb1",
       "area": "cli",
       "tags": [
         "hot-path"
@@ -8178,7 +8157,7 @@
     },
     {
       "path": "packages/env/test/process.test.ts",
-      "upstreamTestHash": "sha256:f07cb629df7676da6a7822e29f47a651fbe12d59681d46e730315b263daf8253",
+      "upstreamTestHash": "sha256:103a834ef158f050e14bbde15beaeee66d81f940ecea451ac31adf1c9e791c70",
       "area": "tools",
       "tags": [],
       "rationale": "Production-path review at Pi 9c9ce8547: the Go tests call env.OpenProcess on a Connection to the real daemon (this test binary in daemon mode, and Pi's daemon when the pin has the `process` operation); env.OpenProcess is the published pi-env entry point, and no PiG command calls it yet (the MCP pipe transport takes its RemoteProcess shape). Not tagged hot-path: no coding turn reaches it."
@@ -8337,7 +8316,7 @@
     },
     {
       "path": "packages/mcp/test/naming.test.ts",
-      "upstreamTestHash": "sha256:6d072ca5aa991556bf13342eecbc3b3c1c9c8382618925c51737021225848a61",
+      "upstreamTestHash": "sha256:9e773559c7e6000d452c750d8969ef32ecb6ecd8a1d2cfd20f687c21fd6221fd",
       "area": "extensions",
       "tags": [
         "hot-path"
@@ -8570,7 +8549,7 @@
     },
     {
       "path": "packages/tui/test/editor.test.ts",
-      "upstreamTestHash": "sha256:6aa897b42a1f23a791a73469df1d3be751facf1cc1173ddf63680db3a3c7100f",
+      "upstreamTestHash": "sha256:edcea904bcdc97135508bdaf06708f61c00e4a813dd879ca6d442a478c18e766",
       "area": "tui",
       "tags": [
         "hot-path"
@@ -8633,7 +8612,7 @@
     },
     {
       "path": "packages/tui/test/layout.test.ts",
-      "upstreamTestHash": "sha256:7f2c34277e65a32b80a5bc559b1551ac9b1b5eb51afd9011a3cac01c920fd0fb",
+      "upstreamTestHash": "sha256:515776939a471863a70e3c3241e0ef2c0c90c1b8798ed26fb2e9805f15d88ec5",
       "area": "tui",
       "tags": [
         "hot-path"
@@ -8642,7 +8621,7 @@
     },
     {
       "path": "packages/tui/test/markdown.test.ts",
-      "upstreamTestHash": "sha256:bc0326a53fa4d8b4c60a7880825ddbfc29fcd4707b80a9f30638838f5f82cbcc",
+      "upstreamTestHash": "sha256:c19475ff5816eddb1bbb8b1ec0db216549e8dc89e7b349a29d5aaf19e67d08fb",
       "area": "tui",
       "tags": [
         "hot-path"
@@ -8768,7 +8747,7 @@
     },
     {
       "path": "packages/tui/test/settings-list.test.ts",
-      "upstreamTestHash": "sha256:4fed7aa1085045f46c5e372284f4e03111c012c2f081a4cf8e61f8a346bee364",
+      "upstreamTestHash": "sha256:551506ec4c1f7c1027d234565f6c0732bbd7516e7a80111093634627676ec72d",
       "area": "tui",
       "tags": [
         "hot-path"
@@ -8849,7 +8828,7 @@
     },
     {
       "path": "packages/tui/test/tui-alt-screen.test.ts",
-      "upstreamTestHash": "sha256:29a0fb604345b56b133a5c0c50be9ee7e03d06ec3c98c2ce3d77bbd9162ffb1f",
+      "upstreamTestHash": "sha256:740ced861e3f6e60bc63bcba7041d2c882b045d5d91eb729c0214b8b5ef4eb77",
       "area": "tui",
       "tags": [
         "hot-path"

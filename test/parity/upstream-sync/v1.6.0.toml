@@ -1,0 +1,1577 @@
+from = "1.5.2"
+to = "1.6.0"
+
+[[files]]
+path = "packages/agent/src/agent-loop.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/anthropic-messages.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/constrained-sampling.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/google-generative-ai.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/google-shared.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/google-vertex.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/mistral-conversations.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/openai-codex-responses.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/openai-completions.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/openai-responses-shared.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/env-api-keys.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/compat-schema.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/qwen-token-plan-cn.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/qwen-token-plan-individual-cn.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/qwen-token-plan-individual.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/qwen-token-plan.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/retry.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/version.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/contracts/accepts.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/contracts/contract.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/contracts/declare.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/contracts/evolve.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/contracts/fingerprint.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/contracts/history.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/contracts/index.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/contracts/internal.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/contracts/params.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/contracts/schema.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/data/failure.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/data/internal.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/data/principal.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/documents/transaction.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/host/adapted.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/host/admission.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/host/attempt.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/host/dependencies.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/host/events.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/host/facet.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/host/host-data.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/host/host.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/host/index.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/host/internal.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/host/list.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/host/members.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/host/named-query.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/host/object.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/host/query-reader.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/host/read-declarations.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/host/reference-events.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/host/reference-source.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/host/reference.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/host/route-admission.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/host/route.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/host/staging.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/host/tiling.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/index.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/link/binary.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/link/channel.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/link/internal.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/link/message.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/link/text.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/node/app/app.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/node/app/ephemeral-sessions.ts"
+change = "removed"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/node/app/ephemeral-sign-ins.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/node/app/ephemeral.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/node/app/index.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/node/app/invite.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/node/app/layout.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/node/app/owner.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/node/app/pairing.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/node/app/sessions.ts"
+change = "removed"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/node/app/sign-ins.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/node/http/http.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/node/http/upgrades.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/node/plugins/install.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/node/plugins/plugins.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/node/surfaces/bundle.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/node/surfaces/index.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/node/surfaces/served.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/node/surfaces/surface-build.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/node/surfaces/tui.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/node/surfaces/web.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/node/workers/base.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/node/workers/process.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/node/workers/workers.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/react/hooks.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/react/index.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/remote/calls.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/remote/consumer.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/remote/hold.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/remote/host-link.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/remote/internal.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/remote/path.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/remote/provider.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/remote/relay.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/remote/remote-object.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/remote/replica.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/state/derive.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/state/framed.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/state/internal.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/store/column-set.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/store/evaluate.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/store/expression.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/store/host-data.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/store/index.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/store/live-query.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/store/open-query.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/store/page.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/store/query.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/store/read-plan.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/store/read.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/store/reads.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/store/rows.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/store/skip.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/store/sql.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/store/store.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/store/table-changes.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/store/table-evolve.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/store/table-handle.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/store/table.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/surfaces/client.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/surfaces/connection.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/surfaces/variant.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/sync/client.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/sync/filesystem.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/sync/index.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/sync/remote.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/telemetry-ingest/facet.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/telemetry.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/tui/index.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/tui/scope.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/web/page.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/cli/args.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/cli/config-selector.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/cli/session-picker.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/cli/startup-ui.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/agent-session-runtime.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/agent-session.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/exec.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/export-html/ansi-to-html.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/export-html/tool-renderer.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/loader.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/runner.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/types.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/model-resolver.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/package-manager.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/remote-catalog-provider.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/resource-loader.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/session-manager.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/find.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/grep.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/output-accumulator.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/read.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/renderers/read.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/llama/provider.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/index.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/main.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/diagnostics-stderr.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/assistant-message.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/bash-execution.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/config-selector.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/model-selector.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/radius-login-selector.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/session-selector.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/settings-submenu.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/themed-text.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/thinking-selector.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/tool-execution.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/user-message.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/visual-truncate.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/session-share.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/theme/theme.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/print-mode.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/rpc/rpc-mode.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/package-manager-cli.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/changelog.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/deprecation.ts"
+change = "removed"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/flush-stdout.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/codemode/codemode.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/codemode/describe.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/codemode/index.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/codemode/output.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/env/node.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/agent.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/define.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/generation.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/harness.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/inbox.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/live.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/parks.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/provider.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/scheduler.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/submissions.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/task-graph.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/tool.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/types.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/util.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/images/fit.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/index.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/session/transaction.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/signals.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/testing/storage-conformance.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/tools/image-processor.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/tools/index.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/tools/read.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/types.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/env/src/remote-env.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/mcp/src/index.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/mcp/src/naming.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/box.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/editor.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/image.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/markdown.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/mouse-region.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/scroll-view.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/settings-list.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/text.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/layout.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/terminal-image.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/tui-alt-screen.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/tui.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/utils.ts"
+change = "modified"
+disposition = "pending"
+evidence = []
+rationale = ""

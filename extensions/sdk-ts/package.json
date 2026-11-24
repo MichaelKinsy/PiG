@@ -20,19 +20,19 @@
     "test": "node --test scripts/check-upstream-pin.test.mjs scripts/check-declaration-drift.test.mjs scripts/pin-bundle.test.mjs scripts/author-view.test.mjs && node scripts/check-upstream-pin.mjs && node scripts/check-pin-bundle.mjs && node scripts/check-runtime-compat.mjs"
   },
   "peerDependencies": {
-    "@earendil-works/pi-coding-agent": "1.5.2",
     "@anthropic-ai/sdk": "0.129.0",
-    "@earendil-works/pi-codemode": "1.5.2",
-    "@earendil-works/pi-mcp": "1.5.2",
-    "@earendil-works/pi-schema": "1.5.2",
-    "@earendil-works/pi-telemetry": "1.5.2",
-    "@google/genai": "2.21.0",
+    "@earendil-works/pi-codemode": "1.6.0",
+    "@earendil-works/pi-coding-agent": "1.6.0",
+    "@earendil-works/pi-mcp": "1.6.0",
+    "@earendil-works/pi-schema": "1.6.0",
+    "@earendil-works/pi-telemetry": "1.6.0",
+    "@google/genai": "2.32.0",
     "marked": "18.0.11",
-    "openai": "7.19.0",
+    "openai": "7.59.0",
     "typebox": "1.3.27"
   },
   "devDependencies": {
-    "@earendil-works/pi-coding-agent": "1.5.2",
+    "@earendil-works/pi-coding-agent": "1.6.0",
     "typescript": "5.9.3"
   },
   "overrides": {

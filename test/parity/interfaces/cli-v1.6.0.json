@@ -1,5 +1,5 @@
 {
-  "upstreamVersion": "1.5.2",
+  "upstreamVersion": "1.6.0",
   "kind": "cli",
   "interfaces": [
     {
@@ -14,11 +14,11 @@
       "value": "",
       "parser": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 895
+        "line": 909
       },
       "help": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 318
+        "line": 332
       }
     },
     {
@@ -33,7 +33,7 @@
       "value": "",
       "parser": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 885
+        "line": 899
       },
       "help": null
     },
@@ -49,11 +49,11 @@
       "value": "",
       "parser": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 893
+        "line": 907
       },
       "help": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 317
+        "line": 331
       }
     },
     {
@@ -68,11 +68,11 @@
       "value": "",
       "parser": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 897
+        "line": 911
       },
       "help": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 319
+        "line": 333
       }
     },
     {
@@ -87,11 +87,11 @@
       "value": "",
       "parser": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 482
+        "line": 496
       },
       "help": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 333
+        "line": 347
       }
     },
     {
@@ -106,7 +106,7 @@
       "value": "",
       "parser": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 432
+        "line": 446
       },
       "help": null
     },
@@ -122,11 +122,11 @@
       "value": "",
       "parser": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 437
+        "line": 451
       },
       "help": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 332
+        "line": 346
       }
     },
     {
@@ -141,11 +141,11 @@
       "value": "",
       "parser": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 487
+        "line": 501
       },
       "help": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 334
+        "line": 348
       }
     },
     {
@@ -160,11 +160,11 @@
       "value": "",
       "parser": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 482
+        "line": 496
       },
       "help": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 396
+        "line": 410
       }
     },
     {
@@ -179,7 +179,7 @@
       "value": "",
       "parser": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 432
+        "line": 446
       },
       "help": null
     },
@@ -195,11 +195,11 @@
       "value": "",
       "parser": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 487
+        "line": 501
       },
       "help": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 397
+        "line": 411
       }
     },
     {
@@ -214,11 +214,11 @@
       "value": "",
       "parser": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 482
+        "line": 496
       },
       "help": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 355
+        "line": 369
       }
     },
     {
@@ -233,7 +233,7 @@
       "value": "",
       "parser": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 432
+        "line": 446
       },
       "help": null
     },
@@ -249,11 +249,11 @@
       "value": "",
       "parser": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 437
+        "line": 451
       },
       "help": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 354
+        "line": 368
       }
     },
     {
@@ -268,11 +268,11 @@
       "value": "",
       "parser": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 487
+        "line": 501
       },
       "help": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 356
+        "line": 370
       }
     },
     {
@@ -285,11 +285,11 @@
       "value": "",
       "parser": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 473
+        "line": 487
       },
       "help": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 374
+        "line": 388
       }
     },
     {
@@ -304,11 +304,11 @@
       "value": "",
       "parser": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 482
+        "line": 496
       },
       "help": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 376
+        "line": 390
       }
     },
     {
@@ -321,11 +321,11 @@
       "value": "<source>",
       "parser": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 501
+        "line": 515
       },
       "help": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 375
+        "line": 389
       }
     },
     {
@@ -338,11 +338,11 @@
       "value": "",
       "parser": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 455
+        "line": 469
       },
       "help": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 372
+        "line": 386
       }
     },
     {
@@ -355,11 +355,11 @@
       "value": "",
       "parser": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 492
+        "line": 506
       },
       "help": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 378
+        "line": 392
       }
     },
     {
@@ -374,7 +374,7 @@
       "value": "",
       "parser": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 432
+        "line": 446
       },
       "help": null
     },
@@ -388,11 +388,11 @@
       "value": "",
       "parser": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 464
+        "line": 478
       },
       "help": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 373
+        "line": 387
       }
     },
     {
@@ -407,11 +407,11 @@
       "value": "",
       "parser": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 487
+        "line": 501
       },
       "help": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 377
+        "line": 391
       }
     },
     {
@@ -424,11 +424,11 @@
       "value": "",
       "parser": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 446
+        "line": 460
       },
       "help": {
         "path": "packages/coding-agent/src/package-manager-cli.ts",
-        "line": 371
+        "line": 385
       }
     },
     {
