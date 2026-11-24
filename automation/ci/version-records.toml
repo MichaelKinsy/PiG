@@ -44,7 +44,6 @@ paths = [
   "docs/parity/compaction-suite-closure.md",
   "docs/parity/extension-callback-state.md",
   "docs/parity/failed-factory-api.md",
-  "docs/parity/KNOWN-GAPS-0.3.x.md",
   "docs/parity/markdown-autolink-scaling.md",
   "docs/parity/markdown-discovery.md",
   "docs/parity/model-availability-task-ownership.md",
