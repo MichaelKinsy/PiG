@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
@@ -43,25 +44,31 @@ func TestInteractiveFatalReplacementExitLeavesNoExtensionProcess(t *testing.T) {
 		env:  []string{"PIG_TEST_FATAL_FLAG=" + flag},
 	})
 	waitReplaceLog(t, p.log, 2, "the startup session_start of both extensions")
-	p.command("/arm")
+
+	sendSlashSettled(t, p, "/arm", "→ arm", budget)
 	armed := time.Now().Add(budget)
 	for {
 		if _, err := os.Stat(flag); err == nil {
 			break
 		}
 		if time.Now().After(armed) {
+			screen := string(tools.StripANSI(p.output.since(0)))
+			if stale := staleMenuSymptom(screen); stale != "" {
+				t.Fatalf("/arm never created the flag (stale autocomplete menu submitted %q); screen tail: %q", stale, tail(p.output.since(0), 1500))
+			}
 			t.Fatalf("/arm never created the flag; screen tail: %q", tail(p.output.since(0), 1500))
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
 
-	p.send("\x15/new")
-	time.Sleep(200 * time.Millisecond)
-	typed := time.Now()
-	p.send("\r")
+	typed := sendSlashSettled(t, p, "/new", "→ new", budget)
 	select {
 	case <-p.exited:
 	case <-time.After(budget):
+		screen := string(tools.StripANSI(p.output.since(0)))
+		if stale := staleMenuSymptom(screen); stale != "" {
+			t.Fatalf("pig did not exit after the failed /new (stale autocomplete menu submitted %q); screen tail: %q", stale, tail(p.output.since(0), 1500))
+		}
 		t.Fatalf("pig did not exit after the failed /new; screen tail: %q", tail(p.output.since(0), 1500))
 	}
 	t.Logf("fatal exit: %s from Enter to the end of pig", time.Since(typed))
@@ -108,6 +115,53 @@ func TestInteractiveFatalReplacementExitLeavesNoExtensionProcess(t *testing.T) {
 			t.Errorf("the %s extension process of the replacement Session outlived pig: %s", kind, processState(pid))
 		}
 	}
+}
+
+// sendSlashSettled clears the editor, types command as one write, and waits until the rendered screen shows both
+// the editor holding exactly command and its settled autocomplete row (wantSelected) before sending Enter. This
+// test checks process cleanup on fatal exit, not typing into a remote editor's in-flight autocomplete menu.
+func sendSlashSettled(t *testing.T, p *interactivePig, command, wantSelected string, budget time.Duration) time.Time {
+	t.Helper()
+	mark := p.output.mark()
+	p.send("\x15" + command)
+	deadline := time.Now().Add(budget)
+	for {
+		raw := p.output.since(mark)
+		if screenHasExactEditorLine(raw, command) && strings.Contains(string(tools.StripANSI(raw)), wantSelected) {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("editor never settled on %q with selection %q; screen tail: %q", command, wantSelected, tail(p.output.since(mark), 1500))
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	typed := time.Now()
+	p.send("\r")
+	return typed
+}
+
+// screenHasExactEditorLine reports whether any stripped screen row holds exactly command.
+// The TUI updates individual rows in place with CSI row;col H and CSI 2K rather than newlines,
+// so split on CSI 2K before stripping ANSI sequences to isolate each painted row.
+func screenHasExactEditorLine(raw []byte, command string) bool {
+	for segment := range bytes.SplitSeq(raw, []byte("\x1b[2K")) {
+		for line := range strings.SplitSeq(string(tools.StripANSI(segment)), "\n") {
+			if strings.TrimSpace(strings.TrimSuffix(line, "\r")) == command {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// staleMenuSymptom reports a garbled prompt submitted when Enter met an earlier prefix's autocomplete menu.
+func staleMenuSymptom(screen string) string {
+	for _, garbled := range []string{"/nname", "/nesettings", "/arsettings"} {
+		if strings.Contains(screen, garbled) {
+			return garbled
+		}
+	}
+	return ""
 }
 
 // processRunning reports whether pid is a process that has not ended: a zombie has ended and only waits to be reaped.
