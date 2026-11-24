@@ -64,7 +64,7 @@ class App:
     kinds: frozenset[str] = frozenset()
 
 
-APPS = (App("apps/p2"), App("apps/p3", "apps/p3/docs", frozenset({".html", ".md"})))
+APPS = (App("apps/p2"), App("apps/p2-mac"), App("apps/p3"))
 APPS_RECORD = 'docs/parity/PORT_MAP.md "Package scope" and APPS in automation/ci/check-port-map-drift.py'
 
 
@@ -117,13 +117,14 @@ def mirror_apps_problems(upstream_root: pathlib.Path, port_map: pathlib.Path) ->
     return problems, f"Pi's apps/ directories are as recorded ({', '.join(app.root for app in APPS)}; {len(paths)} path names read)"
 
 
-def listing_apps_problems(text: str) -> tuple[list[str], str]:
+def listing_apps_problems(text: str, apps: tuple[App, ...] | None = None) -> tuple[list[str], str]:
     """Check a listing of upstream path names, one per line, taken from a Pi clone at a commit the mirror is not at."""
+    active = APPS if apps is None else apps
     paths = [line.strip() for line in text.splitlines() if line.strip()]
-    problems = apps_problems(paths)
-    documents = [path for path in paths if any(app.docs and path.startswith(app.docs + "/") for app in APPS)]
+    problems = apps_problems(paths, apps=active)
+    documents = [path for path in paths if any(app.docs and path.startswith(app.docs + "/") for app in active)]
     if not documents:
-        problems.append("the listing names no path of a documents-only app (" + ", ".join(app.docs + "/" for app in APPS if app.docs) + "): nothing was checked")
+        problems.append("the listing names no path of a documents-only app (" + ", ".join(app.docs + "/" for app in active if app.docs) + "): nothing was checked")
     return problems, f"the listing is as recorded ({len(paths)} path names read, {len(documents)} documents)"
 
 

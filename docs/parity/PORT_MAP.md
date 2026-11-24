@@ -31,7 +31,7 @@ Package scope, one line each:
 - `packages/evals` is the evaluation tooling and `packages/telemetry` is the standalone telemetry library.
 - `packages/schema` is the eval-free JSON Schema validator (drafts 2020-12 and 7, compiled to closures); the Go package is `schema` (with `schema/formats`).
 
-Outside the packages: at Pi 3e23dd9f53be `apps/p3` holds design documents only (39 paths, all under `apps/p3/docs/`); they are designed-out as design documents. `make port-map-drift` and `make upstream-mirror` fail when the mirror holds a path under `apps/p3/` outside `apps/p3/docs/`; such a path needs a port line of its own. `apps/p2` is ported on its own line; the map has no rows for it. The same two targets fail when the mirror holds a directory under `apps/` that this paragraph does not name. (Owner decision, 2026-11-13T14:59:07Z: "proceed with recommendation".)
+Outside the packages: `apps/p2` is ported on its own line; `apps/p2-mac` is `p2`'s native macOS app (outside 0.8.0, alongside `apps/p2`); `apps/p3` gained code in Pi `v1.6.0` (`faac585884ae`) and moves from design documents only to its own port line outside 0.8.0 (post-0.8.0 `p3` port line starts after 0.8.0 ships, per the 2026-11-13 owner decision). The map has no rows for directories under `apps/`; `make port-map-drift` and `make upstream-mirror` fail when the mirror holds a directory under `apps/` that this paragraph and `APPS` in `automation/ci/check-port-map-drift.py` do not name. (Owner decision, 2026-11-13T14:59:07Z; reviewer ruling, 2026-11-24T06:56Z.)
 
 The drift gate also rejects explicit production comments claiming to port an
 upstream file while its row remains not-started, deferred, or n/a. Such conflicts
