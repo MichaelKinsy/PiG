@@ -707,10 +707,9 @@ func (s *Scheduler) reserve(then func([]*reservation, error)) {
 				}
 				continue
 			}
-			state := getObj(res.record, "state")
+			woke := s.woke(rec)
 			if res.record != rec || taskStatus(rec) != StatusRunning {
-				cp, _ := state.Get("checkpoint")
-				if err := tx.stageFresh(withState(res.record, obj("status", StatusRunning, "checkpoint", cp))); err != nil {
+				if err := tx.stageFresh(reservedRecord(res.record, woke)); err != nil {
 					return err
 				}
 			}
@@ -937,4 +936,64 @@ func (s *Scheduler) endInvocation(inv *invocation) {
 		stop()
 	}
 	inv.signal.AbortWith(endedError(inv))
+}
+
+// woke returns the wake reason object a run-mode reservation records when leaving waiting or sleeping (scheduler.ts #woke).
+func (s *Scheduler) woke(rec *jv.Object) *jv.Object {
+	if getBool(rec, "abortRequested") {
+		return nil
+	}
+	state := getObj(rec, "state")
+	switch taskStatus(rec) {
+	case StatusWaiting:
+		on, _ := state.Get("on")
+		w := jv.NewObject()
+		w.Set("reason", "tasks")
+		w.Set("ended", on)
+		return w
+	case StatusSleeping:
+		until, hasUntil := getNum(state, "until")
+		if hasUntil && until <= s.env.Now() {
+			w := jv.NewObject()
+			w.Set("reason", "time")
+			return w
+		}
+		return nil
+	default:
+		return nil
+	}
+}
+
+// reservedRecord is the record a reservation writes: running at the checkpoint, with the wake that ended its wait or sleep
+// and memos preserved/initialized (scheduler.ts reserved).
+func reservedRecord(rec *jv.Object, wake *jv.Object) *jv.Object {
+	state := getObj(rec, "state")
+	cp, _ := state.Get("checkpoint")
+	if wake != nil {
+		memos := jv.NewObject()
+		if m := getObj(rec, "memos"); m != nil {
+			memos = m.Shallow()
+		}
+		woken := with(rec, "memos", memos)
+		ns := jv.NewObject()
+		ns.Set("status", StatusRunning)
+		ns.Set("checkpoint", cp)
+		ns.Set("wake", wake)
+		return withState(woken, ns)
+	}
+	status := taskStatus(rec)
+	if status == StatusPending || status == StatusRunning {
+		next := state.Shallow()
+		next.Set("status", StatusRunning)
+		return withState(rec, next)
+	}
+	return withState(rec, obj("status", StatusRunning, "checkpoint", cp))
+}
+
+// pendingAgain is the record written back as pending on open, close, or handover: its checkpoint and wake preserved
+// (scheduler.ts pendingAgain).
+func pendingAgain(rec *jv.Object) *jv.Object {
+	next := getObj(rec, "state").Shallow()
+	next.Set("status", StatusPending)
+	return withState(rec, next)
 }

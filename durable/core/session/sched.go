@@ -474,9 +474,8 @@ func (s *Scheduler) Open(done func(error)) {
 				}
 				state := getObj(rec, "state")
 				if taskStatus(rec) == StatusRunning {
-					cp, _ := state.Get("checkpoint")
 					restarts := restartsOf(rec) + 1
-					pending := with(withState(rec, obj("status", StatusPending, "checkpoint", cp)), "restarts", restarts)
+					pending := with(pendingAgain(rec), "restarts", restarts)
 					if err := tx.stageTask(pending); err != nil {
 						return err
 					}
@@ -980,8 +979,7 @@ func (s *Scheduler) CloseWrites() []*jv.Object {
 		if taskStatus(rec) != StatusRunning {
 			continue
 		}
-		cp, _ := getObj(rec, "state").Get("checkpoint")
-		records = append(records, withState(rec, obj("status", StatusPending, "checkpoint", cp)))
+		records = append(records, pendingAgain(rec))
 	}
 	slices.SortFunc(records, func(a, b *jv.Object) int { return int(mustInt(a, "id") - mustInt(b, "id")) })
 	return records

@@ -94,7 +94,7 @@ const ATTEMPT_DELTA = `[["s",["generation"],{"attempt":1}]]`
 /** The pi.live document's version at the pin (harness/live.ts `LiveDoc`): 3, with `run.turns` and `run.first`, `trigger` for a compaction's reason. */
 const LIVE_VERSION = 3
 /** The task definitions' versions at the pin (GenerationTask in generation.ts, ToolTask in tool.ts). */
-const TASK_VERSION: Record<string, number> = { "pi.generation": 2, "pi.tool": 3 }
+const TASK_VERSION: Record<string, number> = { "pi.generation": 3, "pi.tool": 4 }
 /** A delta that sets pi.live's `generation` (the attempt, and the retry a failed attempt waits for). */
 const generationDelta = (generation: Rec) => `[["s",["generation"],${JSON.stringify(generation)}]]`
 const INTERRUPTED_REQUEST = (attempt: number) => `The host stopped while the model was answering, on attempt ${attempt}`
@@ -321,6 +321,7 @@ export class Core {
     const cur = o.state
     const started = state.status === "running" && cur.status === "pending" && JSON.stringify(cur.checkpoint) === JSON.stringify(state.checkpoint)
     if (!started) delete o.restarts
+    if (state.status === "terminal" || state.status === "completing") delete o.memos
     o.state = state
     this.writeTask(o)
   }
@@ -497,10 +498,19 @@ export class Core {
   private afterTool(resumed: boolean) {
     const t = this.t
     const g = this.gen(t.gen)
-    const running = { status: "running", checkpoint: { phase: "tools", assistant: t.asst, tools: [t.toolTask], pending: [] } }
+    const wake = this.head ? { reason: "tasks", ended: [t.toolTask] } : undefined
+    const running = { status: "running", checkpoint: { phase: "tools", assistant: t.asst, tools: [t.toolTask], pending: [] }, ...(wake ? { wake } : {}) }
     // The scheduler's open sets a running task pending with one more restart (scheduler.ts, `restarts + 1`); the wake to running keeps it.
-    if (resumed) this.commit(() => { g.state = { ...running, status: "pending" }; g.restarts = (g.restarts ?? 0) + 1; this.writeTask(g) })
-    this.commit(() => this.putTask(g, running))
+    if (resumed) {
+      const prev = { ...g.state, status: "pending" }
+      this.commit(() => { g.state = prev; g.restarts = (g.restarts ?? 0) + 1; this.writeTask(g) })
+      this.commit(() => this.putTask(g, { ...g.state, status: "running" }))
+    } else {
+      this.commit(() => {
+        if (this.head && g.state.status === "waiting") g.memos = { ...(g.memos ?? {}) }
+        this.putTask(g, g.state.status === "waiting" ? running : { ...g.state, status: "running" })
+      })
+    }
     const old = t.gen
     t.gen = this.alloc()
     this.commit(seq => {
@@ -558,7 +568,10 @@ export class Core {
     // The scheduler wakes the generation once the virtual clock reaches `until`.
     this.notBefore = until
     this.now = Math.max(this.now, until)
-    this.commit(() => this.putTask(gen, { status: "running", checkpoint: retryCheckpoint }))
+    this.commit(() => {
+      if (this.head) gen.memos = { ...(gen.memos ?? {}) }
+      this.putTask(gen, { status: "running", checkpoint: retryCheckpoint, ...(this.head ? { wake: { reason: "time" } } : {}) })
+    })
     this.commit(seq => {
       this.live.generation = { attempt: attempt + 1 }
       this.putTask(gen, { status: "running", checkpoint: { phase: "prepare", attempt: attempt + 1 } })
@@ -609,7 +622,8 @@ export class Core {
         return this.finish(EFFECT_TOOL, call)
       }
       run(tool)
-      this.settleTool(`<harness>\n[error] ${INTERRUPTED}\n</harness>`, "failed", INTERRUPTED, true, now)
+      const dur = this.head && tool.startedAt !== undefined ? now - tool.startedAt : undefined
+      this.settleTool(`<harness>\n[error] ${INTERRUPTED}\n</harness>`, "failed", INTERRUPTED, true, now, dur)
       this.afterTool(false)
       return this.finish(EFFECT_MODEL)
     }

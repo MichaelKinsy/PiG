@@ -25,6 +25,7 @@ const (
 	defaultMaxLines = 2000
 )
 
+
 // ToolTask implements the pi.tool task over a Host.
 type ToolTask struct{ Host *Host }
 
@@ -35,7 +36,8 @@ func (g *ToolTask) Impl() *session.TaskImpl {
 
 type toolRun struct {
 	*run
-	input *jv.Object
+	input          *jv.Object
+	settleDuration float64
 }
 
 func (g *ToolTask) newRun(rt *session.Runtime, task *jv.Object, done func(error)) *toolRun {
@@ -54,7 +56,12 @@ func (g *ToolTask) phase(rt *session.Runtime, task *jv.Object, done func(error))
 	case phaseExecute:
 		r.execute(cp)
 	default:
-		done(errors.New("Tool phase " + str(cp, "phase") + " is unknown"))
+		phase := str(cp, "phase")
+		msg := "Tool phase " + phase + " is unknown"
+		if phase == "parked" {
+			msg = "Tool phase parked requires suspendable work (not in the Durable core's contract pin)"
+		}
+		done(errors.New(msg))
 	}
 }
 
@@ -431,8 +438,17 @@ func (r *toolRun) settleThen(call *jv.Object, end ending, build func(slot *delta
 	})
 }
 
-func (r *toolRun) settleCommit(call *jv.Object, end ending, build func(slot *delta.Obj) *jv.Object, durationMs *float64, made bool, then func()) {
+func (r *toolRun) settleCommit(call *jv.Object, end ending, build func(slot *delta.Obj) *jv.Object, measured *float64, made bool, then func()) {
 	r.commit(func(tx *session.Tx, current *jv.Object) (*jv.Object, error) {
+		// Pi v1.6.0 tool.ts settle: the call's whole span (now - startedAt), falling back to measured only for records
+		// created before lifecycle timestamps existed.
+		durationMs := measured
+		if started, ok := current.Get("startedAt"); ok {
+			if startedAt, ok := started.(float64); ok {
+				r.settleDuration = r.now() - startedAt
+				durationMs = &r.settleDuration
+			}
+		}
 		live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
 		if err != nil {
 			return nil, err
