@@ -25,5 +25,5 @@ timeout_seconds = 60
 [assert]
 exit_code = 0
 output_equal = true
-both_contain = ['"errorCode":"ValidationException"', '"errorCode":"ThrottlingException"', '"errorCode":"ModelStreamErrorException"', '["aborted","aborted","Request aborted",null]']
+both_contain = ['"errorCode":"ValidationException"', '"errorCode":"ThrottlingException"', '"errorCode":"ModelStreamErrorException"', '["aborted","aborted","Request aborted: This operation was aborted (20)",null]']
 runs = 3

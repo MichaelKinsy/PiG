@@ -5839,7 +5839,7 @@
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "plainIdentifier",
-            "capture_end_regex": "(?s)const answer = 42;.*const answer = 42;"
+            "capture_end_regex": "(?s)const(?:\\x1b\\[[0-9;]*m)* answer = (?:\\x1b\\[[0-9;]*m)*42(?:\\x1b\\[[0-9;]*m)*;.*const(?:\\x1b\\[[0-9;]*m)* answer = (?:\\x1b\\[[0-9;]*m)*42(?:\\x1b\\[[0-9;]*m)*;[^\\n]*\\n[^\\n]*```(?:\\x1b\\[[0-9;]*m)*"
           },
           "reason": "Owned visible surface: Fenced code blocks apply the active theme text foreground to unscoped tokens in highlighted code.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."

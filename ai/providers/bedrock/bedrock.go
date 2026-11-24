@@ -1576,7 +1576,10 @@ func appendBedrockFailureDiagnostic(message *ai.AssistantMessage, err error, fal
 
 func failBedrockResponse(ctx context.Context, builder *ai.AssistantStreamBuilder, err error, requestID string, streaming bool) {
 	if ctx.Err() != nil {
-		builder.Fail(ai.StopReasonAborted, errors.New("Request aborted"))
+		// @smithy/node-http-handler 4.12.1 (and @smithy/core retry race.js) wrap an aborted AbortSignal's
+		// default DOMException("This operation was aborted", code 20) as AbortError("Request aborted", { cause: reason }),
+		// which Pi v1.6.0 error-body.ts:53-77 withCauseDetail formats as "Request aborted: This operation was aborted (20)".
+		builder.Fail(ai.StopReasonAborted, errors.New("Request aborted: This operation was aborted (20)"))
 		return
 	}
 	appendBedrockFailureDiagnostic(builder.Partial(), err, requestID)

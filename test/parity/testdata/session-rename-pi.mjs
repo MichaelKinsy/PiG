@@ -1,4 +1,4 @@
-// Execute the original three tests against the published Pi 0.87.1 components.
+// Execute the upstream session-selector-rename tests against the pinned Pi components.
 import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -14,7 +14,7 @@ globalThis.__pigRename = state;
 const framework = moduleURL(`import assert from "node:assert/strict";const s=globalThis.__pigRename;
 export const describe=(_name,run)=>run(),beforeAll=run=>s.before.push(run),beforeEach=run=>s.each.push(run),it=(name,run)=>s.cases.push({name,run});
 export const vi={fn:fn=>{const wrapped=(...args)=>{wrapped.calls.push(args);return fn(...args);};wrapped.calls=[];return wrapped;}};
-export function expect(value){return {toContain:expected=>assert.ok(value.includes(expected)),not:{toContain:expected=>assert.ok(!value.includes(expected))},toHaveBeenCalledTimes:expected=>assert.equal(value.calls.length,expected),toHaveBeenCalledWith:(...args)=>assert.ok(value.calls.some(call=>{try{assert.deepStrictEqual(call,args);return true;}catch{return false;}}))};}
+export function expect(value){return {toBe:expected=>assert.strictEqual(value,expected),toContain:expected=>assert.ok(value.includes(expected)),not:{toContain:expected=>assert.ok(!value.includes(expected))},toHaveBeenCalledTimes:expected=>assert.equal(value.calls.length,expected),toHaveBeenCalledWith:(...args)=>assert.ok(value.calls.some(call=>{try{assert.deepStrictEqual(call,args);return true;}catch{return false;}}))};}
 `);
 const source = readFileSync(".upstream/current/packages/coding-agent/test/session-selector-rename.test.ts", "utf8");
 const sites = source.split("\n").flatMap((line, i) => /\bit\(/.test(line) ? [i + 1] : []);

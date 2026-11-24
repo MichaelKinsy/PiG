@@ -41208,6 +41208,27 @@
       ]
     },
     {
+      "id": "BF-99826d7",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "Pi's formatBedrockError -\u003e normalizeProviderError -\u003e withCauseDetail (packages/ai/src/utils/error-body.ts:49-77) appends the deepest cause and its numeric code, yielding \"Request aborted: This operation was aborted (20)\".",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "99826d7393",
+          "date": "2026-11-24"
+        }
+      ],
+      "tests": [
+        "ai/providers/bedrock/bedrock_context_validation_test.go::TestBedrockRequestContextValidation"
+      ]
+    },
+    {
       "id": "BF-99a06cf",
       "title": "Interactive startup paints the editor and footer first and adds the startup header once the terminal reports…",
       "symptom": "Interactive startup paints the editor and footer first and adds the startup header once the terminal reports its colors or 100 ms pass, as Pi does.",

@@ -1539,6 +1539,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9910d00](#bf-9910d00) | An extension that declared one provider name in several `registerProvider` calls while it loaded kept only… | PiG's own defect | All platforms | Unreleased |
 | [BF-992f3cb](#bf-992f3cb) | A `before_provider_request` replacement that is not an object leaves Anthropic Messages as Pi's `{ ...value… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-994aab4](#bf-994aab4) | In RPC mode `ctx.reload()` loads the extensions that are on disk, as it does in Pi and in PiG's print and… | PiG's own defect | All platforms | Unreleased |
+| [BF-99826d7](#bf-99826d7) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-99a06cf](#bf-99a06cf) | Interactive startup paints the editor and footer first and adds the startup header once the terminal reports… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-99d6e28](#bf-99d6e28) | Resizing an image no longer differs from Photon's by one in a channel of a rare pixel | PiG's own defect | All platforms | 0.7.0 |
 | [BF-99faf66](#bf-99faf66) | In interactive mode a frame that changed no row could follow the frame that carries a reply, when the frame… | PiG's own defect | All platforms | Unreleased |
@@ -23555,6 +23556,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `994aab45cb` (2026-11-16)
 - **Tests:** `coding/cli/rpc_reload_membership_test.go::TestRPCReloadDropsAnExtensionRemovedFromDisk`, `coding/cli/rpc_reload_membership_test.go::TestRPCReloadLoadsAnExtensionAddedToDisk`
 - **Release note:** In RPC mode `ctx.reload()` loads the extensions that are on disk, as it does in Pi and in PiG's print and interactive modes. RPC mode reloaded the extensions it had started with, so an extension command that removed a sibling extension's file and awaited `ctx.reload()` left the removed extension configured, and, when the two shared a Node process, the missing file failed the load of the calling extension as well: the caller was gone after the reload. An extension file added before the reload was never loaded. Present since 0.2.0.
+
+### BF-99826d7
+
+**Fix in shipped code**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fix in shipped code
+- **Root cause:** Pi's formatBedrockError -> normalizeProviderError -> withCauseDetail (packages/ai/src/utils/error-body.ts:49-77) appends the deepest cause and its numeric code, yielding "Request aborted: This operation was aborted (20)".
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `99826d7393` (2026-11-24)
+- **Tests:** `ai/providers/bedrock/bedrock_context_validation_test.go::TestBedrockRequestContextValidation`
 
 ### BF-99a06cf
 

@@ -1,5 +1,5 @@
 # Pi 0.87.1 session-selector.ts:726,794,885 and input.ts:60-63 retain the rename Input and its UTF-16 cursor.
-# The Pi adapter executes all three original selector, 36 Input and 19 word-navigation bodies against published production imports.
+# The Pi adapter executes all four upstream selector (v1.6.0 session-selector-rename.test.ts:41,60,79,112), 36 Input and 19 word-navigation bodies against pinned production imports.
 # Go preserves the same inputs/assertions. Both adapters also assert and print raw UTF-16 units for retained, clamped and surrogate-half cursors.
 # Markers appear only after assertions pass; no string, ANSI or whitespace normalization runs.
 # Binary overrides select source-backed component probes, not replacement implementations.
