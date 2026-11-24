@@ -1,4 +1,0 @@
-### Fixed
-
-- An interactive turn stopped with Escape, a signal or an extension's `ctx.abort()` is saved with the text Pi saves: "Operation aborted", or "Aborted after N retry attempt(s)" when an automatic retry was running. The session file, an extension's `turn_end` and `agent_end` handlers and the next request carried the provider's text before; print, JSON and RPC modes keep the provider's text, as in Pi. <!-- fix: 6aa94467d3d -->
-- An extension that calls `ctx.abort()` from an event handler in interactive mode no longer hangs the session: the call returns at once, the turn ends aborted and the next prompt runs, in the Node, Go, Python and Rust SDKs. Before, the turn never ended and no later prompt was answered; Escape and print, JSON and RPC modes were not affected. Messages queued while the turn ran go back to the editor instead of running after the abort, as in Pi. Affects 0.2.0 through 0.7.0. <!-- fix: df5e3e87ffc, a079f7223f5 -->

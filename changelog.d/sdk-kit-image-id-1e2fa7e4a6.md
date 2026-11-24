@@ -1,3 +1,0 @@
-### Fixed
-
-- A Go, Rust, Python or Lisp extension can now set the Kitty image id of an image node of a view, as a Node extension could: Go `kit.Image.ImageID`, Rust `kit::Image::image_id`, Python `kit.Image(image_id=...)`, Lisp `(kit-image ... :image-id n)`. The host has read `imageId` of an image node (upstream `ImageOptions.imageId`; absent, the host allocates one) since the node was added, but those four kits had no member for it and sent none. The Go, Python and Rust kits have had the image node since 0.5.1 and the Lisp kit since 0.7.0. <!-- tests: test/extension-conformance/ui_view_image_id_test.go::TestConformance_UIViewImageID, extensions/sdk/internal/kitwire/encode_test.go::TestEncodeMatchesTheHostViewPayload --> <!-- fix: 1e2fa7e4a6 -->

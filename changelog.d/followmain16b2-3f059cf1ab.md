@@ -1,3 +1,0 @@
-### Changed
-
-- chord: the remote references of one host with one sharing key (type, version, fingerprint, params, placed address, the caller's principal and incarnation) share ONE wire hold: the provider sees one `hold`, and one `release` when the last reference lets go; a reference that lets go earlier sends `abort` for its own sent calls (newest first) and nothing else. `self.get` references, references on a suspended route address and references made after a refusal over the link hold on their own, as before; after `too_large/part` each reference's `retry` moves it alone to a hold of its own. `chord.hold` is a root span on the host's adapter, linked to its first getter (Pi 47e9d74f9, 90ed3e3b1). <!-- feat: 3f059cf1ab -->

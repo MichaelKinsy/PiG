@@ -1,3 +1,0 @@
-### Fixed
-
-- interactive mode: when it ended, PiG wrote an empty terminal title (`ESC ] 0 ; BEL`) and a clear of the terminal progress indicator (`ESC ] 9 ; 4 ; 0 BEL`) whatever `terminal.showTerminalProgress` said, and on a quit it wrote both after the renderer had stopped. Pi writes no empty title, and clears the progress indicator only when the setting is on, before the renderer stops. PiG now writes the same: on ctrl+d, ctrl+c twice, `/quit`, SIGTERM and SIGHUP the terminal receives the session title once, and the progress clear only with the setting on. Present in releases 0.2.0 to 0.7.0. <!-- fix: 770a98ad1e121d07ddbaaa300ab1e00e28512984 -->

@@ -1,3 +1,0 @@
-### Fixed
-
-- Durable contract CLI (`durable/contract/cli/contract.mjs`, `durable/contract/cli/robust.mjs`): `-j N` is now parsed as the concurrency option instead of being treated as scenario ids, and `contract all` / `contract run` now exit non-zero on unknown options, unknown scenario ids, or selections that match zero rows (previously CI passing `-j 4` ran zero scenarios and exited 0). <!-- fix: f01e5a14c4af0a9fee4bb4a224c1664c924975e4 --> <!-- cause: contract.mjs looked up every option with two dashes (--j) and forwarded every leftover token as a scenario id filter where matching zero rows exited 0, so -j 4 silently matched nothing. -->

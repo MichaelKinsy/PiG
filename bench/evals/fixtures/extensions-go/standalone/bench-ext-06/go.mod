@@ -4,8 +4,8 @@ go 1.26
 
 // Pig resolves the SDK requirement to the version-matched staged SDK at build time.
 require (
-	example.com/benchext10 v0.7.0
-	github.com/MichaelKinsy/PiG/extensions/sdk v0.7.0
+	example.com/benchext10 v0.8.0
+	github.com/MichaelKinsy/PiG/extensions/sdk v0.8.0
 )
 
 replace example.com/benchext10 => ../..

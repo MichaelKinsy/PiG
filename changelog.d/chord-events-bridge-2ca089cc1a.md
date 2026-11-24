@@ -1,3 +1,0 @@
-### Added
-
-- Chord plugins: a plugin on the Node host that holds a type one of the app's Go facets serves gets the events of the type's event members. Its listener (`reference.member.on`) is called with the value and the stamp of the Go object's emit, in order with the results of the plugin's own calls. The Go host bounds what the Node host has not acknowledged with its event window (32 messages by default) and drops what it emits beyond it, counted `chord.events.dropped{reason=window}`. A hold by the Go side of a plugin's type with event members still fails with the error that says events do not cross the bridge.

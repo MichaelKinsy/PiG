@@ -2,6 +2,6 @@ module example.com/benchgo
 
 go 1.26
 
-require github.com/MichaelKinsy/PiG/extensions/sdk v0.7.1-0.20261115110416-4c9c52e1bf09
+require github.com/MichaelKinsy/PiG/extensions/sdk v0.8.0
 
 replace github.com/MichaelKinsy/PiG/extensions/sdk => ../../../extensions/sdk

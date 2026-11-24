@@ -1,4 +1,0 @@
-### Fixed
-
-- Chord: an abort listener of the host (a call's wait, an event subscription's stop, a reference's `until`, a root scope's seal, a routine's sleep and `on` watch, a consumer's outgoing call, the end of a blocked route settle) now runs inside the cancel and hands its work to the host's loop at once, as Pi's abort listener runs inside `abort()`. Before, the work started on a goroutine of its own after the cancel, in no order against the cancelling section, so a settle could return between a cancel and the work it caused. <!-- fix: 537249aa9f819d7cf51aea5c654218aa2eb246e6 --> <!-- fix: 80406e92df04ef72f5d1ca15a4f84caad6435d25 -->
-- Chord: a parked call whose caller aborts is rejected inside the abort, and a flush that runs in the same section no longer sends the cancelled call. <!-- fix: 58c30eca5c196916ad664bb7c6fd3b31808f6fe2 -->

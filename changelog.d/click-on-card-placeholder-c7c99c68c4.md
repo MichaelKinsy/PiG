@@ -1,3 +1,0 @@
-### Fixed
-
-- In fullscreen mode, a click on a message or entry that an extension renders is no longer lost when it arrives before the extension has drawn the card. Until the extension answers its first render request the card is shown as the placeholder `[<type>]`, and a click on that row did nothing: on a slow start or a loaded machine the card stayed closed. The click now waits for the card, and the frame that draws the card gives it the click; several clicks reach the card in the order they were made. A click on a placeholder whose extension never answers still does nothing. <!-- fix: c7c99c68c -->

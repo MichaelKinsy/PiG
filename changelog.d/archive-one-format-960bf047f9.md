@@ -1,3 +1,0 @@
-### Fixed
-
-- A worker's or server's data archive is now one format, Pi's: PiG's export writes one `store.archive` (the plugins' records and the kit's tables together) and one `server.archive` (both hosts' records), and Pi imports it, where Pi refused the `kit.archive` and `kit-server.archive` entries PiG wrote before. PiG imports an archive of either of them by routing the kit's parts into its own store and each host's records to the host that serves them; the two former entries are no longer read. <!-- fix: 960bf047f986eb27911e2f472e86c41ed92c74c7 --> <!-- cause: PiG split Pi's one store into two and wrote the kit's half as entries of its own that Pi's import refuses, and no test ran an archive PiG made through Pi's own unpack -->

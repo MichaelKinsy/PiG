@@ -1,3 +1,0 @@
-### Fixed
-
-- The terminal progress indicator (`OSC 9;4;0`, with `terminal.showTerminalProgress` on) is turned off when PiG ends after the terminal's color scheme reports are off and the keyboard protocols are popped, as it is in Pi: Pi's shutdown writes those and drains the input before `stop()`, whose first writes are the selector dispose and this clear. PiG wrote the clear first, so a recording of the exit saw it ahead of `CSI ?2031l` and `CSI <u`; the screen a user sees is the same. The order was introduced by the commit that made the exit clear the progress; no release has it. <!-- tests: internal/codingagent/interactive_exit_drain_order_pty_test.go::TestStopInteractiveTuiWritesTheProgressClearAfterTheDrainAsPiDoes --> <!-- fix: e07e1a737a -->

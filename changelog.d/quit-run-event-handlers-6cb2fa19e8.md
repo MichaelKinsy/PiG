@@ -1,4 +1,0 @@
-### Changed
-
-- An abort (Esc, or the abort of a quit) while a `tool_call`, `tool_result` or `context` extension handler runs no longer abandons the handler: as in Pi, the run waits for it and goes on with its result, and the extension sees the abort as `ctx.signal`. A handler that waits (a confirmation, a timer) should watch `ctx.signal`; the abort and the quit wait for a handler that does not. A handler whose extension process ends while it is awaited fails with the connection's error and the run ends.
-- A Node extension handler for `turn_end`, `agent_end`, `message_end`, `tool_call`, `tool_result` or `context`, or a tool's `execute`, that awaits a promise that never settles and holds no timer or I/O no longer keeps a quit waiting after RPC input ended: the process exits when its event loop is empty, as Pi's does (15 ms in Pi 1.5.2; the quit held for ever, or for the 3 s tool abort grace).

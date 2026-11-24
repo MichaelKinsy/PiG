@@ -1,3 +1,0 @@
-### Fixed
-
-- Follows Pi 18e99051be24: an extension's `pi.events` handler that threw was printed on the terminal behind the TUI (`Event handler error (<channel>)`), which corrupted the interactive screen. It is now reported like the error of a `pi.on` handler, in every SDK: in the chat in interactive mode, as `extension_error` in RPC mode and as `Extension error (...)` in print mode, with the extension's path, the event `events:<channel>`, the message and the stack. The error of a handler that fails after its session was replaced, or after a failed reload left its runner stale, is dropped, as is one that fails before the mode attaches its error listener. Every release since 0.7.0 has the fault. <!-- fix: 52a25ee0669c -->

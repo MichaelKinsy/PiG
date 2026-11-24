@@ -1,3 +1,0 @@
-### Fixed
-
-- A Node extension whose entry point is gone no longer keeps the extensions that share its process from loading. The extension whose file or package entry does not resolve now fails alone, with its own error, and the others load, at startup and at a reload, as Pi reports one error per extension that cannot be loaded; before, every extension of the shared Node process was reported with the missing one's error and none was loaded. Present since 0.2.0. <!-- tests: coding/extension/host/subprocess/reload_member_unresolved_test.go::TestNodeCellLoadsItsOtherMembersWhenOneEntryPointIsGone --> <!-- fix: 27c81a52d1 -->

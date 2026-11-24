@@ -1,3 +1,0 @@
-### Added
-
-- Chord plugins (internal): `Plugins.WatchTree` and `Plugins.Watches` let Go code that holds the plugins component have its file watcher watch one more tree and ask whether a directory is watched. The tests of the component and of the app use them through one shared barrier (`chord/nextnode/plugins/pluginstest`) to wait until the watcher handled every file event of an edit before they apply the changes: the reload suite's `edit` helper returned at the first event, so a later event of the same edit could leave a plugin dirty after the rollout and fail a test about once in 36 runs. The watcher's behaviour does not change.

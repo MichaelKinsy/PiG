@@ -1,3 +1,0 @@
-### Added
-
-- Plugin views: a `grid` node, a calendar-style grid of equal columns whose cells are data (a value, a label, a today mark, a dim flag, a colour and up to eight coloured chips with a count of events left out), so a month with three chips a day is three nodes instead of several hundred. The terminal draws it in equal columns cut by terminal cells, fits the chip lines to its slot, moves a cursor with the arrow keys, Home and End, and raises the node's intent with the cell's value on Enter, Space or a click. The host refuses a grid with a member the record lacks or one past a bound with code `invalid`. The other SDKs' builders and the web client's drawing follow.

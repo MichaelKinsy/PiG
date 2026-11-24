@@ -1,3 +1,0 @@
-### Fixed
-
-- On Windows, a Chord worker sending its last message (such as `fatal`) before exiting no longer blocks when the parent's reader is busy, which could leave the worker hanging until a timeout killed it without receiving the error. The worker IPC pipe now buffers 64 KiB in each direction, matching Unix socketpairs and the Chord plugin listener. Affects 0.7.0. <!-- fix: 48530e80f6 --> <!-- cause: prepareChannel in workers_channel_windows.go created the named pipe with zero InputBufferSize and OutputBufferSize, so CreateNamedPipe blocked every write until the peer read it; a worker exiting in sendControlThen's write callback stalled whenever the parent reader was busy running message listeners -->

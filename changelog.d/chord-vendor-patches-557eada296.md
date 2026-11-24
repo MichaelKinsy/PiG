@@ -1,3 +1,0 @@
-### Changed
-
-- Vendored Chord trees (tooling): a change PiG makes to one of Pi's vendored chord files is a patch under `automation/gen/chord-patches` (`<record>-<name>.patch`, a unified diff with Pi's paths). The vendoring scripts apply the patches after the copy and fail when one does not apply exactly (no offset, no fuzz) or when its record is not `SCRUTINIZED:approved`; `chord/nextnode/plugins/node/manifest.json` and `chord/nextnode/surfaces/client/manifest.json` gain `patches` (name and sha256 of each patch applied; an empty list when none), and their file hashes are of the patched files. `make vendor-chord-carried-check` regenerates with the patches.

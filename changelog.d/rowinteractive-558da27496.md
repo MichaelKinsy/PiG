@@ -1,3 +1,0 @@
-### Changed
-
-- The start's heap return (D172) waits until the session has been idle for 500 ms. PiG returned the heap its start left free to the operating system right after the first frame, with one forced collection; a session that is prompted at once paid for that collection and then took the returned pages back for its first run. The return now waits like the idle collection after a run, and a run that starts first leaves it to that collection. A session left alone after its start returns the same memory half a second later. On the fake-model benchmark a session of one prompt runs 12.4 % fewer user instructions; a session of five prompts 0.4 % fewer.

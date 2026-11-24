@@ -1,3 +1,0 @@
-### Fixed
-
-- Reading, watching, or listing a keyed state document while its object restarts or reloads no longer races the new attempt's state hydration. Handle and reference lookups now read the slot's active definition inside the object's serialized section, keeping key-validation errors ahead of ended-handle errors as in Pi. <!-- fix: f93a8f2b117da2fee5037cda1066f0a4fc56756f --> <!-- tests: chord/next/documents/keyed_slot_hydrate_race_test.go::TestKeyedSlotSealedHandleGetWhileHydrateWritesDoesNotRaceDefinition, chord/next/documents/keyed_slot_hydrate_race_test.go::TestKeyedSlotSealedHandleSiblingsWhileHydrateWritesDoNotRaceDefinition, chord/next/documents/keyed_slot_hydrate_race_test.go::TestKeyedSlotEndedHandleRefusesWrongKindKeyBeforeEndedPinsPiOrder -->

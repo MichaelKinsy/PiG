@@ -1,3 +1,0 @@
-### Fixed
-
-- `read` no longer stores a note that the current model does not support images, which was replayed to the model as stale text after a switch to a vision model. The image is still replaced with a placeholder per request for a model without image input; the read result names that model in `details.imageUnsupportedByModel`, and the read card shows `[<model> does not support images; it saw a placeholder instead]` from it, collapsed and expanded. A session that already holds the old note keeps it as written. The durable `read` no longer adds the matching `info` diagnostic and names the model in its details the same way (Pi 4be4cb4f5e9c, #12139). <!-- fix: dec362c82f -->

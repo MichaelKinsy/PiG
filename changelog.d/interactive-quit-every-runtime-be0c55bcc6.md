@@ -1,4 +1,0 @@
-### Changed
-
-- Quitting interactive mode (ctrl+d, `/quit`, ctrl+c twice) while an extension's `session_shutdown` handler never settles now ends the way Pi's quit does: PiG waits until no extension holds a timer, an open connection, a child process or a running command, instead of ending at the first extension process that has nothing left to do. PiG runs extensions in several processes, so each Node extension process reports its own idle event loop, and a command of an extension written in Go, Rust, Python or Lisp that is still running holds the quit. A command of such an extension that never returns now holds this quit for ever (it ended at once before), where Pi's process, which has no handle to wait for, exits at once; ctrl+c, SIGINT, SIGTERM and SIGHUP end it at once as in Pi (divergence D650).
-- At the stopped terminal of a quit that waits for an extension, SIGTERM and SIGHUP now end PiG at once, with exit status 143 and 129 as in Pi. They did not end it.

@@ -1,4 +1,0 @@
-### Fixed
-
-- tui: stopping the renderer while a component asked for a frame from its own goroutine (the Loader's spinner, since 0.5.0) was a data race on the renderer's `stopped` flag: the stop wrote it while `RequestRender` read it without the render lock, on all three screens. It could show as a rare crash report under the race detector or as a frame asked for on a renderer that had just stopped. The flag is now atomic and still written under the render lock, so the geometry callbacks' rule that nothing is delivered after a stop holds unchanged. <!-- fix: 4967f7dca31d6632010e5760d4881301c38b15c6 -->
-- tui: a frame request that lost that race to the stop no longer arms a frame timer on the stopped renderer, or hands a render to the owner loop after it; the request is dropped under the render lock. <!-- fix: 21d22277cb0b1a1676ca1be7b313530677b03f33 -->

@@ -1,3 +1,0 @@
-### Changed
-
-- Interactive mode keeps one `message_update` for each part of the message while it collects the events that Pi's event loop handles in one task, where it kept every update until the task ended: a response that arrives in one piece no longer holds hundreds of partial messages or sets the message block hundreds of times for one frame. A chunk of a response that streams, which is a task of one `message_update`, reaches the screen loop as one event again instead of one event between two task markers. With both, drawing a reply and the end of its run in one frame costs no CPU: a prompt of a long session takes 2 % to 3 % fewer user instructions than before that fix, where the fix alone took 3 % more, and a streamed response takes as many as before it.

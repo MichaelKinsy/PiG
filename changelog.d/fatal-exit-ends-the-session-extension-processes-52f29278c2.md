@@ -1,3 +1,0 @@
-### Fixed
-
-- When `/new`, `/fork`, `/resume` or `/reload` ends in a fatal error ("Failed to create session" and its kin, exit status 1), `pig` now ends the replacement session's extension processes before it exits, as its signal and RPC exits already did. They used to be left to end on their own for a moment after `pig` had gone (since v0.5.0), so a script or a test that removed `pig`'s home directory right after the exit could fail with "directory not empty": a Node extension writes its compile cache when its process ends. <!-- fix: 52f29278c2 --> <!-- cause: the exit that follows a fatal runtime error released only the startup extension host, so the processes of a replacement session's host, started later by the session factory, were never ended by it. -->

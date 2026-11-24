@@ -1,7 +1,0 @@
-### Changed
-
-- **Breaking (Go API):** `coding/extension/host/subprocess`: a program that embeds the extension host and mounts view-kit widgets (`grid`, `input`, `scroll-view`, `mouse-region`, `bordered-loader`, `cancellable-loader`, `branch-summary`, `compaction-summary`, `custom-message` and `skill-invocation`) must now call `subprocess.EnableViewWidgets()` once before the first view is built, as it calls `subprocess.EnableEditorViews()` for editors. The `pig` command calls both before it runs a command, so nothing changes for `pig` or a Piglet Binary. A program that does not call it no longer links the widget builders (the headless example, `examples/sdk`, `pig-evals` and the repository's tools do not), and it rejects a view that holds a widget with an error that names the call: the surface keeps its previous frame, a message or tool renderer's result counts as a failed render, the rejection is reported once per surface through the extension error listeners, and the extension is sent nothing. `EnableViewWidgets` does not link the terminal editor. <!-- fix: 0749ea17ba963df29f9008111518533d00575c88 -->
-
-### Fixed
-
-- `pig extension preview-login` did not enable editor views or `TuiAltScreen`, so an editor in a view of the previewed extension was rejected with `editor views are not enabled in this program`. Every `pig` command now enables them before it runs. <!-- fix: 0749ea17ba963df29f9008111518533d00575c88 -->

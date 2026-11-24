@@ -1,3 +1,0 @@
-### Fixed
-
-- A failed interactive login now behaves as in Pi: the login dialog closes, the editor has focus again, and the transcript shows the error as `Error: Failed to login to <provider name>: <message>` in the error colour (for example `Error: Failed to login to GitHub Copilot: 401 Unauthorized: {"message":"Bad credentials"}`). Before, GitHub Copilot, OpenAI Codex and every other OAuth login kept the dialog open with `Login failed: <message>` inside it until Escape, and anything typed went nowhere. A credential that cannot be stored is reported the same way. <!-- fix: 3e66fd5b363dcd36dbf1ab786ddfa6d3b80d7722 -->

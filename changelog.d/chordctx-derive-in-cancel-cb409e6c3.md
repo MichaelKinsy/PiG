@@ -1,7 +1,0 @@
-### Added
-
-- `chord/context` gains `WithAbortSignalCancel(parent, signal)`: `withCancel(withAbortSignal(parent, signal))` as one context, whose `cancel` also takes it out of the signal's links, for a caller that derives one context per operation and ends the operation before either source aborts.
-
-### Fixed
-
-- Chord: a context derived by `chordctx.WithAbortSignal` from a signal that is a context made by `chord/context` is now cancelled inside the cancel function of its source, before that function returns and before any abort listener (`OnAbort`) of the source runs, as `AbortSignal.any` marks its composite aborted in Pi. Before, `WithAbortSignal` cancelled it with `context.AfterFunc`, on a goroutine of its own, so code that ran right after the cancel could still see a context derived from the cancelled signal live. `OnAbort` now also runs listeners in Pi's order: the aborted context's own, in the order they were added, then those of the contexts derived from it, in the order those were created. Before, a listener added to a child first ran before one added to its parent. A source from another package (a deadline, the standard library's cancel) still reaches the derived context on a goroutine of its own, and `OnAbort` reports `exact` false for such a context. An embedder of `chord/context` can see all of it; no change was found through the Chord host. `git tag --contains` names v0.7.0 as the first tag with the code. <!-- fix: cb409e6c3 -->

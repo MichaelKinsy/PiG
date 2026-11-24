@@ -1,3 +1,0 @@
-### Fixed
-
-- A view node of every kind can carry an id in the component kits of the Go, Rust, Python and Lisp SDKs (Go the field `ID`, Rust `.id("…")`, Python `id=`, Lisp `:id`). Before, only the kinds that need an id took one there, so an `a11y` record, a `focus` record or a drawing's `node` of a mounted view could not name a container, box, text, truncated text, markdown, spacer, dynamic border, image, loader, stack, lines, user message or diff node, while a Node extension, whose view is a plain object, could. A `text` or `box` node has no `color` member in any SDK: its colour is `bg`, and the host draws no `color` it is sent on those kinds. <!-- fix: fb93e7325dfa51d8c2c32843ef26e21a1f831870 -->

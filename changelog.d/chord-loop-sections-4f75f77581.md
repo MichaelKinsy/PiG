@@ -1,4 +1,0 @@
-### Fixed
-
-- Chord (Go): a watch, an observer or a subscriber of a registry value or a writable that was registered from outside the host's loop is told of a change committed while it registered. The read and the registration were two steps, so such a change reached nobody and the follower kept the older value until the next change (seen as a p2 session worker that failed to start with `p2.harness-host: did not become live within 60000 ms`). <!-- fix: 7369b8f86377c7633e76c160b6ea0f8670ae2b99 -->
-- Chord (Go): the observer of a followed source has `Section`, which runs a runtime's read and its advance as one section of the host's loop. A runtime that told of its changes from several goroutines could publish an older read last, and the followed value stayed stale until its next change. <!-- fix: 4f75f7758134ee64db2bdb89d3f3119db8502b29 -->

@@ -1,3 +1,0 @@
-### Fixed
-
-- A command's reply is no longer held back by calls or dialogs an extension handler starts after it began to wait (`Conn.readLoop` seals `ackHold` on a non-`host_call` `blocked` report and records `ackCounted` on `Envelope` so only calls read before the report hold or release the acknowledgment). <!-- fix: ff7b27274e, 6c102b39a7 --> <!-- cause: ackHold counted host calls and blocked:host_call announcements by when Conn.readLoop read them rather than whether the handler sent them before its blocked report, so a post-report call or announcement read before stateCh was drained raised unapplied or announced and falsely held the acknowledgment -->

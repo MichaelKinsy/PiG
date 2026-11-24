@@ -1,3 +1,0 @@
-### Fixed
-
-- A credential read from read-only auth storage (`ReadOnlyAuthStorage`, used by `pig auth check --no-refresh`) now keeps the member order of the auth.json entry when anything prints or forwards it, as Pi does: an OAuth entry written `type, access, refresh, expires` is no longer returned as `type, refresh, access, expires`, and members the typed form does not model keep their place. Only the order changes, not which members are returned. Present since 0.2.0. <!-- fix: e0610029327 --> <!-- cause: the read-only decode built its credential from a map and never recorded the entry's member order, which the writable decode records, so marshaling fell back to struct order -->

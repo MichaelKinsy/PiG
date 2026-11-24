@@ -278,25 +278,12 @@ version = "1.5.1"
 reason = "A bug-ledger release note and a changelog fragment (generated from or written with the fix commit) name the Pi release the SDK local bash fix of D243 was written against; the fix is the SDK wire reply carrying Pi 06aa6563e's shellExit, which Pi 1.5.2 keeps unchanged."
 paths = [
   "docs/site/docs/bug-ledger.md",
-  "changelog.d/d243-123827b998.md",
 ]
 
 [[record]]
 version = "1.5.2"
 reason = "Historical release records, changelog fragments, bug-ledger entries, divergence probes, and parity design notes written and measured against Pi 1.5.2 before the pin advanced to Pi 1.6.0."
 paths = [
-  "changelog.d/catalog-live-188-23b801cc09.md",
-  "changelog.d/chord-hostdata-6fb04b8d73.md",
-  "changelog.d/google-fetch-cause-1662063665.md",
-  "changelog.d/name-wait-on-loop-d63659241b.md",
-  "changelog.d/port152-7ecacae312.md",
-  "changelog.d/prototype-name-lookups-88bbdd2eaa.md",
-  "changelog.d/quit-run-event-handlers-6cb2fa19e8.md",
-  "changelog.d/refine-6791a37e85.md",
-  "changelog.d/reload-keeps-ui-custom-call-pending-3da926800b.md",
-  "changelog.d/rpc-one-chunk-dbb1bbb1bd.md",
-  "changelog.d/sdkprovidergaps-1ee65db31.md",
-  "changelog.d/tuisession-bd8849d729.md",
   "docs/additive-features.md",
   "docs/extension-api-parity.md",
   "docs/parity/DIVERGENCES.md",
@@ -323,5 +310,6 @@ paths = [
   "docs/parity/divergences/D93.md",
   "docs/parity/gap-closure/ledger-coding-agent-pi-issue-drafts.md",
   "docs/parity/session-runtime-helper.md",
+  "docs/release/0.8.0-release-notes-draft.md",
   "docs/site/docs/bug-ledger.md",
 ]

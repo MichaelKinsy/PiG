@@ -1,3 +1,0 @@
-### Fixed
-
-- A PiG that runs without a model API now says so when a request for that API carries no API key. A Piglet Binary whose `strip.apis` (D92) names `mistral-conversations` (build tag `pig_strip_mistral_conversations`), and Stock PiG running a Piglet file with that strip, answered such a request with `No API key for provider: mistral`; the request now ends with `Provider mistral: API mistral-conversations is stripped from this Piglet (strip.apis: mistral-conversations)`, with a key and without one, as it already did for `google-vertex` and `bedrock-converse-stream`. <!-- fix: ede518330cab29e170e47ab498c25f256e8a211f -->

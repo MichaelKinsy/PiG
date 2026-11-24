@@ -1,3 +1,0 @@
-### Changed
-
-- A tool's start and end are drawn through the frame throttle. Pi requests a frame at `tool_execution_start` and `tool_execution_end` (`interactive-mode.ts`, `this.ui.requestRender()`), which draws at most one frame every 16 ms; PiG drew a frame at once at both events, two frames 0.1 to 0.3 ms apart for every tool call, eleven frames for a prompt that reads four files where Pi-Bolt 1.2.1 draws four. The card's renderers still run at the event, as Pi's `updateDisplay` does, so a shell card's elapsed time starts where it did. On the fake-model benchmark an interactive session of five prompts runs 3.4 % fewer user instructions (two rounds of five sessions, both rounds).

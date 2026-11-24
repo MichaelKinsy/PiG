@@ -1,3 +1,0 @@
-### Changed
-
-- Extension events cost the host far fewer allocations. One streamed `message_update` handed to a subscribing TypeScript extension now costs 122 allocations and 23.9 KB at one subscriber (381 and 41.1 KB before) and 55 and 9.0 KB per subscriber at four (202 and 26.1 KB before), because the host no longer rebuilds the run's system prompt and options, or spells the request ID and makes the response channel anew, for every delta. An RPC turn with ten extensions costs 4,613 allocations and 731 KB (5,927 and 1.39 MB before). Observable behavior, the wire protocol and every SDK are unchanged.

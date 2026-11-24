@@ -13,7 +13,7 @@ godebug winsymlink=0
 
 require (
 	github.com/BurntSushi/toml v1.6.0
-	github.com/MichaelKinsy/PiG/extensions/sdk v0.7.1-0.20261115110416-4c9c52e1bf09
+	github.com/MichaelKinsy/PiG/extensions/sdk v0.8.0
 	github.com/Microsoft/go-winio v0.6.4
 	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/aws/aws-sdk-go-v2 v1.47.1

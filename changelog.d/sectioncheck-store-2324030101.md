@@ -1,3 +1,0 @@
-### Fixed
-
-- chord: a list that retired a page while that page's failed first run was waiting to be adopted could be failed by it: the store's read tested that it was still open and then adopted the failed run in a section of its own, so a close between the two handed the closed read's sink a failure. Pi tests `closed` and adopts the failed run in one turn (open-query.ts); the test and the adoption are now one section. <!-- fix: 2324030101 --> <!-- cause: OpenRead.failCompile decided closed and the compile error outside the section that adopts the failed run; a close that ran in the gap still reached the sink --> <!-- tests: TestReadsFailedCompileIsNotAdoptedByAReadClosedWhileItWaitsForItsSection -->

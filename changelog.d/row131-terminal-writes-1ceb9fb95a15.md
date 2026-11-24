@@ -1,3 +1,0 @@
-### Fixed
-
-- A title an extension sets (`ctx.ui.setTitle`, or the session name an extension sets), the OSC 52 sequence of an extension's `copyToClipboard` and the progress indicator's keepalive are written between frames now, as in Pi: Pi writes each of them with `terminal.write` (the keepalive from a `setInterval` callback) on its one event loop, so each is before the bytes of a frame or after them. PiG wrote them from the extension host's call or the keepalive's ticker goroutine, so they could land between two writes of a frame, and the race detector reported the writer. The interactive mode's loop writes them now. Released in v0.7.0 and earlier. <!-- fix: 1ceb9fb95a15 -->

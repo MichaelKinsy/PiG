@@ -1,3 +1,0 @@
-### Changed
-
-- The before hooks of the tool calls of one assistant message that run in parallel receive the run's own messages (cut at their length), as Pi hands them `currentContext`: a hook that replaces a message in place now changes what the next call's before hook reads and the request that follows, as in Pi, where these hooks already run one after another. The tools and the after hooks of two or more parallel calls still receive a copy of the messages each, made once the before hooks have run, because Go runs them at the same time; what they write stays their own. pig's own session hooks do not read these messages and extensions receive serialized copies, so nothing changes for the CLI or for extension SDKs.

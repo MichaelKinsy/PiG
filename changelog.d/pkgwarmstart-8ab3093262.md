@@ -1,3 +1,0 @@
-### Changed
-
-- A warm start with a Node extension loads the extension runtime's own modules from Node's native bytecode cache instead of compiling them from source: `<config-root>/cache/node-compile` is now activated at process start once an earlier run has created it (the first start still activates it at the first SDK import, so a cold start serializes neither the runtime nor Jiti's Babel). A start with one package extension that imports `pi-ai` and `pi-tui` is about 16 ms faster with warm caches (430 to 414 ms median, 32 paired runs on reserved cores, Pi 406 ms); the TypeScript-file and cold-cache starts are unchanged. `NODE_DISABLE_COMPILE_CACHE=1` still disables the cache.

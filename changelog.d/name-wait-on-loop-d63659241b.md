@@ -1,3 +1,0 @@
-### Fixed
-
-- Interactive mode: the terminal stays live after `/name <name>` while an extension's `session_info_changed` handler runs. The input loop waited for the first handler to reach its first wait or to end, and a Go, Rust, Python or Lisp subprocess handler reports neither before its first host call, so no key echoed and nothing was drawn for as long as such a handler ran: 10 s for a handler that slept 10 s, where Pi 1.5.2 echoes at once while a handler awaits. The loop now starts the handler and goes on. Every release from v0.3.0 to v0.7.0 has the wait. <!-- fix: d63659241b8d167aaac409696f678822d5e352b6 -->

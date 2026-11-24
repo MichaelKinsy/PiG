@@ -1,3 +1,0 @@
-### Fixed
-
-- A call that fails before the provider has a response stream (an HTTP error answered by Gemini, Vertex or Mistral, or a payload hook that rejects the request on an OpenAI-style or Azure model) now reports `durationMs` from the start of the call, as Pi does. The failed message was timed from after the call: a program that reads the module's own stream (`ai.APIModuleStream`) saw no `durationMs` whenever a millisecond boundary fell inside the call, which every real network request crosses, and `0` otherwise, and a session saw a value measured by the stream that forwards it, not by the call. <!-- fix: a97881e371 -->

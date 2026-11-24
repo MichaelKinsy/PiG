@@ -1,3 +1,0 @@
-### Changed
-
-- Compacting a long session now sends fewer summary requests. When the session has provider usage, a history that fits the model's context window together with the summary's output limit is summarized in one request, as in Pi, instead of being split early into several serial requests that each take minutes on a slow model; a longer history is split only as far as a request can hold. The size of a request is the usual estimate scaled by what the provider counted for the session's latest reply, so a request is never sent over the window, and if the provider still refuses one the rest of the history is split as before. A session without provider usage is split as before. <!-- fix: 949305dc9 -->

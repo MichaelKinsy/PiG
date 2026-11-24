@@ -1,3 +1,0 @@
-### Changed
-
-- models: an availability pass (the refresh behind the model list, and the provider count and model list the interactive mode reads at start and after a login) checks the revision of auth.json once instead of 4 to 5 times per provider: an interactive start makes 19 revision stats where it made 455. A write to auth.json during a pass is used by the next request and the next pass; a write through the credential API in the same process is used at once, and a `!command` key is still evaluated on every read. An extension provider whose own auth check rewrites auth.json on disk is seen by the next request and the next pass rather than by the rest of the same pass (D628).

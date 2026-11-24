@@ -1,3 +1,0 @@
-### Changed
-
-- RPC mode: the answer to a prompt that arrives while another prompt is still being admitted, for example two `prompt` commands written to standard input in one chunk, is now recorded as divergence D629 and described at the `prompt` command in the RPC command reference. PiG's behaviour is unchanged: it rejects the second prompt with `Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message.`. Pi 1.5.2 answers it `started`, never runs it, reports no error and emits an extra `agent_settled`; a test now runs the pinned Pi on the same input and fails when Pi's side changes.

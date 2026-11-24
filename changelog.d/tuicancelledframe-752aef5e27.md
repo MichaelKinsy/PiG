@@ -1,3 +1,0 @@
-### Fixed
-
-- A throttled frame whose timer callback had already passed its generation check could still draw once more after a direct `Render()`, a forced render request or a `Stop()` had cancelled it: the check is made under the render lock and released before the frame takes it again. The frame now checks its generation again when it takes the frame lock and draws nothing when it lost it, as in Pi, where `renderNow` cancels the timer and nothing renders until the next request (`tui.ts` `renderNow`, `scheduleRender`). The extra frame was forced in a test with the frame parked at its first clock read; it was not observed in a real terminal. <!-- fix: 752aef5e2747d13d62ef8e3368a6d40dc642c4f9 -->

@@ -1,3 +1,0 @@
-### Fixed
-
-- A `before_provider_request` handler that adds members to the Google, Vertex or pi-messages request it was handed sees them written in a fixed order: an array-index key (`"9"`) first, as Pi's object enumerates it, then the members the provider created in Pi's order, then the added members in byte order (a Go map keeps no insertion order). The order of the added members was decided by a sort of the map's iteration order before the fix, so it is the same on every call now. The unreleased change that gave a handler Pi's member order introduced the window; no release has it. <!-- tests: ai/hook_payload_order_extras_test.go::TestMarshalHookPayloadWritesAddedMembersInOwnKeyOrder --> <!-- fix: 7781c9298c -->

@@ -1,3 +1,0 @@
-### Changed
-
-- Follows Pi ac78a6068b38 (#12117, #11264): a changelog that exists but cannot be read (an extension package's `CHANGELOG.md` that is a directory, say) gives no startup notes and no `/changelog` entries, and nothing is written over the interactive screen. PiG's own code already did this (it returns no entries at the failed read and the bundled changelog is embedded, so `/changelog` shows `No changelog entries found.`); the change is the Node extension runtime's copy of Pi's changelog reader and the parity oracle, which no longer print `Warning: Could not parse changelog` there. Pi's unused `restoreModelFromSession`, which printed model-restore messages, has no PiG counterpart and nothing is removed.

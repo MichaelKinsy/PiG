@@ -1,3 +1,0 @@
-### Fixed
-
-- Follows Pi e03dca7a3843: `Session.Reload` (and the reload of every SDK's `AgentSession`) did not emit `session_start` to the extensions when the host had bound them with `BindExtensions` and no bindings (the Go counterpart of `bindExtensions({})`), after it had already emitted `session_shutdown`. Extensions that start work in `session_start`, such as the MCP extension connecting its servers, stayed stopped after a reload. A reload now restarts the extensions of every session whose host called `BindExtensions`; a session that was never bound behaves as before, and the print, JSON, RPC and interactive modes were not affected. The fault is in v0.7.0. <!-- fix: 7236618f972d -->

@@ -1,3 +1,0 @@
-### Added
-
-- Chord plugins: the Go side listens to the events of an object that a Node host's plugins serve: `NodeReference.Events(name).On(listener, ctx)` calls the listener with the value and the stamp of each emit, in order with the results of the reference's calls, until `Stop`, the context's abort, the reference's release or the process's exit. The Node host bounds what the Go side has not acknowledged with its event window (`RuntimeLoad.EventWindow`, 32 messages by default) and drops what it emits beyond it, counted `chord.events.dropped{reason=window}`. With this, a type with event members crosses the bridge between a Go host and its Node plugin host in both directions, and the error that said events do not cross it is gone.

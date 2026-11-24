@@ -1,4 +1,0 @@
-### Added
-
-- An extension lets the user close a dialog or an overlay it mounted: one intent of a mount may be declared `dismiss`. When the user dismisses the mount, a client raises that intent with `{}`, and the extension's handler closes the view. It names no node and its argument accepts `{}`; the host answers `invalid` otherwise, and for a second such intent. Without one, Escape leaves the mount and it stays open until the extension closes it. In a slot that is neither `dialog` nor `overlay` the member has no effect.
-- The member is in the Go, Node, Python, Rust and Lisp SDKs with the same name and checks (`Dismiss`, `dismiss`, `:dismiss`). One conformance row proves it in every SDK: the host holds the mark on the intent the extension named, and raising the intent reaches the extension's handler.

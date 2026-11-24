@@ -1,3 +1,0 @@
-### Fixed
-
-- The model catalog is now the live one. It was the snapshot the published Pi 1.5.2 package shipped on its build day (1643 chat, 66 image and 64 classifier models); it is Pi's own catalog generator over a committed recording of the live sources taken on 2026-11-15 (1663 chat, 72 image and 72 classifier models: 38 chat models added and 18 removed, 71 records with a changed limit, price or capability), so models released since 1.5.2 can be selected and priced. The recording is data in `automation/gen/catalog-source`; `make model-catalogs` replays it offline and `make model-catalogs-live` is the only target that fetches, so a refresh is a reviewed data change that needs no test edit. <!-- fix: 23b801cc09 -->

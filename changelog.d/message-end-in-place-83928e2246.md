@@ -1,3 +1,0 @@
-### Fixed
-
-- A `message_end` handler that edits `event.message` in place and returns nothing now changes the message the next handlers, `turn_end`, `agent_end`, the saved session entry and the next provider request hold, as it does in Pi, in the Go, Python, Rust and Lisp extension SDKs, and so does an edit made before the handler throws. Until now only a message a handler returned took effect in those SDKs, so an edit in place was lost (the Node SDK already kept it in the unreleased line). Each SDK sends back the message as the handler left it when it differs from the one it received. The loss was present in every release since v0.2.0. <!-- fix: 83928e2246 -->

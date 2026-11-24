@@ -1,5 +1,0 @@
-### Fixed
-
-- `pig --list-models` now checks credentials again before it prints, as Pi does. When `auth.json` cannot be read (for example it is not valid JSON) the run warns `Availability refresh: <error>`, reports the error and exits with status 1 instead of printing a table and exiting 0; a check that takes longer than 15 s ends the same way with a timeout error. <!-- fix: b91a45414fe5a88a545de56aca92416787e2e5ef -->
-- SDK: `CreateAgentSessionServicesOptions.ModelRuntimeSignal` bounds only the creation of the model runtime, as Pi's `modelRuntimeSignal` does. A resource reload still running when the signal fired made `CreateAgentSessionServices` fail, and the model refresh after the extensions loaded was skipped; both now run to their end. <!-- fix: 3cb88affbc991262f1b745aa2109a7e5cc49be53 -->
-- Startup prompts (project trust, the missing-directory choice, startup text input) keep reading the terminal until the prompt has been cleared and 25 ms have passed, as Pi does. The terminal was handed back to line mode before the prompt was cleared, so keys typed in that moment could be echoed onto the screen. <!-- fix: 3cb88affbc991262f1b745aa2109a7e5cc49be53 -->

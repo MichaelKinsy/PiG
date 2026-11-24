@@ -1,3 +1,0 @@
-### Fixed
-
-- chord: a client's active theme or active language could end on an older value than the newest: when the user's pick changed at the moment the client's mode or device languages changed, the two changes could be delivered in the opposite order to the one they were decided in, and the older theme (or language) stayed until the next change. The followers now deliver in the order they read their state, so the last delivery is the current one, as in Pi. <!-- fix: 6138d199ae6 --> <!-- cause: the follower read its state under a lock and queued the change after releasing it, assuming the two steps were one, so two goroutines could queue in the opposite order to their reads -->

@@ -1,3 +1,0 @@
-### Fixed
-
-- Chord: waiting for a host to settle now waits for the rest of a handler that parked (a method handler's or a route's `resolve` after its first wait), for the continuations of every unawaited promise of the host (the close tail, host-data turns, flushes and retries of an object, a reference's follow and release, a root scope's handler, a routine's wait, a job's record) and of the documents. Before, the rest of such a handler ran on a goroutine the settle did not count, so a check made right after the settle could see a state from before it. <!-- fix: fe0d5a32cefd8fba59b26d68c87e8e944bbc724a --> <!-- fix: f0020ca3a433cafe3d035b8d4ad18b42d3fc766c -->

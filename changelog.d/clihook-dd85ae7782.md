@@ -1,3 +1,0 @@
-### Added
-
-- A Piglet Binary's fused Go member can own the command line (`extensions/sdk/clihook`): its hook runs before PiG parses its arguments and may serve the invocation (help, version, subcommands) and exit with its own status, rewrite the arguments, set the default retry policy (3 retries, 2000 ms first delay, 60000 ms cap unless it names another; settings.json still overrides each field), and own a print run: PiG then writes nothing to stdout, leaves the stderr line of a failed run to the member, and exits with the status the member recorded when the run succeeded. Stock PiG registers no hook and behaves as before.

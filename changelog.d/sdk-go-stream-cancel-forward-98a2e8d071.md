@@ -1,3 +1,0 @@
-### Fixed
-
-- The Go extension SDK no longer forwards a provider stream event that the provider pushed after the cancel of its request. The forwarder read the request's cancellation before it took the next event, so a cancel and a later push that both landed between the two sent the host one more event; it now reads the cancellation again once it has the event, as the Rust, Lisp, Python and Node SDKs do. The window was two statements wide (no run of the conformance row showed it) and has been in the SDK since 0.3.0; PiG's host has ended its own stream at the cancel, so the extra event was on the wire only. <!-- fix: 98a2e8d071 -->

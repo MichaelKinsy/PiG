@@ -1,3 +1,0 @@
-### Fixed
-
-- A pig in RPC mode that ended normally, on the end of its input or on SIGTERM, left one `h<number>` directory in the temp directory for every session that started an extension: RPC mode ends with `os.Exit` after it killed the extension processes, as Pi ends with `process.exit`, so the Host's private socket directory was never removed. The host process now removes that directory when it terminates its processes, and a generation that asks for a socket path while the process exits no longer makes a new one, whether or not the Host had already made a socket path. <!-- fix: 338965f248a20f883de41ef33b933c96c3c13853, a782807087c164469d1422f91db7e05c43d2b474 -->

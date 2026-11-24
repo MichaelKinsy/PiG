@@ -1,3 +1,0 @@
-### Changed
-
-- Chord (Go API): the comment of `store.ByteSource` (`chordsync.SyncBody` is that type) says how long a chunk lasts: it is valid until the next `Next` or `Close`, and a consumer copies it to keep it. The gzip and gunzip bodies of `chord/sync` fill the buffer they handed out again, where Pi's streams hand out arrays of their own, so a consumer that kept its chunks read the bytes of later ones and wrote a batch that did not decode. Tests in `chord/sync` hold both sides: the bodies do reuse the chunk, and nothing in the package that reads a body depends on a chunk past the next `Next`. No behaviour changes.

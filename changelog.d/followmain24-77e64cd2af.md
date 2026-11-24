@@ -1,3 +1,0 @@
-### Fixed
-
-- GitHub Copilot's chat-completions models with effort levels (Gemini 4 Argon, Gemini 3.8 Flash and Kimi K3) now receive the selected thinking level: the request carries `reasoning_effort`, where before the level was never sent and the model always ran at its default; these models now offer their own levels (low, medium and high for the Gemini models; low, high and max for Kimi K3). Reasoning tokens that a chat-completions provider reports at the top level of `usage` (`usage.reasoning_tokens`, as GitHub Copilot does) are now counted in the usage's reasoning figure instead of showing as 0; output tokens, total tokens and cost are unchanged. Follows Pi #12110. <!-- fix: 77e64cd2af4 -->

@@ -1,3 +1,0 @@
-### Changed
-
-- While a context summary is being written, the compaction line shows how long it has run and how much of the summary has streamed: `Compacting context... 1m 12s · ~14k tokens (escape to cancel)`. Nothing is shown of the time within the first second, and nothing of the size before the first streamed text. The same applies to auto-compaction and context-overflow compaction. The size is the characters of the summary request in flight divided by four (a retry or the next chunk of a long history starts again from zero). RPC, print and JSON modes are unchanged, and so is every request.

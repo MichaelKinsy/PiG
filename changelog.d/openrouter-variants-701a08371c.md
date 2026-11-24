@@ -1,3 +1,0 @@
-### Changed
-
-- A start no longer builds OpenRouter's 806 `:nitro` and `:floor` routing variants to resolve the model. `--model`, the default model and the SDK's model resolution read a listing of ids and names (0.12 MB) instead of the variant entries (0.81 MB); a variant is built when it is selected or when a model list is shown. Live heap at ready: interactive 2.78 MB to 2.07 MB, `-p` 2.38 MB to 1.61 MB, `--mode rpc` 2.16 MB to 1.45 MB, and 0.56 MB less is allocated per start. A start with an OpenRouter key or with a Node extension still builds the variants, since it lists every model. What `--model` resolves to, the model lists and the `--list-models` output are unchanged.

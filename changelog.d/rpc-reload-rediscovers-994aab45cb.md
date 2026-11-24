@@ -1,3 +1,0 @@
-### Fixed
-
-- In RPC mode `ctx.reload()` loads the extensions that are on disk, as it does in Pi and in PiG's print and interactive modes. RPC mode reloaded the extensions it had started with, so an extension command that removed a sibling extension's file and awaited `ctx.reload()` left the removed extension configured, and, when the two shared a Node process, the missing file failed the load of the calling extension as well: the caller was gone after the reload. An extension file added before the reload was never loaded. Present since 0.2.0. <!-- tests: coding/cli/rpc_reload_membership_test.go::TestRPCReloadDropsAnExtensionRemovedFromDisk, coding/cli/rpc_reload_membership_test.go::TestRPCReloadLoadsAnExtensionAddedToDisk --> <!-- fix: 994aab45cb -->
