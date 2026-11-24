@@ -1437,14 +1437,19 @@ func (c *Workers) Rollout(scripts []plugins.PluginScript, ctx context.Context) (
 		c.route.Retry(record.address)
 	}
 	c.loop.Run(func() {
+		retried := map[string]struct{}{}
 		for _, record := range failed {
 			if started := record.starting; started != nil {
+				retried[record.address.Key] = struct{}{}
 				entries = append(entries, entry{record.address.Key, c.retried(record, started)})
 			} else {
 				c.forget(record)
 			}
 		}
 		for _, name := range c.order {
+			if _, listed := retried[name]; listed {
+				continue
+			}
 			record := c.addresses[name]
 			child := record.child
 			if child == nil || child.status == WorkerStopping || child.shipped == key {
