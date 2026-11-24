@@ -103,9 +103,8 @@ func TestWindowsWriteFileWaitsOutAHandleHeldWithoutDeleteSharing(t *testing.T) {
 	}
 }
 
-// A hold that outlasts fsretry.RenameBudget fails with the error Windows gave, the old content is intact and no temporary file or backup is left: the
-// write is never turned into an in-place one on Windows.
-func TestWindowsWriteFileFailsWhenTheHandleIsNeverClosed(t *testing.T) {
+// A hold that outlasts fsretry.RenameBudget falls back to an in-place write as Pi writes it (auth-storage.ts:141), reporting the refusal once and removing the temporary file.
+func TestWindowsWriteFileWritesInPlaceWhenTheHandleIsNeverClosed(t *testing.T) {
 	if testing.Short() {
 		t.Skipf("waits the retry budget of %v", fsretry.RenameBudget)
 	}
@@ -120,22 +119,18 @@ func TestWindowsWriteFileFailsWhenTheHandleIsNeverClosed(t *testing.T) {
 	defer func() { _ = held.Close() }()
 	reported := windowsReportedPaths(t)
 
-	err = WriteFile(path, []byte("new"), 0o600)
-	if err == nil {
-		t.Fatal("WriteFile succeeded while another handle holds the file without delete sharing")
+	if err := WriteFile(path, []byte("new"), 0o600); err != nil {
+		t.Fatalf("WriteFile while another handle holds the file without delete sharing = %v, want in-place fallback", err)
 	}
-	if !fsretry.TransientRename(err) {
-		t.Errorf("error = %v, want the access, sharing or ReplaceFileW refusal Windows gave", err)
+	if got := readString(t, path); got != "new" {
+		t.Errorf("file = %q after the fallback write, want the new content written in place", got)
 	}
-	if got := readString(t, path); got != "old" {
-		t.Errorf("file = %q after the failed write, want the old content intact", got)
-	}
-	if len(*reported) != 0 {
-		t.Errorf("in-place writes reported = %v, want none: a refusal is never turned into an in-place write on Windows", *reported)
+	if len(*reported) != 1 || (*reported)[0] != path {
+		t.Errorf("in-place writes reported = %v, want one line naming %s", *reported, path)
 	}
 	_ = held.Close()
 	if names := entryNames(t, filepath.Dir(path)); len(names) != 1 {
-		t.Errorf("directory holds %v after the failed write, want only the file", names)
+		t.Errorf("directory holds %v after the fallback write, want only the file", names)
 	}
 }
 
