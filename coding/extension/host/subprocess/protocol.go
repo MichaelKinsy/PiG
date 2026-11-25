@@ -99,6 +99,9 @@ type Envelope struct {
 	// ackCounted records that readLoop counted this MsgCall frame in its request's ackHold before sealing.
 	ackCounted bool
 
+	// afterAck, when non-nil, is the embedder's command-reply gate captured for a post-acknowledgment MsgCall frame (Host.SetPostAckGate).
+	afterAck <-chan struct{}
+
 	// Common fields
 	ID string `json:"id,omitempty"` // Correlation ID for request/response pairs
 

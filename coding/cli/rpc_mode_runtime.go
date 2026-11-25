@@ -101,6 +101,10 @@ type rpcHost struct {
 	// background holds the extension UI calls no request started while a replacement an RPC command requested runs (rpcBackgroundGate).
 	background rpcBackgroundGate
 
+	// postAck holds per-event reply-written gates for unawaited event handlers (session_info_changed, thinking_level_select) until the RPC command's reply is written.
+	postAckMu sync.Mutex
+	postAck   map[string][]chan struct{}
+
 	// detached is set once shutdown stops publishing Session events (rpc-mode.ts shutdown unsubscribes first).
 	detached atomic.Bool
 	// forwarding counts running event forwarders; shutdown flushes only while one runs.
@@ -170,6 +174,9 @@ func (h *rpcHost) bind(ctx context.Context, session *coding.Session, event exten
 	}
 	if extensionHost != nil {
 		extensionHost.SetBackgroundCallGate(h.background.wait)
+		if setter, ok := extensionHost.(postAckGateSetter); ok {
+			setter.setPostAckGate(h.activeReplyGate)
+		}
 	}
 
 	if bridge != nil {
@@ -291,6 +298,69 @@ func rpcExtensionHost(session *coding.Session) (coding.ExtensionHost, *subproces
 		return nil, nil
 	}
 	return extensionHost, extensionHost.UIBridge()
+}
+
+// postAckGateSetter wires RPC mode's per-event reply-written gate onto a subprocess extension host without expanding coding.ExtensionHost.
+type postAckGateSetter interface {
+	setPostAckGate(gate func(event string) <-chan struct{})
+}
+
+// beginReplyGate opens a post-acknowledgment gate for event and returns an idempotent release function that removes and closes it.
+func (h *rpcHost) beginReplyGate(event string) func() {
+	ch := make(chan struct{})
+	h.postAckMu.Lock()
+	if h.postAck == nil {
+		h.postAck = make(map[string][]chan struct{})
+	}
+	h.postAck[event] = append(h.postAck[event], ch)
+	h.postAckMu.Unlock()
+	return func() {
+		h.postAckMu.Lock()
+		queue := h.postAck[event]
+		found := false
+		for i, item := range queue {
+			if item == ch {
+				queue = append(queue[:i], queue[i+1:]...)
+				found = true
+				break
+			}
+		}
+		if found {
+			if len(queue) == 0 {
+				delete(h.postAck, event)
+			} else {
+				h.postAck[event] = queue
+			}
+		}
+		h.postAckMu.Unlock()
+		if found {
+			close(ch)
+		}
+	}
+}
+
+// activeReplyGate returns the most recent pending command reply gate for event, or nil when none is pending.
+func (h *rpcHost) activeReplyGate(event string) <-chan struct{} {
+	h.postAckMu.Lock()
+	defer h.postAckMu.Unlock()
+	queue := h.postAck[event]
+	if len(queue) == 0 {
+		return nil
+	}
+	return queue[len(queue)-1]
+}
+
+// releaseAllPostAckGates closes every pending reply gate on RPC mode shutdown so no extension call can stay blocked if a reply is never written.
+func (h *rpcHost) releaseAllPostAckGates() {
+	h.postAckMu.Lock()
+	pending := h.postAck
+	h.postAck = nil
+	h.postAckMu.Unlock()
+	for _, queue := range pending {
+		for _, ch := range queue {
+			close(ch)
+		}
+	}
 }
 
 // commandSuspendSource is the extension host side of a command join: it reports how many of its in-flight commands are suspended.

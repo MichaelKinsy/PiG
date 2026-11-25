@@ -32,13 +32,19 @@ type ackHold struct {
 	unapplied int
 	held      bool
 	sealed    bool
+	afterAck  <-chan struct{}
 }
 
 type ackHoldKey struct{}
 
 // withAckHold binds a hold to the request's context.
 func withAckHold(ctx context.Context) context.Context {
-	hold := &ackHold{}
+	return withAckHoldGate(ctx, nil, false)
+}
+
+// withAckHoldGate binds a hold with an optional post-acknowledgment gate channel and initial sealed state (true when an earlier handler on the same emission already acknowledged).
+func withAckHoldGate(ctx context.Context, afterAck <-chan struct{}, sealed bool) context.Context {
+	hold := &ackHold{afterAck: afterAck, sealed: sealed}
 	ctx = context.WithValue(ctx, ackHoldKey{}, hold)
 	hold.ctx = ctx
 	return ctx
@@ -68,16 +74,17 @@ func (h *ackHold) seal() {
 	h.mu.Unlock()
 }
 
-// sent records a call frame of the request read before the hold was sealed, returning whether it was counted.
-func (h *ackHold) sent() bool {
+// sent records a call frame of the request read before the hold was sealed. It returns whether the call was counted, and for a post-seal call returns the hold's afterAck gate channel.
+func (h *ackHold) sent() (bool, <-chan struct{}) {
 	h.mu.Lock()
 	if h.sealed {
+		afterAck := h.afterAck
 		h.mu.Unlock()
-		return false
+		return false, afterAck
 	}
 	h.unapplied++
 	h.mu.Unlock()
-	return true
+	return true, nil
 }
 
 // applied records that the host applied a call of the request: the call a report announced, or one of the request that no report announced. effect is true for a call
@@ -160,14 +167,14 @@ func (c *Conn) requestAckHold(requestID string) *ackHold {
 	return ackHoldOf(sink.ctx)
 }
 
-// holdAckForCall counts a call frame the read loop read before its request's blocked report, until the host applies the call (hostCallApplied). A connection with no
+// holdAckForCall counts a call frame the read loop read before its request's blocked report, until the host applies the call (hostCallApplied), and tags post-seal frames with the request's post-acknowledgment gate. A connection with no
 // request that holds an acknowledgment, the common case, skips the lookup.
 func (c *Conn) holdAckForCall(env *Envelope) {
 	if env == nil || env.Call == nil || env.Call.ParentRequestID == "" || c.ackHolds.Load() == 0 {
 		return
 	}
 	if hold := c.requestAckHold(env.Call.ParentRequestID); hold != nil {
-		env.ackCounted = hold.sent()
+		env.ackCounted, env.afterAck = hold.sent()
 	}
 }
 
