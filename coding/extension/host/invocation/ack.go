@@ -3,6 +3,7 @@ package invocation
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 )
 
 type ackKey struct{}
@@ -11,6 +12,7 @@ type acknowledgment struct {
 	once           sync.Once
 	fn             func()
 	suspensionOnly bool
+	acked          atomic.Bool
 }
 
 // WithAcknowledgment binds a one-shot handler-invocation acknowledgment to ctx. The handler's first suspension or its completion releases it.
@@ -27,6 +29,12 @@ func WithSuspensionAcknowledgment(ctx context.Context, fn func()) context.Contex
 func Bound(ctx context.Context) bool {
 	ack, _ := ctx.Value(ackKey{}).(*acknowledgment)
 	return ack != nil
+}
+
+// Acknowledged reports whether ctx's bound acknowledgment has already been released.
+func Acknowledged(ctx context.Context) bool {
+	ack, _ := ctx.Value(ackKey{}).(*acknowledgment)
+	return ack != nil && ack.acked.Load()
 }
 
 // Acknowledge reports that a handler has entered the runtime boundary. Calls
@@ -50,6 +58,7 @@ func Complete(ctx context.Context) {
 
 func (ack *acknowledgment) release() {
 	ack.once.Do(func() {
+		ack.acked.Store(true)
 		if ack.fn != nil {
 			ack.fn()
 		}

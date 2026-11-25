@@ -419,6 +419,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	promptWG, bashWG, commandWG := options.promptWG, options.bashWG, options.commandWG
 	// Runtime.Close closes the current Session and retires its host. session_shutdown for quit has been emitted by then, by the shutdown below or by Close itself.
 	defer func() { _ = rt.Close() }()
+	defer host.releaseAllPostAckGates()
 	sess := func() *coding.Session { return rt.Session() }
 	services := func() *coding.AgentSessionServices { return rt.Services() }
 	// setModelResolved is the end of the chain of set_model auth checks: the next set_model resolves after it.
@@ -747,8 +748,11 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	handleCycleModel := func(id rpcRequestID, currentSession *coding.Session, turn *rpcResponseTurn) {
 		// Pi's `await session.cycleModel()` resumes in microtasks once the model_select listeners returned, so the deferred UI calls of those listeners follow the response (rpcBackgroundGate).
 		release := host.background.hold()
+		releasePostAck := host.beginReplyGate("thinking_level_select")
 		// build runs in the continuation, where Pi samples the response's state (the thinking level) after its await.
-		answer := func(build func() any) { turn.Microtask(func() { writeRPC(build()); release() }) }
+		answer := func(build func() any) {
+			turn.Microtask(func() { turn.completeWith(build(), releasePostAck); release() })
+		}
 		result, complete, err := currentSession.BeginModelCycle(ctx, "forward")
 		if err != nil {
 			answer(func() any { return rpcError(id, "cycle_model", err.Error()) })
@@ -772,6 +776,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 		if complete == nil {
 			publish()
 		} else {
+			releasePostAck()
 			goCommand(turn, func() { complete(); publish() })
 		}
 	}
@@ -1243,18 +1248,19 @@ commandLoop:
 					close(applied)
 					return
 				}
+				releasePostAck := host.beginReplyGate("thinking_level_select")
 				complete, err := currentSession.BeginModelChange(ctx, newModel, extension.ModelSelectSourceUser)
 				if err == nil {
 					err = currentSession.FlushEvents(ctx)
 				}
 				if err != nil {
-					writeRPC(rpcError(commandID, "set_model", err.Error()))
+					turn.completeWith(rpcError(commandID, "set_model", err.Error()), releasePostAck)
 					release()
 					close(applied)
 					return
 				}
 				publish := func() {
-					writeRPC(rpcSuccess(commandID, "set_model", rpcModelValue(newModel)))
+					turn.completeWith(rpcSuccess(commandID, "set_model", rpcModelValue(newModel)), releasePostAck)
 					release()
 				}
 				if complete == nil {
@@ -1262,6 +1268,7 @@ commandLoop:
 					close(applied)
 					return
 				}
+				releasePostAck()
 				goCommand(turn, func() { complete(); close(applied); turn.Microtask(publish) })
 			})
 
@@ -1369,15 +1376,16 @@ commandLoop:
 				writeRPC(rpcError(env.ID, "set_thinking_level", err.Error()))
 				continue
 			}
+			releasePostAck := host.beginReplyGate("thinking_level_select")
 			if err := sess().SetThinkingLevel(ai.ModelThinkingLevel(cmd.Level)); err != nil {
-				writeRPC(rpcError(env.ID, "set_thinking_level", err.Error()))
+				turn.completeWith(rpcError(env.ID, "set_thinking_level", err.Error()), releasePostAck)
 				continue
 			}
 			if err := sess().FlushEvents(ctx); err != nil {
-				writeRPC(rpcError(env.ID, "set_thinking_level", err.Error()))
+				turn.completeWith(rpcError(env.ID, "set_thinking_level", err.Error()), releasePostAck)
 				continue
 			}
-			writeRPC(rpcSuccess(env.ID, "set_thinking_level", nil))
+			turn.completeWith(rpcSuccess(env.ID, "set_thinking_level", nil), releasePostAck)
 
 		// ── cycle_thinking_level ─────────────────────────────────────────────
 		case RPCCommandCycleThinkingLevel:
@@ -1389,17 +1397,18 @@ commandLoop:
 			current := sess().ThinkingLevel()
 			currentIndex := max(slices.Index(levels, current), 0)
 			nextLevel := levels[(currentIndex+1)%len(levels)]
+			releasePostAck := host.beginReplyGate("thinking_level_select")
 			if err := sess().SetThinkingLevel(nextLevel); err != nil {
-				writeRPC(rpcError(env.ID, "cycle_thinking_level", err.Error()))
+				turn.completeWith(rpcError(env.ID, "cycle_thinking_level", err.Error()), releasePostAck)
 				continue
 			}
 			if err := sess().FlushEvents(ctx); err != nil {
-				writeRPC(rpcError(env.ID, "cycle_thinking_level", err.Error()))
+				turn.completeWith(rpcError(env.ID, "cycle_thinking_level", err.Error()), releasePostAck)
 				continue
 			}
-			writeRPC(rpcSuccess(env.ID, "cycle_thinking_level", map[string]string{
+			turn.completeWith(rpcSuccess(env.ID, "cycle_thinking_level", map[string]string{
 				"level": string(nextLevel),
-			}))
+			}), releasePostAck)
 
 		case RPCCommandGetAvailableThinkingLevels:
 			levels := sess().AvailableThinkingLevels()
@@ -1502,11 +1511,12 @@ commandLoop:
 				writeRPC(rpcError(env.ID, "set_session_name", "Session name cannot be empty"))
 				continue
 			}
+			releasePostAck := host.beginReplyGate("session_info_changed")
 			if err := sess().SetSessionName(name); err != nil {
-				writeRPC(rpcError(env.ID, "set_session_name", err.Error()))
+				turn.completeWith(rpcError(env.ID, "set_session_name", err.Error()), releasePostAck)
 				continue
 			}
-			writeRPC(rpcSuccess(env.ID, "set_session_name", nil))
+			turn.completeWith(rpcSuccess(env.ID, "set_session_name", nil), releasePostAck)
 
 		// ── get_session_stats ────────────────────────────────────────────────
 		case RPCCommandGetSessionStats:

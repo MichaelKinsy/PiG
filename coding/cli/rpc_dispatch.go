@@ -15,6 +15,16 @@ type rpcResponseTurn struct {
 
 func (t *rpcResponseTurn) complete(response any) { t.Microtask(func() { t.write(response) }) }
 
+// completeWith writes response in a microtask and runs after immediately once the write returns.
+func (t *rpcResponseTurn) completeWith(response any, after func()) {
+	t.Microtask(func() {
+		t.write(response)
+		if after != nil {
+			after()
+		}
+	})
+}
+
 // deliverRPCDialogAnswer hands a dialog's answer to the handler that awaits it. Pi resolves the dialog's promise on the answer's line and the handler goes on in a microtask (rpc-mode.ts:784-797), so behind every line of the stdin chunk: the reader emits the lines of a chunk in one synchronous loop (jsonl.ts:29-40, rpc-mode.ts:832-834), and a prompt of the chunk that names an extension command has run its handler to the handler's first await by then, on the runner that was current (agent-session.ts:2171-2176, 2279). One that awaits nothing answers ahead of the handler that asked: Pi 1.5.2 writes `notify ping`, `response c`, and then the notifications of the handler that went on.
 //
 // While a reload runs, the handler that asked is a handler of the reload's chain, and what follows its return is the rest of the reload: the old runner's invalidation after session_shutdown, the reloading command's response after session_start (agent-session.ts:3825-3826, 3857-3861). So an answer read during a reload is delivered as the loop's next task, behind the lines of its batch and the microtasks they queued. Delivered at once, the reload went on in another process while the batch was still being dispatched: a prompt of the chunk ran on a generation the reload had just invalidated, or answered behind the reloading command.
