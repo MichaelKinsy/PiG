@@ -165,11 +165,12 @@ assert.equal(b.conn.queue.at(-1)?.id, "b5");
 b.conn.queue.length = 0;
 onActive = () => {};
 
-// Outside a registerTool, in another synchronous call or idle, the request keeps the serve loop's order.
-b.conn.syncWaits = 1;
-b.ask("b3");
-assert.equal(b.response("b3"), undefined);
-assert.equal(b.conn.queue.at(-1)?.id, "b3");
+// Outside a registerTool or in-flight setActiveTools, in another synchronous call or idle, the request keeps the serve loop's order.
+inWait(() => {
+  b.ask("b3");
+  assert.equal(b.response("b3"), undefined);
+  assert.equal(b.conn.queue.at(-1)?.id, "b3");
+});
 
 // c's serve loop runs and waits for its next frame. A state push that arrives during the registerTool is handed to that waiter,
 // which cannot resume before the wait ends, and a notification after it is queued: the nested hook applies both first, the
@@ -207,16 +208,23 @@ assert.deepEqual(cSeen, ["handed"], "the frame handed to the serve loop applied 
 assert.deepEqual(parents.at(-1), ["probe", "c1"], "a notification applied first runs under the hook's request");
 await new Promise((resolve) => setImmediate(resolve));
 assert.deepEqual(applied, ["handed"], "the serve loop does not apply it again");
-// A request handed to the waiter is work the loop has not started: the hook still runs, and the loop still runs that request.
+// A request handed to the waiter is work the loop has not started: the hook still runs, any notification queued behind
+// that request stays queued until the loop runs the request first, and the loop applies both in order afterward.
 onRegister = () => {
   c.socket.emit("envelope", { type: "request", id: "c-earlier", request: { method: "event", event: "x" } });
+  c.socket.emit("envelope", { type: "notify", notify: { method: "state_update", args: { model: { id: "after-earlier", provider: "p" } } } });
   c.ask("c2");
   answeredDuringTheCall.push(c.response("c2"));
 };
 registerLate();
 assert.deepEqual(answeredDuringTheCall.at(-1), { result: { descriptions: { hooked: "c" } } });
-for (let i = 0; i < 5 && !c.response("c-earlier"); i++) await new Promise((resolve) => setImmediate(resolve));
+assert.deepEqual(cSeen, ["handed", "handed"], "a notification queued behind a handed-off request must not apply before the hook");
+for (let i = 0; i < 5 && (!c.response("c-earlier") || c.runtime.state.model?.id !== "after-earlier"); i++) {
+  await new Promise((resolve) => setImmediate(resolve));
+}
 assert.ok(c.response("c-earlier"), "the loop ran the request it was handed");
+assert.equal(c.runtime.state.model?.id, "after-earlier", "the loop applied the queued state update after the handed-off request");
+assert.deepEqual(applied, ["handed", "after-earlier"], "each state update applied once in frame order");
 `, fileURL(path), fileURL(filepath.Join(filepath.Dir(path), "provider-socket.mjs")))
 	if output, err := exec.CommandContext(t.Context(), "node", "--input-type=module", "--eval", script).CombinedOutput(); err != nil {
 		t.Fatalf("%v\n%s", err, output)
