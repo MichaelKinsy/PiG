@@ -159,6 +159,9 @@ func (c *Chain) ArenaBytes() int {
 const (
 	arenaFirstChunk = 16 << 10
 	arenaChunk      = 128 << 10
+	// maxRecordBytes bounds a single history record so entry.off, entry.n, and
+	// chunk length (off+n) stay within int32/uint32 without truncation or wrap.
+	maxRecordBytes = math.MaxInt32
 )
 
 // IndexBytes approximates the memory the fixed-width index uses.
@@ -242,6 +245,9 @@ func (c *Chain) read(ent int32, off, n uint32) []byte {
 	chunk := c.arena[e.chunk]
 	if chunk == nil {
 		chunk = c.reload(e.chunk)
+		if chunk == nil {
+			return nil
+		}
 	}
 	return chunk[at : at+n]
 }
@@ -405,10 +411,35 @@ func (st *Store) kindString(code uint16) string {
 	return st.kindStrings[code-1]
 }
 
+// checkRecordSize reports ErrRecordTooLarge when a record length cannot be indexed safely in a uint32/int32 arena chunk.
+func checkRecordSize(n int) error {
+	if n < 0 || uint64(n) > maxRecordBytes {
+		return ErrRecordTooLarge
+	}
+	return nil
+}
+
+// chunkFits reports whether a record of n bytes fits in a chunk of capacity capBytes already holding lastMark bytes without wrapping int32/uint32 offsets.
+func chunkFits(lastMark, capBytes, n int) bool {
+	return capBytes-lastMark >= n && uint64(lastMark)+uint64(n) <= maxRecordBytes
+}
+
+// checkChunkSize computes off+n for reloading an evicted chunk without uint32 wrap.
+func checkChunkSize(off, n uint32) (int, error) {
+	size := uint64(off) + uint64(n)
+	if size > maxRecordBytes {
+		return 0, ErrRecordTooLarge
+	}
+	return int(size), nil
+}
+
 // appendRecord copies a stored record into the arena and indexes it. seq is the commit_seq of the entry's commit.
 // The entry id must exceed every loaded id of the chain, which holds for rows read in id order and for entries
 // appended in commit order (ADR-0001 E-D6b).
 func (c *Chain) appendRecord(st *Store, id, seq int64, rec []byte) error {
+	if err := checkRecordSize(len(rec)); err != nil {
+		return err
+	}
 	sc, err := scanRecord(rec)
 	if err != nil {
 		return err
@@ -424,7 +455,7 @@ func (c *Chain) appendRecord(st *Store, id, seq int64, rec []byte) error {
 	if chunksMark > 0 {
 		lastMark = len(c.arena[chunksMark-1])
 	}
-	if chunksMark == 0 || cap(c.arena[chunksMark-1])-lastMark < len(rec) {
+	if chunksMark == 0 || !chunkFits(lastMark, cap(c.arena[chunksMark-1]), len(rec)) {
 		size := arenaFirstChunk
 		if chunksMark > 0 {
 			size = min(2*cap(c.arena[chunksMark-1]), arenaChunk)

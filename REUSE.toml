@@ -476,6 +476,19 @@ precedence = "override"
 SPDX-FileCopyrightText = "Copyright (c) 2015, Contributors"
 SPDX-License-Identifier = "ISC"
 
+# The unmodified quickjs-wasi 3.6.2 package vendored for the Node runtime closure (same quickjs.wasm as codemode/assets/raw/quickjs.wasm, sha256 d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9; see codemode/assets/PROVENANCE.md and runtime-node/shims/vendor-manifest.json).
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/quickjs-wasi/**"
+precedence = "override"
+SPDX-FileCopyrightText = [
+  "Copyright (c) 2026 Vercel, Inc.",
+  "Copyright (c) 2017-2021 Fabrice Bellard",
+  "Copyright (c) 2017-2021 Charlie Gordon",
+  "Copyright (c) 2023 Ben Noordhuis",
+  "Copyright (c) 2023 Saul Ibarra Corretge",
+]
+SPDX-License-Identifier = "MIT"
+
 # The word segmenter translates ICU's dictionary engines and embeds their pinned data.
 # Dictionary notices are reproduced in LICENSES/LicenseRef-ICU-{CJK,SEA}.txt.
 [[annotations]]
