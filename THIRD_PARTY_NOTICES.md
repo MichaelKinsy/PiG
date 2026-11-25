@@ -765,7 +765,7 @@ The generated `tui/widthx/unicode_tables.go` derives character properties and em
 
 ## quickjs-wasi 3.6.2 and the codemode prelude
 
-`codemode/assets/raw/quickjs.wasm` (embedded as `codemode/assets/quickjs.wasm.zst`) is the unmodified `quickjs.wasm` of the npm package `quickjs-wasi@3.6.2` (SHA-256 `d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9`), the engine that upstream's codemode package runs. The module contains QuickJS-NG (MIT, copyright Ben Noordhuis, Saúl Ibarra Corretgé, Fabrice Bellard and Charlie Gordon) and wasi-libc from wasi-sdk 30. PiG hosts it with wazero (Apache-2.0, `LICENSES/Apache-2.0.txt`). `codemode/assets/prelude.js` is upstream's `PRELUDE_SOURCE` (MIT, copyright (c) 2025 Mario Zechner). `codemode/assets/PROVENANCE.md` records the source and the refresh procedure.
+`codemode/assets/raw/quickjs.wasm` (embedded as `codemode/assets/quickjs.wasm.zst`) and `coding/extension/host/subprocess/runtime-node/shims/quickjs-wasi/quickjs.wasm` are the unmodified `quickjs.wasm` of the npm package `quickjs-wasi@3.6.2` (SHA-256 `d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9`), the engine that upstream's codemode package runs. The compiled WebAssembly binaries contain QuickJS-NG (MIT, copyright Ben Noordhuis, Saúl Ibarra Corretgé, Fabrice Bellard and Charlie Gordon) and wasi-libc from wasi-sdk 30 (`WebAssembly/wasi-sdk` tag `wasi-sdk-30`, commit `3d4ea12dbee832e92a4734c938fa980395f59da3`; `WebAssembly/wasi-libc` submodule commit `ec0effd769df5f05b647216578bcf5d3b5449725`). PiG hosts it with wazero (Apache-2.0, `LICENSES/Apache-2.0.txt`). `codemode/assets/prelude.js` is upstream's `PRELUDE_SOURCE` (MIT, copyright (c) 2025 Mario Zechner). `codemode/assets/PROVENANCE.md` records the source and the refresh procedure.
 
 ```text
 MIT License
@@ -789,6 +789,121 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
+```
+
+### wasi-libc (wasi-sdk 30)
+
+Source: <https://github.com/WebAssembly/wasi-sdk/releases/tag/wasi-sdk-30> (commit `3d4ea12dbee832e92a4734c938fa980395f59da3`), `src/wasi-libc` at <https://github.com/WebAssembly/wasi-libc/tree/ec0effd769df5f05b647216578bcf5d3b5449725>
+
+License texts are reproduced in `LICENSES/Apache-2.0.txt`, `LICENSES/LLVM-exception.txt`, `LICENSES/MIT.txt`, `LICENSES/BSD-2-Clause.txt`, `LICENSES/BSD-3-Clause.txt`, and `LICENSES/CC0-1.0.txt`.
+
+Top-level `wasi-libc/LICENSE`:
+
+```text
+wasi-libc as a whole is multi-licensed under the
+Apache License v2.0 with LLVM Exceptions, the Apache License v2.0, and
+the MIT License. See the LICENSE-APACHE-LLVM, LICENSE-APACHE and LICENSE-MIT
+files, respectively, for details.
+
+Portions of this software are derived from third-party works covered by
+their own licenses:
+
+dlmalloc/                     - CC0; see the notice in malloc.c for details
+emmalloc/                     - MIT; see the notice in emmalloc.c for details
+libc-bottom-half/cloudlibc/   - BSD-2-Clause; see the LICENSE file for details
+libc-top-half/musl/           - MIT; see the COPYRIGHT file for details
+fts/musl-fts/                 - BSD-3-Clause; see the COPYING file for details
+
+wasi-libc's changes to these files are multi-licensed under the
+Apache License v2.0 with LLVM Exceptions, the Apache License v2.0,
+the MIT License, and the original licenses of the third-party works.
+```
+
+Component notices from `WebAssembly/wasi-libc@ec0effd769df5f05b647216578bcf5d3b5449725`:
+
+- **dlmalloc** (`dlmalloc/src/malloc.c`, CC0-1.0): written by Doug Lea and released to the public domain under CC0 1.0 Universal (`LICENSES/CC0-1.0.txt`).
+- **emmalloc** (`emmalloc/emmalloc.c`, MIT): `Copyright 2018 The Emscripten Authors. All rights reserved.` (dual-licensed under MIT and UIUC/NCSA; included under MIT per `wasi-libc/LICENSE`).
+- **cloudlibc** (`libc-bottom-half/cloudlibc/LICENSE`, BSD-2-Clause):
+
+```text
+Copyright (c) 2015-2017 Nuxi (https://nuxi.nl/) and contributors.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+SUCH DAMAGE.
+```
+
+- **musl** (`libc-top-half/musl/COPYRIGHT`, MIT):
+
+```text
+Copyright © 2005-2020 Rich Felker, et al.
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+- **musl-fts** (`fts/musl-fts/COPYING`, BSD-3-Clause):
+
+```text
+Copyright (c) 1989, 1993
+   The Regents of the University of California.  All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+3. Neither the name of the University nor the names of its contributors
+   may be used to endorse or promote products derived from this software
+   without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+SUCH DAMAGE.
 ```
 
 ## Model Context Protocol TypeScript SDK v1.29.0 (OAuth client)
