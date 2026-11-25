@@ -65185,6 +65185,29 @@
       "tests": []
     },
     {
+      "id": "BF-f2b5809",
+      "title": "`durable/core/history` now rejects records larger than `math.MaxInt32` bytes before storing…",
+      "symptom": "`durable/core/history` now rejects records larger than `math.MaxInt32` bytes before storing `uint32(len(rec))` or allocating an arena chunk, prevents uint32 offset wrap on chunk rollover, and guards `Chain.reload`/`Chain.read` against oversized chunk math (code scanning #253).",
+      "rootCause": "Chain.appendRecord cast len(rec) to uint32 without a maximum-size check",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`durable/core/history` now rejects records larger than `math.MaxInt32` bytes before storing `uint32(len(rec))` or allocating an arena chunk, prevents uint32 offset wrap on chunk rollover, and guards `Chain.reload`/`Chain.read` against oversized chunk math (code scanning #253).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f2b580916a",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "durable/core/history/record_size_test.go::TestRecordSizeBounds",
+        "durable/core/history/record_size_test.go::TestReloadOversizedChunkSetsLoadErrWithoutPanic"
+      ]
+    },
+    {
       "id": "BF-f2be7ae",
       "title": "fix(piglet): drop the untyped additive sentence from the session_start handler's comment",
       "symptom": "fix(piglet): drop the untyped additive sentence from the session_start handler's comment",
