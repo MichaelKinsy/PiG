@@ -1,1 +1,1 @@
-{"private": true, "dependencies": {"pi-lens": "4.3.0"}}
+{"private": true, "dependencies": {"pi-lens": "4.3.0"}, "overrides": {"minimatch": "11.0.9"}}

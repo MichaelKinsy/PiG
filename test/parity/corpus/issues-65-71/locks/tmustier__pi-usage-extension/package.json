@@ -1,1 +1,1 @@
-{"private": true, "dependencies": {"@tmustier/pi-usage-extension": "0.9.5"}}
+{"private": true, "dependencies": {"@tmustier/pi-usage-extension": "0.9.5"}, "overrides": {"minimatch": "11.0.9"}}
