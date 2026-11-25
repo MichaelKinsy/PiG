@@ -164,7 +164,33 @@ def summarize(rows, budgets):
     return summary
 
 
-def main():
+class TrialFailure(Exception):
+    """A trial produced no valid measurement: the run failed, which is not a budget excess."""
+
+
+def trial_failure(stage, row, output):
+    stderr = (output / row["stderr"]).read_bytes().decode("utf-8", "replace").strip().splitlines()
+    return TrialFailure("\n".join([
+        f"STARTUP TIMING FAILED: a trial failed ({stage}); this is a failed trial, not a budget excess.",
+        f"  build={row['build']} workload={row['kind']} cache={row['cache']} run={row['run']} returncode={row['returncode']} "
+        f"timeout={row['timeout']} malformed_json={row['malformed_json']} registration={row['registration']}",
+        f"  command: {' '.join(row['command'])}",
+        f"  stderr ({row['stderr']}): {stderr[-1] if stderr else '(empty)'}"]))
+
+
+def budget_report(summary):
+    """The rows over budget, one per line, or an empty list when every row is within budget."""
+    over = [row for row in summary if row.get("within_budget") is False]
+    if not over:
+        return []
+    lines = [f"STARTUP TIMING FAILED: {len(over)} row(s) over budget; every trial was valid, so this is a budget excess, not a failed trial.",
+             "  build workload cache median_ms p90_ms ratio budget"]
+    for row in over:
+        lines.append(f"  {row['build']} {row['kind']} {row['cache']} {row['median_ms']:.2f} {row['p90_ms']:.2f} {row['ratio']:.3f} {row['budget']:.3f}")
+    return lines
+
+
+def measure():
     parser = argparse.ArgumentParser()
     parser.add_argument("--pig", required=True)
     parser.add_argument("--pi", required=True)
@@ -206,12 +232,12 @@ def main():
                     row = trial(builds[name], name, case, "cold", "registration", root / f"verify-{name}-{case}", fixtures, output, True)
                     log.write(json.dumps(row) + "\n"); log.flush()
                     if not row["valid"]:
-                        raise SystemExit(f"fixture registration failed: {row}")
+                        raise trial_failure("fixture registration", row, output)
                 for i in range(3):
                     row = trial(builds[name], name, case, "warm", f"seed-{i}", root / f"warm-{name}-{case}", fixtures, output)
                     log.write(json.dumps(row) + "\n"); log.flush()
                     if not row["valid"]:
-                        raise SystemExit(f"warm seed failed: {row}")
+                        raise trial_failure("warm cache seeding", row, output)
             for cache in ("warm", "cold"):
                 for i in range(args.runs):
                     order = selected[i % len(selected):] + selected[:i % len(selected)]
@@ -220,7 +246,7 @@ def main():
                         row = trial(builds[name], name, case, cache, i, home, fixtures, output)
                         rows.append(row); log.write(json.dumps(row) + "\n"); log.flush()
                         if not row["valid"]:
-                            raise SystemExit(f"startup failed without retry: {row}")
+                            raise trial_failure("measured trial, no retry", row, output)
     summary = summarize(rows, budgets)
     (output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     lines = ["# Startup timing", "", f"Source: `{provenance['source_commit']}`. Each cell has {args.runs} runs. Application caches are cold/warm; OS caches are not dropped.", "",
@@ -229,8 +255,20 @@ def main():
         ratio = f"{row['ratio']:.3f} / {row['budget']:.3f}" if "ratio" in row else "—"
         lines.append(f"| {row['build']} | {row['kind']} | {row['cache']} | {row['median_ms']:.2f} | {row['p90_ms']:.2f} | {ratio} |")
     (output / "summary.md").write_text("\n".join(lines) + "\n")
-    # The workflow marks this job non-blocking. Preserve a nonzero outcome so a miss is visible.
-    return 2 if any(row.get("within_budget") is False for row in summary) else 0
+    # The workflow marks this job non-blocking. Preserve a nonzero outcome so a miss is visible, and say on stdout which rows missed.
+    report = budget_report(summary)
+    if report:
+        print("\n".join(report))
+        return 2
+    return 0
+
+
+def main():
+    try:
+        return measure()
+    except TrialFailure as failure:
+        print(failure)
+        return 1
 
 
 if __name__ == "__main__":
