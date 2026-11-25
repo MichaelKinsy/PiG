@@ -244,7 +244,86 @@ trap '[[ -z "$SCRATCH" ]] || rm -rf "$SCRATCH"; [[ -z "$AGENT_GUARD" ]] || rm -r
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
+# Optional opt-in hermetic pure-Go test-cache partition (PIG_GO_HERMETIC_TEST_CACHE=1):
+# When enabled under CI on a pull_request event (never on schedule/nightly, push/main,
+# release branches, merge_group, stress, or -race runs), omit -count=1 ONLY for packages
+# statically proven hermetic pure-Go by automation/ci/hermeticcheck. Any failure to load
+# the partition fails closed (keeps -count=1 for every package).
+HERMETIC_CACHE_ACTIVE=0
+HERMETIC_PKGS=()
+hermetic_cache_should_enable() {
+  [[ "${PIG_GO_HERMETIC_TEST_CACHE:-0}" == "1" ]] || return 1
+  [[ -n "${CI:-}" ]] || return 1
+  [[ "$MODE" != "stress" && "$MODE" != "report" ]] || return 1
+  # Only pull_request runs are eligible; release branches, nightly schedules, main pushes,
+  # workflow_dispatch, merge_group, and unset events always enforce -count=1.
+  [[ "${GITHUB_EVENT_NAME:-}" == "pull_request" ]] || return 1
+  case "${GITHUB_REF:-}" in
+    refs/heads/main|refs/heads/release/*|refs/tags/*) return 1 ;;
+  esac
+  return 0
+}
+is_hermetic_pkg() {
+  local needle="$1" item
+  for item in ${HERMETIC_PKGS[@]+"${HERMETIC_PKGS[@]}"}; do
+    [[ "$item" == "$needle" ]] && return 0
+  done
+  return 1
+}
+if hermetic_cache_should_enable; then
+  hermetic_list=
+  if [[ -n "${PIG_HERMETIC_PKGS_FILE:-}" && -f "$PIG_HERMETIC_PKGS_FILE" ]]; then
+    hermetic_list=$(cat "$PIG_HERMETIC_PKGS_FILE") || hermetic_list=
+  elif hermetic_list=$(cd "$ROOT/automation/ci/hermeticcheck" && GOWORK=off go run . --root "$ROOT" --list-hermetic 2>/dev/null); then
+    :
+  else
+    echo "[test-grouped] hermeticcheck unavailable; failing closed with -count=1 for all packages" >&2
+    hermetic_list=
+  fi
+  if [[ -n "$hermetic_list" ]]; then
+    while IFS= read -r hpkg; do
+      [[ -n "$hpkg" ]] && HERMETIC_PKGS+=("$hpkg")
+    done <<<"$hermetic_list"
+    if [[ ${#HERMETIC_PKGS[@]} -gt 0 ]]; then
+      HERMETIC_CACHE_ACTIVE=1
+      echo "[test-grouped] hermetic test cache active on PR (${#HERMETIC_PKGS[@]} provably hermetic packages omit -count=1; all others and -race enforce -count=1)"
+    fi
+  fi
+fi
+
 run_group() {
+  local label="$1" parallel="$2"
+  shift 2
+  local pkgs=("$@")
+  [[ ${#pkgs[@]} -gt 0 ]] || return 0
+  # When opt-in hermetic PR caching is active and this group is not under -race,
+  # -tags, or custom -count (stress), split pkgs into provably hermetic (cacheable)
+  # vs non-hermetic (forced -count=1). Fail closed on any ambiguity.
+  if [[ "$HERMETIC_CACHE_ACTIVE" == "1" && ${#RACE_FLAG[@]} -eq 0 && ${#TAG_FLAG[@]} -eq 0 && ${#RUN_FLAG[@]} -eq 0 && "${COUNT_FLAG[*]:-}" == "-count=1" ]]; then
+    local hermetic_subset=() nonhermetic_subset=() pkg
+    for pkg in "${pkgs[@]}"; do
+      if is_hermetic_pkg "$pkg"; then
+        hermetic_subset+=("$pkg")
+      else
+        nonhermetic_subset+=("$pkg")
+      fi
+    done
+    if [[ ${#hermetic_subset[@]} -gt 0 ]]; then
+      local split_status=0
+      if [[ ${#nonhermetic_subset[@]} -gt 0 ]]; then
+        run_group_raw "$label (non-hermetic -count=1)" "$parallel" "${nonhermetic_subset[@]}" || split_status=$?
+      fi
+      local saved_count=("${COUNT_FLAG[@]}")
+      COUNT_FLAG=()
+      run_group_raw "$label (hermetic cached)" "$parallel" "${hermetic_subset[@]}" || split_status=$?
+      COUNT_FLAG=("${saved_count[@]}")
+      return "$split_status"
+    fi
+  fi
+  run_group_raw "$label" "$parallel" "${pkgs[@]}"
+}
+
+run_group_raw() {
   local label="$1" parallel="$2"
   shift 2
   local pkgs=("$@")

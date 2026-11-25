@@ -104,6 +104,8 @@ parity  ./test/parity/interface-closure/autobind
 parity  ./test/parity/interface-closure/autobind/rules
 shared  ./automation/ci/bugledger
 shared  ./automation/ci/changelogfrag
+shared  ./automation/ci/cidag
+shared  ./automation/ci/cidag/cmd/cidag
 shared  ./automation/ci/divguard
 shared  ./automation/ci/perflint
 shared  ./automation/ci/portlint
@@ -111,6 +113,8 @@ shared  ./automation/ci/portlint/checks
 shared  ./automation/ci/preflight
 shared  ./automation/ci/preflight/reviewed
 shared  ./automation/ci/stripmatrix
+shared  ./automation/ci/gocacheprog
+shared  ./automation/ci/hermeticcheck
 shared  ./automation/portlens
 shared  ./bench/durableperf
 shared  ./bench/k8s/cmd/k8sbench
