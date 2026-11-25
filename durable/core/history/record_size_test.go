@@ -75,3 +75,30 @@ func TestReloadOversizedChunkSetsLoadErrWithoutPanic(t *testing.T) {
 		t.Fatalf("st.Err() = %v, want %v", err, ErrRecordTooLarge)
 	}
 }
+
+func TestReloadRecordLenMatchesRejectsNarrowingWraparound(t *testing.T) {
+	if !reloadRecordLenMatches(32, 32) {
+		t.Fatal("reloadRecordLenMatches(32, 32) = false, want true")
+	}
+	if reloadRecordLenMatches(32, 31) {
+		t.Fatal("reloadRecordLenMatches(32, 31) = true, want false")
+	}
+	if reloadRecordLenMatches(0, -1) {
+		t.Fatal("reloadRecordLenMatches(0, -1) = true, want false")
+	}
+	if math.MaxInt > math.MaxUint32 {
+		wrapped := int(uint64(32) + (uint64(1) << 32))
+		if reloadRecordLenMatches(32, wrapped) {
+			t.Fatalf("reloadRecordLenMatches(32, %d) = true, want false for uint32 wraparound", wrapped)
+		}
+		if reloadRecordLenMatches(0, 1<<32) {
+			t.Fatalf("reloadRecordLenMatches(0, %d) = true, want false for 4 GiB record", int(1<<32))
+		}
+	}
+	if math.MaxInt > math.MaxInt32 {
+		overInt32 := math.MaxInt32 + 1
+		if reloadRecordLenMatches(uint32(overInt32), overInt32) {
+			t.Fatalf("reloadRecordLenMatches(%d, %d) = true, want false above MaxInt32", overInt32, overInt32)
+		}
+	}
+}
