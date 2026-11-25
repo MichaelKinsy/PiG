@@ -192,7 +192,7 @@ func (l *callLanes) barrierMark() func() {
 // when ackCounted is true (readLoop counted the frame before sealing). A call that can wait for the session or the user (startsAsync) does not hold the
 // acknowledgment of the handler awaiting it: the handler is suspended on it, which is what the acknowledgment reports. A call whose upstream API returns nothing
 // (holdsForLoopTurn) is one the handler does not wait for: it holds the acknowledgment until the handler's synchronous part is over (ackHold.applied).
-func (h *Host) queueCallDone(me *managedExt, conn *Conn, lanes *callLanes, callID string, call *CallPayload, ackCounted bool, done func()) {
+func (h *Host) queueCallDone(me *managedExt, conn *Conn, lanes *callLanes, callID string, call *CallPayload, ackCounted bool, afterAck <-chan struct{}, done func()) {
 	if startsAsync(call.Method) {
 		if ackCounted {
 			conn.hostCallApplied(call.ParentRequestID, false)
@@ -212,6 +212,18 @@ func (h *Host) queueCallDone(me *managedExt, conn *Conn, lanes *callLanes, callI
 		done = func() {}
 	}
 	if slot := replaceOnlySlot(call.Method); slot != "" {
+		if afterAck != nil && postAckOrderedCalls[call.Method] {
+			// Wait for the command reply before registering in slotCalls so a later request's prefix replacement on the same slot never drains this call and deadlocks waiting for its reply.
+			lanes.push(conn.callLane(call.ParentRequestID), func() {
+				callCtx, releaseCall := conn.hostCallContext(call.ParentRequestID, callID)
+				defer releaseCall()
+				h.awaitPostAckGate(callCtx, call, afterAck)
+				pending := h.slotCalls.register(slot, func() { h.runCallWithContext(me, conn, callID, call, nil, callCtx, nil) })
+				h.runSlotCall(slot, pending)
+				done()
+			})
+			return
+		}
 		// The caller is the connection's read loop, so registration follows the order the extension sent the calls.
 		pending := h.slotCalls.register(slot, func() { h.runCall(me, conn, callID, call, nil) })
 		lanes.push(conn.callLane(call.ParentRequestID), func() { h.runSlotCall(slot, pending); done() })
@@ -230,7 +242,7 @@ func (h *Host) queueCallDone(me *managedExt, conn *Conn, lanes *callLanes, callI
 	lanes.pushCall(conn.callLane(call.ParentRequestID), ordering, func() {
 		if initiated == nil {
 			defer release()
-			h.runCall(me, conn, callID, call, nil)
+			h.runCallWithGate(me, conn, callID, call, nil, afterAck)
 			done()
 			return
 		}
@@ -241,7 +253,7 @@ func (h *Host) queueCallDone(me *managedExt, conn *Conn, lanes *callLanes, callI
 			defer close(finished)
 			defer mark()
 			defer release()
-			h.runCall(me, conn, callID, call, mark)
+			h.runCallWithGate(me, conn, callID, call, mark, afterAck)
 		}()
 		select {
 		case <-initiated:
@@ -322,6 +334,17 @@ func (h *Host) runSlotCall(slot string, through *slotCall) {
 // outputOrderedCalls are the fire-and-forget calls whose effect an RPC client reads from the output stream, where its place among the command responses is part of the protocol.
 var outputOrderedCalls = map[string]bool{"ui.notify": true, "ui.setStatus": true, "ui.setWidget": true, "ui.setTitle": true, "ui.setEditorText": true}
 
+// postAckOrderedCalls are the fire-and-forget RPC stdout writers held behind the command reply when read after the handler's blocked report (Host.SetPostAckGate). Kept separate from outputOrderedCalls so rpcBackgroundGate behavior is unchanged.
+var postAckOrderedCalls = map[string]bool{
+	"ui.notify":        true,
+	"ui.setStatus":     true,
+	"ui.setWidget":     true,
+	"ui.setTitle":      true,
+	"ui.setEditorText": true,
+	"ui.pasteToEditor": true,
+	"appendEntry":      true,
+}
+
 // awaitBackgroundGate holds a call that no request started while the embedder's gate is closed. The Node runtime sends such a call from a timer or I/O callback, which on Pi's one event loop cannot run in the middle of a chain of awaited handlers, only after the chain ends. The wait ends when the gate opens or the call's context ends.
 func (h *Host) awaitBackgroundGate(ctx context.Context, call *CallPayload) {
 	if call.ParentRequestID != "" || !outputOrderedCalls[call.Method] {
@@ -339,21 +362,41 @@ func (h *Host) awaitBackgroundGate(ctx context.Context, call *CallPayload) {
 	}
 }
 
+// awaitPostAckGate holds a post-acknowledgment fire-and-forget output call until the command reply that emitted its event is written (afterAck closes) or the call's context ends.
+func (h *Host) awaitPostAckGate(ctx context.Context, call *CallPayload, afterAck <-chan struct{}) {
+	if afterAck == nil || !postAckOrderedCalls[call.Method] {
+		return
+	}
+	select {
+	case <-afterAck:
+	case <-ctx.Done():
+	}
+}
+
 // runCall executes one extension→host call and sends its result on conn, the connection that delivered the call, even after an adoption replaces the
 // member's current connection. mark, when non-nil, is the call's initiation mark.
 func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayload, mark func()) {
+	h.runCallWithGate(me, conn, callID, call, mark, nil)
+}
+
+func (h *Host) runCallWithGate(me *managedExt, conn *Conn, callID string, call *CallPayload, mark func(), afterAck <-chan struct{}) {
 	// A call of a with_session request acts on the replacement Session, which the outgoing Session's invalidation does not reach.
 	if route := conn.withSessionRoute(call.ParentRequestID); route != nil {
 		route.run(conn, callID, call, mark)
 		return
 	}
 	callCtx, releaseCall := conn.hostCallContext(call.ParentRequestID, callID)
+	defer releaseCall()
+	h.runCallWithContext(me, conn, callID, call, mark, callCtx, afterAck)
+}
+
+func (h *Host) runCallWithContext(me *managedExt, conn *Conn, callID string, call *CallPayload, mark func(), callCtx context.Context, afterAck <-chan struct{}) {
 	callCtx = withGraphResolver(callCtx, graphResolver{host: h, conn: conn})
 	if h.uiBridge != nil {
 		defer h.uiBridge.releaseAutocompleteCall(conn, call)
 	}
-	defer releaseCall()
 	h.awaitBackgroundGate(callCtx, call)
+	h.awaitPostAckGate(callCtx, call, afterAck)
 	// A dropped or refused call delivers none of the cross-process references it carried.
 	refuseReferences := func() {
 		if call.Method == "registerProvider" || call.Method == callProviderConfigRef {
