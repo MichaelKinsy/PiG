@@ -64164,6 +64164,30 @@
       ]
     },
     {
+      "id": "BF-efb2e56",
+      "title": "A live `kit.Loader` returned from an `EntryViewRenderer`, `MessageViewRenderer`, or `ToolViewRenderer` now…",
+      "symptom": "A live `kit.Loader` returned from an `EntryViewRenderer`, `MessageViewRenderer`, or `ToolViewRenderer` now animates inside a caching transcript container instead of staying frozen on its first frame (#567).",
+      "rootCause": "renderProxyComponent.IsDirty and toolRenderProxy.IsDirty checked only RPC-response dirty flags and ignored host-animated loaders in rendererView",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A live `kit.Loader` returned from an `EntryViewRenderer`, `MessageViewRenderer`, or `ToolViewRenderer` now animates inside a caching transcript container instead of staying frozen on its first frame (#567). Present since v0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "efb2e5690f",
+          "date": "2026-11-25",
+          "pr": "567"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/render_proxy_loader_dirty_test.go::TestRenderProxyLiveLoaderAdvancesInCachingContainer",
+        "coding/extension/host/subprocess/render_proxy_loader_dirty_test.go::TestToolRenderProxyLiveLoaderAdvancesInCachingToolCard"
+      ]
+    },
+    {
       "id": "BF-f003f0a",
       "title": "tui: after quick terminal resizes a subprocess extension could be left rendering for a width the terminal no…",
       "symptom": "tui: after quick terminal resizes a subprocess extension could be left rendering for a width the terminal no longer had, and what it pushed for that width was not painted until the next resize.",

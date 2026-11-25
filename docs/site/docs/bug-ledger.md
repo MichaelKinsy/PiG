@@ -2311,6 +2311,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-eeac307](#bf-eeac307) | Anthropic and Bedrock assistant messages write `providerThinkingLevel` after `model`, and write… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-eeee29b](#bf-eeee29b) | `chord/nextnode/workers`: a worker that ended (was stopped or killed) while its Node plugin host was still… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ef0f95a](#bf-ef0f95a) | OpenCode Zen and OpenCode Go use the `opencode.ai/inference` endpoints, which fixes OpenCode Go Gemini models… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-efb2e56](#bf-efb2e56) | A live `kit.Loader` returned from an `EntryViewRenderer`, `MessageViewRenderer`, or `ToolViewRenderer` now… | PiG's own defect | All platforms | Unreleased |
 | [BF-f003f0a](#bf-f003f0a) | tui: after quick terminal resizes a subprocess extension could be left rendering for a width the terminal no… | PiG's own defect | All platforms | 0.8.0 |
 | [BF-f00bf6c](#bf-f00bf6c) | fix(childwait): call PeekNamedPipe through kernel32 | PiG's own defect | All platforms | Unreleased |
 | [BF-f01e5a1](#bf-f01e5a1) | Durable contract CLI (`durable/contract/cli/contract.mjs`, `durable/contract/cli/robust.mjs`): `-j N` is now… | PiG's own defect | All platforms | 0.8.0 |
@@ -34276,6 +34277,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `ef0f95ab0e` (2026-10-14)
 - **Tests:** `ai/classifier_models_upstream_test.go::TestClassifierModelsUpstream`
 - **Release note:** OpenCode Zen and OpenCode Go use the `opencode.ai/inference` endpoints, which fixes OpenCode Go Gemini models failing with a 404; OpenCode Go MiniMax M2.7 uses the Anthropic Messages API, and OpenCode Go DeepSeek V4 Flash is no longer listed (carried Pi fix, Pi 195120a9).
+
+### BF-efb2e56
+
+**A live `kit.Loader` returned from an `EntryViewRenderer`, `MessageViewRenderer`, or `ToolViewRenderer` now…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A live `kit.Loader` returned from an `EntryViewRenderer`, `MessageViewRenderer`, or `ToolViewRenderer` now animates inside a caching transcript container instead of staying frozen on its first frame (#567).
+- **Root cause:** renderProxyComponent.IsDirty and toolRenderProxy.IsDirty checked only RPC-response dirty flags and ignored host-animated loaders in rendererView
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `efb2e5690f` (2026-11-25, #567)
+- **Tests:** `coding/extension/host/subprocess/render_proxy_loader_dirty_test.go::TestRenderProxyLiveLoaderAdvancesInCachingContainer`, `coding/extension/host/subprocess/render_proxy_loader_dirty_test.go::TestToolRenderProxyLiveLoaderAdvancesInCachingToolCard`
+- **Release note:** A live `kit.Loader` returned from an `EntryViewRenderer`, `MessageViewRenderer`, or `ToolViewRenderer` now animates inside a caching transcript container instead of staying frozen on its first frame (#567). Present since v0.7.0.
 
 ### BF-f003f0a
 
