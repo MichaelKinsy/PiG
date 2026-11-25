@@ -55,7 +55,7 @@ source_dir=$(python3 "$here/pig-acp-source.py" --lock "$here/pig-acp.lock" "$wor
 acp_version=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$here/pig-acp.lock")
 
 stage="$work/$name"
-mkdir -p "$stage/PIG-ACP"
+mkdir -p "$stage/PIG-ACP-LICENSES"
 (
   cd "$source_dir"
   GOWORK=off GOTOOLCHAIN=local CGO_ENABLED=0 go build -trimpath -buildvcs=false \
@@ -65,9 +65,9 @@ cp "$pig_root/$pig_bin" "$stage/$pig_bin"
 cp "$pig_root/LICENSE" "$pig_root/NOTICE" "$pig_root/THIRD_PARTY_NOTICES.md" "$stage/"
 cp -R "$pig_root/LICENSES" "$stage/"
 # pig-acp's own license and the attribution for the pi-acp port it derives from.
-cp "$work/src/LICENSE" "$stage/PIG-ACP/LICENSE"
-cp "$work/src/CREDITS.md" "$stage/PIG-ACP/CREDITS.md"
-cp "$work/src/port/oracle/pi-acp/LICENSE" "$stage/PIG-ACP/pi-acp-LICENSE"
+cp "$work/src/LICENSE" "$stage/PIG-ACP-LICENSES/LICENSE"
+cp "$work/src/CREDITS.md" "$stage/PIG-ACP-LICENSES/CREDITS.md"
+cp "$work/src/port/oracle/pi-acp/LICENSE" "$stage/PIG-ACP-LICENSES/pi-acp-LICENSE"
 chmod 0755 "$stage/$pig_bin" "$stage/$acp_bin"
 
 if [ "$FORMAT" = zip ]; then
