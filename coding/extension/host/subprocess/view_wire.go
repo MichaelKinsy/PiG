@@ -161,6 +161,15 @@ func (r *rendererView) live(width int) ([]string, bool) {
 	return surface.Render(width), true
 }
 
+// animates reports an authoritative view whose loader the host advances on its
+// own, so a caching parent must render the proxy every frame while it does.
+func (r *rendererView) animates() bool {
+	r.mu.Lock()
+	surface, authoritative := r.surface, r.authoritative
+	r.mu.Unlock()
+	return surface != nil && authoritative && surface.animates()
+}
+
 // handleMouse gives a mouse event, local to the result's first cell, to the components of the view, as a ui.custom view takes it. Handled is false
 // without an authoritative view.
 func (r *rendererView) handleMouse(event extension.RemoteMouseEvent) extension.ViewMouseResult {
