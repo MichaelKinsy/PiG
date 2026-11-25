@@ -24,6 +24,9 @@ func TestGeneratorMatchesPisGeneratorOnTheCommittedRecording(t *testing.T) {
 		pioracle.Missing(t, "the oracle Pi's provider data "+oracleProviderData, err)
 	}
 	source := filepath.Join("..", "..", "automation", "gen", "catalog-source")
+	if _, err := os.Stat(filepath.Join(source, sourceMetaFile)); os.IsNotExist(err) {
+		t.Skip("no committed catalog-source recording; bundled catalog uses the pinned Pi release frozen snapshot")
+	}
 	previous, previousAt := http.DefaultClient.Transport, generatedAtOverride
 	t.Cleanup(func() { http.DefaultClient.Transport, generatedAtOverride = previous, previousAt })
 	cleanup, err := replaySource(source)
