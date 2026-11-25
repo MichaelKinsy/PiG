@@ -1340,6 +1340,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8ac653e](#bf-8ac653e) | The powershell tool no longer reports `Command exited with code 1` under Windows PowerShell 5.1 when a native… | PiG's own defect | Windows | 0.8.0 |
 | [BF-8aff02e](#bf-8aff02e) | `grep` with `context` numbers a file's lines at line feeds only, as ripgrep does: a lone carriage return no… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-8b15be3](#bf-8b15be3) | Tests: the read barrier, which lets a fixture server write its next record only when the client is reading… | PiG's own defect | Linux | 0.8.0 |
+| [BF-8b5ab0a](#bf-8b5ab0a) | Added the complete `wasi-libc` (wasi-sdk 30) license texts, component notices (`dlmalloc`, `emmalloc`… | PiG's own defect | All platforms | Unreleased |
 | [BF-8b6eb22](#bf-8b6eb22) | A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) and re-sends a… | PiG's own defect | All platforms | 0.8.0 |
 | [BF-8b75dc0](#bf-8b75dc0) | Config selector (`pig config`): every key that reaches the search input re-filters and resets the selection… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8b792f9](#bf-8b792f9) | Ctrl+V pastes files, images and text on Windows and WSL as well as Alt+V (terminals that pass Ctrl+V to the… | PiG's own defect | Windows, WSL | 0.8.0 |
@@ -1742,6 +1743,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-aeabf18](#bf-aeabf18) | Windows: the pipes that carry the output of the bash tool's shell and of `pi.exec` children are overlapped… | PiG's own defect | Windows | 0.8.0 |
 | [BF-aec0042](#bf-aec0042) | The pi-env daemon runs a command whose `timeoutMs` is above 2^31-1 ms without a deadline, as Pi's daemon… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-aec5a31](#bf-aec5a31) | fix(chord): a chmod of a recorded base file is compared like a write | PiG's own defect | All platforms | Unreleased |
+| [BF-af138c9](#bf-af138c9) | Reloading an evicted history chunk now validates each record length with `checkRecordSize` before narrowing… | PiG's own defect | All platforms | Unreleased |
 | [BF-af1fe1a](#bf-af1fe1a) | Cycling models in the interactive UI goes through the Session as in Pi: the new model persists as the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-af36fe8](#bf-af36fe8) | A streamed tool call whose arguments are valid JSON but not an object (`[]`, `null`, `5`, `"s"`) keeps them… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-af56fab](#bf-af56fab) | A task list item whose text starts with emphasis, a code span or a link (`- [ ] **bold** text`) no longer… | PiG's own defect | All platforms | 0.8.0 |
@@ -1837,6 +1839,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-bc02460](#bf-bc02460) | Changing the output padding now applies at once to the branch-summary, compaction-summary and… | PiG's own defect | All platforms | 0.8.0 |
 | [BF-bc05945](#bf-bc05945) | A resumed session takes the model its registry lists for the saved provider and id, with that listing's API… | PiG's own defect | All platforms | 0.8.0 |
 | [BF-bc24321](#bf-bc24321) | fix(mem M3): arm the idle collection at run end and run it after 500 ms | PiG's own defect | All platforms | Unreleased |
+| [BF-bc30287](#bf-bc30287) | Bundled Go and Node model catalogs now match the pinned Pi 1.6.0 release snapshot (`2026-11-20T10:48:49Z`)… | PiG's own defect | All platforms | Unreleased |
 | [BF-bc4cd62](#bf-bc4cd62) | `toPrecision` rounds a value just below a power of ten (1e-11 to 16 digits, 9.999999999999998e9 to 16 digits)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bc5d1ad](#bf-bc5d1ad) | durable harness: closing a Harness on one goroutine while a commit was being published on another could start… | PiG's own defect | All platforms | 0.8.0 |
 | [BF-bc6c54f](#bf-bc6c54f) | Fix the extension event result type and keep the event fast paths exact | PiG's own defect | All platforms | Unreleased |
@@ -1924,6 +1927,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c723782](#bf-c723782) | In the Node extension runtime, `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., {… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-c72462b](#bf-c72462b) | Chord: a registry value an app keeps past `host.close` (`host.registry`) no longer keeps the closed host… | PiG's own defect | All platforms | 0.8.0 |
 | [BF-c735439](#bf-c735439) | fix(sdk): merge Lisp SDK create-provider model catalog once per publish | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-c742dc6](#bf-c742dc6) | An RPC client could receive a Node extension's notification or other fire-and-forget UI call (`notify`… | PiG's own defect | All platforms | Unreleased |
 | [BF-c7b91e7](#bf-c7b91e7) | Terminal input bytes decode as Node's StringDecoder does, as Pi's `stdin.setEncoding("utf8")` reads them: a… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-c7c99c6](#bf-c7c99c6) | In fullscreen mode, a click on a message or entry that an extension renders is no longer lost when it arrives… | PiG's own defect | All platforms | 0.8.0 |
 | [BF-c7ebb23](#bf-c7ebb23) | A cancelled prompt in a `config.oauth` login now rejects with Pi's `Login cancelled` in every SDK (it was… | PiG's own defect | All platforms | 0.5.0 |
@@ -2062,6 +2066,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d7bfea6](#bf-d7bfea6) | A git source whose ref has no repository (`git:#v1`) no longer panics, and a ref split out of an opaque-path… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d7c7f86](#bf-d7c7f86) | fix(runtimecell): start a packed cell's members in order so a later member's factory cannot take the factory… | PiG's own defect | All platforms | Unreleased |
 | [BF-d7fbf00](#bf-d7fbf00) | Stored assistant messages of a durable conversation now carry `thinkingLevel`: a generation records the… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-d7fedef](#bf-d7fedef) | Packed Go extension builds no longer fail with `go build: undefined: sdk.ReportLoadFailure` (or any future… | PiG's own defect | All platforms | Unreleased |
 | [BF-d80425c](#bf-d80425c) | fix(train): gate repairs after merging train 3 and the ordering stack | PiG's own defect | All platforms | Unreleased |
 | [BF-d80c1cd](#bf-d80c1cd) | Where Pi calls `new URL(value)`, Pig now parses a `ws:`, `wss:`, `ftp:` or `file:` URL, and a bracketed IPv6… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d80cb24](#bf-d80cb24) | A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does… | PiG's own defect | All platforms | 0.8.0 |
@@ -20785,6 +20790,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/abort_text_pi_test.go::TestProviderAbortTextsMatchPi`, `coding/rpc33_azure_ticks_test.go::TestRPC33AzureTickOrder`
 - **Release note:** Tests: the read barrier, which lets a fixture server write its next record only when the client is reading the socket again, counted bytes per client address. Linux gives one local port to live connections to different servers, so two parallel fixture servers could see the same client address; one of them then waited until its test's deadline, or wrote two records into one read. `TestRPC33AzureTickOrder` failed that way in about one run in a hundred, more often on a loaded machine. The barrier now counts per connection (client and server address).
 
+### BF-8b5ab0a
+
+**Added the complete `wasi-libc` (wasi-sdk 30) license texts, component notices (`dlmalloc`, `emmalloc`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Added the complete `wasi-libc` (wasi-sdk 30) license texts, component notices (`dlmalloc`, `emmalloc`, `cloudlibc`, `musl`, `musl-fts`), and SPDX REUSE annotations for the embedded `quickjs.wasm` and `quickjs-wasi` WebAssembly binaries in `THIRD_PARTY_NOTICES.md`, `LICENSES/`, `REUSE.toml`, and `codemode/assets/PROVENANCE.md`.
+- **Root cause:** THIRD_PARTY_NOTICES.md named wasi-libc without reproducing its license terms and both REUSE.toml annotations marked quickjs.wasm as MIT only
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8b5ab0a08b` (2026-11-25)
+- **Tests:** None recorded.
+- **Release note:** Added the complete `wasi-libc` (wasi-sdk 30) license texts, component notices (`dlmalloc`, `emmalloc`, `cloudlibc`, `musl`, `musl-fts`), and SPDX REUSE annotations for the embedded `quickjs.wasm` and `quickjs-wasi` WebAssembly binaries in `THIRD_PARTY_NOTICES.md`, `LICENSES/`, `REUSE.toml`, and `codemode/assets/PROVENANCE.md`.
+
 ### BF-8b6eb22
 
 **A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) and re-sends a…**
@@ -26408,6 +26427,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `aec5a318db` (2026-11-07)
 - **Tests:** None recorded.
 
+### BF-af138c9
+
+**Reloading an evicted history chunk now validates each record length with `checkRecordSize` before narrowing…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Reloading an evicted history chunk now validates each record length with `checkRecordSize` before narrowing to `uint32`, preventing a corrupted or oversized loader record of length `n + k*2^32` from bypassing the entry length check in `Chain.fill`.
+- **Root cause:** Chain.fill compared c.ents[i].n != uint32(len(rec)) without first checking that len(rec) fits within maxRecordBytes
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `af138c9a84` (2026-11-25)
+- **Tests:** `durable/core/history/record_size_test.go::TestReloadRecordLenMatchesRejectsNarrowingWraparound`
+- **Release note:** Reloading an evicted history chunk now validates each record length with `checkRecordSize` before narrowing to `uint32`, preventing a corrupted or oversized loader record of length `n + k*2^32` from bypassing the entry length check in `Chain.fill`.
+
 ### BF-af1fe1a
 
 **Cycling models in the interactive UI goes through the Session as in Pi: the new model persists as the…**
@@ -27723,6 +27756,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `bc243218dd` (2026-10-13)
 - **Tests:** `internal/codingagent/interactive_layout_idle_test.go::TestIdleHeapCollectionAfterRun`
 
+### BF-bc30287
+
+**Bundled Go and Node model catalogs now match the pinned Pi 1.6.0 release snapshot (`2026-11-20T10:48:49Z`)…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Bundled Go and Node model catalogs now match the pinned Pi 1.6.0 release snapshot (`2026-11-20T10:48:49Z`), adding 65 models that were missing in PiG 0.8.0 (including `gemini-4-neon`, `gpt-6.2-astra`, `gpt-6.2-sol`, `mai-code-2`, and `mai-code-2-flash` on `github-copilot`, plus `gemini-4-neon` on `google`, `google-vertex`, `opencode`, `radius`, `openrouter`, and `vercel-ai-gateway`) and removing 27 entries absent from Pi 1.6.0.
+- **Root cause:** automation/gen/catalog-source remained on a 2026-11-15 recording when .upstream/pin moved to Pi 1.6.0
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `bc302875f2` (2026-11-25)
+- **Tests:** `ai/catalog_freshness_test.go::TestBundledCatalogNotOlderThanPinnedPi`, `cmd/gen-models/catalog_recording_test.go::TestGeneratorMatchesPisGeneratorOnTheCommittedRecording`
+- **Release note:** Bundled Go and Node model catalogs now match the pinned Pi 1.6.0 release snapshot (`2026-11-20T10:48:49Z`), adding 65 models that were missing in PiG 0.8.0 (including `gemini-4-neon`, `gpt-6.2-astra`, `gpt-6.2-sol`, `mai-code-2`, and `mai-code-2-flash` on `github-copilot`, plus `gemini-4-neon` on `google`, `google-vertex`, `opencode`, `radius`, `openrouter`, and `vercel-ai-gateway`) and removing 27 entries absent from Pi 1.6.0. Added `TestBundledCatalogNotOlderThanPinnedPi` to prevent future pin bumps from shipping a stale catalog recording.
+
 ### BF-bc4cd62
 
 **`toPrecision` rounds a value just below a power of ten (1e-11 to 16 digits, 9.999999999999998e9 to 16 digits)…**
@@ -28922,6 +28969,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `c7354395b9` (2026-11-21)
 - **Tests:** None recorded.
+
+### BF-c742dc6
+
+**An RPC client could receive a Node extension's notification or other fire-and-forget UI call (`notify`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An RPC client could receive a Node extension's notification or other fire-and-forget UI call (`notify`, `setStatus`, `setWidget`, `setTitle`, `setEditorText`, `pasteToEditor`, or `entry_appended` from `pi.appendEntry`) before the reply of the command that caused it (`set_session_name`, `set_thinking_level`, `cycle_thinking_level`, or `set_model` / `cycle_model` when the thinking level changes without an awaiting `model_select` handler).
+- **Root cause:** Conn.readLoop acknowledged blocked unawaited handlers before the RPC command wrote its response, letting post-await fire-and-forget UI calls overtake the command reply
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c742dc67be` (2026-11-25)
+- **Tests:** `coding/cli/rpc_post_ack_order_test.go::TestRPCBatchSetWidgetSlotDoesNotDeadlock`, `coding/cli/rpc_post_ack_order_test.go::TestRPCModelCommandsPostAckOrder`, `coding/cli/rpc_post_ack_order_test.go::TestRPCPostAckGateReleasePaths`, `coding/cli/rpc_post_ack_order_test.go::TestRPCSingleCommandPostAckOrderThroughResponseWriteSeam`, `coding/cli/rpc_post_ack_order_test.go::TestRPCTwoNodeExtensionsPostAckOrder`, `coding/cli/rpc_unawaited_short_wait_order_deterministic_test.go::TestRPCShortWaitOrderPostAwaitNotifyOvertakesReplyDeterministic`, `coding/extension/host/invocation/ack_test.go::TestAcknowledgedReportsReleaseState`, `coding/extension/host/subprocess/ack_hold_test.go::TestBlockedAcknowledgmentOfAnEffectCallWaitsForTheHandlersProgress` and 4 more in docs/bug-ledger.json
+- **Release note:** An RPC client could receive a Node extension's notification or other fire-and-forget UI call (`notify`, `setStatus`, `setWidget`, `setTitle`, `setEditorText`, `pasteToEditor`, or `entry_appended` from `pi.appendEntry`) before the reply of the command that caused it (`set_session_name`, `set_thinking_level`, `cycle_thinking_level`, or `set_model` / `cycle_model` when the thinking level changes without an awaiting `model_select` handler). Post-acknowledgment fire-and-forget output calls now wait off the read loop until the originating command's reply is written, matching Pi's event-loop microtask ordering, and release immediately on command error, abort, session close, stdout failure, or shutdown.
 
 ### BF-c7b91e7
 
@@ -30833,6 +30894,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `d7fbf0046b` (2026-10-25)
 - **Tests:** `durable/harness/harness_generation_recovery_test.go::TestGenerationRecovery`, `durable/harness/harness_generation_test.go::TestGeneration`
 - **Release note:** Stored assistant messages of a durable conversation now carry `thinkingLevel`: a generation records the thinking level its request asked for on the response, also after polling a deferred one. A poll checkpoint written by an earlier version has no level and records none.
+
+### BF-d7fedef
+
+**Packed Go extension builds no longer fail with `go build: undefined: sdk.ReportLoadFailure` (or any future…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Packed Go extension builds no longer fail with `go build: undefined: sdk.ReportLoadFailure` (or any future runner-template SDK symbol) when an extension's `go.mod` local `replace` or `PIG_SDK_GO_ROOT` points to an SDK checkout older than the running `pig` binary.
+- **Root cause:** findSDKRootWithPreferred accepted any Go SDK directory containing go.mod without checking that it exported the symbols called by the generated runner template
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d7fedef9aa` (2026-11-25)
+- **Tests:** `coding/extension/host/runtimecell/go_sdk_compat_test.go::TestBuildGoPackedCellFallsBackFromIncompatibleExtensionReplace`, `coding/extension/host/runtimecell/go_sdk_compat_test.go::TestExtractRunnerSDKRequirementsDerivesFromTemplate`, `coding/extension/host/runtimecell/go_sdk_compat_test.go::TestFindSDKRootRejectsOnlyIncompatibleCandidateWithActionableError`
+- **Release note:** Packed Go extension builds no longer fail with `go build: undefined: sdk.ReportLoadFailure` (or any future runner-template SDK symbol) when an extension's `go.mod` local `replace` or `PIG_SDK_GO_ROOT` points to an SDK checkout older than the running `pig` binary. Required SDK symbols are now derived directly from the generated runner template; incompatible SDK roots fall back to the running binary's staged SDK, or report an actionable error naming the incompatible path, how it was selected, and the missing symbol(s) when no compatible SDK exists.
 
 ### BF-d80425c
 

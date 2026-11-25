@@ -145566,7 +145566,8 @@
         "public-api:codemode/types.go#CodemodeJsonSchema"
       ],
       "evidence": [
-        "test:bench/k8s/cmd/k8sbench/analyze_test.go#TestTrackLineMatchesTrackRow"
+        "test:bench/k8s/cmd/k8sbench/analyze_test.go#TestTrackLineMatchesTrackRow",
+        "test:coding/cli/rpc_post_ack_order_test.go#TestRPCSingleCommandPostAckOrderThroughResponseWriteSeam"
       ]
     },
     {
@@ -149961,7 +149962,8 @@
         "public-api:codemode/types.go#CodemodeJsonSchema"
       ],
       "evidence": [
-        "test:bench/k8s/cmd/k8sbench/analyze_test.go#TestTrackLineMatchesTrackRow"
+        "test:bench/k8s/cmd/k8sbench/analyze_test.go#TestTrackLineMatchesTrackRow",
+        "test:coding/cli/rpc_post_ack_order_test.go#TestRPCSingleCommandPostAckOrderThroughResponseWriteSeam"
       ]
     },
     {
@@ -153948,7 +153950,8 @@
         "public-api:codemode/types.go#CodemodeJsonSchema"
       ],
       "evidence": [
-        "test:bench/k8s/cmd/k8sbench/analyze_test.go#TestTrackLineMatchesTrackRow"
+        "test:bench/k8s/cmd/k8sbench/analyze_test.go#TestTrackLineMatchesTrackRow",
+        "test:coding/cli/rpc_post_ack_order_test.go#TestRPCSingleCommandPostAckOrderThroughResponseWriteSeam"
       ]
     },
     {
@@ -169507,7 +169510,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/session_context_upstream_test.go#TestContextEditableContentIsNormalizedForAssistantTargets",
-        "test:bench/k8s/cmd/k8sbench/analyze_test.go#TestTrackLineMatchesTrackRow"
+        "test:bench/k8s/cmd/k8sbench/analyze_test.go#TestTrackLineMatchesTrackRow",
+        "test:coding/cli/rpc_post_ack_order_test.go#TestRPCSingleCommandPostAckOrderThroughResponseWriteSeam"
       ]
     },
     {
@@ -171057,8 +171061,8 @@
       ],
       "evidence": [
         "test:coding/session_fork_active_upstream_test.go#TestAgentSessionRuntimeKeepsTheSessionStartEventUpstream",
-        "test:coding/session_owned_loader_close_unix_test.go#TestSessionCloseShutsDownOwnedResourceLoader",
-        "test:coding/session_runtime_diagnostics_test.go#TestRuntimeKeepsDiagnosticsAndModelFallbackOfTheCurrentConstruction"
+        "test:coding/cli/rpc_unawaited_short_wait_order_deterministic_test.go#TestRPCShortWaitOrderPostAwaitNotifyOvertakesReplyDeterministic",
+        "test:coding/session_owned_loader_close_unix_test.go#TestSessionCloseShutsDownOwnedResourceLoader"
       ]
     },
     {
@@ -171079,8 +171083,8 @@
       ],
       "evidence": [
         "test:coding/session_fork_active_upstream_test.go#TestAgentSessionRuntimeKeepsTheSessionStartEventUpstream",
-        "test:coding/session_owned_loader_close_unix_test.go#TestSessionCloseShutsDownOwnedResourceLoader",
-        "test:coding/session_runtime_diagnostics_test.go#TestRuntimeKeepsDiagnosticsAndModelFallbackOfTheCurrentConstruction"
+        "test:coding/cli/rpc_unawaited_short_wait_order_deterministic_test.go#TestRPCShortWaitOrderPostAwaitNotifyOvertakesReplyDeterministic",
+        "test:coding/session_owned_loader_close_unix_test.go#TestSessionCloseShutsDownOwnedResourceLoader"
       ]
     },
     {

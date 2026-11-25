@@ -94326,6 +94326,17 @@
       "shapeHash": "sha256:0898f07a7d1aa1aece73e01a856804a278c20e1c45d218d62c60c6bc64663219"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#cliExtensionHost.setPostAckGate",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "cliExtensionHost.setPostAckGate",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(gate func(event string) \u003c-chan struct{})"
+      },
+      "shapeHash": "sha256:04db103bcf6bfd1d4c2a0c2615e09cd467b3514e5ba0b96890bb365e1b4ac839"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#cliExtensionSet",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "cliExtensionSet",
@@ -100959,6 +100970,17 @@
       "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#postAckGateSetter",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "postAckGateSetter",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "postAckGateSetter"
+      },
+      "shapeHash": "sha256:d86488f62c84b0325b12964f69544892e4c473b82514d1ad8fa325266edfbcfe"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#prepareDocsBundle",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "prepareDocsBundle",
@@ -103665,6 +103687,17 @@
       "shapeHash": "sha256:94a92a1ea44d07c08143e1a29d91b7aaf846cc29c076da935ea09606fc844142"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcHost.activeReplyGate",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcHost.activeReplyGate",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(event string) \u003c-chan struct{}"
+      },
+      "shapeHash": "sha256:f8fea523bd096f0955bbd8375a65427be3492948903d7ad5a0b39bade3850cbb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcHost.announce",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "rpcHost.announce",
@@ -103674,6 +103707,17 @@
         "type": "func(ctx context.Context, session *github.com/MichaelKinsy/PiG/coding.Session, st *rpcModeSession, event github.com/MichaelKinsy/PiG/coding/extension.SessionStartEvent) error"
       },
       "shapeHash": "sha256:f8e4f09904da052c6dcc33dd9f7b75e4285b1ac0d7cf39be16a99561e2e5c13b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcHost.beginReplyGate",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcHost.beginReplyGate",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(event string) func()"
+      },
+      "shapeHash": "sha256:b621986a0c12e85dbc2ae2cda62444786af310de7d330f8c49953fc18123be9b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcHost.bind",
@@ -103751,6 +103795,17 @@
         "type": "func(session *github.com/MichaelKinsy/PiG/coding.Session, runner *github.com/MichaelKinsy/PiG/coding/extension/host/inproc.Runner, catalog headlessCommandCatalog, commands *rpcCommandJoin) *rpcAdmission"
       },
       "shapeHash": "sha256:3d60fd1d1c214489713d3a7a313e014df12fe6015776537bf2765ce3a65799b1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcHost.releaseAllPostAckGates",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcHost.releaseAllPostAckGates",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcHost.state",
@@ -104444,6 +104499,17 @@
         "type": "func(response any)"
       },
       "shapeHash": "sha256:3b938e91e41e410e84be649578c0f25f49bc4cb8317cd64bcd7c07ea377c61ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcResponseTurn.completeWith",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcResponseTurn.completeWith",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(response any, after func())"
+      },
+      "shapeHash": "sha256:06001bf7405bdac06f4954ced8af7ae9ac22768aae9f03b02f37940dbe054d46"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcResponseTurn.schedule",
@@ -129306,6 +129372,17 @@
       "shapeHash": "sha256:ffa79b2277a97578edb7154cd76c29b32899d1eb9bc77e0c60af10883a735d63"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/invocation#Acknowledged",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/invocation",
+      "name": "Acknowledged",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context) bool"
+      },
+      "shapeHash": "sha256:fc0dd2d848a6581066bfa5c671132f84e440ea0bb1dc9d4dd705548b9f82b6e3"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/invocation#AfterResumption",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/invocation",
       "name": "AfterResumption",
@@ -131429,6 +131506,17 @@
       "shapeHash": "sha256:76defcd4d2143e7d8bbd6650ada461d8d0a1020639f853f9c69ada4b57dafce8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#extractRunnerSDKRequirements",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "extractRunnerSDKRequirements",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(runnerSrc string) (pkgSymbols []string, runnableMethods []string)"
+      },
+      "shapeHash": "sha256:d645b41b855b80c0f18fbdbdabe3f2d54708c2f1b23017b5b78e702f46d707f7"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#fetchQuicklispHTTP",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "fetchQuicklispHTTP",
@@ -131814,9 +131902,31 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#goRunnerSDKRequirements",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "goRunnerSDKRequirements",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func() ([]string, []string)"
+      },
+      "shapeHash": "sha256:2fe5280e5017bcdd28cc1bb07bb10a9735b295ab221d6786b1962a4bebcf3cd9"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#goSDKPathOverride",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "goSDKPathOverride",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(root string, stagedDir string) string"
+      },
+      "shapeHash": "sha256:242a329287c94bf85add45f410759100aefa321832e1ef7e06b33ea7640638ed"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#goSDKPathOverrideRaw",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "goSDKPathOverrideRaw",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -132296,6 +132406,28 @@
         "type": "func(extensions []GoExtension) string"
       },
       "shapeHash": "sha256:1997b02f3bfe8c8b97b6093a2ed5a449724bd664740bc45ab6d5922416497203"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#missingGoSDKRunnerSymbols",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "missingGoSDKRunnerSymbols",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(dir string, pkgSymbols []string, runnableMethods []string) []string"
+      },
+      "shapeHash": "sha256:7e24a5bbb51f416ba79ea261fb0461f39aa536151daccd39e1e554e2311d7cd9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#missingRunnerSymbolsForSDK",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "missingRunnerSymbolsForSDK",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(dir string) []string"
+      },
+      "shapeHash": "sha256:94e234dda5d4f511e0a2900403f8d2fb700767ce383fa2d30ca537602a83a6d8"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#modulePathAt",
@@ -139426,6 +139558,17 @@
       "shapeHash": "sha256:0b9d3b1c86b4caa371331b9c9609a88e3ebfd99e66bac832e624966a188921d6"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.SetPostAckGate",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.SetPostAckGate",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(gate func(event string) \u003c-chan struct{})"
+      },
+      "shapeHash": "sha256:04db103bcf6bfd1d4c2a0c2615e09cd467b3514e5ba0b96890bb365e1b4ac839"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.SetProviderCallbacks",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Host.SetProviderCallbacks",
@@ -139776,6 +139919,17 @@
         "type": "func(share *processShare, conns []*Conn) error"
       },
       "shapeHash": "sha256:5643c9ae41955736b91216bc49eb39f51b6fecc058b40c4398d4e21545afd4c8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.awaitPostAckGate",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.awaitPostAckGate",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, call *CallPayload, afterAck \u003c-chan struct{})"
+      },
+      "shapeHash": "sha256:a94eb0ec6a93d8882fcbc74e12b1da51738ebfef00f9dc6757140ea98c797e06"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.awaitTimerDefer",
@@ -141632,9 +141786,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(me *managedExt, conn *Conn, lanes *callLanes, callID string, call *CallPayload, ackCounted bool, done func())"
+        "type": "func(me *managedExt, conn *Conn, lanes *callLanes, callID string, call *CallPayload, ackCounted bool, afterAck \u003c-chan struct{}, done func())"
       },
-      "shapeHash": "sha256:4066a5083c9312ffa53e1faf7242d94c3729dccc0f56882b6b1fcdf0bc9ee5d9"
+      "shapeHash": "sha256:accac0b166f9b4417484b6a0280cc79d754dba4bec00bf44e1ac3208aa0cd66f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.queueLoadedProvider",
@@ -142130,6 +142284,28 @@
         "type": "func(me *managedExt, conn *Conn, callID string, call *CallPayload, mark func())"
       },
       "shapeHash": "sha256:c831b0d1611aed84419aacb682c6fc74e69ed280aeaa277d9bb5c8f22fa787af"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.runCallWithContext",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.runCallWithContext",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(me *managedExt, conn *Conn, callID string, call *CallPayload, mark func(), callCtx context.Context, afterAck \u003c-chan struct{})"
+      },
+      "shapeHash": "sha256:4e824eb61e4000e258912287356905d20e47571b01d0b396410336c2df0bc379"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.runCallWithGate",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.runCallWithGate",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(me *managedExt, conn *Conn, callID string, call *CallPayload, mark func(), afterAck \u003c-chan struct{})"
+      },
+      "shapeHash": "sha256:bd5d72a8a9a1ab6f29f1b4c34266960a8cd8e69f5b0c128c8d5c40dc794a8042"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.runReplacementCall",
@@ -150421,9 +150597,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func() bool"
+        "type": "func() (bool, \u003c-chan struct{})"
       },
-      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+      "shapeHash": "sha256:7f9cd7a89ca6be1cd98f3672c649d3192e3c79542d328e79deb9980d1fd410ce"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ackHold.wentOn",
@@ -162350,6 +162526,17 @@
       "shapeHash": "sha256:5e2c2e281b25b409c979d8d0f346680d5192cdb6fac744b828a1335c115ea82f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#postAckOrderedCalls",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "postAckOrderedCalls",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "map[string]bool"
+      },
+      "shapeHash": "sha256:3af528a2ba91555bb23ee8186a48c3c9201b3cf65594c81b5d32e417b99fd811"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#prepareMessageUpdatePayload",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "prepareMessageUpdatePayload",
@@ -173744,6 +173931,17 @@
         "type": "func(ctx context.Context) context.Context"
       },
       "shapeHash": "sha256:366d096859c2719867db797767571a760dd33d980fb8931079e27bb882464837"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#withAckHoldGate",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "withAckHoldGate",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, afterAck \u003c-chan struct{}, sealed bool) context.Context"
+      },
+      "shapeHash": "sha256:fcda6c7f68ec59c6abfec377d28e337ff92e6586f611759d4f5bee80fbd2dbf2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#withExtLog",

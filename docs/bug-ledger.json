@@ -35867,6 +35867,26 @@
       ]
     },
     {
+      "id": "BF-8b5ab0a",
+      "title": "Added the complete `wasi-libc` (wasi-sdk 30) license texts, component notices (`dlmalloc`, `emmalloc`…",
+      "symptom": "Added the complete `wasi-libc` (wasi-sdk 30) license texts, component notices (`dlmalloc`, `emmalloc`, `cloudlibc`, `musl`, `musl-fts`), and SPDX REUSE annotations for the embedded `quickjs.wasm` and `quickjs-wasi` WebAssembly binaries in `THIRD_PARTY_NOTICES.md`, `LICENSES/`, `REUSE.toml`, and `codemode/assets/PROVENANCE.md`.",
+      "rootCause": "THIRD_PARTY_NOTICES.md named wasi-libc without reproducing its license terms and both REUSE.toml annotations marked quickjs.wasm as MIT only",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Added the complete `wasi-libc` (wasi-sdk 30) license texts, component notices (`dlmalloc`, `emmalloc`, `cloudlibc`, `musl`, `musl-fts`), and SPDX REUSE annotations for the embedded `quickjs.wasm` and `quickjs-wasi` WebAssembly binaries in `THIRD_PARTY_NOTICES.md`, `LICENSES/`, `REUSE.toml`, and `codemode/assets/PROVENANCE.md`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8b5ab0a08b",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-8b6eb22",
       "title": "A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) and re-sends a…",
       "symptom": "A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) and re-sends a component it already showed with different members (it gains or loses `handleInput`, `handleMouse`, focus or `wantsKeyRelease`) no longer races the host's reads of those members: a call that named the component again stored them while a key, a mouse event, a focus change or a frame read them, with no lock between the two, so an input could be delivered or withheld by a half-stored value.",
@@ -47235,6 +47255,28 @@
       "tests": []
     },
     {
+      "id": "BF-af138c9",
+      "title": "Reloading an evicted history chunk now validates each record length with `checkRecordSize` before narrowing…",
+      "symptom": "Reloading an evicted history chunk now validates each record length with `checkRecordSize` before narrowing to `uint32`, preventing a corrupted or oversized loader record of length `n + k*2^32` from bypassing the entry length check in `Chain.fill`.",
+      "rootCause": "Chain.fill compared c.ents[i].n != uint32(len(rec)) without first checking that len(rec) fits within maxRecordBytes",
+      "rootCauseSource": "release note",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Reloading an evicted history chunk now validates each record length with `checkRecordSize` before narrowing to `uint32`, preventing a corrupted or oversized loader record of length `n + k*2^32` from bypassing the entry length check in `Chain.fill`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "af138c9a84",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "durable/core/history/record_size_test.go::TestReloadRecordLenMatchesRejectsNarrowingWraparound"
+      ]
+    },
+    {
       "id": "BF-af1fe1a",
       "title": "Cycling models in the interactive UI goes through the Session as in Pi: the new model persists as the…",
       "symptom": "Cycling models in the interactive UI goes through the Session as in Pi: the new model persists as the default, extends a non-empty `enabledModels` scope, keeps scope keys for model IDs that start with their provider, and checks Anthropic subscription auth after the switch.",
@@ -49892,6 +49934,29 @@
       ]
     },
     {
+      "id": "BF-bc30287",
+      "title": "Bundled Go and Node model catalogs now match the pinned Pi 1.6.0 release snapshot (`2026-11-20T10:48:49Z`)…",
+      "symptom": "Bundled Go and Node model catalogs now match the pinned Pi 1.6.0 release snapshot (`2026-11-20T10:48:49Z`), adding 65 models that were missing in PiG 0.8.0 (including `gemini-4-neon`, `gpt-6.2-astra`, `gpt-6.2-sol`, `mai-code-2`, and `mai-code-2-flash` on `github-copilot`, plus `gemini-4-neon` on `google`, `google-vertex`, `opencode`, `radius`, `openrouter`, and `vercel-ai-gateway`) and removing 27 entries absent from Pi 1.6.0.",
+      "rootCause": "automation/gen/catalog-source remained on a 2026-11-15 recording when .upstream/pin moved to Pi 1.6.0",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Bundled Go and Node model catalogs now match the pinned Pi 1.6.0 release snapshot (`2026-11-20T10:48:49Z`), adding 65 models that were missing in PiG 0.8.0 (including `gemini-4-neon`, `gpt-6.2-astra`, `gpt-6.2-sol`, `mai-code-2`, and `mai-code-2-flash` on `github-copilot`, plus `gemini-4-neon` on `google`, `google-vertex`, `opencode`, `radius`, `openrouter`, and `vercel-ai-gateway`) and removing 27 entries absent from Pi 1.6.0. Added `TestBundledCatalogNotOlderThanPinnedPi` to prevent future pin bumps from shipping a stale catalog recording.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bc302875f2",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "ai/catalog_freshness_test.go::TestBundledCatalogNotOlderThanPinnedPi",
+        "cmd/gen-models/catalog_recording_test.go::TestGeneratorMatchesPisGeneratorOnTheCommittedRecording"
+      ]
+    },
+    {
       "id": "BF-bc4cd62",
       "title": "`toPrecision` rounds a value just below a power of ten (1e-11 to 16 digits, 9.999999999999998e9 to 16 digits)…",
       "symptom": "`toPrecision` rounds a value just below a power of ten (1e-11 to 16 digits, 9.999999999999998e9 to 16 digits) to the digits Node prints (`9.999999999999999e-12`, `9999999999.999998`) instead of carrying it up to the power of ten.",
@@ -52369,6 +52434,39 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-c742dc6",
+      "title": "An RPC client could receive a Node extension's notification or other fire-and-forget UI call (`notify`…",
+      "symptom": "An RPC client could receive a Node extension's notification or other fire-and-forget UI call (`notify`, `setStatus`, `setWidget`, `setTitle`, `setEditorText`, `pasteToEditor`, or `entry_appended` from `pi.appendEntry`) before the reply of the command that caused it (`set_session_name`, `set_thinking_level`, `cycle_thinking_level`, or `set_model` / `cycle_model` when the thinking level changes without an awaiting `model_select` handler).",
+      "rootCause": "Conn.readLoop acknowledged blocked unawaited handlers before the RPC command wrote its response, letting post-await fire-and-forget UI calls overtake the command reply",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An RPC client could receive a Node extension's notification or other fire-and-forget UI call (`notify`, `setStatus`, `setWidget`, `setTitle`, `setEditorText`, `pasteToEditor`, or `entry_appended` from `pi.appendEntry`) before the reply of the command that caused it (`set_session_name`, `set_thinking_level`, `cycle_thinking_level`, or `set_model` / `cycle_model` when the thinking level changes without an awaiting `model_select` handler). Post-acknowledgment fire-and-forget output calls now wait off the read loop until the originating command's reply is written, matching Pi's event-loop microtask ordering, and release immediately on command error, abort, session close, stdout failure, or shutdown.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c742dc67be",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_post_ack_order_test.go::TestRPCBatchSetWidgetSlotDoesNotDeadlock",
+        "coding/cli/rpc_post_ack_order_test.go::TestRPCModelCommandsPostAckOrder",
+        "coding/cli/rpc_post_ack_order_test.go::TestRPCPostAckGateReleasePaths",
+        "coding/cli/rpc_post_ack_order_test.go::TestRPCSingleCommandPostAckOrderThroughResponseWriteSeam",
+        "coding/cli/rpc_post_ack_order_test.go::TestRPCTwoNodeExtensionsPostAckOrder",
+        "coding/cli/rpc_unawaited_short_wait_order_deterministic_test.go::TestRPCShortWaitOrderPostAwaitNotifyOvertakesReplyDeterministic",
+        "coding/extension/host/invocation/ack_test.go::TestAcknowledgedReportsReleaseState",
+        "coding/extension/host/subprocess/ack_hold_test.go::TestBlockedAcknowledgmentOfAnEffectCallWaitsForTheHandlersProgress",
+        "coding/extension/host/subprocess/ack_hold_test.go::TestBlockedAcknowledgmentWaitsForTheCallsReadBeforeIt",
+        "coding/extension/host/subprocess/post_ack_gate_test.go::TestPostAckGateHoldsPostBlockedCallsOnly",
+        "coding/extension/host/subprocess/post_ack_gate_test.go::TestPostAckGateReleasesOnCancelAndShutdown",
+        "coding/extension/host/subprocess/post_ack_gate_test.go::TestPostAckGateSlotCallDoesNotDeadlockPrefixSlotCall"
+      ]
     },
     {
       "id": "BF-c7b91e7",
@@ -56405,6 +56503,30 @@
       "tests": [
         "durable/harness/harness_generation_recovery_test.go::TestGenerationRecovery",
         "durable/harness/harness_generation_test.go::TestGeneration"
+      ]
+    },
+    {
+      "id": "BF-d7fedef",
+      "title": "Packed Go extension builds no longer fail with `go build: undefined: sdk.ReportLoadFailure` (or any future…",
+      "symptom": "Packed Go extension builds no longer fail with `go build: undefined: sdk.ReportLoadFailure` (or any future runner-template SDK symbol) when an extension's `go.mod` local `replace` or `PIG_SDK_GO_ROOT` points to an SDK checkout older than the running `pig` binary.",
+      "rootCause": "findSDKRootWithPreferred accepted any Go SDK directory containing go.mod without checking that it exported the symbols called by the generated runner template",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Packed Go extension builds no longer fail with `go build: undefined: sdk.ReportLoadFailure` (or any future runner-template SDK symbol) when an extension's `go.mod` local `replace` or `PIG_SDK_GO_ROOT` points to an SDK checkout older than the running `pig` binary. Required SDK symbols are now derived directly from the generated runner template; incompatible SDK roots fall back to the running binary's staged SDK, or report an actionable error naming the incompatible path, how it was selected, and the missing symbol(s) when no compatible SDK exists.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d7fedef9aa",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/runtimecell/go_sdk_compat_test.go::TestBuildGoPackedCellFallsBackFromIncompatibleExtensionReplace",
+        "coding/extension/host/runtimecell/go_sdk_compat_test.go::TestExtractRunnerSDKRequirementsDerivesFromTemplate",
+        "coding/extension/host/runtimecell/go_sdk_compat_test.go::TestFindSDKRootRejectsOnlyIncompatibleCandidateWithActionableError"
       ]
     },
     {
