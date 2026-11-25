@@ -159,6 +159,9 @@ func (c *Chain) ArenaBytes() int {
 const (
 	arenaFirstChunk = 16 << 10
 	arenaChunk      = 128 << 10
+	// maxRecordBytes bounds a single history record so entry.off, entry.n, and
+	// chunk length (off+n) stay within int32/uint32 without truncation or wrap.
+	maxRecordBytes = math.MaxInt32
 )
 
 // IndexBytes approximates the memory the fixed-width index uses.
@@ -242,6 +245,9 @@ func (c *Chain) read(ent int32, off, n uint32) []byte {
 	chunk := c.arena[e.chunk]
 	if chunk == nil {
 		chunk = c.reload(e.chunk)
+		if chunk == nil {
+			return nil
+		}
 	}
 	return chunk[at : at+n]
 }
@@ -405,10 +411,16 @@ func (st *Store) kindString(code uint16) string {
 	return st.kindStrings[code-1]
 }
 
+// maxRecordLimit is the byte limit enforced by appendRecord; tests override it to exercise the guard without allocating 2 GiB.
+var maxRecordLimit = maxRecordBytes
+
 // appendRecord copies a stored record into the arena and indexes it. seq is the commit_seq of the entry's commit.
 // The entry id must exceed every loaded id of the chain, which holds for rows read in id order and for entries
 // appended in commit order (ADR-0001 E-D6b).
 func (c *Chain) appendRecord(st *Store, id, seq int64, rec []byte) error {
+	if len(rec) > maxRecordLimit || uint64(len(rec)) > maxRecordBytes {
+		return ErrRecordTooLarge
+	}
 	sc, err := scanRecord(rec)
 	if err != nil {
 		return err
@@ -424,7 +436,7 @@ func (c *Chain) appendRecord(st *Store, id, seq int64, rec []byte) error {
 	if chunksMark > 0 {
 		lastMark = len(c.arena[chunksMark-1])
 	}
-	if chunksMark == 0 || cap(c.arena[chunksMark-1])-lastMark < len(rec) {
+	if chunksMark == 0 || cap(c.arena[chunksMark-1])-lastMark < len(rec) || uint64(lastMark)+uint64(len(rec)) > math.MaxInt32 {
 		size := arenaFirstChunk
 		if chunksMark > 0 {
 			size = min(2*cap(c.arena[chunksMark-1]), arenaChunk)

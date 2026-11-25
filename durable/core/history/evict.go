@@ -103,7 +103,14 @@ func (c *Chain) reload(k uint32) []byte {
 	if int(k)+1 < len(c.chunkEnts) {
 		last = int(c.chunkEnts[k+1]) - 1
 	}
-	chunk := make([]byte, c.ents[last].off+c.ents[last].n)
+	chunkSize := uint64(c.ents[last].off) + uint64(c.ents[last].n)
+	if chunkSize > maxRecordBytes {
+		if st.loadErr == nil {
+			st.loadErr = ErrRecordTooLarge
+		}
+		return nil
+	}
+	chunk := make([]byte, int(chunkSize))
 	if st.loadErr == nil {
 		st.loadErr = c.fill(chunk, first, last)
 	}
