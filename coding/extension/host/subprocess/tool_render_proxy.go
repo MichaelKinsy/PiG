@@ -322,11 +322,11 @@ func (p *toolRenderProxy) SetRendererFallback(fallback func(width int) []string)
 	p.mu.Unlock()
 }
 
-// IsDirty reports a frame that arrived after the last Render.
+// IsDirty reports a frame that arrived after the last Render, or an authoritative view whose loader animates on its own.
 func (p *toolRenderProxy) IsDirty() bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	return p.dirty
+	return p.dirty || (p.linesWidth > 0 && p.view.animates())
 }
 
 func (p *toolRenderProxy) update(payload RenderToolPayload) {
