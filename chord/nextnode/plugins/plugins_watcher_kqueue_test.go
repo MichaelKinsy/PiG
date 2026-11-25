@@ -186,6 +186,7 @@ func (k *kqueueNotifier) addCount() int {
 func (k *kqueueNotifier) movedAwayAndBack(t *testing.T, f *watcherFixture, dir string) {
 	t.Helper()
 	away := dir + "-away"
+	var holds, added bool
 	f.run(func() {
 		if err := os.Rename(dir, away); err != nil {
 			t.Error(err)
@@ -195,8 +196,10 @@ func (k *kqueueNotifier) movedAwayAndBack(t *testing.T, f *watcherFixture, dir s
 		}
 		k.renamed(dir)
 		k.listed(filepath.Dir(dir))
+		// Check the precondition before leaving the host section: once f.run returns, readEvents can enter its section and call k.Add(dir) before the caller checks k.holds(dir).
+		holds, added = k.holds(dir)
 	})
-	if holds, added := k.holds(dir); !holds || added {
+	if !holds || added {
 		t.Fatalf("the notifier holds %s = %v, added for its changes = %v: the case needs it held for its rename alone", dir, holds, added)
 	}
 }

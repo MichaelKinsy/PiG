@@ -20,6 +20,8 @@ const (
 	ErrNonFinite = jsonError("value contains a non-finite number and is not strict JSON")
 	// ErrShape reports a value of the wrong JSON type where a record field has a fixed type.
 	ErrShape = jsonError("unexpected JSON shape")
+	// ErrRecordTooLarge reports a history record that exceeds the arena uint32 index bound.
+	ErrRecordTooLarge = jsonError("record exceeds maximum size")
 )
 
 // scanner is a structural JSON tokenizer over one byte slice. It validates what it skips, so a value it accepts is a

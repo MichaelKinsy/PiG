@@ -2311,6 +2311,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-eeac307](#bf-eeac307) | Anthropic and Bedrock assistant messages write `providerThinkingLevel` after `model`, and write… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-eeee29b](#bf-eeee29b) | `chord/nextnode/workers`: a worker that ended (was stopped or killed) while its Node plugin host was still… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ef0f95a](#bf-ef0f95a) | OpenCode Zen and OpenCode Go use the `opencode.ai/inference` endpoints, which fixes OpenCode Go Gemini models… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-efb2e56](#bf-efb2e56) | A live `kit.Loader` returned from an `EntryViewRenderer`, `MessageViewRenderer`, or `ToolViewRenderer` now… | PiG's own defect | All platforms | Unreleased |
 | [BF-f003f0a](#bf-f003f0a) | tui: after quick terminal resizes a subprocess extension could be left rendering for a width the terminal no… | PiG's own defect | All platforms | 0.8.0 |
 | [BF-f00bf6c](#bf-f00bf6c) | fix(childwait): call PeekNamedPipe through kernel32 | PiG's own defect | All platforms | Unreleased |
 | [BF-f01e5a1](#bf-f01e5a1) | Durable contract CLI (`durable/contract/cli/contract.mjs`, `durable/contract/cli/robust.mjs`): `-j N` is now… | PiG's own defect | All platforms | 0.8.0 |
@@ -2349,6 +2350,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f2a2b34](#bf-f2a2b34) | An unmatched tool result row in the /tree selector shows the tool's name, as in Pi (`[bash]`), instead of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f2aed24](#bf-f2aed24) | A terminal write that fails for a reason other than a lost terminal (not `EIO`, `EPIPE`, `ENOTCONN` or… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-f2aed24-2](#bf-f2aed24-2) | An extension's `ctx.ui.setTitle` replaces control characters in the title with spaces, as Pi's terminal title… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-f2b5809](#bf-f2b5809) | `durable/core/history` now rejects records larger than `math.MaxInt32` bytes before storing… | PiG's own defect | All platforms | Unreleased |
 | [BF-f2be7ae](#bf-f2be7ae) | fix(piglet): drop the untyped additive sentence from the session_start handler's comment | PiG's own defect | All platforms | Unreleased |
 | [BF-f2c00f9](#bf-f2c00f9) | A fused Go extension's built-in tool `execute` without an extension context (`createBashTool(cwd).execute(id… | PiG's own defect | All platforms | 0.5.3 |
 | [BF-f2c00f9-2](#bf-f2c00f9-2) | Extensions' `ui_prompt_start` and `ui_prompt_end` notifications are recorded in order when the host is slow… | PiG's own defect | All platforms | 0.5.3 |
@@ -34277,6 +34279,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/classifier_models_upstream_test.go::TestClassifierModelsUpstream`
 - **Release note:** OpenCode Zen and OpenCode Go use the `opencode.ai/inference` endpoints, which fixes OpenCode Go Gemini models failing with a 404; OpenCode Go MiniMax M2.7 uses the Anthropic Messages API, and OpenCode Go DeepSeek V4 Flash is no longer listed (carried Pi fix, Pi 195120a9).
 
+### BF-efb2e56
+
+**A live `kit.Loader` returned from an `EntryViewRenderer`, `MessageViewRenderer`, or `ToolViewRenderer` now…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A live `kit.Loader` returned from an `EntryViewRenderer`, `MessageViewRenderer`, or `ToolViewRenderer` now animates inside a caching transcript container instead of staying frozen on its first frame (#567).
+- **Root cause:** renderProxyComponent.IsDirty and toolRenderProxy.IsDirty checked only RPC-response dirty flags and ignored host-animated loaders in rendererView
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `efb2e5690f` (2026-11-25, #567)
+- **Tests:** `coding/extension/host/subprocess/render_proxy_loader_dirty_test.go::TestRenderProxyLiveLoaderAdvancesInCachingContainer`, `coding/extension/host/subprocess/render_proxy_loader_dirty_test.go::TestToolRenderProxyLiveLoaderAdvancesInCachingToolCard`
+- **Release note:** A live `kit.Loader` returned from an `EntryViewRenderer`, `MessageViewRenderer`, or `ToolViewRenderer` now animates inside a caching transcript container instead of staying frozen on its first frame (#567). Present since v0.7.0.
+
 ### BF-f003f0a
 
 **tui: after quick terminal resizes a subprocess extension could be left rendering for a width the terminal no…**
@@ -34808,6 +34824,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `f2aed24c0d` (2026-11-03, #397)
 - **Tests:** None recorded.
 - **Release note:** An extension's `ctx.ui.setTitle` replaces control characters in the title with spaces, as Pi's terminal title does, so a BEL or ESC in it no longer ends the sequence early and sends the rest to the terminal as escapes (#397).
+
+### BF-f2b5809
+
+**`durable/core/history` now rejects records larger than `math.MaxInt32` bytes before storing…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `durable/core/history` now rejects records larger than `math.MaxInt32` bytes before storing `uint32(len(rec))` or allocating an arena chunk, prevents uint32 offset wrap on chunk rollover, and guards `Chain.reload`/`Chain.read` against oversized chunk math (code scanning #253).
+- **Root cause:** Chain.appendRecord cast len(rec) to uint32 without a maximum-size check
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f2b580916a` (2026-11-25)
+- **Tests:** `durable/core/history/record_size_test.go::TestRecordSizeBounds`, `durable/core/history/record_size_test.go::TestReloadOversizedChunkSetsLoadErrWithoutPanic`
+- **Release note:** `durable/core/history` now rejects records larger than `math.MaxInt32` bytes before storing `uint32(len(rec))` or allocating an arena chunk, prevents uint32 offset wrap on chunk rollover, and guards `Chain.reload`/`Chain.read` against oversized chunk math (code scanning #253).
 
 ### BF-f2be7ae
 

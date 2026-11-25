@@ -165,8 +165,16 @@ func (c *renderProxyComponent) Render(width int) []string {
 	return out
 }
 
-// IsDirty reports whether a response replaced the painted lines since the last NeedsRedraw, so a caching parent re-renders the proxy.
-func (c *renderProxyComponent) IsDirty() bool { return c.changed.Load() }
+// IsDirty reports whether a response replaced the painted lines since the last NeedsRedraw, or whether the painted view animates on its own (a loader), so a caching parent re-renders the proxy every frame while it does.
+func (c *renderProxyComponent) IsDirty() bool {
+	if c.changed.Load() {
+		return true
+	}
+	c.mu.Lock()
+	animates := c.linesWidth > 0 && c.view.animates()
+	c.mu.Unlock()
+	return animates
+}
 
 // NeedsRedraw consumes the flag IsDirty reads.
 func (c *renderProxyComponent) NeedsRedraw() bool { return c.changed.Swap(false) }

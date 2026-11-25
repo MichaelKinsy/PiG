@@ -174404,7 +174404,7 @@
       "evidence": [
         "test:internal/codingagent/custom_message_components_oracle_test.go#TestCustomMessageAndEntryComponentsMatchPi",
         "test:tui/custom_message_upstream_test.go#TestCustomMessageComponentProvidesOutputPadToCustomRenderersUpstream",
-        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles"
+        "test:coding/extension/host/subprocess/render_proxy_loader_dirty_test.go#TestRenderProxyLiveLoaderAdvancesInCachingContainer"
       ]
     },
     {
@@ -230965,8 +230965,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_rows_upstream_test.go#TestOutputPadRendersAtZeroAndOne",
-        "test:internal/codingagent/interactive_frontend_test.go#TestFrontendSessionDrawsTheRunInsteadOfTheTerminal",
-        "test:internal/codingagent/render_initial_messages_test.go#TestRenderCurrentSessionStateForgetsTheReplacedSessionsState"
+        "test:coding/extension/host/subprocess/render_proxy_loader_dirty_test.go#TestToolRenderProxyLiveLoaderAdvancesInCachingToolCard",
+        "test:internal/codingagent/interactive_frontend_test.go#TestFrontendSessionDrawsTheRunInsteadOfTheTerminal"
       ]
     },
     {
@@ -231805,8 +231805,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_rows_upstream_test.go#TestOutputPadRendersAtZeroAndOne",
-        "test:internal/codingagent/interactive_frontend_test.go#TestFrontendSessionDrawsTheRunInsteadOfTheTerminal",
-        "test:internal/codingagent/interactive_tool_execution_options_test.go#TestToolExecutionOptionsDefaultWhenUndefined"
+        "test:coding/extension/host/subprocess/render_proxy_loader_dirty_test.go#TestToolRenderProxyLiveLoaderAdvancesInCachingToolCard",
+        "test:internal/codingagent/interactive_frontend_test.go#TestFrontendSessionDrawsTheRunInsteadOfTheTerminal"
       ]
     },
     {

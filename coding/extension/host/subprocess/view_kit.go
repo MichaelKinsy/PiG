@@ -278,6 +278,21 @@ func (s *viewSurface) close() {
 	}
 }
 
+// animates reports an open, authoritative surface whose loaders the host advances on its own.
+func (s *viewSurface) animates() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed || s.frame == nil || s.frame.lines != nil {
+		return false
+	}
+	for _, l := range s.frame.loaders {
+		if len(l.loader.Frames) > 1 {
+			return true
+		}
+	}
+	return false
+}
+
 // Render returns the lines the terminal draws at width.
 func (s *viewSurface) Render(width int) []string {
 	s.mu.Lock()
