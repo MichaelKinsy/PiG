@@ -164462,6 +164462,17 @@
       "shapeHash": "sha256:5f3b2a523cbdca419c87f2cf7c5fa158c87a7f3a8f016de3380e44b80acd2fb2"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#rendererView.animates",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "rendererView.animates",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#rendererView.apply",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "rendererView.apply",
@@ -173392,6 +173403,17 @@
         "type": "func(raw encoding/json.RawMessage, lines []string) error"
       },
       "shapeHash": "sha256:2a3ecf8bc7adc224319056300b3aacca392d01a72288a5d16acda94d926589a3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewSurface.animates",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewSurface.animates",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewSurface.buildLocked",
