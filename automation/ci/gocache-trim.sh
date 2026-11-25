@@ -22,7 +22,9 @@ report() {
 case "${1:-}" in
   age)
     mkdir -p "$cache"
-    find "$cache" -type f -exec touch -d '2 hours ago' {} +
+    # GNU date (-d) on Linux/Windows Git Bash, BSD date (-v) on macOS; TZ=UTC makes POSIX touch -t portable.
+    stamp=$(date -u -d '2 hours ago' +%Y%m%d%H%M.%S 2>/dev/null || date -u -v-2H +%Y%m%d%H%M.%S)
+    TZ=UTC find "$cache" -type f -exec touch -t "$stamp" {} +
     touch "$marker"
     report restored
     ;;
