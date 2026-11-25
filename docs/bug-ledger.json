@@ -35019,6 +35019,29 @@
       ]
     },
     {
+      "id": "BF-8683164",
+      "title": "`durable/core/history` now rejects records larger than `math.MaxInt32` bytes before storing…",
+      "symptom": "`durable/core/history` now rejects records larger than `math.MaxInt32` bytes before storing `uint32(len(rec))` or allocating an arena chunk, prevents uint32 offset wrap on chunk rollover, and guards `Chain.reload`/`Chain.read` against oversized chunk math (code scanning #253).",
+      "rootCause": "Chain.appendRecord cast len(rec) to uint32 without a maximum-size check",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`durable/core/history` now rejects records larger than `math.MaxInt32` bytes before storing `uint32(len(rec))` or allocating an arena chunk, prevents uint32 offset wrap on chunk rollover, and guards `Chain.reload`/`Chain.read` against oversized chunk math (code scanning #253).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8683164c0b",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "durable/core/history/record_size_test.go::TestAppendRecordRejectsOversizedRecord",
+        "durable/core/history/record_size_test.go::TestReloadOversizedChunkSetsLoadErrWithoutPanic"
+      ]
+    },
+    {
       "id": "BF-8695b8e",
       "title": "Starting PiG with a packaged extension is about 40 ms faster, which brings the warm start of a package…",
       "symptom": "Starting PiG with a packaged extension is about 40 ms faster, which brings the warm start of a package extension back under Pi's (the Startup latency check had it at 1.157 of Pi against a budget of 1.15).",

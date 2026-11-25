@@ -1309,6 +1309,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-86376a7](#bf-86376a7) | fix: Drain admits no work once it begins, and a stream's auth callback is not owned work | PiG's own defect | All platforms | Unreleased |
 | [BF-866c7f9](#bf-866c7f9) | fix(rpc): two prompts of one batch answer in request order | PiG's own defect | All platforms | Unreleased |
 | [BF-8677279](#bf-8677279) | Closing an RPC client's input while a `bash` command is running, or quitting interactive mode with Ctrl+D… | PiG's own defect | Windows | 0.8.0 |
+| [BF-8683164](#bf-8683164) | `durable/core/history` now rejects records larger than `math.MaxInt32` bytes before storing… | PiG's own defect | All platforms | Unreleased |
 | [BF-8695b8e](#bf-8695b8e) | Starting PiG with a packaged extension is about 40 ms faster, which brings the warm start of a package… | PiG's own defect | All platforms | 0.8.0 |
 | [BF-8695cad](#bf-8695cad) | fix(cli): the no-models warning is listed wherever a start ends without a model | PiG's own defect | All platforms | Unreleased |
 | [BF-869cef8](#bf-869cef8) | A pi-messages stream event that is a number, string, boolean or array is skipped, as Pi skips an event of… | PiG's own defect | All platforms | 0.5.0 |
@@ -20349,6 +20350,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `867727906e` (2026-11-21)
 - **Tests:** `coding/cli/interactive_drained_quit_bash_linux_test.go::TestInteractiveDrainedQuitKillsRunningUserBash`, `coding/cli/rpc_quit_kills_bash_unix_test.go::TestListenConnectionEOFDoesNotKillSiblingConnectionBash`, `coding/cli/rpc_quit_kills_bash_unix_test.go::TestRPCExtensionShutdownWhileBashRuns`, `coding/cli/rpc_quit_kills_bash_unix_test.go::TestRPCInputEndKillsRunningBashTree`, `coding/cli/rpc_quit_kills_bash_unix_test.go::TestRPCInputEndKillsRunningBashTreeNoExt`, `coding/cli/rpc_quit_kills_bash_windows_test.go::TestWin_RPCInputEndKillsRunningBashTree`, `internal/codingagent/tools/bash_group_windows_test.go::TestWin_KillTrackedProcessGroupsBoundedExit`, `internal/codingagent/tools/bash_group_windows_test.go::TestWin_KillTrackedProcessGroupsReapsJobDescendants` and 1 more in docs/bug-ledger.json
 - **Release note:** Closing an RPC client's input while a `bash` command is running, or quitting interactive mode with Ctrl+D while a `!` command is running and an extension's `session_shutdown` handler never settles (the drained-loop quit), left that shell command and its descendants running after `pig` exited 0. `pig` now kills tracked shell process trees before exiting on both paths, as it already does on `/quit`, and on Windows bounds the whole exit-path kill (taskkill, job termination, and waiting on job members) at 2,000 ms (following Pi 31b407dc63, #11889). Affects 0.3.0 through 0.7.0 (RPC input end; drained-loop quit was introduced after 0.7.0).
+
+### BF-8683164
+
+**`durable/core/history` now rejects records larger than `math.MaxInt32` bytes before storing…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `durable/core/history` now rejects records larger than `math.MaxInt32` bytes before storing `uint32(len(rec))` or allocating an arena chunk, prevents uint32 offset wrap on chunk rollover, and guards `Chain.reload`/`Chain.read` against oversized chunk math (code scanning #253).
+- **Root cause:** Chain.appendRecord cast len(rec) to uint32 without a maximum-size check
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8683164c0b` (2026-11-25)
+- **Tests:** `durable/core/history/record_size_test.go::TestAppendRecordRejectsOversizedRecord`, `durable/core/history/record_size_test.go::TestReloadOversizedChunkSetsLoadErrWithoutPanic`
+- **Release note:** `durable/core/history` now rejects records larger than `math.MaxInt32` bytes before storing `uint32(len(rec))` or allocating an arena chunk, prevents uint32 offset wrap on chunk rollover, and guards `Chain.reload`/`Chain.read` against oversized chunk math (code scanning #253).
 
 ### BF-8695b8e
 
