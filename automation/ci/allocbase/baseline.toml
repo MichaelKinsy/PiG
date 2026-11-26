@@ -3405,8 +3405,8 @@ allocs = 75
 
 [[benchmark]]
 package = "./internal/codingagent"
-benchmark = "BenchmarkRequestAuthProviderProjection"
-allocs = 598
+benchmark = "BenchmarkRequestAuthProviderProjection/per-1000-entries"
+allocs = 16338
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3430,8 +3430,8 @@ allocs = 46711
 
 [[benchmark]]
 package = "./internal/codingagent"
-benchmark = "BenchmarkRuntimeModelsSelection"
-allocs = 595
+benchmark = "BenchmarkRuntimeModelsSelection/per-1000-entries"
+allocs = 16769
 
 [[benchmark]]
 package = "./internal/codingagent"

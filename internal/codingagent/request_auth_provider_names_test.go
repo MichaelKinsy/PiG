@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/internal/benchalloc"
+
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
@@ -99,22 +101,54 @@ func TestRequestAuthProviderNamesFollowComposition(t *testing.T) {
 	}
 }
 
+// TestRequestAuthProviderProjectionBenchmarkDivisorIsRadiusCount pins the
+// divisor of BenchmarkRequestAuthProviderProjection to the live Radius catalog
+// count composed by NewRequestAuthRuntime.
+func TestRequestAuthProviderProjectionBenchmarkDivisorIsRadiusCount(t *testing.T) {
+	credentials := ai.NewInMemoryAuthStorage(map[string]ai.Credential{
+		"anthropic": {Type: ai.CredentialAPIKey, Key: "benchmark-key"},
+	})
+	runtime, err := NewRequestAuthRuntime(t.Context(), RequestAuthRuntimeOptions{Credentials: credentials})
+	if err != nil {
+		t.Fatal(err)
+	}
+	provider := runtime.GetProvider(RadiusProviderID)
+	if provider == nil || len(provider.models) == 0 {
+		t.Fatal("missing Radius models in RequestAuthRuntime")
+	}
+}
+
+// BenchmarkRequestAuthProviderProjection composes provider metadata and checks
+// auth. Per-call allocations are dominated by composing the Radius baseline
+// catalog, so allocs/op is reported per 1,000 Radius entries (internal/benchalloc)
+// and catalog refreshes do not move the row.
 func BenchmarkRequestAuthProviderProjection(b *testing.B) {
 	credentials := ai.NewInMemoryAuthStorage(map[string]ai.Credential{
 		"anthropic": {Type: ai.CredentialAPIKey, Key: "benchmark-key"},
 	})
-	for b.Loop() {
-		runtime, err := NewRequestAuthRuntime(b.Context(), RequestAuthRuntimeOptions{Credentials: credentials})
-		if err != nil {
-			b.Fatal(err)
-		}
-		provider := runtime.GetProvider("anthropic")
-		if provider == nil || provider.Name != "Anthropic" {
-			b.Fatal("missing provider identity")
-		}
-		check, err := runtime.CheckAuth(b.Context(), provider.ID)
-		if err != nil || check == nil || check.Type != ai.CredentialAPIKey {
-			b.Fatalf("auth = %v, %v", check, err)
-		}
+	initial, err := NewRequestAuthRuntime(b.Context(), RequestAuthRuntimeOptions{Credentials: credentials})
+	if err != nil {
+		b.Fatal(err)
 	}
+	radiusProvider := initial.GetProvider(RadiusProviderID)
+	if radiusProvider == nil {
+		b.Fatal("missing radius provider")
+	}
+	entries := len(radiusProvider.models)
+	b.Run("per-1000-entries", func(b *testing.B) {
+		benchalloc.Per1000Entries(b, entries, func() {
+			runtime, err := NewRequestAuthRuntime(b.Context(), RequestAuthRuntimeOptions{Credentials: credentials})
+			if err != nil {
+				b.Fatal(err)
+			}
+			provider := runtime.GetProvider("anthropic")
+			if provider == nil || provider.Name != "Anthropic" {
+				b.Fatal("missing provider identity")
+			}
+			check, err := runtime.CheckAuth(b.Context(), provider.ID)
+			if err != nil || check == nil || check.Type != ai.CredentialAPIKey {
+				b.Fatalf("auth = %v, %v", check, err)
+			}
+		})
+	})
 }
