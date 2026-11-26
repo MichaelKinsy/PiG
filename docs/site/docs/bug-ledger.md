@@ -187,7 +187,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-13f7697](#bf-13f7697) | The model catalog no longer offers models.dev's realtime and image models as chat models: `gpt-realtime-2.1`… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-1407bdf](#bf-1407bdf) | A Mermaid class named `__proto__` (`classDef __proto__ fill:#f00` with `class A __proto__` or… | PiG's own defect | All platforms | 0.8.0 |
 | [BF-142baa3](#bf-142baa3) | Every strict and packed Go cell of the extension conformance suite (the theme, child-session, markdown… | PiG's own defect | All platforms | 0.8.0 |
-| [BF-1467dc7](#bf-1467dc7) | An RPC client could receive a Node extension's notification or other fire-and-forget UI call (`notify`… | PiG's own defect | All platforms | Unreleased |
 | [BF-14886f9](#bf-14886f9) | A call to `Session.DeferUntilPublished` from a goroutine other than the publishing one (a Harness's wait for… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-14c9304](#bf-14c9304) | fix(schema/internal/ecmaregex): modifier groups, V8's mid-pair and repeated-name rules, lone surrogates, V8… | PiG's own defect | All platforms | Unreleased |
 | [BF-154d2c5](#bf-154d2c5) | The terminal title that a session sets (the session name, or an extension's title) is written where Pi writes… | PiG's own defect | All platforms | 0.8.0 |
@@ -256,6 +255,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1d62f7b](#bf-1d62f7b) | fix(chord): FormatTime reads the platform locale only when the tag has no table entry | PiG's own defect | All platforms | Unreleased |
 | [BF-1dcaef7](#bf-1dcaef7) | Durable: a JSONL line that starts with a byte order mark now opens, as in Pi, instead of failing with… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1de9126](#bf-1de9126) | fix(schema/formats): keep lone surrogates, drop unused idna helpers, check the generators in | PiG's own defect | All platforms | Unreleased |
+| [BF-1e01e49](#bf-1e01e49) | Fixed a Piglet Binary's session-exit resume hint to print the binary's own name instead of `pig`… | PiG's own defect | All platforms | Unreleased |
 | [BF-1e2d25f](#bf-1e2d25f) | A `turn_end` handler's in-place edit of `event.message` (an `agent_end` handler's of `event.messages`) no… | PiG's own defect | All platforms | 0.8.0 |
 | [BF-1e2fa7e](#bf-1e2fa7e) | A Go, Rust, Python or Lisp extension can now set the Kitty image id of an image node of a view, as a Node… | PiG's own defect | All platforms | 0.8.0 |
 | [BF-1e64d3f](#bf-1e64d3f) | A Durable core's warm turn waits exactly the microtask passes Pi's does | PiG's own defect | All platforms | 0.8.0 |
@@ -403,6 +403,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2f881ba](#bf-2f881ba) | "Your first extension" now says that `pig install --validate-only` exits 1 when the extension does not build | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2fb2917](#bf-2fb2917) | fix(interactive): label skill diagnostics [Skill warnings] and show the model scope in the fullscreen header | PiG's own defect | All platforms | Unreleased |
 | [BF-2fc2307](#bf-2fc2307) | A scalar that names a collection tag (`!!map 1`, `!!seq true`) inside a complex mapping key stays plain in… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-300d10b](#bf-300d10b) | An RPC client could receive a Node extension's notification or other fire-and-forget UI call (`notify`… | PiG's own defect | All platforms | Unreleased |
 | [BF-301270f](#bf-301270f) | An extension that emits an event to listeners in another extension process no longer pays a host round trip… | PiG's own defect | All platforms | 0.8.0 |
 | [BF-305432b](#bf-305432b) | fix(coding-agent): stop macOS shell groups before killing them (Pi) | A fix Pi shipped that PiG ported | macOS | Unreleased |
 | [BF-305bd8b](#bf-305bd8b) | A durable task that panics with a value whose `String` method panics now faults with the message `[object… | PiG's own defect | All platforms | 0.5.0 |
@@ -1813,7 +1814,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b78cdae](#bf-b78cdae) | A YAML parse error on a block scalar used as an implicit key (`name: x` followed by `\|description: ...`)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b7d2c07](#bf-b7d2c07) | Azure OpenAI Responses requests hold the members Pi's Azure requests hold | PiG's own defect | All platforms | 0.8.0 |
 | [BF-b7d9b2b](#bf-b7d9b2b) | `pig install` and `pig remove` no longer add ever deeper nested entries to the npm `package-lock.json` when… | PiG's own defect | All platforms | 0.7.0 |
-| [BF-b805237](#bf-b805237) | Fixed a Piglet Binary's session-exit resume hint to print the binary's own name instead of `pig`… | PiG's own defect | All platforms | Unreleased |
 | [BF-b80d98b](#bf-b80d98b) | `make generate` / `make bug-ledger` could fail on a loaded host with a bare `signal: killed` when a git… | PiG's own defect | All platforms | 0.8.0 |
 | [BF-b829321](#bf-b829321) | Extension SDKs: `send_user_message` / `sendUserMessage` with no delivery mode now behaves alike in every SDK… | PiG's own defect | All platforms | 0.8.0 |
 | [BF-b84facb](#bf-b84facb) | fix(codingagent,tui): extension editor follows the terminal rows; title and image fallback close only the… | PiG's own defect | All platforms | Unreleased |
@@ -4829,20 +4829,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** None recorded.
 - **Release note:** Every strict and packed Go cell of the extension conformance suite (the theme, child-session, markdown, exec-abort and other rows) failed to build with `go: updates to go.mod needed` since the root module moved to an SDK pseudo-version: 23 in-tree fixture, example and bench modules still required the PiG and SDK modules at v0.7.0. They are pinned to the root's requirement, and `make module-pins`, part of `ci-bookkeeping`, now fails when one drifts.
 
-### BF-1467dc7
-
-**An RPC client could receive a Node extension's notification or other fire-and-forget UI call (`notify`…**
-
-- **Source:** PiG's own defect
-- **Symptom:** An RPC client could receive a Node extension's notification or other fire-and-forget UI call (`notify`, `setStatus`, `setWidget`, `setTitle`, `setEditorText`, `pasteToEditor`, or `entry_appended` from `pi.appendEntry`) before the reply of the command that caused it (`set_session_name`, `set_thinking_level`, `cycle_thinking_level`, or `set_model` / `cycle_model` when the thinking level changes without an awaiting `model_select` handler).
-- **Root cause:** Conn.readLoop acknowledged unawaited Node event handlers on external I/O suspension while callLane applied post-await fire-and-forget UI calls without waiting for the RPC command response write
-- **User impact:** Crash, hang or runaway process
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `1467dc7c2c` (2026-11-25), `5932f45aa1` (2026-11-25)
-- **Tests:** `coding/cli/rpc_post_ack_deadlock_trigger_test.go::TestRPCPostAckNotDeterminedCases`, `coding/cli/rpc_post_ack_deadlock_trigger_test.go::TestRPCPostAckReleasePathsWithActuallyHeldCall`, `coding/cli/rpc_post_ack_deadlock_trigger_test.go::TestRPCPostAckSecondHandlerAfterSynchronousFirstHandlerRunsAheadOfReply`, `coding/cli/rpc_post_ack_deadlock_trigger_test.go::TestRPCPostAckSyncBridgeCallAfterHeldStatusDoesNotDeadlockBatch`, `coding/cli/rpc_post_ack_deadlock_trigger_test.go::TestRPCPostAckTwoRepliesInOneBatchStayTogether`, `coding/cli/rpc_post_ack_order_test.go::TestRPCBatchSetWidgetSlotDoesNotDeadlock`, `coding/cli/rpc_post_ack_order_test.go::TestRPCModelCommandsPostAckOrder`, `coding/cli/rpc_post_ack_order_test.go::TestRPCPostAckGateReleasePaths` and 12 more in docs/bug-ledger.json
-- **Release note:** An RPC client could receive a Node extension's notification or other fire-and-forget UI call (`notify`, `setStatus`, `setWidget`, `setTitle`, `setEditorText`, `pasteToEditor`, or `entry_appended` from `pi.appendEntry`) before the reply of the command that caused it (`set_session_name`, `set_thinking_level`, `cycle_thinking_level`, or `set_model` / `cycle_model` when the thinking level changes without an awaiting `model_select` handler). Post-acknowledgment fire-and-forget output calls now wait off the read loop until the originating command batch's replies are written, matching Pi's event-loop microtask ordering, release immediately if the handler makes a later call requiring a host response (preventing lane deadlocks), and drop or release cleanly on command error, stdout failure, request cancel, session close, or shutdown.
-
 ### BF-14886f9
 
 **A call to `Session.DeferUntilPublished` from a goroutine other than the publishing one (a Harness's wait for…**
@@ -5777,6 +5763,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `1de91268b6` (2026-10-31)
 - **Tests:** `schema/formats/conformance_test.go::TestConformance`, `schema/formats/formats_test.go::TestSplitSurrogatePairs`, `schema/formats/oracle_test.go::TestOracleCorpus`
+
+### BF-1e01e49
+
+**Fixed a Piglet Binary's session-exit resume hint to print the binary's own name instead of `pig`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fixed a Piglet Binary's session-exit resume hint to print the binary's own name instead of `pig` (`ResumeProgramName`).
+- **Root cause:** exit resume hint hardcoded pig instead of the active binary name
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1e01e497e6` (2026-11-25)
+- **Tests:** `coding/cli/program_resume_token_test.go::TestMainStripsOSC7577TokenFromChildren`, `coding/cli/program_resume_token_test.go::TestMainTakesProgramResumeTokenBeforeAnyCommand`, `internal/codingagent/interactive_program_resume_test.go::TestExternalEditorChildDoesNotReceiveOSC7577Token`, `internal/codingagent/interactive_program_resume_test.go::TestInteractiveProgramResumeAbsentTokenWritesZeroBytes`, `internal/codingagent/interactive_program_resume_test.go::TestInteractiveProgramResumeLifecycleAndPigletBinaryName`, `internal/codingagent/program_resume_reporter_test.go::TestProgramResumeReporterUpstream`, `test/extension-conformance/program_resume_token_env_test.go::TestConformance_SubprocessExtensionsDoNotReceiveOSC7577Token`, `test/extension-conformance/program_resume_token_env_test.go::TestOSC7577EnvHelperProcess` and 3 more in docs/bug-ledger.json
+- **Release note:** Fixed a Piglet Binary's session-exit resume hint to print the binary's own name instead of `pig` (`ResumeProgramName`).
 
 ### BF-1e2d25f
 
@@ -7814,6 +7814,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2fc2307be4` (2026-10-11)
 - **Tests:** `internal/yaml12/parse_mutation_test.go::TestParseMatchesTheLibraryOnCollectionTagsOnScalars`
 - **Release note:** A scalar that names a collection tag (`!!map 1`, `!!seq true`) inside a complex mapping key stays plain in the key's text, as the yaml library prints it; it used to be quoted (`!!map "1"`) as a string scalar is, so the object key differed.
+
+### BF-300d10b
+
+**An RPC client could receive a Node extension's notification or other fire-and-forget UI call (`notify`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An RPC client could receive a Node extension's notification or other fire-and-forget UI call (`notify`, `setStatus`, `setWidget`, `setTitle`, `setEditorText`, `pasteToEditor`, or `entry_appended` from `pi.appendEntry`) before the reply of the command that caused it (`set_session_name`, `set_thinking_level`, `cycle_thinking_level`, or `set_model` / `cycle_model` when the thinking level changes without an awaiting `model_select` handler).
+- **Root cause:** Conn.readLoop acknowledged unawaited Node event handlers on external I/O suspension while callLane applied post-await fire-and-forget UI calls without waiting for the RPC command response write
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `300d10b489` (2026-11-25), `f035287a36` (2026-11-25)
+- **Tests:** `coding/cli/rpc_post_ack_deadlock_trigger_test.go::TestRPCPostAckNotDeterminedCases`, `coding/cli/rpc_post_ack_deadlock_trigger_test.go::TestRPCPostAckReleasePathsWithActuallyHeldCall`, `coding/cli/rpc_post_ack_deadlock_trigger_test.go::TestRPCPostAckSecondHandlerAfterSynchronousFirstHandlerRunsAheadOfReply`, `coding/cli/rpc_post_ack_deadlock_trigger_test.go::TestRPCPostAckSyncBridgeCallAfterHeldStatusDoesNotDeadlockBatch`, `coding/cli/rpc_post_ack_deadlock_trigger_test.go::TestRPCPostAckTwoRepliesInOneBatchStayTogether`, `coding/cli/rpc_post_ack_order_test.go::TestRPCBatchSetWidgetSlotDoesNotDeadlock`, `coding/cli/rpc_post_ack_order_test.go::TestRPCModelCommandsPostAckOrder`, `coding/cli/rpc_post_ack_order_test.go::TestRPCPostAckGateReleasePaths` and 12 more in docs/bug-ledger.json
+- **Release note:** An RPC client could receive a Node extension's notification or other fire-and-forget UI call (`notify`, `setStatus`, `setWidget`, `setTitle`, `setEditorText`, `pasteToEditor`, or `entry_appended` from `pi.appendEntry`) before the reply of the command that caused it (`set_session_name`, `set_thinking_level`, `cycle_thinking_level`, or `set_model` / `cycle_model` when the thinking level changes without an awaiting `model_select` handler). Post-acknowledgment fire-and-forget output calls now wait off the read loop until the originating command batch's replies are written, matching Pi's event-loop microtask ordering, release immediately if the handler makes a later call requiring a host response (preventing lane deadlocks), and drop or release cleanly on command error, stdout failure, request cancel, session close, or shutdown.
 
 ### BF-301270f
 
@@ -27412,20 +27426,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `b7d9b2b676` (2026-10-25)
 - **Tests:** `coding/cli/npm_command_name_test.go::TestNpmCommandClassificationAtInstallAndRemove`, `coding/cli/package_batch_upstream_test.go::TestPackageBatchedConcurrentUpdatesOriginal`, `coding/cli/package_cli_output_test.go::TestPackageChildOutputAndFailure`, `internal/packagemanager/package_manager_ops_gaps_test.go::TestPackageManagerNpmInstallAndUninstallPassTheRealPathWhenTheAgentDirIsASymlink`, `internal/packagemanager/package_manager_ops_gaps_test.go::TestPackageManagerNpmUninstallAndUpdateCheckUseTheConfiguredCommand`
 - **Release note:** `pig install` and `pig remove` no longer add ever deeper nested entries to the npm `package-lock.json` when the agent directory is reached through a symlink, such as `~/.pi` linked into a dotfiles repository. PiG now passes the resolved real path to npm as `--prefix` (or `--cwd` for Bun).
-
-### BF-b805237
-
-**Fixed a Piglet Binary's session-exit resume hint to print the binary's own name instead of `pig`…**
-
-- **Source:** PiG's own defect
-- **Symptom:** Fixed a Piglet Binary's session-exit resume hint to print the binary's own name instead of `pig` (`ResumeProgramName`).
-- **Root cause:** exit resume hint hardcoded pig instead of the active binary name
-- **User impact:** Wrong output or ordering
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `b805237036` (2026-11-25)
-- **Tests:** `coding/cli/program_resume_token_test.go::TestMainStripsOSC7577TokenFromChildren`, `coding/cli/program_resume_token_test.go::TestMainTakesProgramResumeTokenBeforeAnyCommand`, `internal/codingagent/interactive_program_resume_test.go::TestExternalEditorChildDoesNotReceiveOSC7577Token`, `internal/codingagent/interactive_program_resume_test.go::TestInteractiveProgramResumeAbsentTokenWritesZeroBytes`, `internal/codingagent/interactive_program_resume_test.go::TestInteractiveProgramResumeLifecycleAndPigletBinaryName`, `internal/codingagent/program_resume_reporter_test.go::TestProgramResumeReporterUpstream`, `test/extension-conformance/program_resume_token_env_test.go::TestConformance_SubprocessExtensionsDoNotReceiveOSC7577Token`, `test/extension-conformance/program_resume_token_env_test.go::TestOSC7577EnvHelperProcess` and 3 more in docs/bug-ledger.json
-- **Release note:** Fixed a Piglet Binary's session-exit resume hint to print the binary's own name instead of `pig` (`ResumeProgramName`).
 
 ### BF-b80d98b
 
