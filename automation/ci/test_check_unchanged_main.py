@@ -222,7 +222,7 @@ class CheckUnchangedMainCITests(unittest.TestCase):
         with mock.patch.object(MOD, "_gh_api_json", side_effect=fake_api):
             skip, reason = MOD.decide_ci("schedule", "o/r", "aaa111", 999, "treeAAA", 5)
         self.assertFalse(skip, reason)
-        self.assertIn("newest completed full CI run", reason)
+        self.assertIn("newest completed CI run", reason)
 
     def test_newer_green_run_skips_despite_older_red_run(self) -> None:
         newer_green = {
@@ -338,6 +338,85 @@ class CheckUnchangedMainCITests(unittest.TestCase):
         self.assertFalse(skip, reason)
         self.assertIn("fail-open", reason)
 
+
+    def test_newer_early_failure_stops_skip_even_with_older_full_green_run(self) -> None:
+        # Newest run failed early (only pre-flight/changes ran; Windows & macOS skipped):
+        # must stop the skip immediately without falling through to an older full green run.
+        early_red = {
+            "id": 315,
+            "event": "schedule",
+            "head_branch": "main",
+            "head_sha": "aaa111",
+            "conclusion": "failure",
+            "created_at": "2026-11-25T18:00:00Z",
+        }
+        older_green = {
+            "id": 200,
+            "event": "schedule",
+            "head_branch": "main",
+            "head_sha": "aaa111",
+            "conclusion": "success",
+            "created_at": "2026-11-24T06:41:00Z",
+        }
+
+        def fake_api(endpoint: str):
+            if "event=schedule" in endpoint:
+                return {"workflow_runs": [older_green]}
+            if "event=workflow_dispatch" in endpoint:
+                return {"workflow_runs": []}
+            if "/workflows/ci.yml/runs?" in endpoint:
+                return {"workflow_runs": [early_red, older_green]}
+            if "/actions/runs/200/jobs" in endpoint:
+                return {"jobs": FULL_CI_JOBS}
+            if "/actions/runs/315/jobs" in endpoint:
+                return {
+                    "jobs": [
+                        {"name": "Changed paths", "conclusion": "success"},
+                        {"name": "Pre-flight verdict", "conclusion": "failure"},
+                    ]
+                }
+            raise AssertionError(f"unexpected endpoint: {endpoint}")
+
+        with mock.patch.object(MOD, "_gh_api_json", side_effect=fake_api):
+            skip, reason = MOD.decide_ci("schedule", "o/r", "aaa111", 999, "treeAAA", 5)
+        self.assertFalse(skip, reason)
+        self.assertIn("failure", reason)
+
+    def test_jobs_api_error_on_matched_run_fails_open_without_falling_through(self) -> None:
+        newest = {
+            "id": 316,
+            "event": "schedule",
+            "head_branch": "main",
+            "head_sha": "aaa111",
+            "conclusion": "success",
+            "created_at": "2026-11-25T18:00:00Z",
+        }
+        older_green = {
+            "id": 200,
+            "event": "schedule",
+            "head_branch": "main",
+            "head_sha": "aaa111",
+            "conclusion": "success",
+            "created_at": "2026-11-24T06:41:00Z",
+        }
+
+        def fake_api(endpoint: str):
+            if "event=schedule" in endpoint:
+                return {"workflow_runs": [older_green]}
+            if "event=workflow_dispatch" in endpoint:
+                return {"workflow_runs": []}
+            if "/workflows/ci.yml/runs?" in endpoint:
+                return {"workflow_runs": [newest, older_green]}
+            if "/actions/runs/316/jobs" in endpoint:
+                raise RuntimeError("transient 502")
+            if "/actions/runs/200/jobs" in endpoint:
+                return {"jobs": FULL_CI_JOBS}
+            raise AssertionError(f"unexpected endpoint: {endpoint}")
+
+        with mock.patch.object(MOD, "_gh_api_json", side_effect=fake_api):
+            skip, reason = MOD.decide_ci("schedule", "o/r", "aaa111", 999, "treeAAA", 5)
+        self.assertFalse(skip, reason)
+        self.assertIn("fail-open", reason)
 
 class CheckUnchangedMainNightlyTests(unittest.TestCase):
     def test_workflow_dispatch_always_runs_deterministic(self) -> None:

@@ -199,8 +199,11 @@ def decide_ci(
             continue
         try:
             age = now - _parse_iso(created_raw)
-        except Exception:
-            continue
+        except Exception as exc:
+            return (
+                True,
+                f"api error reading jobs for matched nightly run {run_id} (fail-open): {exc}",
+            )
         if age > max_cache_age:
             continue
         # Verify this run was a real full run (not an unchanged-main skip) so its CACHE_SAVE steps ran.
@@ -272,25 +275,37 @@ def decide_ci(
         if not matched_how:
             continue
 
-        # Confirm the matching run actually ran a full CI pass (not a light PR run, docs-only run,
-        # or a previous unchanged-main skip).
+        # A matched run that failed or timed out stops the skip immediately with no fullness
+        # check: an early failure (changes, bookkeeping, or pre-flight red so Windows/macOS shards
+        # were skipped) must NOT be passed over in favor of an older green run.
+        if conclusion in ("failure", "timed_out"):
+            return (
+                False,
+                f"newest completed CI run on same content was {conclusion} via {matched_how}; re-running",
+            )
+
+        # Confirm a matching successful run actually ran a full CI pass (not a light PR run,
+        # docs-only run, or a previous unchanged-main skip). On a jobs-API error, fail open
+        # (do not skip) rather than falling through to an older green run.
         try:
             jobs_payload = _gh_api_json(f"repos/{repo}/actions/runs/{run_id}/jobs?per_page=100")
             jobs = jobs_payload.get("jobs") or []
-        except Exception:
-            continue
+        except Exception as exc:
+            return (
+                False,
+                f"api error reading jobs for matched run {run_id} (fail-open): {exc}",
+            )
         if not _is_full_ci_run_jobs(jobs):
             continue
 
-        # This is the newest completed full CI run on the same content: decide from it.
-        if conclusion == "success" and _is_green_full_ci_run_jobs(jobs):
+        if _is_green_full_ci_run_jobs(jobs):
             return (
                 True,
                 f"unchanged main already green via {matched_how}; caches fresh from run {fresh_cache_run_id}",
             )
         return (
             False,
-            f"newest completed full CI run on same content was {conclusion} via {matched_how}; re-running",
+            f"newest completed full CI run on same content had non-green jobs via {matched_how}; re-running",
         )
 
     return False, f"no prior full green CI run found for {head_sha[:10]} (tree {target_tree[:12]})"
