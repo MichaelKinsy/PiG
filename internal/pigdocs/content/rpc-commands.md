@@ -196,7 +196,7 @@ PiG removes every queued steering and follow-up message. It writes a `queue_upda
 {"id":"bash-1","type":"bash","command":"go test ./...","excludeFromContext":false}
 ```
 
-The final response data contains `output`, `exitCode`, `cancelled`, `truncated`, and optional `fullOutputPath`. Each output chunk also arrives as a `bash_execution_update` event with the command's `id` and the chunk in `delta`. PiG removes each color code from the output whole, also when the code is split across two output chunks.
+The final response data contains `output`, `exitCode`, `cancelled`, `truncated`, and optional `fullOutputPath` (or `fullOutputError` if saving the full output failed). Each output chunk also arrives as a `bash_execution_update` event with the command's `id` and the chunk in `delta`. PiG removes each color code from the output whole, also when the code is split across two output chunks.
 
 Cancel active Bash work:
 

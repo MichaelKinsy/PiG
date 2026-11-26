@@ -207,6 +207,7 @@ PiG records a shell command that you run with `!` or `!!`, or through the RPC `b
 | `cancelled` | boolean | Whether the command was stopped. |
 | `truncated` | boolean | Whether PiG shortened the output. |
 | `fullOutputPath` | string, optional | The file that holds the full output when PiG shortened it. |
+| `fullOutputError` | string, optional | Why the full output could not be saved when PiG shortened it and saving failed. |
 | `excludeFromContext` | boolean, optional | `true` for `!!` commands. PiG does not send them to the model. |
 
 ### Custom message
