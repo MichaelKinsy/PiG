@@ -243,13 +243,22 @@ func (r *statePushRig) run(t *testing.T, h *harness, kind statePushKind) {
 	}
 	kind.change(t)
 	report := filepath.Join(dir, "state-push-"+strings.ReplaceAll(kind.name, ":", "_"))
+	// Read inside the poll loop rather than Stat-then-ReadFile: on Windows an antivirus scanner or NTFS handle
+	// teardown right after the fixture's temp-file rename can transiently fail ReadFile with ERROR_SHARING_VIOLATION.
+	var body []byte
+	var lastReadErr error
 	pollUntilConformance(t, "the reader never reported", func() bool {
-		_, err := os.Stat(report)
-		return err == nil
+		raw, err := os.ReadFile(report)
+		if err != nil {
+			lastReadErr = err
+			return false
+		}
+		body = raw
+		lastReadErr = nil
+		return true
 	})
-	body, err := os.ReadFile(report)
-	if err != nil {
-		t.Fatal(err)
+	if lastReadErr != nil {
+		t.Fatal(lastReadErr)
 	}
 	armed, read, ok := strings.Cut(string(body), "=>")
 	if !ok {
