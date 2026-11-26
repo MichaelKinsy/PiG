@@ -856,6 +856,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-613d8aa](#bf-613d8aa) | fix(tools): restore the deprecated grep readFile hook in every SDK | PiG's own defect | All platforms | Unreleased |
 | [BF-618af0a](#bf-618af0a) | `chord/nextnode/plugins`: the directory the plugins' Node runtime is extracted to is named by the manifest… | PiG's own defect | All platforms | 0.8.0 |
 | [BF-619443a](#bf-619443a) | MCP sign-in now rejects authorization endpoints and other OAuth metadata URLs that are not `http:` or… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
+| [BF-61a2559](#bf-61a2559) | Restructured `check-unchanged-main.py` so `decide_ci` and `decide_nightly` return skip from a single proved… | PiG's own defect | All platforms | Unreleased |
 | [BF-61af4af](#bf-61af4af) | fix(durable/core): an api read that stores held changes ends with the Storage's answer; the host forgets what… | PiG's own defect | All platforms | Unreleased |
 | [BF-61fc01d](#bf-61fc01d) | `list_mcp_resources`, `list_mcp_resource_templates` and `read_mcp_resource` return every member a server sent… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-61fc01d-2](#bf-61fc01d-2) | MCP tool descriptions, resource MIME types, a pasted sign-in redirect URL and the resource tools' `server`… | PiG's own defect | All platforms | 0.5.0 |
@@ -14068,6 +14069,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `619443a024` (2026-10-23)
 - **Tests:** `mcp/oauth/oauth_test.go::TestMCPOAuthRejectsNonHTTPAuthorizationEndpointsWhichThePlatformURLHandlerWouldLaunch`
 - **Release note:** MCP sign-in now rejects authorization endpoints and other OAuth metadata URLs that are not `http:` or `https:`, so a malicious server cannot make pig launch a `file:` or custom protocol URL.
+
+### BF-61a2559
+
+**Restructured `check-unchanged-main.py` so `decide_ci` and `decide_nightly` return skip from a single proved…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Restructured `check-unchanged-main.py` so `decide_ci` and `decide_nightly` return skip from a single proved path (failing open on any error, unparseable timestamp, budget cap, unread jobs page, or attempt mismatch), shared one unchanged-main decision between Changes and Bookkeeping in `.github/workflows/ci.yml`, sanitized `GITHUB_OUTPUT` values, matched prefixed/joined globs in `changed-packages.py`, and detected removed unnamed `func Example()` declarations in `classify-changes.sh`.
+- **Root cause:** PR #574 review caught cache-timestamp typo returning True, split unchanged-main checks, continue-on-error loops, and glob/Example regex edges
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `61a2559d2b` (2026-11-26)
+- **Tests:** `test/ci-images/unconditional_jobs_test.go::TestChangesAndBookkeepingJobsStayUnconditional`
+- **Release note:** Restructured `check-unchanged-main.py` so `decide_ci` and `decide_nightly` return skip from a single proved path (failing open on any error, unparseable timestamp, budget cap, unread jobs page, or attempt mismatch), shared one unchanged-main decision between Changes and Bookkeeping in `.github/workflows/ci.yml`, sanitized `GITHUB_OUTPUT` values, matched prefixed/joined globs in `changed-packages.py`, and detected removed unnamed `func Example()` declarations in `classify-changes.sh`.
 
 ### BF-61af4af
 

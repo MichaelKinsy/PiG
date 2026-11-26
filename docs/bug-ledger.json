@@ -23084,6 +23084,28 @@
       ]
     },
     {
+      "id": "BF-61a2559",
+      "title": "Restructured `check-unchanged-main.py` so `decide_ci` and `decide_nightly` return skip from a single proved…",
+      "symptom": "Restructured `check-unchanged-main.py` so `decide_ci` and `decide_nightly` return skip from a single proved path (failing open on any error, unparseable timestamp, budget cap, unread jobs page, or attempt mismatch), shared one unchanged-main decision between Changes and Bookkeeping in `.github/workflows/ci.yml`, sanitized `GITHUB_OUTPUT` values, matched prefixed/joined globs in `changed-packages.py`, and detected removed unnamed `func Example()` declarations in `classify-changes.sh`.",
+      "rootCause": "PR #574 review caught cache-timestamp typo returning True, split unchanged-main checks, continue-on-error loops, and glob/Example regex edges",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Restructured `check-unchanged-main.py` so `decide_ci` and `decide_nightly` return skip from a single proved path (failing open on any error, unparseable timestamp, budget cap, unread jobs page, or attempt mismatch), shared one unchanged-main decision between Changes and Bookkeeping in `.github/workflows/ci.yml`, sanitized `GITHUB_OUTPUT` values, matched prefixed/joined globs in `changed-packages.py`, and detected removed unnamed `func Example()` declarations in `classify-changes.sh`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "61a2559d2b",
+          "date": "2026-11-26"
+        }
+      ],
+      "tests": [
+        "test/ci-images/unconditional_jobs_test.go::TestChangesAndBookkeepingJobsStayUnconditional"
+      ]
+    },
+    {
       "id": "BF-61af4af",
       "title": "fix(durable/core): an api read that stores held changes ends with the Storage's answer; the host forgets what…",
       "symptom": "fix(durable/core): an api read that stores held changes ends with the Storage's answer; the host forgets what it holds of a document the core's cache dropped; snapshots are weak",
