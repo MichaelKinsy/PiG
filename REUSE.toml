@@ -477,8 +477,21 @@ SPDX-FileCopyrightText = "Copyright (c) 2015, Contributors"
 SPDX-License-Identifier = "ISC"
 
 # The unmodified quickjs-wasi 3.6.2 package vendored for the Node runtime closure (same quickjs.wasm as codemode/assets/raw/quickjs.wasm, sha256 d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9; see codemode/assets/PROVENANCE.md and runtime-node/shims/vendor-manifest.json).
+# The JS/TS wrapper, package metadata, and README are MIT (Vercel, Inc.).
 [[annotations]]
 path = "coding/extension/host/subprocess/runtime-node/shims/quickjs-wasi/**"
+precedence = "override"
+SPDX-FileCopyrightText = [
+  "Copyright (c) 2026 Vercel, Inc.",
+]
+SPDX-License-Identifier = "MIT"
+
+# Compiled WebAssembly binaries in quickjs-wasi 3.6.2 embed QuickJS-NG (MIT) and wasi-libc from wasi-sdk 30 (WebAssembly/wasi-libc@ec0effd769df5f05b647216578bcf5d3b5449725).
+[[annotations]]
+path = [
+  "coding/extension/host/subprocess/runtime-node/shims/quickjs-wasi/quickjs.wasm",
+  "coding/extension/host/subprocess/runtime-node/shims/quickjs-wasi/extensions/*/*.so",
+]
 precedence = "override"
 SPDX-FileCopyrightText = [
   "Copyright (c) 2026 Vercel, Inc.",
@@ -486,8 +499,13 @@ SPDX-FileCopyrightText = [
   "Copyright (c) 2017-2021 Charlie Gordon",
   "Copyright (c) 2023 Ben Noordhuis",
   "Copyright (c) 2023 Saul Ibarra Corretge",
+  "Copyright (c) wasi-libc contributors",
+  "Copyright (c) 2005-2020 Rich Felker, et al.",
+  "Copyright (c) 2015-2017 Nuxi (https://nuxi.nl/) and contributors.",
+  "Copyright (c) 1989, 1993 The Regents of the University of California.",
+  "Copyright 2018 The Emscripten Authors.",
 ]
-SPDX-License-Identifier = "MIT"
+SPDX-License-Identifier = "MIT AND (Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT) AND BSD-2-Clause AND BSD-3-Clause AND CC0-1.0"
 
 # The word segmenter translates ICU's dictionary engines and embeds their pinned data.
 # Dictionary notices are reproduced in LICENSES/LicenseRef-ICU-{CJK,SEA}.txt.
@@ -506,6 +524,7 @@ SPDX-FileCopyrightText = [
 SPDX-License-Identifier = "MIT AND Unicode-3.0 AND LicenseRef-ICU-CJK AND LicenseRef-ICU-SEA"
 
 # The QuickJS WebAssembly module and the codemode prelude are Pi's, embedded byte for byte.
+# quickjs.wasm (and quickjs.wasm.zst) embeds QuickJS-NG (MIT) and wasi-libc from wasi-sdk 30 (WebAssembly/wasi-libc@ec0effd769df5f05b647216578bcf5d3b5449725).
 [[annotations]]
 path = ["codemode/assets/raw/quickjs.wasm", "codemode/assets/quickjs.wasm.zst"]
 precedence = "closest"
@@ -515,8 +534,13 @@ SPDX-FileCopyrightText = [
   "Copyright (c) 2017-2021 Charlie Gordon",
   "Copyright (c) 2023 Ben Noordhuis",
   "Copyright (c) 2023 Saul Ibarra Corretge",
+  "Copyright (c) wasi-libc contributors",
+  "Copyright (c) 2005-2020 Rich Felker, et al.",
+  "Copyright (c) 2015-2017 Nuxi (https://nuxi.nl/) and contributors.",
+  "Copyright (c) 1989, 1993 The Regents of the University of California.",
+  "Copyright 2018 The Emscripten Authors.",
 ]
-SPDX-License-Identifier = "MIT"
+SPDX-License-Identifier = "MIT AND (Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT) AND BSD-2-Clause AND BSD-3-Clause AND CC0-1.0"
 
 [[annotations]]
 path = "codemode/assets/prelude.js"
