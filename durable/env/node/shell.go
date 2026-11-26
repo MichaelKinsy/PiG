@@ -74,24 +74,53 @@ func getShellConfig(ctx context.Context, customShellPath string) (shellConfig, e
 	return platformShellConfig(ctx)
 }
 
-// findBashOnPath asks `which bash` (or `where bash.exe`) for the first match.
-func findBashOnPath(ctx context.Context) string {
-	name, args := "which", []string{"bash"}
-	if isWindows {
-		name, args = "where", []string{"bash.exe"}
-	}
+// runLookupCommand runs name with args and a 5s timeout, stdio ["ignore", "pipe", "ignore"] and windowsHide: true.
+func runLookupCommand(ctx context.Context, name string, args ...string) (string, bool) {
 	runCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
+	//nolint:gosec // G204 (class a): name is which, where, or git.exe resolved on PATH with fixed lookup arguments.
 	command := exec.CommandContext(runCtx, name, args...)
-	// Upstream's runCommand spawns with stdio ["ignore", "pipe", "ignore"]
-	// and windowsHide: true.
 	nodespawn.HideWindow(command, nodespawn.Ignore, nodespawn.Pipe, nodespawn.Ignore)
 	nodespawn.SetProgram(command)
 	output, err := command.Output()
 	if err != nil {
+		return "", false
+	}
+	return string(output), true
+}
+
+// findExecutableOnPath asks `which <exe>` (or `where <exe>` on Windows) for the first existing match.
+func findExecutableOnPath(ctx context.Context, executable string) string {
+	name := "which"
+	if isWindows {
+		name = "where"
+	}
+	output, ok := runLookupCommand(ctx, name, executable)
+	if !ok {
 		return ""
 	}
-	return bashFromWhichOutput(string(output))
+	return bashFromWhichOutput(output)
+}
+
+// findGitBashOfGitOnPath asks git.exe on PATH for its Git for Windows installation via `git var GIT_SHELL_PATH`.
+func findGitBashOfGitOnPath(ctx context.Context) string {
+	git := findExecutableOnPath(ctx, "git.exe")
+	if git == "" {
+		return ""
+	}
+	output, ok := runLookupCommand(ctx, git, "var", "GIT_SHELL_PATH")
+	if !ok {
+		return ""
+	}
+	return shellconfig.GitBashFromShellPath(output, pathExists)
+}
+
+// findBashOnPath asks `which bash` (or `where bash.exe`) for the first match.
+func findBashOnPath(ctx context.Context) string {
+	if isWindows {
+		return findExecutableOnPath(ctx, "bash.exe")
+	}
+	return findExecutableOnPath(ctx, "bash")
 }
 
 // bashFromWhichOutput is upstream findBashOnPath's reading of the answer, `result.stdout.trim().split(/\r?\n/)[0]`, kept when that

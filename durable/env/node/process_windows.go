@@ -63,14 +63,18 @@ func platformShellConfig(ctx context.Context) (shellConfig, error) {
 			return getBashShellConfig(candidate), nil
 		}
 	}
-	if bash := findBashOnPath(ctx); bash != "" {
+	// Must precede the generic bash.exe lookup, which usually finds the WSL launcher in System32 first.
+	if gitBash := findGitBashOfGitOnPath(ctx); gitBash != "" {
+		return getBashShellConfig(gitBash), nil
+	}
+	if bash := findExecutableOnPath(ctx, "bash.exe"); bash != "" {
 		return getBashShellConfig(bash), nil
 	}
 	searched := make([]string, len(candidates))
 	for index, candidate := range candidates {
 		searched[index] = "  " + candidate
 	}
-	return shellConfig{}, durableenv.NewExecutionError(durableenv.ExecutionErrorShellUnavailable, "No bash shell found. Options:\n"+"  1. Install Git for Windows: https://git-scm.com/download/win\n"+"  2. Add your bash to PATH (Cygwin, MSYS2, etc.)\n"+"  3. Configure an explicit shellPath\n\n"+"Searched Git Bash in:\n"+strings.Join(searched, "\n"), nil)
+	return shellConfig{}, durableenv.NewExecutionError(durableenv.ExecutionErrorShellUnavailable, "No bash shell found. Options:\n"+"  1. Install Git for Windows: https://git-scm.com/download/win\n"+"  2. Add your bash to PATH (Cygwin, MSYS2, etc.)\n"+"  3. Configure an explicit shellPath\n\n"+"Searched Git Bash in:\n"+strings.Join(searched, "\n")+"\n  the Git for Windows installation of git.exe on PATH", nil)
 }
 
 func signalExitCode(syscall.WaitStatus) (int, bool) { return 0, false }

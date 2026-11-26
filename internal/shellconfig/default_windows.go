@@ -3,39 +3,24 @@
 package shellconfig
 
 import (
-	"fmt"
 	"os"
-	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/nodefs"
 )
 
 // Default resolves bash on Windows, mirroring upstream getShellConfig's win32
 // branch (shell.ts): Git Bash in the known install locations
-// (%ProgramFiles%\Git\bin\bash.exe, then the x86 variant), then bash.exe on
-// PATH (Cygwin, MSYS2, WSL), else a helpful error. cmd.exe and PowerShell are
-// not substitutes for bash syntax.
+// (%ProgramFiles%\Git\bin\bash.exe, then the x86 variant), then Git Bash of
+// git.exe on PATH, then bash.exe on PATH (Cygwin, MSYS2, WSL), else a helpful
+// error. cmd.exe and PowerShell are not substitutes for bash syntax.
 //
 // Ports packages/coding-agent/src/utils/shell.ts (getShellConfig, win32 branch).
 func Default() (Config, error) {
-	var searched []string
-	for _, base := range []string{os.Getenv("ProgramFiles"), os.Getenv("ProgramFiles(x86)")} {
-		if base == "" {
-			continue
-		}
-		p := base + `\Git\bin\bash.exe`
-		searched = append(searched, "  "+p)
-		if nodefs.Access(p) {
-			return ForBash(p), nil
-		}
-	}
-	if p := FindExecutableOnPath("bash.exe"); p != "" {
-		return ForBash(p), nil
-	}
-	return Config{}, fmt.Errorf(
-		"No bash shell found. Options:\n"+
-			"  1. Install Git for Windows: https://git-scm.com/download/win\n"+
-			"  2. Add your bash to PATH (Cygwin, MSYS2, etc.)\n"+
-			"  3. Set shellPath in settings.json\n\n"+
-			"Searched Git Bash in:\n%s", strings.Join(searched, "\n"))
+	return windowsDefault(
+		os.Getenv("ProgramFiles"),
+		os.Getenv("ProgramFiles(x86)"),
+		nodefs.Access,
+		FindExecutableOnPath,
+		runCommand,
+	)
 }
