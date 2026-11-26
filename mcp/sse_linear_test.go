@@ -30,7 +30,7 @@ func TestConsumeSSEStreamLargeEventAndLineLimit(t *testing.T) {
 		var got string
 		err := ConsumeSSEStream(&sseChunkReader{data: stream, chunkSize: 4096}, ConsumeSSEOptions{
 			MaxEventBytes: 2 << 20,
-			OnEvent: func(ev SSEEvent) { got = ev.Data },
+			OnEvent:       func(ev SSEEvent) { got = ev.Data },
 		})
 		if err != nil {
 			t.Fatalf("ConsumeSSEStream failed: %v", err)

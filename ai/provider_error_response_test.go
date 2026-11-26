@@ -190,7 +190,7 @@ func TestRetryProviderRequestErrorResponses(t *testing.T) {
 			MaxRetries:      new(2),
 			OnErrorResponse: func(ProviderResponse) error { return cbErr },
 		})
-		if err != cbErr || calls != 1 {
+		if !errors.Is(err, cbErr) || calls != 1 {
 			t.Fatalf("err=%v calls=%d", err, calls)
 		}
 	})

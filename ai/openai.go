@@ -620,7 +620,7 @@ type oaiDelta struct {
 }
 
 type oaiChunkChoice struct {
-	Delta        oaiDelta `json:"delta"`
+	Delta              oaiDelta `json:"delta"`
 	FinishReason       string   `json:"finish_reason"`
 	NativeFinishReason string   `json:"native_finish_reason"`
 	// finishReasonNotString marks a FinishReason that is the String() form of a finish_reason that was not a string.

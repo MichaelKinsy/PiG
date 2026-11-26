@@ -578,9 +578,7 @@ func (p *llamaSSEParser) processLine(line string, onEvent func(LlamaModelEvent))
 		return
 	}
 	if rest, ok := strings.CutPrefix(line, "data:"); ok {
-		if strings.HasPrefix(rest, " ") {
-			rest = rest[1:]
-		}
+		rest = strings.TrimPrefix(rest, " ")
 		p.data = append(p.data, rest)
 	}
 }

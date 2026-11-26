@@ -1340,7 +1340,7 @@ type googleStreamState struct {
 	finishReason       string
 	receivedChunkCount int
 	promptBlockError   string
-	sawToolCall  bool
+	sawToolCall        bool
 	// finishSawToolCall is sawToolCall when the latest finish reason arrived: Pi turns a "stop" into "toolUse" only if the message holds a tool call at that
 	// chunk (google-generative-ai.ts:214-220), and never again, so a tool call in a later chunk does not.
 	finishSawToolCall bool
