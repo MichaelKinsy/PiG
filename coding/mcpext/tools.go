@@ -1,7 +1,6 @@
 package mcpext
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -10,13 +9,8 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
-	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/jsloop"
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
-	"github.com/MichaelKinsy/PiG/internal/jsstring"
-	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
-	"github.com/MichaelKinsy/PiG/internal/nodebase64"
-	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/outputfiles"
 	"github.com/MichaelKinsy/PiG/mcp"
@@ -81,112 +75,6 @@ func textOf(content []ai.ToolResultMessageContent) string {
 	return strings.Join(texts, "\n")
 }
 
-// contentBlockSchema is MCP content blocks as one compact type with the fields of
-// text and image blocks, which scripts read most (`image(block)` takes an image
-// block as is). Rendered into every MCP tool's declaration.
-// upstream: tools.ts CONTENT_BLOCK_SCHEMA
-const contentBlockSchema = `{"type":"object","properties":{"type":{"enum":["text","image","audio","resource_link","resource"]},"text":{"type":"string"},"data":{"type":"string"},"mimeType":{"type":"string"}},"required":["type"],"additionalProperties":true}`
-
-// isSchemaDataKeyword reports the keywords whose values are data, so a `$ref` key
-// in them is not a reference. isSchemaMapKeyword reports the keywords whose
-// values map names to schemas, so their keys are names, not keywords. A switch,
-// unlike a map, costs package initialization nothing.
-func isSchemaDataKeyword(key string) bool {
-	switch key {
-	case "const", "enum", "default", "examples":
-		return true
-	}
-	return false
-}
-
-func isSchemaMapKeyword(key string) bool {
-	switch key {
-	case "properties", "patternProperties", "dependentSchemas", "dependencies", "$defs", "definitions":
-		return true
-	}
-	return false
-}
-
-// relocateSchema is schema as a subschema at the JSON pointer pointer
-// (`#/properties/structuredContent`) of another schema: its local references
-// (`#`, `#/$defs/Item`) are rewritten to point below pointer, so they resolve to
-// the same subschemas as before. Key order is kept.
-// upstream: tools.ts relocateSchema
-func relocateSchema(schema json.RawMessage, pointer string) json.RawMessage {
-	trimmed := bytes.TrimSpace(schema)
-	if len(trimmed) == 0 {
-		return schema
-	}
-	switch trimmed[0] {
-	case '[':
-		var items []json.RawMessage
-		if json.Unmarshal(trimmed, &items) != nil {
-			return schema
-		}
-		for i, item := range items {
-			items[i] = relocateSchema(item, pointer)
-		}
-		//portlint:allow nilslicenull tools.ts:136 schema.map(...) of an array: items was decoded from text starting with '[', and Unmarshal makes [] an empty non-nil slice, so it encodes as [] like Pi
-		raw, err := json.Marshal(items)
-		if err != nil {
-			return schema
-		}
-		return raw
-	case '{':
-		object, err := orderedjson.Parse(trimmed)
-		if err != nil {
-			return schema
-		}
-		for _, key := range object.Keys() {
-			value, _ := object.Get(key)
-			var ref string
-			switch {
-			case key == "$ref" && json.Unmarshal(value, &ref) == nil && (ref == "#" || strings.HasPrefix(ref, "#/")):
-				_ = object.SetValue(key, pointer+ref[1:])
-			case isSchemaDataKeyword(key):
-			case isSchemaMapKeyword(key) && orderedjson.IsObject(value):
-				names, _ := orderedjson.Parse(value)
-				for _, name := range names.Keys() {
-					subschema, _ := names.Get(name)
-					names.Set(name, relocateSchema(subschema, pointer))
-				}
-				raw, _ := names.MarshalJSON()
-				object.Set(key, raw)
-			default:
-				object.Set(key, relocateSchema(value, pointer))
-			}
-		}
-		raw, _ := object.MarshalJSON()
-		return raw
-	}
-	return schema
-}
-
-// CreateMcpResultSchema is the output schema of every MCP tool: the
-// `CallToolResult` scripts receive (without `_meta`, which ConvertMcpResult
-// drops), with the tool's own output schema as `structuredContent`.
-// upstream: tools.ts createMcpResultSchema
-func CreateMcpResultSchema(structuredContentSchema json.RawMessage) json.RawMessage {
-	properties := orderedjson.New()
-	properties.Set("content", json.RawMessage(`{"type":"array","items":`+contentBlockSchema+`}`))
-	// Servers may send structured content without declaring a schema for it, and it may be any JSON value.
-	if len(structuredContentSchema) > 0 {
-		properties.Set("structuredContent", relocateSchema(structuredContentSchema, "#/properties/structuredContent"))
-	} else {
-		properties.Set("structuredContent", json.RawMessage(`{}`))
-	}
-	properties.Set("isError", json.RawMessage(`{"type":"boolean"}`))
-	schema := orderedjson.New()
-	_ = schema.SetValue("type", "object")
-	propertiesRaw, _ := properties.MarshalJSON()
-	schema.Set("properties", propertiesRaw)
-	_ = schema.SetValue("required", []string{"content"})
-	// Fields newer protocol versions add.
-	_ = schema.SetValue("additionalProperties", true)
-	raw, _ := schema.MarshalJSON()
-	return raw
-}
-
 func mcpToLLM(content []mcp.LLMContent) []ai.ToolResultMessageContent {
 	out := make([]ai.ToolResultMessageContent, 0, len(content))
 	for _, block := range content {
@@ -227,99 +115,15 @@ type ConvertMcpResultOptions struct {
 	ReadableResources bool
 }
 
-var fileExtension = lazyregexp.New(`\.[A-Za-z0-9]{1,8}$`)
-
-// extensionOf is the file extension for a saved binary resource: the one its
-// URI ends in, else `.bin`.
-func extensionOf(uri string) string {
-	path := uri
-	if u, err := nodeurl.ParseURL(uri); err == nil {
-		path = u.Pathname
-	}
-	if match := fileExtension.FindString(path); match != "" {
-		return match
-	}
-	return ".bin"
-}
-
-// isTextMimeType: blobs of these types are shown as text.
-func isTextMimeType(mimeType string) bool {
-	if mimeType == "" {
-		return false
-	}
-	kind, _, _ := strings.Cut(mimeType, ";")
-	kind = strings.ToLower(strings.TrimFunc(kind, isJSWhitespace))
-	return strings.HasPrefix(kind, "text/") || kind == "application/json" || strings.HasSuffix(kind, "+json") || strings.HasSuffix(kind, "+xml")
-}
-
-// blockToContent is the model-facing content of one block of server's result.
-func blockToContent(server string, block mcp.ContentBlock, options ConvertMcpResultOptions) []ai.ToolResultMessageContent {
-	if block.Type == "resource_link" {
-		var details []string
-		if block.MimeType != "" {
-			details = append(details, block.MimeType)
-		}
-		if block.Size != nil {
-			details = append(details, tools.FormatSize(int(*block.Size)))
-		}
-		read := ""
-		if options.ReadableResources {
-			read = fmt.Sprintf(`. Read it with %s (server "%s")`, ReadMcpResourceTool, server)
-		}
-		description := ""
-		if block.Description != "" {
-			description = ": " + block.Description
-		}
-		// `block.title ?? block.name`: only a missing title falls back to the name.
-		title := block.Title
-		if title == "" && !block.HasTitle {
-			title = block.Name
-		}
-		suffix := ""
-		if len(details) > 0 {
-			suffix = " (" + strings.Join(details, ", ") + ")"
-		}
-		return []ai.ToolResultMessageContent{ai.TextContent{Text: fmt.Sprintf(`[Resource %s "%s"%s%s%s]`, block.URI, title, suffix, description, read)}}
-	}
-	if block.Type == "resource" && block.Resource != nil && block.Resource.Blob != nil && !strings.HasPrefix(block.Resource.MimeType, "image/") {
-		resource := block.Resource
-		data := nodebase64.Decode(*resource.Blob)
-		if isTextMimeType(resource.MimeType) {
-			return []ai.ToolResultMessageContent{ai.TextContent{Text: jsstring.FromUTF8(data)}}
-		}
-		mimeType := resource.MimeType
-		if mimeType == "" && !resource.HasMimeType {
-			mimeType = "unknown type"
-		}
-		kind := mimeType + ", " + tools.FormatSize(len(data))
-		save := options.SaveOutput
-		if save == nil {
-			save = SaveToTempFile
-		}
-		path, err := save(data, extensionOf(resource.URI))
-		if err != nil {
-			return []ai.ToolResultMessageContent{ai.TextContent{Text: fmt.Sprintf("[Binary resource %s (%s) could not be saved: %s]", resource.URI, kind, err)}}
-		}
-		return []ai.ToolResultMessageContent{ai.TextContent{Text: fmt.Sprintf("[Binary resource %s (%s) saved to %s]", resource.URI, kind, path)}}
-	}
-	return mcpToLLM(mcp.ToLLMContent(mcp.CallToolResult{Content: []mcp.ContentBlock{block}}))
-}
-
-// ToModelContent is the model-facing content of server's content blocks,
-// before the output limit.
-func ToModelContent(server string, blocks []mcp.ContentBlock, options ConvertMcpResultOptions) []ai.ToolResultMessageContent {
-	var out []ai.ToolResultMessageContent
-	for _, block := range blocks {
-		out = append(out, blockToContent(server, block, options)...)
-	}
-	return out
-}
-
 // scriptResultOf is the result without `_meta`, as codemode scripts receive it.
 func scriptResultOf(result *mcp.CallToolResult) (json.RawMessage, error) {
 	raw := result.Raw
 	if raw == nil {
-		data, err := json.Marshal(result)
+		normalized := *result
+		if normalized.Content == nil {
+			normalized.Content = []mcp.ContentBlock{}
+		}
+		data, err := json.Marshal(normalized)
 		if err != nil {
 			return nil, err
 		}
@@ -336,20 +140,18 @@ func scriptResultOf(result *mcp.CallToolResult) (json.RawMessage, error) {
 // ConvertMcpResult converts an MCP result. `isError` results become error
 // results that keep the structured result.
 func ConvertMcpResult(server, tool string, result *mcp.CallToolResult, options ConvertMcpResultOptions) (agent.AgentToolResult, error) {
-	// Without content blocks, ToLLMContent falls back to the structured content as JSON.
-	var converted []ai.ToolResultMessageContent
-	if len(result.Content) > 0 {
-		converted = ToModelContent(server, result.Content, options)
-	} else {
-		converted = mcpToLLM(mcp.ToLLMContent(*result))
-	}
-	isError := result.IsError != nil && *result.IsError
-	if isError && textOf(converted) == "" {
-		converted = append(converted, ai.TextContent{Text: fmt.Sprintf("MCP tool %s/%s returned an error", server, tool)})
-	}
 	saveOutput := options.SaveOutput
 	if saveOutput == nil {
 		saveOutput = SaveToTempFile
+	}
+	modelOptions := mcp.McpModelContentOptions{SaveOutput: saveOutput}
+	if options.ReadableResources {
+		modelOptions.ReadResourceTool = ReadMcpResourceTool
+	}
+	converted := mcpToLLM(mcp.ToMcpModelContent(server, *result, modelOptions))
+	isError := result.IsError != nil && *result.IsError
+	if isError && textOf(converted) == "" {
+		converted = append(converted, ai.TextContent{Text: fmt.Sprintf("MCP tool %s/%s returned an error", server, tool)})
 	}
 	content, fullOutputPath := limitMcpContent(converted, saveOutput)
 	structured, err := scriptResultOf(result)
@@ -427,7 +229,7 @@ func CreateMcpToolDefinition(options McpToolOptions) extension.ToolDefinition {
 		Label:        server + "/" + tool.Name,
 		Description:  description,
 		Parameters:   mcp.NormalizeMcpInputSchema(tool.InputSchema),
-		OutputSchema: CreateMcpResultSchema(tool.OutputSchema),
+		OutputSchema: mcp.CreateMcpResultSchema(tool.OutputSchema),
 		Exposure:     ToToolExposure(options.Exposure),
 		Namespace:    &namespace,
 		Annotations:  toToolAnnotations(tool),

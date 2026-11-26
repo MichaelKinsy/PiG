@@ -3156,12 +3156,6 @@ snippet = "return time.Duration(seconds * float64(time.Second))"
 
 [[hit]]
 check = "numbers"
-file = "coding/mcpext/tools.go"
-func = "blockToContent"
-snippet = "details = append(details, tools.FormatSize(int(*block.Size)))"
-
-[[hit]]
-check = "numbers"
 file = "durable/documents.go"
 func = "ownerId"
 snippet = "id, ok = int64(typed), true"

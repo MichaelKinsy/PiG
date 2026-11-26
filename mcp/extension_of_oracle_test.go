@@ -1,4 +1,4 @@
-package mcpext
+package mcp
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
-// extensionOf (extensions/mcp/tools.ts:155-158) is not exported by Pi's module, so the oracle body transcribes it and runs it on Node's own URL: the extension of a saved binary resource is the one its URL pathname ends in, or its raw text when it is not a URL.
+// extensionOf (packages/mcp/src/model-content.ts:79-82) is not exported by Pi's module, so the oracle body transcribes it and runs it on Node's own URL: the extension of a saved binary resource is the one its URL pathname ends in, or its raw text when it is not a URL.
 func TestExtensionOfMatchesNodeURL(t *testing.T) {
 	uris := []string{
 		"file:///tmp/report.pdf", "https://example.com/a/b.png", "https://example.com/a/b.png?x=1.jpg", "https://example.com/a/b.png#frag.gif", "https://example.com/a/b.tar.gz", "https://example.com/a/noext", "https://example.com/", "https://example.com",
