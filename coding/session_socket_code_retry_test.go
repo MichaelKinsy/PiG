@@ -239,6 +239,8 @@ func TestSessionSurfacesABareSocketCodeAfterTheConfiguredRetries(t *testing.T) {
 func TestSessionDoesNotRetryASocketCodeInsideAnIdentifier(t *testing.T) {
 	for _, api := range closedConnectionAPIs() {
 		api = bareSocketCodeAPI(api, "Invalid value EXECONNRESET")
+		api.dropBody = strings.ReplaceAll(api.dropBody, `"type":"gateway_notice"`, `"type":"invalid_request_error"`)
+		api.wantError = strings.ReplaceAll(api.wantError, `"type":"gateway_notice"`, `"type":"invalid_request_error"`)
 		t.Run(api.name, func(t *testing.T) {
 			server, requests := closedConnectionServer(t, api, 1<<30)
 			h := closedConnectionHarness(t, api, server, retryEventsSettings)

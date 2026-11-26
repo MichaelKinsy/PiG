@@ -62,8 +62,8 @@ func TestIsRetryableAssistantErrorClassification(t *testing.T) {
 		{"matches Azure peak-load capacity errors", "The system is currently experiencing high demand and cannot process your request. Your request exceeds the maximum usage size allowed during peak load. For improved capacity reliability, consider switching to Provisioned Throughput."},
 		// .upstream/v1.0.1/packages/ai/src/utils/retry.ts:34 (#10278): "Selected model is at capacity" ends the turn without this pattern.
 		{"matches provider model capacity errors", "Selected model is at capacity. Please try a different model."},
-		// Pi 9b88b94e2 packages/ai/test/retry.test.ts:106 (#12064): a gateway ends the stream with an Anthropic-style api_error event.
-		{"matches gateway wording for a closed connection", `{"type":"error","error":{"type":"api_error","message":"Connection closed."}}`},
+		// Pi 9b88b94e2 packages/ai/test/retry.test.ts:106 (#12064): a gateway ends the stream with an Anthropic-style error event (type changed from api_error to gateway_notice so the row still isolates connection.?closed after Pi a00a5048d).
+		{"matches gateway wording for a closed connection", `{"type":"error","error":{"type":"gateway_notice","message":"Connection closed."}}`},
 		// Pi 9b88b94e2 (#12064): packages/agent/src/proxy.ts's own message for a proxy stream that hit EOF before a done or error event matches too.
 		{"matches the agent proxy closed-connection message", "Connection closed by proxy server before the response completed"},
 		// Pi 9b88b94e2 (#12064): the plain text of the same event, and the separators `.?` accepts.

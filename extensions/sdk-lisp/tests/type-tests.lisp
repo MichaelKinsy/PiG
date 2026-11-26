@@ -64,10 +64,10 @@
     (check (not (pig:retryable-assistant-error-p (message "429 {\"error\":{\"code\":1308,\"message\":\"Usage limit reached\"}}"))))
     (check (pig:retryable-assistant-error-p (message "429 {\"error\":{\"code\":\"13081\",\"message\":\"Too many requests\"}}")))))
 
-;; Pi 9b88b94e2 packages/ai/test/retry.test.ts:106 (#12064): a gateway ends the stream with an Anthropic-style api_error event reading "Connection closed.".
+;; Pi 9b88b94e2 packages/ai/test/retry.test.ts:106 (#12064): a gateway ends the stream with an Anthropic-style error event reading "Connection closed." (type changed from api_error to gateway_notice so the row still isolates connection.?closed after Pi a00a5048d).
 (deftest connection-closed-is-retryable
   (flet ((message (text) (pig:from-json (format nil "{\"role\":\"assistant\",\"stopReason\":\"error\",\"errorMessage\":~A}" (pig:to-json text)))))
-    (check (pig:retryable-assistant-error-p (message "{\"type\":\"error\",\"error\":{\"type\":\"api_error\",\"message\":\"Connection closed.\"}}")))
+    (check (pig:retryable-assistant-error-p (message "{\"type\":\"error\",\"error\":{\"type\":\"gateway_notice\",\"message\":\"Connection closed.\"}}")))
     (check (pig:retryable-assistant-error-p (message "Connection closed by proxy server before the response completed")))
     (check (not (pig:retryable-assistant-error-p (message "{\"type\":\"error\",\"error\":{\"type\":\"api_error\",\"message\":\"Connection closed. insufficient_quota\"}}"))))
     (check (not (pig:retryable-assistant-error-p (message "The connection was closed by the user"))))))
@@ -96,6 +96,29 @@
     (check (not (pig:retryable-assistant-error-p (message "websocket connection limit"))))
     (check (not (pig:retryable-assistant-error-p (message "connection limit reached on the websocket"))))
     (check (not (pig:retryable-assistant-error-p (message "websocket connection limit reached: insufficient_quota"))))))
+
+;; Pi fb62c069b, 25190b72c, a00a5048d packages/ai/test/retry.test.ts: Cloudflare HTTP 525, gateway provider-unavailable/partial-response, and admission ceiling / temporary provider failures.
+(deftest pimain-retry-patterns-are-retryable
+  (flet ((message (text) (pig:from-json (format nil "{\"role\":\"assistant\",\"stopReason\":\"error\",\"errorMessage\":~A}" (pig:to-json text)))))
+    (check (pig:retryable-assistant-error-p (message "525 <!DOCTYPE html><title>SSL handshake failed</title>")))
+    (check (not (pig:retryable-assistant-error-p (message "400 payload 5250000 bytes exceeds limit"))))
+    (check (pig:retryable-assistant-error-p (message "The provider is temporarily unavailable. Retry shortly.")))
+    (check (pig:retryable-assistant-error-p (message "The upstream provider is temporarily unavailable. Try again shortly.")))
+    (check (pig:retryable-assistant-error-p (message "The provider ended the response before it was complete.")))
+    (check (pig:retryable-assistant-error-p (message "The connection to the provider was reset. Retry shortly.")))
+    (check (pig:retryable-assistant-error-p (message "The provider reported a failure while generating the response.")))
+    (check (not (pig:retryable-assistant-error-p (message "Provider unavailable for this model"))))
+    (check (not (pig:retryable-assistant-error-p (message "The provider is unavailable in your region"))))
+    (check (pig:retryable-assistant-error-p (message "Unable to process request. Repeat the request later.")))
+    (check (pig:retryable-assistant-error-p (message "waited 73.4s in queue, reaching this model's admission ceiling of 60s; retry after the hinted delay")))
+    (check (pig:retryable-assistant-error-p (message "{\"type\":\"error\",\"error\":{\"details\":null,\"type\":\"api_error\",\"message\":\"Unable to complete this request right now. Please try again.\"},\"request_id\":\"req_011CgfE1bTgPTDsor4TsApFv\"}")))
+    (check (pig:retryable-assistant-error-p (message "Provider finish_reason: error")))
+    (check (pig:retryable-assistant-error-p (message "Provider returned an empty response")))
+    (check (pig:retryable-assistant-error-p (message "Upstream error from Relace: The model stopped before completing the response.")))
+    (check (not (pig:retryable-assistant-error-p (message "The operation was aborted"))))
+    (check (not (pig:retryable-assistant-error-p (message "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"messages: at least one message is required\"}}"))))
+    (check (not (pig:retryable-assistant-error-p (message "Provider finish_reason: content_filter"))))
+    (check (not (pig:retryable-assistant-error-p (message "{\"type\":\"error\",\"error\":{\"type\":\"api_error\",\"message\":\"Monthly quota exceeded\"}}"))))))
 
 (deftest the-default-retry-delay-cap-is-pis
   (check-equal 60000 pig:+default-max-agent-retry-delay-ms+))

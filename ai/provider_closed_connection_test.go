@@ -23,7 +23,7 @@ type closedConnectionProvider struct {
 }
 
 func closedConnectionProviders() []closedConnectionProvider {
-	const anthropicEvent = `{"type":"error","error":{"type":"api_error","message":"Connection closed."}}`
+	const anthropicEvent = `{"type":"error","error":{"type":"gateway_notice","message":"Connection closed."}}`
 	const closedSocket = "terminated: other side closed (UND_ERR_SOCKET)"
 	const connectionError = "Connection error.: other side closed (UND_ERR_SOCKET)"
 	providers := []closedConnectionProvider{

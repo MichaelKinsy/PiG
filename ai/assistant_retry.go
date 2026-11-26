@@ -44,18 +44,36 @@ var retryableProviderErrorPattern = buildProviderErrorPattern([]string{
 	"servers are currently busy",
 	"currently experiencing high demand",
 	"model is at capacity",
+	// A request that waited too long in the provider's queue, e.g. sference's "waited 73.4s in
+	// queue, reaching this model's admission ceiling of 60s; retry after the hinted delay" (Pi a00a5048d).
+	// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+	"admission ceiling",
 	"rate.?limit",
 	"too many requests",
 	// Status codes must not be part of a longer word or number, e.g. a request id or byte count (#11057, Pi 6e491cfa).
-	// Pi spells it (?<![a-z0-9])(?:429|500|502|503|504|520|524)(?![a-z0-9]); RE2 has no lookaround, so the neighbours are matched, which a boolean test cannot tell apart.
-	"(?:^|[^a-z0-9])(?:429|500|502|503|504|520|524)(?:[^a-z0-9]|$)",
+	// 520, 524 and 525 are Cloudflare's: an unknown error, a timeout, and a failed TLS
+	// handshake between Cloudflare and the provider's origin, usually while it restarts (Pi fb62c069b).
+	// Pi spells it (?<![a-z0-9])(?:429|500|502|503|504|520|524|525)(?![a-z0-9]); RE2 has no lookaround, so the neighbours are matched, which a boolean test cannot tell apart.
+	// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+	"(?:^|[^a-z0-9])(?:429|500|502|503|504|520|524|525)(?:[^a-z0-9]|$)",
 	// Also matches "The service is temporarily unavailable" (#10965, utils/retry.ts).
 	"service.?(?:is.?)?(?:temporarily.?)?unavailable",
+	// Gateway wording such as "The provider is temporarily unavailable. Retry shortly." (#12227, Pi 25190b72c).
+	// "temporarily" is required: a plain "provider unavailable" is often a lasting routing error.
+	// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+	"provider.?(?:is.?)?temporarily.?unavailable",
 	"server.?error",
 	"internal.?error",
 	// Wrapper/provider text for transient upstream failures: "Provider returned error" (#2264) and gateway wording such as
 	// "The upstream provider returned an error" (#10842, utils/retry.ts).
 	"provider.?returned.?(?:an.?)?error",
+	// Anthropic's internal error, which it sends as HTTP 500 before streaming and as an event
+	// without a status once the stream has started, e.g. {"type":"error","error":{"type":
+	// "api_error","message":"Unable to complete this request right now. Please try again."}} (Pi a00a5048d).
+	// Gateways that copy Anthropic's format use it for their own upstream failures as well.
+	// \s is the JavaScript class (Go's is ASCII-only).
+	// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+	`"type"` + jsSpaceClass + `*:` + jsSpaceClass + `*"api_error"`,
 	"exceeded request buffer limit while retrying upstream",
 	// Gateway failure relaying the upstream response stream, sent as an OpenAI Responses response.failed event without an error code (#10920, Pi 7efebff1).
 	"unable to forward upstream",
@@ -69,7 +87,7 @@ var retryableProviderErrorPattern = buildProviderErrorPattern([]string{
 	"connection.?error",
 	"connection.?refused",
 	"connection.?lost",
-	// Gateway mid-stream drop relayed as an Anthropic-style api_error event, e.g. {"type":"error","error":{"type":"api_error","message":"Connection closed."}}; also the agent proxy's "Connection closed by proxy server before the response completed" (#12064, Pi 9b88b94e2).
+	// A gateway's mid-stream drop, e.g. "Connection closed."; also the agent proxy's "Connection closed by proxy server before the response completed" (#12064, Pi 9b88b94e2, comment updated in Pi a00a5048d).
 	// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
 	"connection.?closed",
 	"other side closed",
@@ -103,10 +121,28 @@ var retryableProviderErrorPattern = buildProviderErrorPattern([]string{
 	"stream ended before message_stop",
 	"stream ended before a terminal response event",
 	"http2 request did not get a response",
+	// An OpenAI-compatible stream that ended with `finish_reason: "error"`, which OpenRouter
+	// sends when its provider fails mid-stream; see `mapStopReason` in openai-completions.ts (Pi a00a5048d).
+	// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+	"provider finish_reason: error",
+	// OpenRouter: "Provider returned an empty response", and its wrapper for a provider that
+	// gave up, e.g. "Upstream error from Relace: The model stopped before completing the response." (Pi a00a5048d).
+	// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+	"returned an empty response",
+	// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+	"stopped before completing the response",
 	// Codex CLI mid-stream disconnect, relayed by proxies that wrap the Codex CLI, e.g. "stream disconnected before completion: stream closed before response.completed" (#11057, Pi 29057ece).
 	"stream disconnected before completion",
 	// Magpie gateway relaying a dropped upstream Anthropic stream, for example "Claude Code's stream from Anthropic was cut short after the reply had begun" (#11879, Pi 566344046).
 	"cut short after the reply had begun",
+	// Gateway mid-stream failures relayed as SSE `event: error` frames without a
+	// status code, e.g. "The provider ended the response before it was complete." (#12227, Pi 25190b72c).
+	// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+	"ended the response before it was complete",
+	// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+	"connection to the provider was reset",
+	// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+	"reported a failure while generating the response",
 	// Node ERR_HTTP2_STREAM_CANCEL: the HTTP/2 session died before the request was sent, for example after the Bedrock SDK's 5-minute session timeout (utils/retry.ts, #10379).
 	"pending stream has been canceled",
 	// Provider-requested retry delay cap failures flow through the outer policy.
@@ -115,6 +151,9 @@ var retryableProviderErrorPattern = buildProviderErrorPattern([]string{
 	"you can retry your request",
 	"try your request again",
 	"please retry your request",
+	// recursive: "Unable to process request. Repeat the request later." (Pi a00a5048d).
+	// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+	"repeat the request later",
 	// gRPC based providers.
 	"ResourceExhausted",
 	// Sign in with ChatGPT: usage or user data temporarily unavailable. Usage failures can arrive mid-stream without an HTTP 503 in the message (utils/retry.ts).

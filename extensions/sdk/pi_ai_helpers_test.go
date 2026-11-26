@@ -294,10 +294,10 @@ func TestZhipuUsageLimit1308IsNotRetryable(t *testing.T) {
 	}
 }
 
-// Pi 9b88b94e2 packages/ai/test/retry.test.ts:106 (#12064): a gateway ends the stream with an Anthropic-style api_error event reading "Connection closed.".
+// Pi 9b88b94e2 packages/ai/test/retry.test.ts:106 (#12064): a gateway ends the stream with an Anthropic-style error event reading "Connection closed." (type changed from api_error to gateway_notice so the row still isolates connection.?closed after Pi a00a5048d).
 func TestConnectionClosedIsRetryable(t *testing.T) {
 	for text, want := range map[string]bool{
-		`{"type":"error","error":{"type":"api_error","message":"Connection closed."}}`:                    true,
+		`{"type":"error","error":{"type":"gateway_notice","message":"Connection closed."}}`:               true,
 		"Connection closed by proxy server before the response completed":                                 true,
 		`{"type":"error","error":{"type":"api_error","message":"Connection closed. insufficient_quota"}}`: false,
 		"The connection was closed by the user":                                                           false,
@@ -338,6 +338,36 @@ func TestCodexWebSocketConnectionLimitIsRetryable(t *testing.T) {
 		"websocket connection limit":                                                                                             false,
 		"connection limit reached on the websocket":                                                                              false,
 		"websocket connection limit reached: insufficient_quota":                                                                 false,
+	} {
+		if got := IsRetryableAssistantError(map[string]any{"role": "assistant", "stopReason": "error", "errorMessage": text}); got != want {
+			t.Errorf("IsRetryableAssistantError(%q) = %v, want %v", text, got, want)
+		}
+	}
+}
+
+// Pi fb62c069b, 25190b72c, a00a5048d packages/ai/test/retry.test.ts: Cloudflare HTTP 525,
+// gateway provider-unavailable and partial-response errors, and admission ceiling / temporary provider failures.
+func TestPiMainRetryPatternsAreRetryable(t *testing.T) {
+	for text, want := range map[string]bool{
+		"525 <!DOCTYPE html><title>SSL handshake failed</title>":                                              true,
+		"400 payload 5250000 bytes exceeds limit":                                                             false,
+		"The provider is temporarily unavailable. Retry shortly.":                                             true,
+		"The upstream provider is temporarily unavailable. Try again shortly.":                                true,
+		"The provider ended the response before it was complete.":                                             true,
+		"The connection to the provider was reset. Retry shortly.":                                            true,
+		"The provider reported a failure while generating the response.":                                      true,
+		"Provider unavailable for this model":                                                                 false,
+		"The provider is unavailable in your region":                                                          false,
+		"Unable to process request. Repeat the request later.":                                                true,
+		"waited 73.4s in queue, reaching this model's admission ceiling of 60s; retry after the hinted delay": true,
+		`{"type":"error","error":{"details":null,"type":"api_error","message":"Unable to complete this request right now. Please try again."},"request_id":"req_011CgfE1bTgPTDsor4TsApFv"}`: true,
+		"Provider finish_reason: error":                                                 true,
+		"Provider returned an empty response":                                           true,
+		"Upstream error from Relace: The model stopped before completing the response.": true,
+		"The operation was aborted":                                                     false,
+		`{"type":"error","error":{"type":"invalid_request_error","message":"messages: at least one message is required"}}`: false,
+		"Provider finish_reason: content_filter":                                           false,
+		`{"type":"error","error":{"type":"api_error","message":"Monthly quota exceeded"}}`: false,
 	} {
 		if got := IsRetryableAssistantError(map[string]any{"role": "assistant", "stopReason": "error", "errorMessage": text}); got != want {
 			t.Errorf("IsRetryableAssistantError(%q) = %v, want %v", text, got, want)
