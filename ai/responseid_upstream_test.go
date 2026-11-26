@@ -31,7 +31,7 @@ func TestResponseIDUpstream(t *testing.T) {
 		// .upstream/v0.87.1/packages/ai/test/responseid.test.ts:85
 		{"Azure OpenAI Responses Provider/should expose responseId", "azure", "gpt-4o-mini", APIAzureOpenAIResponses, false},
 		// .upstream/v0.87.1/packages/ai/test/responseid.test.ts:93
-		{"Mistral Provider/should expose responseId", "mistral", "devstral-medium-latest", APIMistralConversations, false},
+		{"Mistral Provider/should expose responseId", "mistral", "mistral-medium-latest", APIMistralConversations, false},
 		// .upstream/v0.87.1/packages/ai/test/responseid.test.ts:99
 		{"GitHub Copilot Provider/OpenAI path should expose responseId", "github-copilot", "gpt-5.3-codex", APIOpenAIResponses, false},
 		// .upstream/v0.87.1/packages/ai/test/responseid.test.ts:104

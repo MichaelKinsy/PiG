@@ -48,7 +48,7 @@ func TestTotalTokensUpstream(t *testing.T) {
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:425
 		{"zai", "glm-5.2", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:444
-		{"mistral", "devstral-medium-latest", "", false, false, ""},
+		{"mistral", "mistral-medium-latest", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:467
 		{"minimax", "MiniMax-M2.7", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:490

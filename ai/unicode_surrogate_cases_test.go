@@ -105,11 +105,11 @@ func unicodeUpstreamCases() []unicodeUpstreamCase {
 		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:593
 		{"should handle unpaired high surrogate (0xD83D) in tool results", "zai", "glm-5.2", 2, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:601
-		{"should handle emoji in tool results", "mistral", "devstral-medium-latest", 0, false, ""},
+		{"should handle emoji in tool results", "mistral", "mistral-medium-latest", 0, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:605
-		{"should handle real-world LinkedIn comment data with emoji", "mistral", "devstral-medium-latest", 1, false, ""},
+		{"should handle real-world LinkedIn comment data with emoji", "mistral", "mistral-medium-latest", 1, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:609
-		{"should handle unpaired high surrogate (0xD83D) in tool results", "mistral", "devstral-medium-latest", 2, false, ""},
+		{"should handle unpaired high surrogate (0xD83D) in tool results", "mistral", "mistral-medium-latest", 2, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:617
 		{"should handle emoji in tool results", "minimax", "MiniMax-M2.7", 0, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:621

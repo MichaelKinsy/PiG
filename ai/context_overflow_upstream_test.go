@@ -29,7 +29,7 @@ func TestContextOverflowMatrixUpstream(t *testing.T) {
 		{"xai", "grok-4.3", "xai", `maximum prompt length is \d+`}, {"groq", "llama-3.3-70b-versatile", "groq", "reduce the length of the messages"},
 		{"cerebras", "gpt-oss-120b", "cerebras", `4(00|13|29).*\(no body\)`}, {"huggingface", "moonshotai/Kimi-K2.5", "generic", ""},
 		{"together", "moonshotai/Kimi-K3", "together", ""}, {"zai", "glm-5.2", "zai", ""},
-		{"mistral", "devstral-medium-latest", "mistral", `too large for model with \d+ maximum context length`}, {"minimax", "MiniMax-M2.7", "minimax", ""},
+		{"mistral", "mistral-medium-latest", "mistral", `too large for model with \d+ maximum context length`}, {"minimax", "MiniMax-M2.7", "minimax", ""},
 		{"xiaomi", "mimo-v2.6-pro", "length", ""}, {"xiaomi-token-plan-cn", "mimo-v2.6-pro", "length", ""},
 		{"xiaomi-token-plan-ams", "mimo-v2.6-pro", "length", ""}, {"xiaomi-token-plan-sgp", "mimo-v2.6-pro", "length", ""},
 		{"qwen-token-plan", "qwen3.7-max", "qwen", "input length"}, {"qwen-token-plan-individual", "qwen3.8-max", "qwen", "input length"}, {"qwen-token-plan-individual-cn", "qwen3.8-max", "qwen", "input length"},
