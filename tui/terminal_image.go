@@ -807,7 +807,15 @@ func RenderImage(base64Data string, imageDimensions ImageDimensions, options Ima
 	}
 }
 
+// maxHyperlinkURLLength is the longest URL that Hyperlink wraps in an OSC 8 sequence.
+// Wrapping re-opens a hyperlink on every line with the full URL, so multi-megabyte URLs
+// would grow memory quadratically.
+const maxHyperlinkURLLength = 8192
+
 func Hyperlink(text, url string) string {
+	if len(url) > maxHyperlinkURLLength {
+		return text
+	}
 	return "\x1b]8;;" + url + "\x1b\\" + text + "\x1b]8;;\x1b\\"
 }
 

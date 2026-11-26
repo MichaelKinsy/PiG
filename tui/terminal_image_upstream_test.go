@@ -379,4 +379,22 @@ func TestUpstreamImageHyperlink(t *testing.T) {
 			t.Fatalf("link=%q", got)
 		}
 	})
+	// Port of Pi main 6ca01d1e93c316b2b9da34d68807293d6fbdb5dc (packages/tui/test/markdown.test.ts)
+	t.Run("does not hyperlink a bare URL that runs into a very long line", func(t *testing.T) {
+		prev := GetCapabilities()
+		t.Cleanup(func() { SetCapabilities(prev) })
+		SetCapabilities(TerminalCapabilities{Hyperlinks: true})
+		url := "https://example.com/path,data:" + strings.Repeat("x", 20_000)
+		output := strings.Join(NewMarkdown(url).Render(80), "")
+		if strings.Contains(output, "\x1b]8;") {
+			t.Fatalf("unexpected OSC 8 hyperlink in output for %d-byte URL", len(url))
+		}
+		if len(output) >= 3*len(url) {
+			t.Fatalf("output length %d >= 3*%d", len(output), len(url))
+		}
+		plain := strings.Join(strings.Fields(widthx.StripAnsi(output)), "")
+		if plain != url {
+			t.Fatalf("plain text mismatch: got len %d, want %d", len(plain), len(url))
+		}
+	})
 }
