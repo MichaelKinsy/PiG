@@ -104,6 +104,10 @@ const (
 	// the host renames the copy to a new session (forked from this one at At) and uploads it there, and the session itself
 	// restores into a fresh store.
 	Diverged UploadType = "diverged"
+	// RemoteEmpty: the remote holds no history for the session, though this copy shared it up to At: the remote's copy was
+	// deleted (or the remote was reset) since. The host decides whether to start over: forget the sync state, and the next
+	// upload sends the whole store from the start.
+	RemoteEmpty UploadType = "remote_empty"
 	// Behind: the copy lost commits it had uploaded, for example to a power loss: its Head is below SyncedHead. Its next
 	// commits would reuse their sequences, so nothing is uploaded. Pull what it lost before the copy commits again; a pull
 	// applies from the local head.
@@ -189,6 +193,9 @@ func UploadSession(ctx context.Context, options UploadOptions) (UploadResult, er
 		switch {
 		case result.Type == PutNotHead:
 			// A history that does not end at `after` is another one too: the remote never held this copy's past `after`.
+			if result.Head == LogStart {
+				return UploadResult{Type: RemoteEmpty, At: after}, nil
+			}
 			return UploadResult{Type: Diverged, At: after}, nil
 		case result.Type == PutExists && result.Device != options.Device:
 			return UploadResult{Type: Diverged, At: after}, nil

@@ -350,6 +350,36 @@ func TestSyncingASessionBetweenDevices(t *testing.T) {
 		same(t, "replica copy", reads(t, replica.store()), reads(t, laptop.store()))
 	})
 
+	t.Run("reports a remote that lost the session's history as remote_empty, and starts over from a full copy", func(t *testing.T) {
+		laptop := newDevice(t, "laptop", newRemote(t))
+		laptop.commit(seedBatches()[:4])
+		laptop.upload()
+		synced := lastSeq(laptop.store())
+		laptop.commit(seedBatches()[4:])
+		// The remote's copy was deleted while the bookmark still says `synced`.
+		emptied := newRemote(t)
+		upload := func() UploadResult {
+			result, err := UploadSession(background, UploadOptions{
+				SessionID: session,
+				Device:    "laptop",
+				Source:    laptop.store(),
+				Store:     emptied,
+				State:     laptop.state,
+			})
+			noError(t, err)
+			return result
+		}
+		same(t, "remote_empty", upload(), UploadResult{Type: RemoteEmpty, At: synced})
+		// The host forgets the bookmark: the next upload is the whole store, as an archive (the outbox was trimmed).
+		noError(t, laptop.state.Set(background, session, SyncState{SyncedHead: nil}))
+		source := laptop.store()
+		same(t, "reupload", upload(), UploadResult{Type: Uploaded, Head: lastSeq(source)})
+		same(t, "slots", listing(t, emptied, session).Batches, []BatchInfo{{After: 0, To: lastSeq(source), Device: "laptop", Archive: true}})
+		replica := newDevice(t, "replica", emptied)
+		replica.pull()
+		same(t, "replica copy", reads(t, replica.store()), reads(t, source))
+	})
+
 	t.Run("refuses to upload a copy that lost uploaded commits, and pulls them back", func(t *testing.T) {
 		remote := newRemote(t)
 		batches := seedBatches()
