@@ -1159,15 +1159,16 @@ func (c responsesMessageConverter) convertAnchored(messages []Message, transcrip
 					if sameModel {
 						namespace = block.Namespace
 					}
+					// OpenAI returns tool calls with status "completed", so replay them the same way (#12367).
 					if isGrammar {
 						input, err := getGrammarToolInput(block.Name, block.Arguments, property)
 						if err != nil {
 							return nil, err
 						}
-						items = append(items, ResponsesInputItem{Type: "custom_tool_call", ID: itemID, CallID: callID, Name: block.Name, Namespace: namespace, Input: sanitizeSurrogates(input)})
+						items = append(items, ResponsesInputItem{Type: "custom_tool_call", ID: itemID, CallID: callID, Name: block.Name, Namespace: namespace, Status: "completed", Input: sanitizeSurrogates(input)})
 					} else {
 						arguments, _ := block.ArgumentsJSON()
-						items = append(items, ResponsesInputItem{Type: "function_call", ID: itemID, CallID: callID, Name: block.Name, Namespace: namespace, Arguments: quotedArgumentsJSON(arguments)})
+						items = append(items, ResponsesInputItem{Type: "function_call", ID: itemID, CallID: callID, Name: block.Name, Namespace: namespace, Status: "completed", Arguments: quotedArgumentsJSON(arguments)})
 					}
 				}
 			}
