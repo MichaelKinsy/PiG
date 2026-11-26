@@ -985,6 +985,7 @@ static RETRYABLE_PROVIDER_ERROR_PATTERN: LazyLock<Pattern> = LazyLock::new(|| {
         "stopped before completing the response",
         // Codex CLI mid-stream disconnect, relayed by proxies that wrap the Codex CLI, e.g. "stream disconnected before completion: stream closed before response.completed" (#11057).
         "stream disconnected before completion",
+        "cut short after the reply had begun",
         "ended the response before it was complete",
         "connection to the provider was reset",
         "reported a failure while generating the response",

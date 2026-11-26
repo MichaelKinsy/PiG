@@ -95,7 +95,22 @@ func InstallDependencies(plugin model.Plugin, ctx context.Context, options Insta
 // invalid name, an existing directory (no updating in place: install another ref, or delete and install), a package discovery
 // reports a problem in or finds no plugin in, a plugin name another plugin of options.Roots has. Only what this install
 // created is removed on failure. It blocks until the install ends.
+func normalizePluginSource(source PluginSource) PluginSource {
+	if source.Kind == "" {
+		hasGit := source.Git != ""
+		hasNpm := source.Npm != ""
+		switch {
+		case hasGit && !hasNpm:
+			source.Kind = PluginSourceGit
+		case hasNpm && !hasGit:
+			source.Kind = PluginSourceNpm
+		}
+	}
+	return source
+}
+
 func InstallPlugin(source PluginSource, root string, ctx context.Context, options InstallPluginOptions) ([]string, error) {
+	source = normalizePluginSource(source)
 	name, err := targetName(source)
 	if err != nil {
 		return nil, err

@@ -66,6 +66,18 @@ func TestCommitWrites(t *testing.T) {
 		}
 	})
 
+	t.Run("rejects with the refusal when a 0.8.0 storage omits Kind", func(t *testing.T) {
+		refusal := errors.New("untagged refusal")
+		storage := commitStorage{commit: func(_ context.Context, _ [][]durable.StorageWrite, receive func(int, durable.Seq)) (durable.CommitResult, error) {
+			receive(0, 5)
+			return durable.CommitResult{Stored: 0, Refused: refusal}, nil
+		}}
+		seq, err := durabletest.CommitWrites(ctx, storage, writes)
+		if !errors.Is(err, refusal) || seq != 0 {
+			t.Fatalf("CommitWrites = %d, %v; want 0, the untagged refusal", seq, err)
+		}
+	})
+
 	t.Run("rejects with what the call rejected with", func(t *testing.T) {
 		failure := errors.New("connection lost")
 		storage := commitStorage{commit: func(_ context.Context, _ [][]durable.StorageWrite, receive func(int, durable.Seq)) (durable.CommitResult, error) {

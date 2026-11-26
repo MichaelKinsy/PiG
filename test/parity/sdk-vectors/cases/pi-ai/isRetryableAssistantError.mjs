@@ -177,6 +177,7 @@ const failed = (errorMessage) => ({ role: "assistant", content: [], api: "x", pr
 for (const errorMessage of [
   "stream disconnected before completion: stream closed before response.completed",
   "Stream Disconnected Before Completion",
+  "Claude Code's stream from Anthropic was cut short after the reply had begun",
   'OpenAI API error (429): {"code":"subscription_sharing_workplace_individual_usage_limit_exceeded","message":"Usage limit reached."}',
   "subscription_sharing_workplace_individual_usage_limit_exceeded",
   "SUBSCRIPTION_SHARING_WORKPLACE_INDIVIDUAL_USAGE_LIMIT_EXCEEDED overloaded",

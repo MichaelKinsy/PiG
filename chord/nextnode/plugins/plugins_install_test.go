@@ -636,8 +636,8 @@ func TestInstallPluginRefusesAnUntaggedOrUnknownPluginSourceKind(t *testing.T) {
 		source PluginSource
 		want   string
 	}{
-		{PluginSource{Git: repository.url, Ref: "v1"}, `installPlugin: source kind "" is refused`},
-		{PluginSource{Npm: "@bob/hello", Version: "1.0.0"}, `installPlugin: source kind "" is refused`},
+		{PluginSource{}, `installPlugin: source kind "" is refused`},
+		{PluginSource{Git: repository.url, Ref: "v1", Npm: "@bob/hello", Version: "1.0.0"}, `installPlugin: source kind "" is refused`},
 		{PluginSource{Kind: PluginSourceKind("other"), Git: repository.url, Ref: "v1"}, `installPlugin: source kind "other" is refused`},
 	} {
 		_, err := InstallPlugin(tc.source, root, background, InstallPluginOptions{})
@@ -647,5 +647,26 @@ func TestInstallPluginRefusesAnUntaggedOrUnknownPluginSourceKind(t *testing.T) {
 	}
 	if names := listing(t, root); len(names) != 0 {
 		t.Fatalf("root = %v, want empty", names)
+	}
+}
+
+func TestInstallPluginInfersKindForUntagged08xSource(t *testing.T) {
+	repository := gitRepository(t, "hello", map[string]string{
+		"package.json": manifestText(t, map[string]any{"name": "@bob/hello", "chord": map[string]any{"plugins": []string{"."}}}),
+		"main.js":      "export default {}",
+	}, "v1", nil)
+	root := tempRoot(t)
+	names, err := InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, root, background, InstallPluginOptions{Kinds: []string{"main"}})
+	if err != nil {
+		t.Fatalf("untagged git PluginSource failed: %v", err)
+	}
+	if len(names) != 1 || names[0] != "@bob/hello" {
+		t.Fatalf("names = %v, want [@bob/hello]", names)
+	}
+	// Untyped npm source infers PluginSourceNpm and runs npm validation (invalid package name refused as npm, not unknown kind).
+	_, err = InstallPlugin(PluginSource{Npm: "not a valid package", Version: "1.0.0"}, root, background, InstallPluginOptions{})
+	want := `installPlugin: "not a valid package" is not an npm package name`
+	if err == nil || err.Error() != want {
+		t.Fatalf("untagged npm PluginSource err = %v, want %q", err, want)
 	}
 }

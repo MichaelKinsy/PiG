@@ -506,7 +506,7 @@ only the end of the text. Supported: literals, . [] [^] \\d \\w \\s \\S, (?:) ()
                "websocket.?connection.?limit.?reached"
                "ended without" "stream ended before message_stop"
                "stream ended before a terminal response event" "http2 request did not get a response" "provider finish_reason: error" "returned an empty response" "stopped before completing the response"
-               "stream disconnected before completion" "ended the response before it was complete" "connection to the provider was reset" "reported a failure while generating the response"
+               "stream disconnected before completion" "cut short after the reply had begun" "ended the response before it was complete" "connection to the provider was reset" "reported a failure while generating the response"
                "pending stream has been canceled" "retry delay" "you can retry your request" "try your request again"
                "please retry your request" "repeat the request later" "ResourceExhausted" "subscription_sharing_usage_unavailable" "subscription_sharing_user_unavailable")))
 

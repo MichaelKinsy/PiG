@@ -659,7 +659,7 @@ func TestTheBinaryCodecsStrings(t *testing.T) {
 	}
 }
 
-// Follows Pi befc2d59b (link/message.ts originOf): hello, revoke, ping and pong carry no origin; every other message
+// Pins link.OriginOf by message kind (upstream link/message.ts originOf, switched from an `in` check to `message.kind` in Pi befc2d59b; Go already switched on concrete types): hello, revoke, ping and pong carry no origin; every other message
 // kind carries its origin (Some for present, absent for none; closed always carries its origin).
 func TestOriginOfByMessageKind(t *testing.T) {
 	noOrigin := []link.Message{

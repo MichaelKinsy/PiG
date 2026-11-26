@@ -137,6 +137,10 @@ func TestHooksReturnTheResultObjectOfEachHook(t *testing.T) {
 				}
 				return &harness.CompactionDecision{Kind: harness.CompactionSummary, Summary: summary}, nil
 			}}},
+		{"beforeCompact", `{"compaction":{"reason":"manual","entries":[],"messages":[],"firstKept":9}}`, `{}`, &harness.CompactionHooks{
+			BeforeCompact: func(context.Context, harness.CompactionRequest, harness.HookApi) (*harness.CompactionDecision, error) {
+				return &harness.CompactionDecision{Kind: harness.CompactionDecisionKind("unknown")}, nil
+			}}},
 		{"prepareArguments", `{"arguments":"[1,2]"}`, `[1,2]`, driver.PrepareArguments(func(args any) (any, error) {
 			var out []int
 			return out, json.Unmarshal([]byte(args.(string)), &out)

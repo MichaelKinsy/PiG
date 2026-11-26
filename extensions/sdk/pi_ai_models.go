@@ -375,6 +375,8 @@ var (
 		`stopped before completing the response`,
 		// Codex CLI mid-stream disconnect, relayed by proxies that wrap the Codex CLI, e.g. "stream disconnected before completion: stream closed before response.completed" (#11057).
 		`stream disconnected before completion`,
+		// Magpie gateway relaying a dropped upstream Anthropic stream (#11879, Pi 566344046).
+		`cut short after the reply had begun`,
 		// Pi 25190b72c (#12227): gateway mid-stream SSE error frames without a status code.
 		// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
 		`ended the response before it was complete`,

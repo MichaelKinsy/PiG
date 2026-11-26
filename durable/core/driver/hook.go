@@ -474,7 +474,7 @@ func runHook(ctx context.Context, p hookEffect, target any, api harness.HookApi,
 				Summary string `json:"summary"`
 			}{out.Summary}, nil
 		default:
-			return nil, nil
+			return struct{}{}, nil
 		}
 	case "prepareArguments":
 		prepare, ok := target.(PrepareArguments)

@@ -18,7 +18,7 @@ func CommitWrites(ctx context.Context, storage durable.Storage, writes []durable
 	if err != nil {
 		return 0, err
 	}
-	if result.Kind == durable.CommitRefused {
+	if result.Kind == durable.CommitRefused || result.Refused != nil {
 		return 0, result.Refused
 	}
 	return stored, nil
