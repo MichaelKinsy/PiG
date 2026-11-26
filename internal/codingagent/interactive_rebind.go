@@ -131,6 +131,7 @@ func (m *InteractiveMode) rebindSession(ctx context.Context, renderBeforeBind bo
 		m.eventCh = nil
 		m.unsubscribeSessionListener()
 		m.programStatusReporter().Reset()
+		m.programResume.Report()
 		m.applyRuntimeSettings()
 		// interactive-mode.ts applyRuntimeSettings: this.footer.setSession(this.session)
 		m.statusLine.SetSession(m)

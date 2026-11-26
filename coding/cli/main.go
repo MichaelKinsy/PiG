@@ -699,6 +699,10 @@ func Main(args []string, options *MainOptions) {
 	// The first thing of every mode and command: the Node extension runtime and every child process (bash tool, package commands, subagents)
 	// read only PI_TELEMETRY, so it holds PiG's resolved choice before anything can start one (TestMainExportsTheResolvedTelemetryBeforeAnyCommand).
 	exportTelemetryOverride()
+	// Taken in every mode, before anything starts a child process: pig reports its own resume command, and
+	// shells, editors, MCP servers and extension processes it starts must not replace it or register commands
+	// that later run with the user's rights (OSC 7577, Pi cf419553da).
+	programResumeToken := tui.TakeProgramResumeToken()
 	// pig additive (D174): at most procpolicy.Cap Ps unless the environment sets GOMAXPROCS; set before anything reads the width.
 	procpolicy.Apply()
 	// Upstream's theme.bold, italic, underline, inverse and strikethrough are chalk calls: they draw only when chalk's stdout color level is above zero.
@@ -1696,6 +1700,10 @@ func Main(args []string, options *MainOptions) {
 	// Pi main.ts:943-944 forwards parsed.tuiMode and parsed.useTheme, including an empty theme name.
 	iopts.TuiMode = flags.TuiMode
 	iopts.InitialThemeSetting = flags.UseTheme
+	iopts.ProgramResumeToken = programResumeToken
+	if name := currentPigletBinary().Name(); name != "" {
+		iopts.ResumeProgramName = name
+	}
 	iopts.TerminateExtensionProcesses = sessionFactory.TerminateProcesses
 	interactive := codingagent.NewInteractiveMode(interactiveRuntime{rt}, iopts)
 	// main.ts: the TUI draws from here on, so an install is no longer announced on stderr.

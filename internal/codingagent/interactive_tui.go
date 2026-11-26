@@ -494,6 +494,8 @@ func (m *InteractiveMode) stopInteractiveTui() {
 	}
 	// upstream: interactive-mode.ts:7283-7300 (stop() restores the terminal and, as its last step, removes the signal handlers, in one synchronous call, so no signal reaches a handler of the quit after the terminal is cooked; shutdown calls it at :4505, before `await this.runtimeHost.dispose()`, :4506). The quit by keys holds shutdownMu from here to its dispose's end, and a signal that finds it unmarked would wait for that lock: SIGINT for a second, SIGTERM and SIGHUP for ever.
 	if m.quitByKeys {
+		// The user ended pig, so the terminal must not bring it back. Signal shutdowns keep the command.
+		m.programResume.Clear()
 		m.quitDisposing.Store(true)
 	}
 	// A fullscreen exit that prints the transcript switches to the main-screen renderer without starting it, renders there, and stops it as a regular run stops: parked below the last line, then CRLF. The resume hint keeps the alternate screen's own preserve-screen exit.
