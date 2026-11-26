@@ -126,6 +126,8 @@ var retryableProviderErrorPattern = buildProviderErrorPattern([]string{
 	"provider finish_reason: error",
 	// Mistral's `finish_reason: "error"` for a transient server failure; see `mapMistralStopReason` in mistral.go (#10487, #12455).
 	"provider stopped with: error",
+	// OpenRouter: "Provider returned an empty response" and empty-stop native_finish_reason errors.
+	"returned an empty response",
 })
 
 // RetryDecision is what a custom RetryDecider chooses for one failed assistant call.

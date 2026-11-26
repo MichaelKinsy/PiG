@@ -150,7 +150,7 @@ func foldsToChunkField(key string) bool {
 }
 
 func foldsToChoiceField(key string) bool {
-	for _, field := range [...]string{"delta", "finish_reason", "index", "usage"} {
+	for _, field := range [...]string{"delta", "finish_reason", "index", "native_finish_reason", "usage"} {
 		if namesAlike(key, field) {
 			return true
 		}
@@ -199,7 +199,7 @@ func (p *chunkScanner) choice() (oaiChunkChoice, bool) {
 	if !p.byte('{') {
 		return choice, false
 	}
-	var seen [3]bool
+	var seen [4]bool
 	p.ws()
 	if p.byte('}') {
 		p.missingFinishReason = true
@@ -224,6 +224,8 @@ func (p *chunkScanner) choice() (oaiChunkChoice, bool) {
 			slot = 1
 		case "index":
 			slot = 2
+		case "native_finish_reason":
+			slot = 3
 		case "usage":
 			return choice, false
 		default:
@@ -259,6 +261,15 @@ func (p *chunkScanner) choice() (oaiChunkChoice, bool) {
 				return choice, false
 			}
 			choice.Index = index
+		case 3:
+			if p.literal("null") {
+				break
+			}
+			native, ok := p.str()
+			if !ok {
+				return choice, false
+			}
+			choice.NativeFinishReason = native
 		default:
 			if !p.scalar() {
 				return choice, false

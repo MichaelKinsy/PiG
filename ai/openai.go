@@ -621,7 +621,8 @@ type oaiDelta struct {
 
 type oaiChunkChoice struct {
 	Delta        oaiDelta `json:"delta"`
-	FinishReason string   `json:"finish_reason"`
+	FinishReason       string   `json:"finish_reason"`
+	NativeFinishReason string   `json:"native_finish_reason"`
 	// finishReasonNotString marks a FinishReason that is the String() form of a finish_reason that was not a string.
 	finishReasonNotString bool
 	Index                 int `json:"index"`
@@ -2080,6 +2081,7 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 	finishReasonNotString := false
 	supportsFinishReason := p.compatBool(func(c *OpenAICompat) *bool { return c.SupportsFinishReason }, true)
 	openRouter := isOpenRouterModel(p.cfg.ProviderID, p.cfg.BaseURL)
+	var nativeFinishReason string
 	inferredStopReason := func() StopReason {
 		if nextStreamIndex > 0 {
 			return StopReasonToolUse
@@ -2169,6 +2171,13 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 		}
 
 		for _, choice := range chunk.Choices[:min(1, len(chunk.Choices))] {
+			if openRouter && choice.NativeFinishReason != "" {
+				if decodedFast {
+					nativeFinishReason = strings.Clone(choice.NativeFinishReason)
+				} else {
+					nativeFinishReason = choice.NativeFinishReason
+				}
+			}
 			if choice.FinishReason != "" || choice.finishReasonNotString {
 				hasFinishReason = true
 				finishReason, finishReasonNotString = choice.FinishReason, choice.finishReasonNotString
@@ -2181,6 +2190,9 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 				builder.partial.StopReason = stopReason
 				if errorMessage != "" {
 					builder.partial.ErrorMessage = errorMessage
+				}
+				if nativeFinishReason != "" {
+					applyOpenRouterNativeFinishReason(builder.partial, finishReason, nativeFinishReason)
 				}
 				builder.touch()
 			}
@@ -2311,13 +2323,33 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 	switch {
 	case hasFinishReason:
 		stopReason, errorMessage := mapChunkFinishReason(finishReason, finishReasonNotString)
-		if stopReason == StopReasonError {
-			fail(StopReasonError, errors.New(errorMessage))
+		builder.partial.StopReason = stopReason
+		if errorMessage != "" {
+			builder.partial.ErrorMessage = errorMessage
+		}
+		if nativeFinishReason != "" {
+			applyOpenRouterNativeFinishReason(builder.partial, finishReason, nativeFinishReason)
+			flagOpenRouterEmptyStop(builder.partial, nativeFinishReason)
+		}
+		if builder.partial.StopReason == StopReasonError {
+			msg := builder.partial.ErrorMessage
+			if msg == "" {
+				msg = "Provider returned an error stop reason"
+			}
+			fail(StopReasonError, errors.New(msg))
 			return
 		}
-		done(stopReason)
+		done(builder.partial.StopReason)
 	case !supportsFinishReason:
-		done(inferredStopReason())
+		builder.partial.StopReason = inferredStopReason()
+		if nativeFinishReason != "" {
+			flagOpenRouterEmptyStop(builder.partial, nativeFinishReason)
+		}
+		if builder.partial.StopReason == StopReasonError {
+			fail(StopReasonError, errors.New(builder.partial.ErrorMessage))
+			return
+		}
+		done(builder.partial.StopReason)
 	default:
 		fail(StopReasonError, errors.New("Stream ended without finish_reason"))
 	}
