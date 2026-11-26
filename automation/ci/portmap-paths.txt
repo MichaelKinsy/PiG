@@ -1,0 +1,137 @@
+# SPDX-License-Identifier: MIT
+#
+# Fail-closed path rules for the 12 PORT_MAP evidence shards (portmap-1..12) on pull_request runs.
+#
+# Every non-pull_request event (merge_group, schedule, workflow_dispatch, push) runs portmap-1..12
+# unconditionally, and .github/workflows/nightly.yml also runs them on main. On a pull_request full
+# run, automation/ci/classify-changes.sh classifies every changed file against this file:
+#
+#   - Any path matching a `trigger:` glob forces portmap=true (the 12 shards run).
+#   - A path may skip portmap ONLY when it matches a `skip:` glob (known non-portmap surfaces).
+#   - Fail closed: any unknown/unmatched path forces portmap=true!
+#
+# One shell glob per line (matched with case(1) semantics, so `*` crosses `/`), prefixed with
+# `trigger:` or `skip:`. Blank lines and `#` comments are ignored. `trigger:` takes precedence over
+# `skip:`.
+
+# --- Explicit portmap / parity / CI / toolchain triggers ---
+trigger:docs/parity/PORT_MAP.md
+trigger:docs/parity/*
+trigger:test/parity/*
+trigger:.upstream/*
+trigger:automation/pin/*
+trigger:automation/make/parity.mk
+trigger:automation/make/ci.mk
+trigger:Makefile
+trigger:.github/workflows/ci.yml
+trigger:.github/workflows/nightly.yml
+trigger:automation/ci/ci-tiers.txt
+trigger:automation/ci/ci-plan.sh
+trigger:automation/ci/classify-changes.sh
+trigger:automation/ci/portmap-paths.txt
+trigger:automation/ci/os-specific-paths.txt
+trigger:go.mod
+trigger:go.sum
+trigger:go.work
+trigger:go.work.sum
+trigger:.go-version
+trigger:.node-version
+
+# --- Explicit non-portmap surfaces (strictly outside PORT_MAP evidence inputs) ---
+# Documentation, prose, changelogs, licenses, community health & repo metadata
+skip:README.md
+skip:CHANGELOG.md
+skip:CHANGELOG.md.gz
+skip:CHANGELOG.md.zst
+skip:CITATION.cff
+skip:LICENSE
+skip:LICENSES/*
+skip:NOTICE
+skip:THIRD_PARTY_NOTICES.md
+skip:REUSE.toml
+skip:ISSUE-147-PR.md
+skip:AGENTS.md
+skip:changelog.d/*
+skip:docs/bug-ledger.json
+skip:docs/site/*
+skip:docs/project/*
+skip:docs/media/*
+skip:docs/architecture/*
+skip:docs/guides/*
+skip:docs/design/*
+skip:docs/release/*
+skip:plans/*
+skip:handoffs/*
+skip:research/*
+skip:.github/AGENTS.md
+skip:.github/CONTRIBUTING.md
+skip:.github/CODE_OF_CONDUCT.md
+skip:.github/SECURITY.md
+skip:.github/SUPPORT.md
+skip:.github/CODEOWNERS
+skip:.github/ISSUE_TEMPLATE/*
+skip:.github/pull_request_template.md
+skip:.github/dependabot.yml
+skip:.github/security-insights.yml
+skip:.github/badges/*
+skip:.coderabbit.yaml
+skip:.golangci.yml
+skip:.gitleaks.toml
+
+# Non-parity automation, CI tooling, perf harnesses, packaging, examples, schemas, bench
+skip:automation/ci/preflight/*
+skip:automation/ci/allocbase/*
+skip:automation/ci/bugledger/*
+skip:automation/ci/changelogfrag/*
+skip:automation/ci/perflint/*
+skip:automation/ci/sizereport/*
+skip:automation/ci/slopmetrics/*
+skip:automation/ci/stripmatrix/*
+skip:automation/perf/*
+skip:automation/release/*
+skip:automation/dev/*
+skip:automation/images/*
+skip:automation/gen/*
+skip:nix/*
+skip:flake.nix
+skip:flake.lock
+skip:bench/*
+skip:examples/*
+skip:schemas/*
+skip:variables/*
+skip:third_party/*
+
+# Non-portmap test suites (CI workflow tests, docs drift, journeys, integration, term-engines, extension-conformance)
+skip:test/ci-images/*
+skip:test/docs-drift/*
+skip:test/journeys/*
+skip:test/integration/*
+skip:test/term-engines/*
+skip:test/extension-conformance/*
+
+# Standalone SDKs & piglets not cited by PORT_MAP rows
+skip:extensions/sdk/*
+skip:extensions/sdk-ts/*
+skip:extensions/sdk-rs/*
+skip:extensions/sdk-py/*
+skip:extensions/sdk-lisp/*
+skip:extensions/RUBRIC.md
+skip:piglets/*
+
+# Go source packages: ordinary code/test changes in Go packages are verified by test-fast,
+# test-fast-sharded, test-cli, test-subprocess, parity-1/2, contracts, and nightly portmap-1..12;
+# on pull_request, portmap-1..12 run when PORT_MAP.md, test/parity/*, pins, or CI definitions change,
+# or when a Go diff adds/removes/edits a `// pi:` or `// Ports ` marker (checked in classify-changes.sh).
+skip:agent/*
+skip:ai/*
+skip:chord/*
+skip:cmd/*
+skip:codemode/*
+skip:coding/*
+skip:durable/*
+skip:env/*
+skip:internal/*
+skip:mcp/*
+skip:schema/*
+skip:telemetry/*
+skip:tui/*

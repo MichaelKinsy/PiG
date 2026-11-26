@@ -76,6 +76,7 @@ jobs:
     outputs:
       product: ${{ steps.classify.outputs.product }}
       os-specific: ${{ steps.classify.outputs.os-specific }}
+      portmap: ${{ steps.classify.outputs.portmap }}
       full: ${{ steps.plan.outputs.full }}
       full-required: ${{ steps.plan.outputs.full-required }}
       linux: ${{ steps.plan.outputs.linux }}
@@ -131,6 +132,7 @@ jobs:
           # The label is read from the event's payload, so it is the pull request's labels at the push, label or review
           # event that started this run.
           FULL_REQUESTED: ${{ contains(github.event.pull_request.labels.*.name, 'ci:full') || github.event.action == 'ready_for_review' || steps.classify.outputs.os-specific == 'true' }}
+          PORTMAP_REQUESTED: ${{ steps.classify.outputs.portmap }}
         shell: bash
         # Every event but a pull request in a PIG_PR_CI_LIGHT mode runs every
         # job in automation/ci/ci-tiers.txt; the light pull-request run is the

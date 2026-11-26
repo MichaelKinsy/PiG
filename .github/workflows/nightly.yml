@@ -739,3 +739,137 @@ jobs:
           PIG_WIN_STRESS_COUNT: '20'
           PIG_WIN_STRESS_TIMEOUT: '15m'
         run: automation/ci/windows-concurrency-stress.sh
+
+  portmap:
+    name: PORT_MAP / ${{ matrix.shard }}
+    # Deterministic PORT_MAP evidence verification on main (all 12 shards). Pull requests run these
+    # shards only when classify-changes.sh marks portmap=true (fail-closed via automation/ci/portmap-paths.txt);
+    # nightly runs all 12 shards on main so every merged change is proven end-to-end.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      PIG_REQUIRE_PI_ORACLE: "1"
+    strategy:
+      fail-fast: false
+      matrix:
+        shard:
+          - portmap-1
+          - portmap-2
+          - portmap-3
+          - portmap-4
+          - portmap-5
+          - portmap-6
+          - portmap-7
+          - portmap-8
+          - portmap-9
+          - portmap-10
+          - portmap-11
+          - portmap-12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Restore the Go module cache
+        id: cache-gomod
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+      - name: Restore the PORT_MAP coverage cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/portmap-coverage
+          key: portmap-coverage-${{ matrix.shard }}-${{ github.sha }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: Restore the npm cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm
+          key: node-cache-${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('extensions/sdk-ts/package-lock.json', 'test/parity/interface-extractor/package-lock.json', 'automation/images/ci-parity/package-lock.json', 'automation/images/npm-runtime/package-lock.json') }}
+          restore-keys: |
+            node-cache-${{ runner.os }}-${{ runner.arch }}-npm-
+      - name: Restore the Pi oracle build
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-dev/pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
+      - name: Install native test tools, Rust and the pinned Pi oracle
+        shell: bash
+        run: |
+          set -euo pipefail
+          automation/ci/install-native-test-packages.sh
+          rust="$(awk '/^  RUST_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
+          npm_version="$(awk '/^  NPM_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
+          echo "RUST_VERSION=$rust" >> "$GITHUB_ENV"
+          rustup toolchain install "$rust" --profile minimal
+          rustup default "$rust"
+          automation/ci/install-npm-toolchain.sh
+          bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
+          echo "$bin" >> "$GITHUB_PATH"
+          export PATH="$bin:$PATH"
+          test "$(npm --version)" = "$npm_version"
+          make upstream-mirror
+      - name: Restore the Cargo targets of the PORT_MAP evidence tests
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cache/pig-dev/cargo-target
+          key: cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml', 'automation/ci/test-warm.sh') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-
+      - name: Restore the pinned SBCL
+        id: cache-pinned-sbcl
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-sbcl
+          key: sbcl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-sbcl.sh') }}
+      - name: Install the pinned SBCL
+        shell: bash
+        run: |
+          set -euo pipefail
+          prefix="$(automation/ci/install-sbcl.sh)"
+          echo "PIG_SBCL=$prefix/bin/sbcl" >> "$GITHUB_ENV"
+          echo "SBCL_HOME=$prefix/lib/sbcl" >> "$GITHUB_ENV"
+          echo "$prefix/bin" >> "$GITHUB_PATH"
+      - name: Restore the pinned zstd
+        id: cache-pinned-zstd
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-zstd
+          key: zstd-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-zstd.sh') }}
+      - name: Install the pinned zstd
+        shell: bash
+        run: |
+          set -euo pipefail
+          zstd="$(automation/ci/install-zstd.sh)"
+          echo "PIG_ZSTD=$zstd" >> "$GITHUB_ENV"
+          echo "PIG_REQUIRE_ZSTD=1" >> "$GITHUB_ENV"
+      - name: Run PORT_MAP evidence shard
+        env:
+          CI: '1'
+          PIG_GRIDTERM_TMUX_REQUIRED: '1'
+        run: make "ci-${{ matrix.shard }}"
+      - name: Save the PORT_MAP coverage cache
+        if: ${{ always() && env.CACHE_SAVE == 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/portmap-coverage
+          key: portmap-coverage-${{ matrix.shard }}-${{ github.sha }}

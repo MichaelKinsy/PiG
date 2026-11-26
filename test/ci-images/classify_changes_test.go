@@ -93,7 +93,7 @@ func TestChangeClassifierReadsBothSidesOfARename(t *testing.T) {
 				t.Fatalf("%v\n%s", err, output)
 			}
 			lines := strings.Split(strings.TrimSpace(string(output)), "\n")
-			want := []string{"product=" + tc.product, "os-specific=" + tc.osSpecific}
+			want := []string{"product=" + tc.product, "os-specific=" + tc.osSpecific, "portmap=false"}
 			if strings.Join(lines, " ") != strings.Join(want, " ") {
 				t.Errorf("classified %q, want %q", lines, want)
 			}

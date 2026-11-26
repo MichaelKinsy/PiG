@@ -292,3 +292,137 @@ func TestScheduledUnchangedMainSkipWiring(t *testing.T) {
 		}
 	}
 }
+
+// TestPortmapPathGatingFailsClosedAndNightlyRunsAllShards verifies:
+//   - pull_request with PORTMAP_REQUESTED=false omits portmap-1..12 from a full plan,
+//   - non-PR events (merge_group, schedule, workflow_dispatch, push) always include portmap-1..12 even if PORTMAP_REQUESTED=false,
+//   - classify-changes.sh fails closed (portmap=true) on triggers, unknown paths, and Go `// pi:` / `// Ports ` marker edits,
+//     and sets portmap=false on ordinary Go code/docs edits outside portmap triggers,
+//   - nightly.yml defines a portmap job covering all PORTMAP_SHARDS shards with oracle + SBCL + zstd setup.
+func TestPortmapPathGatingFailsClosedAndNightlyRunsAllShards(t *testing.T) {
+	runPlanEnv := func(env []string, args ...string) ciPlan {
+		t.Helper()
+		cmd := testenv.ScriptCommand(t, filepath.Join(repoRoot(t), "automation", "ci", "ci-plan.sh"), args...)
+		cmd.Dir = repoRoot(t)
+		cmd.Env = append(os.Environ(), env...)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("ci-plan.sh %v (env %v): %v\n%s", args, env, err, out)
+		}
+		plan := ciPlan{Matrix: map[string][]planEntry{}, Run: map[string]bool{}}
+		for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
+			k, v, _ := strings.Cut(strings.TrimSpace(line), "=")
+			switch {
+			case k == "full":
+				plan.Full = v == "true"
+			case k == "full-required":
+				plan.FullRequired = v == "true"
+			case strings.HasPrefix(k, "run-"):
+				plan.Run[strings.TrimPrefix(k, "run-")] = v == "true"
+			case k == "linux":
+				for part := range strings.SplitSeq(v, `{"shard":"`) {
+					if shard, _, ok := strings.Cut(part, `"`); ok && shard != "" && shard != "[" {
+						plan.Matrix["linux"] = append(plan.Matrix["linux"], planEntry{Shard: shard})
+					}
+				}
+			}
+		}
+		return plan
+	}
+	prSkipped := runPlanEnv([]string{"PORTMAP_REQUESTED=false"}, "pull_request", "", "")
+	if !prSkipped.Full {
+		t.Fatal("pull_request full plan with PORTMAP_REQUESTED=false should still be full=true")
+	}
+	for _, s := range prSkipped.shards("linux") {
+		if strings.HasPrefix(s, "portmap-") {
+			t.Errorf("pull_request with PORTMAP_REQUESTED=false unexpectedly scheduled %s", s)
+		}
+	}
+	for _, ev := range []string{"merge_group", "schedule", "workflow_dispatch", "push"} {
+		plan := runPlanEnv([]string{"PORTMAP_REQUESTED=false"}, ev, "", "")
+		var got []string
+		for _, s := range plan.shards("linux") {
+			if strings.HasPrefix(s, "portmap-") {
+				got = append(got, s)
+			}
+		}
+		if len(got) != portmapShards(t) {
+			t.Errorf("event %s with PORTMAP_REQUESTED=false scheduled %d portmap shards, want %d", ev, len(got), portmapShards(t))
+		}
+	}
+
+	if _, err := exec.LookPath("git"); err == nil {
+		repo := t.TempDir()
+		runGitIn(t, repo, "init", "-q")
+		write := func(rel, content string) {
+			full := filepath.Join(repo, filepath.FromSlash(rel))
+			if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(full, []byte(content), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		write("README.md", "base\n")
+		runGitIn(t, repo, "add", "-A")
+		runGitIn(t, repo, "commit", "-q", "-m", "base")
+		base := runGitIn(t, repo, "rev-parse", "HEAD")
+
+		script := filepath.Join(repoRoot(t), "automation", "ci", "classify-changes.sh")
+		cases := []struct {
+			name, path, content, want string
+		}{
+			{"ordinary Go file", "coding/plain.go", "package coding\n", "portmap=false"},
+			{"unknown top-level path fails closed", "unmapped_new_dir/foo.txt", "x\n", "portmap=true"},
+			{"PORT_MAP.md trigger", "docs/parity/PORT_MAP.md", "| a | b |\n", "portmap=true"},
+			{"test/parity trigger", "test/parity/portmap-reviewed.json", "{}\n", "portmap=true"},
+			{"Go // pi: marker diff", "coding/foo_test.go", "package coding\n// pi: packages/ai/src/foo.ts\n", "portmap=true"},
+			{"Go // Ports marker diff", "coding/bar.go", "package coding\n// Ports packages/ai/src/bar.ts\n", "portmap=true"},
+		}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				runGitIn(t, repo, "checkout", "-q", "--detach", base)
+				write(tc.path, tc.content)
+				runGitIn(t, repo, "add", "-A")
+				runGitIn(t, repo, "commit", "-q", "-m", tc.name)
+				head := runGitIn(t, repo, "rev-parse", "HEAD")
+				cmd := testenv.ScriptCommand(t, script, "pull_request", base, head)
+				cmd.Dir = repo
+				out, err := cmd.Output()
+				if err != nil {
+					t.Fatalf("classify-changes.sh: %v\n%s", err, out)
+				}
+				if !strings.Contains(string(out), tc.want) {
+					t.Errorf("%s (%s): got %q, want %s", tc.name, tc.path, string(out), tc.want)
+				}
+			})
+		}
+	}
+
+	nightly := readWorkflow(t, "nightly.yml")
+	job, ok := nightly.Jobs["portmap"]
+	if !ok {
+		t.Fatal("nightly.yml has no portmap job")
+	}
+	if job.TimeoutMinutes < 60 || job.TimeoutMinutes > 125 {
+		t.Errorf("nightly.yml portmap timeout-minutes = %d, want 60..125", job.TimeoutMinutes)
+	}
+	var hasOracle, hasSBCL, hasZstd, hasRun bool
+	for _, step := range job.Steps {
+		if strings.Contains(step.Run, "make upstream-mirror") {
+			hasOracle = true
+		}
+		if strings.Contains(step.Run, "automation/ci/install-sbcl.sh") {
+			hasSBCL = true
+		}
+		if strings.Contains(step.Run, "automation/ci/install-zstd.sh") {
+			hasZstd = true
+		}
+		if strings.Contains(step.Run, `make "ci-${{ matrix.shard }}"`) {
+			hasRun = true
+		}
+	}
+	if !hasOracle || !hasSBCL || !hasZstd || !hasRun {
+		t.Errorf("nightly.yml portmap missing setup/run steps: oracle=%v sbcl=%v zstd=%v run=%v", hasOracle, hasSBCL, hasZstd, hasRun)
+	}
+}

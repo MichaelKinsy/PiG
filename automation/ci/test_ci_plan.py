@@ -123,5 +123,66 @@ class CIPlanTest(unittest.TestCase):
             self.assertIn(pkg, out)
 
 
+    def test_portmap_path_gating_fails_closed(self):
+        env_false = {**os.environ, "PORTMAP_REQUESTED": "false"}
+        out = subprocess.check_output(
+            ["bash", str(CI_PLAN), "pull_request", "", ""],
+            cwd=ROOT,
+            env=env_false,
+            text=True,
+        )
+        linux = json.loads(dict(line.split("=", 1) for line in out.strip().splitlines())["linux"])
+        self.assertEqual([e["shard"] for e in linux if e["shard"].startswith("portmap-")], [])
+
+        for event in ("merge_group", "schedule", "workflow_dispatch", "push"):
+            out = subprocess.check_output(
+                ["bash", str(CI_PLAN), event, "", ""],
+                cwd=ROOT,
+                env=env_false,
+                text=True,
+            )
+            linux = json.loads(dict(line.split("=", 1) for line in out.strip().splitlines())["linux"])
+            self.assertEqual(
+                [e["shard"] for e in linux if e["shard"].startswith("portmap-")],
+                [f"portmap-{i}" for i in range(1, 13)],
+                event,
+            )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            git_base = [
+                "git",
+                "-c", "user.name=t",
+                "-c", "user.email=t@example.invalid",
+                "-c", "commit.gpgsign=false",
+                "-c", f"core.hooksPath={os.devnull}",
+            ]
+
+            def git(*args: str) -> str:
+                return subprocess.check_output([*git_base, *args], cwd=repo, text=True).strip()
+
+            def commit_file(rel: str, content: str) -> str:
+                target = repo / rel
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(content, encoding="utf-8")
+                git("add", "-A")
+                git("commit", "-q", "-m", rel)
+                return git("rev-parse", "HEAD")
+
+            git("init", "-q")
+            base = commit_file("README.md", "base\n")
+            ordinary = commit_file("coding/plain.go", "package coding\n")
+            unknown = commit_file("brand_new_surface/file.txt", "hello\n")
+            marker = commit_file("coding/plain_test.go", "package coding\n// pi: packages/ai/src/x.ts\n")
+
+            def classify(frm: str, to: str) -> dict[str, str]:
+                out = subprocess.check_output(["bash", str(CLASSIFY), "pull_request", frm, to], cwd=repo, text=True)
+                return dict(line.split("=", 1) for line in out.strip().splitlines())
+
+            self.assertEqual(classify(base, ordinary)["portmap"], "false")
+            self.assertEqual(classify(ordinary, unknown)["portmap"], "true")
+            self.assertEqual(classify(unknown, marker)["portmap"], "true")
+
+
 if __name__ == "__main__":
     unittest.main()
