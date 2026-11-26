@@ -5,7 +5,7 @@
 
 ### Changed
 
-- `chord/nextnode/plugins` and `chord/nextnode/workers` now use tagged unions for `RolloutHost` and worker reload replies: `RolloutReported` (`"report"`) is renamed to `RolloutReloaded` (`"reloaded"`), `RolloutErrored` (`"error"`) is renamed to `RolloutFailed` (`"failed"`), `RolloutHost.Stopped()` is removed, and worker reload failures send `FromWorkerReloadFailed` (`"reload_failed"`).
+- `chord/nextnode/plugins` and `chord/nextnode/workers` now use tagged unions for `RolloutHost` and worker reload replies: `RolloutReloaded` (`"reloaded"`) and `RolloutFailed` (`"failed"`) replace `RolloutReported` and `RolloutErrored` (kept as deprecated aliases through 0.8.x alongside deprecated `RolloutHost.Stopped()`, scheduled for removal in 0.9.0), and worker reload failures send `FromWorkerReloadFailed` (`"reload_failed"`).
 - `chord/nextnode/plugins` installs require an explicit `Kind` tag on `plugins.PluginSource` (`PluginSourceGit` or `PluginSourceNpm`; untagged or unknown kinds are refused); `(*store.ChordStore).CommitSeries` returns a tagged `store.SeriesResult` (`SeriesStored` | `SeriesRefused`), and `(*store.OpenQuery).Compiled` returns a tagged `store.Compiled` (`CompiledPlan` | `CompiledFailed`).
 - `durable` and `durable/harness` now use tagged unions for `ToolPark` (flat struct with `ToolParkKind`: `ToolParkSleep` | `ToolParkWait`), `FoundSlot` (`FindSlot` returning `FoundSlotModel` | `FoundSlotNested`), `CompactionDecision` (`CompactionDecline` | `CompactionSummary`), `SignalState` / `ErasedSignalState` (`SignalStateValue` | `SignalStateExpired`), `Wrap` (`WrapKind()`), `YieldResult` (`YieldKind()`), and `CommitResult` (`CommitStored` | `CommitRefused`, constructed via `StoredCommit` / `RefusedCommit`), and rename transactional submission admission from `SubmitIn` to `Admit`.
 
@@ -17,8 +17,11 @@
 - OpenAI Decisions (`gpt-6-luna` classifier) usage now reports `input_tokens_details.cached_tokens` and `cache_write_tokens` as `CacheRead` and `CacheWrite` excluded from `Input`, and prices them at the input rate in the catalog entry so cost totals remain unchanged. <!-- fix: 19519cce7c --> <!-- cause: ParseClassifierUsage ignored usage.input_tokens_details.cached_tokens and cache_write_tokens and the gpt-6-luna catalog entry priced cacheRead and cacheWrite at 0 instead of the input rate. -->
 - MCP `CreateMcpResultSchema` treats any JSON-falsy `outputSchema` (`null`, `false`, `0`, `""`) as absent (`structuredContent: {}`), and MCP `resource_link` byte sizes format fractional and large `float64` values with JavaScript `toFixed(1)` semantics instead of truncating or overflowing `int`. <!-- fix: 15768bbd67 --> <!-- cause: CreateMcpResultSchema checked only byte length rather than JS truthiness and blockToContent converted float64 sizes to int before formatting. -->
 
+### Deprecated
+
+- `coding/mcpext.CreateMcpResultSchema` and `coding/mcpext.ToModelContent` are deprecated wrappers for `mcp.CreateMcpResultSchema` and `mcp.ToMcpModelContent` (scheduled for removal in 0.9.0).
+- `chord/nextnode/plugins.RolloutReported`, `plugins.RolloutErrored`, and `RolloutHost.Stopped()` are deprecated aliases for `RolloutReloaded`, `RolloutFailed`, and `h.Kind == plugins.RolloutStopped` (scheduled for removal in 0.9.0).
+
 ### Removed
 
-- `coding/mcpext.CreateMcpResultSchema` and `coding/mcpext.ToModelContent` (replaced by `mcp.CreateMcpResultSchema` and `mcp.ToMcpModelContent`).
-- `chord/nextnode/plugins.RolloutHost.Stopped()` (replaced by `host.Kind == plugins.RolloutStopped`), `plugins.RolloutReported` (renamed to `RolloutReloaded`), and `plugins.RolloutErrored` (renamed to `RolloutFailed`).
 - `durable.ToolParkSleep` and `durable.ToolParkWait` nested structs (replaced by flat `durable.ToolPark` with `Kind`) and `SubmitIn` methods on `durable/harness` / `durable/core/driver` conversation handles (renamed to `Admit`).

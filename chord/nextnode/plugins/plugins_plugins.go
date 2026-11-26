@@ -124,6 +124,11 @@ const (
 	// RolloutFailed is a host that crashed or whose reload failed (every plugin of the step's kinds in the build counts as
 	// failed there): Error.
 	RolloutFailed RolloutHostKind = "failed"
+
+	// Deprecated: Use [RolloutReloaded] instead. Scheduled for removal in 0.9.0.
+	RolloutReported = RolloutReloaded
+	// Deprecated: Use [RolloutFailed] instead. Scheduled for removal in 0.9.0.
+	RolloutErrored = RolloutFailed
 )
 
 // RolloutHost is what a rollout step did on one of its hosts (Host named by the step).
@@ -133,6 +138,11 @@ type RolloutHost struct {
 	Report host.ReloadReport
 	Error  error
 }
+
+// Stopped reports whether the host stopped cleanly during the step.
+//
+// Deprecated: Compare h.Kind == [RolloutStopped] directly. Scheduled for removal in 0.9.0.
+func (h RolloutHost) Stopped() bool { return h.Kind == RolloutStopped }
 
 // StepResult is what a rollout step's reload returns: one result per host (D12).
 type StepResult struct {

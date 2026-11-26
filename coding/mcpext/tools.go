@@ -166,6 +166,24 @@ func ConvertMcpResult(server, tool string, result *mcp.CallToolResult, options C
 	}, nil
 }
 
+// CreateMcpResultSchema builds the output schema of an MCP tool call result.
+//
+// Deprecated: Use [mcp.CreateMcpResultSchema] instead. Scheduled for removal in 0.9.0.
+func CreateMcpResultSchema(structuredContentSchema json.RawMessage) json.RawMessage {
+	return mcp.CreateMcpResultSchema(structuredContentSchema)
+}
+
+// ToModelContent returns the model-facing content of server's content blocks before the output limit.
+//
+// Deprecated: Use [mcp.ToMcpModelContent] instead. Scheduled for removal in 0.9.0.
+func ToModelContent(server string, blocks []mcp.ContentBlock, options ConvertMcpResultOptions) []ai.ToolResultMessageContent {
+	modelOptions := mcp.McpModelContentOptions{SaveOutput: options.SaveOutput}
+	if options.ReadableResources {
+		modelOptions.ReadResourceTool = ReadMcpResourceTool
+	}
+	return mcpToLLM(mcp.ToMcpModelContent(server, mcp.CallToolResult{Content: blocks}, modelOptions))
+}
+
 // toToolAnnotations are the boolean hints of an MCP tool's annotations, or nil
 // when it has none.
 func toToolAnnotations(tool mcp.Tool) *extension.ToolAnnotations {
