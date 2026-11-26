@@ -139,8 +139,9 @@ func newRadiusParts(options RadiusProviderOptions) *RadiusProvider {
 		}
 		// Import catalogs cached by the pre-ModelsStore Radius implementation.
 		if refresh.Stored == nil && refresh.Credential != nil && refresh.Credential.Type == CredentialOAuth {
-			if legacy := GetRadiusAllModels(id, refresh.Credential); len(legacy) > 0 {
-				if ok, err := refresh.Publish(ModelsPublication{Persist: radiusAllStoreEntry(legacy), Update: setDynamic(legacy)}); !ok || err != nil {
+			if legacy := GetRadiusModels(id, refresh.Credential); len(legacy) > 0 {
+				legacyAny := AnyModels(legacy)
+				if ok, err := refresh.Publish(ModelsPublication{Persist: radiusAllStoreEntry(legacyAny), Update: setDynamic(legacyAny)}); !ok || err != nil {
 					return err
 				}
 			}
@@ -186,6 +187,17 @@ func (p *RadiusProvider) Auth() ProviderAuth { return p.provider.Auth }
 func (p *RadiusProvider) GetModels() []*Model {
 	models, _ := p.provider.GetModels() // the Radius catalog read cannot fail
 	return models
+}
+
+// GetAllModels returns the account's chat and classifier catalog once known, or the static baseline before. Each call returns new copies that the caller owns.
+func (p *RadiusProvider) GetAllModels() []AnyModel {
+	models, _ := p.provider.GetAllModels() // the Radius catalog read cannot fail
+	return models
+}
+
+// Classify classifies structured state through the Radius provider's pi-decision API.
+func (p *RadiusProvider) Classify(ctx context.Context, model *ClassifierModel, request ClassifierContext, options ClassifierOptions) (ClassifierResult, error) {
+	return p.provider.Classify(ctx, model, request, options)
 }
 
 // FindModel returns the effective model with id.

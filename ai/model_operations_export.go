@@ -44,6 +44,11 @@ func ClassifierErrorResult(model *ClassifierModel, err error, aborted bool) Clas
 // BuiltinClassifiers returns the classifier implementations of one built-in provider by classifier API (all.ts provider assembly).
 func BuiltinClassifiers(provider string) ProviderClassifierMap { return builtinClassifiers(provider) }
 
+// BuiltinFilterAllModels returns the credential-specific availability filter across every model type for a built-in provider, or nil if the provider has none.
+func BuiltinFilterAllModels(provider string) func([]AnyModel, *Credential) []AnyModel {
+	return builtinFilterAllModels[provider]
+}
+
 // AssertImageModel rejects a model whose type is not image (model-operations.ts assertImageModel).
 func AssertImageModel(model AnyModel) error {
 	if !IsModelType(model, ModelTypeImage) {

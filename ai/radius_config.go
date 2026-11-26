@@ -49,11 +49,14 @@ type RadiusGatewayModel struct {
 
 // RadiusGatewayClassifierModel is one classifier model advertised by a Radius gateway's /v1/config.
 type RadiusGatewayClassifierModel struct {
-	ID            string    `json:"id"`
-	Name          string    `json:"name"`
-	Input         []string  `json:"input"`
-	Cost          ModelCost `json:"cost"`
-	ContextWindow int       `json:"contextWindow"`
+	ID            string            `json:"id"`
+	Name          string            `json:"name"`
+	Input         []string          `json:"input"`
+	InputLimits   *ModelInputLimits `json:"inputLimits,omitempty"`
+	Cost          ModelCost         `json:"cost"`
+	ContextWindow int               `json:"contextWindow"`
+	Headers       map[string]string `json:"headers,omitempty"`
+	Compat        *SystemOneCompat  `json:"compat,omitempty"`
 }
 
 // RadiusGatewayConfig is the sanitized /v1/config document of a gateway.
@@ -95,6 +98,24 @@ func decodeRadiusGatewayClassifierModel(raw json.RawMessage) (RadiusGatewayClass
 	_ = json.Unmarshal(fields["cost"], &model.Cost)
 	if jsonKind(fields["contextWindow"]) == 'n' {
 		model.ContextWindow = jsNumberToInt(jsnumber.FromJSON(fields["contextWindow"]))
+	}
+	if rawLimits, ok := fields["inputLimits"]; ok && jsonKind(rawLimits) == '{' {
+		var limits ModelInputLimits
+		if json.Unmarshal(rawLimits, &limits) == nil {
+			model.InputLimits = &limits
+		}
+	}
+	if rawHeaders, ok := fields["headers"]; ok && jsonKind(rawHeaders) == '{' {
+		var headers map[string]string
+		if json.Unmarshal(rawHeaders, &headers) == nil {
+			model.Headers = headers
+		}
+	}
+	if rawCompat, ok := fields["compat"]; ok && jsonKind(rawCompat) == '{' {
+		var compat SystemOneCompat
+		if json.Unmarshal(rawCompat, &compat) == nil {
+			model.Compat = &compat
+		}
 	}
 	return model, true
 }
@@ -294,15 +315,27 @@ func GetRadiusAllModelsFromConfig(providerID string, config RadiusGatewayConfig)
 	for _, c := range config.Classifiers {
 		cost := c.Cost
 		cost.Tiers = slices.Clone(c.Cost.Tiers)
+		var compat *SystemOneCompat
+		if c.Compat != nil {
+			cp := *c.Compat
+			if c.Compat.SendImageOptInHeader != nil {
+				v := *c.Compat.SendImageOptInHeader
+				cp.SendImageOptInHeader = &v
+			}
+			compat = &cp
+		}
 		all = append(all, &ClassifierModel{
 			ID:            c.ID,
 			Name:          c.Name,
 			API:           ClassifierAPIPiDecision,
 			Provider:      providerID,
 			BaseURL:       config.BaseURL,
+			Headers:       maps.Clone(c.Headers),
 			Input:         append([]string(nil), c.Input...),
+			InputLimits:   c.InputLimits.Clone(),
 			Cost:          cost,
 			ContextWindow: c.ContextWindow,
+			Compat:        compat,
 		})
 	}
 	return all
@@ -317,21 +350,21 @@ func GetRadiusModels(providerID string, credential *Credential) []*Model {
 	return GetRadiusModelsFromConfig(providerID, config)
 }
 
-// GetRadiusAllModels returns the legacy credential chat and classifier catalog bound to providerID.
-func GetRadiusAllModels(providerID string, credential *Credential) []AnyModel {
-	config, ok := GetRadiusCredentialConfig(credential)
-	if !ok {
-		return []AnyModel{}
-	}
-	return GetRadiusAllModelsFromConfig(providerID, config)
-}
-
 func cloneRadiusClassifierModel(model *ClassifierModel) *ClassifierModel {
 	cp := *model
 	cp.Input = append([]string(nil), model.Input...)
+	cp.InputLimits = model.InputLimits.Clone()
 	cp.Cost.Tiers = slices.Clone(model.Cost.Tiers)
 	if model.Headers != nil {
 		cp.Headers = maps.Clone(model.Headers)
+	}
+	if model.Compat != nil {
+		c := *model.Compat
+		if model.Compat.SendImageOptInHeader != nil {
+			v := *model.Compat.SendImageOptInHeader
+			c.SendImageOptInHeader = &v
+		}
+		cp.Compat = &c
 	}
 	return &cp
 }
