@@ -2331,13 +2331,7 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 	finishStreamedBlocks()
 	switch {
 	case hasFinishReason:
-		stopReason, errorMessage := mapChunkFinishReason(finishReason, finishReasonNotString)
-		builder.partial.StopReason = stopReason
-		if errorMessage != "" {
-			builder.partial.ErrorMessage = errorMessage
-		}
 		if nativeFinishReason != "" {
-			applyOpenRouterNativeFinishReason(builder.partial, finishReason, nativeFinishReason)
 			flagOpenRouterEmptyStop(builder.partial, nativeFinishReason)
 		}
 		if builder.partial.StopReason == StopReasonError {

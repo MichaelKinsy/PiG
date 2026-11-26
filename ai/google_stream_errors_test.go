@@ -81,3 +81,22 @@ func TestGoogleStreamPromptBlockVsIncompleteStream(t *testing.T) {
 		})
 	}
 }
+
+func TestGoogleStreamHandlesMalformedPromptFeedbackGracefully(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = w.Write([]byte(`data: {"promptFeedback":"not-an-object","candidates":[{"content":{"parts":[{"text":"ok"}]},"finishReason":"STOP"}]}` + "\n\n"))
+	}))
+	defer server.Close()
+	provider := NewGoogleProvider(GoogleConfig{APIKey: "test-key", Model: "test-model", BaseURL: server.URL})
+	stream, err := provider.Stream(t.Context(), NormalizeContext(Context{
+		Messages: []Message{UserMessage{Content: UserText("hello"), Timestamp: 1}},
+	}), StreamOptions{})
+	if err != nil {
+		t.Fatalf("Stream failed: %v", err)
+	}
+	res := stream.Result()
+	if res.StopReason != StopReasonStop {
+		t.Fatalf("stop=%q err=%q, want stop", res.StopReason, res.ErrorMessage)
+	}
+}

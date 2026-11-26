@@ -340,6 +340,28 @@ func (item ResponsesInputItem) wire() any {
 			Status    string          `json:"status"`
 			Tools     []ResponsesTool `json:"tools,omitempty"` //portlint:allow emptydrop the item exists only for a system message that adds tools (openai-responses-shared.ts:233-235)
 		}{item.Type, item.CallID, item.Execution, item.Status, item.Tools}
+	case item.Type == "function_call":
+		// Match openai-responses-shared.ts replayedCall order: type, id, call_id, name, status, namespace, arguments (Pi 69a699348).
+		return struct {
+			Type      string          `json:"type"`
+			ID        string          `json:"id,omitempty"`
+			CallID    string          `json:"call_id,omitempty"`
+			Name      string          `json:"name,omitempty"`
+			Status    string          `json:"status,omitempty"`
+			Namespace string          `json:"namespace,omitempty"`
+			Arguments json.RawMessage `json:"arguments,omitempty"`
+		}{item.Type, item.ID, item.CallID, item.Name, item.Status, item.Namespace, item.Arguments}
+	case item.Type == "custom_tool_call":
+		// Match openai-responses-shared.ts replayedCall order: type, id, call_id, name, status, namespace, input (Pi 69a699348).
+		return struct {
+			Type      string `json:"type"`
+			ID        string `json:"id,omitempty"`
+			CallID    string `json:"call_id,omitempty"`
+			Name      string `json:"name,omitempty"`
+			Status    string `json:"status,omitempty"`
+			Namespace string `json:"namespace,omitempty"`
+			Input     string `json:"input,omitempty"`
+		}{item.Type, item.ID, item.CallID, item.Name, item.Status, item.Namespace, item.Input}
 	}
 	type fields ResponsesInputItem
 	return fields(item)
@@ -1283,7 +1305,18 @@ func omitEmptyResponsesCallIDs(messages []Message) []Message {
 // in allowedToolCallProviders. Tools are declared as GetResponsesToolSupport says: in additional_tools items, in synthetic tool
 // search items, or not at all (the request's tool list carries them).
 // Ports packages/ai/src/api/openai-responses-shared.ts convertResponsesMessages.
-func ConvertResponsesMessages(model *Model, transcript TranscriptContext, allowedToolCallProviders map[string]bool, options ConvertResponsesMessagesOptions) ([]ResponsesInputItem, error) {
+// PreparedResponsesPrompt is the result of PrepareResponsesPrompt
+// (packages/ai/src/api/openai-responses-shared.ts prepareResponsesPrompt, Pi a588a7bc4).
+type PreparedResponsesPrompt struct {
+	Input                 []ResponsesInputItem
+	RequestTools          []ResponsesTool
+	RequestEffortBaseline string
+}
+
+// PrepareResponsesPrompt places transcript-derived declarations and effort changes consistently
+// in input items and top-level request fields
+// (packages/ai/src/api/openai-responses-shared.ts prepareResponsesPrompt, Pi a588a7bc4).
+func PrepareResponsesPrompt(model *Model, transcript TranscriptContext, allowedToolCallProviders map[string]bool, options ConvertResponsesMessagesOptions) (PreparedResponsesPrompt, error) {
 	toolSupport := GetResponsesToolSupport(ResponsesToolSupportOptions{
 		SupportsMidConvoSystemMessages: options.SupportsMidConvoSystemMessages,
 		SupportsAdditionalTools:        options.SupportsAdditionalTools,
@@ -1303,7 +1336,30 @@ func ConvertResponsesMessages(model *Model, transcript TranscriptContext, allowe
 		allowedToolCallProviders: allowedToolCallProviders,
 		options:                  options,
 	}
-	return converter.convertAnchored(messages, transcriptTools)
+	input, baseline, err := converter.convertAnchoredWithBaseline(messages, transcriptTools)
+	if err != nil {
+		return PreparedResponsesPrompt{}, err
+	}
+	var requestTools []ResponsesTool
+	if len(transcriptTools.RequestTools) > 0 {
+		requestTools, err = ConvertResponsesTools(transcriptTools.RequestTools, options.ToolOptions)
+		if err != nil {
+			return PreparedResponsesPrompt{}, err
+		}
+	}
+	return PreparedResponsesPrompt{
+		Input:                 input,
+		RequestTools:          requestTools,
+		RequestEffortBaseline: baseline,
+	}, nil
+}
+
+func ConvertResponsesMessages(model *Model, transcript TranscriptContext, allowedToolCallProviders map[string]bool, options ConvertResponsesMessagesOptions) ([]ResponsesInputItem, error) {
+	prepared, err := PrepareResponsesPrompt(model, transcript, allowedToolCallProviders, options)
+	if err != nil {
+		return nil, err
+	}
+	return prepared.Input, nil
 }
 
 // responsesToolCallProviders lists the openai-responses providers whose models

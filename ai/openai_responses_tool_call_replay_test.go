@@ -1,6 +1,9 @@
 package ai
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
+)
 
 // Port of Pi main 69a6993486acee850d14a4a1547daa4a167228ad (#12367).
 func TestOpenAIResponsesReplaysToolCallsWithStatusCompleted(t *testing.T) {
@@ -52,5 +55,24 @@ func TestOpenAIResponsesReplaysToolCallsWithStatusCompleted(t *testing.T) {
 	}
 	if gotCustom == nil || gotCustom.ID != "ctc_2" || gotCustom.CallID != "call_2" || gotCustom.Name != "codemode" || gotCustom.Input != "text(1)" || gotCustom.Status != "completed" {
 		t.Fatalf("custom_tool_call = %#v, want status=completed", gotCustom)
+	}
+
+	// Verify exact JSON field order matches Pi replayedCall literal:
+	// type, id, call_id, name, status, namespace (when present), arguments/input.
+	fnBytes, err := json.Marshal(gotFn)
+	if err != nil {
+		t.Fatalf("marshal function_call: %v", err)
+	}
+	wantFnJSON := `{"type":"function_call","id":"fc_1","call_id":"call_1","name":"read","status":"completed","arguments":"{\"path\":\"calc.py\"}"}`
+	if string(fnBytes) != wantFnJSON {
+		t.Fatalf("function_call JSON =\n got: %s\nwant: %s", fnBytes, wantFnJSON)
+	}
+	customBytes, err := json.Marshal(gotCustom)
+	if err != nil {
+		t.Fatalf("marshal custom_tool_call: %v", err)
+	}
+	wantCustomJSON := `{"type":"custom_tool_call","id":"ctc_2","call_id":"call_2","name":"codemode","status":"completed","input":"text(1)"}`
+	if string(customBytes) != wantCustomJSON {
+		t.Fatalf("custom_tool_call JSON =\n got: %s\nwant: %s", customBytes, wantCustomJSON)
 	}
 }

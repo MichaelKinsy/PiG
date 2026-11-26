@@ -86,6 +86,43 @@ func normalizeGeminiChunkJS(data []byte) (normalized []byte, read geminiChunkRea
 		}
 		delete(chunk, "responseId")
 	}
+	if pf, present := chunk["promptFeedback"]; present {
+		pfObj, isObj := pf.(map[string]any)
+		if !isObj {
+			delete(chunk, "promptFeedback")
+		} else {
+			if br, ok := pfObj["blockReason"]; ok {
+				if _, isStr := br.(string); !isStr {
+					delete(pfObj, "blockReason")
+				}
+			}
+			if brm, ok := pfObj["blockReasonMessage"]; ok {
+				if _, isStr := brm.(string); !isStr {
+					delete(pfObj, "blockReasonMessage")
+				}
+			}
+			if sr, ok := pfObj["safetyRatings"]; ok {
+				if arr, isArr := sr.([]any); !isArr {
+					delete(pfObj, "safetyRatings")
+				} else {
+					var kept []any
+					for _, elem := range arr {
+						if obj, ok := elem.(map[string]any); ok {
+							cleaned := map[string]any{}
+							if cat, ok := obj["category"].(string); ok {
+								cleaned["category"] = cat
+							}
+							if prob, ok := obj["probability"].(string); ok {
+								cleaned["probability"] = prob
+							}
+							kept = append(kept, cleaned)
+						}
+					}
+					pfObj["safetyRatings"] = kept
+				}
+			}
+		}
+	}
 	if !normalizeGeminiUsage(chunk) {
 		return nil, read, false
 	}

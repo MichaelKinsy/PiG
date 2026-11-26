@@ -1,6 +1,6 @@
 package ai
 
-import "strings"
+import "github.com/MichaelKinsy/PiG/internal/jsstring"
 
 // OpenRouter's `native_finish_reason`: the upstream provider's own finish reason, which OpenRouter
 // sends next to the OpenAI-style `finish_reason` it normalizes it into. Recorded for diagnostics, and
@@ -42,7 +42,7 @@ func flagOpenRouterEmptyStop(message *AssistantMessage, nativeReason string) {
 	if message.StopReason != StopReasonStop || nativeReason == "" {
 		return
 	}
-	if _, clean := openRouterCleanStopNativeReasons[strings.ToLower(nativeReason)]; clean {
+	if _, clean := openRouterCleanStopNativeReasons[jsstring.ToLower(nativeReason)]; clean {
 		return
 	}
 	for _, block := range message.Content {
@@ -50,7 +50,7 @@ func flagOpenRouterEmptyStop(message *AssistantMessage, nativeReason string) {
 		case ToolCall:
 			return
 		case TextContent:
-			if strings.TrimSpace(b.Text) != "" {
+			if trimJSWhitespace(b.Text) != "" {
 				return
 			}
 		}
