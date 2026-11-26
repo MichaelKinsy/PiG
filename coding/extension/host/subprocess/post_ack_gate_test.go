@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -180,10 +181,15 @@ func TestPostAckGateHoldsPostBlockedCallsOnly(t *testing.T) {
 		mu.Lock()
 		afterOpen := slices.Clone(applied)
 		mu.Unlock()
-		for _, method := range ordered {
-			if !slices.Contains(afterOpen, method+":r1") {
-				t.Fatalf("missing gated call %s:r1 after gate opened; applied=%v", method, afterOpen)
+		var r1PostAck []string
+		for _, item := range afterOpen {
+			if strings.HasSuffix(item, ":r1") {
+				r1PostAck = append(r1PostAck, strings.TrimSuffix(item, ":r1"))
 			}
+		}
+		wantR1 := append([]string{"ui.notify"}, ordered...)
+		if !slices.Equal(r1PostAck, wantR1) {
+			t.Fatalf("r1 call order = %v, want exact order %v (all=%v)", r1PostAck, wantR1, afterOpen)
 		}
 		if !slices.Contains(afterOpen, "ui.notify:r2") {
 			t.Fatalf("missing second-handler prefix call ui.notify:r2 after gate opened; applied=%v", afterOpen)
@@ -417,4 +423,174 @@ func TestPostAckGateReleasesOnCancelAndShutdown(t *testing.T) {
 			})
 		}
 	}
+}
+
+// TestPostAckGateSecondHandlerAfterPlainCompleteStartsUnsealed verifies review Finding #2:
+// when the first handler finishes synchronously via invocation.Complete (without blocking),
+// a second handler in the same emission must NOT start sealed — its synchronous prefix ui.notify
+// runs ahead of the reply, matching Pi 1.6.0.
+func TestPostAckGateSecondHandlerAfterPlainCompleteStartsUnsealed(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := NewHostWithConfigRoot(t.TempDir(), t.TempDir())
+		var mu sync.Mutex
+		var applied []string
+		h.SetCallHandler(func(_ string, call *CallPayload) (*CallResultPayload, error) {
+			mu.Lock()
+			applied = append(applied, call.Method+":"+call.ParentRequestID)
+			mu.Unlock()
+			return &CallResultPayload{}, nil
+		})
+		gate := make(chan struct{})
+		h.SetPostAckGate(func(event string) <-chan struct{} {
+			if event == "session_info_changed" {
+				return gate
+			}
+			return nil
+		})
+
+		hostSide, extSide := net.Pipe()
+		conn := NewConn("post-ack-complete", hostSide)
+		conn.postAckGate = &h.postAckGate
+		conn.Start(t.Context())
+		me := withConn(&managedExt{config: ExtConfig{Name: "post-ack-complete"}, host: h}, conn)
+		me.shuttingDown.Store(true)
+		h.goHandleIncoming(me, conn)
+		go func() { _, _ = io.Copy(io.Discard, extSide) }()
+		defer func() {
+			close(gate)
+			_ = conn.Close("test done")
+			_ = extSide.Close()
+			h.Shutdown("test done")
+		}()
+
+		dispatchCtx := invocation.WithAcknowledgment(t.Context(), func() {})
+		req1Done := make(chan struct{})
+		go func() {
+			defer close(req1Done)
+			_, _ = conn.Request(dispatchCtx, &Envelope{
+				Type: MsgRequest, ID: "r1",
+				Request: &RequestPayload{Event: "session_info_changed"},
+			})
+		}()
+		synctest.Wait()
+		writeSubprocessFrame(t, extSide, Envelope{Type: MsgResponse, ID: "r1", Response: &ResponsePayload{}})
+		synctest.Wait()
+		<-req1Done
+
+		if !invocation.Acknowledged(dispatchCtx) {
+			t.Fatal("expected dispatchCtx to be Acknowledged after handler 1 completed")
+		}
+		if invocation.AcknowledgedBySuspension(dispatchCtx) {
+			t.Fatal("handler 1 completed without suspension; AcknowledgedBySuspension must be false")
+		}
+
+		req2Done := make(chan struct{})
+		go func() {
+			defer close(req2Done)
+			_, _ = conn.Request(dispatchCtx, &Envelope{
+				Type: MsgRequest, ID: "r2",
+				Request: &RequestPayload{Event: "session_info_changed"},
+			})
+		}()
+		synctest.Wait()
+		writeSubprocessFrame(t, extSide, Envelope{
+			Type: MsgCall, ID: "c-r2-prefix",
+			Call: &CallPayload{Method: "ui.notify", ParentRequestID: "r2"},
+		})
+		writeSubprocessFrame(t, extSide, Envelope{Type: MsgResponse, ID: "r2", Response: &ResponsePayload{}})
+		synctest.Wait()
+		<-req2Done
+
+		mu.Lock()
+		got := slices.Clone(applied)
+		mu.Unlock()
+		if !slices.Equal(got, []string{"ui.notify:r2"}) {
+			t.Fatalf("second handler prefix ui.notify after plain completion was held behind gate: applied=%v, want [ui.notify:r2]", got)
+		}
+	})
+}
+
+// TestPostAckGateNonGatedCallUnblocksEarlierHeldCallOnSameLane verifies review Finding #1
+// at the subprocess layer: when a sealed request sends a post-ack fire-and-forget ui.setStatus
+// (held on gate) followed by a call requiring a host response (getContextUsage), the arrival
+// of getContextUsage closes the per-request afterAckCancel channel so ui.setStatus and then
+// getContextUsage both run immediately without deadlocking the lane while gate stays closed.
+func TestPostAckGateNonGatedCallUnblocksEarlierHeldCallOnSameLane(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := NewHostWithConfigRoot(t.TempDir(), t.TempDir())
+		var mu sync.Mutex
+		var applied []string
+		h.SetCallHandler(func(_ string, call *CallPayload) (*CallResultPayload, error) {
+			mu.Lock()
+			applied = append(applied, call.Method+":"+call.ParentRequestID)
+			mu.Unlock()
+			return &CallResultPayload{}, nil
+		})
+		gate := make(chan struct{})
+		h.SetPostAckGate(func(event string) <-chan struct{} {
+			if event == "session_info_changed" {
+				return gate
+			}
+			return nil
+		})
+
+		hostSide, extSide := net.Pipe()
+		conn := NewConn("post-ack-unblock", hostSide)
+		conn.postAckGate = &h.postAckGate
+		conn.Start(t.Context())
+		me := withConn(&managedExt{config: ExtConfig{Name: "post-ack-unblock"}, host: h}, conn)
+		me.shuttingDown.Store(true)
+		h.goHandleIncoming(me, conn)
+		go func() { _, _ = io.Copy(io.Discard, extSide) }()
+		defer func() {
+			close(gate)
+			_ = conn.Close("test done")
+			_ = extSide.Close()
+			h.Shutdown("test done")
+		}()
+
+		dispatchCtx := invocation.WithAcknowledgment(t.Context(), func() {})
+		reqDone := make(chan struct{})
+		go func() {
+			defer close(reqDone)
+			_, _ = conn.Request(dispatchCtx, &Envelope{
+				Type: MsgRequest, ID: "r1",
+				Request: &RequestPayload{Event: "session_info_changed"},
+			})
+		}()
+		synctest.Wait()
+		writeSubprocessFrame(t, extSide, Envelope{
+			Type:         MsgRequestState,
+			RequestState: &RequestStatePayload{RequestID: "r1", State: "blocked", Reason: "external"},
+		})
+		writeSubprocessFrame(t, extSide, Envelope{
+			Type: MsgCall, ID: "c-status",
+			Call: &CallPayload{Method: "ui.setStatus", ParentRequestID: "r1"},
+		})
+		synctest.Wait()
+
+		mu.Lock()
+		beforeSync := slices.Clone(applied)
+		mu.Unlock()
+		if len(beforeSync) != 0 {
+			t.Fatalf("ui.setStatus ran while gate closed: %v", beforeSync)
+		}
+
+		writeSubprocessFrame(t, extSide, Envelope{
+			Type: MsgCall, ID: "c-usage",
+			Call: &CallPayload{Method: "getContextUsage", ParentRequestID: "r1"},
+		})
+		synctest.Wait()
+
+		mu.Lock()
+		afterSync := slices.Clone(applied)
+		mu.Unlock()
+		if !slices.Equal(afterSync, []string{"ui.setStatus:r1", "getContextUsage:r1"}) {
+			t.Fatalf("after sync call on same lane, applied = %v, want [ui.setStatus:r1 getContextUsage:r1]", afterSync)
+		}
+
+		writeSubprocessFrame(t, extSide, Envelope{Type: MsgResponse, ID: "r1", Response: &ResponsePayload{}})
+		synctest.Wait()
+		<-reqDone
+	})
 }

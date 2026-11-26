@@ -5902,9 +5902,13 @@ export class Runtime {
           // pig additive (D19): Pi's reload awaits its session_shutdown, session_start and resources_discover handlers in one chain of microtasks unless a handler waits on a timer or I/O, during which Pi reads stdin (agent-session.ts:3815-3861). The host holds stdin through the reload, so such a handler reports its wait as a settle-tail handler does.
           if ((request.event === "session_shutdown" || request.event === "session_start" || request.event === "resources_discover") && event?.reason === "reload") this.armSettleTailWindow(id, ctx);
           // Calling an async handler executes its synchronous prefix before returning its Promise. Unawaited notifications admit the next caller at that boundary; Pi emits session_info_changed and thinking_level_select with `void runner.emit` (agent-session.ts:2629, 3946).
+          // A handler that returned a non-thenable (synchronous return) never suspended: do not emit a synthetic blocked/external_io report so a later handler in the same emission starts unsealed, matching Pi 1.6.0.
           if (request.event === "ui_prompt_start" || request.event === "ui_prompt_end" || request.event === "session_info_changed" || request.event === "thinking_level_select") {
-            this.conn.requestState(id, "blocked", "external_io");
-            if (shutdownOwner?.id === id) shutdownOwner.suspensionReported = true;
+            const isThenable = pending !== null && (typeof pending === "object" || typeof pending === "function") && typeof pending.then === "function";
+            if (isThenable || request.event === "ui_prompt_start" || request.event === "ui_prompt_end") {
+              this.conn.requestState(id, "blocked", "external_io");
+              if (shutdownOwner?.id === id) shutdownOwner.suspensionReported = true;
+            }
           }
           if (request.event === "session_shutdown" && this.contextValues.mode === "rpc") await this.acknowledgeInvocation(id, pending);
           let result;

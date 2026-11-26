@@ -192,7 +192,7 @@ func (l *callLanes) barrierMark() func() {
 // when ackCounted is true (readLoop counted the frame before sealing). A call that can wait for the session or the user (startsAsync) does not hold the
 // acknowledgment of the handler awaiting it: the handler is suspended on it, which is what the acknowledgment reports. A call whose upstream API returns nothing
 // (holdsForLoopTurn) is one the handler does not wait for: it holds the acknowledgment until the handler's synchronous part is over (ackHold.applied).
-func (h *Host) queueCallDone(me *managedExt, conn *Conn, lanes *callLanes, callID string, call *CallPayload, ackCounted bool, afterAck <-chan struct{}, done func()) {
+func (h *Host) queueCallDone(me *managedExt, conn *Conn, lanes *callLanes, callID string, call *CallPayload, ackCounted bool, afterAck, afterAckCancel <-chan struct{}, done func()) {
 	if startsAsync(call.Method) {
 		if ackCounted {
 			conn.hostCallApplied(call.ParentRequestID, false)
@@ -217,8 +217,8 @@ func (h *Host) queueCallDone(me *managedExt, conn *Conn, lanes *callLanes, callI
 			lanes.push(conn.callLane(call.ParentRequestID), func() {
 				callCtx, releaseCall := conn.hostCallContext(call.ParentRequestID, callID)
 				defer releaseCall()
-				h.awaitPostAckGate(callCtx, call, afterAck)
-				pending := h.slotCalls.register(slot, func() { h.runCallWithContext(me, conn, callID, call, nil, callCtx, nil) })
+				h.awaitPostAckGate(callCtx, call, afterAck, afterAckCancel)
+				pending := h.slotCalls.register(slot, func() { h.runCallWithContext(me, conn, callID, call, nil, callCtx, nil, nil) })
 				h.runSlotCall(slot, pending)
 				done()
 			})
@@ -242,7 +242,7 @@ func (h *Host) queueCallDone(me *managedExt, conn *Conn, lanes *callLanes, callI
 	lanes.pushCall(conn.callLane(call.ParentRequestID), ordering, func() {
 		if initiated == nil {
 			defer release()
-			h.runCallWithGate(me, conn, callID, call, nil, afterAck)
+			h.runCallWithGate(me, conn, callID, call, nil, afterAck, afterAckCancel)
 			done()
 			return
 		}
@@ -253,7 +253,7 @@ func (h *Host) queueCallDone(me *managedExt, conn *Conn, lanes *callLanes, callI
 			defer close(finished)
 			defer mark()
 			defer release()
-			h.runCallWithGate(me, conn, callID, call, mark, afterAck)
+			h.runCallWithGate(me, conn, callID, call, mark, afterAck, afterAckCancel)
 		}()
 		select {
 		case <-initiated:
@@ -363,12 +363,13 @@ func (h *Host) awaitBackgroundGate(ctx context.Context, call *CallPayload) {
 }
 
 // awaitPostAckGate holds a post-acknowledgment fire-and-forget output call until the command reply that emitted its event is written (afterAck closes) or the call's context ends.
-func (h *Host) awaitPostAckGate(ctx context.Context, call *CallPayload, afterAck <-chan struct{}) {
+func (h *Host) awaitPostAckGate(ctx context.Context, call *CallPayload, afterAck, afterAckCancel <-chan struct{}) {
 	if afterAck == nil || !postAckOrderedCalls[call.Method] {
 		return
 	}
 	select {
 	case <-afterAck:
+	case <-afterAckCancel:
 	case <-ctx.Done():
 	}
 }
@@ -376,10 +377,10 @@ func (h *Host) awaitPostAckGate(ctx context.Context, call *CallPayload, afterAck
 // runCall executes one extension→host call and sends its result on conn, the connection that delivered the call, even after an adoption replaces the
 // member's current connection. mark, when non-nil, is the call's initiation mark.
 func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayload, mark func()) {
-	h.runCallWithGate(me, conn, callID, call, mark, nil)
+	h.runCallWithGate(me, conn, callID, call, mark, nil, nil)
 }
 
-func (h *Host) runCallWithGate(me *managedExt, conn *Conn, callID string, call *CallPayload, mark func(), afterAck <-chan struct{}) {
+func (h *Host) runCallWithGate(me *managedExt, conn *Conn, callID string, call *CallPayload, mark func(), afterAck, afterAckCancel <-chan struct{}) {
 	// A call of a with_session request acts on the replacement Session, which the outgoing Session's invalidation does not reach.
 	if route := conn.withSessionRoute(call.ParentRequestID); route != nil {
 		route.run(conn, callID, call, mark)
@@ -387,16 +388,16 @@ func (h *Host) runCallWithGate(me *managedExt, conn *Conn, callID string, call *
 	}
 	callCtx, releaseCall := conn.hostCallContext(call.ParentRequestID, callID)
 	defer releaseCall()
-	h.runCallWithContext(me, conn, callID, call, mark, callCtx, afterAck)
+	h.runCallWithContext(me, conn, callID, call, mark, callCtx, afterAck, afterAckCancel)
 }
 
-func (h *Host) runCallWithContext(me *managedExt, conn *Conn, callID string, call *CallPayload, mark func(), callCtx context.Context, afterAck <-chan struct{}) {
+func (h *Host) runCallWithContext(me *managedExt, conn *Conn, callID string, call *CallPayload, mark func(), callCtx context.Context, afterAck, afterAckCancel <-chan struct{}) {
 	callCtx = withGraphResolver(callCtx, graphResolver{host: h, conn: conn})
 	if h.uiBridge != nil {
 		defer h.uiBridge.releaseAutocompleteCall(conn, call)
 	}
 	h.awaitBackgroundGate(callCtx, call)
-	h.awaitPostAckGate(callCtx, call, afterAck)
+	h.awaitPostAckGate(callCtx, call, afterAck, afterAckCancel)
 	// A dropped or refused call delivers none of the cross-process references it carried.
 	refuseReferences := func() {
 		if call.Method == "registerProvider" || call.Method == callProviderConfigRef {

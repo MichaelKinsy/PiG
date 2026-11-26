@@ -20,3 +20,26 @@ func TestAcknowledgedReportsReleaseState(t *testing.T) {
 		t.Fatalf("second Acknowledge: Acknowledged=%v called=%d, want true, 1", Acknowledged(ctx), called)
 	}
 }
+
+func TestAcknowledgedBySuspensionDistinguishesCompleteFromAcknowledge(t *testing.T) {
+	ctxComplete := WithAcknowledgment(t.Context(), func() {})
+	Complete(ctxComplete)
+	if !Acknowledged(ctxComplete) {
+		t.Fatal("expected Acknowledged=true after Complete")
+	}
+	if AcknowledgedBySuspension(ctxComplete) {
+		t.Fatal("Complete must not set AcknowledgedBySuspension")
+	}
+
+	ctxAck := WithAcknowledgment(t.Context(), func() {})
+	Acknowledge(ctxAck)
+	if !Acknowledged(ctxAck) || AcknowledgedBySuspension(ctxAck) {
+		t.Fatalf("after plain Acknowledge: Acknowledged=%v AcknowledgedBySuspension=%v, want true, false", Acknowledged(ctxAck), AcknowledgedBySuspension(ctxAck))
+	}
+
+	ctxSuspend := WithAcknowledgment(t.Context(), func() {})
+	AcknowledgeSuspension(ctxSuspend)
+	if !Acknowledged(ctxSuspend) || !AcknowledgedBySuspension(ctxSuspend) {
+		t.Fatalf("after AcknowledgeSuspension: Acknowledged=%v AcknowledgedBySuspension=%v, want true, true", Acknowledged(ctxSuspend), AcknowledgedBySuspension(ctxSuspend))
+	}
+}

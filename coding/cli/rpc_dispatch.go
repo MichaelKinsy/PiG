@@ -15,12 +15,19 @@ type rpcResponseTurn struct {
 
 func (t *rpcResponseTurn) complete(response any) { t.Microtask(func() { t.write(response) }) }
 
-// completeWith writes response in a microtask and runs after immediately once the write returns.
+// completeWith writes response in a microtask and schedules after in a macrotask once the current microtask batch drains (so multiple replies in one stdin batch are written together before released post-ack calls interleave). If write panics, after still runs via defer.
 func (t *rpcResponseTurn) completeWith(response any, after func()) {
 	t.Microtask(func() {
+		panicked := true
+		defer func() {
+			if panicked && after != nil {
+				after()
+			}
+		}()
 		t.write(response)
+		panicked = false
 		if after != nil {
-			after()
+			t.Macrotask(after)
 		}
 	})
 }

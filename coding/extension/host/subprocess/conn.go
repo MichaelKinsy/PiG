@@ -916,7 +916,7 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 				afterAck = (*gate)(event)
 			}
 		}
-		ctx = withAckHoldGate(ctx, afterAck, invocation.Acknowledged(ctx))
+		ctx = withAckHoldGate(ctx, afterAck, invocation.AcknowledgedBySuspension(ctx))
 		c.ackHolds.Add(1)
 	}
 	sink := requestStateSink{ch: stateCh, ctx: ctx, event: event}
