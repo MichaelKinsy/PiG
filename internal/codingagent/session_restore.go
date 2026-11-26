@@ -60,7 +60,7 @@ func newSessionFromEntries(cwd, id string, entries []FileEntry) (*Session, error
 		s.stats.add(entry.Raw(), base.Type)
 		s.noteNameLocked(entry.Raw(), base.Type)
 		raw := entry.Raw()
-		s.addSlotLocked(newSlot(compactionWithoutRecord(entry, raw)), base.ParentID, raw)
+		s.addSlotLocked(newSlot(entryWithoutRedundantRecord(entry, raw)), base.ParentID, raw)
 		s.leafID = leafOf(base.ID)
 	}
 	s.hasConversation = s.stats.stats.UserMessages > 0 || s.stats.stats.AssistantMessages > 0

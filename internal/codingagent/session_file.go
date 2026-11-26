@@ -371,7 +371,17 @@ func streamSessionFileBatched(path string, batching lineBatching) (*Session, err
 		}
 		return s.applyIndexLine(prepared, line, off)
 	}
-	err = forEachPreparedLine(reader, batching, func(line []byte, off int64, prepared *preparedLine) error {
+	visitLine := func(line []byte, off int64, prepared *preparedLine, streamedLen int) error {
+		if streamedLen > 0 {
+			if s == nil {
+				// First record in file was a huge custom entry, not a session header.
+				return errNoSessionRecords
+			}
+			if restoreErr == nil {
+				restoreErr = s.applyStreamedIndexLine(prepared, off, streamedLen)
+			}
+			return nil
+		}
 		// An object line after the header is valid exactly when its first decode in indexLine reports no syntax error, so it is not validated twice.
 		if s != nil && isObjectLine(line) {
 			if restoreErr == nil {
@@ -399,7 +409,12 @@ func streamSessionFileBatched(path string, batching lineBatching) (*Session, err
 		}
 		restoreErr = index(line, off, prepared)
 		return nil
-	})
+	}
+	fallbackSource := io.ReaderAt(file)
+	if cloned {
+		fallbackSource = snapshot
+	}
+	err = forEachPreparedLineStream(reader, fallbackSource, batching, visitLine)
 	if err != nil {
 		if errors.Is(err, errNoSessionRecords) || errors.Is(err, errSessionNeedsMigration) {
 			return nil, err
@@ -468,9 +483,38 @@ func defaultLineBatching() lineBatching {
 // reads ahead of visit and prepares the lines (prepareIndexLine) on the workers, and visit receives each line's preparation; otherwise visit
 // receives nil. It returns the first error in line order: visit's, or then the read's. It returns once every goroutine it started has ended.
 func forEachPreparedLine(r io.Reader, batching lineBatching, visit func(line []byte, off int64, prepared *preparedLine) error) error {
+	return forEachPreparedLineStream(r, nil, batching, func(line []byte, off int64, prepared *preparedLine, _ int) error {
+		return visit(line, off, prepared)
+	})
+}
+
+func forEachPreparedLineStream(r io.Reader, fallback io.ReaderAt, batching lineBatching, visit func(line []byte, off int64, prepared *preparedLine, streamedLen int) error) error {
+	readFallback := func(off int64, lineLen int) ([]byte, error) {
+		if fallback == nil {
+			return nil, errStreamFallback
+		}
+		buf := make([]byte, lineLen)
+		if _, err := fallback.ReadAt(buf, off); err != nil {
+			return nil, fmt.Errorf("session: read: %w", err)
+		}
+		return buf, nil
+	}
 	depth, workers := batching.depth, batching.workers
 	if workers < 2 {
-		return forEachJSONLLineOffset(r, func(line []byte, off int64) error { return visit(line, off, nil) })
+		if fallback == nil {
+			return forEachJSONLLineOffset(r, func(line []byte, off int64) error { return visit(line, off, nil, 0) })
+		}
+		return forEachStreamLine(r,
+			func(line []byte, off int64) error { return visit(line, off, nil, 0) },
+			func(prepared *preparedLine, off int64, lineLen int) error { return visit(nil, off, prepared, lineLen) },
+			func(off int64, lineLen int) error {
+				line, err := readFallback(off, lineLen)
+				if err != nil {
+					return err
+				}
+				return visit(line, off, nil, 0)
+			},
+		)
 	}
 	// Each batch goes to ordered, for visit in order, and to work, for a worker to prepare; done closes when it is prepared. A batch visit has
 	// finished goes back through free for reuse. At most depth batches wait in ordered, so the read stays at most depth+2 batches ahead of visit.
@@ -514,13 +558,42 @@ func forEachPreparedLine(r io.Reader, batching lineBatching, visit func(line []b
 			batch = next()
 			return true
 		}
-		err := forEachJSONLLineOffset(r, func(line []byte, off int64) error {
+		onLine := func(line []byte, off int64) error {
+			if len(line) >= batching.batchBytes && len(batch.lines) > 0 {
+				if !send() {
+					return errIndexStopped
+				}
+			}
 			batch.add(line, off, batching.batchBytes)
 			if len(batch.buf) >= batching.batchBytes && !send() {
 				return errIndexStopped
 			}
 			return nil
-		})
+		}
+		var err error
+		if fallback == nil {
+			err = forEachJSONLLineOffset(r, onLine)
+		} else {
+			err = forEachStreamLine(r, onLine,
+				func(prepared *preparedLine, off int64, lineLen int) error {
+					if len(batch.lines) > 0 && !send() {
+						return errIndexStopped
+					}
+					batch.addStreamed(prepared, off, lineLen)
+					if !send() {
+						return errIndexStopped
+					}
+					return nil
+				},
+				func(off int64, lineLen int) error {
+					line, readErr := readFallback(off, lineLen)
+					if readErr != nil {
+						return readErr
+					}
+					return onLine(line, off)
+				},
+			)
+		}
 		if errors.Is(err, errIndexStopped) {
 			return
 		}
@@ -531,7 +604,13 @@ func forEachPreparedLine(r io.Reader, batching lineBatching, visit func(line []b
 	for batch := range ordered {
 		<-batch.done
 		for k, line := range batch.lines {
-			if err = visit(batch.buf[line.start:line.end], line.off, &batch.prepared[k]); err != nil {
+			if line.streamedLen > 0 {
+				if err = visit(nil, line.off, &batch.prepared[k], line.streamedLen); err != nil {
+					break
+				}
+				continue
+			}
+			if err = visit(batch.buf[line.start:line.end], line.off, &batch.prepared[k], 0); err != nil {
 				break
 			}
 		}
@@ -566,8 +645,9 @@ type lineBatch struct {
 }
 
 type batchLine struct {
-	start, end int
-	off        int64
+	start, end  int
+	off         int64
+	streamedLen int
 }
 
 // add copies line into the batch, which forEachPreparedLine ends once it holds batchBytes, so it is sized for that and the line that crosses it in one allocation
@@ -581,7 +661,15 @@ func (b *lineBatch) add(line []byte, off int64, batchBytes int) {
 	b.lines = append(b.lines, batchLine{start: start, end: len(b.buf), off: off})
 }
 
+func (b *lineBatch) addStreamed(prepared *preparedLine, off int64, lineLen int) {
+	b.lines = append(b.lines, batchLine{off: off, streamedLen: lineLen})
+	b.prepared = append(b.prepared, *prepared)
+}
+
 func (b *lineBatch) prepare() {
+	if len(b.lines) == 1 && b.lines[0].streamedLen > 0 {
+		return
+	}
 	b.prepared = slices.Grow(b.prepared[:0], len(b.lines))[:len(b.lines)]
 	previous := ""
 	for k, line := range b.lines {
@@ -598,7 +686,12 @@ func (b *lineBatch) prepare() {
 
 func (b *lineBatch) reset() {
 	clear(b.prepared)
-	b.buf, b.lines, b.prepared, b.err, b.done = b.buf[:0], b.lines[:0], b.prepared[:0], nil, make(chan struct{})
+	if cap(b.buf) > maxRetainedLineBuffer {
+		b.buf = nil
+	} else {
+		b.buf = b.buf[:0]
+	}
+	b.lines, b.prepared, b.err, b.done = b.lines[:0], b.prepared[:0], nil, make(chan struct{})
 }
 
 // indexLine adds the record of one line after the header as newSessionFromEntries adds a decoded record. A message or custom message is not
@@ -656,16 +749,16 @@ func prepareIndexLineAfter(line []byte, previous string) preparedLine {
 			probe = decoded
 		}
 	}
-	if err == nil && (probe.Type == "message" || probe.Type == "custom_message") {
+	if err == nil && isLazyIndexedType(probe.Type) {
 		if timestamp, ok := rawJSONString(probe.Timestamp); ok {
 			base := sessionentry.WithJSValues(line, SessionEntryBase{Type: probe.Type, ID: probe.ID, ParentID: probe.ParentID, Timestamp: timestamp})
 			return prepareMessageLine(base, probe.sessionAccountingEntry, true, line)
 		}
 	}
-	// A record the probe read as another entry type decodes once, as that type: its type is not a message's, and not the header's.
-	other := err == nil && probe.Type != "message" && probe.Type != "custom_message" && probe.Type != "session"
+	// A record the probe read as another entry type decodes once, as that type: its type is not lazily indexed, and not the header's.
+	other := err == nil && !isLazyIndexedType(probe.Type) && probe.Type != "session"
 	var base SessionEntryBase
-	if !other && json.Unmarshal(line, &base) == nil && (base.Type == "message" || base.Type == "custom_message") {
+	if !other && json.Unmarshal(line, &base) == nil && isLazyIndexedType(base.Type) {
 		var account sessionAccountingEntry
 		decoded := json.Unmarshal(line, &account) == nil
 		return prepareMessageLine(sessionentry.WithJSValues(line, base), account, decoded, line)
@@ -685,7 +778,12 @@ func prepareIndexLineAfter(line []byte, previous string) preparedLine {
 	return preparedLine{state: lineEntry, entry: entry}
 }
 
-// prepareMessageLine prepares a message or custom message line, which the index keeps without its body. account is its accounting decode,
+// isLazyIndexedType reports whether streamSessionFile indexes lines of typ by file offset and metadata without decoding and retaining their body.
+func isLazyIndexedType(typ string) bool {
+	return typ == typeMessage || typ == typeCustomMessage || typ == typeCustom || typ == typeBranchSummary
+}
+
+// prepareMessageLine prepares a lazily indexed entry line (message, custom_message, custom, or branch_summary), which the index keeps without its body. account is its accounting decode,
 // when decoded. The /tree search text is read when /tree first needs it (indexSearchTexts, after the selector's first paint), not here.
 func prepareMessageLine(base SessionEntryBase, account sessionAccountingEntry, decoded bool, line []byte) preparedLine {
 	p := preparedLine{state: lineMessage, base: base, slot: baseSlot(base), account: account, counted: decoded, hash: recordHash(line)}
@@ -702,6 +800,18 @@ func prepareMessageLine(base SessionEntryBase, account sessionAccountingEntry, d
 		}
 	}
 	return p
+}
+
+// applyStreamedIndexLine adds an oversized custom record that was validated and hashed in streaming mode without buffering its full line.
+func (s *Session) applyStreamedIndexLine(p *preparedLine, off int64, lineLen int) error {
+	if p == nil || p.state != lineMessage {
+		return nil
+	}
+	slot := p.slot
+	s.locateHashedLocked(&slot.entrySlot, off, lineLen, p.hash)
+	s.noteTimestampLocked(s.appendSlotLocked(slot, p.base.ParentID, nil), p.base.Timestamp)
+	s.setLeafInPlace(p.base.ID)
+	return nil
 }
 
 // applyIndexLine adds the prepared record of line, at off in the file, to the index.
@@ -725,7 +835,7 @@ func (s *Session) applyIndexLine(p *preparedLine, line []byte, off int64) error 
 			s.stats.add(entry.Raw(), base.Type)
 		}
 		s.noteNameLocked(entry.Raw(), base.Type)
-		slot := newSlot(compactionWithoutRecord(entry, line))
+		slot := newSlot(entryWithoutRedundantRecord(entry, line))
 		s.locateLocked(&slot.entrySlot, off, line)
 		s.addSlotLocked(slot, base.ParentID, line)
 		s.leafID = leafOf(base.ID)

@@ -225,12 +225,30 @@ func (slot *entrySlot) api() string { return slot.kindOf().msg.api }
 const (
 	typeMessage       = "message"
 	typeCustomMessage = "custom_message"
+	typeCustom        = "custom"
+	typeBranchSummary = "branch_summary"
 	typeCompaction    = "compaction"
 	typeLabel         = "label"
 )
 
-// evictable reports whether an entry of this type is resident only while the active context needs it: message bodies are the size of a session.
+// evictable reports whether an entry of this type is kept out of memory when the active context does not hold it: messages, custom messages,
+// custom entries, and branch summaries carry unbounded payloads.
 func (slot *entrySlot) evictable() bool {
+	typ := slot.typ()
+	return typ == typeMessage || typ == typeCustomMessage || typ == typeCustom || typ == typeBranchSummary
+}
+
+// isMessageLike reports whether slot is a message or custom_message entry (omitted from contextPathIn before the latest compaction unless it is
+// the newest assistant of its API).
+func (slot *entrySlot) isMessageLike() bool {
+	typ := slot.typ()
+	return typ == typeMessage || typ == typeCustomMessage
+}
+
+// eagerlyRetainedInTail reports whether retainLocked decodes slot into memory during Open/SetLeafID when it lies in the tail of the context path.
+// Custom entries and branch summaries are read on demand from their record when a caller requests them, so opening a session never retains
+// unbounded custom payloads or branch summaries on the heap.
+func (slot *entrySlot) eagerlyRetainedInTail() bool {
 	typ := slot.typ()
 	return typ == typeMessage || typ == typeCustomMessage
 }
@@ -402,7 +420,7 @@ func (s *Session) retainReadLocked(indexes []int32, entries []SessionEntry) {
 	var scratch []byte
 	for k, idx := range indexes {
 		slot := &s.slots[idx]
-		if s.resident.get(int(idx)) != nil || !slot.evictable() || entries[k] == nil {
+		if s.resident.get(int(idx)) != nil || !slot.eagerlyRetainedInTail() || entries[k] == nil {
 			continue
 		}
 		s.resident.set(int(idx), residentEntryOf(entries[k], &scratch))
@@ -425,7 +443,8 @@ func residentEntryOf(entry SessionEntry, scratch *[]byte) SessionEntry {
 	}
 	message, ok := asMessage(entry)
 	if !ok {
-		return sessionentry.DecodeSessionEntry(bytes.Clone(raw))
+		cloned := bytes.Clone(raw)
+		return entryWithoutRedundantRecord(sessionentry.DecodeSessionEntry(cloned), cloned)
 	}
 	bare := sessionentry.WithRecord(message, nil)
 	if recordIsEncodingOf(bare, raw, scratch) {
@@ -652,7 +671,7 @@ func (s *Session) contextPathIn(path []int32) []int32 {
 	out := make([]int32, 0, len(path)-start+len(newest)+16)
 	for i, idx := range path[:start] {
 		slot := &s.slots[idx]
-		if !slot.evictable() || (slot.role() == "assistant" && newest[slot.api()] == i) {
+		if !slot.isMessageLike() || (slot.role() == "assistant" && newest[slot.api()] == i) {
 			out = append(out, idx)
 		}
 	}
@@ -719,6 +738,7 @@ func (s *Session) retainLocked() {
 	for i := range s.slots {
 		slot := &s.slots[i]
 		_, needed := keep[int32(i)]
+		needed = needed && slot.eagerlyRetainedInTail()
 		resident := s.resident.get(i)
 		switch {
 		case !slot.evictable():
@@ -889,6 +909,10 @@ func unpackRecord(packed []byte) ([]byte, error) {
 
 // lineReader yields the lines of a session file with the offset each starts at, splitting on "\n" and dropping a trailing "\r", as
 // forEachJSONLLine does.
+// maxRetainedLineBuffer is the largest line buffer forEachJSONLLineOffset keeps across lines; an oversized single line releases its backing array once visited.
+// pig additive (D112): Pi reads the whole session file with readFileSync; releasing an oversized line buffer bounds Go scan memory without changing parsed entries.
+const maxRetainedLineBuffer = 1 << 20
+
 func forEachJSONLLineOffset(r io.Reader, fn func(line []byte, off int64) error) error {
 	reader := bufio.NewReaderSize(r, 64*1024)
 	var long []byte
@@ -915,7 +939,11 @@ func forEachJSONLLineOffset(r io.Reader, fn func(line []byte, off int64) error) 
 				return fnErr
 			}
 		}
-		long = long[:0]
+		if cap(long) > maxRetainedLineBuffer {
+			long = nil
+		} else {
+			long = long[:0]
+		}
 		if err != nil {
 			return nil
 		}

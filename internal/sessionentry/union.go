@@ -101,6 +101,12 @@ func (e ThinkingLevelEntry) fileEntry() {}
 
 func (e ThinkingLevelEntry) Raw() json.RawMessage { return rawOf(e.MarshalJSON) }
 
+// WithoutRecord is e without the record it was decoded from: it writes its fields.
+func (e ThinkingLevelEntry) WithoutRecord() ThinkingLevelEntry {
+	e.raw = nil
+	return e
+}
+
 func (e ThinkingLevelEntry) MarshalJSON() ([]byte, error) {
 	if e.raw != nil {
 		return e.raw, nil
@@ -115,6 +121,12 @@ func (e ModelChangeEntry) fileEntry() {}
 
 func (e ModelChangeEntry) Raw() json.RawMessage { return rawOf(e.MarshalJSON) }
 
+// WithoutRecord is e without the record it was decoded from: it writes its fields.
+func (e ModelChangeEntry) WithoutRecord() ModelChangeEntry {
+	e.raw = nil
+	return e
+}
+
 func (e ModelChangeEntry) MarshalJSON() ([]byte, error) {
 	if e.raw != nil {
 		return e.raw, nil
@@ -128,6 +140,12 @@ func (e UsageEntry) Base() SessionEntryBase { return e.withoutRecord() }
 func (e UsageEntry) fileEntry() {}
 
 func (e UsageEntry) Raw() json.RawMessage { return rawOf(e.MarshalJSON) }
+
+// WithoutRecord is e without the record it was decoded from: it writes its fields.
+func (e UsageEntry) WithoutRecord() UsageEntry {
+	e.raw = nil
+	return e
+}
 
 func (e UsageEntry) MarshalJSON() ([]byte, error) {
 	if e.raw != nil {
@@ -172,6 +190,12 @@ func (e BranchSummaryEntry) fileEntry() {}
 
 func (e BranchSummaryEntry) Raw() json.RawMessage { return rawOf(e.MarshalJSON) }
 
+// WithoutRecord is e without the record it was decoded from: it writes its fields.
+func (e BranchSummaryEntry) WithoutRecord() BranchSummaryEntry {
+	e.raw = nil
+	return e
+}
+
 func (e BranchSummaryEntry) MarshalJSON() ([]byte, error) {
 	if e.raw != nil {
 		return e.raw, nil
@@ -193,6 +217,12 @@ func (e CustomEntry) fileEntry() {}
 
 func (e CustomEntry) Raw() json.RawMessage { return rawOf(e.MarshalJSON) }
 
+// WithoutRecord is e without the record it was decoded from: it writes its fields.
+func (e CustomEntry) WithoutRecord() CustomEntry {
+	e.raw = nil
+	return e
+}
+
 func (e CustomEntry) MarshalJSON() ([]byte, error) {
 	if e.raw != nil {
 		return e.raw, nil
@@ -213,6 +243,12 @@ func (e CustomMessageEntry) Base() SessionEntryBase { return e.withoutRecord() }
 func (e CustomMessageEntry) fileEntry() {}
 
 func (e CustomMessageEntry) Raw() json.RawMessage { return rawOf(e.MarshalJSON) }
+
+// WithoutRecord is e without the record it was decoded from: it writes its fields.
+func (e CustomMessageEntry) WithoutRecord() CustomMessageEntry {
+	e.raw = nil
+	return e
+}
 
 func (e CustomMessageEntry) MarshalJSON() ([]byte, error) {
 	if e.raw != nil {
@@ -237,6 +273,12 @@ func (e ContextEditEntry) fileEntry() {}
 
 func (e ContextEditEntry) Raw() json.RawMessage { return rawOf(e.MarshalJSON) }
 
+// WithoutRecord is e without the record it was decoded from: it writes its fields.
+func (e ContextEditEntry) WithoutRecord() ContextEditEntry {
+	e.raw = nil
+	return e
+}
+
 func (e ContextEditEntry) MarshalJSON() ([]byte, error) {
 	if e.raw != nil {
 		return e.raw, nil
@@ -250,6 +292,12 @@ func (e LabelEntry) Base() SessionEntryBase { return e.withoutRecord() }
 func (e LabelEntry) fileEntry() {}
 
 func (e LabelEntry) Raw() json.RawMessage { return rawOf(e.MarshalJSON) }
+
+// WithoutRecord is e without the record it was decoded from: it writes its fields.
+func (e LabelEntry) WithoutRecord() LabelEntry {
+	e.raw = nil
+	return e
+}
 
 func (e LabelEntry) MarshalJSON() ([]byte, error) {
 	if e.raw != nil {
@@ -268,6 +316,12 @@ func (e SessionInfoEntry) Base() SessionEntryBase { return e.withoutRecord() }
 func (e SessionInfoEntry) fileEntry() {}
 
 func (e SessionInfoEntry) Raw() json.RawMessage { return rawOf(e.MarshalJSON) }
+
+// WithoutRecord is e without the record it was decoded from: it writes its fields.
+func (e SessionInfoEntry) WithoutRecord() SessionInfoEntry {
+	e.raw = nil
+	return e
+}
 
 func (e SessionInfoEntry) MarshalJSON() ([]byte, error) {
 	if e.raw != nil {
