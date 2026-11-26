@@ -382,7 +382,7 @@ func exReports(result RolloutResult) []exLine {
 	var lines []exLine
 	for _, step := range result.Steps {
 		for _, entry := range step.Hosts {
-			if entry.Kind == RolloutReported {
+			if entry.Kind == RolloutReloaded {
 				lines = append(lines, exLineOf(entry.Report))
 			}
 		}
@@ -539,7 +539,7 @@ func TestExample35PluginsLoadEditMarkBuildRollOut(t *testing.T) {
 	var got []stepLine
 	for _, each := range rolled.Steps {
 		for _, entry := range each.Hosts {
-			if entry.Kind == RolloutReported {
+			if entry.Kind == RolloutReloaded {
 				got = append(got, stepLine{each.Name, exLineOf(entry.Report), entry.Report.Objects})
 			}
 		}

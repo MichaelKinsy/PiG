@@ -35,11 +35,15 @@ func TestNewPluginErrorNamesRequiredPluginsThenProblems(t *testing.T) {
 	}
 }
 
-// plugins.ts RolloutHost: `stopped: true` is the host that stopped cleanly during the step, and only it.
-func TestRolloutHostStoppedIsTheHostThatStoppedCleanly(t *testing.T) {
-	for kind, want := range map[RolloutHostKind]bool{RolloutStopped: true, RolloutReported: false, RolloutErrored: false} {
-		if got := (RolloutHost{Kind: kind, Host: "h"}).Stopped(); got != want {
-			t.Errorf("%s: Stopped() = %v, want %v", kind, got, want)
-		}
+// Pi 23cba8556: RolloutHost is a tagged union with kind "reloaded", "stopped", or "failed".
+func TestRolloutHostKindValuesMatchPi(t *testing.T) {
+	if got := string(RolloutReloaded); got != "reloaded" {
+		t.Errorf("reloaded RolloutHostKind = %q, want %q", got, "reloaded")
+	}
+	if got := string(RolloutStopped); got != "stopped" {
+		t.Errorf("stopped RolloutHostKind = %q, want %q", got, "stopped")
+	}
+	if got := string(RolloutFailed); got != "failed" {
+		t.Errorf("failed RolloutHostKind = %q, want %q", got, "failed")
 	}
 }

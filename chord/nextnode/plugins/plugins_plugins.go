@@ -117,13 +117,13 @@ type Built struct {
 type RolloutHostKind string
 
 const (
-	// RolloutReported is a host that reloaded: Report.
-	RolloutReported RolloutHostKind = "report"
+	// RolloutReloaded is a host that reloaded: Report.
+	RolloutReloaded RolloutHostKind = "reloaded"
 	// RolloutStopped is a host that stopped cleanly during the step (it gets the current set at its next start).
 	RolloutStopped RolloutHostKind = "stopped"
-	// RolloutErrored is a host that crashed or whose reload failed (every plugin of the step's kinds in the build counts as
+	// RolloutFailed is a host that crashed or whose reload failed (every plugin of the step's kinds in the build counts as
 	// failed there): Error.
-	RolloutErrored RolloutHostKind = "error"
+	RolloutFailed RolloutHostKind = "failed"
 )
 
 // RolloutHost is what a rollout step did on one of its hosts (Host named by the step).
@@ -133,9 +133,6 @@ type RolloutHost struct {
 	Report host.ReloadReport
 	Error  error
 }
-
-// Stopped is Pi's `stopped: true`: the host stopped cleanly during the step. It is read from Kind, so it cannot disagree with it.
-func (h RolloutHost) Stopped() bool { return h.Kind == RolloutStopped }
 
 // StepResult is what a rollout step's reload returns: one result per host (D12).
 type StepResult struct {
@@ -564,7 +561,7 @@ func (c *Plugins) Step(name string, h *NodeHost) (RolloutStep, error) {
 			if err != nil {
 				return StepResult{}, err
 			}
-			return StepResult{Hosts: []RolloutHost{{Kind: RolloutReported, Host: name, Report: report}}}, nil
+			return StepResult{Hosts: []RolloutHost{{Kind: RolloutReloaded, Host: name, Report: report}}}, nil
 		},
 	}, nil
 }
@@ -587,11 +584,11 @@ func (c *Plugins) Rollout(steps []RolloutStep, built *Built, ctx context.Context
 		}
 		for _, entry := range result.Hosts {
 			switch entry.Kind {
-			case RolloutReported:
+			case RolloutReloaded:
 				for _, failure := range entry.Report.Failed {
 					failed[failure.Plugin] = struct{}{}
 				}
-			case RolloutErrored:
+			case RolloutFailed:
 				for _, plugin := range builtOf(built, step.Kinds) {
 					failed[plugin] = struct{}{}
 				}

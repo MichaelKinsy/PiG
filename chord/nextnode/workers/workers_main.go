@@ -538,7 +538,7 @@ func (w *worker) message(message ToWorker) {
 	}
 }
 
-// applyReloads applies the reloads that arrived, one after another, each answered `reloaded`.
+// applyReloads applies the reloads that arrived, one after another, each answered `reloaded` or `reload_failed`.
 func (w *worker) applyReloads() {
 	w.mu.Lock()
 	if w.reloading || len(w.reloads) == 0 {
@@ -567,7 +567,7 @@ func (w *worker) applyReloads() {
 		}
 		if loaded == nil && w.options.Reload == nil {
 			failure := CrossedError{Message: "worker: plugins.load was never called"}
-			w.send(FromWorker{Kind: FromWorkerReloaded, Error: &failure})
+			w.send(FromWorker{Kind: FromWorkerReloadFailed, Error: &failure})
 			continue
 		}
 		var report host.ReloadReport
@@ -582,7 +582,7 @@ func (w *worker) applyReloads() {
 		})
 		if err != nil {
 			failure := crossed(err)
-			w.send(FromWorker{Kind: FromWorkerReloaded, Error: &failure})
+			w.send(FromWorker{Kind: FromWorkerReloadFailed, Error: &failure})
 			continue
 		}
 		crossedReport := crossedReport(report)

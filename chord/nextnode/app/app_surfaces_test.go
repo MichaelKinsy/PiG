@@ -358,7 +358,7 @@ func TestWebSurfacePublishesANewSetOnARolloutWithoutWaitingForClientsThePrevious
 		t.Fatalf("steps = %v, want [server web]", names)
 	}
 	hosts := result.Steps[1].Hosts
-	if len(hosts) != 1 || hosts[0].Host != "web" || hosts[0].Error != nil ||
+	if len(hosts) != 1 || hosts[0].Kind != plugins.RolloutReloaded || hosts[0].Host != "web" || hosts[0].Error != nil ||
 		!reflect.DeepEqual(hosts[0].Report.Plugins.Changed, []string{"@test/notes"}) || len(hosts[0].Report.Plugins.Added) != 0 ||
 		len(hosts[0].Report.Plugins.Removed) != 0 || len(hosts[0].Report.Failed) != 0 || len(hosts[0].Report.Objects) != 0 {
 		t.Fatalf("web step = %+v", hosts)

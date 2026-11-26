@@ -141,7 +141,7 @@ func TestAFailedBuildAnswers503ForTheSurfacesFilesAndFailsItsStepsHost(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Hosts) != 1 || result.Hosts[0].Host != "web" || result.Hosts[0].Error == nil || !strings.Contains(result.Hosts[0].Error.Error(), `Unexpected ";"`) {
+	if len(result.Hosts) != 1 || result.Hosts[0].Kind != plugins.RolloutFailed || result.Hosts[0].Host != "web" || result.Hosts[0].Error == nil || !strings.Contains(result.Hosts[0].Error.Error(), `Unexpected ";"`) {
 		t.Fatalf("hosts = %+v, want the web host failed with esbuild's error", result.Hosts)
 	}
 }

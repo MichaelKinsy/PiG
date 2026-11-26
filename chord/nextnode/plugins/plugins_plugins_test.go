@@ -490,7 +490,7 @@ func pcStep(name string, order *[]string, outcome pcOutcome, kinds ...string) Ro
 			if outcome.hosts != nil {
 				return StepResult{Hosts: outcome.hosts}, nil
 			}
-			return StepResult{Hosts: []RolloutHost{{Kind: RolloutReported, Host: name, Report: *outcome.report}}}, nil
+			return StepResult{Hosts: []RolloutHost{{Kind: RolloutReloaded, Host: name, Report: *outcome.report}}}, nil
 		},
 	}
 }
@@ -560,8 +560,8 @@ func TestPluginsRolloutCountsAHostsErrorAsTheStepsBuiltPluginsFailingThereAHostS
 	pcWrite(t, root, "a", "worker.ts", "// a again\n")
 	c.waitMarks(t, "dirty a again", pcDirty("@test/a"))
 	crashed := []RolloutHost{
-		{Kind: RolloutReported, Host: "session|S1", Report: *pcReport()},
-		{Kind: RolloutErrored, Host: "session|S2", Error: errors.New("crashed")},
+		{Kind: RolloutReloaded, Host: "session|S1", Report: *pcReport()},
+		{Kind: RolloutFailed, Host: "session|S2", Error: errors.New("crashed")},
 	}
 	result := c.rollout(t, []RolloutStep{pcStep("workers", &none, pcOutcome{hosts: crashed})}, c.build(t, "@test/a"))
 	if want := []RolloutStepResult{{Name: "workers", Hosts: crashed}}; !reflect.DeepEqual(result.Steps, want) {
@@ -607,7 +607,7 @@ func TestPluginsRolloutHandsTheStepTheSetsItsRolloutLeftForItsKinds(t *testing.T
 		return RolloutStep{Name: name, Kinds: kinds, Reload: func(_ *Built, applied map[string][]PluginScript, _ context.Context) (StepResult, error) {
 			got[name] = applied
 			report := pcReport()
-			return StepResult{Hosts: []RolloutHost{{Kind: RolloutReported, Host: name, Report: *report}}}, nil
+			return StepResult{Hosts: []RolloutHost{{Kind: RolloutReloaded, Host: name, Report: *report}}}, nil
 		}}
 	}
 	c.rollout(t, []RolloutStep{record("worker", "worker"), record("both", "worker", "server")}, built)
