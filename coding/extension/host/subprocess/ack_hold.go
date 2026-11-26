@@ -87,6 +87,7 @@ func (h *ackHold) releasePostAckLocked() {
 	}
 	h.postAckReleased = true
 	if h.postAckCancel != nil {
+		//portlint:allow doubleclose releasePostAckLocked returns early once postAckReleased is set, and every caller holds h.mu
 		close(h.postAckCancel)
 	}
 }

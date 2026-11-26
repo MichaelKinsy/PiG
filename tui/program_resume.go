@@ -82,6 +82,7 @@ func FormatProgramResume(command ProgramResumeCommand, sender ProgramResumeSende
 		pairs = append(pairs, "cwd="+base64.StdEncoding.EncodeToString([]byte(command.Cwd)))
 	}
 	sequence := formatProgramResumeReport(pairs, sender)
+	//portlint:allow utf16units sequence is pure ASCII (OSC prefix, digits, ASCII keys, base64, BEL) and programResumeMaxSequenceBytes is a wire byte limit
 	if len(sequence) > programResumeMaxSequenceBytes {
 		return "", false
 	}

@@ -1663,7 +1663,7 @@ Call-site markers: `internal/codingagent/interactive_input.go` (`dispatchInputCh
 
 Remove when: never (subprocess-only extensions), or when Pi's extension input listeners become asynchronous and the driver can adopt Pi's `handleTerminalInput` whole.
 
-Evidence: `tui/tui_input_pipeline_test.go`, `tui/main_screen_oracle_test.go`, the `tui/tui-base/terminal-input-pipeline` contract in `test/parity/behavior-contracts.toml`, and the `extensions-runtime` terminal-input scenarios.
+Evidence: `tui/tui_input_pipeline_test.go`, `tui/main_screen_oracle_test.go`, the `tui/tui-base/terminal-input-pipeline` contract in `test/parity/ledgers/behavior-contracts.toml`, and the `extensions-runtime` terminal-input scenarios.
 
 Parity allowance: the observable key order and the listener verdicts match Pi; only the thread that runs an extension's listener differs.
 

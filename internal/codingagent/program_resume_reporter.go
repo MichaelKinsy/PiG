@@ -108,6 +108,7 @@ func encodeProgramResumeKey(command *tui.ProgramResumeCommand) string {
 	if command == nil {
 		return ""
 	}
+	//portlint:allow jsonescape internal dedupe map key compared only against prior keys from this same encoder, never serialized to wire or disk
 	b, err := json.Marshal(command)
 	if err != nil {
 		return ""
