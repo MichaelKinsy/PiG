@@ -105,7 +105,7 @@ type ledger struct {
 	children  map[string][]*upstreamEntry // parent ID -> direct property, call and construct rows
 	mapping   map[string]*mappingRow
 	root      string              // repository root, for the checks that read Go files
-	contracts map[string]string   // behavior contract statuses, read once from test/parity/behavior-contracts.toml
+	contracts map[string]string   // behavior contract statuses, read once from test/parity/ledgers/behavior-contracts.toml
 	cli       map[string]*cliFlag // command-line inventory rows by ID
 }
 
@@ -233,7 +233,7 @@ func (l *ledger) callRows(id string) []*upstreamEntry {
 	return out
 }
 
-// contractStatuses maps each behavior contract ID to its status in test/parity/behavior-contracts.toml; a missing file has none.
+// contractStatuses maps each behavior contract ID to its status in test/parity/ledgers/behavior-contracts.toml; a missing file has none.
 func (l *ledger) contractStatuses() map[string]string {
 	if l.contracts != nil {
 		return l.contracts
@@ -245,7 +245,7 @@ func (l *ledger) contractStatuses() map[string]string {
 		} `toml:"contract"`
 	}
 	l.contracts = map[string]string{}
-	if _, err := toml.DecodeFile(filepath.Join(l.root, "test/parity/behavior-contracts.toml"), &doc); err == nil {
+	if _, err := toml.DecodeFile(filepath.Join(l.root, "test/parity/ledgers/behavior-contracts.toml"), &doc); err == nil {
 		for _, c := range doc.Contract {
 			l.contracts[c.ID] = c.Status
 		}

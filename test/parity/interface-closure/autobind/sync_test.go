@@ -202,11 +202,11 @@ func TestSyncGivesAHandleInputCallRowItsPropertysContracts(t *testing.T) {
 // unknown contract keeps it a gap, because the validator rejects behavior complete over it.
 func TestBehaviorContractMustBePortedToCloseHandleInput(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, "test/parity"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(root, "test/parity/ledgers"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	toml := "[[contract]]\nid = \"a/done\"\nstatus = \"ported\"\n\n[[contract]]\nid = \"a/div\"\nstatus = \"divergence\"\n\n[[contract]]\nid = \"a/wait\"\nstatus = \"pending\"\n"
-	if err := os.WriteFile(filepath.Join(root, "test/parity/behavior-contracts.toml"), []byte(toml), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "test/parity/ledgers/behavior-contracts.toml"), []byte(toml), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	l := &ledger{root: root, mapping: map[string]*mappingRow{}}
@@ -301,10 +301,10 @@ func TestStaleReviewedGapsArePrunedTogether(t *testing.T) {
 func TestSyncKeepsBehaviorContractsAndHoldsWhileTheyArePending(t *testing.T) {
 	root := t.TempDir()
 	toml := "[[contract]]\nid = \"a/open\"\nstatus = \"pending\"\n\n[[contract]]\nid = \"a/done\"\nstatus = \"ported\"\n"
-	if err := os.MkdirAll(filepath.Join(root, "test/parity"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(root, "test/parity/ledgers"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "test/parity/behavior-contracts.toml"), []byte(toml), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "test/parity/ledgers/behavior-contracts.toml"), []byte(toml), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	l := &ledger{root: root, mapping: map[string]*mappingRow{

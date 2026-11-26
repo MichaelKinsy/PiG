@@ -443,7 +443,7 @@ func TestNodeALinkAttachedAfterLoadAndOtherRequestsStillCarriesTheHost(t *testin
 // attaches has no link and no heartbeat clock: it stays alive for as long as the app wants it, and Close of it works. (The
 // heartbeat is shortened here; the default is 30 s.) No Pi line governs the expectation this changed: the commit that made it
 // (e0f6bd3215) cites Pi's eager `new ParentLink(...)` (workers/main.ts:114), which Pi did not change, and
-// test/parity/testprune-reviewed.toml records it as NOBEHAVIOR.
+// test/parity/ledgers/testprune-reviewed.toml records it as NOBEHAVIOR.
 func TestNodeAnUnattachedHostStaysAliveWithNoClockAndClosesWhenAsked(t *testing.T) {
 	ping, closeAfter := 100*time.Millisecond, 300*time.Millisecond
 	runtime, node := probeNode(t, `echo: async (args) => args`, NodeOptions{}, &host.HeartbeatOptions{Ping: &ping, Close: &closeAfter})

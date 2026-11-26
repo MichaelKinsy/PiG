@@ -182,7 +182,7 @@ and the term's line number, never the term. Without the secret the rule is off.
 together with production code of the same directory, unless the Pi behavior that
 changed is cited (`Pi-Behavior-Change: <pi file.ts:line>` in the PR body and in a
 commit, the file named by an inventory of main), or the reviewed ledger admits
-the file. The ledger is `test/parity/testprune-reviewed.toml` read at the PR's
+the file. The ledger is `test/parity/ledgers/testprune-reviewed.toml` read at the PR's
 head commit; `make test-expectation-lint` admits by the same rows and validates
 them with the same code (`reviewed/`). A row admits a changed test file when its
 `path` is the file and its `commit` (at least ten characters) names exactly one

@@ -204,7 +204,7 @@ def check_pins() -> list[str]:
         ("Pi", pi, "internal/coding/pigversion/pigversion.go UpstreamPackageVersion", derived_pigversion["UpstreamPackageVersion"]),
         ("Pi", pin.commit, "internal/coding/pigversion/pigversion.go UpstreamCommit", derived_pigversion["UpstreamCommit"]),
         ("Pi", pi_display, "test/parity/known-gaps.toml pi_version", search(r'^pi_version = "([^"]+)"', "test/parity/known-gaps.toml", "pi_version")),
-        ("Pi", pi_display, "test/parity/behavior-contracts.toml upstream_version", search(r'^upstream_version = "([^"]+)"', "test/parity/behavior-contracts.toml", "upstream_version")),
+        ("Pi", pi_display, "test/parity/ledgers/behavior-contracts.toml upstream_version", search(r'^upstream_version = "([^"]+)"', "test/parity/ledgers/behavior-contracts.toml", "upstream_version")),
         ("Pi", pi_badge, "README Pi pin badge", search(r"img\.shields\.io/badge/Pi%20pin-([^-)]+)-", "README.md", "Pi pin badge")),
         ("Pi", pi_display, "README Pi pin badge text", search(r"\[!\[Pi pin ([^\]]+)\]", "README.md", "Pi pin badge text")),
         ("Pi", pi_link, "README Pi pin badge link", search(r"earendil-works/pi/((?:releases/tag/v[\d.]+)|(?:commit/[0-9a-f]{40}))\)", "README.md", "Pi pin badge link")),

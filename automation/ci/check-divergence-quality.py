@@ -334,7 +334,7 @@ def unpend(root: Path, idents: set[str]) -> None:
 
 
 # A parity row that says an extension capability exists in the Node runtime alone hides a native-SDK gap in prose.
-# The per-runtime disposition lives in test/parity/sdk-exports.toml (docs/extension-sdk-exports.md), where a gap
+# The per-runtime disposition lives in test/parity/ledgers/sdk-exports.toml (docs/extension-sdk-exports.md), where a gap
 # names its lane and owner; the parity row points there instead.
 NODE_ONLY = re.compile(r"(?i)\bnode(?:\s+runtime)?\s+only\b|\bgo/rust/python\s+(?:have|has)\s+no\b")
 
@@ -349,7 +349,7 @@ def parity_prose_errors(root: Path) -> list[str]:
         if match:
             errors.append(
                 f"{path.relative_to(root)}:{number}: {match.group(0)!r}: say which SDK cells are `gap:<lane>` in "
-                "docs/extension-sdk-exports.md (test/parity/sdk-exports.toml) instead of calling the capability Node-only"
+                "docs/extension-sdk-exports.md (test/parity/ledgers/sdk-exports.toml) instead of calling the capability Node-only"
             )
     return errors
 

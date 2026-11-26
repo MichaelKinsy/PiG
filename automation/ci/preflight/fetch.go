@@ -80,7 +80,7 @@ type data struct {
 	Previous     *state             `json:"previous,omitempty"`
 	SourceErrors map[string]string  `json:"source_errors,omitempty"`
 	Acknowledged string             `json:"acknowledged,omitempty"`
-	// ReviewedLedger is the text of test/parity/testprune-reviewed.toml at the PR's head commit.
+	// ReviewedLedger is the text of test/parity/ledgers/testprune-reviewed.toml at the PR's head commit.
 	ReviewedLedger string `json:"reviewed_ledger,omitempty"`
 	// CommitFiles are the files each commit has changed that a ledger row names for a changed test file, by commit sha.
 	CommitFiles map[string][]string `json:"commit_files,omitempty"`

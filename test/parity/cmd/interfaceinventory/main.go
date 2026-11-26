@@ -139,7 +139,7 @@ func main() {
 	mappingPath := flag.String("mapping", "", "reviewed Pig interface mapping")
 	recommendationsPath := flag.String("recommendations", "", "non-authoritative porting recommendations")
 	goInventoryPath := flag.String("go-inventory", "test/parity/interfaces/pig-go.json", "generated Pig Go candidate inventory")
-	behaviorContractsPath := flag.String("behavior-contracts", "test/parity/behavior-contracts.toml", "reviewed behavioral contract ledger")
+	behaviorContractsPath := flag.String("behavior-contracts", "test/parity/ledgers/behavior-contracts.toml", "reviewed behavioral contract ledger")
 	generatePending := flag.Bool("generate-pending", false, "write a pending mapping ledger to stdout")
 	previousMappingPath := flag.String("previous-mapping", "", "with -generate-pending, keep every row of this earlier ledger whose interface shape is unchanged")
 	previousUpstreamRoot := flag.String("previous-upstream-root", "", "with -generate-pending and -previous-mapping, the earlier version's source root: a carried type-alias row whose body differs between the two roots becomes pending")

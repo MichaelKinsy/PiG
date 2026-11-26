@@ -50,7 +50,7 @@ var versionWireNames = map[string]struct{}{
 
 func main() {
 	root := flag.String("root", ".", "Pig repository root")
-	manifestPath := flag.String("manifest", "test/parity/format-versions.toml", "reviewed version-field manifest")
+	manifestPath := flag.String("manifest", "test/parity/ledgers/format-versions.toml", "reviewed version-field manifest")
 	markerRoots := flag.String("marker-roots", ".", "comma-separated roots scanned for removed Pig format markers")
 	generate := flag.Bool("generate", false, "print a pending manifest for current candidates")
 	strict := flag.Bool("strict", false, "reject tracked Pig-owned format discriminators")

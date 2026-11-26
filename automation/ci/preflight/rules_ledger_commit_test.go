@@ -50,7 +50,7 @@ func newLedgerAPI(t *testing.T, ledger string, tests, commits []string, answers 
 			_, _ = io.WriteString(w, "["+strings.Join(shas, ",")+"]")
 		case strings.HasPrefix(p, "/repos/o/r/compare/"):
 			_, _ = io.WriteString(w, `{"status":"ahead","ahead_by":1,"behind_by":0}`)
-		case p == "/repos/o/r/contents/test/parity/testprune-reviewed.toml":
+		case p == "/repos/o/r/contents/test/parity/ledgers/testprune-reviewed.toml":
 			_, _ = io.WriteString(w, `{"encoding":"base64","content":"`+base64.StdEncoding.EncodeToString([]byte(ledger))+`"}`)
 		case strings.HasPrefix(p, "/repos/o/r/commits/"):
 			sha := strings.TrimPrefix(p, "/repos/o/r/commits/")

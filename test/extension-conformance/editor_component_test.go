@@ -473,7 +473,7 @@ func TestEditorComponentOverridesReachSuper(t *testing.T) {
 	}
 }
 
-// The Go SDK's Editor exposes the default editor's queries and setters: getCursor, getExpandedText, isShowingAutocomplete, setPaddingX and setAutocompleteMaxVisible each reach the host's editor with the host's answer, which the fixture's "K" key writes back as text. Rust and Python have no such members yet (gap: SdkTuiHelpers in test/parity/sdk-exports.toml).
+// The Go SDK's Editor exposes the default editor's queries and setters: getCursor, getExpandedText, isShowingAutocomplete, setPaddingX and setAutocompleteMaxVisible each reach the host's editor with the host's answer, which the fixture's "K" key writes back as text. Rust and Python have no such members yet (gap: SdkTuiHelpers in test/parity/ledgers/sdk-exports.toml).
 func TestEditorComponentGoBaseQueriesReachTheHost(t *testing.T) {
 	t.Parallel()
 	for _, tc := range delegatedEditorCases() {

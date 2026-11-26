@@ -83,7 +83,7 @@ func inputFiles(rel string) bool {
 	case path.Base(rel) == "go.mod", path.Base(rel) == "go.sum", rel == "go.work", rel == "go.work.sum":
 		// A workspace module's go.mod takes part in the workspace's version selection, so it can change the types the index loads.
 		return true
-	case rel == "test/parity/behavior-contracts.toml", rel == "docs/parity/PORT_MAP.md":
+	case rel == "test/parity/ledgers/behavior-contracts.toml", rel == "docs/parity/PORT_MAP.md":
 		return true
 	case strings.HasPrefix(rel, "test/parity/interfaces/"):
 		return true

@@ -222,7 +222,7 @@ func TestReviewedLedgerFetchedAtTheHeadCommit(t *testing.T) {
 					_, _ = io.WriteString(w, `{"status":"ahead","ahead_by":1,"behind_by":0}`)
 				case strings.HasPrefix(p, "/repos/o/r/commits/"):
 					_, _ = io.WriteString(w, `{"files":[{"filename":"a/a_test.go"}]}`)
-				case p == "/repos/o/r/contents/test/parity/testprune-reviewed.toml":
+				case p == "/repos/o/r/contents/test/parity/ledgers/testprune-reviewed.toml":
 					refs = append(refs, r.URL.Query().Get("ref"))
 					if tc.status != http.StatusOK {
 						http.Error(w, "no", tc.status)
