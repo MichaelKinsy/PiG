@@ -284,6 +284,12 @@ func TestAltScreenRightClickPasteOnlyOnWindowsOutsideVSCode(t *testing.T) {
 	if pastes != 1 {
 		t.Fatal("VS Code handles its own right-click paste")
 	}
+	// Port of Pi main 165c70df953c62e82a2d0ea88f01af5267a39ef2
+	t.Setenv("TERM_PROGRAM", "Tabby")
+	h.send("\x1b[<2;1;1M")
+	if pastes != 1 {
+		t.Fatal("Tabby handles its own right-click paste")
+	}
 	altScreenPlatform = "linux"
 	unsetEnvForTest(t, "TERM_PROGRAM")
 	h.send("\x1b[<2;1;1M")

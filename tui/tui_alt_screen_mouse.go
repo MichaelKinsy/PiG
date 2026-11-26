@@ -445,11 +445,22 @@ func (t *TuiAltScreen) handleSelectionPointer(raw sgrMouseEvent) {
 	}
 }
 
+// terminalPastesOnRightClick reports terminals that forward the right-click to
+// mouse-tracking apps and also paste the clipboard themselves.
+func terminalPastesOnRightClick() bool {
+	switch strings.ToLower(os.Getenv("TERM_PROGRAM")) {
+	case "vscode", "tabby":
+		return true
+	default:
+		return false
+	}
+}
+
 // handleRightClickPaste pastes on an unmodified secondary press on Windows
-// outside VS Code. Mirrors upstream handleRightClickPaste.
+// outside terminals that paste on right-click themselves. Mirrors upstream handleRightClickPaste.
 func (t *TuiAltScreen) handleRightClickPaste(event sgrMouseEvent) bool {
 	if t.onRightClickPaste == nil || altScreenPlatform != "windows" ||
-		strings.ToLower(os.Getenv("TERM_PROGRAM")) == "vscode" || event.release || event.button != 2 {
+		terminalPastesOnRightClick() || event.release || event.button != 2 {
 		return false
 	}
 	func() {
