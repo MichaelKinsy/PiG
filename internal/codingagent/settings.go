@@ -1541,6 +1541,16 @@ func (s *Settings) UnmarshalJSON(data []byte) error {
 	s.Markdown = w.Markdown
 	s.Warnings = w.Warnings
 	s.Notices = w.Notices
+	if s.Notices != nil {
+		// The wire decode went through a map, which lost the notices object's key order.
+		if object, err := orderedjson.Parse(data); err == nil {
+			if raw, ok := object.Get("notices"); ok {
+				if noticesObj, err := orderedjson.Parse(raw); err == nil {
+					s.Notices.keyOrder = noticesObj.Keys()
+				}
+			}
+		}
+	}
 	s.ShowCacheMissNotices = s.GetNotices().CacheMisses
 	s.SessionDir = w.SessionDir
 	s.HTTPProxy = w.HTTPProxy
@@ -1937,10 +1947,11 @@ func (s Settings) GetNotices() NoticeSettings {
 	if s.Notices != nil {
 		out = *s.Notices
 	}
-	if s.ShowCacheMissNotices {
-		if s.Notices == nil || !s.Notices.cacheMissesSet {
-			out.CacheMisses = true
-		}
+	if s.ShowCacheMissNotices && s.Notices == nil {
+		out.CacheMisses = true
+		out.CacheWarming = true
+		out.CompactionCosts = true
+		out.ReasoningDrops = true
 	}
 	return out
 }

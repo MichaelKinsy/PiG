@@ -27,8 +27,10 @@ func cacheWarmingTestMode(t *testing.T, session *Session, notices bool) *Interac
 	t.Helper()
 	dir := t.TempDir()
 	sm := NewSettingsManager(dir, dir)
-	if err := sm.SetNotice(NoticeCacheWarming, notices); err != nil {
-		t.Fatal(err)
+	for _, key := range []NoticeKey{NoticeCacheMisses, NoticeCacheWarming, NoticeCompactionCosts, NoticeReasoningDrops} {
+		if err := sm.SetNotice(key, notices); err != nil {
+			t.Fatal(err)
+		}
 	}
 	mode := &InteractiveMode{
 		opts:          InteractiveModeOptions{SettingsManager: sm, SessionHandle: &recordingCompactHandle{inner: session}},
