@@ -101,7 +101,10 @@ func tokenizeInlineLatex(source string) (latexToken, bool) {
 
 	if closingIndex < 0 {
 		pendingSource := source[openLen:]
-		if strings.HasPrefix(opening, "\\") || looksLikePendingDollarMath(pendingSource) {
+		// A closed dollar formula cannot span lines, and "$" before a digit is usually currency: neither can
+		// be a formula still streaming, so leave the rest of the paragraph to Markdown.
+		if strings.HasPrefix(opening, "\\") ||
+			(!mdStartsWithDigit(pendingSource) && !strings.Contains(pendingSource, "\n") && looksLikePendingDollarMath(pendingSource)) {
 			return latexToken{raw: source, text: pendingSource, pending: true}, true
 		}
 		return latexToken{}, false
