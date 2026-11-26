@@ -20,6 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/factoryload"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 func requireClosedSignal(t *testing.T, ch <-chan struct{}, label string) {
@@ -131,7 +132,7 @@ export default function (pi) {
 					select {
 					case <-syncCallArrived:
 						return nil
-					case <-time.After(3 * time.Second):
+					case <-time.After(testbudget.Wait(t)):
 						err := errors.New("timed out waiting for getContextUsage sync call arrival barrier")
 						select {
 						case barrierErr <- err:
@@ -176,7 +177,7 @@ export default function (pi) {
 				t.Fatal(err)
 			}
 
-			deadline := time.After(5 * time.Second)
+			deadline := time.After(testbudget.Wait(t))
 			seen := map[string]bool{}
 			for !seen["r1"] || !seen["r2"] || !seen["r3"] {
 				select {
@@ -255,7 +256,7 @@ export default function (pi) {
 			select {
 			case <-notifyArrived:
 				return nil
-			case <-time.After(3 * time.Second):
+			case <-time.After(testbudget.Wait(t)):
 				err := errors.New("timed out waiting for post-ack ui.notify arrival barrier")
 				select {
 				case barrierErr <- err:
@@ -295,7 +296,7 @@ export default function (pi) {
 	}
 
 	var order []string
-	deadline := time.After(5 * time.Second)
+	deadline := time.After(testbudget.Wait(t))
 	for len(order) < 3 {
 		select {
 		case err := <-barrierErr:
@@ -401,7 +402,7 @@ export default function (pi) {
 						// Wait until ui.notify has ACTUALLY arrived and is held on the gate before failing stdout write.
 						select {
 						case <-notifyArrived:
-						case <-time.After(3 * time.Second):
+						case <-time.After(testbudget.Wait(t)):
 							select {
 							case barrierErr <- errors.New("timed out in wrapWrite waiting for ui.notify arrival before failing stdout write"):
 							default:
@@ -422,19 +423,19 @@ export default function (pi) {
 		case err := <-barrierErr:
 			t.Fatalf("required barrier failed: %v", err)
 		case <-notifyArrived:
-		case <-time.After(5 * time.Second):
+		case <-time.After(testbudget.Wait(t)):
 			t.Fatal("ui.notify never arrived to be held")
 		}
 		select {
 		case err := <-barrierErr:
 			t.Fatalf("required barrier failed: %v", err)
 		case <-writeErrSeen:
-		case <-time.After(5 * time.Second):
+		case <-time.After(testbudget.Wait(t)):
 			t.Fatal("stdout write error not observed")
 		}
 		select {
 		case <-h.done:
-		case <-time.After(5 * time.Second):
+		case <-time.After(testbudget.Wait(t)):
 			t.Fatal("serveRPCMode hung with a held post-ack call after stdout write error")
 		}
 		select {
@@ -480,7 +481,7 @@ func TestRPCPostAckSecondHandlerAfterSynchronousFirstHandlerRunsAheadOfReply(t *
 					// If ext2 were wrongly sealed (the bug in Finding #2), ui.notify would wait for s1's gate and land AFTER reply!
 					select {
 					case <-ext2NotifyArrived:
-					case <-time.After(3 * time.Second):
+					case <-time.After(testbudget.Wait(t)):
 						select {
 						case barrierErr <- errors.New("timed out in wrapWrite waiting for ext2 synchronous ui.notify arrival"):
 						default:
@@ -499,7 +500,7 @@ func TestRPCPostAckSecondHandlerAfterSynchronousFirstHandlerRunsAheadOfReply(t *
 	}
 
 	var order []string
-	deadline := time.After(5 * time.Second)
+	deadline := time.After(testbudget.Wait(t))
 	for len(order) < 2 {
 		select {
 		case err := <-barrierErr:
@@ -589,7 +590,7 @@ export default function (pi) {
 				select {
 				case <-syncCallArrived:
 					return nil
-				case <-time.After(3 * time.Second):
+				case <-time.After(testbudget.Wait(t)):
 					err := errors.New("timed out waiting for getContextUsage sync call arrival barrier")
 					select {
 					case barrierErr <- err:
@@ -627,7 +628,7 @@ export default function (pi) {
 		if _, err := io.WriteString(h.inW, batch); err != nil {
 			t.Fatal(err)
 		}
-		deadline := time.After(5 * time.Second)
+		deadline := time.After(testbudget.Wait(t))
 		seen := map[string]bool{}
 		for !seen["r1"] || !seen["r2"] || !seen["r3"] {
 			select {
@@ -683,7 +684,7 @@ export default function (pi) {
 				select {
 				case <-syncCallArrived:
 					return nil
-				case <-time.After(3 * time.Second):
+				case <-time.After(testbudget.Wait(t)):
 					err := errors.New("timed out waiting for getContextUsage sync call arrival barrier")
 					select {
 					case barrierErr <- err:
@@ -721,7 +722,7 @@ export default function (pi) {
 		if _, err := io.WriteString(h.inW, batch); err != nil {
 			t.Fatal(err)
 		}
-		deadline := time.After(5 * time.Second)
+		deadline := time.After(testbudget.Wait(t))
 		seen := map[string]bool{}
 		for !seen["r1"] || !seen["r2"] || !seen["r3"] {
 			select {

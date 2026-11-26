@@ -187,8 +187,8 @@ func TestPostAckGateHoldsPostBlockedCallsOnly(t *testing.T) {
 		mu.Unlock()
 		var r1PostAck []string
 		for _, item := range afterOpen {
-			if strings.HasSuffix(item, ":r1") {
-				r1PostAck = append(r1PostAck, strings.TrimSuffix(item, ":r1"))
+			if before, ok := strings.CutSuffix(item, ":r1"); ok {
+				r1PostAck = append(r1PostAck, before)
 			}
 		}
 		wantR1 := append([]string{"ui.notify"}, ordered...)

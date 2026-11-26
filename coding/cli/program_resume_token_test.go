@@ -18,6 +18,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/mcp"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -123,7 +124,7 @@ func TestMainStripsOSC7577TokenFromChildren(t *testing.T) {
 			if mcpErr == nil {
 				select {
 				case <-closed:
-				case <-time.After(15 * time.Second):
+				case <-time.After(testbudget.Wait(t)):
 				}
 			}
 

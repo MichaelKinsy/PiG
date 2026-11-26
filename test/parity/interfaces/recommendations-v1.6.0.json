@@ -325974,7 +325974,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "12 normalized-name Pig candidates are ambiguous."
+        "13 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -325992,6 +325992,7 @@
         "go:github.com/MichaelKinsy/PiG/coding/mcpext#mcpCLI.report",
         "go:github.com/MichaelKinsy/PiG/coding/uiview#Attachment.Report",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#requestParent.report",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#ProgramResumeReporter.Report",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#ProgramStatusReporter.Report",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#viewClient.report",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/llama#progressSink.report",
