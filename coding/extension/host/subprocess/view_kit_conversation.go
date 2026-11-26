@@ -350,7 +350,7 @@ func (b *viewBuilder) bashExecution(n *ViewNode, out *frontend.ViewNode) tui.Com
 		if c.Truncated {
 			truncation = &tui.TruncationResult{Truncated: true}
 		}
-		block.SetComplete(c.ExitCode, c.Cancelled, truncation, c.FullOutputPath)
+		block.SetComplete(c.ExitCode, c.Cancelled, truncation, c.FullOutputPath, c.FullOutputError)
 	}
 	if loader := block.Loader(); loader != nil {
 		if n.Frame != nil && len(loader.Frames) > 0 && (fresh || sent.Frame == nil || *sent.Frame != *n.Frame) {
@@ -364,7 +364,7 @@ func (b *viewBuilder) bashExecution(n *ViewNode, out *frontend.ViewNode) tui.Com
 }
 
 func equalBashComplete(a, b ViewBashComplete) bool {
-	return equalIntPtr(a.ExitCode, b.ExitCode) && a.Cancelled == b.Cancelled && a.Truncated == b.Truncated && a.FullOutputPath == b.FullOutputPath
+	return equalIntPtr(a.ExitCode, b.ExitCode) && a.Cancelled == b.Cancelled && a.Truncated == b.Truncated && a.FullOutputPath == b.FullOutputPath && a.FullOutputError == b.FullOutputError
 }
 
 func equalIntPtr(a, b *int) bool {

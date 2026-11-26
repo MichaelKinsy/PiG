@@ -94,11 +94,20 @@ fn bash_execution_to_text(message: &Value) -> String {
             js_to_string(Some(exit_code))
         );
     }
-    if js_truthy(&message["truncated"]) && js_truthy(&message["fullOutputPath"]) {
-        text += &format!(
-            "\n\n[Output truncated. Full output: {}]",
-            js_to_string(message.get("fullOutputPath"))
-        );
+    if js_truthy(&message["truncated"]) {
+        if js_truthy(&message["fullOutputPath"]) {
+            text += &format!(
+                "\n\n[Output truncated. Full output: {}]",
+                js_to_string(message.get("fullOutputPath"))
+            );
+        } else if js_truthy(&message["fullOutputError"]) {
+            text += &format!(
+                "\n\n[Output truncated. Could not save the full output: {}]",
+                js_to_string(message.get("fullOutputError"))
+            );
+        } else {
+            text += "\n\n[Output truncated]";
+        }
     }
     text
 }
@@ -136,5 +145,55 @@ pub(crate) fn js_number_to_string(value: f64) -> String {
         "-Infinity".to_string()
     } else {
         js_number_string(value)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::convert_to_llm;
+    use serde_json::json;
+
+    #[test]
+    fn bash_execution_truncation_notes() {
+        for (msg, want) in [
+            (
+                json!({"role": "bashExecution", "command": "ls", "output": "a", "truncated": true, "fullOutputPath": "/tmp/out.log"}),
+                "[Output truncated. Full output: /tmp/out.log]",
+            ),
+            (
+                json!({"role": "bashExecution", "command": "ls", "output": "a", "truncated": true, "fullOutputError": "ENOSPC: no space left"}),
+                "[Output truncated. Could not save the full output: ENOSPC: no space left]",
+            ),
+            (
+                json!({"role": "bashExecution", "command": "ls", "output": "a", "truncated": true}),
+                "[Output truncated]",
+            ),
+        ] {
+            let out = convert_to_llm(&[msg]);
+            assert_eq!(out.len(), 1);
+            let text = out[0]["content"][0]["text"].as_str().unwrap();
+            assert!(
+                text.ends_with(&format!("\n\n{want}")),
+                "text={text:?} want suffix {want:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn user_bash_event_result_drops_null_full_output_error() {
+        let out = crate::user_bash::user_bash_event_result(Some(json!({
+            "result": {
+                "output": "ok",
+                "exitCode": 0,
+                "cancelled": false,
+                "truncated": true,
+                "fullOutputPath": null,
+                "fullOutputError": null
+            }
+        })))
+        .unwrap();
+        let result = out["result"].as_object().unwrap();
+        assert!(!result.contains_key("fullOutputPath"));
+        assert!(!result.contains_key("fullOutputError"));
     }
 }

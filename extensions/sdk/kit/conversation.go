@@ -201,10 +201,11 @@ func (t *ToolExecution) SetOutputPad(padding int) { t.OutputPad = padding }
 // unknown), whether the command was cancelled, whether its output was
 // truncated, and where the full output is ("" for nowhere).
 type BashComplete struct {
-	ExitCode       *int
-	Cancelled      bool
-	Truncated      bool
-	FullOutputPath string
+	ExitCode        *int
+	Cancelled       bool
+	Truncated       bool
+	FullOutputPath  string
+	FullOutputError string
 }
 
 // BashExecution is upstream BashExecutionComponent(command, ui,
@@ -238,6 +239,12 @@ func (b *BashExecution) AppendOutput(chunk string) { b.Output += chunk }
 // {truncated} : undefined, fullOutputPath).
 func (b *BashExecution) SetComplete(exitCode *int, cancelled, truncated bool, fullOutputPath string) {
 	b.Complete = &BashComplete{ExitCode: exitCode, Cancelled: cancelled, Truncated: truncated, FullOutputPath: fullOutputPath}
+}
+
+// SetCompleteWithError is upstream setComplete(exitCode, cancelled, truncated ?
+// {truncated} : undefined, fullOutputPath, fullOutputError).
+func (b *BashExecution) SetCompleteWithError(exitCode *int, cancelled, truncated bool, fullOutputPath, fullOutputError string) {
+	b.Complete = &BashComplete{ExitCode: exitCode, Cancelled: cancelled, Truncated: truncated, FullOutputPath: fullOutputPath, FullOutputError: fullOutputError}
 }
 
 // SetExpanded is upstream setExpanded.

@@ -1491,10 +1491,11 @@ type ViewToolResult struct {
 // code (nil: unknown), whether it was cancelled, whether the output was
 // truncated, and where the full output is.
 type ViewBashComplete struct {
-	ExitCode       *int   `json:"exitCode,omitempty"`
-	Cancelled      bool   `json:"cancelled,omitempty"`
-	Truncated      bool   `json:"truncated,omitempty"`
-	FullOutputPath string `json:"fullOutputPath,omitempty"`
+	ExitCode        *int   `json:"exitCode,omitempty"`
+	Cancelled       bool   `json:"cancelled,omitempty"`
+	Truncated       bool   `json:"truncated,omitempty"`
+	FullOutputPath  string `json:"fullOutputPath,omitempty"`
+	FullOutputError string `json:"fullOutputError,omitempty"`
 }
 
 // ViewStackEntry mirrors upstream StackEntryOptions without visible. A nil

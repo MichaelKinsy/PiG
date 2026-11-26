@@ -997,7 +997,14 @@ class BashExecution(_Node):
         """Upstream ``appendOutput``."""
         self.output += str(chunk)
 
-    def set_complete(self, exit_code: int | None, cancelled: bool = False, truncated: bool = False, full_output_path: str = "") -> None:
+    def set_complete(
+        self,
+        exit_code: int | None,
+        cancelled: bool = False,
+        truncated: bool = False,
+        full_output_path: str = "",
+        full_output_error: str = "",
+    ) -> None:
         """Upstream ``setComplete(exitCode, cancelled, truncated ? {truncated}
         : undefined, fullOutputPath)``: the exit code (None when unknown),
         whether the command was cancelled, whether its output was truncated,
@@ -1011,6 +1018,8 @@ class BashExecution(_Node):
             complete["truncated"] = True
         if full_output_path:
             complete["fullOutputPath"] = str(full_output_path)
+        if full_output_error:
+            complete["fullOutputError"] = str(full_output_error)
         self.complete = complete
 
     def set_expanded(self, expanded: bool) -> None:

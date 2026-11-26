@@ -2535,6 +2535,9 @@ func coerceUserBashEventResult(value any) (*extension.UserBashEventResult, bool)
 			if path, present := result["fullOutputPath"]; present && path == nil {
 				return nil, false
 			}
+			if fullErr, present := result["fullOutputError"]; present && fullErr == nil {
+				return nil, false
+			}
 			return &extension.UserBashEventResult{Result: result}, true
 		}
 	}
@@ -2574,6 +2577,11 @@ func isUserBashEventResult(result *extension.UserBashEventResult) bool {
 	}
 	if path, present := record["fullOutputPath"]; present && path != nil {
 		if _, ok := path.(string); !ok {
+			return false
+		}
+	}
+	if fullErr, present := record["fullOutputError"]; present && fullErr != nil {
+		if _, ok := fullErr.(string); !ok {
 			return false
 		}
 	}
