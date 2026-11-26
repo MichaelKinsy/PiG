@@ -397,4 +397,14 @@ func TestUpstreamImageHyperlink(t *testing.T) {
 			t.Fatalf("plain text mismatch: got len %d, want %d", len(plain), len(url))
 		}
 	})
+	t.Run("hyperlink URL length boundary at 8192", func(t *testing.T) {
+		atLimit := "https://example.com/" + strings.Repeat("a", maxHyperlinkURLLength-len("https://example.com/"))
+		if got := Hyperlink("ok", atLimit); !strings.Contains(got, "\x1b]8;;") {
+			t.Fatalf("URL of exact length %d should still be linked", len(atLimit))
+		}
+		overLimit := atLimit + "a"
+		if got := Hyperlink("ok", overLimit); got != "ok" {
+			t.Fatalf("URL of length %d should return plain text, got %q", len(overLimit), got)
+		}
+	})
 }
