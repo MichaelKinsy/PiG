@@ -121,7 +121,9 @@ func TestExtensionDialogBlockedStatusFirstLineAndKind(t *testing.T) {
 		if got != want {
 			t.Fatalf("blocked report = %+v, want %+v", got, want)
 		}
-		if err := m.dispatchKey(t.Context(), "\r"); err != nil { t.Fatal(err) }
+		if err := m.dispatchKey(t.Context(), "\r"); err != nil {
+			t.Fatal(err)
+		}
 		ans := requireResult(t, res, "selector")
 		if ans.err != nil || ans.value != "Trust" {
 			t.Fatalf("result = %q, %v", ans.value, ans.err)
@@ -144,7 +146,9 @@ func TestExtensionDialogBlockedStatusFirstLineAndKind(t *testing.T) {
 		if got != want {
 			t.Fatalf("blocked report = %+v, want %+v", got, want)
 		}
-		if err := m.dispatchKey(t.Context(), "\r"); err != nil { t.Fatal(err) }
+		if err := m.dispatchKey(t.Context(), "\r"); err != nil {
+			t.Fatal(err)
+		}
 		ans := requireResult(t, res, "selector")
 		if ans.err != nil || ans.value != "Trust" {
 			t.Fatalf("result = %q, %v", ans.value, ans.err)

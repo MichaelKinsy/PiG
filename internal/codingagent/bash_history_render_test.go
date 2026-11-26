@@ -26,10 +26,10 @@ func TestResumedBashExecutionEntryRendersLikePi(t *testing.T) {
 	}
 	m.renderInitialMessages()
 	lines := m.chatContainer.Render(80)
-			for i, l := range lines {
-				lines[i] = strings.TrimRight(stripANSITest(l), " ")
-			}
-			got := strings.Join(lines, "\n")
+	for i, l := range lines {
+		lines[i] = strings.TrimRight(stripANSITest(l), " ")
+	}
+	got := strings.Join(lines, "\n")
 	for _, want := range []string{"before the shell command", "$ make test", "two", "(exit 2)", "$ sleep 9", "(cancelled)"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("transcript lacks %q:\n%s", want, got)

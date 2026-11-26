@@ -165,11 +165,6 @@ type startupTerminal interface {
 	Write(data string)
 }
 
-// runStartupComponent runs a component built after configureStartupTui.
-func runStartupComponent(component startupComponent, opts StartupUIOptions, clear bool) (bool, error) {
-	return runStartupComponentBlocked(component, opts, clear, nil)
-}
-
 func runStartupComponentBlocked(component startupComponent, opts StartupUIOptions, clear bool, blocked *BlockedStatus) (bool, error) {
 	ui := tui.New()
 	ui.SetLogDirectory(opts.AgentDir)

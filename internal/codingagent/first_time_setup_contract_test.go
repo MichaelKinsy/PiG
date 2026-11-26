@@ -90,8 +90,8 @@ func TestFirstTimeSetupBindingOverlapsMatchPi(t *testing.T) {
 		tui.SetKeybindings(tui.NewKeybindingsManager(tui.TUIKeybindingDefinitionsFor(tui.HostKeybindingPlatform()), user))
 		var events [][]any
 		component := NewFirstTimeSetupComponent(FirstTimeSetupOptions{
-			OnSubmit:       func(r FirstTimeSetupResult) { events = append(events, []any{"submit", r.ShareAnalytics}) },
-			OnCancel:       func() { events = append(events, []any{"cancel"}) },
+			OnSubmit: func(r FirstTimeSetupResult) { events = append(events, []any{"submit", r.ShareAnalytics}) },
+			OnCancel: func() { events = append(events, []any{"cancel"}) },
 		})
 		got := firstSetupOracleResult{Steps: [][][]any{{}}, Frames: [][]string{body(component.Render(probe.Width))}}
 		for _, key := range probe.Keys {

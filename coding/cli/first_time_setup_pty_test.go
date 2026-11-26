@@ -105,7 +105,9 @@ func firstTimeSetupSession(t *testing.T, keys []string) string {
 			}
 		}
 	}
-	waitFor(0, func(text string) bool { return strings.Contains(text, "Pick a sprite.") || strings.Contains(text, "Opt-in to anonymous usage data sharing?") }, "first-time setup")
+	waitFor(0, func(text string) bool {
+		return strings.Contains(text, "Pick a sprite.") || strings.Contains(text, "Opt-in to anonymous usage data sharing?")
+	}, "first-time setup")
 	for _, key := range keys {
 		if _, err := master.WriteString(key); err != nil {
 			t.Fatal(err)

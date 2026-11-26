@@ -6,30 +6,30 @@ import "github.com/MichaelKinsy/PiG/ai"
 
 // settingsDefaults is SETTINGS_DEFAULTS, the defaults the published JSON Schema carries.
 var settingsDefaults = struct {
-	transport, sessionShareDestination, steeringMode, followUpMode                        string
-	compactionEnabled                                                                     bool
-	compactionReserveTokens, compactionKeepRecentTokens                                   int
-	branchSummaryReserveTokens                                                            int
-	branchSummarySkipPrompt                                                               bool
-	retryEnabled                                                                          bool
-	retryMaxRetries, retryBaseDelayMs, retryMaxAgentDelayMs, retryProviderMaxRetryDelayMs int
-	hideThinkingBlock, quietStartup                                                       bool
-	defaultProjectTrust                                                                   string
-	collapseChangelog, enableInstallTelemetry, enableAnalytics, enableSkillCommands       bool
-	terminalShowImages                                                                    bool
-	terminalImageWidthCells                                                               int
-	terminalClearOnShrink, terminalShowTerminalProgress                                   bool
-	imagesAutoResize, imagesBlockImages                                                   bool
-	doubleEscapeAction, treeFilterMode                                                    string
-	editorPaddingX, outputPad, autocompleteMaxVisible                                     int
-	markdownCodeBlockIndent, markdownMermaid                                              string
-	warningsAnthropicExtraUsage                                                           bool
+	transport, sessionShareDestination, steeringMode, followUpMode                         string
+	compactionEnabled                                                                      bool
+	compactionReserveTokens, compactionKeepRecentTokens                                    int
+	branchSummaryReserveTokens                                                             int
+	branchSummarySkipPrompt                                                                bool
+	retryEnabled                                                                           bool
+	retryMaxRetries, retryBaseDelayMs, retryMaxAgentDelayMs, retryProviderMaxRetryDelayMs  int
+	hideThinkingBlock, quietStartup                                                        bool
+	defaultProjectTrust                                                                    string
+	collapseChangelog, enableInstallTelemetry, enableAnalytics, enableSkillCommands        bool
+	terminalShowImages                                                                     bool
+	terminalImageWidthCells                                                                int
+	terminalClearOnShrink, terminalShowTerminalProgress                                    bool
+	imagesAutoResize, imagesBlockImages                                                    bool
+	doubleEscapeAction, treeFilterMode                                                     string
+	editorPaddingX, outputPad, autocompleteMaxVisible                                      int
+	markdownCodeBlockIndent, markdownMermaid                                               string
+	warningsAnthropicExtraUsage                                                            bool
 	noticesCacheMisses, noticesCacheWarming, noticesCompactionCosts, noticesReasoningDrops bool
-	codemodeMode                                                                          string
-	codemodeInlineBudget                                                                  int
-	cacheWarming, tuiMode, fullscreenExitOutput, fullscreenScrollbar                      string
-	fullscreenCopyOnSelect                                                                bool
-	fullscreenWheelScrollLines                                                            string
+	codemodeMode                                                                           string
+	codemodeInlineBudget                                                                   int
+	cacheWarming, tuiMode, fullscreenExitOutput, fullscreenScrollbar                       string
+	fullscreenCopyOnSelect                                                                 bool
+	fullscreenWheelScrollLines                                                             string
 }{
 	transport: "auto", sessionShareDestination: "auto", steeringMode: "one-at-a-time", followUpMode: "one-at-a-time",
 	compactionEnabled: true, compactionReserveTokens: 16384, compactionKeepRecentTokens: 20000,
