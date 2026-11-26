@@ -5069,7 +5069,10 @@ impl Context {
             opts.insert("timeout".into(), serde_json::Value::from(timeout));
         }
         if let Some(blocked_kind) = options.blocked_kind {
-            opts.insert("blockedKind".into(), serde_json::Value::from(blocked_kind.as_str()));
+            opts.insert(
+                "blockedKind".into(),
+                serde_json::Value::from(blocked_kind.as_str()),
+            );
         }
         serde_json::Value::Object(opts)
     }

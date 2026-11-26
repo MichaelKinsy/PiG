@@ -311,74 +311,128 @@ const (
 
 // NoticeSettings mirrors upstream NoticeSettings (packages/coding-agent/src/core/settings-schema.ts).
 type NoticeSettings struct {
-	CacheMisses        bool            `json:"cacheMisses,omitempty"`
-	cacheMissesSet     bool            `json:"-"`
-	CacheWarming       bool            `json:"cacheWarming,omitempty"`
-	cacheWarmingSet    bool            `json:"-"`
-	CompactionCosts    bool            `json:"compactionCosts,omitempty"`
-	compactionCostsSet bool            `json:"-"`
-	ReasoningDrops     bool            `json:"reasoningDrops,omitempty"`
-	reasoningDropsSet  bool            `json:"-"`
-	extra              map[string]bool `json:"-"`
+	CacheMisses        bool                       `json:"cacheMisses,omitempty"`
+	cacheMissesSet     bool                       `json:"-"`
+	CacheWarming       bool                       `json:"cacheWarming,omitempty"`
+	cacheWarmingSet    bool                       `json:"-"`
+	CompactionCosts    bool                       `json:"compactionCosts,omitempty"`
+	compactionCostsSet bool                       `json:"-"`
+	ReasoningDrops     bool                       `json:"reasoningDrops,omitempty"`
+	reasoningDropsSet  bool                       `json:"-"`
+	extra              map[string]bool            `json:"-"`
+	raw                map[string]json.RawMessage `json:"-"`
+	keyOrder           []string                   `json:"-"`
 }
 
 func (n NoticeSettings) MarshalJSON() ([]byte, error) {
 	encoded := orderedjson.New()
-	if n.cacheMissesSet || n.CacheMisses {
-		encoded.Set("cacheMisses", json.RawMessage(strconv.FormatBool(n.CacheMisses)))
-	}
-	if n.cacheWarmingSet || n.CacheWarming {
-		encoded.Set("cacheWarming", json.RawMessage(strconv.FormatBool(n.CacheWarming)))
-	}
-	if n.compactionCostsSet || n.CompactionCosts {
-		encoded.Set("compactionCosts", json.RawMessage(strconv.FormatBool(n.CompactionCosts)))
-	}
-	if n.reasoningDropsSet || n.ReasoningDrops {
-		encoded.Set("reasoningDrops", json.RawMessage(strconv.FormatBool(n.ReasoningDrops)))
-	}
-	if len(n.extra) > 0 {
-		keys := make([]string, 0, len(n.extra))
-		for k := range n.extra {
-			keys = append(keys, k)
+	setKey := func(k string) {
+		switch NoticeKey(k) {
+		case NoticeCacheMisses:
+			if n.cacheMissesSet || n.CacheMisses {
+				encoded.Set(k, json.RawMessage(strconv.FormatBool(n.CacheMisses)))
+				return
+			}
+		case NoticeCacheWarming:
+			if n.cacheWarmingSet || n.CacheWarming {
+				encoded.Set(k, json.RawMessage(strconv.FormatBool(n.CacheWarming)))
+				return
+			}
+		case NoticeCompactionCosts:
+			if n.compactionCostsSet || n.CompactionCosts {
+				encoded.Set(k, json.RawMessage(strconv.FormatBool(n.CompactionCosts)))
+				return
+			}
+		case NoticeReasoningDrops:
+			if n.reasoningDropsSet || n.ReasoningDrops {
+				encoded.Set(k, json.RawMessage(strconv.FormatBool(n.ReasoningDrops)))
+				return
+			}
+		default:
+			if v, ok := n.extra[k]; ok {
+				encoded.Set(k, json.RawMessage(strconv.FormatBool(v)))
+				return
+			}
 		}
-		slices.Sort(keys)
-		for _, k := range keys {
-			encoded.Set(k, json.RawMessage(strconv.FormatBool(n.extra[k])))
+		if raw, ok := n.raw[k]; ok {
+			encoded.Set(k, raw)
+		}
+	}
+	seen := make(map[string]bool, len(n.keyOrder))
+	for _, k := range n.keyOrder {
+		if seen[k] {
+			continue
+		}
+		seen[k] = true
+		setKey(k)
+	}
+	for _, k := range []string{"cacheMisses", "cacheWarming", "compactionCosts", "reasoningDrops"} {
+		if !seen[k] {
+			seen[k] = true
+			setKey(k)
+		}
+	}
+	if len(n.extra) > 0 || len(n.raw) > 0 {
+		var rest []string
+		for k := range n.extra {
+			if !seen[k] {
+				seen[k] = true
+				rest = append(rest, k)
+			}
+		}
+		for k := range n.raw {
+			if !seen[k] {
+				seen[k] = true
+				rest = append(rest, k)
+			}
+		}
+		slices.Sort(rest)
+		for _, k := range rest {
+			setKey(k)
 		}
 	}
 	return json.Marshal(encoded)
 }
 
 func (n *NoticeSettings) UnmarshalJSON(data []byte) error {
-	var raw map[string]json.RawMessage
-	if err := json.Unmarshal(data, &raw); err != nil {
+	var obj orderedjson.Object
+	if err := json.Unmarshal(data, &obj); err != nil {
 		return err
 	}
 	*n = NoticeSettings{}
-	for k, v := range raw {
-		var b bool
-		if err := json.Unmarshal(v, &b); err != nil {
+	for _, k := range obj.Keys() {
+		v, _ := obj.Get(k)
+		n.keyOrder = append(n.keyOrder, k)
+		trimmed := bytes.TrimSpace(v)
+		// Match JS: only JSON booleans toggle the typed notice flag; null and non-boolean values
+		// are preserved verbatim on round-trip without setting the typed boolean flag.
+		if bytes.Equal(trimmed, []byte("true")) || bytes.Equal(trimmed, []byte("false")) {
+			b := bytes.Equal(trimmed, []byte("true"))
+			switch NoticeKey(k) {
+			case NoticeCacheMisses:
+				n.CacheMisses = b
+				n.cacheMissesSet = true
+			case NoticeCacheWarming:
+				n.CacheWarming = b
+				n.cacheWarmingSet = true
+			case NoticeCompactionCosts:
+				n.CompactionCosts = b
+				n.compactionCostsSet = true
+			case NoticeReasoningDrops:
+				n.ReasoningDrops = b
+				n.reasoningDropsSet = true
+			default:
+				if n.extra == nil {
+					n.extra = map[string]bool{}
+				}
+				n.extra[k] = b
+			}
 			continue
 		}
-		switch NoticeKey(k) {
-		case NoticeCacheMisses:
-			n.CacheMisses = b
-			n.cacheMissesSet = true
-		case NoticeCacheWarming:
-			n.CacheWarming = b
-			n.cacheWarmingSet = true
-		case NoticeCompactionCosts:
-			n.CompactionCosts = b
-			n.compactionCostsSet = true
-		case NoticeReasoningDrops:
-			n.ReasoningDrops = b
-			n.reasoningDropsSet = true
-		default:
-			if n.extra == nil {
-				n.extra = map[string]bool{}
-			}
-			n.extra[k] = b
+		if n.raw == nil {
+			n.raw = map[string]json.RawMessage{}
 		}
+		n.raw[k] = append(json.RawMessage(nil), v...)
 	}
 	return nil
 }
@@ -390,6 +444,15 @@ func cloneNoticeSettings(n *NoticeSettings) *NoticeSettings {
 	c := *n
 	if len(n.extra) > 0 {
 		c.extra = maps.Clone(n.extra)
+	}
+	if len(n.raw) > 0 {
+		c.raw = make(map[string]json.RawMessage, len(n.raw))
+		for k, v := range n.raw {
+			c.raw[k] = append(json.RawMessage(nil), v...)
+		}
+	}
+	if len(n.keyOrder) > 0 {
+		c.keyOrder = slices.Clone(n.keyOrder)
 	}
 	return &c
 }
@@ -1478,6 +1541,7 @@ func (s *Settings) UnmarshalJSON(data []byte) error {
 	s.Markdown = w.Markdown
 	s.Warnings = w.Warnings
 	s.Notices = w.Notices
+	s.ShowCacheMissNotices = s.GetNotices().CacheMisses
 	s.SessionDir = w.SessionDir
 	s.HTTPProxy = w.HTTPProxy
 	s.webSocketConnectTimeoutNull = false
@@ -3479,6 +3543,7 @@ func (sm *SettingsManager) SetNotice(key NoticeKey, shown bool) error {
 		case NoticeCacheMisses:
 			s.Notices.CacheMisses = shown
 			s.Notices.cacheMissesSet = true
+			s.ShowCacheMissNotices = shown
 		case NoticeCacheWarming:
 			s.Notices.CacheWarming = shown
 			s.Notices.cacheWarmingSet = true
@@ -3499,11 +3564,24 @@ func (sm *SettingsManager) SetNotice(key NoticeKey, shown bool) error {
 	})
 }
 
-// SetShowCacheMissNotices toggles the cacheMisses transcript notice.
+// SetShowCacheMissNotices toggles all four transcript notices to match 0.8.0 behavior.
 //
-// Deprecated: use SetNotice(NoticeCacheMisses, show) instead; scheduled for removal in 0.9.0.
+// Deprecated: use SetNotice(key, show) instead; scheduled for removal in 0.9.0.
 func (sm *SettingsManager) SetShowCacheMissNotices(show bool) error {
-	return sm.SetNotice(NoticeCacheMisses, show)
+	return sm.UpdateGlobal(func(s *Settings) {
+		if s.Notices == nil {
+			s.Notices = &NoticeSettings{}
+		}
+		s.Notices.CacheMisses = show
+		s.Notices.cacheMissesSet = true
+		s.Notices.CacheWarming = show
+		s.Notices.cacheWarmingSet = true
+		s.Notices.CompactionCosts = show
+		s.Notices.compactionCostsSet = true
+		s.Notices.ReasoningDrops = show
+		s.Notices.reasoningDropsSet = true
+		s.ShowCacheMissNotices = show
+	})
 }
 
 // SetShellPath sets the shell path for the bash tool.
@@ -4597,7 +4675,21 @@ func mergeSettings(global, project Settings) Settings {
 			}
 			maps.Copy(m.Notices.extra, project.Notices.extra)
 		}
+		if len(project.Notices.raw) > 0 {
+			if m.Notices.raw == nil {
+				m.Notices.raw = map[string]json.RawMessage{}
+			}
+			for k, v := range project.Notices.raw {
+				m.Notices.raw[k] = append(json.RawMessage(nil), v...)
+			}
+		}
+		for _, k := range project.Notices.keyOrder {
+			if !slices.Contains(m.Notices.keyOrder, k) {
+				m.Notices.keyOrder = append(m.Notices.keyOrder, k)
+			}
+		}
 	}
+	m.ShowCacheMissNotices = m.GetNotices().CacheMisses
 	if project.ShowHardwareCursor != nil {
 		m.ShowHardwareCursor = cloneBoolPtr(project.ShowHardwareCursor)
 	}

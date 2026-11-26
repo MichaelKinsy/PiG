@@ -486,5 +486,5 @@ class SettingsManager(_GraphObject):
         return bool(self.get_notices().get("cacheMisses", False))
 
     def set_show_cache_miss_notices(self, show: bool) -> None:
-        """Deprecated: use ``set_notice("cacheMisses", show)`` instead; scheduled for removal in 0.9.0."""
-        self.set_notice("cacheMisses", show)
+        """Deprecated: use ``set_notice(key, show)`` instead; scheduled for removal in 0.9.0."""
+        self._invoke("setShowCacheMissNotices", show)

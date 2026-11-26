@@ -659,8 +659,8 @@ func (g *GraphSettingsManager) Call(_ context.Context, method string, raw json.R
 		// Deprecated 0.8.x compatibility alias over notices.cacheMisses (removal in 0.9.0).
 		return sm.GetNotices().CacheMisses, nil
 	case "setShowCacheMissNotices":
-		// Deprecated 0.8.x compatibility alias over notices.cacheMisses (removal in 0.9.0).
-		return nil, setBool(args, 0, func(shown bool) error { return sm.SetNotice(NoticeCacheMisses, shown) })
+		// Deprecated 0.8.x compatibility alias over notices.* (removal in 0.9.0).
+		return nil, setBool(args, 0, sm.SetShowCacheMissNotices)
 	case "getNotices":
 		notices := sm.GetNotices()
 		out := map[string]bool{

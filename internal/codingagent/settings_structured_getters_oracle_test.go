@@ -14,7 +14,7 @@ import (
 )
 
 // settings-manager.ts getBranchSummarySettings, getBranchSummarySkipPrompt, getRetryEnabled, getRetrySettings, getProviderRetrySettings,
-// getCacheWarmingMode (global file only), getCollapseChangelog, getEnableInstallTelemetry, getEnableAnalytics, getShowCacheMissNotices,
+// getCacheWarmingMode (global file only), getCollapseChangelog, getEnableInstallTelemetry, getEnableAnalytics, getNotices,
 // getQuietStartup, getDefaultProjectTrust (global file only), getDoubleEscapeAction, getTreeFilterMode, getOutputPad, getMermaidRenderingMode,
 // getImageWidthCells, getShowTerminalProgress, getTuiMode, getFullscreenExitOutput, getFullscreenScrollbar, getFullscreenCopyOnSelect,
 // getFullscreenWheelScrollLines, getEnabledModels, getShellCommandPrefix, getNpmCommand, getLastChangelogVersion and getTrackingId against pinned Pi, over layered

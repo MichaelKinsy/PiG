@@ -264,10 +264,16 @@ mod hyperlink_tests {
     #[test]
     fn hyperlink_url_length_cap_utf16() {
         let prefix = "https://example.com/";
-        let at_limit = format!("{prefix}{}", "a".repeat(MAX_HYPERLINK_URL_LENGTH - prefix.len()));
+        let at_limit = format!(
+            "{prefix}{}",
+            "a".repeat(MAX_HYPERLINK_URL_LENGTH - prefix.len())
+        );
         assert!(hyperlink("ok", &at_limit).contains("\x1b]8;;"));
         assert_eq!(hyperlink("ok", &format!("{at_limit}a")), "ok");
         assert!(hyperlink("ok", &format!("{prefix}{}", "中".repeat(4000))).contains("\x1b]8;;"));
-        assert_eq!(hyperlink("ok", &format!("{prefix}{}", "😀".repeat(4100))), "ok");
+        assert_eq!(
+            hyperlink("ok", &format!("{prefix}{}", "😀".repeat(4100))),
+            "ok"
+        );
     }
 }

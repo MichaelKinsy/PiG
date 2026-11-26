@@ -26,10 +26,10 @@ type firstSetupOracleResult struct {
 	Frames [][]string `json:"frames"`
 }
 
-// first-time-setup.ts handleInput against pinned Pi: k/up and j/down clamp over the options and preview the theme only on a change,
-// confirm (or LF) continues then submits, the cancel binding skips. pig divergence (D88): Pig inserts a sprite step after the theme
-// step and draws its own logo and "PiG" name (Pi: APP_NAME "pi"), so the harness presses the key that entered the sprite step once more (Pi has no such
-// step) and the frames compare from the "Welcome" line down with the app name read as Pi's; events, results and every option line must agree.
+// first-time-setup.ts handleInput against pinned Pi: confirm (or LF) continues then submits, the cancel binding skips.
+// pig divergence (D88): PiG inserts a sprite step before the analytics step and draws its own logo and "PiG" name (Pi: APP_NAME "pi"),
+// so the harness presses LF once on the sprite step (Pi has no such step) and the frames compare from the "Welcome" line down
+// with the app name read as Pi's; events, results and every option line must agree.
 func TestFirstTimeSetupMatchesPi(t *testing.T) {
 	restoreStartupTheme(t)
 	bindings := []map[string][]string{

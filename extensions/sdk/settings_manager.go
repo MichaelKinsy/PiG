@@ -747,9 +747,10 @@ func (s SettingsManager) GetShowCacheMissNotices() (bool, error) {
 	return notices["cacheMisses"], nil
 }
 
-// SetShowCacheMissNotices toggles the cacheMisses transcript notice.
+// SetShowCacheMissNotices toggles all four transcript notices to match 0.8.0 behavior.
 //
-// Deprecated: use SetNotice("cacheMisses", show) instead; scheduled for removal in 0.9.0.
+// Deprecated: use SetNotice(key, show) instead; scheduled for removal in 0.9.0.
 func (s SettingsManager) SetShowCacheMissNotices(show bool) error {
-	return s.SetNotice("cacheMisses", show)
+	_, err := graphMethodCall[graphDone](s.object, "setShowCacheMissNotices", show)
+	return err
 }

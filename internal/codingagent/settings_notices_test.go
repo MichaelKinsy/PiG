@@ -128,6 +128,10 @@ func TestSettingsManagerNotices(t *testing.T) {
 		if !reflect.DeepEqual(saved, wantSaved) {
 			t.Fatalf("saved = %#v, want %#v", saved, wantSaved)
 		}
+		got := sm.GetNotices()
+		if got.CacheMisses || got.CacheWarming || got.CompactionCosts || got.ReasoningDrops {
+			t.Fatalf("merged GetNotices() = %+v, want all false", got)
+		}
 	})
 
 	t.Run("preserves unknown notice keys written via SetNotice", func(t *testing.T) {
@@ -154,17 +158,55 @@ func TestSettingsManagerNotices(t *testing.T) {
 		}
 	})
 
-	t.Run("deprecated ShowCacheMissNotices wrappers delegate to notices.cacheMisses", func(t *testing.T) {
+	t.Run("deprecated ShowCacheMissNotices field and wrappers sync all four notices", func(t *testing.T) {
 		agentDir, projectDir := t.TempDir(), t.TempDir()
 		sm := NewSettingsManager(projectDir, agentDir)
-		if sm.GetShowCacheMissNotices() {
-			t.Fatal("default GetShowCacheMissNotices = true, want false")
+		if sm.GetShowCacheMissNotices() || sm.Get().ShowCacheMissNotices {
+			t.Fatalf("default ShowCacheMissNotices getter=%v field=%v, want false", sm.GetShowCacheMissNotices(), sm.Get().ShowCacheMissNotices)
 		}
 		if err := sm.SetShowCacheMissNotices(true); err != nil {
 			t.Fatal(err)
 		}
-		if !sm.GetShowCacheMissNotices() || !sm.GetNotices().CacheMisses {
-			t.Fatalf("after SetShowCacheMissNotices(true): getter=%v notices=%+v", sm.GetShowCacheMissNotices(), sm.GetNotices())
+		got := sm.GetNotices()
+		if !sm.GetShowCacheMissNotices() || !sm.Get().ShowCacheMissNotices || !got.CacheMisses || !got.CacheWarming || !got.CompactionCosts || !got.ReasoningDrops {
+			t.Fatalf("after SetShowCacheMissNotices(true): getter=%v field=%v notices=%+v", sm.GetShowCacheMissNotices(), sm.Get().ShowCacheMissNotices, got)
+		}
+		// Reload from disk and verify Settings.ShowCacheMissNotices is populated on load (T4).
+		reloaded := NewSettingsManager(projectDir, agentDir)
+		if !reloaded.Get().ShowCacheMissNotices {
+			t.Fatalf("reloaded Settings.ShowCacheMissNotices = false, want true")
+		}
+		// Host extension graph aliases (T9).
+		g := &GraphSettingsManager{manager: sm}
+		val, err := g.Call(t.Context(), "getShowCacheMissNotices", json.RawMessage(`[]`))
+		if err != nil || val != true {
+			t.Fatalf("graph getShowCacheMissNotices = %v, %v; want true, nil", val, err)
+		}
+		if _, err := g.Call(t.Context(), "setShowCacheMissNotices", json.RawMessage(`[false]`)); err != nil {
+			t.Fatalf("graph setShowCacheMissNotices(false): %v", err)
+		}
+		got = sm.GetNotices()
+		if got.CacheMisses || got.CacheWarming || got.CompactionCosts || got.ReasoningDrops {
+			t.Fatalf("after graph setShowCacheMissNotices(false): notices=%+v, want all false", got)
+		}
+	})
+
+	t.Run("preserves non-boolean and null notice values on JSON round-trip", func(t *testing.T) {
+		const rawJSON = `{"notices":{"customStr":"keep","cacheMisses":null,"cacheWarming":true,"customNum":42}}`
+		var s Settings
+		if err := json.Unmarshal([]byte(rawJSON), &s); err != nil {
+			t.Fatal(err)
+		}
+		if s.Notices == nil || s.Notices.CacheMisses || s.Notices.cacheMissesSet || !s.Notices.CacheWarming {
+			t.Fatalf("unmarshaled notices = %+v", s.Notices)
+		}
+		encoded, err := json.Marshal(s.Notices)
+		if err != nil {
+			t.Fatal(err)
+		}
+		const want = `{"customStr":"keep","cacheMisses":null,"cacheWarming":true,"customNum":42}`
+		if string(encoded) != want {
+			t.Fatalf("round-trip = %s, want %s", encoded, want)
 		}
 	})
 

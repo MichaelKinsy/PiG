@@ -983,8 +983,10 @@ impl SettingsManager {
             .unwrap_or(false))
     }
 
-    #[deprecated(note = "use set_notice(\"cacheMisses\", show) instead; scheduled for removal in 0.9.0")]
+    #[deprecated(note = "use set_notice(key, show) instead; scheduled for removal in 0.9.0")]
     pub fn set_show_cache_miss_notices(&self, show: bool) -> io::Result<()> {
-        self.set_notice("cacheMisses", show)
+        self.object
+            .call("setShowCacheMissNotices", vec![json!(show)])
+            .map(|_| ())
     }
 }

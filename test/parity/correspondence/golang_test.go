@@ -134,7 +134,7 @@ func TestExtractGoCurrentSettingsAndPrompts(t *testing.T) {
 	}
 }
 
-func TestExtractGoCacheMissNoticesDescriptionMatchesPi0861(t *testing.T) {
+func TestExtractGoNoticesDescriptionMatchesPi161(t *testing.T) {
 	root, err := filepath.Abs("../../..")
 	if err != nil {
 		t.Fatal(err)

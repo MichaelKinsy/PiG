@@ -222,7 +222,7 @@ PiG-only (D80). When you enter an API key in `/login`, PiG shows dots, a charact
 
 ## Every other key
 
-Each row gives a value to try, what it does and the line in Pi 1.6.0's `packages/coding-agent/src/core/settings-schema.ts` that defines it. These were not run on this page. Most are visible in the first screen after you restart, in `/settings`, or in the behaviour named.
+Each row gives a value to try, what it does and the line in Pi 1.6.1's `packages/coding-agent/src/core/settings-schema.ts` that defines it. These were not run on this page. Most are visible in the first screen after you restart, in `/settings`, or in the behaviour named.
 
 | Key | Example | What you see | Pi |
 |---|---|---|---|
@@ -260,7 +260,7 @@ Each row gives a value to try, what it does and the line in Pi 1.6.0's `packages
 | `retry.provider` | `{"maxRetries": 2, "timeoutMs": 120000}` | Retries inside one provider request, and that request's timeout. Keep `maxRetries` at `0` unless you need it. See [Settings](/docs/latest/settings#provider-retries). | |
 | `codemode` | `{"mode": "only", "inlineBudget": 2000}` | See [Codemode](/docs/latest/codemode). | `:381` |
 | `warnings` | `{"anthropicExtraUsage": false}` | Hides the paid-extra-usage warning. | `:380` |
-| `notices` | `{"cacheMisses": true, "cacheWarming": true}` | Enables individual transcript notices (`cacheMisses`, `cacheWarming`, `compactionCosts`, `reasoningDrops`). | `:621` |
+| `notices` | `{"cacheMisses": true, "cacheWarming": true}` | Enables individual transcript notices (`cacheMisses`, `cacheWarming`, `compactionCosts`, `reasoningDrops`). | `:421` |
 | `enableInstallTelemetry` | `false` | No install or update ping is sent (D64). `PIG_TELEMETRY=0` does the same, and so does Pi's `PI_TELEMETRY=0`; `PIG_TELEMETRY` decides when both are set. | `:280` |
 | `enableAnalytics`, `trackingId` | written by the first-time setup | `false` after you choose `Don't share` (see [Your first ten minutes](/docs/latest/first-run)). | `:286,292` |
 | `extensionsAutoUpgrade`, `extensionsTypescriptRuntime` | `true`, `"bun"` | PiG-only (D109, D19). See [TypeScript extension runtimes](/docs/latest/typescript-runtimes). | none |

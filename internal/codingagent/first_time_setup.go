@@ -222,11 +222,20 @@ type FirstTimeSetupSettings interface {
 // pig divergence (D88): the sprite step offers the built-in sprites; extensions are not loaded yet, so their sprites are
 // chosen later with /sprite.
 func ShowFirstTimeSetup(settings FirstTimeSetupSettings, opts StartupUIOptions) (*FirstTimeSetupResult, error) {
-	ui := tui.New()
+	var ui *tui.TuiMainScreen
+	if opts.Output != nil {
+		ui = tui.NewWithOutput(opts.Output, 80, 24)
+	} else {
+		ui = tui.New()
+	}
 	ui.SetLogDirectory(opts.AgentDir)
 	ui.SetShowHardwareCursor(opts.Settings.GetShowHardwareCursor())
 	ui.SetClearOnShrink(opts.Settings.GetClearOnShrink())
-	return showFirstTimeSetupWith(settings, opts, ui, tui.NewStdioProcessTerminal())
+	term := opts.Terminal
+	if term == nil {
+		term = tui.NewStdioProcessTerminal()
+	}
+	return showFirstTimeSetupWith(settings, opts, ui, term)
 }
 
 func showFirstTimeSetupWith(settings FirstTimeSetupSettings, opts StartupUIOptions, ui *tui.TuiMainScreen, terminal StartupTerminal) (*FirstTimeSetupResult, error) {

@@ -224,5 +224,5 @@ whenever the manager reads or writes a scope: it runs FN on the scope's current 
     (and (hash-table-p notices) (eq (gethash "cacheMisses" notices) t))))
 
 (defun settings-set-show-cache-miss-notices (settings show)
-  "Deprecated: use (settings-set-notice settings \"cacheMisses\" show) instead; scheduled for removal in 0.9.0."
-  (settings-set-notice settings "cacheMisses" show))
+  "Deprecated: use (settings-set-notice settings key show) instead; scheduled for removal in 0.9.0."
+  (call-graph settings "setShowCacheMissNotices" (list (bool-value show))))
