@@ -26,7 +26,7 @@ func TestCrossProviderHandoffUpstream(t *testing.T) {
 		{"cloudflare-workers-ai", "@cf/moonshotai/kimi-k2.6", "cloudflare-kimi-k2.6", ""}, {"cloudflare-ai-gateway", "workers-ai/@cf/moonshotai/kimi-k2.6", "cloudflare-gateway-kimi-k2.6", ""},
 		{"cloudflare-ai-gateway", "claude-sonnet-4-5", "cloudflare-gateway-claude-sonnet-4-5", ""}, {"cloudflare-ai-gateway", "gpt-5.1", "cloudflare-gateway-gpt-5.1", ""},
 		{"groq", "openai/gpt-oss-120b", "groq-gpt-oss-120b", ""}, {"huggingface", "moonshotai/Kimi-K2.5", "huggingface-kimi-k2.5", ""}, {"together", "moonshotai/Kimi-K3", "together-kimi-k3", ""},
-		{"baseten", "zai-org/GLM-5.2", "baseten-glm-5.2", ""}, {"kimi-coding", "kimi-for-coding", "kimi-for-coding", ""}, {"meta", "muse-spark-1.3", "meta-muse-spark-1.3", ""}, {"mistral", "mistral-medium-latest", "mistral-devstral-medium", ""},
+		{"baseten", "zai-org/GLM-5.2", "baseten-glm-5.2", ""}, {"kimi-coding", "kimi-for-coding", "kimi-for-coding", ""}, {"meta", "muse-spark-1.3", "meta-muse-spark-1.3", ""}, {"mistral", "mistral-medium-latest", "mistral-medium", ""},
 		{"minimax", "MiniMax-M2.7", "minimax-m2.7", ""}, {"minimax-cn", "MiniMax-M2.7", "minimax-m2.7", ""},
 		{"opencode", "big-pickle", "zen-big-pickle", ""}, {"opencode", "claude-sonnet-4-5", "zen-claude-sonnet-4-5", ""}, {"opencode", "gemini-3-flash", "zen-gemini-3-flash", ""}, {"opencode", "glm-4.7-free", "zen-glm-4.7-free", ""},
 		{"opencode", "gpt-5.2-codex", "zen-gpt-5.2-codex", ""}, {"opencode", "minimax-m2.1-free", "zen-minimax-m2.1-free", ""}, {"opencode-go", "kimi-k2.5", "go-kimi-k2.5", ""}, {"opencode-go", "minimax-m2.5", "go-minimax-m2.5", ""},

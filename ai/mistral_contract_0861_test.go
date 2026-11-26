@@ -25,7 +25,7 @@ func TestMistralRawStopReasonsUpstream(t *testing.T) {
 		{"unmapped_error", StopReasonError, "Provider stopped with: unmapped_error"},
 	} {
 		t.Run(tc.raw, func(t *testing.T) {
-			model := mustGeneratedModel(t, "mistral", "devstral-medium-latest")
+			model := mustGeneratedModel(t, "mistral", "mistral-medium-latest")
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "text/event-stream")
 				_, _ = fmt.Fprintf(w, "data: {\"id\":\"mistral-response-id\",\"model\":%q,\"choices\":[{\"index\":0,\"finish_reason\":%q,\"delta\":{}}],\"usage\":{\"prompt_tokens\":1,\"completion_tokens\":0,\"total_tokens\":1}}\n\ndata: [DONE]\n\n", model.ID, tc.raw)

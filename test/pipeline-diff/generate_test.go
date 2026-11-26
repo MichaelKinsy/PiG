@@ -18,11 +18,11 @@ var targets = []target{
 	{"anthropic", "anthropic", "claude-sonnet-4-5", "anthropic-messages"},
 	{"openai-responses", "openai", "gpt-5", "openai-responses"},
 	{"azure-responses", "azure", "gpt-4.1", "azure-openai-responses"},
-	{"completions-groq", "groq", "llama-3.1-8b-instant", "openai-completions"},
+	{"completions-groq", "groq", "openai/gpt-oss-120b", "openai-completions"},
 	{"completions-kimi", "moonshotai", "kimi-k2.6", "openai-completions"},
 	{"completions-deepseek", "deepseek", "deepseek-flash", "openai-completions"},
 	{"google", "google", "gemini-2.5-flash", "google-generative-ai"},
-	{"mistral", "mistral", "devstral-medium-latest", "mistral-conversations"},
+	{"mistral", "mistral", "mistral-medium-latest", "mistral-conversations"},
 }
 
 // message is one Pi AgentMessage as JSON.
@@ -42,8 +42,8 @@ var foreignModels = [][3]string{
 	{"openai-responses", "openai", "gpt-5"},
 	{"google-generative-ai", "google", "gemini-2.5-flash"},
 	{"anthropic-messages", "anthropic", "claude-opus-4-5"},
-	{"openai-completions", "groq", "llama-3.1-8b-instant"},
-	{"mistral-conversations", "mistral", "devstral-medium-latest"},
+	{"openai-completions", "groq", "openai/gpt-oss-120b"},
+	{"mistral-conversations", "mistral", "mistral-medium-latest"},
 }
 
 // Mode selects what history shapes the generator may build.

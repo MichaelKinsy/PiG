@@ -12,13 +12,13 @@ import (
 func TestResolveGoogleThinkingLevelUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/ai/test/google-thinking-level-map.test.ts:101
 	model := &Model{ID: "gemini-3.7-flash", ProviderMeta: ProviderMetadata{ProviderID: "test-google"}}
-	for _, level := range []ModelThinkingLevel{ThinkingMinimal, ThinkingLow, ThinkingMedium, ThinkingHigh} {
+	for _, level := range []ModelThinkingLevel{ThinkingMinimal, ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh} {
 		got, err := resolveGoogleThinkingLevel(model, level)
 		if err != nil || string(got) != string(level) {
 			t.Fatalf("default %s = %s, %v", level, got, err)
 		}
 	}
-	for _, mapped := range []string{"minimal", "low", "medium", "high", "MINIMAL", "LOW", "MEDIUM", "HIGH"} {
+	for _, mapped := range []string{"minimal", "low", "medium", "high", "xhigh", "MINIMAL", "LOW", "MEDIUM", "HIGH", "XHIGH"} {
 		for _, level := range []ModelThinkingLevel{ThinkingHigh, ThinkingXHigh, ThinkingMax} {
 			model.ThinkingLevelMap = ThinkingLevelMap{ThinkingHigh: new(mapped), ThinkingXHigh: new(mapped), ThinkingMax: new(mapped)}
 			got, err := resolveGoogleThinkingLevel(model, level)
@@ -56,6 +56,12 @@ func TestGoogleThinkingLevelMapPayloadUpstream(t *testing.T) {
 			{"preserves native medium effort for Gemini 3.1 Pro", "gemini-3.1-pro-preview", standard, ThinkingMedium, `{"includeThoughts":true,"thinkingLevel":"MEDIUM"}`},
 			// .upstream/v0.87.1/packages/ai/test/google-thinking-level-map.test.ts:163
 			{"disables Gemini 2.5 thinking when reasoning is omitted", "gemini-2.5-flash", ThinkingLevelMap{}, "", `{"thinkingBudget":0}`},
+			// Pi 001ffff32: sends xhigh as XHIGH for Gemini 4 models on both Google Generative AI and Google Vertex
+			{"sends xhigh as XHIGH for Gemini 4 models that support it", "gemini-4-hydrogen", ThinkingLevelMap{ThinkingOff: nil, ThinkingMinimal: nil, ThinkingLow: new("low"), ThinkingMedium: new("medium"), ThinkingHigh: new("high"), ThinkingXHigh: new("xhigh"), ThinkingMax: nil}, ThinkingXHigh, `{"includeThoughts":true,"thinkingLevel":"XHIGH"}`},
+			// Pi 001ffff32: uses the high token budget for xhigh on budget-based models (both adapters)
+			{"uses the high token budget for xhigh on Gemini 2.5 Pro", "gemini-2.5-pro", ThinkingLevelMap{ThinkingXHigh: new("xhigh")}, ThinkingXHigh, `{"includeThoughts":true,"thinkingBudget":32768}`},
+			// Pi 001ffff32: uses Gemini 2.5 Flash-Lite token budgets on both adapters (incl. Vertex)
+			{"uses Gemini 2.5 Flash-Lite token budgets", "gemini-2.5-flash-lite", ThinkingLevelMap{}, ThinkingMinimal, `{"includeThoughts":true,"thinkingBudget":512}`},
 		} {
 			t.Run(adapter+"/"+tc.name, func(t *testing.T) {
 				assertShapeJSON(t, captureGoogleThinkingMap(t, vertex, tc.id, tc.mapping, tc.level, nil), tc.want)

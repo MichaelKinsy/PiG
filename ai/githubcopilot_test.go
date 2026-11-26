@@ -623,13 +623,13 @@ func TestNewCopilotProvider_APIRouting(t *testing.T) {
 // Ports packages/ai/test/github-copilot-anthropic.test.ts:59,83,117.
 func TestCopilotAnthropicUpstream(t *testing.T) {
 	t.Run("applies Copilot-specific adaptive thinking effort overrides", func(t *testing.T) {
-		for _, id := range []string{"claude-opus-5", "claude-opus-5.5", "claude-sonnet-4.6"} {
+		for _, id := range []string{"claude-opus-4.8", "claude-opus-5.5", "claude-sonnet-4.6"} {
 			m := mustGeneratedModel(t, "github-copilot", id)
 			levels := GetSupportedThinkingLevels(m.ToModel())
 			if !slices.Contains(levels, ThinkingMax) || (id != "claude-sonnet-4.6" && !slices.Contains(levels, ThinkingXHigh)) || (id == "claude-sonnet-4.6" && slices.Contains(levels, ThinkingXHigh)) {
 				t.Fatalf("%s levels = %v", id, levels)
 			}
-			if id == "claude-opus-5" || id == "claude-opus-5.5" {
+			if id == "claude-opus-4.8" || id == "claude-opus-5.5" {
 				if m.API != APIAnthropicMessages || m.ContextWindow != 1000000 {
 					t.Fatalf("%s metadata = %+v", id, m)
 				}

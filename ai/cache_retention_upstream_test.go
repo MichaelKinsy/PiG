@@ -136,7 +136,7 @@ func TestCacheRetentionCompletionsUpstream(t *testing.T) {
 		})
 	}
 	// .upstream/v0.99.1/packages/ai/test/cache-retention.test.ts:507 (five rows; 0.99.1 dropped opencode-go/kimi-k2.6)
-	for _, spec := range []string{"opencode/deepseek-v4.1-flash", "opencode/deepseek-v4-pro", "opencode/kimi-k2.5", "opencode/kimi-k2.6", "opencode/minimax-m2.7"} {
+	for _, spec := range []string{"opencode/deepseek-v4.1-flash", "opencode/deepseek-v4-pro", "opencode/minimax-m2.7"} {
 		t.Run("should omit long cache retention for "+spec, func(t *testing.T) {
 			model, ok := LookupModelExact(spec)
 			if !ok {

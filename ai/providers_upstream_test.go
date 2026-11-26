@@ -165,12 +165,16 @@ func TestBuiltinProvidersUpstream(t *testing.T) {
 	})
 	// .upstream/v0.87.1/packages/ai/test/providers.test.ts:200
 	t.Run("routes proxied tool changes through verified transports only", func(t *testing.T) {
-		for _, provider := range []string{"opencode", "github-copilot"} {
-			compat := providerModelUpstream(t, provider, "gpt-5.6-terra").Compat
+		for _, row := range [][3]string{
+			{"opencode", "gpt-5.6-terra", "claude-opus-5"},
+			{"github-copilot", "gpt-6.1-terra", "claude-opus-5.5"},
+		} {
+			provider, gptID, claudeID := row[0], row[1], row[2]
+			compat := providerModelUpstream(t, provider, gptID).Compat
 			if compat == nil || compat.SupportsAdditionalTools == nil || !*compat.SupportsAdditionalTools || compat.SupportsToolSearch != nil {
 				t.Fatal(provider, compat)
 			}
-			if value := providerModelUpstream(t, provider, "claude-opus-5").Compat; value != nil && value.SupportsMidConvoToolChanges != nil {
+			if value := providerModelUpstream(t, provider, claudeID).Compat; value != nil && value.SupportsMidConvoToolChanges != nil {
 				t.Fatal(provider)
 			}
 		}
