@@ -87,13 +87,20 @@ class ReferencingTest(unittest.TestCase):
                 "d.go": "package d // nothing\n",
                 "e.go": 'package e\nvar p = filepath.Join(root, "Makefile")\n',
                 "f.go": 'package f\n// comment mentioning docs/guide.md and test/parity/scenarios/rpc/one.json\n',
+                "g.go": 'package g\nvar p = filepath.Join(root, "extensions", "sdk-rs", "src")\n',
             }
             sources = {}
             for n, t in texts.items():
                 (tmp / n).write_text(t)
                 sources[f"m/{n[0]}"] = {tmp / n: None, tmp / "missing.go": None}
             tested = set(sources) - {"m/e"}
-            for name in ("docs/guide.md", "test/parity/scenarios/rpc/two.json", "Makefile", "docs/none.md"):
+            for name in (
+                "docs/guide.md",
+                "test/parity/scenarios/rpc/two.json",
+                "extensions/sdk-rs/src/tui/colors.rs",
+                "Makefile",
+                "docs/none.md",
+            ):
                 cp._TEXT_CACHE.clear()
                 self.assertEqual(cp.referencing(name, sources, tested), reference_scan_safe(name, sources, tested), name)
             # Comment-only package m/f must never match.
@@ -101,7 +108,7 @@ class ReferencingTest(unittest.TestCase):
             self.assertNotIn("m/f", cp.referencing("docs/guide.md", sources, tested))
             self.assertNotIn("m/f", cp.referencing("test/parity/scenarios/rpc/two.json", sources, tested))
 
-    def test_non_fixture_three_segment_dir_does_not_match_sibling_files(self):
+    def test_non_fixture_three_segment_dir_matches_dir_refs_not_sibling_files(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)
             texts = {
@@ -112,6 +119,9 @@ class ReferencingTest(unittest.TestCase):
                 "comment.go": 'package c\n// docs/site/docs/bug-ledger.md\n',
                 "preflight_sibling.go": 'package ps\nvar p = "automation/ci/preflight/scanner_test.go"\n',
                 "fixture_sibling.go": 'package fs\nvar p = "test/parity/scenarios/rpc/one.json"\n',
+                "ancestor_join.go": 'package aj\nvar d = filepath.Join(root, "extensions", "sdk-rs", "src")\n',
+                "ancestor_str.go": 'package as\nvar d = readTree("extensions/sdk-rs/src")\n',
+                "ancestor_sibling.go": 'package axb\nvar f = "extensions/sdk-rs/src/other.rs"\n',
             }
             sources = {}
             for n, t in texts.items():
@@ -138,6 +148,12 @@ class ReferencingTest(unittest.TestCase):
             self.assertEqual(
                 cp.referencing("test/parity/scenarios/rpc/two.json", sources, tested),
                 {"m/fixture_sibling"},
+            )
+            # Nested file under a 3-segment directory matches whole-dir readers of the ancestor, not sibling-file literals.
+            cp._TEXT_CACHE.clear()
+            self.assertEqual(
+                cp.referencing("extensions/sdk-rs/src/tui/colors.rs", sources, tested),
+                {"m/ancestor_join", "m/ancestor_str"},
             )
 
 
@@ -170,6 +186,34 @@ class RepoRegressionTest(unittest.TestCase):
     def _rel(self, pkgs: list[str]) -> set[str]:
         prefix = self.main_module + "/"
         return {p.removeprefix(prefix) for p in pkgs}
+
+    def test_whole_dir_readers_selected_for_sdk_docs_and_divergences(self):
+        cases = (
+            (
+                "extensions/sdk-rs/src/lib.rs",
+                ("test/parity/cmd/sdksurface", "test/wiring", "test/extension-conformance"),
+            ),
+            (
+                "extensions/sdk-rs/src/tui/colors.rs",
+                ("test/parity/cmd/sdksurface", "test/wiring", "test/extension-conformance"),
+            ),
+            (
+                "internal/pigdocs/content/concepts.md",
+                ("test/docs-drift",),
+            ),
+            (
+                "docs/parity/divergences/D103.md",
+                ("automation/ci/preflight/reviewed", "automation/ci/divsplit"),
+            ),
+        )
+        for changed_file, expected_direct in cases:
+            with self.subTest(changed_file=changed_file):
+                cp._TEXT_CACHE.clear()
+                res = cp.select(REPO_ROOT, [changed_file], self.packages, self.main_module, self.runnable)
+                direct = self._rel(res["direct"])
+                self.assertEqual(res["unmapped"], [])
+                for pkg in expected_direct:
+                    self.assertIn(pkg, direct, f"{changed_file} did not select {pkg}; direct={sorted(direct)}")
 
     def test_pr_572_selection_stays_narrow_and_sound(self):
         cp._TEXT_CACHE.clear()
@@ -217,8 +261,11 @@ class RepoRegressionTest(unittest.TestCase):
 
 
 def reference_scan_safe(name, sources, tested):
-    patterns = [cp.path_pattern(PurePosixPath(name))]
-    parent = PurePosixPath(name).parent
+    file_path = PurePosixPath(name)
+    patterns = [cp.path_pattern(file_path)]
+    parent = file_path.parent
+    for ancestor in cp.ancestor_dirs_3plus(file_path):
+        patterns.append(cp.dir_ref_pattern(ancestor))
     if cp.is_fixture_dir(parent):
         patterns.append(cp.path_pattern(parent))
     needle = re.compile("|".join(patterns))

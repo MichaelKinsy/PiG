@@ -12,10 +12,10 @@ module:
   that embeds a changed file, the package whose directory (or a testdata
   directory beneath it) holds a changed file, and a package whose non-comment
   Go source names the changed file's repository path (as one string or as the
-  quoted components of a filepath.Join call), or names its 3+ component
-  fixture/testdata/scenario parent directory, or names a globbed/listed
-  directory (changelog.d, docs/site/docs, test/parity/interfaces) as a
-  directory/glob reference.
+  quoted components of a filepath.Join call), names any 3+ component ancestor
+  directory of the file as a directory or glob reference, names its 3+
+  component fixture/testdata/scenario parent directory (including sibling
+  paths inside it), or names a listed top-level directory (changelog.d).
 - affected: every main-module package whose tests import a direct package,
   directly or transitively (the reverse closure of `go list -test -deps`),
   plus the direct packages themselves.
@@ -47,10 +47,7 @@ MODULE_WIDE = {"go.mod", "go.sum", "go.work", "go.work.sum"}
 # Top-level directories whose every file is read by listing the directory, so no Go source names a file in it by path. A changed file in one belongs to each package whose Go source names the directory (the tools and tests that glob it). Only a directory of such files may be listed: a directory like docs or test names a whole area, and its name would select most packages.
 NAMED_DIRECTORIES = ("changelog.d",)
 
-# Multi-segment directories whose files are read by globbing, ReadDir, or version-interpolated filenames rather than per-file literals. Unlike NAMED_DIRECTORIES, these match only exact directory/glob references (not a literal path to one sibling file inside the directory).
-GLOBBED_DIRECTORIES = ("docs/site/docs", "test/parity/interfaces")
-
-# Path components that identify a fixture, scenario, or test-vector tree where a 3+ component parent directory may be referenced as a whole.
+# Path components that identify a fixture, scenario, or test-vector tree where a 3+ component parent directory may also match sibling-file literals inside it.
 FIXTURE_DIR_PARTS = frozenset({"testdata", "scenarios", "fixtures", "corpus", "sdk-vectors", "locks"})
 
 # Matches Go string/rune literals (kept verbatim) and // or /* */ comments (stripped).
@@ -234,6 +231,16 @@ def is_fixture_dir(parent: PurePosixPath) -> bool:
     return len(parent.parts) >= 3 and any(part in FIXTURE_DIR_PARTS for part in parent.parts)
 
 
+def ancestor_dirs_3plus(path: PurePosixPath) -> list[PurePosixPath]:
+    """Return every ancestor directory of path with 3 or more path components, deepest first."""
+    dirs: list[PurePosixPath] = []
+    cur = path.parent
+    while len(cur.parts) >= 3:
+        dirs.append(cur)
+        cur = cur.parent
+    return dirs
+
+
 def dir_ref_pattern(path: PurePosixPath) -> str:
     """Return a regular expression matching an exact directory or glob reference (not a sibling file inside it)."""
     posix = re.escape(path.as_posix())
@@ -242,23 +249,23 @@ def dir_ref_pattern(path: PurePosixPath) -> str:
 
 
 def referencing(name: str, sources: dict[str, dict[Path, None]], tested: set[str]) -> set[str]:
-    """Return main-module packages whose non-comment Go source names the file, its 3+ component fixture parent, or a globbed/listed directory."""
-    patterns = [path_pattern(PurePosixPath(name))]
-    parent = PurePosixPath(name).parent
-    parent_posix = parent.as_posix()
-    literals = [PurePosixPath(name).name]
+    """Return main-module packages whose non-comment Go source names the file, a 3+ component ancestor directory reference, its fixture parent, or a listed top-level directory."""
+    file_path = PurePosixPath(name)
+    patterns = [path_pattern(file_path)]
+    parent = file_path.parent
+    literals = [file_path.name]
     if parent.parts[:1] and parent.parts[0] in NAMED_DIRECTORIES:
         patterns.append(re.escape(parent.parts[0]))
         literals.append(parent.parts[0])
-    # A 3+ component directory inside a fixture/scenario/testdata tree (test/parity/scenarios/rpc) may be referenced as a whole; broad prose or code directories (docs/site/docs, automation/ci/preflight) must not match every sibling reference.
+    # Any 3+ component ancestor directory may be read as a whole directory or glob (WalkDir, ReadDir, Glob).
+    # Using dir_ref_pattern avoids matching sibling-file literals in prose/code dirs (docs/site/docs/other.md, automation/ci/preflight/scanner_test.go).
+    for ancestor in ancestor_dirs_3plus(file_path):
+        patterns.append(dir_ref_pattern(ancestor))
+        literals.append(ancestor.name)
+    # Inside fixture/scenario/testdata trees (test/parity/scenarios/rpc), sibling-file literals also imply a shared fixture family.
     if is_fixture_dir(parent):
         patterns.append(path_pattern(parent))
         literals.append(parent.name)
-    for gdir in GLOBBED_DIRECTORIES:
-        if parent_posix == gdir or parent_posix.startswith(gdir + "/"):
-            gp = PurePosixPath(gdir)
-            patterns.append(dir_ref_pattern(gp))
-            literals.append(gp.name)
     needle = re.compile("|".join(patterns))
     hits = set()
     for path, files in sources.items():
