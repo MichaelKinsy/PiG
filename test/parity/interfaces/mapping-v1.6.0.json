@@ -171871,7 +171871,7 @@
       "evidence": [
         "test:internal/codingagent/tools/bash_operations_oracle_test.go#TestLocalBashOperationsMatchPi",
         "test:internal/codingagent/tools/bash_tool_oracle_test.go#TestBashToolMatchesPi",
-        "test:coding/session_tool_registry_port_test.go#TestAgentSessionDynamicToolsPort"
+        "test:coding/cli/program_resume_token_test.go#TestMainStripsOSC7577TokenFromChildren"
       ]
     },
     {
@@ -171893,7 +171893,7 @@
       "evidence": [
         "test:internal/codingagent/tools/bash_operations_oracle_test.go#TestLocalBashOperationsMatchPi",
         "test:internal/codingagent/tools/bash_tool_oracle_test.go#TestBashToolMatchesPi",
-        "test:coding/session_tool_registry_port_test.go#TestAgentSessionDynamicToolsPort"
+        "test:coding/cli/program_resume_token_test.go#TestMainStripsOSC7577TokenFromChildren"
       ]
     },
     {
@@ -280514,8 +280514,8 @@
       ],
       "evidence": [
         "test:mcp/transport_behavior_test.go#TestTransportEventsEmitCloseOnceAndHonorDisposal",
-        "test:coding/mcpext/connection_test.go#TestMCPConnectionsClosesAConnectionThatIsStillInitializingBeforeCloseReturns",
-        "test:mcp/mcptest/inmemory_test.go#TestInMemoryTransportPairDeliversInOrderAndCloseNotifiesBothEnds"
+        "test:coding/cli/program_resume_token_test.go#TestMainStripsOSC7577TokenFromChildren",
+        "test:coding/mcpext/connection_test.go#TestMCPConnectionsClosesAConnectionThatIsStillInitializingBeforeCloseReturns"
       ]
     },
     {
@@ -280536,8 +280536,8 @@
       ],
       "evidence": [
         "test:mcp/transport_behavior_test.go#TestTransportEventsEmitCloseOnceAndHonorDisposal",
-        "test:coding/mcpext/connection_test.go#TestMCPConnectionsClosesAConnectionThatIsStillInitializingBeforeCloseReturns",
-        "test:mcp/mcptest/inmemory_test.go#TestInMemoryTransportPairDeliversInOrderAndCloseNotifiesBothEnds"
+        "test:coding/cli/program_resume_token_test.go#TestMainStripsOSC7577TokenFromChildren",
+        "test:coding/mcpext/connection_test.go#TestMCPConnectionsClosesAConnectionThatIsStillInitializingBeforeCloseReturns"
       ]
     },
     {
@@ -281834,9 +281834,9 @@
         "call:mcp/lines.go#lineReader.end"
       ],
       "evidence": [
+        "test:coding/cli/program_resume_token_test.go#TestMainStripsOSC7577TokenFromChildren",
         "test:coding/mcpext/exit_cleanup_test.go#TestKillTrackedDetachedChildrenEndsRunningMCPStdioServers",
-        "test:coding/mcpext/regression_unix_test.go#TestConnectionNeverReusesAStdioServerThatDied",
-        "test:internal/codingagent/tools/shell_tracked_test.go#TestKillTrackedDetachedChildrenEndsRunningMCPStdioServers"
+        "test:coding/mcpext/regression_unix_test.go#TestConnectionNeverReusesAStdioServerThatDied"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -282191,9 +282191,9 @@
         "call:mcp/stdio.go#NewStdioTransport"
       ],
       "evidence": [
+        "test:coding/cli/program_resume_token_test.go#TestMainStripsOSC7577TokenFromChildren",
         "test:coding/mcpext/exit_cleanup_test.go#TestKillTrackedDetachedChildrenEndsRunningMCPStdioServers",
-        "test:internal/codingagent/tools/shell_tracked_test.go#TestKillTrackedDetachedChildrenEndsRunningMCPStdioServers",
-        "test:mcp/client_methods_test.go#TestTransportsExposeTheirConstructionOptions"
+        "test:internal/codingagent/tools/shell_tracked_test.go#TestKillTrackedDetachedChildrenEndsRunningMCPStdioServers"
       ]
     },
     {

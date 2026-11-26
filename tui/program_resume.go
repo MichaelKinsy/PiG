@@ -39,7 +39,8 @@ type ProgramResumeSender struct {
 	Time  int64
 }
 
-// Limits every terminal accepts. Longer reports may be ignored, which would leave an older command in place.
+// Limits every terminal accepts (Pi cf419553da packages/tui/src/program-resume.ts:42-43). Longer reports may be ignored, which would leave an older command in place.
+// pig divergence (D662): carried from Pi cf419553da ahead of pinned Pi 1.6.0; retire D662 once the pin contains cf419553da.
 const (
 	programResumeMaxSequenceBytes = 2048
 	programResumeMaxArgvElements  = 64
