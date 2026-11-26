@@ -13,11 +13,14 @@ func TestOpenAICompletionsRawStopReasonUpstream(t *testing.T) {
 		name, raw string
 		stop      StopReason
 		message   string
+		retryable bool
 	}{
 		// .upstream/v0.87.1/packages/ai/test/openai-completions-raw-stop-reason.test.ts:61
-		{"preserves raw finish reasons for successful stops", "stop", StopReasonStop, ""},
+		{"preserves raw finish reasons for successful stops", "stop", StopReasonStop, "", false},
 		// .upstream/v0.87.1/packages/ai/test/openai-completions-raw-stop-reason.test.ts:71
-		{"preserves raw finish reasons for provider error stops", "content_filter", StopReasonError, "Provider finish_reason: content_filter"},
+		{"preserves raw finish reasons for provider error stops", "content_filter", StopReasonError, "Provider finish_reason: content_filter", false},
+		// Port of Pi main 4f3d2be9a75dfc0441f84f67bb4ec21fd35865c5 (#12206, #12455)
+		{"retries a stream that ends with finish_reason error", "error", StopReasonError, "Provider finish_reason: error", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			sse := fmt.Sprintf("data: {\"id\":\"chatcmpl-1\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":%q}]}\n\n", tc.raw)
@@ -27,6 +30,9 @@ func TestOpenAICompletionsRawStopReasonUpstream(t *testing.T) {
 					message := metadataStreamResult(t, provider, sse, wire)
 					if message.StopReason != tc.stop || message.RawStopReason != tc.raw || message.ErrorMessage != tc.message {
 						t.Fatalf("message = %#v", message)
+					}
+					if got := IsRetryableAssistantError(*message); got != tc.retryable {
+						t.Fatalf("IsRetryableAssistantError(%q) = %v, want %v", message.ErrorMessage, got, tc.retryable)
 					}
 				})
 			}
