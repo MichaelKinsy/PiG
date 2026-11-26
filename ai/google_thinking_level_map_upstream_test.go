@@ -216,3 +216,78 @@ func TestToGoogleSdkThinkingLevelUpstream(t *testing.T) {
 		}
 	}
 }
+
+// Port of Pi 001ffff32bbf58703c618ba598454b78501573d6 (google-thinking-level-map.test.ts):
+// Gemini 4 Hydrogen/Neon xhigh thinking level, xhigh token budgets, and 3.x finish reasons.
+func TestGoogleThinkingLevelXHighUpstream(t *testing.T) {
+	if got := ToGoogleThinkingLevel(ResolvedGoogleThinkingLevelXHigh); got != GoogleThinkingLevelXHigh {
+		t.Fatalf("ToGoogleThinkingLevel(xhigh) = %q, want XHIGH", got)
+	}
+	if got := ToGoogleSdkThinkingLevel(GoogleThinkingLevelXHigh); got != "XHIGH" {
+		t.Fatalf("ToGoogleSdkThinkingLevel(XHIGH) = %q, want XHIGH", got)
+	}
+	model := &Model{
+		ID:           "gemini-4-hydrogen",
+		ProviderMeta: ProviderMetadata{ProviderID: "google", Reasoning: true},
+		ThinkingLevelMap: ThinkingLevelMap{
+			ThinkingOff:     nil,
+			ThinkingMinimal: nil,
+			ThinkingLow:     new("low"),
+			ThinkingMedium:  new("medium"),
+			ThinkingHigh:    new("high"),
+			ThinkingXHigh:   new("xhigh"),
+			ThinkingMax:     nil,
+		},
+	}
+	config, err := buildGeminiThinkingConfig(model, ThinkingXHigh, true, nil)
+	if err != nil {
+		t.Fatalf("buildGeminiThinkingConfig(gemini-4-hydrogen, xhigh): %v", err)
+	}
+	if config == nil || config.ThinkingLevel != "XHIGH" || config.IncludeThoughts == nil || !*config.IncludeThoughts {
+		t.Fatalf("config = %#v, want ThinkingLevel=XHIGH IncludeThoughts=true", config)
+	}
+
+	// Token-budget models fall back to the high budget for xhigh (both custom and default).
+	flash := &Model{
+		ID:               "gemini-2.5-flash",
+		ProviderMeta:     ProviderMetadata{ProviderID: "google", Reasoning: true},
+		ThinkingLevelMap: ThinkingLevelMap{ThinkingXHigh: new("xhigh")},
+	}
+	custom := &ThinkingBudgets{High: 1234}
+	flashCfg, err := buildGeminiThinkingConfig(flash, ThinkingXHigh, true, custom)
+	if err != nil || flashCfg == nil || flashCfg.ThinkingBudget == nil || *flashCfg.ThinkingBudget != 1234 {
+		t.Fatalf("flash xhigh custom budget = %#v, %v; want 1234", flashCfg, err)
+	}
+
+	pro := &Model{
+		ID:               "gemini-2.5-pro",
+		ProviderMeta:     ProviderMetadata{ProviderID: "google-vertex", Reasoning: true},
+		ThinkingLevelMap: ThinkingLevelMap{ThinkingXHigh: new("xhigh")},
+	}
+	proCfg, err := buildGeminiThinkingConfig(pro, ThinkingXHigh, true, nil)
+	if err != nil || proCfg == nil || proCfg.ThinkingBudget == nil || *proCfg.ThinkingBudget != 32768 {
+		t.Fatalf("pro xhigh default budget = %#v, %v; want 32768", proCfg, err)
+	}
+
+	lite := &Model{
+		ID:           "gemini-2.5-flash-lite",
+		ProviderMeta: ProviderMetadata{ProviderID: "google-vertex", Reasoning: true},
+	}
+	liteCfg, err := buildGeminiThinkingConfig(lite, ThinkingMinimal, true, nil)
+	if err != nil || liteCfg == nil || liteCfg.ThinkingBudget == nil || *liteCfg.ThinkingBudget != 512 {
+		t.Fatalf("flash-lite minimal budget = %#v, %v; want 512", liteCfg, err)
+	}
+
+	for _, reason := range []string{
+		"MISSING_THOUGHT_SIGNATURE",
+		"MALFORMED_RESPONSE",
+		"ESCALATION",
+		"PUP_LIMITED_DISABLED",
+		"MODEL_ARMOR",
+	} {
+		got, err := mapStopReason(reason)
+		if err != nil || got != StopReasonError {
+			t.Errorf("mapStopReason(%q) = (%q, %v), want (%q, nil)", reason, got, err, StopReasonError)
+		}
+	}
+}
