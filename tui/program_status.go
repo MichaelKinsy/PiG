@@ -88,8 +88,11 @@ func FormatProgramStatus(status ProgramStatus) string {
 	if status.App != "" && programStatusApp.MatchString(status.App) {
 		pairs = append(pairs, "app="+status.App)
 	}
-	if status.State == ProgramStateBlocked && status.Kind != "" {
-		pairs = append(pairs, "kind="+string(status.Kind))
+	if status.State == ProgramStateBlocked {
+		switch status.Kind {
+		case ProgramStatusKindPermission, ProgramStatusKindQuestion, ProgramStatusKindAuth:
+			pairs = append(pairs, "kind="+string(status.Kind))
+		}
 	}
 	// A message is UTF-8 text: bytes that are not valid become U+FFFD, as encoding a JavaScript string does for a lone surrogate.
 	message := truncateUTF8(widthx.JSTrim(widthx.ReplaceControlCharacters(strings.ToValidUTF8(status.Message, "\uFFFD"))), programStatusMaxMessageBytes)

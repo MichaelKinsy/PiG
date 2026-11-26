@@ -100,6 +100,74 @@ func TestSettingsManagerNotices(t *testing.T) {
 		}
 	})
 
+	t.Run("writes explicit false for the toggled notice without writing other defaults", func(t *testing.T) {
+		agentDir, projectDir := t.TempDir(), t.TempDir()
+		if err := os.MkdirAll(filepath.Join(projectDir, ConfigDirName()), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(projectDir, ConfigDirName(), "settings.json"), []byte(`{"notices":{"cacheMisses":false}}`), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		sm := NewSettingsManagerWithProjectTrust(projectDir, agentDir, true)
+		if err := sm.SetNotice(NoticeCacheWarming, false); err != nil {
+			t.Fatal(err)
+		}
+		data, err := os.ReadFile(filepath.Join(agentDir, "settings.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var saved map[string]any
+		if err := json.Unmarshal(data, &saved); err != nil {
+			t.Fatal(err)
+		}
+		wantSaved := map[string]any{
+			"notices": map[string]any{
+				"cacheWarming": false,
+			},
+		}
+		if !reflect.DeepEqual(saved, wantSaved) {
+			t.Fatalf("saved = %#v, want %#v", saved, wantSaved)
+		}
+	})
+
+	t.Run("preserves unknown notice keys written via SetNotice", func(t *testing.T) {
+		agentDir, projectDir := t.TempDir(), t.TempDir()
+		sm := NewSettingsManager(projectDir, agentDir)
+		if err := sm.SetNotice(NoticeKey("customNotice"), true); err != nil {
+			t.Fatal(err)
+		}
+		data, err := os.ReadFile(filepath.Join(agentDir, "settings.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var saved map[string]any
+		if err := json.Unmarshal(data, &saved); err != nil {
+			t.Fatal(err)
+		}
+		wantSaved := map[string]any{
+			"notices": map[string]any{
+				"customNotice": true,
+			},
+		}
+		if !reflect.DeepEqual(saved, wantSaved) {
+			t.Fatalf("saved = %#v, want %#v", saved, wantSaved)
+		}
+	})
+
+	t.Run("deprecated ShowCacheMissNotices wrappers delegate to notices.cacheMisses", func(t *testing.T) {
+		agentDir, projectDir := t.TempDir(), t.TempDir()
+		sm := NewSettingsManager(projectDir, agentDir)
+		if sm.GetShowCacheMissNotices() {
+			t.Fatal("default GetShowCacheMissNotices = true, want false")
+		}
+		if err := sm.SetShowCacheMissNotices(true); err != nil {
+			t.Fatal(err)
+		}
+		if !sm.GetShowCacheMissNotices() || !sm.GetNotices().CacheMisses {
+			t.Fatalf("after SetShowCacheMissNotices(true): getter=%v notices=%+v", sm.GetShowCacheMissNotices(), sm.GetNotices())
+		}
+	})
+
 	t.Run("keeps notices already set over the legacy setting", func(t *testing.T) {
 		agentDir, projectDir := t.TempDir(), t.TempDir()
 		if err := os.WriteFile(filepath.Join(agentDir, "settings.json"), []byte(`{"showCacheMissNotices":true,"notices":{"cacheWarming":false}}`), 0o600); err != nil {

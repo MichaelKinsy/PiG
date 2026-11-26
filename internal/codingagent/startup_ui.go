@@ -60,11 +60,22 @@ func takeStartupInput() []string {
 	return chunks
 }
 
+// StartupTerminal is the terminal surface a startup prompt drives.
+type StartupTerminal interface {
+	StartWithReadError(onInput func([]byte), onResize func(), onReadError func(error)) error
+	Stop()
+	Write(data string)
+}
+
 type StartupUIOptions struct {
 	AgentDir    string
 	Settings    Settings
 	ThemePaths  []string
 	BlockedKind tui.ProgramStatusKind
+	// Terminal overrides the stdio terminal when non-nil (for tests).
+	Terminal StartupTerminal
+	// Output overrides stdout rendering target when non-nil (for tests).
+	Output io.Writer
 }
 
 // SelectStartupSession is Pi's selectSession(currentSessionsLoader, allSessionsLoader, settingsManager) (cli/session-picker.ts:15-54), the --resume picker. Ports packages/coding-agent/src/cli/session-picker.ts.
@@ -85,7 +96,7 @@ func selectStartupSession(
 	allLoader func(SessionListOptions) ([]SessionInfo, error),
 	opts StartupUIOptions,
 	ui *tui.TuiMainScreen,
-	terminal startupTerminal,
+	terminal StartupTerminal,
 ) (path string, selected bool, err error) {
 	keybindings := configureStartupTui(opts)
 	selector, outcome := newStartupSessionSelector(currentLoader, allLoader, keybindings)
@@ -158,21 +169,23 @@ func newStartupInput(title, placeholder string, opts StartupUIOptions) *tui.Exte
 	return tui.NewExtensionInputComponent(title, placeholder, nil, nil)
 }
 
-// startupTerminal is the terminal surface a startup prompt drives.
-type startupTerminal interface {
-	StartWithReadError(onInput func([]byte), onResize func(), onReadError func(error)) error
-	Stop()
-	Write(data string)
-}
-
 func runStartupComponentBlocked(component startupComponent, opts StartupUIOptions, clear bool, blocked *BlockedStatus) (bool, error) {
-	ui := tui.New()
+	var ui *tui.TuiMainScreen
+	if opts.Output != nil {
+		ui = tui.NewWithOutput(opts.Output, 80, 24)
+	} else {
+		ui = tui.New()
+	}
 	ui.SetLogDirectory(opts.AgentDir)
-	return runStartupComponentWithBlocked(component, opts, clear, ui, tui.NewStdioProcessTerminal(), blocked)
+	term := opts.Terminal
+	if term == nil {
+		term = tui.NewStdioProcessTerminal()
+	}
+	return runStartupComponentWithBlocked(component, opts, clear, ui, term, blocked)
 }
 
 // runStartupComponentWith runs a startup prompt on ui and terminal without a blocked program status report.
-func runStartupComponentWith(component startupComponent, opts StartupUIOptions, clear bool, ui *tui.TuiMainScreen, terminal startupTerminal) (bool, error) {
+func runStartupComponentWith(component startupComponent, opts StartupUIOptions, clear bool, ui *tui.TuiMainScreen, terminal StartupTerminal) (bool, error) {
 	return runStartupComponentWithBlocked(component, opts, clear, ui, terminal, nil)
 }
 
@@ -180,7 +193,7 @@ func runStartupComponentWith(component startupComponent, opts StartupUIOptions, 
 // reports blocked program status (OSC 7501) on terminal before starting it. Mirrors upstream showStartupDialog
 // + startStartupTui.
 // Ports packages/tui/src/tui.ts (terminal color reply consumption).
-func runStartupComponentWithBlocked(component startupComponent, opts StartupUIOptions, clear bool, ui *tui.TuiMainScreen, terminal startupTerminal, blocked *BlockedStatus) (bool, error) {
+func runStartupComponentWithBlocked(component startupComponent, opts StartupUIOptions, clear bool, ui *tui.TuiMainScreen, terminal StartupTerminal, blocked *BlockedStatus) (bool, error) {
 	asyncSelector, _ := component.(*SessionSelectorComponent)
 	var updates <-chan func()
 	var ready <-chan struct{}
@@ -229,15 +242,11 @@ func runStartupComponentWithBlocked(component startupComponent, opts StartupUIOp
 
 	// The terminal's colors regenerate the system theme and resolve "" tokens; re-rendering rebuilds the prompt with them.
 	themeSetting := opts.Settings.themeSetting()
-	themed, _ := component.(interface{ startupTheme() string })
 	applyColors := func(colors tui.TerminalColors) {
 		tui.SetTerminalColors(colors)
 		name, ok := tui.ResolveThemeSettingPresence(themeSetting, tui.GetTerminalTheme())
 		if !ok {
 			name = tui.SystemThemeName
-		}
-		if themed != nil {
-			name = themed.startupTheme()
 		}
 		tui.SetThemeByName(name)
 		ui.Invalidate()

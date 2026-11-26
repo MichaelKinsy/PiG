@@ -2,9 +2,11 @@ package cli
 
 import (
 	"context"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -270,4 +272,97 @@ type recordingTrustSelectUI struct {
 
 func (u *recordingTrustSelectUI) Select(_ context.Context, title string, options []string, opts extension.ExtensionUIDialogOptions) (string, error) {
 	return u.onSelect(title, options, opts), nil
+}
+
+type cliStatusStartupTerminal struct {
+	keys    []string
+	reports []tui.ProgramStatus
+	stopped bool
+}
+
+func (s *cliStatusStartupTerminal) StartWithReadError(input func([]byte), _ func(), _ func(error)) error {
+	for _, key := range s.keys {
+		input([]byte(key))
+	}
+	return nil
+}
+
+func (s *cliStatusStartupTerminal) Stop()        { s.stopped = true }
+func (s *cliStatusStartupTerminal) Write(string) {}
+func (s *cliStatusStartupTerminal) SetProgramStatus(status tui.ProgramStatus) {
+	s.reports = append(s.reports, status)
+}
+
+// Port of Pi main 27a40ea2a0f58246fa9793a752215bad7d2cecaf & 642a705e11c6f2a3baafc76fb15399fd2187fd43
+// (packages/coding-agent/test/startup-ui-program-status.test.ts): exercises startupTrustUI -> ShowStartupSelector / ShowStartupInput.
+func TestStartupTrustUIProgramStatusForwarding(t *testing.T) {
+	t.Run("reports a project trust confirm as a permission request", func(t *testing.T) {
+		term := &cliStatusStartupTerminal{keys: []string{"\r"}}
+		ui := newStartupTrustUI(codingagent.StartupUIOptions{AgentDir: t.TempDir(), Terminal: term, Output: io.Discard})
+		ctx := newProjectTrustContext("/work/project", appModeInteractive, true, ui, false)
+		confirmed, err := ctx.UI.Confirm(context.Background(), "Load project extensions?", "They run with your permissions.", extension.ExtensionUIDialogOptions{})
+		if err != nil || !confirmed {
+			t.Fatalf("confirmed=%v err=%v", confirmed, err)
+		}
+		want := []tui.ProgramStatus{{App: codingagent.AppName, State: tui.ProgramStateBlocked, Kind: tui.ProgramStatusKindPermission, Message: "Load project extensions?"}}
+		if !reflect.DeepEqual(term.reports, want) {
+			t.Fatalf("reports = %+v, want %+v", term.reports, want)
+		}
+		if !term.stopped {
+			t.Fatal("terminal was not stopped")
+		}
+	})
+
+	t.Run("reports the kind an extension passes to a project trust select", func(t *testing.T) {
+		term := &cliStatusStartupTerminal{keys: []string{"\r"}}
+		ui := newStartupTrustUI(codingagent.StartupUIOptions{AgentDir: t.TempDir(), Terminal: term, Output: io.Discard})
+		ctx := newProjectTrustContext("/work/project", appModeInteractive, true, ui, false)
+		choice, err := ctx.UI.Select(context.Background(), "Run project hooks?", []string{"Run", "Skip"}, extension.ExtensionUIDialogOptions{BlockedKind: tui.ProgramStatusKindPermission})
+		if err != nil || choice != "Run" {
+			t.Fatalf("choice=%q err=%v", choice, err)
+		}
+		want := []tui.ProgramStatus{{App: codingagent.AppName, State: tui.ProgramStateBlocked, Kind: tui.ProgramStatusKindPermission, Message: "Run project hooks?"}}
+		if !reflect.DeepEqual(term.reports, want) {
+			t.Fatalf("reports = %+v, want %+v", term.reports, want)
+		}
+	})
+
+	t.Run("reports built-in resolveProjectTrusted prompt as permission request", func(t *testing.T) {
+		projectDir := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(projectDir, codingagent.ConfigDirName()), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(projectDir, codingagent.ConfigDirName(), "settings.json"), []byte("{}"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		term := &cliStatusStartupTerminal{keys: []string{"\r"}}
+		ui := newStartupTrustUI(codingagent.StartupUIOptions{AgentDir: t.TempDir(), Terminal: term, Output: io.Discard})
+		trusted, err := resolveProjectTrusted(context.Background(), projectTrustResolutionOptions{
+			CWD:     projectDir,
+			Store:   codingagent.NewProjectTrustStore(t.TempDir()),
+			Default: "ask",
+			UI:      ui,
+		})
+		if err != nil || !trusted {
+			t.Fatalf("trusted=%v err=%v", trusted, err)
+		}
+		want := []tui.ProgramStatus{{App: codingagent.AppName, State: tui.ProgramStateBlocked, Kind: tui.ProgramStatusKindPermission, Message: "Trust project folder?"}}
+		if !reflect.DeepEqual(term.reports, want) {
+			t.Fatalf("reports = %+v, want %+v", term.reports, want)
+		}
+	})
+
+	t.Run("reports startup input blockedKind forwarded through startupTrustUI", func(t *testing.T) {
+		term := &cliStatusStartupTerminal{keys: []string{"secret", "\r"}}
+		ui := newStartupTrustUI(codingagent.StartupUIOptions{AgentDir: t.TempDir(), Terminal: term, Output: io.Discard})
+		ctx := newProjectTrustContext("/work/project", appModeInteractive, true, ui, false)
+		val, err := ctx.UI.Input(context.Background(), "Enter token", "", extension.ExtensionUIDialogOptions{BlockedKind: tui.ProgramStatusKindAuth})
+		if err != nil || val != "secret" {
+			t.Fatalf("val=%q err=%v", val, err)
+		}
+		want := []tui.ProgramStatus{{App: codingagent.AppName, State: tui.ProgramStateBlocked, Kind: tui.ProgramStatusKindAuth, Message: "Enter token"}}
+		if !reflect.DeepEqual(term.reports, want) {
+			t.Fatalf("reports = %+v, want %+v", term.reports, want)
+		}
+	})
 }

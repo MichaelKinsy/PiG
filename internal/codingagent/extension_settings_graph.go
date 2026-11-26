@@ -655,14 +655,24 @@ func (g *GraphSettingsManager) Call(_ context.Context, method string, raw json.R
 		}), nil
 	case "setWarnings":
 		return nil, setWarnings(args, 0, sm.SetWarnings)
+	case "getShowCacheMissNotices":
+		// Deprecated 0.8.x compatibility alias over notices.cacheMisses (removal in 0.9.0).
+		return sm.GetNotices().CacheMisses, nil
+	case "setShowCacheMissNotices":
+		// Deprecated 0.8.x compatibility alias over notices.cacheMisses (removal in 0.9.0).
+		return nil, setBool(args, 0, func(shown bool) error { return sm.SetNotice(NoticeCacheMisses, shown) })
 	case "getNotices":
 		notices := sm.GetNotices()
-		return map[string]bool{
+		out := map[string]bool{
 			"cacheMisses":     notices.CacheMisses,
 			"cacheWarming":    notices.CacheWarming,
 			"compactionCosts": notices.CompactionCosts,
 			"reasoningDrops":  notices.ReasoningDrops,
-		}, nil
+		}
+		for k, v := range notices.extra {
+			out[k] = v
+		}
+		return out, nil
 	case "setNotice":
 		return nil, setString(args, 0, func(key NoticeKey) error {
 			return setBool(args, 1, func(shown bool) error { return sm.SetNotice(key, shown) })

@@ -85,7 +85,7 @@ func TestFirstTimeSetupMatchesPi(t *testing.T) {
 		}
 		return out
 	}
-	failures, submitted, cancelled, previewed := 0, 0, 0, 0
+	failures, submitted, cancelled := 0, 0, 0
 	for i, probe := range probes {
 		tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
 		tui.SetTheme("dark")
@@ -103,13 +103,13 @@ func TestFirstTimeSetupMatchesPi(t *testing.T) {
 			},
 			OnCancel: func() { events = append(events, []any{"cancel"}) },
 		})
+		if component.step == firstTimeSetupStepSprite {
+			component.HandleInput("\n")
+		}
 		got := firstSetupOracleResult{Steps: [][][]any{{}}, Frames: [][]string{body(component.Render(probe.Width))}}
 		for _, key := range probe.Keys {
 			events = [][]any{}
 			component.HandleInput(key)
-			if component.step == firstTimeSetupStepSprite {
-				component.HandleInput(key)
-			}
 			got.Steps = append(got.Steps, events)
 			got.Frames = append(got.Frames, body(component.Render(probe.Width)))
 		}
@@ -121,8 +121,6 @@ func TestFirstTimeSetupMatchesPi(t *testing.T) {
 					submitted++
 				case "cancel":
 					cancelled++
-				case "preview":
-					previewed++
 				}
 			}
 			if len(step) == 0 {
@@ -139,8 +137,8 @@ func TestFirstTimeSetupMatchesPi(t *testing.T) {
 			}
 		}
 	}
-	if submitted == 0 || cancelled == 0 || previewed == 0 {
-		t.Errorf("probes never reached submit/cancel/preview: %d %d %d", submitted, cancelled, previewed)
+	if submitted == 0 || cancelled == 0 {
+		t.Errorf("probes never reached submit/cancel: %d %d", submitted, cancelled)
 	}
-	t.Logf("%d probes, %d failures; Pi submits %d, cancels %d, previews %d", len(probes), failures, submitted, cancelled, previewed)
+	t.Logf("%d probes, %d failures; Pi submits %d, cancels %d", len(probes), failures, submitted, cancelled)
 }

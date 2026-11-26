@@ -260,7 +260,7 @@ Each row gives a value to try, what it does and the line in Pi 1.6.0's `packages
 | `retry.provider` | `{"maxRetries": 2, "timeoutMs": 120000}` | Retries inside one provider request, and that request's timeout. Keep `maxRetries` at `0` unless you need it. See [Settings](/docs/latest/settings#provider-retries). | |
 | `codemode` | `{"mode": "only", "inlineBudget": 2000}` | See [Codemode](/docs/latest/codemode). | `:381` |
 | `warnings` | `{"anthropicExtraUsage": false}` | Hides the paid-extra-usage warning. | `:380` |
-| `showCacheMissNotices` | `true` | A notice appears for each prompt-cache miss and refresh. | `:239` |
+| `notices` | `{"cacheMisses": true, "cacheWarming": true}` | Enables individual transcript notices (`cacheMisses`, `cacheWarming`, `compactionCosts`, `reasoningDrops`). | `:621` |
 | `enableInstallTelemetry` | `false` | No install or update ping is sent (D64). `PIG_TELEMETRY=0` does the same, and so does Pi's `PI_TELEMETRY=0`; `PIG_TELEMETRY` decides when both are set. | `:280` |
 | `enableAnalytics`, `trackingId` | written by the first-time setup | `false` after you choose `Don't share` (see [Your first ten minutes](/docs/latest/first-run)). | `:286,292` |
 | `extensionsAutoUpgrade`, `extensionsTypescriptRuntime` | `true`, `"bun"` | PiG-only (D109, D19). See [TypeScript extension runtimes](/docs/latest/typescript-runtimes). | none |

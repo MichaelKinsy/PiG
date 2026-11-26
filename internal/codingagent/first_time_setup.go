@@ -229,7 +229,7 @@ func ShowFirstTimeSetup(settings FirstTimeSetupSettings, opts StartupUIOptions) 
 	return showFirstTimeSetupWith(settings, opts, ui, tui.NewStdioProcessTerminal())
 }
 
-func showFirstTimeSetupWith(settings FirstTimeSetupSettings, opts StartupUIOptions, ui *tui.TuiMainScreen, terminal startupTerminal) (*FirstTimeSetupResult, error) {
+func showFirstTimeSetupWith(settings FirstTimeSetupSettings, opts StartupUIOptions, ui *tui.TuiMainScreen, terminal StartupTerminal) (*FirstTimeSetupResult, error) {
 	configureStartupTui(opts)
 	var result *FirstTimeSetupResult
 	component := NewFirstTimeSetupComponent(FirstTimeSetupOptions{

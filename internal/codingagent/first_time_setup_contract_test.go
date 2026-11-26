@@ -93,13 +93,13 @@ func TestFirstTimeSetupBindingOverlapsMatchPi(t *testing.T) {
 			OnSubmit: func(r FirstTimeSetupResult) { events = append(events, []any{"submit", r.ShareAnalytics}) },
 			OnCancel: func() { events = append(events, []any{"cancel"}) },
 		})
+		if component.step == firstTimeSetupStepSprite {
+			component.HandleInput("\n")
+		}
 		got := firstSetupOracleResult{Steps: [][][]any{{}}, Frames: [][]string{body(component.Render(probe.Width))}}
 		for _, key := range probe.Keys {
 			events = [][]any{}
 			component.HandleInput(key)
-			if component.step == firstTimeSetupStepSprite {
-				component.HandleInput(key)
-			}
 			got.Steps = append(got.Steps, events)
 			got.Frames = append(got.Frames, body(component.Render(probe.Width)))
 		}

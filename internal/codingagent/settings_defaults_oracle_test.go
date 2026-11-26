@@ -64,7 +64,10 @@ func TestSettingsDefaultsMatchPiOnAnEmptySettingsManager(t *testing.T) {
 		{"retry.maxAgentDelayMs", `s.getRetrySettings().maxAgentDelayMs`, func(sm *SettingsManager) any { return sm.GetRetrySettings().MaxAgentDelayMs }},
 		{"retry.provider.maxRetryDelayMs", `s.getProviderRetrySettings().maxRetryDelayMs`, func(sm *SettingsManager) any { return sm.GetProviderRetrySettings().MaxRetryDelayMs }},
 		{"hideThinkingBlock", `s.getHideThinkingBlock()`, func(sm *SettingsManager) any { return sm.GetHideThinkingBlock() }},
-		{"notices", `s.getNotices()`, func(sm *SettingsManager) any { return sm.GetNotices() }},
+		{"notices.cacheMisses", `s.getNotices().cacheMisses`, func(sm *SettingsManager) any { return sm.GetNotices().CacheMisses }},
+		{"notices.cacheWarming", `s.getNotices().cacheWarming`, func(sm *SettingsManager) any { return sm.GetNotices().CacheWarming }},
+		{"notices.compactionCosts", `s.getNotices().compactionCosts`, func(sm *SettingsManager) any { return sm.GetNotices().CompactionCosts }},
+		{"notices.reasoningDrops", `s.getNotices().reasoningDrops`, func(sm *SettingsManager) any { return sm.GetNotices().ReasoningDrops }},
 		{"quietStartup", `s.getQuietStartup()`, func(sm *SettingsManager) any {
 			switch sm.GetQuietStartup() {
 			case QuietStartupTrue:

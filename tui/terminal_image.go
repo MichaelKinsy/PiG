@@ -813,7 +813,7 @@ func RenderImage(base64Data string, imageDimensions ImageDimensions, options Ima
 const maxHyperlinkURLLength = 8192
 
 func Hyperlink(text, url string) string {
-	if len(url) > maxHyperlinkURLLength {
+	if utf16Length(url) > maxHyperlinkURLLength {
 		return text
 	}
 	return "\x1b]8;;" + url + "\x1b\\" + text + "\x1b]8;;\x1b\\"

@@ -406,5 +406,15 @@ func TestUpstreamImageHyperlink(t *testing.T) {
 		if got := Hyperlink("ok", overLimit); got != "ok" {
 			t.Fatalf("URL of length %d should return plain text, got %q", len(overLimit), got)
 		}
+		// Non-ASCII BMP runes are 3 UTF-8 bytes but 1 UTF-16 code unit: 4000 CJK chars = 12000 bytes, 4000 UTF-16 units -> still linked.
+		bmpURL := "https://example.com/" + strings.Repeat("中", 4000)
+		if got := Hyperlink("ok", bmpURL); !strings.Contains(got, "\x1b]8;;") {
+			t.Fatalf("BMP URL of %d UTF-16 units (%d UTF-8 bytes) should still be linked", utf16Length(bmpURL), len(bmpURL))
+		}
+		// Astral runes are 4 UTF-8 bytes and 2 UTF-16 code units: 4100 emoji = 8200 UTF-16 units -> omitted.
+		astralURL := "https://example.com/" + strings.Repeat("😀", 4100)
+		if got := Hyperlink("ok", astralURL); got != "ok" {
+			t.Fatalf("astral URL of %d UTF-16 units should return plain text", utf16Length(astralURL))
+		}
 	})
 }

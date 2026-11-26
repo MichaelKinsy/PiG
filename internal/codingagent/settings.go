@@ -311,66 +311,74 @@ const (
 
 // NoticeSettings mirrors upstream NoticeSettings (packages/coding-agent/src/core/settings-schema.ts).
 type NoticeSettings struct {
-	CacheMisses        bool `json:"cacheMisses,omitempty"`
-	cacheMissesSet     bool `json:"-"`
-	CacheWarming       bool `json:"cacheWarming,omitempty"`
-	cacheWarmingSet    bool `json:"-"`
-	CompactionCosts    bool `json:"compactionCosts,omitempty"`
-	compactionCostsSet bool `json:"-"`
-	ReasoningDrops     bool `json:"reasoningDrops,omitempty"`
-	reasoningDropsSet  bool `json:"-"`
+	CacheMisses        bool            `json:"cacheMisses,omitempty"`
+	cacheMissesSet     bool            `json:"-"`
+	CacheWarming       bool            `json:"cacheWarming,omitempty"`
+	cacheWarmingSet    bool            `json:"-"`
+	CompactionCosts    bool            `json:"compactionCosts,omitempty"`
+	compactionCostsSet bool            `json:"-"`
+	ReasoningDrops     bool            `json:"reasoningDrops,omitempty"`
+	reasoningDropsSet  bool            `json:"-"`
+	extra              map[string]bool `json:"-"`
 }
 
 func (n NoticeSettings) MarshalJSON() ([]byte, error) {
-	type noticeSettingsWire struct {
-		CacheMisses     *bool `json:"cacheMisses,omitempty"`
-		CacheWarming    *bool `json:"cacheWarming,omitempty"`
-		CompactionCosts *bool `json:"compactionCosts,omitempty"`
-		ReasoningDrops  *bool `json:"reasoningDrops,omitempty"`
-	}
-	wire := noticeSettingsWire{}
+	encoded := orderedjson.New()
 	if n.cacheMissesSet || n.CacheMisses {
-		wire.CacheMisses = new(n.CacheMisses)
+		encoded.Set("cacheMisses", json.RawMessage(strconv.FormatBool(n.CacheMisses)))
 	}
 	if n.cacheWarmingSet || n.CacheWarming {
-		wire.CacheWarming = new(n.CacheWarming)
+		encoded.Set("cacheWarming", json.RawMessage(strconv.FormatBool(n.CacheWarming)))
 	}
 	if n.compactionCostsSet || n.CompactionCosts {
-		wire.CompactionCosts = new(n.CompactionCosts)
+		encoded.Set("compactionCosts", json.RawMessage(strconv.FormatBool(n.CompactionCosts)))
 	}
 	if n.reasoningDropsSet || n.ReasoningDrops {
-		wire.ReasoningDrops = new(n.ReasoningDrops)
+		encoded.Set("reasoningDrops", json.RawMessage(strconv.FormatBool(n.ReasoningDrops)))
 	}
-	return json.Marshal(wire)
+	if len(n.extra) > 0 {
+		keys := make([]string, 0, len(n.extra))
+		for k := range n.extra {
+			keys = append(keys, k)
+		}
+		slices.Sort(keys)
+		for _, k := range keys {
+			encoded.Set(k, json.RawMessage(strconv.FormatBool(n.extra[k])))
+		}
+	}
+	return json.Marshal(encoded)
 }
 
 func (n *NoticeSettings) UnmarshalJSON(data []byte) error {
-	type noticeSettingsWire struct {
-		CacheMisses     *bool `json:"cacheMisses,omitempty"`
-		CacheWarming    *bool `json:"cacheWarming,omitempty"`
-		CompactionCosts *bool `json:"compactionCosts,omitempty"`
-		ReasoningDrops  *bool `json:"reasoningDrops,omitempty"`
-	}
-	var wire noticeSettingsWire
-	if err := json.Unmarshal(data, &wire); err != nil {
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
 	*n = NoticeSettings{}
-	if wire.CacheMisses != nil {
-		n.CacheMisses = *wire.CacheMisses
-		n.cacheMissesSet = true
-	}
-	if wire.CacheWarming != nil {
-		n.CacheWarming = *wire.CacheWarming
-		n.cacheWarmingSet = true
-	}
-	if wire.CompactionCosts != nil {
-		n.CompactionCosts = *wire.CompactionCosts
-		n.compactionCostsSet = true
-	}
-	if wire.ReasoningDrops != nil {
-		n.ReasoningDrops = *wire.ReasoningDrops
-		n.reasoningDropsSet = true
+	for k, v := range raw {
+		var b bool
+		if err := json.Unmarshal(v, &b); err != nil {
+			continue
+		}
+		switch NoticeKey(k) {
+		case NoticeCacheMisses:
+			n.CacheMisses = b
+			n.cacheMissesSet = true
+		case NoticeCacheWarming:
+			n.CacheWarming = b
+			n.cacheWarmingSet = true
+		case NoticeCompactionCosts:
+			n.CompactionCosts = b
+			n.compactionCostsSet = true
+		case NoticeReasoningDrops:
+			n.ReasoningDrops = b
+			n.reasoningDropsSet = true
+		default:
+			if n.extra == nil {
+				n.extra = map[string]bool{}
+			}
+			n.extra[k] = b
+		}
 	}
 	return nil
 }
@@ -380,6 +388,9 @@ func cloneNoticeSettings(n *NoticeSettings) *NoticeSettings {
 		return nil
 	}
 	c := *n
+	if len(n.extra) > 0 {
+		c.extra = maps.Clone(n.extra)
+	}
 	return &c
 }
 
@@ -737,6 +748,11 @@ type Settings struct {
 	// CollapseChangelog shows condensed startup update notices. The /changelog command always shows every released entry.
 	CollapseChangelog    bool `json:"collapseChangelog,omitempty"`
 	collapseChangelogSet bool `json:"-"`
+
+	// ShowCacheMissNotices is kept as a deprecated compatibility field for 0.8.x embedders.
+	//
+	// Deprecated: use Notices instead; scheduled for removal in 0.9.0.
+	ShowCacheMissNotices bool `json:"-"`
 
 	// EnableSkillCommands, when false, hides skill commands from the
 	// /skill:name autocomplete popup. Default: true.
@@ -1129,6 +1145,7 @@ func cloneSettings(s Settings) Settings {
 		ExtensionsTypescriptRuntime:    cloneStringPtr(s.ExtensionsTypescriptRuntime),
 		CollapseChangelog:              s.CollapseChangelog,
 		collapseChangelogSet:           s.collapseChangelogSet,
+		ShowCacheMissNotices:           s.ShowCacheMissNotices,
 		EnableSkillCommands:            cloneBoolPtr(s.EnableSkillCommands),
 		EnableInstallTelemetry:         cloneBoolPtr(s.EnableInstallTelemetry),
 		EnableAnalytics:                cloneBoolPtr(s.EnableAnalytics),
@@ -1856,8 +1873,18 @@ func (s Settings) GetNotices() NoticeSettings {
 	if s.Notices != nil {
 		out = *s.Notices
 	}
+	if s.ShowCacheMissNotices {
+		if s.Notices == nil || !s.Notices.cacheMissesSet {
+			out.CacheMisses = true
+		}
+	}
 	return out
 }
+
+// GetShowCacheMissNotices reports whether prompt cache miss notices are enabled.
+//
+// Deprecated: use GetNotices().CacheMisses instead; scheduled for removal in 0.9.0.
+func (s Settings) GetShowCacheMissNotices() bool { return s.GetNotices().CacheMisses }
 
 // GetQuietStartup returns the quiet startup setting: true, "header" or false.
 func (s Settings) GetQuietStartup() QuietStartup { return s.QuietStartup }
@@ -3012,6 +3039,13 @@ func (sm *SettingsManager) GetNotices() NoticeSettings {
 	return readMerged(sm, (*Settings).GetNotices)
 }
 
+// GetShowCacheMissNotices reports whether prompt cache miss notices are enabled.
+//
+// Deprecated: use GetNotices().CacheMisses instead; scheduled for removal in 0.9.0.
+func (sm *SettingsManager) GetShowCacheMissNotices() bool {
+	return sm.GetNotices().CacheMisses
+}
+
 // GetShellPath returns the configured shell path (for bash tool). An invalid
 // file URL is an error, as upstream getShellPath throws.
 func (sm *SettingsManager) GetShellPath() (string, error) {
@@ -3454,8 +3488,22 @@ func (sm *SettingsManager) SetNotice(key NoticeKey, shown bool) error {
 		case NoticeReasoningDrops:
 			s.Notices.ReasoningDrops = shown
 			s.Notices.reasoningDropsSet = true
+		default:
+			if key != "" {
+				if s.Notices.extra == nil {
+					s.Notices.extra = map[string]bool{}
+				}
+				s.Notices.extra[string(key)] = shown
+			}
 		}
 	})
+}
+
+// SetShowCacheMissNotices toggles the cacheMisses transcript notice.
+//
+// Deprecated: use SetNotice(NoticeCacheMisses, show) instead; scheduled for removal in 0.9.0.
+func (sm *SettingsManager) SetShowCacheMissNotices(show bool) error {
+	return sm.SetNotice(NoticeCacheMisses, show)
 }
 
 // SetShellPath sets the shell path for the bash tool.
@@ -4542,6 +4590,12 @@ func mergeSettings(global, project Settings) Settings {
 		if project.Notices.reasoningDropsSet {
 			m.Notices.ReasoningDrops = project.Notices.ReasoningDrops
 			m.Notices.reasoningDropsSet = true
+		}
+		if len(project.Notices.extra) > 0 {
+			if m.Notices.extra == nil {
+				m.Notices.extra = map[string]bool{}
+			}
+			maps.Copy(m.Notices.extra, project.Notices.extra)
 		}
 	}
 	if project.ShowHardwareCursor != nil {

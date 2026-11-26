@@ -38,8 +38,8 @@ func TestExtractGoCurrentSettingsAndPrompts(t *testing.T) {
 		"autocompact", "show-images", "image-width-cells", "auto-resize-images", "block-images", "skill-commands",
 		"show-hardware-cursor", "editor-padding", "output-padding", "autocomplete-max-visible", "clear-on-shrink",
 		"terminal-progress", "steering-mode", "follow-up-mode", "transport", "http-idle-timeout", "cache-warming-mode",
-		"hide-thinking", "mermaid-rendering", "cache-miss-notices", "collapse-changelog", "quiet-startup", "install-telemetry",
-		"default-project-trust", "double-escape-action", "tree-filter-mode", "mask-secret-input", "warnings", "model-thinking", "tui-mode",
+		"hide-thinking", "mermaid-rendering", "collapse-changelog", "quiet-startup", "install-telemetry",
+		"default-project-trust", "double-escape-action", "tree-filter-mode", "mask-secret-input", "warnings", "notices", "model-thinking", "tui-mode",
 		"fullscreen-exit-output", "fullscreen-scrollbar", "fullscreen-copy-on-select", "fullscreen-wheel-scroll-lines", "theme",
 	}
 	if !reflect.DeepEqual(ids, wantIDs) {
@@ -145,15 +145,15 @@ func TestExtractGoCacheMissNoticesDescriptionMatchesPi0861(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, item := range inventory.Tables[0].Items {
-		if item.ID == "cache-miss-notices" {
-			const want = "Show transcript notices for cache costs and provider recovery diagnostics"
+		if item.ID == "notices" {
+			const want = "Notices about cache misses, cache warming, compaction costs and dropped reasoning"
 			if item.Description != want {
-				t.Fatalf("cache-miss-notices description = %q, want %q", item.Description, want)
+				t.Fatalf("notices description = %q, want %q", item.Description, want)
 			}
 			return
 		}
 	}
-	t.Fatal("cache-miss-notices setting not found")
+	t.Fatal("notices setting not found")
 }
 
 func TestExtractGoFullscreenExitOutputMatchesPi0861(t *testing.T) {

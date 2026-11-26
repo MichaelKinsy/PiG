@@ -195,6 +195,7 @@ func settingsSchema() *Schema {
 		Optional("fullscreenWheelScrollLines", Union([]*Schema{Number(), Literal("auto")}, D("Lines scrolled per wheel event in fullscreen mode; numeric values are clamped from 1 to 100."), Default(d.fullscreenWheelScrollLines))),
 		Optional("queueMode", Union(literals("all", "one-at-a-time"), D("Legacy setting migrated to steeringMode."), Opt{"deprecated", true})),
 		Optional("websockets", Boolean(D("Legacy setting migrated to transport."), Opt{"deprecated", true})),
+		Optional("showCacheMissNotices", Boolean(D("Legacy setting migrated to notices."), Opt{"deprecated", true})),
 	}, Opt{"additionalProperties", true})
 }
 

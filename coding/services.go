@@ -43,6 +43,20 @@ const (
 	QuietStartupHeader = icodingagent.QuietStartupHeader
 )
 
+// NoticeKey identifies one transcript notice toggle under settings.notices (re-exported alias).
+type NoticeKey = icodingagent.NoticeKey
+
+// Transcript notice keys.
+const (
+	NoticeKeyCacheMisses     = icodingagent.NoticeCacheMisses
+	NoticeKeyCacheWarming    = icodingagent.NoticeCacheWarming
+	NoticeKeyCompactionCosts = icodingagent.NoticeCompactionCosts
+	NoticeKeyReasoningDrops  = icodingagent.NoticeReasoningDrops
+)
+
+// NoticeSettings holds per-notice transcript visibility preferences (re-exported alias).
+type NoticeSettings = icodingagent.NoticeSettings
+
 // SettingsManager is the live settings reader (re-exported alias). Use
 // Services.Settings() to obtain the merged Settings; use
 // Services.SettingsManager() if you need to call Reload() or watch for
