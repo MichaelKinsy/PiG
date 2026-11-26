@@ -74,7 +74,7 @@ func builtinClassifiers(provider string) ProviderClassifierMap {
 		return ProviderClassifierMap{ClassifierAPITypesafeSystemOne: TypesafeSystemOneAPI()}
 	case "github-copilot": //portlint:allow providerliteral the built-in registry entry for providers/github-copilot.ts:70 `classifiers: { "openai-decisions": copilotV1(...), "typesafe-system-one": copilotV1(...) }`
 		return ProviderClassifierMap{
-			ClassifierAPIOpenAIDecisions:  githubCopilotV1(OpenAIDecisionsAPI()),
+			ClassifierAPIOpenAIDecisions:   githubCopilotV1(OpenAIDecisionsAPI()),
 			ClassifierAPITypesafeSystemOne: githubCopilotV1(TypesafeSystemOneAPI()),
 		}
 	case "cloudflare-workers-ai":

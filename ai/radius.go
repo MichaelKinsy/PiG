@@ -125,7 +125,7 @@ func newRadiusParts(options RadiusProviderOptions) *RadiusProvider {
 		},
 		Stream:       streams.Stream,
 		StreamSimple: streams.StreamSimple,
-		Classify: PiDecisionAPI().Classify,
+		Classify:     PiDecisionAPI().Classify,
 	}
 	provider.RefreshModels = func(refresh RefreshModelsContext) error {
 		ctx := refresh.Signal

@@ -124,20 +124,20 @@ func TestClaudeMidConvoSupport(t *testing.T) {
 }
 
 func TestEnableClaudeMidConvoEffort(t *testing.T) {
-	for _, tc := range []struct{ id, levels string }{
-		{"claude-opus-5", `null`},
-		{"claude-opus-5-20260723", `null`},
-		{"anthropic/claude-haiku-5.5-20260723", `null`},
-		{"claude-haiku-5-5", `null`},
-		{"claude-opus-5-5", `{"off":null}`},
-		{"~anthropic/claude-sonnet-5.5", `{"off":null}`},
-		{"claude-fable-5-1", `{"off":null}`},
+	for _, id := range []string{
+		"claude-opus-5",
+		"claude-opus-5-20260723",
+		"anthropic/claude-haiku-5.5-20260723",
+		"claude-haiku-5-5",
+		"claude-opus-5-5",
+		"~anthropic/claude-sonnet-5.5",
+		"claude-fable-5-1",
 	} {
-		t.Run(tc.id, func(t *testing.T) {
-			model := fakeModel("anthropic", tc.id, "anthropic-messages")
+		t.Run(id, func(t *testing.T) {
+			model := fakeModel("anthropic", id, "anthropic-messages")
 			EnableClaudeMidConvoEffort(model)
 			requireJSON(t, model.Object("compat"), `{"supportsMidConvoEffort":true}`)
-			requireJSON(t, model.Object("thinkingLevelMap"), tc.levels)
+			requireJSON(t, model.Object("thinkingLevelMap"), `null`)
 		})
 	}
 }
@@ -149,7 +149,7 @@ func TestApplyClaudeFamilyRules(t *testing.T) {
 		{"a dotted prefixed id matches", "openrouter", "anthropic/claude-opus-4.7", "anthropic-messages", `{"xhigh":"xhigh","max":"max"}`, `{"forceAdaptiveThinking":true,"supportsTemperature":false}`},
 		{"sonnet 5.5 drops the temperature", "anthropic", "claude-sonnet-5-5", "anthropic-messages", `{"xhigh":"xhigh","max":"max"}`, `{"forceAdaptiveThinking":true,"supportsTemperature":false}`},
 		{"sonnet 5 drops the temperature", "anthropic", "claude-sonnet-5", "anthropic-messages", `{"xhigh":"xhigh","max":"max"}`, `{"forceAdaptiveThinking":true,"supportsTemperature":false}`},
-		{"fable 5 can not turn thinking off", "anthropic", "claude-fable-5-1", "anthropic-messages", `{"off":null,"xhigh":"xhigh","max":"max"}`, `{"forceAdaptiveThinking":true}`},
+		{"fable 5 gets xhigh and max", "anthropic", "claude-fable-5-1", "anthropic-messages", `{"xhigh":"xhigh","max":"max"}`, `{"forceAdaptiveThinking":true}`},
 		{"mythos 5 is adaptive without effort levels", "anthropic", "claude-mythos-5", "anthropic-messages", `null`, `{"forceAdaptiveThinking":true}`},
 		{"the latest alias is adaptive", "openrouter", "~anthropic/claude-opus-latest", "anthropic-messages", `null`, `{"forceAdaptiveThinking":true}`},
 		{"an alias with a digit is not an alias", "openrouter", "~anthropic/claude-opus-4-latest", "anthropic-messages", `null`, `null`},
@@ -159,7 +159,7 @@ func TestApplyClaudeFamilyRules(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			model := fakeModel(tc.provider, tc.id, tc.api)
-			applyClaudeFamilyRules(model)
+			applyClaudeFamilyRules(model, nil)
 			requireJSON(t, model.Object("thinkingLevelMap"), tc.levels)
 			requireJSON(t, model.Object("compat"), tc.compat)
 		})
@@ -167,8 +167,7 @@ func TestApplyClaudeFamilyRules(t *testing.T) {
 }
 
 func TestClaude55ThinkingLevels(t *testing.T) {
-	requireJSON(t, Claude55ThinkingLevels("claude-opus-5.5"), `{"off":null,"minimal":null,"low":"low","medium":"medium","high":"high","xhigh":"xhigh","max":"max"}`)
-	requireJSON(t, Claude55ThinkingLevels("claude-haiku-5.5"), `{"minimal":null,"low":"low","medium":"medium","high":"high","xhigh":"xhigh","max":"max"}`)
+	requireJSON(t, Claude55ThinkingLevels(), `{"minimal":null,"low":"low","medium":"medium","high":"high","xhigh":"xhigh","max":"max"}`)
 }
 
 func TestApplyDeepSeekRules(t *testing.T) {

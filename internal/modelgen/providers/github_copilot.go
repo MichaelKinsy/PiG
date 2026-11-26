@@ -25,7 +25,6 @@ func githubCopilotStaticHeaders() *Obj {
 var githubCopilotExtendedContextModelIDs = map[string]bool{
 	"claude-fable-5":    true,
 	"claude-opus-4.8":   true,
-	"claude-opus-5":     true,
 	"claude-opus-5.5":   true,
 	"claude-sonnet-4.6": true,
 	"claude-sonnet-5":   true,
@@ -46,8 +45,6 @@ var githubCopilotEagerToolInputStreamingUnsupportedModelIDs = map[string]bool{
 func githubCopilotThinkingLevelOverride(modelID string) *Obj {
 	switch modelID {
 	case "claude-opus-4.8":
-		return O("minimal", "low")
-	case "claude-opus-5":
 		return O("minimal", "low")
 	case "claude-sonnet-4.6":
 		return O("minimal", "low", "max", "max")
@@ -107,6 +104,25 @@ func githubCopilotMicrosoftDecision1() *Obj {
 	)
 }
 
+// The authenticated Copilot catalog lists this decision model on /v1/decisions with an 872K prompt limit and
+// restricts it to the Pro, Pro+, Business, and Enterprise plans, among others (checked 2026-11-22), while
+// Microsoft-Decision-1 is restricted to Business and Enterprise. It answers as gpt-6-luna and accepts images.
+// GitHub's Copilot pricing page does not list it; these are OpenAI's Decisions API prices.
+func githubCopilotGPT6LunaDecisions() *Obj {
+	return O(
+		"type", "classifier",
+		"id", "gpt-6-luna-decisions",
+		"name", "GPT-6 Luna Decisions",
+		"api", "openai-decisions",
+		"provider", "github-copilot",
+		"baseUrl", githubCopilotBaseURL,
+		"input", Strings("text", "image"),
+		"cost", OpenAIDecisionsCost(),
+		"contextWindow", 872000,
+		"headers", githubCopilotStaticHeaders(),
+	)
+}
+
 func githubCopilot() ProviderDefinition {
 	return ProviderDefinition{
 		ID: "github-copilot",
@@ -128,7 +144,7 @@ func githubCopilot() ProviderDefinition {
 						))
 					}
 					if model.Str("id") == "claude-opus-5.5" {
-						MergeThinking(result, Claude55ThinkingLevels(model.Str("id")))
+						MergeThinking(result, Claude55ThinkingLevels())
 					}
 					return result, nil
 				},
@@ -144,7 +160,9 @@ func githubCopilot() ProviderDefinition {
 			}
 			return models, nil
 		},
-		Classifiers: func(*ProviderContext) ([]*Obj, error) { return []*Obj{githubCopilotMicrosoftDecision1()}, nil },
+		Classifiers: func(*ProviderContext) ([]*Obj, error) {
+			return []*Obj{githubCopilotGPT6LunaDecisions(), githubCopilotMicrosoftDecision1()}, nil
+		},
 		Compat: ApiCompatDefaults{
 			"anthropic-messages": FixedCompat(O("supportsStrictTools", true)),
 			"openai-completions": FixedCompat(O("supportsStrictMode", true)),

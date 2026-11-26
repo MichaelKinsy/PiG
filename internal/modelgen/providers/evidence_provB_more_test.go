@@ -92,9 +92,9 @@ func TestProvBOpencode(t *testing.T) {
 		{"deepseek-v4-flash", "compat", noLongDeepSeek},
 		{"deepseek-v4.1-flash", "compat", noLongDeepSeek},
 		{"deepseek-v4-pro", "compat", noLongDeepSeek},
-		{"kimi-k2.5", "compat", noLong},
+		{"kimi-k2.5", "compat", defaults + `,"maxTokensField":"max_tokens"}`},
 		{"minimax-m2.7", "compat", noLong},
-		{"kimi-k2.6", "compat", defaults + `,"thinkingFormat":"deepseek","supportsReasoningEffort":false,"maxTokensField":"max_tokens","supportsLongCacheRetention":false}`},
+		{"kimi-k2.6", "compat", defaults + `,"maxTokensField":"max_tokens"}`},
 		{"kimi-k2.6", "thinkingLevelMap", "undefined"},
 		{"grok-build-0.1", "compat", defaults + `,"supportsReasoningEffort":false,"maxTokensField":"max_tokens"}`},
 		{"grok-build-0.1", "thinkingLevelMap", `{"off":null,"minimal":null,"low":null,"medium":null}`},
@@ -141,9 +141,9 @@ func TestProvBOpencodeGo(t *testing.T) {
 	}
 	models := provBModelsOf(catalog)
 	provBCheck(t, models, []provBWant{
-		{"kimi-k2.6", "compat", defaults + `,"thinkingFormat":"deepseek","supportsReasoningEffort":false,"maxTokensField":"max_tokens","supportsLongCacheRetention":false}`},
+		{"kimi-k2.6", "compat", defaults + `,"maxTokensField":"max_tokens"}`},
 		// OpenCode Go exposes Kimi K2.6 thinking as on/off.
-		{"kimi-k2.6", "thinkingLevelMap", `{"minimal":null,"low":null,"medium":null}`},
+		{"kimi-k2.6", "thinkingLevelMap", "undefined"},
 		{"deepseek-v4-flash", "compat", defaults + `,"maxTokensField":"max_tokens","requiresReasoningContentOnAssistantMessages":true,"thinkingFormat":"deepseek"}`},
 		{"qwen3.5-plus", "api", `"openai-completions"`},
 		{"qwen3.5-plus", "baseUrl", `"https://opencode.ai/zen/go/openai/v1"`},

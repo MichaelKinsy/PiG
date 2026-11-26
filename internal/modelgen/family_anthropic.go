@@ -11,7 +11,8 @@ import (
 
 var (
 	claudePrefix           = regexp.MustCompile(`^~?anthropic/`)
-	claudeDateSuffix       = regexp.MustCompile(`-\d{8}$`)
+	claudeVariantSuffix    = regexp.MustCompile(`[-:](?:batch|fast)$`)
+	claudeDottedVersion    = regexp.MustCompile(`(\d)\.(\d)`)
 	claudeOpus5            = regexp.MustCompile(`^claude-opus-(?:5|5[.-]5)(?:-\d{8})?$`)
 	claudeSonnetHaiku55    = regexp.MustCompile(`^claude-(?:sonnet|haiku)-5[.-]5(?:-\d{8})?$`)
 	claudeFableMythos51    = regexp.MustCompile(`^claude-(?:fable|mythos)-5[.-][12](?:-\d{8})?$`)
@@ -31,22 +32,14 @@ func SupportsClaudeMidConvoEffort(modelID string) bool {
 	return claudeOpus5.MatchString(id) || claudeSonnetHaiku55.MatchString(id) || claudeFableMythos51.MatchString(id)
 }
 
-// Claude models that accept `thinking: {type: "disabled"}` alongside per-message effort. Opus 5.5, Sonnet 5.5, Fable 5.1/5.2, and
-// Mythos 5.1/5.2 reject it.
-// https://platform.claude.com/docs/en/build-with-claude/thinking#configuring-thinking
-var disabledThinkingModels = map[string]bool{"claude-opus-5": true, "claude-haiku-5-5": true, "claude-haiku-5.5": true}
-
 // SupportsClaudeMidConvoSystemMessages reports models that accept system messages and tool changes after the conversation starts.
 func SupportsClaudeMidConvoSystemMessages(modelID string) bool {
 	return claudeSystemOpus.MatchString(modelID) || claudeSystemSonnet.MatchString(modelID) || claudeSystemFableMyth.MatchString(modelID)
 }
 
-// EnableClaudeMidConvoEffort enables per-message effort changes. Models that cannot disable thinking with it lose "off".
+// EnableClaudeMidConvoEffort enables per-message effort changes.
 func EnableClaudeMidConvoEffort(model ChatModel) {
 	MergeCompat(model, O("supportsMidConvoEffort", true))
-	if !disabledThinkingModels[claudeDateSuffix.ReplaceAllString(stripClaudePrefix(model.Str("id")), "")] {
-		MergeThinking(model, O("off", nil))
-	}
 }
 
 func idIncludesAny(modelID string, fragments []string) bool {
@@ -75,7 +68,7 @@ var (
 
 // applyClaudeFamilyRules sets the adaptive thinking effort levels (per Anthropic adaptive thinking docs): "max" is available on all
 // adaptive-thinking Claude models; "xhigh" only on Opus 4.7/4.8/5, Sonnet 5, Haiku 5.5, and Fable 5.
-func applyClaudeFamilyRules(model ChatModel) {
+func applyClaudeFamilyRules(model ChatModel, ctx *ProviderContext) {
 	id := model.Str("id")
 	if idIncludesAny(id, maxEffortOnly) {
 		MergeThinking(model, O("max", "max"))
@@ -84,7 +77,10 @@ func applyClaudeFamilyRules(model ChatModel) {
 		MergeThinking(model, O("xhigh", "xhigh", "max", "max"))
 	}
 	if strings.Contains(id, "fable-5") {
-		MergeThinking(model, O("off", nil, "xhigh", "xhigh", "max", "max"))
+		MergeThinking(model, O("xhigh", "xhigh", "max", "max"))
+	}
+	if cannotTurnThinkingOff(model, ctx) {
+		MergeThinking(model, O("off", nil))
 	}
 	if model.Str("api") != "anthropic-messages" {
 		return
@@ -97,12 +93,37 @@ func applyClaudeFamilyRules(model ChatModel) {
 	}
 }
 
-// Claude55ThinkingLevels: models.dev may list Opus 5.5, Sonnet 5.5, and Haiku 5.5 before their effort metadata is complete.
-// Haiku 5.5 accepts disabled thinking; Opus 5.5 and Sonnet 5.5 reject it.
-func Claude55ThinkingLevels(modelID string) *Obj {
-	levels := NewObj()
-	if !strings.Contains(modelID, "haiku") {
-		levels.Set("off", nil)
+// cannotTurnThinkingOff reports whether Anthropic's own models.dev entry for this Claude model lists no thinking toggle.
+func cannotTurnThinkingOff(model ChatModel, ctx *ProviderContext) bool {
+	if ctx == nil {
+		return false
 	}
-	return levels.Set("minimal", nil).Set("low", "low").Set("medium", "medium").Set("high", "high").Set("xhigh", "xhigh").Set("max", "max")
+	canonicalID := ""
+	if src := ctx.ModelsDevSource(model); src != nil {
+		canonicalID = src.CanonicalID
+	}
+	if canonicalID == "" {
+		canonicalID = "anthropic/" + anthropicModelID(model.Str("id"))
+	}
+	if !strings.HasPrefix(canonicalID, "anthropic/") {
+		return false
+	}
+	anthropic := objectOf(ctx.Sources.ModelsDev.member("anthropic"))
+	models := objectOf(anthropic.member("models"))
+	entry := objectOf(models.member(strings.TrimPrefix(canonicalID, "anthropic/")))
+	if entry == nil {
+		return false
+	}
+	normalized := NormalizeModelsDevModel(entry)
+	return normalized.Reasoning && !normalized.HasToggleOption()
+}
+
+func anthropicModelID(modelID string) string {
+	id := claudeVariantSuffix.ReplaceAllString(stripClaudePrefix(modelID), "")
+	return claudeDottedVersion.ReplaceAllString(id, "$1-$2")
+}
+
+// Claude55ThinkingLevels: models.dev may list Opus 5.5, Sonnet 5.5, and Haiku 5.5 before their effort metadata is complete.
+func Claude55ThinkingLevels() *Obj {
+	return NewObj().Set("minimal", nil).Set("low", "low").Set("medium", "medium").Set("high", "high").Set("xhigh", "xhigh").Set("max", "max")
 }

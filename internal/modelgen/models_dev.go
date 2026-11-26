@@ -39,10 +39,10 @@ type ModelsDevAPI struct {
 
 // ModelsDevModel is a models.dev model normalized for the catalog.
 type ModelsDevModel struct {
-	ID, Name, Type, Status string
-	ToolCall               bool
-	StructuredOutput       bool
-	Reasoning              bool
+	ID, CanonicalID, Name, Type, Status string
+	ToolCall                            bool
+	StructuredOutput                    bool
+	Reasoning                           bool
 	// ReasoningOptions is empty when the model does not reason.
 	ReasoningOptions []ModelsDevReasoningOption
 	ImageInput       bool
@@ -254,6 +254,7 @@ func NormalizeModelsDevModel(model *Obj) *ModelsDevModel {
 	reasoning := objectOf(objectOf(model.member("capabilities")).member("reasoning"))
 	normalized := &ModelsDevModel{
 		ID:               stringOf(model.member("id")),
+		CanonicalID:      stringOf(model.member("canonical_id")),
 		Name:             stringOf(model.member("name")),
 		Type:             stringOf(model.member("type")),
 		Status:           stringOf(model.member("status")),
