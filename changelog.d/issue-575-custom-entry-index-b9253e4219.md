@@ -1,0 +1,3 @@
+### Fixed
+
+- Opening a file-backed v3 session through `coding.SessionManagerFor` or `SessionManager.Open` now indexes `custom` and `branch_summary` entries lazily by file offset, length, hash, and base metadata instead of eagerly decoding and retaining both a cloned JSONL line and the decoded payload on the heap, streams oversized `custom` JSONL lines (>4 MiB) in constant memory without buffering the full line, and strips redundant raw JSON copies on canonical resident entries across all entry types (fixes #575). <!-- fix: b9253e4219 --> <!-- cause: prepareIndexLineAfter only took the offset-backed lazy path for message and custom_message, eagerly cloning and decoding custom and branch_summary lines on open -->
