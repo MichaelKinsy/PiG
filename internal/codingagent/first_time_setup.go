@@ -14,33 +14,27 @@ import (
 
 // Ports packages/coding-agent/src/modes/interactive/components/first-time-setup.ts
 
+// FirstTimeSetupQuestion is the question the first-time setup dialog asks.
+const FirstTimeSetupQuestion = "Opt-in to anonymous usage data sharing?"
+
 // FirstTimeSetupResult is the dialog's submitted choice.
 type FirstTimeSetupResult struct {
-	Theme          string
 	Sprite         string
 	ShareAnalytics bool
 }
 
 // FirstTimeSetupOptions are the dialog's callbacks.
 type FirstTimeSetupOptions struct {
-	OnThemePreview func(themeName string)
-	OnSubmit       func(result FirstTimeSetupResult)
-	OnCancel       func()
+	OnSubmit func(result FirstTimeSetupResult)
+	OnCancel func()
 }
 
 type firstTimeSetupStep string
 
 const (
-	firstTimeSetupStepTheme     firstTimeSetupStep = "theme"
 	firstTimeSetupStepSprite    firstTimeSetupStep = "sprite"
 	firstTimeSetupStepAnalytics firstTimeSetupStep = "analytics"
 )
-
-var firstTimeSetupThemeOptions = []struct{ value, label string }{
-	{tui.SystemThemeName, "System (matches your terminal colors)"},
-	{"dark", "Dark"},
-	{"light", "Light"},
-}
 
 var firstTimeSetupAnalyticsOptions = []struct {
 	value bool
@@ -50,13 +44,12 @@ var firstTimeSetupAnalyticsOptions = []struct {
 	{false, "Don't share"},
 }
 
-// FirstTimeSetupComponent is the first-time setup dialog: theme, sprite and analytics opt-in.
-// pig divergence (D88): the dialog's logo is the pig head of the sprite in view, not Pi's SETUP_LOGO_LINES, and a sprite step
-// follows the theme step; its options are the built-in sprites, then the extension-registered ones (piglogin.All).
+// FirstTimeSetupComponent is the first-time setup dialog: sprite (when pig-login is linked) and analytics opt-in.
+// pig divergence (D88): the dialog's logo is the pig head of the sprite in view, not Pi's piLogoLines, and a sprite step
+// precedes the analytics step; its options are the built-in sprites, then the extension-registered ones (piglogin.All).
 type FirstTimeSetupComponent struct {
 	*tui.Container
 	step           firstTimeSetupStep
-	themeIndex     int
 	spriteIndex    int
 	analyticsIndex int
 	sprites        []piglogin.Variant
@@ -70,9 +63,12 @@ const firstTimeSetupSpriteRows = 8
 // NewFirstTimeSetupComponent builds the dialog over the sprites offered at construction, starting on the active sprite.
 // pig additive (D92): pig-login owns /sprite, so with it stripped there are no sprites to offer and no sprite step.
 func NewFirstTimeSetupComponent(options FirstTimeSetupOptions) *FirstTimeSetupComponent {
-	c := &FirstTimeSetupComponent{Container: tui.NewContainer(), step: firstTimeSetupStepTheme, options: options}
+	c := &FirstTimeSetupComponent{Container: tui.NewContainer(), step: firstTimeSetupStepAnalytics, options: options}
 	if !pigstrip.Has(pigstrip.ListExtensions, piglogin.Name) {
 		c.sprites = piglogin.All()
+	}
+	if len(c.sprites) > 0 {
+		c.step = firstTimeSetupStepSprite
 	}
 	active := piglogin.Active().ID
 	for i, sprite := range c.sprites {
@@ -102,7 +98,6 @@ func (c *FirstTimeSetupComponent) logoSprite() piglogin.Variant {
 	return piglogin.Active()
 }
 
-// update rebuilds the whole dialog on every change so theme previews recolor all text.
 func (c *FirstTimeSetupComponent) update() {
 	t := tui.ActiveTheme()
 	c.Clear()
@@ -115,14 +110,6 @@ func (c *FirstTimeSetupComponent) update() {
 	c.Add(tui.NewSpacer(1))
 
 	switch c.step {
-	case firstTimeSetupStepTheme:
-		c.Add(tui.NewPaddedText(t.Fg("text", "Pick a theme."), 1, 0, nil))
-		c.Add(tui.NewSpacer(1))
-		labels := make([]string, len(firstTimeSetupThemeOptions))
-		for i, option := range firstTimeSetupThemeOptions {
-			labels[i] = option.label
-		}
-		c.addOptionList(labels, c.themeIndex)
 	case firstTimeSetupStepSprite:
 		c.Add(tui.NewPaddedText(t.Fg("text", "Pick a sprite."), 1, 0, nil))
 		c.Add(tui.NewPaddedText(t.Fg("muted", "The pig your header shows. Change it anytime with /sprite."), 1, 0, nil))
@@ -139,7 +126,7 @@ func (c *FirstTimeSetupComponent) update() {
 			c.Add(tui.NewPaddedText(t.Fg("muted", piglogin.CreateHint), 1, 0, nil))
 		}
 	default:
-		c.Add(tui.NewPaddedText(t.Fg("text", "Opt-in to anonymous usage data sharing?"), 1, 0, nil))
+		c.Add(tui.NewPaddedText(t.Fg("text", FirstTimeSetupQuestion), 1, 0, nil))
 		c.Add(tui.NewPaddedText(t.Fg("muted", "Opting in stores a tracking identifier in settings.json and enables anonymous\nusage analytics. This helps us to better debug, reproduce, and resolve issues\nand bugs within PiG. You can observe what is shared using /privacy and make\nchanges anytime in settings.json."), 1, 0, nil))
 		c.Add(tui.NewSpacer(1))
 		labels := make([]string, len(firstTimeSetupAnalyticsOptions))
@@ -184,14 +171,6 @@ func (c *FirstTimeSetupComponent) addScrolledOptionList(labels []string, selecte
 
 func (c *FirstTimeSetupComponent) moveSelection(delta int) {
 	switch c.step {
-	case firstTimeSetupStepTheme:
-		next := max(0, min(len(firstTimeSetupThemeOptions)-1, c.themeIndex+delta))
-		if next != c.themeIndex {
-			c.themeIndex = next
-			if c.options.OnThemePreview != nil {
-				c.options.OnThemePreview(firstTimeSetupThemeOptions[c.themeIndex].value)
-			}
-		}
 	case firstTimeSetupStepSprite:
 		c.spriteIndex = max(0, min(len(c.sprites), c.spriteIndex+delta))
 	default:
@@ -210,17 +189,11 @@ func (c *FirstTimeSetupComponent) HandleInput(data string) {
 		c.moveSelection(1)
 	case kb.Matches(data, tui.KBSelectConfirm) || data == "\n":
 		switch c.step {
-		case firstTimeSetupStepTheme:
-			c.step = firstTimeSetupStepSprite
-			if len(c.sprites) == 0 {
-				c.step = firstTimeSetupStepAnalytics
-			}
-			c.update()
 		case firstTimeSetupStepSprite:
 			c.step = firstTimeSetupStepAnalytics
 			c.update()
 		default:
-			result := FirstTimeSetupResult{Theme: firstTimeSetupThemeOptions[c.themeIndex].value, ShareAnalytics: firstTimeSetupAnalyticsOptions[c.analyticsIndex].value}
+			result := FirstTimeSetupResult{ShareAnalytics: firstTimeSetupAnalyticsOptions[c.analyticsIndex].value}
 			if c.spriteIndex < len(c.sprites) {
 				result.Sprite = c.sprites[c.spriteIndex].ID
 			}
@@ -239,48 +212,38 @@ func (c *FirstTimeSetupComponent) HandleInput(data string) {
 
 // FirstTimeSetupSettings is the settings store a submitted first-time setup writes.
 type FirstTimeSetupSettings interface {
-	SetTheme(name string) error
 	SetEnableAnalytics(enabled bool) error
 }
 
 // ShowFirstTimeSetup shows the first-time setup dialog on its own screen before the interactive TUI starts, as Pi's
-// showFirstTimeSetup does (cli/startup-ui.ts:182-218, main.ts:672-676), and persists a submitted result: the theme and
-// analytics opt-in in settings, and the sprite exactly as /sprite set saves it. It returns the submitted result, or nil
-// when setup was skipped. A settings write failure is recorded by the settings manager, not returned, as Pi's queued writes are.
+// showFirstTimeSetup does (cli/startup-ui.ts, main.ts), and persists a submitted result: the analytics opt-in in settings,
+// and the sprite exactly as /sprite set saves it. It returns the submitted result, or nil when setup was skipped.
+// A settings write failure is recorded by the settings manager, not returned, as Pi's queued writes are.
 // pig divergence (D88): the sprite step offers the built-in sprites; extensions are not loaded yet, so their sprites are
 // chosen later with /sprite.
 func ShowFirstTimeSetup(settings FirstTimeSetupSettings, opts StartupUIOptions) (*FirstTimeSetupResult, error) {
 	ui := tui.New()
 	ui.SetLogDirectory(opts.AgentDir)
-	ui.SetShowHardwareCursor(opts.Settings.GetShowHardwareCursor()) // startup-ui.ts:92-93
+	ui.SetShowHardwareCursor(opts.Settings.GetShowHardwareCursor())
 	ui.SetClearOnShrink(opts.Settings.GetClearOnShrink())
 	return showFirstTimeSetupWith(settings, opts, ui, tui.NewStdioProcessTerminal())
 }
 
 func showFirstTimeSetupWith(settings FirstTimeSetupSettings, opts StartupUIOptions, ui *tui.TuiMainScreen, terminal startupTerminal) (*FirstTimeSetupResult, error) {
 	configureStartupTui(opts)
-	preview := tui.SystemThemeName
-	tui.SetThemeByName(preview)
 	var result *FirstTimeSetupResult
 	component := NewFirstTimeSetupComponent(FirstTimeSetupOptions{
-		OnThemePreview: func(name string) {
-			preview = name
-			tui.SetThemeByName(name)
-		},
 		OnSubmit: func(r FirstTimeSetupResult) { result = &r },
 	})
-	themed := &firstTimeSetupStartup{FirstTimeSetupComponent: component, previewTheme: func() string { return preview }}
-	if _, err := runStartupComponentWith(themed, opts, true, ui, terminal); err != nil {
+	if _, err := runStartupComponentWith(component, opts, true, ui, terminal); err != nil {
 		return nil, err
 	}
 	if result == nil {
 		return nil, nil
 	}
 	var errs []error
-	// startup-ui.ts showFirstTimeSetup: setTheme and setEnableAnalytics queue their writes, and a failure is recorded on the startup settings
-	// manager after main.ts:670 collected its diagnostics, so Pi reports none.
-	// upstream: packages/coding-agent/src/core/settings-manager.ts:enqueueWrite
-	_ = settings.SetTheme(result.Theme)
+	// startup-ui.ts showFirstTimeSetup: setEnableAnalytics queues its write, and a failure is recorded on the startup settings
+	// manager after main.ts collected its diagnostics, so Pi reports none.
 	// upstream: packages/coding-agent/src/core/settings-manager.ts:enqueueWrite
 	_ = settings.SetEnableAnalytics(result.ShareAnalytics)
 	if result.Sprite != "" {
@@ -291,16 +254,7 @@ func showFirstTimeSetupWith(settings FirstTimeSetupSettings, opts StartupUIOptio
 	return result, errors.Join(errs...)
 }
 
-// firstTimeSetupStartup is the dialog on the startup screen: the terminal's colors regenerate the theme being previewed,
-// as Pi's queryStartupTerminalColors(ui, () => setTheme(previewTheme)) does.
-type firstTimeSetupStartup struct {
-	*FirstTimeSetupComponent
-	previewTheme func() string
-}
-
-func (s *firstTimeSetupStartup) startupTheme() string { return s.previewTheme() }
-
-// SettingsFileExists reports whether agentDir holds settings.json: Pi's first-time setup test (startup-ui.ts:139).
+// SettingsFileExists reports whether agentDir holds settings.json: Pi's first-time setup test (startup-ui.ts).
 func SettingsFileExists(agentDir string) bool {
 	_, err := os.Stat(filepath.Join(agentDir, "settings.json"))
 	return err == nil

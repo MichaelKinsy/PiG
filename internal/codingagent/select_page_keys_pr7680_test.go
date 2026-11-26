@@ -38,11 +38,11 @@ func TestPR7680PackageSelectorsPageWithRemappedKeys(t *testing.T) {
 		t.Errorf("trust selection = %+v, want the first option %+v: the trust selector has no page keys", trust, first)
 	}
 
-	var previews []string
-	setup := NewFirstTimeSetupComponent(FirstTimeSetupOptions{OnThemePreview: func(name string) { previews = append(previews, name) }})
+	setup := NewFirstTimeSetupComponent(FirstTimeSetupOptions{})
+	setup.step = firstTimeSetupStepAnalytics
 	setup.HandleInput("\x16")
-	if len(previews) != 0 || setup.themeIndex != 0 {
-		t.Errorf("theme previews = %v, index %d, want none and 0: first-time setup has no page keys", previews, setup.themeIndex)
+	if setup.analyticsIndex != 0 {
+		t.Errorf("analytics index = %d, want 0: first-time setup has no page keys", setup.analyticsIndex)
 	}
 
 	var thinking ai.ThinkingLevel

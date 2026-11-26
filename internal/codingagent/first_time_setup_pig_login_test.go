@@ -25,9 +25,8 @@ func TestFirstTimeSetupLogoIsThePigHeadAndPreviewsTheSprite(t *testing.T) {
 		t.Fatalf("dialog draws Pi's SETUP_LOGO_LINES:\n%s", rendered)
 	}
 	if !containsHead(rendered, piglogin.HeadLines(piglogin.Active(), mode)) {
-		t.Fatalf("theme step does not draw the active sprite's head")
+		t.Fatalf("sprite step does not draw the active sprite's head")
 	}
-	c.HandleInput(setupEnter)
 	c.HandleInput(setupDown)
 	next := piglogin.All()[1]
 	if !containsHead(strings.Join(c.Render(100), "\n"), piglogin.HeadLines(next, mode)) {
@@ -42,11 +41,9 @@ func TestFirstTimeSetupSpriteStepListsExtensionSpritesAndSubmits(t *testing.T) {
 	firstTimeSetupExtensionSprite(t)
 	var result *FirstTimeSetupResult
 	c := NewFirstTimeSetupComponent(FirstTimeSetupOptions{OnSubmit: func(r FirstTimeSetupResult) { result = &r }})
-	c.HandleInput(setupDown) // dark
-	c.HandleInput(setupEnter)
 	text := firstTimeSetupText(c)
 	if !strings.Contains(text, "Pick a sprite.") {
-		t.Fatalf("second step is not the sprite step:\n%s", text)
+		t.Fatalf("first step is not the sprite step:\n%s", text)
 	}
 	// The list scrolls: each sprite shows when highlighted, the built-in ones first, then the extension's.
 	all := piglogin.All()
@@ -78,7 +75,7 @@ func TestFirstTimeSetupSpriteStepListsExtensionSpritesAndSubmits(t *testing.T) {
 	}
 	c.HandleInput(setupDown)
 	c.HandleInput(setupEnter)
-	want := FirstTimeSetupResult{Theme: "dark", Sprite: "blue-pig", ShareAnalytics: false}
+	want := FirstTimeSetupResult{Sprite: "blue-pig", ShareAnalytics: false}
 	if result == nil || *result != want {
 		t.Fatalf("result = %+v, want %+v", result, want)
 	}
@@ -98,7 +95,7 @@ func TestShowFirstTimeSetupSavesTheChoiceBeforeTheTUI(t *testing.T) {
 	settings := NewSettingsManager(cwd, agentDir)
 	sprites := piglogin.All()
 	kratos := slices.IndexFunc(sprites, func(v piglogin.Variant) bool { return v.ID == "kratos" })
-	keys := []string{setupDown, setupEnter}
+	var keys []string
 	for range kratos {
 		keys = append(keys, setupDown)
 	}
@@ -107,11 +104,11 @@ func TestShowFirstTimeSetupSavesTheChoiceBeforeTheTUI(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result == nil || result.Sprite != "kratos" || result.Theme != "dark" || !result.ShareAnalytics {
+	if result == nil || result.Sprite != "kratos" || !result.ShareAnalytics {
 		t.Fatalf("result = %+v", result)
 	}
-	if got := settings.GetThemeSetting(); got == nil || *got != "dark" {
-		t.Fatalf("saved theme = %v, want dark", got)
+	if got := settings.GetThemeSetting(); got != nil {
+		t.Fatalf("saved theme = %v, want nil (default system theme)", got)
 	}
 	if !settings.GetEnableAnalytics() {
 		t.Fatal("analytics opt-in was not saved")
@@ -153,7 +150,6 @@ func TestFirstTimeSetupKeepsTheHighlightedSpriteThroughAnalyticsAndSubmit(t *tes
 	var got *FirstTimeSetupResult
 	c := NewFirstTimeSetupComponent(FirstTimeSetupOptions{OnSubmit: func(r FirstTimeSetupResult) { got = &r }})
 	mode := tui.ActiveTheme().GetColorMode()
-	c.HandleInput(setupEnter)
 	sprites := piglogin.All()
 	want := slices.IndexFunc(sprites, func(v piglogin.Variant) bool { return v.ID == "kratos" })
 	for range want {
@@ -189,7 +185,6 @@ func TestFirstTimeSetupCreateYourOwnShowsTheHintAndKeepsTheSprite(t *testing.T) 
 	agentDir := filepath.Join(pigHome, "agent")
 	settings := NewSettingsManager(cwd, agentDir)
 	c := NewFirstTimeSetupComponent(FirstTimeSetupOptions{})
-	c.HandleInput(setupEnter)
 	for range len(piglogin.All()) {
 		c.HandleInput(setupDown)
 	}
@@ -197,7 +192,7 @@ func TestFirstTimeSetupCreateYourOwnShowsTheHintAndKeepsTheSprite(t *testing.T) 
 	if !strings.Contains(text, "→ "+piglogin.CreateOption) || !strings.Contains(strings.Join(strings.Fields(text), " "), piglogin.CreateHint) {
 		t.Fatalf("Create your own... does not show the hint:\n%s", text)
 	}
-	keys := []string{setupEnter}
+	var keys []string
 	for range len(piglogin.All()) {
 		keys = append(keys, setupDown)
 	}
@@ -217,22 +212,17 @@ func TestFirstTimeSetupCreateYourOwnShowsTheHintAndKeepsTheSprite(t *testing.T) 
 	}
 }
 
-// first-time-setup.ts:56-130: the theme list, the analytics opt-in text and options, the key hints with "continue"/"finish", the → marker and the clamped j/k/newline navigation.
+// first-time-setup.ts: analytics opt-in text and options, key hints with "finish", → marker and clamped j/k/newline navigation.
 func TestFirstTimeSetupRendersPisStepsAndNavigates(t *testing.T) {
 	t.Setenv("PIG_HOME", t.TempDir())
 	piglogin.Refresh()
-	var previews []string
 	var submitted []FirstTimeSetupResult
 	c := NewFirstTimeSetupComponent(FirstTimeSetupOptions{
-		OnThemePreview: func(name string) { previews = append(previews, name) },
-		OnSubmit:       func(result FirstTimeSetupResult) { submitted = append(submitted, result) },
+		OnSubmit: func(result FirstTimeSetupResult) { submitted = append(submitted, result) },
 	})
 	rule := strings.Repeat("─", 100)
 	hint := func(confirm string) string {
 		return " ↑↓ navigate  enter " + confirm + "  escape/ctrl+c skip setup"
-	}
-	theme := func(system, dark, light string) []string {
-		return []string{" Welcome to PiG, the minimal coding agent.", "", " Pick a theme.", "", system, dark, light, "", hint("continue"), "", rule}
 	}
 	equal := func(label string, got, want []string) {
 		t.Helper()
@@ -240,18 +230,6 @@ func TestFirstTimeSetupRendersPisStepsAndNavigates(t *testing.T) {
 			t.Fatalf("%s:\n got %q\nwant %q", label, got, want)
 		}
 	}
-	equal("theme step", firstTimeSetupBody(t, c), theme(" → System (matches your terminal colors)", "   Dark", "   Light"))
-	c.HandleInput("k")
-	equal("k clamps at the first theme", firstTimeSetupBody(t, c), theme(" → System (matches your terminal colors)", "   Dark", "   Light"))
-	c.HandleInput("j")
-	equal("j moves down", firstTimeSetupBody(t, c), theme("   System (matches your terminal colors)", " → Dark", "   Light"))
-	c.HandleInput("j")
-	c.HandleInput("j")
-	equal("j clamps at the last theme", firstTimeSetupBody(t, c), theme("   System (matches your terminal colors)", "   Dark", " → Light"))
-	if want := []string{"dark", "light"}; !slices.Equal(previews, want) {
-		t.Fatalf("theme previews = %v, want %v (only moves that change the selection preview)", previews, want)
-	}
-	c.HandleInput("\n") // theme -> sprite
 	c.HandleInput("\n") // sprite -> analytics
 	analytics := func(share, dont string) []string {
 		return []string{
@@ -265,12 +243,14 @@ func TestFirstTimeSetupRendersPisStepsAndNavigates(t *testing.T) {
 		}
 	}
 	equal("analytics step", firstTimeSetupBody(t, c), analytics(" → Share anonymous usage data", "   Don't share"))
+	c.HandleInput("k")
+	equal("k clamps at first analytics option", firstTimeSetupBody(t, c), analytics(" → Share anonymous usage data", "   Don't share"))
 	c.HandleInput("j")
 	c.HandleInput("j")
 	equal("analytics selection clamps", firstTimeSetupBody(t, c), analytics("   Share anonymous usage data", " → Don't share"))
 	c.HandleInput("\n")
-	if len(submitted) != 1 || submitted[0].Theme != "light" || submitted[0].ShareAnalytics {
-		t.Fatalf("submitted = %+v, want one result with theme light and no analytics", submitted)
+	if len(submitted) != 1 || submitted[0].ShareAnalytics {
+		t.Fatalf("submitted = %+v, want one result with no analytics", submitted)
 	}
 }
 
@@ -290,7 +270,7 @@ func TestShowFirstTimeSetupReportsNoSettingsWriteFailure(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(agentDir, "settings.json"), []byte("{not json"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	result, err := showFirstTimeSetupWith(NewSettingsManager(cwd, agentDir), StartupUIOptions{AgentDir: agentDir}, tui.NewWithOutput(io.Discard, 100, 30), keysStartupTerminal{[]string{setupEnter, setupEnter, setupEnter}})
+	result, err := showFirstTimeSetupWith(NewSettingsManager(cwd, agentDir), StartupUIOptions{AgentDir: agentDir}, tui.NewWithOutput(io.Discard, 100, 30), keysStartupTerminal{[]string{setupEnter, setupEnter}})
 	if err != nil {
 		t.Fatalf("setup err = %v, want none: Pi records the settings write failure and reports nothing", err)
 	}

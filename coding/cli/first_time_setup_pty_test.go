@@ -105,7 +105,7 @@ func firstTimeSetupSession(t *testing.T, keys []string) string {
 			}
 		}
 	}
-	waitFor(0, func(text string) bool { return strings.Contains(text, "Pick a theme.") }, "first-time setup")
+	waitFor(0, func(text string) bool { return strings.Contains(text, "Pick a sprite.") || strings.Contains(text, "Opt-in to anonymous usage data sharing?") }, "first-time setup")
 	for _, key := range keys {
 		if _, err := master.WriteString(key); err != nil {
 			t.Fatal(err)
@@ -158,11 +158,11 @@ func TestFirstTimeSetupEscSkipsOnInteractiveStart(t *testing.T) {
 	}
 }
 
-// Completing setup saves the theme and analytics choice in settings.json and the sprite exactly as /sprite set does.
-func TestFirstTimeSetupSavesThemeSpriteAndAnalytics(t *testing.T) {
-	pigHome := firstTimeSetupSession(t, []string{"\x1b[B", "\r", "\x1b[B", "\r", "\x1b[B", "\r"})
+// Completing setup saves the analytics choice in settings.json and the sprite exactly as /sprite set does.
+func TestFirstTimeSetupSavesSpriteAndAnalytics(t *testing.T) {
+	pigHome := firstTimeSetupSession(t, []string{"\x1b[B", "\r", "\x1b[B", "\r"})
 	settings := readSettingsFile(t, pigHome)
-	if settings["theme"] != "dark" || settings["enableAnalytics"] != false {
+	if _, hasTheme := settings["theme"]; hasTheme || settings["enableAnalytics"] != false {
 		t.Fatalf("settings = %v", settings)
 	}
 	if got := piglogin.LoadVariant(pigHome).ID; got != piglogin.Variants[1].ID {

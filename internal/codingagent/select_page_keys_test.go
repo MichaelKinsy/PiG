@@ -77,19 +77,15 @@ func TestFirstTimeSetupIgnoresSelectionPageKeys(t *testing.T) {
 	if tui.CapturesViewportInput(setup) {
 		t.Fatal("first-time setup must not capture viewport input")
 	}
+	setup.step = firstTimeSetupStepAnalytics
 	setup.HandleInput("j")
 	setup.HandleInput(selectPageDownKey)
-	if setup.themeIndex != 1 {
-		t.Fatalf("theme step page down: index = %d, want it to stay at 1", setup.themeIndex)
+	if setup.analyticsIndex != 1 {
+		t.Fatalf("analytics step page down: index = %d, want it to stay at 1", setup.analyticsIndex)
 	}
 	setup.HandleInput(selectPageUpKey)
-	if setup.themeIndex != 1 {
-		t.Fatalf("theme step page up: index = %d, want it to stay at 1", setup.themeIndex)
-	}
-	setup.step = firstTimeSetupStepAnalytics
-	setup.HandleInput(selectPageDownKey)
-	if setup.analyticsIndex != 0 {
-		t.Fatalf("analytics step page down: index = %d, want it to stay at 0", setup.analyticsIndex)
+	if setup.analyticsIndex != 1 {
+		t.Fatalf("analytics step page up: index = %d, want it to stay at 1", setup.analyticsIndex)
 	}
 }
 
