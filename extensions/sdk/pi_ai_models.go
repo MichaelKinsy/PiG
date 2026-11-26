@@ -252,7 +252,7 @@ var (
 	overflowPatterns = lazyEach(
 		`prompt (?:is )?too long`,
 		`prompt exceeds max length`,
-		`request_too_large`,
+		`(?:^|[^a-z0-9_])request_too_large(?:[^a-z0-9_]|$)`,
 		`input is too long for requested model`,
 		`exceeds the context window`,
 		`exceeds (?:the )?(?:model'?s )?maximum context length(?: of [\d,]+ tokens?|\s*\([\d,]+\))`,
@@ -283,6 +283,7 @@ var (
 		`^(Throttling error|Service unavailable):`,
 		`rate limit`,
 		`too many requests`,
+		`rate increased too quickly`,
 	)
 	cerebrasBodylessOverflowPattern = lazyRegexp(`^4(?:00|13)\s*(?:status code)?\s*\(no body\)`)
 
@@ -365,6 +366,9 @@ var (
 		`ResourceExhausted`,
 		`subscription_sharing_usage_unavailable`,
 		`subscription_sharing_user_unavailable`,
+		`provider finish_reason: error`,
+		`provider stopped with: error`,
+		`returned an empty response`,
 	)
 )
 

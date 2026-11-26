@@ -435,7 +435,7 @@ def _compile_each(*patterns: str) -> list[re.Pattern]:
 _OVERFLOW_PATTERNS = _compile_each(
     r"prompt (?:is )?too long",
     r"prompt exceeds max length",
-    r"request_too_large",
+    r"(?<![a-z0-9_])request_too_large(?![a-z0-9_])",
     r"input is too long for requested model",
     r"exceeds the context window",
     r"exceeds (?:the )?(?:model'?s )?maximum context length(?: of [\d,]+ tokens?|\s*\([\d,]+\))",
@@ -472,7 +472,7 @@ _NON_RETRYABLE_PROVIDER_LIMIT_ERROR_PATTERN = _js_regexp("|".join([
     r'"code"\s*:\s*"?1308(?![0-9])',
 ]))
 _RETRYABLE_PROVIDER_ERROR_PATTERN = _js_regexp("|".join([
-    "overloaded", "server_busy", "servers are currently busy", "currently experiencing high demand", "model is at capacity", "rate.?limit", "too many requests",
+    "overloaded", "server_busy", "servers are currently busy", "currently experiencing high demand", "model is at capacity", "rate.?limit", "too many requests", "rate increased too quickly",
     # Status codes must not be part of a longer word or number, e.g. a request id or byte count (#11057).
     "(?<![a-z0-9])(?:429|500|502|503|504|520|524)(?![a-z0-9])",
     "service.?(?:is.?)?(?:temporarily.?)?unavailable", "server.?error", "internal.?error", "provider.?returned.?(?:an.?)?error",
@@ -493,7 +493,7 @@ _RETRYABLE_PROVIDER_ERROR_PATTERN = _js_regexp("|".join([
     # Codex CLI mid-stream disconnect, relayed by proxies that wrap the Codex CLI, e.g. "stream disconnected before completion: stream closed before response.completed" (#11057).
     "stream disconnected before completion",
     "pending stream has been canceled", "retry delay", "you can retry your request",
-    "try your request again", "please retry your request", "ResourceExhausted", "subscription_sharing_usage_unavailable", "subscription_sharing_user_unavailable",
+    "try your request again", "please retry your request", "ResourceExhausted", "subscription_sharing_usage_unavailable", "subscription_sharing_user_unavailable", "provider finish_reason: error", "provider stopped with: error", "returned an empty response",
 ]))
 
 

@@ -873,7 +873,7 @@ static OVERFLOW_PATTERNS: LazyLock<Vec<Pattern>> = LazyLock::new(|| {
     compile_each(&[
         r"prompt (?:is )?too long",
         r"prompt exceeds max length",
-        r"request_too_large",
+        r"(?:^|[^a-z0-9_])request_too_large(?:[^a-z0-9_]|$)",
         r"input is too long for requested model",
         r"exceeds the context window",
         r"exceeds (?:the )?(?:model'?s )?maximum context length(?: of [\d,]+ tokens?|\s*\([\d,]+\))",
@@ -935,6 +935,7 @@ static RETRYABLE_PROVIDER_ERROR_PATTERN: LazyLock<Pattern> = LazyLock::new(|| {
         "model is at capacity",
         "rate.?limit",
         "too many requests",
+        "rate increased too quickly",
         // Status codes must not be part of a longer word or number, e.g. a request id or byte count (#11057).
         "(?<![a-z0-9])(?:429|500|502|503|504|520|524)(?![a-z0-9])",
         "service.?(?:is.?)?(?:temporarily.?)?unavailable",
@@ -987,6 +988,9 @@ static RETRYABLE_PROVIDER_ERROR_PATTERN: LazyLock<Pattern> = LazyLock::new(|| {
         "ResourceExhausted",
         "subscription_sharing_usage_unavailable",
         "subscription_sharing_user_unavailable",
+        "provider finish_reason: error",
+        "provider stopped with: error",
+        "returned an empty response",
     ])
 });
 
