@@ -138,4 +138,40 @@ func TestGitHubCopilotClassifierFiltering(t *testing.T) {
 			t.Fatalf("auth=%q integration=%q", gotAuth, gotIntegration)
 		}
 	})
+
+	// N5: Full Copilot refresh against a fake HTTP /models endpoint records AvailableClassifierModelIDs on the credential.
+	t.Run("refreshCopilotToken against fake HTTP /models records AvailableClassifierModelIDs", func(t *testing.T) {
+		previous := http.DefaultClient
+		http.DefaultClient = &http.Client{Transport: metaRoundTripper(func(r *http.Request) (*http.Response, error) {
+			switch {
+			case strings.HasSuffix(r.URL.Path, "/copilot_internal/v2/token"):
+				return metaJSONResponse(200, map[string]any{
+					"token":      "tid=refreshed;exp=9999999999;proxy-ep=proxy.business.githubcopilot.com;",
+					"expires_at": time.Now().Add(time.Hour).Unix(),
+				}), nil
+			case strings.HasSuffix(r.URL.Path, "/models"):
+				return metaJSONResponse(200, map[string]any{
+					"data": []any{
+						map[string]any{"id": "gpt-6-luna", "model_picker_enabled": true, "capabilities": map[string]any{"type": "chat", "supports": map[string]any{"tool_calls": true}}},
+						map[string]any{"id": "gpt-6-luna-decisions", "model_picker_enabled": false, "capabilities": map[string]any{"type": "decisions", "supports": map[string]any{}}},
+						map[string]any{"id": "microsoft-decision-1", "model_picker_enabled": false, "policy": map[string]any{"state": "disabled"}, "capabilities": map[string]any{"type": "decisions", "supports": map[string]any{}}},
+					},
+				}), nil
+			default:
+				return metaJSONResponse(404, map[string]any{"error": "unexpected " + r.URL.String()}), nil
+			}
+		})}
+		t.Cleanup(func() { http.DefaultClient = previous })
+
+		cred, err := refreshCopilotToken(t.Context(), "gho_test_token", "")
+		if err != nil {
+			t.Fatalf("refreshCopilotToken: %v", err)
+		}
+		if string(cred.AvailableModelIDs) != `["gpt-6-luna"]` {
+			t.Fatalf(`AvailableModelIDs = %s, want ["gpt-6-luna"]`, string(cred.AvailableModelIDs))
+		}
+		if string(cred.AvailableClassifierModelIDs) != `["gpt-6-luna-decisions"]` {
+			t.Fatalf(`AvailableClassifierModelIDs = %s, want ["gpt-6-luna-decisions"]`, string(cred.AvailableClassifierModelIDs))
+		}
+	})
 }

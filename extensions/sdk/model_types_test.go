@@ -355,10 +355,11 @@ func TestProviderConfigImplementationsAreDeclaredAndRunInTheExtension(t *testing
 		t.Fatalf("the callback lost the question order: %v", request.Questions.Keys())
 	}
 	var classified struct {
-		Answers json.RawMessage `json:"answers"`
-		Stop    string          `json:"stopReason"`
+		Answers    json.RawMessage `json:"answers"`
+		ResponseID string          `json:"responseId"`
+		Stop       string          `json:"stopReason"`
 	}
-	if err := json.Unmarshal(resp.Result, &classified); err != nil || classified.Stop != "stop" || string(classified.Answers) != `{"approved":{"probability":0.25,"type":"bool"},"again":{"probability":0.5,"type":"bool"}}` {
+	if err := json.Unmarshal(resp.Result, &classified); err != nil || classified.Stop != "stop" || classified.ResponseID != "resp-cls-1" || string(classified.Answers) != `{"approved":{"probability":0.25,"type":"bool"},"again":{"probability":0.5,"type":"bool"}}` {
 		t.Fatalf("classify result = %s, %v", resp.Result, err)
 	}
 

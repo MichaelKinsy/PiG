@@ -57,7 +57,7 @@ func main() {
 		{ai.APIOpenAIResponses, "openai", "gpt-5-mini"},
 		{ai.APIAnthropicMessages, "anthropic", "claude-haiku-4-5"},
 		{ai.APIGoogleGenerativeAI, "google", "gemini-2.5-flash"},
-		{ai.APIMistralConversations, "mistral", "devstral-medium-latest"},
+		{ai.APIMistralConversations, "mistral", "mistral-medium-latest"},
 	} {
 		captured := make(chan string, 1)
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

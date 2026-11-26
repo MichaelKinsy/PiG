@@ -234,10 +234,10 @@ func TestClassifyPiDecisionAndOpenRouterClassifier(t *testing.T) {
 			t.Fatalf("null totalFromProvider usage = %+v, want nil TotalFromProvider", gotNullFlag)
 		}
 
-		// Huge token count clamps via classifierTokenCount rather than overflowing int
-		gotHuge := parsePiDecisionUsage(json.RawMessage(`{"input":1e30,"output":0}`), model)
-		if gotHuge == nil || gotHuge.Input <= 0 {
-			t.Fatalf("huge token count = %+v, want positive clamped count", gotHuge)
+		// Huge token count clamps to int(maxSafeInteger) via classifierTokenCount, and negative values clamp to 0
+		gotHuge := parsePiDecisionUsage(json.RawMessage(`{"input":1e30,"output":-5}`), model)
+		if gotHuge == nil || gotHuge.Input != int(maxSafeInteger) || gotHuge.Output != 0 {
+			t.Fatalf("huge/negative token count = %+v, want Input=%d Output=0", gotHuge, int(maxSafeInteger))
 		}
 	})
 
@@ -321,6 +321,13 @@ func TestClassifyPiDecisionAndOpenRouterClassifier(t *testing.T) {
 				usageJSON:        `{"input_tokens": 1000, "output_tokens": 0, "cost": 0.0042, "is_byok": false}`,
 				wantCost:         0.0042,
 				wantFromProvider: true,
+			},
+			{
+				name:             "OpenRouter bare cost without is_byok falls back to catalog price",
+				provider:         "openrouter",
+				usageJSON:        `{"input_tokens": 1000000, "output_tokens": 0, "cost": 0.0042}`,
+				wantCost:         0.02,
+				wantFromProvider: false,
 			},
 			{
 				name:             "OpenRouter BYOK sums cost and upstream_inference_cost",

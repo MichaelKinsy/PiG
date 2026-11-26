@@ -117,7 +117,7 @@ func TestInteractiveModelPickedAfterNewSessionKeepsItsListedWindowAndCredential(
 			},
 		},
 		{
-			name: "api key", provider: "groq", start: "llama-3.1-8b-instant", listed: "zz-remote-1", wantAuth: "Bearer gsk_FAKEKEY123456",
+			name: "api key", provider: "groq", start: "openai/gpt-oss-120b", listed: "zz-remote-1", wantAuth: "Bearer gsk_FAKEKEY123456",
 			seed: func(agentDir, base string) {
 				writeJSON(filepath.Join(agentDir, "auth.json"), m{"groq": m{"type": "api_key", "key": "gsk_FAKEKEY123456"}})
 				writeJSON(filepath.Join(agentDir, "models.json"), m{"providers": m{"groq": m{"baseUrl": base + "/openai/v1"}}})

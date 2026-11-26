@@ -28,9 +28,9 @@ var toolSchemaTargets = []struct{ name, provider, model, member string }{
 	{"anthropic", "anthropic", "claude-sonnet-4-5", "tools"},
 	{"openai-responses", "openai", "gpt-5", "tools"},
 	{"azure-responses", "azure", "gpt-4.1", "tools"},
-	{"completions-groq", "groq", "llama-3.1-8b-instant", "tools"},
+	{"completions-groq", "groq", "openai/gpt-oss-120b", "tools"},
 	{"google", "google", "gemini-2.5-flash", "tools"},
-	{"mistral", "mistral", "devstral-medium-latest", "tools"},
+	{"mistral", "mistral", "mistral-medium-latest", "tools"},
 	{"bedrock", "amazon-bedrock", "anthropic.claude-sonnet-4-5-20250929-v1:0", "toolConfig"},
 }
 

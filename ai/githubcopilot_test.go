@@ -604,7 +604,7 @@ func TestNewCopilotProvider_APIRouting(t *testing.T) {
 	// anthropic-messages → anthropic provider (Copilot Claude models).
 	p, err = NewCopilotProvider(CopilotProviderConfig{
 		Auth:  auth,
-		Model: "claude-opus-5",
+		Model: "claude-opus-4.8",
 		API:   APIAnthropicMessages,
 	})
 	if err != nil {
@@ -709,7 +709,7 @@ func TestCopilotAnthropicUpstream(t *testing.T) {
 func TestCopilotSSE_AnthropicMessages(t *testing.T) {
 	// Anthropic-format SSE that the Copilot proxy returns for Claude models.
 	sseData := `event: message_start
-data: {"type":"message_start","message":{"id":"msg-1","type":"message","role":"assistant","content":[],"model":"claude-opus-5","stop_reason":null,"usage":{"input_tokens":100,"output_tokens":0}}}
+data: {"type":"message_start","message":{"id":"msg-1","type":"message","role":"assistant","content":[],"model":"claude-opus-4.8","stop_reason":null,"usage":{"input_tokens":100,"output_tokens":0}}}
 
 event: content_block_start
 data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":""}}
@@ -753,7 +753,7 @@ data: {"type":"message_stop"}
 	// Build provider directly using the Anthropic config with Copilot callbacks,
 	// matching what NewCopilotProvider does for APIAnthropicMessages.
 	inner := NewAnthropicProvider(AnthropicConfig{
-		Model:        "claude-opus-5",
+		Model:        "claude-opus-4.8",
 		ProviderID:   "github-copilot",
 		ExtraHeaders: copilotStaticHeaders,
 		Compat:       &AnthropicMessagesCompat{ForceAdaptiveThinking: new(true)},
@@ -863,8 +863,8 @@ data: {"type":"message_stop"}
 	if err := json.Unmarshal(capturedBody, &body); err != nil {
 		t.Fatalf("unmarshal body: %v", err)
 	}
-	if m, ok := body["model"]; !ok || m != "claude-opus-5" {
-		t.Errorf("body model = %v, want %q", m, "claude-opus-5")
+	if m, ok := body["model"]; !ok || m != "claude-opus-4.8" {
+		t.Errorf("body model = %v, want %q", m, "claude-opus-4.8")
 	}
 	// Anthropic format uses "messages" array and "max_tokens"
 	if _, ok := body["messages"]; !ok {
@@ -1302,7 +1302,7 @@ func TestNewCopilotProviderCatalogCompat(t *testing.T) {
 				t.Errorf("claude-haiku-4.5 tools must omit eager_input_streaming: %s", body)
 			}
 		}},
-		{"claude-opus-5", APIAnthropicMessages, func(t *testing.T, body string) {
+		{"claude-opus-4.8", APIAnthropicMessages, func(t *testing.T, body string) {
 			if !strings.Contains(body, `"eager_input_streaming":true`) {
 				t.Errorf("claude-opus-5 tools must keep eager_input_streaming (compat unset): %s", body)
 			}
