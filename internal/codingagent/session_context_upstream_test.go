@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"maps"
 	"reflect"
+	"slices"
+	"strconv"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
@@ -188,6 +190,35 @@ func TestBuildSessionContextUpstream(t *testing.T) {
 		ctx := BuildSessionContext([]SessionEntry{msg("1", "", "user", "hello"), msg("2", "1", "assistant", "hi")}, new("nonexistent"), nil)
 		if len(ctx.Messages) != 2 {
 			t.Fatal(ctx)
+		}
+	})
+	// Port of Pi main cb1205e4661723c7a8c9fb01acd38b7691f97797: handles more entries after compaction than fit in a JS call stack.
+	t.Run("handles more entries after compaction than fit in the call stack", func(t *testing.T) {
+		const count = 200_000
+		entries := make([]SessionEntry, 0, count+3)
+		entries = append(entries, msg("1", "", "user", "first"), compact("2", "1", "Summary", "1"))
+		parentID := "2"
+		for i := range count {
+			id := "c" + strconv.Itoa(i)
+			parent := parentID
+			entries = append(entries, CustomEntry{
+				SessionEntryBase: SessionEntryBase{Type: "custom", ID: id, ParentID: &parent, Timestamp: "2025-01-01T00:00:00Z"},
+				CustomType:       "bulk",
+			})
+			parentID = id
+		}
+		entries = append(entries, msg("last", parentID, "user", "last"))
+
+		if got := len(BuildContextEntries(entries, LastLeaf(), nil)); got != count+3 {
+			t.Fatalf("BuildContextEntries len = %d, want %d", got, count+3)
+		}
+		ctx := BuildSessionContext(entries, LastLeaf(), nil)
+		roles := make([]string, len(ctx.Messages))
+		for i, m := range ctx.Messages {
+			roles[i] = m.Role()
+		}
+		if !slices.Equal(roles, []string{"compactionSummary", "user", "user"}) {
+			t.Fatalf("roles = %v, want [compactionSummary user user]", roles)
 		}
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/build-context.test.ts:295
