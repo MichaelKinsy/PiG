@@ -419,6 +419,16 @@ func extractRunnerSDKRequirements(runnerSrc string) (pkgSymbols, runnableMethods
 // proved every required runner symbol is exported. Re-checking only those
 // witness files by size and modification time avoids re-reading the directory
 // or re-parsing 125+ SDK source files on warm reloads.
+//
+// Soundness: only positive ("compatible") verdicts are cached. Adding another
+// .go file to the same package cannot remove an exported declaration from an
+// unchanged witness file, so a compatible verdict can turn incompatible only if
+// a witness file is edited, removed, or replaced (which changes its stat size or
+// mtime or fails stat, triggering a full directory rescan). Incompatible verdicts
+// are never cached, so adding a missing symbol is observed immediately. Like
+// sdk_tree_memo.go, mtime+size validation guards newly written files with
+// racyTreeWindow and cannot detect a same-size edit whose mtime is preserved
+// identically past that window.
 type sdkSymbolWitnesses struct {
 	files []treeStamp
 }
