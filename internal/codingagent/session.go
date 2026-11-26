@@ -369,7 +369,7 @@ func (s *Session) appendEntryRecord(raw []byte, ownMessage bool) error {
 }
 
 // entryWithoutRedundantRecord returns entry without its raw JSON record when re-encoding its decoded fields produces raw byte-for-byte.
-// Keeping both the decoded struct and a copy of the raw line doubles memory for resident entries (e.g. compactions, branch summaries,
+// Keeping both the decoded struct and a copy of the raw line doubles memory for resident entries (compactions, branch summaries,
 // labels, session_info, model_change, thinking_level_change, usage, context_edit). Every reader still gets raw's exact bytes.
 func entryWithoutRedundantRecord(entry SessionEntry, raw []byte) SessionEntry {
 	var bare SessionEntry
@@ -377,10 +377,6 @@ func entryWithoutRedundantRecord(entry SessionEntry, raw []byte) SessionEntry {
 	case CompactionEntry:
 		bare = typed.WithoutRecord()
 	case BranchSummaryEntry:
-		bare = typed.WithoutRecord()
-	case CustomEntry:
-		bare = typed.WithoutRecord()
-	case CustomMessageEntry:
 		bare = typed.WithoutRecord()
 	case LabelEntry:
 		bare = typed.WithoutRecord()
@@ -397,7 +393,7 @@ func entryWithoutRedundantRecord(entry SessionEntry, raw []byte) SessionEntry {
 	default:
 		return entry
 	}
-	if encoded, err := marshalSessionLine(bare); err != nil || !bytes.Equal(encoded, raw) {
+	if encoded, err := jsstring.MarshalJSON(bare); err != nil || !bytes.Equal(encoded, raw) {
 		return entry
 	}
 	return bare
