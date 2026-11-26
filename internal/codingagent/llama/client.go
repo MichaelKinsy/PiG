@@ -601,42 +601,6 @@ func dispatchLlamaEventData(joined string, onEvent func(LlamaModelEvent)) {
 	}
 }
 
-// dispatchFrames emits every complete SSE frame in buffer and returns the
-// unconsumed remainder.
-func dispatchFrames(buffer string, onEvent func(LlamaModelEvent)) string {
-	for {
-		boundary := strings.Index(buffer, "\n\n")
-		if boundary < 0 {
-			return buffer
-		}
-		frame := buffer[:boundary]
-		buffer = buffer[boundary+2:]
-		var data []string
-		// upstream: coding-agent/src/extensions/llama/client.ts:LlamaModelEvent
-		for line := range strings.SplitSeq(frame, "\n") {
-			if rest, ok := strings.CutPrefix(line, "data:"); ok {
-				data = append(data, jsstring.TrimStart(rest))
-			}
-		}
-		joined := strings.Join(data, "\n")
-		if joined == "" {
-			continue
-		}
-		// Ignore malformed events; catalog polling remains authoritative.
-		var event any
-		// upstream: coding-agent/src/extensions/llama/client.ts:LlamaModelEvent
-		if json.Unmarshal([]byte(joined), &event) != nil {
-			continue
-		}
-		model, modelOK := stringField(event, "model")
-		name, nameOK := stringField(event, "event")
-		if modelOK && nameOK {
-			payload, _ := objectField(event, "data")
-			onEvent(LlamaModelEvent{Model: model, Event: name, Data: payload})
-		}
-	}
-}
-
 // utf8StreamDecoder mirrors TextDecoder's streaming mode: a multi-byte
 // sequence split across chunks is held until complete, and a leading BOM is
 // dropped.

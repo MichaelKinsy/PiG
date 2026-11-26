@@ -352,16 +352,22 @@ func (r *remoteDirReader) Close(context.Context) error {
 // remoteTextLineReader is NodeTextLineReader: positional reads of a file opened like open(path, "r").
 type remoteTextLineReader struct {
 	handle   *handle
+	readAt   func(offset, length int) ([]byte, error)
 	decoder  *durableenv.StreamDecoder
 	offset   int
-	buffered string
+	buffered []byte
+	start    int
+	scanned  int
 	ended    bool
 	closed   bool
 	mu       sync.Mutex
 }
 
 func (r *remoteTextLineReader) ReadLine(ctx context.Context) (*durableenv.TextLine, error) {
-	path := r.handle.path
+	path := ""
+	if r.handle != nil {
+		path = r.handle.path
+	}
 	if err := abortError(ctx, path); err != nil {
 		return nil, err
 	}
@@ -371,32 +377,53 @@ func (r *remoteTextLineReader) ReadLine(ctx context.Context) (*durableenv.TextLi
 		return nil, durableenv.NewFileError(durableenv.FileErrorInvalid, "Text line reader is closed", path, nil)
 	}
 	for {
-		if newline := strings.IndexByte(r.buffered, '\n'); newline != -1 {
-			text := r.buffered[:newline]
-			r.buffered = r.buffered[newline+1:]
+		if idx := bytes.IndexByte(r.buffered[r.scanned:], '\n'); idx != -1 {
+			newline := r.scanned + idx
+			text := string(r.buffered[r.start:newline])
+			r.start = newline + 1
+			r.scanned = r.start
+			if r.start == len(r.buffered) {
+				r.buffered = r.buffered[:0]
+				r.start = 0
+				r.scanned = 0
+			}
 			return &durableenv.TextLine{Text: text, Terminated: true}, nil
 		}
+		if r.start > 0 {
+			n := copy(r.buffered, r.buffered[r.start:])
+			r.buffered = r.buffered[:n]
+			r.start = 0
+		}
+		r.scanned = len(r.buffered)
 		if r.ended {
-			if r.buffered == "" {
+			if len(r.buffered) == 0 {
 				return nil, nil //nolint:nilnil // nil marks the end of the file
 			}
-			text := r.buffered
-			r.buffered = ""
+			text := string(r.buffered)
+			r.buffered = nil
+			r.start = 0
+			r.scanned = 0
 			return &durableenv.TextLine{Text: text}, nil
 		}
-		bytes, err := r.handle.pread(r.offset, lineChunk)
+		var data []byte
+		var err error
+		if r.readAt != nil {
+			data, err = r.readAt(r.offset, lineChunk)
+		} else {
+			data, err = r.handle.pread(r.offset, lineChunk)
+		}
 		if err != nil {
 			return nil, toFileError(err, path)
 		}
 		if abortErr := abortError(ctx, path); abortErr != nil {
 			return nil, abortErr
 		}
-		r.offset += len(bytes)
-		if len(bytes) == 0 {
-			r.buffered += r.decoder.End()
+		r.offset += len(data)
+		if len(data) == 0 {
+			r.buffered = append(r.buffered, r.decoder.End()...)
 			r.ended = true
 		} else {
-			r.buffered += r.decoder.Decode(bytes)
+			r.buffered = append(r.buffered, r.decoder.Decode(data)...)
 		}
 	}
 }
@@ -405,9 +432,11 @@ func (r *remoteTextLineReader) Close(context.Context) error {
 	r.mu.Lock()
 	already := r.closed
 	r.closed = true
-	r.buffered = ""
+	r.buffered = nil
+	r.start = 0
+	r.scanned = 0
 	r.mu.Unlock()
-	if !already {
+	if !already && r.handle != nil {
 		r.handle.close()
 	}
 	return nil

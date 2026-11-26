@@ -4,6 +4,7 @@ import (
 	"io"
 	"strings"
 	"testing"
+	"time"
 )
 
 type chunkedReader struct {
@@ -23,8 +24,8 @@ func (r *chunkedReader) Read(p []byte) (int, error) {
 }
 
 // Port of Pi main da7e26cc8bca83c15f04e83c9b468e79d8a35cfe (#12451, #12224):
-// verify SSE decoder handles CRLF/CR/LF line endings across every chunk size
-// and decodes large chunked events in linear time.
+// verify SSE decoders handle CRLF/CR/LF line endings across every chunk size
+// and decode large chunked events in linear time (ratio-bounded vs single-chunk).
 func TestSSEDecoderChunkBoundariesAndLargeEvents(t *testing.T) {
 	t.Run("handles LF, CRLF, and lone CR at every chunk size", func(t *testing.T) {
 		for _, nl := range []string{"\n", "\r\n", "\r"} {
@@ -45,18 +46,53 @@ func TestSSEDecoderChunkBoundariesAndLargeEvents(t *testing.T) {
 		}
 	})
 
-	t.Run("decodes 1 MiB event in 4 KiB chunks", func(t *testing.T) {
-		payload := strings.Repeat("x", 1<<20)
+	t.Run("decodes 16 MiB event in 4 KiB chunks in linear time", func(t *testing.T) {
+		payload := strings.Repeat("x", 16<<20)
 		stream := "data: " + payload + "\n\n"
-		dec := newSSEDecoder(&chunkedReader{data: stream, chunkSize: 4096})
-		if !dec.Next() {
-			t.Fatalf("expected event, err=%v", dec.Err())
+		run := func(chunk int) time.Duration {
+			best := time.Duration(1 << 62)
+			for range 3 {
+				start := time.Now()
+				dec := newSSEDecoder(&chunkedReader{data: stream, chunkSize: chunk})
+				if !dec.Next() || len(dec.Event().Data) != len(payload) || dec.Next() || dec.Err() != nil {
+					t.Fatalf("chunk=%d decode failed: err=%v", chunk, dec.Err())
+				}
+				best = min(best, time.Since(start))
+			}
+			return best
 		}
-		if len(dec.Event().Data) != len(payload) {
-			t.Fatalf("data len = %d, want %d", len(dec.Event().Data), len(payload))
+		whole := run(len(stream))
+		pieces := run(4 << 10)
+		if pieces > 10*whole+60*time.Millisecond {
+			t.Fatalf("16 MiB SSE event in 4 KiB chunks took %v vs whole %v", pieces, whole)
 		}
-		if dec.Next() || dec.Err() != nil {
-			t.Fatalf("unexpected extra event or err=%v", dec.Err())
+	})
+
+	t.Run("codexSSEFrames decodes 16 MiB event in 4 KiB chunks in linear time", func(t *testing.T) {
+		payload := strings.Repeat("y", 16<<20)
+		stream := []byte("data: " + payload + "\n\n")
+		run := func(chunk int) time.Duration {
+			best := time.Duration(1 << 62)
+			for range 3 {
+				start := time.Now()
+				var frames codexSSEFrames
+				var dec codexTextDecoder
+				for i := 0; i < len(stream); i += chunk {
+					frames.add(&dec, stream[i:min(i+chunk, len(stream))], false)
+				}
+				frames.add(&dec, nil, true)
+				ev, ok := frames.next()
+				if !ok || len(ev) != len(payload) {
+					t.Fatalf("chunk=%d ok=%v len=%d", chunk, ok, len(ev))
+				}
+				best = min(best, time.Since(start))
+			}
+			return best
+		}
+		whole := run(len(stream))
+		pieces := run(4 << 10)
+		if pieces > 10*whole+60*time.Millisecond {
+			t.Fatalf("16 MiB Codex SSE event in 4 KiB chunks took %v vs whole %v", pieces, whole)
 		}
 	})
 }

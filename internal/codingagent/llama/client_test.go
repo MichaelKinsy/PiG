@@ -405,13 +405,11 @@ func TestListRejectsCatalogsOutsideRouterMode(t *testing.T) {
 	}
 }
 
-func TestDispatchFramesHandlesSplitAndMalformedEvents(t *testing.T) {
+func TestLlamaSSEParserHandlesSplitAndMalformedEvents(t *testing.T) {
 	var events []LlamaModelEvent
-	var decoder utf8StreamDecoder
-	buffer := ""
+	var parser llamaSSEParser
 	for _, chunk := range []string{"\uFEFFdata: {\"model\":\"m\",\"event\":\"e\",\"data\":{\"x\":\"\xc3", "\xa9\"}}\r\n\r\ndata: nope\n\n", "data: {\"model\":1}\n\n"} {
-		buffer += strings.ReplaceAll(decoder.decode([]byte(chunk)), "\r\n", "\n")
-		buffer = dispatchFrames(buffer, func(event LlamaModelEvent) { events = append(events, event) })
+		parser.push([]byte(chunk), func(event LlamaModelEvent) { events = append(events, event) })
 	}
 	if len(events) != 1 || events[0].Model != "m" || events[0].Event != "e" {
 		t.Fatalf("events = %+v", events)
@@ -459,21 +457,32 @@ func TestWatchHandlesSplitCRLFAndLoneCRAndLargeEvents(t *testing.T) {
 		}
 	})
 
-	t.Run("large chunked event in linear time", func(t *testing.T) {
-		payload := strings.Repeat("a", 1<<20)
-		full := `data: {"model":"big","event":"progress","data":{"msg":"` + payload + `"}}` + "\n\n"
-		var events []LlamaModelEvent
-		var parser llamaSSEParser
-		const step = 4096
-		for i := 0; i < len(full); i += step {
-			end := min(i+step, len(full))
-			parser.push([]byte(full[i:end]), func(ev LlamaModelEvent) { events = append(events, ev) })
+	t.Run("large chunked event scales linearly", func(t *testing.T) {
+		payload := strings.Repeat("a", 8<<20)
+		full := []byte(`data: {"model":"big","event":"progress","data":{"msg":"` + payload + `"}}` + "\n\n")
+		run := func(step int) time.Duration {
+			best := time.Duration(1 << 62)
+			for range 3 {
+				var events []LlamaModelEvent
+				var parser llamaSSEParser
+				start := time.Now()
+				for i := 0; i < len(full); i += step {
+					parser.push(full[i:min(i+step, len(full))], func(ev LlamaModelEvent) { events = append(events, ev) })
+				}
+				best = min(best, time.Since(start))
+				if len(events) != 1 || events[0].Model != "big" {
+					t.Fatalf("step=%d events = %+v", step, events)
+				}
+				if msg, _ := stringField(events[0].Data, "msg"); len(msg) != len(payload) {
+					t.Fatalf("step=%d msg len = %d, want %d", step, len(msg), len(payload))
+				}
+			}
+			return best
 		}
-		if len(events) != 1 || events[0].Model != "big" {
-			t.Fatalf("events = %+v", events)
-		}
-		if msg, _ := stringField(events[0].Data, "msg"); len(msg) != len(payload) {
-			t.Fatalf("msg len = %d, want %d", len(msg), len(payload))
+		whole := run(len(full))
+		pieces := run(4 << 10)
+		if pieces > 10*whole+60*time.Millisecond {
+			t.Fatalf("8 MiB llama SSE event in 4 KiB chunks took %v vs whole %v", pieces, whole)
 		}
 	})
 }
