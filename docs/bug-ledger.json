@@ -31223,25 +31223,6 @@
       ]
     },
     {
-      "id": "BF-759c3fd",
-      "title": "fix(session): avoid redundant re-encode on live custom appends",
-      "symptom": "fix(session): avoid redundant re-encode on live custom appends",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
-      "commits": [
-        {
-          "hash": "759c3fda6b",
-          "date": "2026-11-26"
-        }
-      ],
-      "tests": []
-    },
-    {
       "id": "BF-75a9cac",
       "title": "`TestPlugin` reports a Go stub's setup failure and the tested plugin's own failure together in one…",
       "symptom": "`TestPlugin` reports a Go stub's setup failure and the tested plugin's own failure together in one `testPlugin: setup failed: ...` message, the stub's first, as Pi's one `host.load` does; it returned the stub's alone and never loaded the plugin.",
