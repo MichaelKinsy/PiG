@@ -30,6 +30,39 @@ env:
   PIG_PERF_TIMING_REPORT_ONLY: '1'
 
 jobs:
+  # On a scheduled run, check whether main's HEAD already has a green deterministic nightly run
+  # (oracle-sweeps, pig-bolt-compiler, allocations, strip-matrix, strip-tests). If so, skip those
+  # deterministic jobs while still running the stochastic/repetition jobs (race, fuzz,
+  # windows-concurrency-stress). workflow_dispatch NEVER skips deterministic jobs.
+  head-state:
+    name: Check unchanged main state
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      run-deterministic: ${{ steps.check.outputs.run-deterministic }}
+      skip-reason: ${{ steps.check.outputs.skip-reason }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: automation/ci/check-unchanged-main.py
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Decide whether deterministic nightly jobs must run
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 automation/ci/check-unchanged-main.py nightly             --event "$EVENT"             --repo "$REPO"             --head-sha "$HEAD_SHA"             --current-run-id "$RUN_ID"
+
   race:
     name: Race / ${{ matrix.os }} / ${{ matrix.group }}${{ matrix.shard && format(' / {0}', matrix.shard) || '' }}
     runs-on: ${{ matrix.os }}
@@ -288,6 +321,8 @@ jobs:
 
   oracle-sweeps:
     name: Oracle sweeps / full products
+    needs: [head-state]
+    if: ${{ needs.head-state.outputs.run-deterministic == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -324,6 +359,8 @@ jobs:
 
   pig-bolt-compiler:
     name: Pi-Bolt compiler / build and start a compiled host
+    needs: [head-state]
+    if: ${{ needs.head-state.outputs.run-deterministic == 'true' }}
     # make test-pig-bolt-build downloads the Pi-Bolt release the pig-bolt Piglet pins (signature and digests checked by the Piglet's own installer),
     # builds a compiled TypeScript host from PiG's runtime tree with it and starts the host. It guards against a pin whose compiler crashes on that
     # tree (an earlier pin segfaulted in the ahead-of-time step). The toolchain is cached by pin.
@@ -371,6 +408,8 @@ jobs:
 
   allocations:
     name: Allocation ratchet / allocs per op
+    needs: [head-state]
+    if: ${{ needs.head-state.outputs.run-deterministic == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 150
     steps:
@@ -430,6 +469,8 @@ jobs:
 
   strip-matrix:
     name: Piglet strip matrix / API tags and all tags
+    needs: [head-state]
+    if: ${{ needs.head-state.outputs.run-deterministic == 'true' }}
     runs-on: ubuntu-24.04
     # The default mode took 2610 s at 8 CPUs (vet of every package, the ai tests and the stripped binary for four tag sets); the hosted runner has fewer.
     timeout-minutes: 150
@@ -492,6 +533,8 @@ jobs:
 
   strip-tests-sets:
     name: Piglet strip tests / the sets
+    needs: [head-state]
+    if: ${{ needs.head-state.outputs.run-deterministic == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     outputs:
@@ -629,10 +672,11 @@ jobs:
         with:
           fetch-depth: 1
           persist-credentials: false
-      - name: Keep Go build cache under RUNNER_TEMP
+      - name: Keep Go and oracle scratch under RUNNER_TEMP
         shell: pwsh
         run: |
           "GOCACHE=$(Join-Path $env:RUNNER_TEMP 'go-build')" >> $env:GITHUB_ENV
+          "PIG_PI_BUILD_STORE=$(Join-Path $env:RUNNER_TEMP 'pi-builds')" >> $env:GITHUB_ENV
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: .go-version
@@ -652,6 +696,42 @@ jobs:
           key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
           restore-keys: |
             gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+      # pilock and auth-storage stress groups include cross-process lock interop tests against Pi's
+      # pinned FileAuthStorageBackend and proper-lockfile (TestConcurrentStoreWritesWithPiBackend,
+      # TestHeartbeatReadsLockBeingRemovedAsNodeStatDoesUpstream, TestAcquireWithOptionsRetriesEveryAttemptErrorUpstream,
+      # TestAuthStorageLock*Upstream), so restore and link the cached Windows Pi oracle matching ci.yml.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: Restore the npm cache
+        id: cache-npm
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~\AppData\Local\npm-cache
+          key: node-cache-${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('extensions/sdk-ts/package-lock.json', 'test/parity/interface-extractor/package-lock.json') }}
+          restore-keys: |
+            node-cache-${{ runner.os }}-${{ runner.arch }}-npm-
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Restore the Pi oracle build
+        id: cache-pi-oracle-build
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}\pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
+      - name: Install the pinned Pi oracle
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm_version="$(awk '/^  NPM_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
+          automation/ci/install-npm-toolchain.sh
+          bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
+          cygpath -w "$bin" >> "$GITHUB_PATH"
+          export PATH="$bin:$PATH"
+          test "$(npm --version)" = "$npm_version"
+          py="$(command -v python3 || command -v python)"
+          "$py" automation/pin/pin.py install-oracle
       - name: Run Windows concurrency stress suite
         shell: bash
         env:

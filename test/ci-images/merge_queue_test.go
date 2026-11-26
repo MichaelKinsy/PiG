@@ -585,7 +585,7 @@ func ciResultRun(t *testing.T, set map[string]string, liveHead string) (string, 
 		t.Fatal("the CI result job has no aggregation step")
 	}
 	values := map[string]string{
-		"EVENT": "merge_group", "PRODUCT": "true", "FULL": "true", "FULL_REQUIRED": "false",
+		"EVENT": "merge_group", "PRODUCT": "true", "SKIP_UNCHANGED": "false", "SKIP_REASON": "", "FULL": "true", "FULL_REQUIRED": "false",
 		"PR_NUMBER": "", "PR_HEAD_SHA": "", "REPO": "MichaelKinsy/PiG", "GH_TOKEN": "token",
 		"RUN_NODE_RUNTIME": "true", "RUN_CHORD": "true", "RUN_NODE_LOADER": "true", "RUN_ANDROID": "true", "RUN_DURABLE_CF_HOST": "true", "RUN_DURABLE_CONTRACT": "true",
 		"CHANGES": "success", "DOCS": "skipped", "BOOKKEEPING": "success", "VERIFY": "success", "NODE_RUNTIME": "success", "CHORD": "success",
@@ -656,6 +656,10 @@ func TestCIResultRequiresEveryPlannedJob(t *testing.T) {
 		// job behind Bookkeeping, which is how every nightly run tested nothing.
 		{"nightly run with every job", map[string]string{"EVENT": "schedule"}, true},
 		{"nightly run whose verdict job was skipped", map[string]string{"EVENT": "schedule", "VERDICT": "skipped"}, false},
+		{"unchanged scheduled main run", map[string]string{"EVENT": "schedule", "SKIP_UNCHANGED": "true", "SKIP_REASON": "already green", "PREFLIGHT": "skipped", "PREFLIGHT_PLATFORMS": "skipped", "NODE_RUNTIME": "skipped", "CHORD": "skipped", "WINDOWS": "skipped", "MACOS": "skipped", "ANDROID": "skipped", "NODE_LOADER": "skipped", "DURABLE_CF_HOST": "skipped", "DURABLE_CONTRACT": "skipped"}, true},
+		{"workflow_dispatch cannot skip via SKIP_UNCHANGED", map[string]string{"EVENT": "workflow_dispatch", "SKIP_UNCHANGED": "true", "PREFLIGHT": "skipped", "WINDOWS": "skipped", "MACOS": "skipped"}, false},
+		{"merge_group cannot skip via SKIP_UNCHANGED", map[string]string{"EVENT": "merge_group", "SKIP_UNCHANGED": "true", "PREFLIGHT": "skipped", "WINDOWS": "skipped", "MACOS": "skipped"}, false},
+		{"pull_request cannot skip via SKIP_UNCHANGED", merge(pullRequest, map[string]string{"SKIP_UNCHANGED": "true", "PREFLIGHT": "skipped"}), false},
 		{"merge group whose verdict job was skipped", map[string]string{"VERDICT": "skipped"}, false},
 		{"light pull request runs no Windows or macOS job", merge(pullRequest, lightPlanResults), true},
 		{"full pull request that planned Windows but skipped it", merge(pullRequest, map[string]string{"WINDOWS": "skipped"}), false},
