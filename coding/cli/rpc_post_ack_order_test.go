@@ -31,12 +31,6 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
-type failingOutWriter struct {
-	err error
-}
-
-func (w failingOutWriter) Write([]byte) (int, error) { return 0, w.err }
-
 // waitActiveReplyGateNil polls activeReplyGate(event) until it returns nil (since releasePostAck runs
 // in a macrotask after the response record is written to stdout) or fails when testbudget.Wait expires.
 func waitActiveReplyGateNil(t *testing.T, host *rpcHost, event, desc string) {
@@ -921,30 +915,30 @@ export default function (pi) {
 					} else {
 						msg = map[string]any{"id": "m1", "type": "cycle_model"}
 					}
-				p.sendJSON(msg)
-				if msPeer != nil {
-					msPeer.awaitHandler(t)
-				}
-				var seen []string
-				p.await("model reply and thinking_level_select notify", func(r rpcRecord) bool {
-					if r["type"] == "response" && r["id"] == "m1" {
-						seen = append(seen, "reply")
+					p.sendJSON(msg)
+					if msPeer != nil {
+						msPeer.awaitHandler(t)
 					}
-					if r["type"] == "extension_ui_request" && r["method"] == "notify" && r["message"] == "thinking-after-model" {
-						seen = append(seen, "effect")
-						if msPeer != nil {
-							msPeer.release()
+					var seen []string
+					p.await("model reply and thinking_level_select notify", func(r rpcRecord) bool {
+						if r["type"] == "response" && r["id"] == "m1" {
+							seen = append(seen, "reply")
 						}
+						if r["type"] == "extension_ui_request" && r["method"] == "notify" && r["message"] == "thinking-after-model" {
+							seen = append(seen, "effect")
+							if msPeer != nil {
+								msPeer.release()
+							}
+						}
+						return len(seen) == 2
+					})
+					want := []string{"reply", "effect"}
+					if withModelSelect {
+						want = []string{"effect", "reply"}
 					}
-					return len(seen) == 2
-				})
-				want := []string{"reply", "effect"}
-				if withModelSelect {
-					want = []string{"effect", "reply"}
-				}
-				if !slices.Equal(seen, want) {
-					t.Fatalf("order = %v, want %v", seen, want)
-				}
+					if !slices.Equal(seen, want) {
+						t.Fatalf("order = %v, want %v", seen, want)
+					}
 					p.closeAndWait("after model switch")
 				})
 			}
