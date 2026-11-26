@@ -19,7 +19,7 @@ import (
 // that is not what it was written for) is a failed run of each read, not a throw.
 //
 // Go forms: Pi's `Set<OpenRead>` is an insertion-ordered slice; `compiled` is the plan, or the error that stopped it
-// (Pi's `{ plan } | { error }`); `load` blocks until its run and returns nil where Pi resolves `undefined`; Pi's one thread
+// (Pi's `{ kind: "compiled", plan } | { kind: "failed", error }`); `load` blocks until its run and returns nil where Pi resolves `undefined`; Pi's one thread
 // is a mutex over the query's and the read's own fields (never held across a call out).
 
 // QuerySpec is what an open query reads: a query of the table named Table, and the columns its mapping gets.
@@ -39,8 +39,19 @@ type ReadSite struct {
 	Batch *state.Batch
 }
 
+// CompiledKind tags a Compiled open-query result.
+type CompiledKind string
+
+const (
+	// CompiledPlan means the query compiled and Plan is non-nil.
+	CompiledPlan CompiledKind = "compiled"
+	// CompiledFailed means the query failed to compile and Err is the cause.
+	CompiledFailed CompiledKind = "failed"
+)
+
 // Compiled is a query's plan while it compiles, else why it does not.
 type Compiled struct {
+	Kind CompiledKind
 	Plan *ReadPlan
 	Err  error
 }
@@ -158,9 +169,9 @@ func (query *OpenQuery) compile() Compiled {
 	spec := query.Spec
 	plan, err := NewReadPlan(spec.Query, spec.Table, spec.Projection, query.shape, query.Site.Store.Reads)
 	if err != nil {
-		return Compiled{Err: err}
+		return Compiled{Kind: CompiledFailed, Err: err}
 	}
-	return Compiled{Plan: plan}
+	return Compiled{Kind: CompiledPlan, Plan: plan}
 }
 
 // recompile is a binding changed: the query is compiled for the tables as they are now, and its owner reads again.
@@ -249,7 +260,7 @@ func (read *OpenRead) Register() {
 	}
 	read.registration++
 	registration := read.registration
-	if compiled.Err != nil {
+	if compiled.Kind == CompiledFailed {
 		read.mu.Unlock()
 		if previous != nil {
 			reads.Delete(previous)
@@ -339,7 +350,7 @@ func (read *OpenRead) failCompile() (run *ReadRun, settled bool) {
 	if read.isClosed() {
 		return nil, true
 	}
-	if query.Compiled().Err == nil {
+	if query.Compiled().Kind != CompiledFailed {
 		return nil, false
 	}
 	settled = true
@@ -348,7 +359,7 @@ func (read *OpenRead) failCompile() (run *ReadRun, settled bool) {
 			return nil
 		}
 		compiled := query.Compiled()
-		if compiled.Err == nil {
+		if compiled.Kind != CompiledFailed {
 			settled = false
 			return nil
 		}

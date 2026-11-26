@@ -295,7 +295,7 @@ func TestInstallPluginClonesARepositoryWhoseTopIsAPluginIntoRootRepositoryAtATag
 	root := tempRoot(t)
 	tools := tempRoot(t)
 	options := InstallPluginOptions{NpmCommand: fakeNpm(t, tools, 0, false)}
-	names, err := InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, root, background, options)
+	names, err := InstallPlugin(PluginSource{Kind: PluginSourceGit, Git: repository.url, Ref: "v1"}, root, background, options)
 	if err != nil || !reflect.DeepEqual(names, []string{"@bob/hello"}) {
 		t.Fatalf("names = %v, error = %v", names, err)
 	}
@@ -303,7 +303,7 @@ func TestInstallPluginClonesARepositoryWhoseTopIsAPluginIntoRootRepositoryAtATag
 		t.Fatalf("npm ran in %q, want %q", got, want)
 	}
 	// No updating in place.
-	_, err = InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, root, background, options)
+	_, err = InstallPlugin(PluginSource{Kind: PluginSourceGit, Git: repository.url, Ref: "v1"}, root, background, options)
 	if err == nil || err.Error() != "installPlugin: "+filepath.Join(root, "hello")+" exists already" {
 		t.Fatalf("error = %v", err)
 	}
@@ -317,7 +317,7 @@ func TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedTo
 	gitRepository(t, "bob-plugins", map[string]string{"later/package.json": manifestText(t, map[string]any{"name": "@bob/later"})}, "v2", &first)
 	root := tempRoot(t)
 	tools := tempRoot(t)
-	names, err := InstallPlugin(PluginSource{Git: first.url, Ref: first.commit}, root, background, InstallPluginOptions{NpmCommand: fakeNpm(t, tools, 0, false)})
+	names, err := InstallPlugin(PluginSource{Kind: PluginSourceGit, Git: first.url, Ref: first.commit}, root, background, InstallPluginOptions{NpmCommand: fakeNpm(t, tools, 0, false)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -378,7 +378,7 @@ func jsString(t *testing.T, s string) string {
 func TestInstallPluginInstallsAnNpmPackageHereALocalTarballIntoRootName(t *testing.T) {
 	source, packed := packedClock(t)
 	root := tempRoot(t)
-	names, err := InstallPlugin(PluginSource{Npm: "@bob/clock", Version: "file:" + filepath.Join(source, packed)}, root, background, InstallPluginOptions{})
+	names, err := InstallPlugin(PluginSource{Kind: PluginSourceNpm, Npm: "@bob/clock", Version: "file:" + filepath.Join(source, packed)}, root, background, InstallPluginOptions{})
 	if err != nil || !reflect.DeepEqual(names, []string{"@bob/clock"}) {
 		t.Fatalf("names = %v, error = %v", names, err)
 	}
@@ -397,7 +397,7 @@ func TestInstallPluginReadsNpm12sPackOutputThePackedTarballsByPackageName(t *tes
 	tools := tempRoot(t)
 	printed := fmt.Sprintf(`{"@bob/clock": {name: "@bob/clock", filename: %s}}`, jsString(t, packed))
 	root := tempRoot(t)
-	names, err := InstallPlugin(PluginSource{Npm: "@bob/clock", Version: "1.2.0"}, root, background, InstallPluginOptions{NpmCommand: fakeNpm12(t, tools, filepath.Join(source, packed), printed)})
+	names, err := InstallPlugin(PluginSource{Kind: PluginSourceNpm, Npm: "@bob/clock", Version: "1.2.0"}, root, background, InstallPluginOptions{NpmCommand: fakeNpm12(t, tools, filepath.Join(source, packed), printed)})
 	if err != nil || !reflect.DeepEqual(names, []string{"@bob/clock"}) {
 		t.Fatalf("names = %v, error = %v", names, err)
 	}
@@ -418,11 +418,11 @@ func TestInstallPluginTakesTheTarballOfItsPackageFromNpm12sOutputNotTheFirstOneL
 	tools := tempRoot(t)
 	printed := fmt.Sprintf(`{"@bob/other": {name: "@bob/other", filename: "other-9.0.0.tgz"}, "@bob/clock": {name: "@bob/clock", filename: %s}}`, jsString(t, packed))
 	root := tempRoot(t)
-	names, err := InstallPlugin(PluginSource{Npm: "@bob/clock", Version: "1.2.0"}, root, background, InstallPluginOptions{NpmCommand: fakeNpm12(t, tools, filepath.Join(source, packed), printed)})
+	names, err := InstallPlugin(PluginSource{Kind: PluginSourceNpm, Npm: "@bob/clock", Version: "1.2.0"}, root, background, InstallPluginOptions{NpmCommand: fakeNpm12(t, tools, filepath.Join(source, packed), printed)})
 	if err != nil || !reflect.DeepEqual(names, []string{"@bob/clock"}) {
 		t.Fatalf("names = %v, error = %v", names, err)
 	}
-	_, err = InstallPlugin(PluginSource{Npm: "@bob/missing", Version: "1.2.0"}, tempRoot(t), background, InstallPluginOptions{NpmCommand: fakeNpm12(t, tools, filepath.Join(source, packed), printed)})
+	_, err = InstallPlugin(PluginSource{Kind: PluginSourceNpm, Npm: "@bob/missing", Version: "1.2.0"}, tempRoot(t), background, InstallPluginOptions{NpmCommand: fakeNpm12(t, tools, filepath.Join(source, packed), printed)})
 	if err == nil || !strings.Contains(err.Error(), "pack @bob/missing@1.2.0: packed nothing") {
 		t.Fatalf("error = %v, want packed nothing for a package the output does not list", err)
 	}
@@ -440,7 +440,7 @@ func TestInstallPluginInstallsExactlyTheFoldersAPackagesChordPluginsLists(t *tes
 	}, "v1", nil)
 	root := tempRoot(t)
 	tools := tempRoot(t)
-	names, err := InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, root, background, InstallPluginOptions{NpmCommand: fakeNpm(t, tools, 0, false)})
+	names, err := InstallPlugin(PluginSource{Kind: PluginSourceGit, Git: repository.url, Ref: "v1"}, root, background, InstallPluginOptions{NpmCommand: fakeNpm(t, tools, 0, false)})
 	if err != nil || !reflect.DeepEqual(names, []string{"@bob/notes"}) {
 		t.Fatalf("names = %v, error = %v", names, err)
 	}
@@ -452,11 +452,11 @@ func TestInstallPluginRefusesARefARepositoryAndAPackageNameAnOptionCouldHideInSo
 	marker := filepath.Join(filepath.Dir(root), "upload-pack-ran")
 	pattern := regexp.MustCompile(`^installPlugin: .* (is refused|is not an npm package name)$`)
 	for _, source := range []PluginSource{
-		{Git: repository.url, Ref: "--upload-pack=touch " + marker},
-		{Git: "--upload-pack=x", Ref: "v1"},
-		{Npm: "--registry=http://evil", Version: "1.0.0"},
-		{Npm: "x", Version: "--foreground-scripts"},
-		{Npm: "../escaped", Version: "1.0.0"},
+		{Kind: PluginSourceGit, Git: repository.url, Ref: "--upload-pack=touch " + marker},
+		{Kind: PluginSourceGit, Git: "--upload-pack=x", Ref: "v1"},
+		{Kind: PluginSourceNpm, Npm: "--registry=http://evil", Version: "1.0.0"},
+		{Kind: PluginSourceNpm, Npm: "x", Version: "--foreground-scripts"},
+		{Kind: PluginSourceNpm, Npm: "../escaped", Version: "1.0.0"},
 	} {
 		_, err := InstallPlugin(source, root, background, InstallPluginOptions{})
 		if err == nil || !pattern.MatchString(err.Error()) {
@@ -476,7 +476,7 @@ func TestInstallPluginRefusesAPluginNameAnotherRootHasAndLeavesNothingBehindOpus
 	root := tempRoot(t)
 	writePlugin(t, first, "zeta", "@test/same", map[string]string{}, nil)
 	repository := gitRepository(t, "alpha", map[string]string{"package.json": manifestText(t, map[string]any{"name": "@test/same"})}, "v1", nil)
-	_, err := InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, root, background, InstallPluginOptions{Roots: plainRoots(first, root)})
+	_, err := InstallPlugin(PluginSource{Kind: PluginSourceGit, Git: repository.url, Ref: "v1"}, root, background, InstallPluginOptions{Roots: plainRoots(first, root)})
 	if want := `installPlugin: plugin "@test/same" is in ` + filepath.Join(realOf(t, first), "zeta") + " already"; err == nil || err.Error() != want {
 		t.Fatalf("error = %v, want %s", err, want)
 	}
@@ -494,7 +494,7 @@ func TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOt
 	errs := make([]error, 2)
 	for i := range errs {
 		group.Go(func() {
-			_, errs[i] = InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, root, background, options)
+			_, errs[i] = InstallPlugin(PluginSource{Kind: PluginSourceGit, Git: repository.url, Ref: "v1"}, root, background, options)
 		})
 	}
 	group.Wait()
@@ -515,7 +515,7 @@ func TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOt
 func TestInstallPluginRemovesTheScopeDirectoryItMadeWhenAScopedNpmInstallFailsOpusL2(t *testing.T) {
 	root := tempRoot(t)
 	tools := tempRoot(t)
-	_, err := InstallPlugin(PluginSource{Npm: "@bob/notes", Version: "1.0.0"}, root, background, InstallPluginOptions{NpmCommand: fakeNpm(t, tools, 1, false)})
+	_, err := InstallPlugin(PluginSource{Kind: PluginSourceNpm, Npm: "@bob/notes", Version: "1.0.0"}, root, background, InstallPluginOptions{NpmCommand: fakeNpm(t, tools, 1, false)})
 	if err == nil || !strings.Contains(err.Error(), "pack @bob/notes@1.0.0 failed") {
 		t.Fatalf("error = %v", err)
 	}
@@ -537,7 +537,7 @@ func TestInstallPluginRemovesStagingDirectoriesAnInstallCrashedOutOfOnceAnHourOl
 		t.Fatal(err)
 	}
 	tools := tempRoot(t)
-	if _, err := InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, root, background, InstallPluginOptions{NpmCommand: fakeNpm(t, tools, 0, false)}); err != nil {
+	if _, err := InstallPlugin(PluginSource{Kind: PluginSourceGit, Git: repository.url, Ref: "v1"}, root, background, InstallPluginOptions{NpmCommand: fakeNpm(t, tools, 0, false)}); err != nil {
 		t.Fatal(err)
 	}
 	if got, want := listing(t, root), []string{".chord-install-recent", "hello"}; !reflect.DeepEqual(got, want) {
@@ -548,7 +548,7 @@ func TestInstallPluginRemovesStagingDirectoriesAnInstallCrashedOutOfOnceAnHourOl
 func TestInstallPluginRemovesWhatArrivedWhenItHoldsNoPlugin(t *testing.T) {
 	repository := gitRepository(t, "empty", map[string]string{"readme.md": ""}, "v1", nil)
 	root := tempRoot(t)
-	_, err := InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, root, background, InstallPluginOptions{})
+	_, err := InstallPlugin(PluginSource{Kind: PluginSourceGit, Git: repository.url, Ref: "v1"}, root, background, InstallPluginOptions{})
 	if err == nil || !regexp.MustCompile(`^installPlugin: .*empty: no package\.json$`).MatchString(err.Error()) {
 		t.Fatalf("error = %v", err)
 	}
@@ -565,7 +565,7 @@ func TestInstallPluginNamesTheTargetInAProblemWhenTheRootIsReachedByALink(t *tes
 	real := realOf(t, tempRoot(t))
 	root := filepath.Join(tempRoot(t), "linked")
 	testenv.RequireDirectoryLink(t, real, root)
-	_, err := InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, root, background, InstallPluginOptions{})
+	_, err := InstallPlugin(PluginSource{Kind: PluginSourceGit, Git: repository.url, Ref: "v1"}, root, background, InstallPluginOptions{})
 	if want := "installPlugin: " + filepath.Join(root, "empty") + ": no package.json"; err == nil || err.Error() != want {
 		t.Fatalf("error = %v, want %s", err, want)
 	}
@@ -581,7 +581,7 @@ func TestInstallPluginReturnsTheAbortsReasonAndRemovesWhatItCreated(t *testing.T
 	aborted, cancel := chordctx.WithCancel(background)
 	stop := errors.New("stop")
 	cancel(stop)
-	_, err := InstallPlugin(PluginSource{Git: "file:///nonexistent/hello.git", Ref: "v1"}, root, aborted, InstallPluginOptions{})
+	_, err := InstallPlugin(PluginSource{Kind: PluginSourceGit, Git: "file:///nonexistent/hello.git", Ref: "v1"}, root, aborted, InstallPluginOptions{})
 	if !errors.Is(err, stop) {
 		t.Fatalf("error = %v, want the abort's reason", err)
 	}
@@ -622,5 +622,30 @@ func TestPackedTarballReadsTheListNpm11PrintsAndTheMemberOfThePackageNpm12Prints
 				t.Fatalf("packedTarball = %q, %v, want %q", got, err, tc.want)
 			}
 		})
+	}
+}
+
+// Follows Pi befc2d59b: PluginSource is a tagged union ({ kind: "git" } | { kind: "npm" }); an untagged or unknown
+// Kind is refused without touching the root.
+func TestInstallPluginRefusesAnUntaggedOrUnknownPluginSourceKind(t *testing.T) {
+	repository := gitRepository(t, "hello", map[string]string{
+		"package.json": manifestText(t, map[string]any{"name": "@bob/hello"}),
+	}, "v1", nil)
+	root := tempRoot(t)
+	for _, tc := range []struct {
+		source PluginSource
+		want   string
+	}{
+		{PluginSource{Git: repository.url, Ref: "v1"}, `installPlugin: source kind "" is refused`},
+		{PluginSource{Npm: "@bob/hello", Version: "1.0.0"}, `installPlugin: source kind "" is refused`},
+		{PluginSource{Kind: PluginSourceKind("other"), Git: repository.url, Ref: "v1"}, `installPlugin: source kind "other" is refused`},
+	} {
+		_, err := InstallPlugin(tc.source, root, background, InstallPluginOptions{})
+		if err == nil || err.Error() != tc.want {
+			t.Errorf("%+v: error = %v, want %q", tc.source, err, tc.want)
+		}
+	}
+	if names := listing(t, root); len(names) != 0 {
+		t.Fatalf("root = %v, want empty", names)
 	}
 }

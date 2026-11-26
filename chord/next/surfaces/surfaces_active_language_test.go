@@ -197,3 +197,17 @@ func TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted(t *testing.T) {
 	choose(nil)
 	until(t, func() bool { return last() == "de" })
 }
+
+// Follows Pi befc2d59b (active-language.ts reportOnce): unknown reports ignore Locale when deduplicating
+// (`each.kind === "unknown" ? "" : each.locale`).
+func TestReportOnceIgnoresLocaleForUnknownReports(t *testing.T) {
+	var seen []MessagesReport
+	once := reportOnce(func(r MessagesReport) { seen = append(seen, r) })
+	once(MessagesReport{Kind: ReportUnknown, Namespace: "notes", Locale: "en", Key: "missing"})
+	once(MessagesReport{Kind: ReportUnknown, Namespace: "notes", Locale: "de", Key: "missing"})
+	once(MessagesReport{Kind: ReportFallback, Namespace: "notes", Locale: "en", Key: "empty"})
+	once(MessagesReport{Kind: ReportFallback, Namespace: "notes", Locale: "de", Key: "empty"})
+	if len(seen) != 3 {
+		t.Fatalf("seen %d reports (%+v), want 3 (unknown deduplicated across locales, fallback kept per locale)", len(seen), seen)
+	}
+}

@@ -825,7 +825,7 @@ func TestPluginsTheAppsAPIRequiredRootsAndInstallsInstallsAPluginIntoOneOfItsRoo
 	writeFiles(t, tools, map[string]string{"npm.mjs": "process.exit(0);"})
 	c := pcNew(t, root, pcOptions{install: InstallOptions{NpmCommand: []string{pcNode(t), filepath.Join(tools, "npm.mjs")}}})
 	c.build(t)
-	names, err := c.InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, root, background)
+	names, err := c.InstallPlugin(PluginSource{Kind: PluginSourceGit, Git: repository.url, Ref: "v1"}, root, background)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -839,7 +839,7 @@ func TestPluginsTheAppsAPIRequiredRootsAndInstallsInstallsAPluginIntoOneOfItsRoo
 	if len(built.Plugins) != 1 || built.Plugins["@bob/hello"].Name != "@bob/hello" {
 		t.Fatalf("built plugins = %+v", built.Plugins)
 	}
-	_, err = c.InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, tools, background)
+	_, err = c.InstallPlugin(PluginSource{Kind: PluginSourceGit, Git: repository.url, Ref: "v1"}, tools, background)
 	if want := "plugins.installPlugin: " + tools + " is not one of the roots"; err == nil || err.Error() != want {
 		t.Fatalf("error = %v, want %q", err, want)
 	}

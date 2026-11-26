@@ -49,9 +49,20 @@ type InstallPluginOptions struct {
 	Roots []model.PluginRoot
 }
 
+// PluginSourceKind tags a PluginSource: a git repository or an npm package.
+type PluginSourceKind string
+
+const (
+	// PluginSourceGit installs from a git repository at a ref (branch, tag or commit).
+	PluginSourceGit PluginSourceKind = "git"
+	// PluginSourceNpm installs from an npm package at a version.
+	PluginSourceNpm PluginSourceKind = "npm"
+)
+
 // PluginSource is where InstallPlugin installs from: a git repository at a ref (a branch, tag or commit), or an npm package.
-// Upstream's `{ git, ref } | { npm, version }`: exactly one of Git and Npm is set; a source with no Npm is a git one.
+// Upstream's `{ kind: "git", git, ref } | { kind: "npm", npm, version }`.
 type PluginSource struct {
+	Kind    PluginSourceKind
 	Git     string
 	Ref     string
 	Npm     string
@@ -105,7 +116,7 @@ func InstallPlugin(source PluginSource, root string, ctx context.Context, option
 			return nil, err
 		}
 		staged := filepath.Join(staging, "package")
-		if source.Npm == "" {
+		if source.Kind == PluginSourceGit {
 			err = clone(source.Git, source.Ref, staged, ctx)
 		} else {
 			err = unpack(source.Npm, source.Version, staged, ctx, options.InstallOptions)
@@ -206,7 +217,8 @@ func refuse(value, what string) error {
 
 // targetName is the directory name a source installs into: the repository's name, or the package's (validated) name.
 func targetName(source PluginSource) (string, error) {
-	if source.Npm == "" {
+	switch source.Kind {
+	case PluginSourceGit:
 		if err := refuse(source.Git, "repository"); err != nil {
 			return "", err
 		}
@@ -218,17 +230,20 @@ func targetName(source PluginSource) (string, error) {
 			return "", errors.New(`installPlugin: "` + source.Git + `" names no repository directory`)
 		}
 		return name, nil
+	case PluginSourceNpm:
+		if err := refuse(source.Npm, "package"); err != nil {
+			return "", err
+		}
+		if err := refuse(source.Version, "version"); err != nil {
+			return "", err
+		}
+		if !host.IsPluginName(source.Npm) {
+			return "", errors.New(`installPlugin: "` + source.Npm + `" is not an npm package name`)
+		}
+		return source.Npm, nil
+	default:
+		return "", fmt.Errorf("installPlugin: source kind %q is refused", source.Kind)
 	}
-	if err := refuse(source.Npm, "package"); err != nil {
-		return "", err
-	}
-	if err := refuse(source.Version, "version"); err != nil {
-		return "", err
-	}
-	if !host.IsPluginName(source.Npm) {
-		return "", errors.New(`installPlugin: "` + source.Npm + `" is not an npm package name`)
-	}
-	return source.Npm, nil
 }
 
 // nodeBasename is Node's `path.basename(path)`: the last element of a path, ignoring trailing separators.

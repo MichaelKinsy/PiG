@@ -208,9 +208,20 @@ type SeriesCommit struct {
 	Writes []StagedWrite
 }
 
-// SeriesResult is what a series stored: how many of its commits, and why the next one was refused, if one was (nil
-// otherwise).
+// SeriesResultKind tags a SeriesResult: all commits stored, or a commit refused.
+type SeriesResultKind string
+
+const (
+	// SeriesStored means every commit in the series was stored.
+	SeriesStored SeriesResultKind = "stored"
+	// SeriesRefused means a check refused a commit; Stored commits before it stand and Refused is its error.
+	SeriesRefused SeriesResultKind = "refused"
+)
+
+// SeriesResult is what a series stored: how many of its commits (`Kind == SeriesStored`: all of them), and, when one
+// was refused (`Kind == SeriesRefused`), why (`Refused`).
 type SeriesResult struct {
+	Kind    SeriesResultKind
 	Stored  int
 	Refused error
 }
@@ -1248,7 +1259,10 @@ func (store *ChordStore) series(commits []SeriesCommit, receive func(index int, 
 			return SeriesResult{}, store.fail(err)
 		}
 	}
-	return SeriesResult{Stored: len(done.stored), Refused: refused}, nil
+	if refused == nil {
+		return SeriesResult{Kind: SeriesStored, Stored: len(done.stored)}, nil
+	}
+	return SeriesResult{Kind: SeriesRefused, Stored: len(done.stored), Refused: refused}, nil
 }
 
 // writeSeries is the commits of a series in its backend transaction, until one is refused (refused is its error): each

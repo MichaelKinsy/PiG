@@ -339,7 +339,7 @@ func TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt(t *test
 	if s.app.Plugins.Component.Marks().Set {
 		t.Fatal("the set mark is set before the install")
 	}
-	names, err := s.app.Plugins.Install(background, plugins.PluginSource{Git: url, Ref: "v1"})
+	names, err := s.app.Plugins.Install(background, plugins.PluginSource{Kind: plugins.PluginSourceGit, Git: url, Ref: "v1"})
 	if err != nil || !reflect.DeepEqual(names, []string{"@bob/echo"}) {
 		t.Fatalf("InstallPlugin = %v, %v", names, err)
 	}

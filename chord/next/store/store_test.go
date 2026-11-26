@@ -846,8 +846,8 @@ func TestStore(t *testing.T) {
 				return nil
 			}, telemetry.Context)
 			noError(t, err)
-			if result != (SeriesResult{Stored: 3}) {
-				t.Fatalf("result = %+v, want {Stored: 3}", result)
+			if result != (SeriesResult{Kind: SeriesStored, Stored: 3}) {
+				t.Fatalf("result = %+v, want {Kind: stored, Stored: 3}", result)
 			}
 			if !reflect.DeepEqual(seen, []int64{2}) {
 				t.Fatalf("the check saw %v, want [2]", seen)
@@ -889,8 +889,8 @@ func TestStore(t *testing.T) {
 				return nil
 			}, background)
 			noError(t, err)
-			if result.Stored != 1 || !errors.Is(result.Refused, refusal) {
-				t.Fatalf("result = %+v, want {Stored: 1, Refused: refused}", result)
+			if result.Kind != SeriesRefused || result.Stored != 1 || !errors.Is(result.Refused, refusal) {
+				t.Fatalf("result = %+v, want {Kind: refused, Stored: 1, Refused: refused}", result)
 			}
 			if !reflect.DeepEqual(receipts, []int{0}) {
 				t.Fatalf("receipts = %v, want [0]", receipts)
@@ -1039,8 +1039,8 @@ func TestStore(t *testing.T) {
 			}, Writes: []StagedWrite{sees}}
 			result, err := store.CommitSeries([]SeriesCommit{unchecked(table), later}, noReceipt, background)
 			noError(t, err)
-			if result != (SeriesResult{Stored: 2}) {
-				t.Fatalf("result = %+v, want {Stored: 2}", result)
+			if result != (SeriesResult{Kind: SeriesStored, Stored: 2}) {
+				t.Fatalf("result = %+v, want {Kind: stored, Stored: 2}", result)
 			}
 			if !reflect.DeepEqual(seen, []int{1, 1}) {
 				t.Fatalf("the later commit saw table versions %v, want [1 1]", seen)
@@ -1101,8 +1101,8 @@ func TestStore(t *testing.T) {
 				return nil
 			}, background)
 			noError(t, err)
-			if empty != (SeriesResult{Stored: 2}) {
-				t.Fatalf("empty series = %+v, want {Stored: 2}", empty)
+			if empty != (SeriesResult{Kind: SeriesStored, Stored: 2}) {
+				t.Fatalf("empty series = %+v, want {Kind: stored, Stored: 2}", empty)
 			}
 			if want := []string{fmt.Sprintf("0 %d", MaxSafeInteger), fmt.Sprintf("1 %d", MaxSafeInteger)}; !reflect.DeepEqual(receipts, want) {
 				t.Fatalf("receipts = %q, want %q", receipts, want)
