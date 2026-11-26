@@ -413,16 +413,48 @@ func extractRunnerSDKRequirements(runnerSrc string) (pkgSymbols, runnableMethods
 // missingGoSDKRunnerSymbols checks dir (a candidate Go SDK module root) against
 // the package-level `sdk.<Ident>` symbols and `runnable` methods derived from
 // the packed runner template. Synthetic test fixtures that write only go.mod or
-// stub files without an Extension runtime (no runnable method declared) return
+// minimal files without an Extension runtime (no runnable method declared) return
 // nil; any real SDK source tree must export every required symbol.
+// sdkSymbolWitnesses records the specific .go files in an SDK directory that
+// proved every required runner symbol is exported. Re-checking only those
+// witness files by size and modification time avoids re-reading the directory
+// or re-parsing 125+ SDK source files on warm reloads.
+type sdkSymbolWitnesses struct {
+	files []treeStamp
+}
+
+// maxMemoizedSDKSymbolChecks bounds the process-wide compatible-SDK witness cache.
+// pig additive (D20): the shared cell cache and its keys have no upstream equivalent.
+const maxMemoizedSDKSymbolChecks = 32
+
+var memoizedSDKSymbolChecks struct {
+	mu     sync.Mutex
+	byRoot map[string]*sdkSymbolWitnesses
+}
+
+func sdkWitnessesMatch(witnesses []treeStamp) bool {
+	for _, w := range witnesses {
+		info, err := os.Stat(w.path) //perf:ok warm witness-file stamp check avoids re-parsing 125+ SDK Go files
+		if err != nil || info.Size() != w.size || info.ModTime().UnixNano() != w.mtime {
+			return false
+		}
+	}
+	return len(witnesses) > 0
+}
+
 func missingGoSDKRunnerSymbols(dir string, pkgSymbols, runnableMethods []string) []string {
+	missing, _ := inspectGoSDKRunnerSymbols(dir, pkgSymbols, runnableMethods)
+	return missing
+}
+
+func inspectGoSDKRunnerSymbols(dir string, pkgSymbols, runnableMethods []string) ([]string, []treeStamp) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil
+		return nil, nil
 	}
 	fset := token.NewFileSet()
-	exportedPkg := map[string]struct{}{}
-	exportedMethods := map[string]struct{}{}
+	exportedPkg := map[string]string{}
+	exportedMethods := map[string]string{}
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
@@ -431,7 +463,8 @@ func missingGoSDKRunnerSymbols(dir string, pkgSymbols, runnableMethods []string)
 		if !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
 			continue
 		}
-		file, err := parser.ParseFile(fset, filepath.Join(dir, name), nil, 0)
+		fullPath := filepath.Join(dir, name)
+		file, err := parser.ParseFile(fset, fullPath, nil, 0)
 		if err != nil {
 			continue
 		}
@@ -442,21 +475,21 @@ func missingGoSDKRunnerSymbols(dir string, pkgSymbols, runnableMethods []string)
 					continue
 				}
 				if d.Recv == nil {
-					exportedPkg[d.Name.Name] = struct{}{}
+					exportedPkg[d.Name.Name] = fullPath
 				} else {
-					exportedMethods[d.Name.Name] = struct{}{}
+					exportedMethods[d.Name.Name] = fullPath
 				}
 			case *ast.GenDecl:
 				for _, spec := range d.Specs {
 					switch sp := spec.(type) {
 					case *ast.TypeSpec:
 						if sp.Name != nil && sp.Name.IsExported() {
-							exportedPkg[sp.Name.Name] = struct{}{}
+							exportedPkg[sp.Name.Name] = fullPath
 						}
 					case *ast.ValueSpec:
 						for _, id := range sp.Names {
 							if id.IsExported() {
-								exportedPkg[id.Name] = struct{}{}
+								exportedPkg[id.Name] = fullPath
 							}
 						}
 					}
@@ -464,7 +497,7 @@ func missingGoSDKRunnerSymbols(dir string, pkgSymbols, runnableMethods []string)
 			}
 		}
 	}
-	// Treat marker-only or minimal stub fixtures (no runnable method declared) as synthetic test roots.
+	// Treat marker-only or minimal fixtures (no runnable method declared) as synthetic test roots.
 	hasRuntime := false
 	for _, m := range runnableMethods {
 		if _, ok := exportedMethods[m]; ok {
@@ -473,25 +506,58 @@ func missingGoSDKRunnerSymbols(dir string, pkgSymbols, runnableMethods []string)
 		}
 	}
 	if !hasRuntime {
-		return nil
+		return nil, nil
 	}
 	var missing []string
+	witnessPaths := map[string]struct{}{}
 	for _, sym := range pkgSymbols {
-		if _, ok := exportedPkg[sym]; !ok {
+		if path, ok := exportedPkg[sym]; !ok {
 			missing = append(missing, "sdk."+sym)
+		} else {
+			witnessPaths[path] = struct{}{}
 		}
 	}
 	for _, m := range runnableMethods {
-		if _, ok := exportedMethods[m]; !ok {
+		if path, ok := exportedMethods[m]; !ok {
 			missing = append(missing, "Extension."+m)
+		} else {
+			witnessPaths[path] = struct{}{}
 		}
 	}
-	return missing
+	if len(missing) > 0 || len(witnessPaths) == 0 {
+		return missing, nil
+	}
+	var witnesses []treeStamp
+	for path := range witnessPaths {
+		info, err := os.Stat(path) //perf:ok records witness-file stamp once on cold SDK scan
+		if err != nil {
+			return nil, nil
+		}
+		witnesses = append(witnesses, stampOf(path, info))
+	}
+	return nil, witnesses
 }
 
 func missingRunnerSymbolsForSDK(dir string) []string {
+	clean := filepath.Clean(dir)
+	memoizedSDKSymbolChecks.mu.Lock()
+	cached := memoizedSDKSymbolChecks.byRoot[clean]
+	memoizedSDKSymbolChecks.mu.Unlock()
+	if cached != nil && sdkWitnessesMatch(cached.files) {
+		return nil
+	}
+	began := treeMemoClock()
 	pkgSymbols, runnableMethods := goRunnerSDKRequirements()
-	return missingGoSDKRunnerSymbols(dir, pkgSymbols, runnableMethods)
+	missing, witnesses := inspectGoSDKRunnerSymbols(clean, pkgSymbols, runnableMethods)
+	if len(missing) == 0 && len(witnesses) > 0 && !anyRacy(witnesses, began) {
+		memoizedSDKSymbolChecks.mu.Lock()
+		if _, known := memoizedSDKSymbolChecks.byRoot[clean]; memoizedSDKSymbolChecks.byRoot == nil || (!known && len(memoizedSDKSymbolChecks.byRoot) >= maxMemoizedSDKSymbolChecks) {
+			memoizedSDKSymbolChecks.byRoot = make(map[string]*sdkSymbolWitnesses, 4)
+		}
+		memoizedSDKSymbolChecks.byRoot[clean] = &sdkSymbolWitnesses{files: witnesses}
+		memoizedSDKSymbolChecks.mu.Unlock()
+	}
+	return missing
 }
 
 func findSDKRootWithPreferred(extensions []GoExtension, preferred string) (string, error) {
@@ -614,7 +680,7 @@ func goSDKPathOverrideRaw(root, stagedDir string) string {
 			candidate = filepath.Join(root, candidate)
 		}
 		candidate = filepath.Clean(candidate)
-		if _, err := os.Stat(filepath.Join(candidate, "go.mod")); err != nil {
+		if !statHasFile(candidate, "go.mod") {
 			continue
 		}
 		// A replace into the config root's SDK staging area that misses the

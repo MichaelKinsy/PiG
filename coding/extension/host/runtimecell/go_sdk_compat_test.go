@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"golang.org/x/mod/modfile"
 )
@@ -137,5 +138,42 @@ func TestFindSDKRootRejectsOnlyIncompatibleCandidateWithActionableError(t *testi
 	msg := err.Error()
 	if !strings.Contains(msg, staleSDK) || !strings.Contains(msg, "PIG_SDK_GO_ROOT") || !strings.Contains(msg, "sdk.ReportLoadFailure") {
 		t.Fatalf("error %q must name path %q, source PIG_SDK_GO_ROOT, and missing symbol sdk.ReportLoadFailure", msg, staleSDK)
+	}
+}
+
+// TestMissingRunnerSymbolsWitnessCacheInvalidatesOnWitnessEdit proves that the
+// warm-reload witness cache invalidates immediately when a witness file is
+// edited to drop a required runner symbol (e.g. an older SDK replacing a newer one).
+func TestMissingRunnerSymbolsWitnessCacheInvalidatesOnWitnessEdit(t *testing.T) {
+	sdkDir := filepath.Join(t.TempDir(), "sdk")
+	if err := os.MkdirAll(sdkDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeGoMod(t, sdkDir, "module github.com/MichaelKinsy/PiG/extensions/sdk\n\ngo 1.26\n")
+	sdkFile := filepath.Join(sdkDir, "sdk.go")
+	goodSrc := "package sdk\n\ntype Extension struct{}\nfunc (e *Extension) RunWithSocket(sock string) error { return nil }\nfunc ReportLoadFailure(sock string) error { return nil }\n"
+	if err := os.WriteFile(sdkFile, []byte(goodSrc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Age the witness past racyTreeWindow so missingRunnerSymbolsForSDK caches it.
+	old := treeMemoClock().Add(-time.Hour)
+	if err := os.Chtimes(sdkFile, old, old); err != nil {
+		t.Fatal(err)
+	}
+	if got := missingRunnerSymbolsForSDK(sdkDir); len(got) != 0 {
+		t.Fatalf("first check = %v, want nil", got)
+	}
+	// Second check hits the witness cache.
+	if got := missingRunnerSymbolsForSDK(sdkDir); len(got) != 0 {
+		t.Fatalf("cached check = %v, want nil", got)
+	}
+	// Drop ReportLoadFailure from the witness file: cache must invalidate and report missing symbol.
+	badSrc := "package sdk\n\ntype Extension struct{}\nfunc (e *Extension) RunWithSocket(sock string) error { return nil }\n"
+	if err := os.WriteFile(sdkFile, []byte(badSrc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got := missingRunnerSymbolsForSDK(sdkDir)
+	if !slices.Equal(got, []string{"sdk.ReportLoadFailure"}) {
+		t.Fatalf("after witness edit = %v, want [sdk.ReportLoadFailure]", got)
 	}
 }
