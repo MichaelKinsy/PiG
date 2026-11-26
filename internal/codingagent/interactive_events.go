@@ -113,7 +113,7 @@ func collectDroppedReasoningReasons(diagnostic ai.AssistantMessageDiagnostic, dr
 
 // maybeShowThinkingDropNotice compares with the preceding displayed response. Session persistence can overtake queued UI events, so the owner loop keeps this state and branch rebuilds initialize it in their existing history walk.
 func (m *InteractiveMode) maybeShowThinkingDropNotice(message *agent.AssistantMessage) {
-	if !m.showCacheMissNotices() {
+	if !m.notices().ReasoningDrops {
 		return
 	}
 	dropped, diagIdx := countDroppedReasoning(message)
@@ -570,7 +570,7 @@ func (m *InteractiveMode) applyAgentEvent(ev agent.AgentEvent) {
 			m.maybeSuggestBugReport(e.Message.Assistant)
 		} else {
 			m.maybeShowThinkingDropNotice(e.Message.Assistant)
-			if m.showCacheMissNotices() {
+			if m.notices().CacheMisses {
 				if notice := formatCacheMissNotice(m.currentSession().detectCacheMiss(e.Message.Assistant)); notice != "" {
 					m.addCacheMissNotice(notice)
 				}

@@ -103,7 +103,7 @@ func (m *InteractiveMode) navigateTree(ctx context.Context, targetID string, sum
 		// entries are the transcript's entries, read on the worker once the navigation moved the leaf, so the repaint decodes nothing on the owner loop.
 		entries []SessionEntry
 	}
-	session, showCacheMisses := m.currentSession(), m.showCacheMissNotices()
+	session, showCacheMisses := m.currentSession(), m.notices().CacheMisses
 	done := make(chan navigationResult, 1)
 	go func() {
 		result, err := handle.NavigateTreeHandle(navCtx, targetID, NavigateTreeOptions{Summarize: summarize, CustomInstructions: customInstructions})

@@ -139,7 +139,7 @@ emit(out);`, cases, &want)
 			"getCollapseChangelog":          sm.GetCollapseChangelog(),
 			"getEnableInstallTelemetry":     sm.GetEnableInstallTelemetry(),
 			"getEnableAnalytics":            sm.GetEnableAnalytics(),
-			"getShowCacheMissNotices":       sm.GetShowCacheMissNotices(),
+			"getNotices":                    sm.GetNotices(),
 			"getQuietStartup":               quiet,
 			"getDefaultProjectTrust":        string(sm.GetDefaultProjectTrust()),
 			"getDoubleEscapeAction":         sm.GetDoubleEscapeAction(),

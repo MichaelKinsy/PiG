@@ -64,7 +64,7 @@ func TestSettingsDefaultsMatchPiOnAnEmptySettingsManager(t *testing.T) {
 		{"retry.maxAgentDelayMs", `s.getRetrySettings().maxAgentDelayMs`, func(sm *SettingsManager) any { return sm.GetRetrySettings().MaxAgentDelayMs }},
 		{"retry.provider.maxRetryDelayMs", `s.getProviderRetrySettings().maxRetryDelayMs`, func(sm *SettingsManager) any { return sm.GetProviderRetrySettings().MaxRetryDelayMs }},
 		{"hideThinkingBlock", `s.getHideThinkingBlock()`, func(sm *SettingsManager) any { return sm.GetHideThinkingBlock() }},
-		{"showCacheMissNotices", `s.getShowCacheMissNotices()`, func(sm *SettingsManager) any { return sm.GetShowCacheMissNotices() }},
+		{"notices", `s.getNotices()`, func(sm *SettingsManager) any { return sm.GetNotices() }},
 		{"quietStartup", `s.getQuietStartup()`, func(sm *SettingsManager) any {
 			switch sm.GetQuietStartup() {
 			case QuietStartupTrue:

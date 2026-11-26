@@ -519,11 +519,6 @@ impl SettingsManager {
         Ok(value.as_bool().unwrap_or(false))
     }
 
-    pub fn get_show_cache_miss_notices(&self) -> io::Result<bool> {
-        let value = self.object.call("getShowCacheMissNotices", vec![])?;
-        Ok(value.as_bool().unwrap_or(false))
-    }
-
     pub fn get_external_editor_command(&self) -> io::Result<String> {
         let value = self.object.call("getExternalEditorCommand", vec![])?;
         Ok(text(&value))
@@ -532,12 +527,6 @@ impl SettingsManager {
     pub fn set_hide_thinking_block(&self, hide: bool) -> io::Result<()> {
         self.object
             .call("setHideThinkingBlock", vec![json!(hide)])
-            .map(|_| ())
-    }
-
-    pub fn set_show_cache_miss_notices(&self, show: bool) -> io::Result<()> {
-        self.object
-            .call("setShowCacheMissNotices", vec![json!(show)])
             .map(|_| ())
     }
 
@@ -973,5 +962,15 @@ impl SettingsManager {
 
     pub fn set_warnings(&self, warnings: Value) -> io::Result<()> {
         self.object.call("setWarnings", vec![warnings]).map(|_| ())
+    }
+
+    pub fn get_notices(&self) -> io::Result<Value> {
+        self.object.call("getNotices", vec![])
+    }
+
+    pub fn set_notice(&self, key: &str, shown: bool) -> io::Result<()> {
+        self.object
+            .call("setNotice", vec![json!(key), json!(shown)])
+            .map(|_| ())
     }
 }

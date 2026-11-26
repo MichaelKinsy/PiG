@@ -1024,11 +1024,11 @@ func (m *InteractiveMode) postToMain(ctx context.Context, fn func()) error {
 	}
 }
 
-func (m *InteractiveMode) showCacheMissNotices() bool {
+func (m *InteractiveMode) notices() NoticeSettings {
 	if m.opts.SettingsManager != nil {
-		return m.opts.SettingsManager.GetShowCacheMissNotices()
+		return m.opts.SettingsManager.GetNotices()
 	}
-	return m.opts.Settings.GetShowCacheMissNotices()
+	return m.opts.Settings.GetNotices()
 }
 
 func (m *InteractiveMode) setModalInputChannel(ch chan []byte) {

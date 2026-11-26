@@ -363,21 +363,12 @@ func (s SettingsManager) GetHideThinkingBlock() (bool, error) {
 	return graphMethodCall[bool](s.object, "getHideThinkingBlock")
 }
 
-func (s SettingsManager) GetShowCacheMissNotices() (bool, error) {
-	return graphMethodCall[bool](s.object, "getShowCacheMissNotices")
-}
-
 func (s SettingsManager) GetExternalEditorCommand() (string, error) {
 	return graphMethodCall[string](s.object, "getExternalEditorCommand")
 }
 
 func (s SettingsManager) SetHideThinkingBlock(hide bool) error {
 	_, err := graphMethodCall[graphDone](s.object, "setHideThinkingBlock", hide)
-	return err
-}
-
-func (s SettingsManager) SetShowCacheMissNotices(show bool) error {
-	_, err := graphMethodCall[graphDone](s.object, "setShowCacheMissNotices", show)
 	return err
 }
 
@@ -733,5 +724,14 @@ func (s SettingsManager) GetWarnings() (map[string]any, error) {
 
 func (s SettingsManager) SetWarnings(warnings map[string]any) error {
 	_, err := graphMethodCall[graphDone](s.object, "setWarnings", warnings)
+	return err
+}
+
+func (s SettingsManager) GetNotices() (map[string]bool, error) {
+	return graphMethodCall[map[string]bool](s.object, "getNotices")
+}
+
+func (s SettingsManager) SetNotice(key string, shown bool) error {
+	_, err := graphMethodCall[graphDone](s.object, "setNotice", key, shown)
 	return err
 }

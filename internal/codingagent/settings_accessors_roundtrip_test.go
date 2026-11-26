@@ -59,7 +59,7 @@ func TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent(t *testing.T) {
 	expectSetting(t, "default QuietStartup", empty.GetQuietStartup(), QuietStartupFalse)
 	expectSetting(t, "default NpmCommand", empty.GetNpmCommand(), []string(nil))
 	expectSetting(t, "default CollapseChangelog", empty.GetCollapseChangelog(), false)
-	expectSetting(t, "default ShowCacheMissNotices", empty.GetShowCacheMissNotices(), false)
+	expectSetting(t, "default Notices.CacheMisses", empty.GetNotices().CacheMisses, false)
 	expectSetting(t, "default EnableInstallTelemetry", empty.GetEnableInstallTelemetry(), true)
 	expectSetting(t, "default TrackingID", empty.GetTrackingID(), "")
 	expectSetting(t, "default SkillPaths", empty.GetSkillPaths(), []string{})
@@ -114,7 +114,7 @@ func TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent(t *testing.T) {
 	expectSetting(t, "QuietStartup", set.GetQuietStartup(), QuietStartupHeader)
 	expectSetting(t, "NpmCommand", set.GetNpmCommand(), []string{"pnpm", "x"})
 	expectSetting(t, "CollapseChangelog", set.GetCollapseChangelog(), true)
-	expectSetting(t, "ShowCacheMissNotices", set.GetShowCacheMissNotices(), true)
+	expectSetting(t, "Notices.CacheMisses", set.GetNotices().CacheMisses, true)
 	expectSetting(t, "EnableInstallTelemetry", set.GetEnableInstallTelemetry(), false)
 	expectSetting(t, "TrackingID", set.GetTrackingID(), "track-1")
 	expectSetting(t, "SkillPaths", set.GetSkillPaths(), []string{"s1"})
@@ -191,7 +191,7 @@ func TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack(t *testing
 	must(manager.SetThemePaths([]string{"t1"}))
 	must(manager.SetQuietStartup(QuietStartupTrue))
 	must(manager.SetRetryEnabled(false))
-	must(manager.SetShowCacheMissNotices(true))
+	must(manager.SetNotice(NoticeCacheMisses, true))
 	must(manager.SetShowHardwareCursor(true))
 	must(manager.SetShowTerminalProgress(true))
 	must(manager.SetTreeFilterMode("labeled-only"))
@@ -203,7 +203,7 @@ func TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack(t *testing
 		"enableAnalytics": true, "enableInstallTelemetry": false, "enableSkillCommands": false, "hideThinkingBlock": true,
 		"httpIdleTimeoutMs": float64(4000), "collapseChangelog": true, "autocompleteMaxVisible": float64(20),
 		"modelThinkingLevels": map[string]any{"p/m": "high"}, "prompts": []any{"p1"}, "skills": []any{"s1"}, "themes": []any{"t1"},
-		"quietStartup": true, "showCacheMissNotices": true, "showHardwareCursor": true, "treeFilterMode": "labeled-only",
+		"notices": map[string]any{"cacheMisses": true}, "quietStartup": true, "showHardwareCursor": true, "treeFilterMode": "labeled-only",
 		"retry": map[string]any{"enabled": false}, "warnings": map[string]any{"anthropicExtraUsage": false},
 		"packages": []any{"npm:pkg"},
 	} {

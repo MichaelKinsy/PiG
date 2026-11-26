@@ -27,7 +27,7 @@ func cacheWarmingTestMode(t *testing.T, session *Session, notices bool) *Interac
 	t.Helper()
 	dir := t.TempDir()
 	sm := NewSettingsManager(dir, dir)
-	if err := sm.SetShowCacheMissNotices(notices); err != nil {
+	if err := sm.SetNotice(NoticeCacheWarming, notices); err != nil {
 		t.Fatal(err)
 	}
 	mode := &InteractiveMode{

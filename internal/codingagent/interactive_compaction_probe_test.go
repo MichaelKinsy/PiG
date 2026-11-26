@@ -15,7 +15,7 @@ func TestCompactionBillingRenderProbe(t *testing.T) {
 	tui.SetTheme("dark")
 	dir := t.TempDir()
 	settings := NewSettingsManager(dir, dir)
-	if err := settings.SetShowCacheMissNotices(true); err != nil {
+	if err := settings.SetNotice(NoticeCompactionCosts, true); err != nil {
 		t.Fatal(err)
 	}
 	mode := &InteractiveMode{opts: InteractiveModeOptions{SettingsManager: settings}, chatContainer: tui.NewContainer()}
@@ -32,7 +32,7 @@ func TestCompactionBillingRenderProbe(t *testing.T) {
 func BenchmarkCompactionBillingRows(b *testing.B) {
 	dir := b.TempDir()
 	settings := NewSettingsManager(dir, dir)
-	if err := settings.SetShowCacheMissNotices(true); err != nil {
+	if err := settings.SetNotice(NoticeCompactionCosts, true); err != nil {
 		b.Fatal(err)
 	}
 	mode := &InteractiveMode{opts: InteractiveModeOptions{SettingsManager: settings}, chatContainer: tui.NewContainer()}

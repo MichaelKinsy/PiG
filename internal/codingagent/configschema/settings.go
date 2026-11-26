@@ -13,7 +13,7 @@ var settingsDefaults = struct {
 	branchSummarySkipPrompt                                                               bool
 	retryEnabled                                                                          bool
 	retryMaxRetries, retryBaseDelayMs, retryMaxAgentDelayMs, retryProviderMaxRetryDelayMs int
-	hideThinkingBlock, showCacheMissNotices, quietStartup                                 bool
+	hideThinkingBlock, quietStartup                                                       bool
 	defaultProjectTrust                                                                   string
 	collapseChangelog, enableInstallTelemetry, enableAnalytics, enableSkillCommands       bool
 	terminalShowImages                                                                    bool
@@ -24,6 +24,7 @@ var settingsDefaults = struct {
 	editorPaddingX, outputPad, autocompleteMaxVisible                                     int
 	markdownCodeBlockIndent, markdownMermaid                                              string
 	warningsAnthropicExtraUsage                                                           bool
+	noticesCacheMisses, noticesCacheWarming, noticesCompactionCosts, noticesReasoningDrops bool
 	codemodeMode                                                                          string
 	codemodeInlineBudget                                                                  int
 	cacheWarming, tuiMode, fullscreenExitOutput, fullscreenScrollbar                      string
@@ -107,6 +108,12 @@ func settingsSchema() *Schema {
 		Optional("mermaid", Union(literals("off", "final", "streaming"), Default(d.markdownMermaid))),
 	})
 	warnings := Object([]Prop{Optional("anthropicExtraUsage", Boolean(Default(d.warningsAnthropicExtraUsage)))})
+	notices := Object([]Prop{
+		Optional("cacheMisses", Boolean(D("Show a notice when a response re-bills a significant part of the prompt cache."), Default(d.noticesCacheMisses))),
+		Optional("cacheWarming", Boolean(D("Show the cost of cache warming requests."), Default(d.noticesCacheWarming))),
+		Optional("compactionCosts", Boolean(D("Show the cost of compactions and branch summaries."), Default(d.noticesCompactionCosts))),
+		Optional("reasoningDrops", Boolean(D("Show a notice when a provider drops reasoning items from a request."), Default(d.noticesReasoningDrops))),
+	})
 	codemode := Object([]Prop{
 		Optional("mode", codemodeMode(D(`How codemode presents tools. "on" keeps direct tools declared and annotates tools callable from scripts; codemode lists only tools without direct exposure. "only" lists every script-callable tool in codemode and does not declare active direct tools.`), Default(d.codemodeMode))),
 		Optional("inlineBudget", Number(Opt{"minimum", 0}, D("Estimated tokens available for inline codemode tool declarations."), Default(d.codemodeInlineBudget))),
@@ -143,7 +150,6 @@ func settingsSchema() *Schema {
 		Optional("branchSummary", branchSummary),
 		Optional("retry", retry),
 		Optional("hideThinkingBlock", Boolean(Default(d.hideThinkingBlock))),
-		Optional("showCacheMissNotices", Boolean(D("Show cache cost and provider recovery notices."), Default(d.showCacheMissNotices))),
 		Optional("externalEditor", String(D("Command for Ctrl+G external editor; takes precedence over VISUAL and EDITOR."))),
 		Optional("shellPath", String(D("Custom shell path, for example for Cygwin on Windows, with support for leading ~ expansion."))),
 		Optional("quietStartup", Union([]*Schema{Boolean(), Literal("header")}, D(`When true, hide all startup output. When "header", keep only the startup header.`), Default(d.quietStartup))),
@@ -175,6 +181,7 @@ func settingsSchema() *Schema {
 		Optional("showHardwareCursor", Boolean(D("Show the terminal cursor while still positioning it for IME."))),
 		Optional("markdown", markdown),
 		Optional("warnings", warnings),
+		Optional("notices", notices),
 		Optional("codemode", codemode),
 		Optional("sessionDir", String(D("Custom session storage directory, in the same format as the --session-dir CLI flag."))),
 		Optional("httpProxy", String(D("Proxy URL applied as HTTP_PROXY and HTTPS_PROXY for Pi-managed HTTP clients."))),

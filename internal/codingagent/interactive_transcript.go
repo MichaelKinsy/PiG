@@ -155,7 +155,7 @@ func (m *InteractiveMode) renderSessionEntriesWithHistory(populateHistory bool) 
 
 // sessionEntriesToRender reads the entries the transcript paints from the current Session.
 func (m *InteractiveMode) sessionEntriesToRender() []SessionEntry {
-	return transcriptEntries(m.currentSession(), m.showCacheMissNotices())
+	return transcriptEntries(m.currentSession(), m.notices().CacheMisses)
 }
 
 // transcriptEntries reads the entries the transcript paints from session: the kept range and everything after it render the same from the
@@ -299,7 +299,7 @@ func (m *InteractiveMode) renderSessionEntryListWithLive(entries []SessionEntry,
 	}
 
 	cacheMissNotices := make(map[string]string)
-	if m.showCacheMissNotices() {
+	if m.notices().CacheMisses {
 		// upstream collectCacheMisses(sessionManager.getEntries()): every entry of the file in file order, not only the rendered branch, so a
 		// response compares with the request before it in the file, as the live notice does. The branch's messages keep their decoded copies.
 		branchMessages := make(map[string]*agent.AssistantMessage, len(branch))
