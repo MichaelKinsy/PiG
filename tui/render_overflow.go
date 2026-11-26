@@ -23,16 +23,21 @@ type RenderOverflowError struct {
 	LineWidth     int
 	TerminalWidth int
 	LogPath       string
+	LogWriteError string
 }
 
 func (e *RenderOverflowError) Error() string {
+	crashLogStatus := "Debug log written to: " + e.LogPath
+	if e.LogWriteError != "" {
+		crashLogStatus = "Could not write debug log to " + e.LogPath + ": " + e.LogWriteError
+	}
 	return strings.Join([]string{
 		fmt.Sprintf("Rendered line %d exceeds terminal width (%d > %d).", e.Line, e.LineWidth, e.TerminalWidth),
 		"",
 		"This is likely caused by a custom TUI component not truncating its output.",
 		"Use visibleWidth() to measure and truncateToWidth() to truncate lines.",
 		"",
-		"Debug log written to: " + e.LogPath,
+		crashLogStatus,
 	}, "\n")
 }
 
@@ -66,15 +71,16 @@ func (t *TuiMainScreen) crashOnDifferentialOverflow(newLines []string, index, wi
 		data = append(data, fmt.Sprintf("[%d] (w=%d) %s", i, widthx.VisibleWidth(line), line))
 	}
 	data = append(data, "")
+	// A failed write (full or unwritable temp dir) must not hide the width error or skip stop().
+	var logWriteErr string
 	if err := os.MkdirAll(filepath.Dir(crashLogPath), 0o777); err != nil {
-		panic(err)
-	}
-	if err := os.WriteFile(crashLogPath, []byte(jsstring.StreamText(strings.Join(data, "\n"))), 0o666); err != nil {
-		panic(err)
+		logWriteErr = err.Error()
+	} else if err := os.WriteFile(crashLogPath, []byte(jsstring.StreamText(strings.Join(data, "\n"))), 0o666); err != nil {
+		logWriteErr = err.Error()
 	}
 
 	// Clean up terminal state before throwing.
 	t.stopWithOptionsLocked(StopOptions{})
 
-	panic(&RenderOverflowError{Line: index, LineWidth: lineWidth, TerminalWidth: width, LogPath: crashLogPath})
+	panic(&RenderOverflowError{Line: index, LineWidth: lineWidth, TerminalWidth: width, LogPath: crashLogPath, LogWriteError: logWriteErr})
 }

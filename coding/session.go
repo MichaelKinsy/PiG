@@ -2169,7 +2169,8 @@ type BashResult struct {
 	ExitCode       *int   `json:"exitCode,omitempty"`
 	Cancelled      bool   `json:"cancelled"`
 	Truncated      bool   `json:"truncated"`
-	FullOutputPath string `json:"fullOutputPath,omitempty"`
+	FullOutputPath  string `json:"fullOutputPath,omitempty"`
+	FullOutputError string `json:"fullOutputError,omitempty"`
 }
 
 // ExecuteBashOptions is the options object of upstream executeBash. ExcludeFromContext persists the result as a `bashExecution` entry but drops it from LLM context (the `!!cmd` semantics, via bashExecutionToText); ID is the optional correlation identifier of the output events; a nil Operations runs the local shell.
@@ -2243,7 +2244,8 @@ func (s *Session) executeBash(ctx context.Context, command string, excludeFromCo
 		ExitCode:       shared.ExitCode,
 		Cancelled:      shared.Cancelled,
 		Truncated:      shared.Truncated,
-		FullOutputPath: shared.FullOutputPath,
+		FullOutputPath:  shared.FullOutputPath,
+		FullOutputError: shared.FullOutputError,
 	}
 	if err != nil && !shared.Cancelled {
 		return BashResult{}, err
@@ -2270,7 +2272,7 @@ func (s *Session) RecordUserBashResult(command string, result icodingagent.BashR
 	// Interactive mode always passes a boolean (interactive-mode.ts:7029,7058), so the recorded message carries the member.
 	return s.recordBashResult(command, BashResult{
 		Output: result.Output, ExitCode: result.ExitCode, Cancelled: result.Cancelled,
-		Truncated: result.Truncated, FullOutputPath: result.FullOutputPath,
+		Truncated: result.Truncated, FullOutputPath: result.FullOutputPath, FullOutputError: result.FullOutputError,
 	}, &excludeFromContext)
 }
 
@@ -2310,7 +2312,7 @@ func (s *Session) appendBashEntry(rec pendingBashRecord) error {
 	_, err := s.inner.Load().AppendBashExecution(icodingagent.BashExecutionMessage{
 		Role: "bashExecution", Command: rec.command, Output: rec.result.Output,
 		ExitCode: rec.result.ExitCode, Cancelled: rec.result.Cancelled,
-		Truncated: rec.result.Truncated, FullOutputPath: rec.result.FullOutputPath,
+		Truncated: rec.result.Truncated, FullOutputPath: rec.result.FullOutputPath, FullOutputError: rec.result.FullOutputError,
 		ExcludeFromContext: rec.excludeFromContext, Timestamp: rec.timestamp,
 	})
 	return err

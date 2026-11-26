@@ -49,8 +49,9 @@ type ReadDetails struct {
 // Either field may be zero/nil; both nil means the bash output fit
 // fully in the rolling buffer.
 type BashDetails struct {
-	Truncation     *TruncationResult `json:"truncation,omitempty"`
-	FullOutputPath string            `json:"fullOutputPath,omitempty"`
+	Truncation      *TruncationResult `json:"truncation,omitempty"`
+	FullOutputPath  string            `json:"fullOutputPath,omitempty"`
+	FullOutputError string            `json:"fullOutputError,omitempty"`
 }
 
 // LsDetails carries the sparse upstream ls result metadata. Limits retain the requested number rather than an integer-rounded rendering count.

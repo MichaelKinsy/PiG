@@ -603,7 +603,8 @@ type RPCBashResult struct {
 	ExitCode       *int   `json:"exitCode,omitempty"`
 	Cancelled      bool   `json:"cancelled"`
 	Truncated      bool   `json:"truncated"`
-	FullOutputPath string `json:"fullOutputPath,omitempty"`
+	FullOutputPath  string `json:"fullOutputPath,omitempty"`
+	FullOutputError string `json:"fullOutputError,omitempty"`
 }
 
 type RPCBashExecutionUpdate struct {

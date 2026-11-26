@@ -124,7 +124,7 @@ func TestShellToolWallTimeRoundsToTenthsOfASecond(t *testing.T) {
 // the real npm @earendil-works/pi-coding-agent@1.0.0 (TypeBox 1.3.27 puts required before properties). Pi 1.0.0 shortened
 // the descriptions (.upstream/v1.0.0/packages/coding-agent/src/core/tools/bash.ts:56-62); PowerShell shares the schema.
 func TestShellToolOutputSchema(t *testing.T) {
-	const upstream = `{"type":"object","required":["output","truncated","exit_code","wall_time_seconds"],"properties":{"output":{"type":"string","description":"Combined stdout and stderr, possibly truncated"},"truncated":{"type":"boolean"},"full_output_path":{"type":"string","description":"Full output, when truncated"},"exit_code":{"type":"number"},"wall_time_seconds":{"type":"number"}}}`
+	const upstream = `{"type":"object","required":["output","truncated","exit_code","wall_time_seconds"],"properties":{"output":{"type":"string","description":"Combined stdout and stderr, possibly truncated"},"truncated":{"type":"boolean"},"full_output_path":{"type":"string","description":"Full output, when truncated"},"full_output_error":{"type":"string","description":"Why the full output could not be saved, when truncated and saving failed"},"exit_code":{"type":"number"},"wall_time_seconds":{"type":"number"}}}`
 	for name, provider := range map[string]interface{ OutputSchema() json.RawMessage }{"bash": &BashTool{}, "powershell": &PowerShellTool{}} {
 		t.Run(name, func(t *testing.T) {
 			var compact bytes.Buffer

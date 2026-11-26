@@ -48,7 +48,7 @@ func TestBashExecutionSetCompleteMatchesPiStatusAndTruncation(t *testing.T) {
 		{"non-zero exit is an error", &seven, false, nil, "", []string{"(exit 7)"}, []string{"(cancelled)"}},
 		{"cancelled wins over a non-zero exit", &seven, true, nil, "", []string{"(cancelled)"}, []string{"(exit 7)"}},
 		{"truncated with a path adds the full-output row", &zero, false, &TruncationResult{Truncated: true}, "/tmp/full.log", []string{"Output truncated. Full output: /tmp/full.log"}, nil},
-		{"truncated without a path adds no row", &zero, false, &TruncationResult{Truncated: true}, "", nil, []string{"Output truncated"}},
+		{"truncated without a path adds bare Output truncated row", &zero, false, &TruncationResult{Truncated: true}, "", []string{"Output truncated"}, []string{"Full output:"}},
 		{"untruncated result with a path adds no row", &zero, false, &TruncationResult{Truncated: false}, "/tmp/full.log", nil, []string{"Output truncated"}},
 	}
 	for _, c := range cases {

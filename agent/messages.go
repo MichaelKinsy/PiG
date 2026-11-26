@@ -265,6 +265,7 @@ func bashExecutionToText(m map[string]any) string {
 	cancelled, _ := m["cancelled"].(bool)
 	truncated, _ := m["truncated"].(bool)
 	fullOutputPath, _ := m["fullOutputPath"].(string)
+	fullOutputError, _ := m["fullOutputError"].(string)
 	excludeFromContext, _ := m["excludeFromContext"].(bool)
 
 	if excludeFromContext {
@@ -282,8 +283,20 @@ func bashExecutionToText(m map[string]any) string {
 	} else if exitCode, ok := m["exitCode"].(float64); ok && exitCode != 0 {
 		text += fmt.Sprintf("\n\nCommand exited with code %d", int(exitCode))
 	}
-	if truncated && fullOutputPath != "" {
-		text += fmt.Sprintf("\n\n[Output truncated. Full output: %s]", fullOutputPath)
+	if truncated {
+		text += "\n\n[" + bashTruncationNote(fullOutputPath, fullOutputError) + "]"
 	}
 	return text
+}
+
+// bashTruncationNote mirrors upstream bashTruncationNote (messages.ts): what a
+// truncated bash execution says about its full output.
+func bashTruncationNote(fullOutputPath, fullOutputError string) string {
+	if fullOutputPath != "" {
+		return "Output truncated. Full output: " + fullOutputPath
+	}
+	if fullOutputError != "" {
+		return "Output truncated. Could not save the full output: " + fullOutputError
+	}
+	return "Output truncated"
 }

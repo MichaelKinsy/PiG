@@ -219,6 +219,7 @@ type BashExecutionEntry struct {
 	Cancelled          bool   `json:"-"`
 	Truncated          bool   `json:"-"`
 	FullOutputPath     string `json:"-"`
+	FullOutputError    string `json:"-"`
 	ExcludeFromContext *bool  `json:"-"` // nil when the record carries no excludeFromContext member (messages.ts:39 optional)
 	MessageTimestamp   int64  `json:"-"`
 }
@@ -233,6 +234,7 @@ type BashExecutionMessage struct {
 	Cancelled          bool   `json:"cancelled"`
 	Truncated          bool   `json:"truncated"`
 	FullOutputPath     string `json:"fullOutputPath,omitempty"`
+	FullOutputError    string `json:"fullOutputError,omitempty"`
 	Timestamp          int64  `json:"timestamp"`
 	ExcludeFromContext *bool  `json:"excludeFromContext,omitempty"`
 }
@@ -262,6 +264,7 @@ func (b BashExecutionEntry) MarshalJSON() ([]byte, error) {
 			Cancelled:          b.Cancelled,
 			Truncated:          b.Truncated,
 			FullOutputPath:     b.FullOutputPath,
+			FullOutputError:    b.FullOutputError,
 			ExcludeFromContext: b.ExcludeFromContext,
 			Timestamp:          b.MessageTimestamp,
 		},
@@ -296,6 +299,7 @@ func (b *BashExecutionEntry) UnmarshalJSON(data []byte) error {
 		b.Cancelled = wire.Message.Cancelled
 		b.Truncated = wire.Message.Truncated
 		b.FullOutputPath = wire.Message.FullOutputPath
+		b.FullOutputError = wire.Message.FullOutputError
 		b.ExcludeFromContext = wire.Message.ExcludeFromContext
 		b.MessageTimestamp = wire.Message.Timestamp
 		return nil
@@ -310,6 +314,7 @@ func (b *BashExecutionEntry) UnmarshalJSON(data []byte) error {
 		Cancelled          bool   `json:"cancelled"`
 		Truncated          bool   `json:"truncated"`
 		FullOutputPath     string `json:"fullOutputPath,omitempty"`
+		FullOutputError    string `json:"fullOutputError,omitempty"`
 		ExcludeFromContext *bool  `json:"excludeFromContext,omitempty"`
 	}
 	if err := json.Unmarshal(data, &legacy); err != nil {
@@ -324,6 +329,7 @@ func (b *BashExecutionEntry) UnmarshalJSON(data []byte) error {
 	b.Cancelled = legacy.Cancelled
 	b.Truncated = legacy.Truncated
 	b.FullOutputPath = legacy.FullOutputPath
+	b.FullOutputError = legacy.FullOutputError
 	b.ExcludeFromContext = legacy.ExcludeFromContext
 	return nil
 }

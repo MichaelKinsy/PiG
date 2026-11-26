@@ -1183,8 +1183,9 @@ type TruncationResult struct {
 // BashToolDetails mirrors upstream bash.ts:31. Attached only when output
 // was truncated.
 type BashToolDetails struct {
-	Truncation     *TruncationResult `json:"truncation,omitempty"`
-	FullOutputPath string            `json:"fullOutputPath,omitempty"`
+	Truncation      *TruncationResult `json:"truncation,omitempty"`
+	FullOutputPath  string            `json:"fullOutputPath,omitempty"`
+	FullOutputError string            `json:"fullOutputError,omitempty"`
 }
 
 // PowerShellToolDetails is the bash details shape (upstream powershell.ts).

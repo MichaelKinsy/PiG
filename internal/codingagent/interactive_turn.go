@@ -819,7 +819,7 @@ func (m *InteractiveMode) finishUserBash(ctx context.Context, handle Interactive
 		if recordErr != nil && !eventResult {
 			block.SetComplete(nil, false, nil, "")
 		} else {
-			block.SetCompleteWithOutput(res.ExitCode, res.Cancelled, res.Truncated, res.Output, res.FullOutputPath)
+			block.SetCompleteWithOutput(res.ExitCode, res.Cancelled, res.Truncated, res.Output, res.FullOutputPath, res.FullOutputError)
 		}
 		if recordErr != nil {
 			if eventResult {

@@ -83,8 +83,15 @@ func bashExecutionToText(message map[string]any) string {
 	} else if exitCode, present := message["exitCode"]; present && exitCode != nil && !isNumberZero(exitCode) {
 		text += "\n\nCommand exited with code " + jsToString(message, "exitCode")
 	}
-	if jsTruthy(message["truncated"]) && jsTruthy(message["fullOutputPath"]) {
-		text += "\n\n[Output truncated. Full output: " + jsToString(message, "fullOutputPath") + "]"
+	if jsTruthy(message["truncated"]) {
+		switch {
+		case jsTruthy(message["fullOutputPath"]):
+			text += "\n\n[Output truncated. Full output: " + jsToString(message, "fullOutputPath") + "]"
+		case jsTruthy(message["fullOutputError"]):
+			text += "\n\n[Output truncated. Could not save the full output: " + jsToString(message, "fullOutputError") + "]"
+		default:
+			text += "\n\n[Output truncated]"
+		}
 	}
 	return text
 }

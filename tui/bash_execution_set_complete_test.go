@@ -20,7 +20,7 @@ func TestBashExecutionSetCompleteResult(t *testing.T) {
 		not        []string
 	}{
 		{"truncated with a path", nil, false, &TruncationResult{Truncated: true}, "/tmp/full.log", []string{"Output truncated. Full output: /tmp/full.log"}, nil},
-		{"truncated without a path", nil, false, &TruncationResult{Truncated: true}, "", nil, []string{"Output truncated"}},
+		{"truncated without a path", nil, false, &TruncationResult{Truncated: true}, "", []string{"Output truncated"}, []string{"Full output:"}},
 		{"a path without truncation", nil, false, nil, "/tmp/full.log", nil, []string{"Output truncated"}},
 		{"an untruncated result with a path", nil, false, &TruncationResult{}, "/tmp/full.log", nil, []string{"Output truncated"}},
 		{"cancelled", nil, true, nil, "", []string{"(cancelled)"}, nil},

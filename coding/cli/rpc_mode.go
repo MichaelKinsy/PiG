@@ -1481,7 +1481,8 @@ commandLoop:
 					ExitCode:       result.ExitCode,
 					Cancelled:      result.Cancelled,
 					Truncated:      result.Truncated,
-					FullOutputPath: result.FullOutputPath,
+					FullOutputPath:  result.FullOutputPath,
+					FullOutputError: result.FullOutputError,
 				}))
 			}(env.ID, cmd.Command, cmd.ExcludeFromContext)
 
