@@ -5905,7 +5905,7 @@ export class Runtime {
           // A handler that returned a non-thenable (synchronous return) never suspended: do not emit a synthetic blocked/external_io report so a later handler in the same emission starts unsealed, matching Pi 1.6.0.
           if (request.event === "ui_prompt_start" || request.event === "ui_prompt_end" || request.event === "session_info_changed" || request.event === "thinking_level_select") {
             const isThenable = pending !== null && (typeof pending === "object" || typeof pending === "function") && typeof pending.then === "function";
-            if (isThenable || request.event === "ui_prompt_start" || request.event === "ui_prompt_end") {
+            if (isThenable || (this.conn?.syncWaits ?? 0) > 0 || request.event === "ui_prompt_start" || request.event === "ui_prompt_end") {
               this.conn.requestState(id, "blocked", "external_io");
               if (shutdownOwner?.id === id) shutdownOwner.suspensionReported = true;
             }
