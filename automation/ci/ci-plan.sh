@@ -16,6 +16,10 @@
 #   MODE label   there is no merge queue: a light run's CI result fails (full-required=true), so only a full run on the
 #                pull request's head can satisfy the required check.
 #
+# PORTMAP_REQUESTED (optional env var, default "true" — fail closed) controls whether the portmap-1..12 shards are included
+# on a pull_request full run. Every non-pull_request event (merge_group, schedule, workflow_dispatch, push) always includes
+# portmap-1..12 regardless of PORTMAP_REQUESTED.
+#
 # Usage: ci-plan.sh <event> <mode> <full-requested> [tiers-file]
 set -euo pipefail
 
@@ -23,11 +27,20 @@ event=${1:?event}
 mode=${2-}
 requested=${3-}
 table=${4:-$(dirname "$0")/ci-tiers.txt}
+portmap_requested=${PORTMAP_REQUESTED:-true}
 
 case "$mode" in
   "" | queue | label) ;;
   *)
     echo "PIG_PR_CI_LIGHT is \"$mode\", want empty, queue or label" >&2
+    exit 1
+    ;;
+esac
+
+case "$portmap_requested" in
+  true | false) ;;
+  *)
+    echo "PORTMAP_REQUESTED is \"$portmap_requested\", want true or false" >&2
     exit 1
     ;;
 esac
@@ -39,9 +52,14 @@ if [ "$event" = pull_request ] && [ -n "$mode" ]; then
   [ "$mode" = label ] && required=true
 fi
 
+include_portmap=true
+if [ "$event" = pull_request ] && [ "$portmap_requested" = false ]; then
+  include_portmap=false
+fi
+
 echo "full=$full"
 echo "full-required=$required"
-awk -F'|' -v full="$full" '
+awk -F'|' -v full="$full" -v include_portmap="$include_portmap" '
   function trim(s) { gsub(/^[ \t]+|[ \t]+$/, "", s); return s }
   /^[ \t]*(#|$)/ { next }
   {
@@ -55,6 +73,7 @@ awk -F'|' -v full="$full" '
     if (shard ~ /["\\]/) { printf "ci-tiers.txt line %d: shard has a quote or backslash\n", NR > "/dev/stderr"; bad = 1; next }
     if (seen[job SUBSEP shard]++) { printf "ci-tiers.txt line %d: duplicate row %s | %s\n", NR, job, shard > "/dev/stderr"; bad = 1; next }
     runs = (full == "true" || tier == "pr") ? 1 : 0
+    if (job == "linux" && shard ~ /^portmap-/ && include_portmap == "false") runs = 0
     if (job == "single") { single[shard] = runs; singles[++nsingle] = shard; next }
     if (!runs) next
     if (job == "linux") {

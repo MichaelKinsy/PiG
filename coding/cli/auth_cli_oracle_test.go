@@ -61,19 +61,33 @@ func TestAuthCommandsMatchPiEndToEnd(t *testing.T) {
 			}
 		}
 	}
-	dirs := make([]string, len(setups))
-	for i, setup := range setups {
-		dirs[i] = t.TempDir()
+	seedDir := func(setupIdx int) string {
+		dir := t.TempDir()
+		setup := setups[setupIdx]
 		if setup.auth != "" {
-			if err := os.WriteFile(filepath.Join(dirs[i], "auth.json"), []byte(setup.auth), 0o600); err != nil {
+			if err := os.WriteFile(filepath.Join(dir, "auth.json"), []byte(setup.auth), 0o600); err != nil {
 				t.Fatal(err)
 			}
 		}
 		if setup.models != "" {
-			if err := os.WriteFile(filepath.Join(dirs[i], "models.json"), []byte(setup.models), 0o600); err != nil {
+			if err := os.WriteFile(filepath.Join(dir, "models.json"), []byte(setup.models), 0o600); err != nil {
 				t.Fatal(err)
 			}
 		}
+		return dir
+	}
+	// Each concurrent Pi subprocess gets its own agent directory: on the "empty" setup,
+	// `pi auth check` (without --no-refresh) calls FileAuthStorageBackend.ensureFileExists(),
+	// which creates auth.json with writeFileSync(..., "{}") outside any lock. Running concurrent
+	// `pi auth check --no-refresh` (ReadOnlyAuthStorage.load) against the same directory can read
+	// the freshly truncated 0-byte auth.json mid-write and fail JSON.parse with exit 2 ("invalid").
+	piDirs := make([]string, len(probes))
+	for i, p := range probes {
+		piDirs[i] = seedDir(p.setup)
+	}
+	dirs := make([]string, len(setups))
+	for i := range setups {
+		dirs[i] = seedDir(i)
 	}
 	type outcome struct {
 		code           int
@@ -88,7 +102,7 @@ func TestAuthCommandsMatchPiEndToEnd(t *testing.T) {
 		go func() {
 			defer func() { <-slots; wg.Done() }()
 			cmd := exec.CommandContext(t.Context(), "node", append([]string{cli, "auth"}, p.args...)...)
-			env := []string{"PATH=" + os.Getenv("PATH"), "HOME=" + dirs[p.setup], "PI_CODING_AGENT_DIR=" + dirs[p.setup], "PI_OFFLINE=1", "NO_COLOR=1"}
+			env := []string{"PATH=" + os.Getenv("PATH"), "HOME=" + piDirs[i], "PI_CODING_AGENT_DIR=" + piDirs[i], "PI_OFFLINE=1", "NO_COLOR=1"}
 			for name, value := range setups[p.setup].env {
 				env = append(env, name+"="+value)
 			}

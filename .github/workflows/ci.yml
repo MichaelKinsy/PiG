@@ -70,9 +70,13 @@ jobs:
     name: Changed paths
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
     outputs:
       product: ${{ steps.classify.outputs.product }}
       os-specific: ${{ steps.classify.outputs.os-specific }}
+      portmap: ${{ steps.classify.outputs.portmap }}
       full: ${{ steps.plan.outputs.full }}
       full-required: ${{ steps.plan.outputs.full-required }}
       linux: ${{ steps.plan.outputs.linux }}
@@ -85,6 +89,8 @@ jobs:
       run-android: ${{ steps.plan.outputs.run-android }}
       run-node-loader: ${{ steps.plan.outputs.run-node-loader }}
       os-parallel: ${{ steps.branch.outputs.os-parallel }}
+      skip-unchanged: ${{ steps.unchanged.outputs.skip-unchanged }}
+      skip-reason: ${{ steps.unchanged.outputs.skip-reason }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -126,12 +132,36 @@ jobs:
           # The label is read from the event's payload, so it is the pull request's labels at the push, label or review
           # event that started this run.
           FULL_REQUESTED: ${{ contains(github.event.pull_request.labels.*.name, 'ci:full') || github.event.action == 'ready_for_review' || steps.classify.outputs.os-specific == 'true' }}
+          PORTMAP_REQUESTED: ${{ steps.classify.outputs.portmap }}
         shell: bash
         # Every event but a pull request in a PIG_PR_CI_LIGHT mode runs every
         # job in automation/ci/ci-tiers.txt; the light pull-request run is the
         # table's pr rows, so a queue-only job's check name appears only where
         # it runs.
         run: automation/ci/ci-plan.sh "$EVENT" "$MODE" "$FULL_REQUESTED" | tee -a "$GITHUB_OUTPUT"
+      # On a scheduled run ONLY (never workflow_dispatch, pull_request, push, or merge_group), skip
+      # the redundant full CI suite when the newest completed full CI run for main's HEAD (either on
+      # the same SHA or on a commit with the exact same git tree SHA, e.g. a squash-merged PR head)
+      # succeeded AND a full main CI run saved caches within the last 5 days (staying safely inside
+      # GitHub Actions' 7-day LRU cache TTL). What skipping gives up between 5-day refreshes:
+      # time-dependent external regressions (runner image updates, upstream download URL rot), and
+      # when accepting a tree-equal PR full run, any path-gated jobs that did not run on that PR
+      # (chord, android, durable hosts, node runtime, and port-map) are deferred for up to 5 days
+      # until the next cache-refresh scheduled run (which runs them unconditionally; nightly.yml
+      # also runs portmap-1..12 on main).
+      - name: Check whether scheduled main run is unchanged
+        id: unchanged
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tree_sha="$(git rev-parse HEAD^{tree})"
+          python3 automation/ci/check-unchanged-main.py ci             --event "$EVENT"             --repo "$REPO"             --head-sha "$HEAD_SHA"             --head-tree-sha "$tree_sha"             --current-run-id "$RUN_ID"             --cache-refresh-days 5
 
   docs:
     name: Project documents
@@ -227,6 +257,9 @@ jobs:
     runs-on: ubuntu-24.04
     # Three dispatched runs (45131680807, 45123318918, 45061942294): 9:51, 15:16 (cancelled at limit), 9:02 (worst 15:16; 3x = 45:48 -> 50).
     timeout-minutes: 50
+    permissions:
+      contents: read
+      actions: read
     # The job installs the Pi oracle (make upstream-mirror): a test that cannot find its Pi source fails here instead of skipping (internal/pioracle.Missing).
     env:
       PIG_REQUIRE_PI_ORACLE: "1"
@@ -236,13 +269,31 @@ jobs:
           # The bug ledger and the DCO check read the history.
           fetch-depth: 0
           persist-credentials: false
+      # Bookkeeping stays unconditional (needs: [verdict], no job-level if:), so on an unchanged scheduled
+      # main run it short-circuits its expensive steps here instead of spending ~10-15 minutes re-running gates.
+      - name: Check whether scheduled main run is unchanged
+        id: unchanged
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tree_sha="$(git rev-parse HEAD^{tree})"
+          python3 automation/ci/check-unchanged-main.py ci             --event "$EVENT"             --repo "$REPO"             --head-sha "$HEAD_SHA"             --head-tree-sha "$tree_sha"             --current-run-id "$RUN_ID"             --cache-refresh-days 5
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        if: steps.unchanged.outputs.skip-unchanged != 'true'
         with:
           go-version-file: .go-version
           # The job restores its own Go build cache below; setup-go's copy would download a second, older one.
           cache: false
       - name: Restore the Go module cache
         id: cache-the-go-module-cache
+        if: steps.unchanged.outputs.skip-unchanged != 'true'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/go/pkg/mod
@@ -252,23 +303,26 @@ jobs:
       # The regeneration of stale frames (the changelog, the SDK bundles, the docs pages) needs the zstd the committed frames were written with; see the linux job.
       - name: Restore the pinned zstd
         id: cache-pinned-zstd
+        if: steps.unchanged.outputs.skip-unchanged != 'true'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pig-zstd
           key: zstd-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-zstd.sh') }}
       - name: Install the pinned zstd
+        if: steps.unchanged.outputs.skip-unchanged != 'true'
         shell: bash
         run: |
           set -euo pipefail
           echo "PIG_ZSTD=$(automation/ci/install-zstd.sh)" >> "$GITHUB_ENV"
           echo "PIG_REQUIRE_ZSTD=1" >> "$GITHUB_ENV"
       - name: Save the pinned zstd
-        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-pinned-zstd.outputs.cache-hit != 'true' }}
+        if: ${{ steps.unchanged.outputs.skip-unchanged != 'true' && env.CACHE_SAVE == 'true' && steps.cache-pinned-zstd.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pig-zstd
           key: zstd-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-zstd.sh') }}
       - name: Restore the Go build cache
+        if: steps.unchanged.outputs.skip-unchanged != 'true'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/go-build
@@ -277,8 +331,10 @@ jobs:
             gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
       # Dependabot commits carry no Signed-off-by trailer; the maintainer's signed-off squash merge records the DCO for them.
       - name: Test the sign-off check
+        if: steps.unchanged.outputs.skip-unchanged != 'true'
         run: python3 -B -m unittest automation/ci/test_check_dco.py
       - name: Test the shard verdict
+        if: steps.unchanged.outputs.skip-unchanged != 'true'
         run: python3 -B -m unittest automation/ci/test_bookkeeping_shards.py
       - name: Check commit sign-offs
         if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
@@ -295,10 +351,12 @@ jobs:
       # port-map-drift, coverage-drift and divergence-guard read Pi's source mirror, and a commit pin's mirror takes its generated
       # provider data from the oracle build, so this prepares the oracle as the Linux shards do (the build is cached by pin).
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.unchanged.outputs.skip-unchanged != 'true'
         with:
           node-version-file: .node-version
       - name: Restore the npm cache
         id: cache-npm
+        if: steps.unchanged.outputs.skip-unchanged != 'true'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.npm
@@ -306,6 +364,7 @@ jobs:
           restore-keys: |
             node-cache-${{ runner.os }}-${{ runner.arch }}-npm-
       - name: Install pinned npm
+        if: steps.unchanged.outputs.skip-unchanged != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -316,14 +375,17 @@ jobs:
           test "$(npm --version)" = "$NPM_VERSION"
       - name: Restore the Pi oracle build
         id: cache-pi-oracle-build
+        if: steps.unchanged.outputs.skip-unchanged != 'true'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pig-dev/pi-builds
           key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
       - name: Prepare pinned Pi oracle
+        if: steps.unchanged.outputs.skip-unchanged != 'true'
         run: make upstream-mirror
       - name: Run the bookkeeping gates
         id: gates
+        if: steps.unchanged.outputs.skip-unchanged != 'true'
         # The step's failure is reported by the last step, after the autofix step has looked at the log.
         continue-on-error: true
         env:
@@ -365,19 +427,19 @@ jobs:
           echo "::error::bookkeeping gates failed; see the Run the bookkeeping gates step"
           exit 1
       - name: Save the Go module cache
-        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-the-go-module-cache.outcome == 'success' && steps.cache-the-go-module-cache.outputs.cache-hit != 'true' }}
+        if: ${{ steps.unchanged.outputs.skip-unchanged != 'true' && env.CACHE_SAVE == 'true' && steps.cache-the-go-module-cache.outcome == 'success' && steps.cache-the-go-module-cache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/go/pkg/mod
           key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
       - name: Save the npm cache
-        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-npm.outputs.cache-hit != 'true' }}
+        if: ${{ steps.unchanged.outputs.skip-unchanged != 'true' && env.CACHE_SAVE == 'true' && steps.cache-npm.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.npm
           key: node-cache-${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('extensions/sdk-ts/package-lock.json', 'test/parity/interface-extractor/package-lock.json', 'automation/images/ci-parity/package-lock.json', 'automation/images/npm-runtime/package-lock.json') }}
       - name: Save the Pi oracle build
-        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-pi-oracle-build.outputs.cache-hit != 'true' }}
+        if: ${{ steps.unchanged.outputs.skip-unchanged != 'true' && env.CACHE_SAVE == 'true' && steps.cache-pi-oracle-build.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pig-dev/pi-builds
@@ -390,7 +452,7 @@ jobs:
     # On release and integration branches (os-parallel) a failed Bookkeeping or preflight no longer skips them. !cancelled(), not
     # always(): a run that concurrency cancels must stop these jobs too.
     needs: [changes, bookkeeping]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || (needs.changes.outputs.os-parallel == 'true' && needs.bookkeeping.result != 'skipped')) }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.skip-unchanged != 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || (needs.changes.outputs.os-parallel == 'true' && needs.bookkeeping.result != 'skipped')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -439,7 +501,7 @@ jobs:
     # running in parallel with Bookkeeping instead of behind it so Windows, macOS and Node loader wait only for
     # Linux / preflight after Bookkeeping finishes (saving ~10-15 min of critical-path latency without dropping any gate).
     needs: [changes, verdict]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.verdict.result == 'success' && needs.changes.outputs.product == 'true' }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.verdict.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.skip-unchanged != 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -474,7 +536,7 @@ jobs:
   linux:
     name: Linux / ${{ matrix.shard }}
     needs: [changes, bookkeeping]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || (needs.changes.outputs.os-parallel == 'true' && needs.bookkeeping.result != 'skipped')) }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.skip-unchanged != 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || (needs.changes.outputs.os-parallel == 'true' && needs.bookkeeping.result != 'skipped')) }}
     runs-on: ubuntu-24.04
     # Applies to every shard of the Linux matrix (conformance, portmap, test-fast and the rest);
     # slowest leg is Linux / test-fast across three dispatched runs (45131680807, 45061942294, 45034549861):
@@ -853,7 +915,7 @@ jobs:
   node-runtime:
     name: Node extensions
     needs: [changes, bookkeeping]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-node-runtime == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || (needs.changes.outputs.os-parallel == 'true' && needs.bookkeeping.result != 'skipped')) }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.skip-unchanged != 'true' && needs.changes.outputs.run-node-runtime == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || (needs.changes.outputs.os-parallel == 'true' && needs.bookkeeping.result != 'skipped')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     # The job installs the Pi oracle (make upstream-mirror): a test that cannot find its Pi source fails here instead of skipping (internal/pioracle.Missing).
@@ -971,7 +1033,7 @@ jobs:
   chord:
     name: Chord surfaces
     needs: [changes, bookkeeping]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-chord == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || (needs.changes.outputs.os-parallel == 'true' && needs.bookkeeping.result != 'skipped')) }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.skip-unchanged != 'true' && needs.changes.outputs.run-chord == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || (needs.changes.outputs.os-parallel == 'true' && needs.bookkeeping.result != 'skipped')) }}
     runs-on: ubuntu-24.04
     # Not yet measured on GitHub. In a container on the lane host (8 CPUs, warm Go build cache; job ChordCiSplit/j2, 2026-11-13)
     # make ci-chord-tui took 21 s and make ci-chord-web 99 s. The limit leaves the runner's setup, its fewer cores and a cold
@@ -1024,7 +1086,7 @@ jobs:
   node-loader:
     name: Node loader / ${{ matrix.os }}
     needs: [changes, preflight, preflight-platforms]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-node-loader == 'true' && ((needs.preflight.result == 'success' && needs.preflight-platforms.result == 'success') || (needs.changes.outputs.os-parallel == 'true' && needs.preflight.result != 'skipped' && needs.preflight-platforms.result != 'skipped')) }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.skip-unchanged != 'true' && needs.changes.outputs.run-node-loader == 'true' && ((needs.preflight.result == 'success' && needs.preflight-platforms.result == 'success') || (needs.changes.outputs.os-parallel == 'true' && needs.preflight.result != 'skipped' && needs.preflight-platforms.result != 'skipped')) }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
@@ -1082,7 +1144,7 @@ jobs:
   durable-cf-host:
     name: Durable Cloudflare host
     needs: [changes, bookkeeping]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-durable-cf-host == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || (needs.changes.outputs.os-parallel == 'true' && needs.bookkeeping.result != 'skipped')) }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.skip-unchanged != 'true' && needs.changes.outputs.run-durable-cf-host == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || (needs.changes.outputs.os-parallel == 'true' && needs.bookkeeping.result != 'skipped')) }}
     runs-on: ubuntu-24.04
     # Four dispatched runs (45131680807, 45061942294, 45034549861, 45005979260): 29:23, 27:58, 28:15, 31:08 (worst 31:08, 69% of 45; 3x = 93:24 -> 95).
     timeout-minutes: 95
@@ -1180,7 +1242,7 @@ jobs:
   durable-contract:
     name: Durable contract / ${{ matrix.impl }}
     needs: [changes, bookkeeping]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-durable-contract == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || (needs.changes.outputs.os-parallel == 'true' && needs.bookkeeping.result != 'skipped')) }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.skip-unchanged != 'true' && needs.changes.outputs.run-durable-contract == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || (needs.changes.outputs.os-parallel == 'true' && needs.bookkeeping.result != 'skipped')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
@@ -1291,17 +1353,19 @@ jobs:
     steps:
       - name: Require every Linux shard
         env:
+          EVENT: ${{ github.event_name }}
           CHANGES: ${{ needs.changes.result }}
           PRODUCT: ${{ needs.changes.outputs.product }}
+          SKIP_UNCHANGED: ${{ needs.changes.outputs.skip-unchanged }}
           RESULT: ${{ needs.linux.result }}
-        # Shards are skipped only when the change classifier succeeded and
-        # found no product change.
-        run: test "$RESULT" = success || { test "$CHANGES" = success && test "$PRODUCT" = false && test "$RESULT" = skipped; }
+        # Shards are skipped only when the change classifier succeeded and either found no product
+        # change or skipped an unchanged scheduled main run.
+        run: test "$RESULT" = success || { test "$CHANGES" = success && test "$RESULT" = skipped && { test "$PRODUCT" = false || { test "$EVENT" = schedule && test "$SKIP_UNCHANGED" = true; }; }; }
 
   windows:
     name: Windows ${{ matrix.shard }}
     needs: [changes, preflight, preflight-platforms]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.windows != '[]' && ((needs.preflight.result == 'success' && needs.preflight-platforms.result == 'success') || (needs.changes.outputs.os-parallel == 'true' && needs.preflight.result != 'skipped' && needs.preflight-platforms.result != 'skipped')) }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.skip-unchanged != 'true' && needs.changes.outputs.windows != '[]' && ((needs.preflight.result == 'success' && needs.preflight-platforms.result == 'success') || (needs.changes.outputs.os-parallel == 'true' && needs.preflight.result != 'skipped' && needs.preflight-platforms.result != 'skipped')) }}
     runs-on: windows-latest
     timeout-minutes: 60
     strategy:
@@ -1631,7 +1695,7 @@ jobs:
   macos:
     name: macOS ${{ matrix.shard }}
     needs: [changes, preflight, preflight-platforms]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.macos != '[]' && ((needs.preflight.result == 'success' && needs.preflight-platforms.result == 'success') || (needs.changes.outputs.os-parallel == 'true' && needs.preflight.result != 'skipped' && needs.preflight-platforms.result != 'skipped')) }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.skip-unchanged != 'true' && needs.changes.outputs.macos != '[]' && ((needs.preflight.result == 'success' && needs.preflight-platforms.result == 'success') || (needs.changes.outputs.os-parallel == 'true' && needs.preflight.result != 'skipped' && needs.preflight-platforms.result != 'skipped')) }}
     runs-on: macos-15
     timeout-minutes: 40
     env:
@@ -1919,7 +1983,7 @@ jobs:
   android:
     name: Android build
     needs: [changes, bookkeeping]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-android == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || (needs.changes.outputs.os-parallel == 'true' && needs.bookkeeping.result != 'skipped')) }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.skip-unchanged != 'true' && needs.changes.outputs.run-android == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || (needs.changes.outputs.os-parallel == 'true' && needs.bookkeeping.result != 'skipped')) }}
     # Termux runs this binary. The runner image provides the NDK; no hosted
     # runner executes the result, so this builds it with cgo and checks its ELF
     # headers (PIE, /system/bin/linker64, bionic libc) as the release does.
@@ -1962,9 +2026,10 @@ jobs:
     # evicts by age once it is full. Keeping only the newest entry of each per-commit prefix leaves room for every OS's cache.
     # Caches are scoped to the ref that saved them (a pull request's merge ref, a branch), and a run falls back to its base
     # and default branch, so the newest entry is kept per ref: a newer pull request entry never removes the default branch's.
-    needs: [linux, windows, macos]
+    needs: [changes, linux, windows, macos]
     # A fork's pull request gets a read-only token, so only same-repository events prune.
-    if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+    # Also skip when an unchanged scheduled run saved no caches.
+    if: ${{ always() && !(github.event_name == 'schedule' && needs.changes.outputs.skip-unchanged == 'true') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -2017,6 +2082,8 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
           PRODUCT: ${{ needs.changes.outputs.product }}
+          SKIP_UNCHANGED: ${{ needs.changes.outputs.skip-unchanged }}
+          SKIP_REASON: ${{ needs.changes.outputs.skip-reason }}
           FULL: ${{ needs.changes.outputs.full }}
           FULL_REQUIRED: ${{ needs.changes.outputs.full-required }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -2077,6 +2144,10 @@ jobs:
           product_skip=false; docs_skip=false
           [ "$PRODUCT" = false ] && product_skip=true
           [ "$PRODUCT" = true ] && docs_skip=true
+          if [ "$EVENT" = schedule ] && [ "$SKIP_UNCHANGED" = true ]; then
+            echo "Scheduled run skipped on unchanged main: ${SKIP_REASON:-already green}"
+            product_skip=true
+          fi
           skip_unless_planned() { # run-output of a job the light run may leave out
             if [ "$product_skip" = true ] || [ "$1" = false ]; then echo true; else echo false; fi
           }

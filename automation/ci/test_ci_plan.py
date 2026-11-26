@@ -123,5 +123,89 @@ class CIPlanTest(unittest.TestCase):
             self.assertIn(pkg, out)
 
 
+    def test_portmap_path_gating_fails_closed(self):
+        env_false = {**os.environ, "PORTMAP_REQUESTED": "false"}
+        out = subprocess.check_output(
+            ["bash", str(CI_PLAN), "pull_request", "", ""],
+            cwd=ROOT,
+            env=env_false,
+            text=True,
+        )
+        linux = json.loads(dict(line.split("=", 1) for line in out.strip().splitlines())["linux"])
+        self.assertEqual([e["shard"] for e in linux if e["shard"].startswith("portmap-")], [])
+
+        for event in ("merge_group", "schedule", "workflow_dispatch", "push"):
+            out = subprocess.check_output(
+                ["bash", str(CI_PLAN), event, "", ""],
+                cwd=ROOT,
+                env=env_false,
+                text=True,
+            )
+            linux = json.loads(dict(line.split("=", 1) for line in out.strip().splitlines())["linux"])
+            self.assertEqual(
+                [e["shard"] for e in linux if e["shard"].startswith("portmap-")],
+                [f"portmap-{i}" for i in range(1, 13)],
+                event,
+            )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            git_base = [
+                "git",
+                "-c", "user.name=t",
+                "-c", "user.email=t@example.invalid",
+                "-c", "commit.gpgsign=false",
+                "-c", f"core.hooksPath={os.devnull}",
+            ]
+
+            def git(*args: str) -> str:
+                return subprocess.check_output([*git_base, *args], cwd=repo, text=True).strip()
+
+            def commit_file(rel: str, content: str) -> str:
+                target = repo / rel
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(content, encoding="utf-8")
+                git("add", "-A")
+                git("commit", "-q", "-m", rel)
+                return git("rev-parse", "HEAD")
+
+            git("init", "-q")
+            base = commit_file("README.md", "base\n")
+            ordinary = commit_file(
+                "coding/plain.go",
+                "package coding\nfunc TestKeep() {}\n",
+            )
+            sdk_rs = commit_file("extensions/sdk-rs/src/lib.rs", "pub fn ok() {}\n")
+            unknown = commit_file("brand_new_surface/file.txt", "hello\n")
+            marker = commit_file("coding/plain_test.go", "package coding\n// pi: packages/ai/src/x.ts\n")
+
+            # Remove func TestKeep from coding/plain.go -> must set portmap=true
+            removed_test = commit_file("coding/plain.go", "package coding\n")
+
+            # Delete coding/plain.go -> must set portmap=true
+            (repo / "coding/plain.go").unlink()
+            git("add", "-A")
+            git("commit", "-q", "-m", "delete coding/plain.go")
+            deleted_go = git("rev-parse", "HEAD")
+
+            # Delete extensions/sdk-rs/src/lib.rs -> must set portmap=true
+            (repo / "extensions/sdk-rs/src/lib.rs").unlink()
+            git("add", "-A")
+            git("commit", "-q", "-m", "delete sdk-rs")
+            deleted_rs = git("rev-parse", "HEAD")
+
+            def classify(frm: str, to: str) -> dict[str, str]:
+                out = subprocess.check_output(["bash", str(CLASSIFY), "pull_request", frm, to], cwd=repo, text=True)
+                return dict(line.split("=", 1) for line in out.strip().splitlines())
+
+            self.assertEqual(classify(base, ordinary)["portmap"], "false")
+            self.assertEqual(classify(ordinary, sdk_rs)["portmap"], "false")
+            self.assertEqual(classify(sdk_rs, unknown)["portmap"], "true")
+            self.assertEqual(classify(unknown, marker)["portmap"], "true")
+            self.assertEqual(classify(marker, removed_test)["portmap"], "true")
+            self.assertEqual(classify(removed_test, deleted_go)["portmap"], "true")
+            self.assertEqual(classify(deleted_go, deleted_rs)["portmap"], "true")
+
+
 if __name__ == "__main__":
     unittest.main()
