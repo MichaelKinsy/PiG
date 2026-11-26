@@ -16,7 +16,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-const WITH_SESSION: &str = "the with_session option is not supported yet: it takes the ReplacedSessionContext of AgentSession.createReplacedSessionContext, which is a C2Sessions gap in test/parity/sdk-exports.toml; use the setup option, or read AgentSessionRuntime::session once the call returned";
+const WITH_SESSION: &str = "the with_session option is not supported yet: it takes the ReplacedSessionContext of AgentSession.createReplacedSessionContext, which is a C2Sessions gap in test/parity/ledgers/sdk-exports.toml; use the setup option, or read AgentSessionRuntime::session once the call returned";
 
 /// Pi's `withSession`, which is not served yet: a value fails the call.
 pub type RuntimeWithSession = Arc<dyn Fn() + Send + Sync>;

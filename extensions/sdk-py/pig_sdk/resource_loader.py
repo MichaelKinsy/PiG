@@ -58,7 +58,7 @@ class DefaultResourceLoader(_GraphObject):
         system_prompt_override: Callable[[str | None], str | None] | None = None,
         append_system_prompt_override: Callable[[list[str]], list[str]] | None = None,
     ) -> None:
-        """``new DefaultResourceLoader(options)``; every option is Pi's under its snake_case name and ``None`` is Pi's undefined. ``extension_factories`` and ``extensions_override`` raise: they are not supported yet (an owner decision is pending, gap ``SdkSessionGraph`` in test/parity/sdk-exports.toml); use ``additional_extension_paths``, or ``create_agent_session`` custom tools."""
+        """``new DefaultResourceLoader(options)``; every option is Pi's under its snake_case name and ``None`` is Pi's undefined. ``extension_factories`` and ``extensions_override`` raise: they are not supported yet (an owner decision is pending, gap ``SdkSessionGraph`` in test/parity/ledgers/sdk-exports.toml); use ``additional_extension_paths``, or ``create_agent_session`` custom tools."""
         given = {"extensions_override": extensions_override}
         for name, why in _UNSUPPORTED:
             if given[name]:

@@ -173,7 +173,7 @@ which are the services' own; RESOURCE-LOADER-RELOAD-OPTIONS a plist of loader-re
 
 (defun rt-reject-unserved (with-session &optional project-trust-context-factory)
   (when with-session
-    (error "the with-session option is not supported yet: it takes the ReplacedSessionContext of AgentSession.createReplacedSessionContext, which is a C2Sessions gap in test/parity/sdk-exports.toml; use the setup option, or read agent-session-runtime-session once the call returned"))
+    (error "the with-session option is not supported yet: it takes the ReplacedSessionContext of AgentSession.createReplacedSessionContext, which is a C2Sessions gap in test/parity/ledgers/sdk-exports.toml; use the setup option, or read agent-session-runtime-session once the call returned"))
   (when project-trust-context-factory
     (error "the project-trust-context-factory option is not supported: it builds a record of the host's UI functions, which cannot cross the process boundary")))
 
