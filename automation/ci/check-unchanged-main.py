@@ -7,15 +7,17 @@ Fails open (runs everything) on any API error, unexpected response, or missing i
 GitHub API failure never silently skips verification.
 
 Subcommands:
-  ci      Check whether `ci.yml` already has a completed `success` full run for HEAD_SHA or for a
-          commit with the exact same git tree SHA (e.g. a squash-merged PR head), AND whether the
-          last full scheduled CI run on `main` is fresh enough (within --cache-refresh-days, default 5)
-          to keep GitHub Actions caches from expiring (7-day LRU TTL).
+  ci      Check whether the newest completed full `ci.yml` run for HEAD_SHA or for a commit with
+          the exact same git tree SHA (e.g. a squash-merged PR head) succeeded, AND whether the
+          last full scheduled/dispatched CI run on `main` is fresh enough (within
+          --cache-refresh-days, default 5) to keep GitHub Actions caches from expiring (7-day LRU
+          TTL). If a newer completed full run on the same content failed, never skip past it.
           Writes `skip-unchanged=true|false` and `skip-reason=...` to GITHUB_OUTPUT (or stdout).
 
-  nightly Check whether `nightly.yml` already has a completed `success` run on `main` for HEAD_SHA
-          whose deterministic jobs (strip-matrix, strip-tests, allocations, oracle-sweeps,
-          pig-bolt-compiler) all passed. Stochastic/repetition jobs (race, fuzz,
+  nightly Check whether the newest completed `nightly.yml` run on `main` for HEAD_SHA that actually
+          ran the deterministic jobs (oracle-sweeps, pig-bolt-compiler, allocations, strip-matrix,
+          strip-tests, portmap) had every deterministic job succeed. If that newest run had any
+          deterministic failure, never skip past it. Stochastic/repetition jobs (race, fuzz,
           windows-concurrency-stress) always run on schedule even when main is unchanged.
           Writes `run-deterministic=true|false` and `skip-reason=...` to GITHUB_OUTPUT (or stdout).
 """
@@ -36,6 +38,7 @@ DETERMINISTIC_NIGHTLY_JOB_PREFIXES = (
     "Allocation ratchet /",
     "Piglet strip matrix /",
     "Piglet strip tests /",
+    "PORT_MAP /",
 )
 
 DETERMINISTIC_NIGHTLY_REQUIRED_PREFIXES = (
@@ -45,6 +48,7 @@ DETERMINISTIC_NIGHTLY_REQUIRED_PREFIXES = (
     "Piglet strip matrix /",
     "Piglet strip tests / the sets",
     "Piglet strip tests / pig_strip_",
+    "PORT_MAP /",
 )
 
 
@@ -93,6 +97,52 @@ def _write_outputs(outputs: dict[str, str]) -> None:
         print(line)
 
 
+def _is_full_ci_run_jobs(jobs: list[dict[str, Any]]) -> bool:
+    """Return True when jobs represent an actual full CI run (Linux + Windows + macOS + CI result).
+
+    Distinguishes a full CI run (whether green or red) from a light PR run, docs-only run, or a
+    previous unchanged-main skip run.
+    """
+    ran_conclusions = {"success", "failure", "timed_out"}
+    has_linux = any(
+        str(j.get("name", "")).startswith("Linux / ") and j.get("conclusion") in ran_conclusions
+        for j in jobs
+    )
+    has_windows = any(
+        str(j.get("name", "")).startswith("Windows ") and j.get("conclusion") in ran_conclusions
+        for j in jobs
+    )
+    has_macos = any(
+        str(j.get("name", "")).startswith("macOS ") and j.get("conclusion") in ran_conclusions
+        for j in jobs
+    )
+    has_result = any(
+        j.get("name") == "CI result" and j.get("conclusion") in ran_conclusions
+        for j in jobs
+    )
+    return has_linux and has_windows and has_macos and has_result
+
+
+def _is_green_full_ci_run_jobs(jobs: list[dict[str, Any]]) -> bool:
+    has_linux = any(
+        str(j.get("name", "")).startswith("Linux / ") and j.get("conclusion") == "success"
+        for j in jobs
+    )
+    has_windows = any(
+        str(j.get("name", "")).startswith("Windows ") and j.get("conclusion") == "success"
+        for j in jobs
+    )
+    has_macos = any(
+        str(j.get("name", "")).startswith("macOS ") and j.get("conclusion") == "success"
+        for j in jobs
+    )
+    has_result = any(
+        j.get("name") == "CI result" and j.get("conclusion") == "success"
+        for j in jobs
+    )
+    return has_linux and has_windows and has_macos and has_result
+
+
 def decide_ci(
     event: str,
     repo: str,
@@ -112,20 +162,29 @@ def decide_ci(
     if head_tree_sha:
         tree_cache[head_sha] = head_tree_sha
 
+    # 1. Keep caches alive: query main schedule & workflow_dispatch runs directly so busy PR days
+    # never push the last main cache-saving run out of the general 40-run window.
+    main_runs_by_id: dict[int, dict[str, Any]] = {}
     try:
-        runs_payload = _gh_api_json(
-            f"repos/{repo}/actions/workflows/ci.yml/runs?status=completed&per_page=40"
-        )
-        runs = runs_payload.get("workflow_runs") or []
+        for main_event in ("schedule", "workflow_dispatch"):
+            payload = _gh_api_json(
+                f"repos/{repo}/actions/workflows/ci.yml/runs?branch=main&event={main_event}&status=completed&per_page=20"
+            )
+            for run in payload.get("workflow_runs") or []:
+                rid = int(run.get("id") or 0)
+                if rid:
+                    main_runs_by_id[rid] = run
     except Exception as exc:
-        return False, f"api error listing ci.yml runs (fail-open): {exc}"
+        return False, f"api error listing main ci.yml runs (fail-open): {exc}"
 
-    # 1. Keep caches alive: find the most recent green full run on main that actually saved caches
-    # (schedule or workflow_dispatch on main, where jobs were not skipped via skip-unchanged).
-    # We check that a recent green schedule/workflow_dispatch run on main happened within cache_refresh_days
-    # and ran the full suite (checked via its job count / Linux verification job not skipped).
+    main_runs = sorted(
+        main_runs_by_id.values(),
+        key=lambda r: str(r.get("created_at") or r.get("run_started_at") or ""),
+        reverse=True,
+    )
+
     fresh_cache_run_id: int | None = None
-    for run in runs:
+    for run in main_runs:
         run_id = int(run.get("id") or 0)
         if run_id == current_run_id:
             continue
@@ -165,7 +224,17 @@ def decide_ci(
             f"no full green main CI run within {cache_refresh_days}d; running to refresh caches and catch drift",
         )
 
-    # 2. Check whether head_sha ALREADY has a completed green full CI run (on main or matching exact tree SHA).
+    # 2. Check the NEWEST completed full CI run for head_sha (or matching exact git tree SHA).
+    # Decide solely from that newest completed full run: if it failed, do NOT skip past it to an
+    # older green run on the same content.
+    try:
+        runs_payload = _gh_api_json(
+            f"repos/{repo}/actions/workflows/ci.yml/runs?status=completed&per_page=40"
+        )
+        runs = runs_payload.get("workflow_runs") or []
+    except Exception as exc:
+        return False, f"api error listing ci.yml runs (fail-open): {exc}"
+
     try:
         target_tree = _commit_tree_sha(repo, head_sha, tree_cache)
     except Exception as exc:
@@ -178,7 +247,8 @@ def decide_ci(
         run_id = int(run.get("id") or 0)
         if run_id == current_run_id:
             continue
-        if run.get("conclusion") != "success":
+        conclusion = str(run.get("conclusion") or "")
+        if conclusion not in ("success", "failure", "timed_out"):
             continue
         run_event = str(run.get("event") or "")
         run_sha = str(run.get("head_sha") or "")
@@ -203,33 +273,25 @@ def decide_ci(
             continue
 
         # Confirm the matching run actually ran a full CI pass (not a light PR run, docs-only run,
-        # or a previous unchanged-main skip): Windows + macOS + Linux verification all succeeded.
+        # or a previous unchanged-main skip).
         try:
             jobs_payload = _gh_api_json(f"repos/{repo}/actions/runs/{run_id}/jobs?per_page=100")
             jobs = jobs_payload.get("jobs") or []
         except Exception:
             continue
-        has_linux = any(
-            str(j.get("name", "")).startswith("Linux / ") and j.get("conclusion") == "success"
-            for j in jobs
-        )
-        has_windows = any(
-            str(j.get("name", "")).startswith("Windows ") and j.get("conclusion") == "success"
-            for j in jobs
-        )
-        has_macos = any(
-            str(j.get("name", "")).startswith("macOS ") and j.get("conclusion") == "success"
-            for j in jobs
-        )
-        has_result = any(
-            j.get("name") == "CI result" and j.get("conclusion") == "success"
-            for j in jobs
-        )
-        if has_linux and has_windows and has_macos and has_result:
+        if not _is_full_ci_run_jobs(jobs):
+            continue
+
+        # This is the newest completed full CI run on the same content: decide from it.
+        if conclusion == "success" and _is_green_full_ci_run_jobs(jobs):
             return (
                 True,
                 f"unchanged main already green via {matched_how}; caches fresh from run {fresh_cache_run_id}",
             )
+        return (
+            False,
+            f"newest completed full CI run on same content was {conclusion} via {matched_how}; re-running",
+        )
 
     return False, f"no prior full green CI run found for {head_sha[:10]} (tree {target_tree[:12]})"
 
@@ -262,8 +324,10 @@ def decide_nightly(
             continue
         if run.get("event") not in ("schedule", "workflow_dispatch"):
             continue
-        # Inspect jobs: even if a stochastic job (race/fuzz/windows-stress) flaked in an earlier
-        # run on this exact head_sha, check whether every deterministic job already ran and succeeded.
+        # Inspect jobs: find the NEWEST completed run on head_sha where deterministic jobs actually
+        # ran (i.e. were not skipped by head-state). Even if a stochastic job (race/fuzz/stress)
+        # flaked in that run, check whether every deterministic job succeeded; if ANY deterministic
+        # job failed in that newest run, return True immediately without looking at older runs.
         jobs: list[dict[str, Any]] = []
         try:
             page = 1
@@ -284,18 +348,29 @@ def decide_nightly(
             for j in jobs
             if any(str(j.get("name", "")).startswith(p) for p in DETERMINISTIC_NIGHTLY_JOB_PREFIXES)
         ]
-        if not det_jobs:
+        # Ignore runs where deterministic jobs were skipped (all skipped / none executed).
+        ran_det_jobs = [j for j in det_jobs if j.get("conclusion") not in (None, "", "skipped")]
+        if not ran_det_jobs:
             continue
-        if not all(j.get("conclusion") == "success" for j in det_jobs):
-            continue
+
+        # This is the newest completed run on head_sha that executed deterministic jobs: decide from it.
+        if not all(j.get("conclusion") == "success" for j in ran_det_jobs):
+            return (
+                True,
+                f"newest deterministic nightly run {run_id} on {head_sha[:10]} had non-success deterministic jobs; re-running",
+            )
         if all(
-            any(str(j.get("name", "")).startswith(req) for j in det_jobs)
+            any(str(j.get("name", "")).startswith(req) for j in ran_det_jobs)
             for req in DETERMINISTIC_NIGHTLY_REQUIRED_PREFIXES
         ):
             return (
                 False,
-                f"deterministic nightly jobs ({len(det_jobs)}) already succeeded on {head_sha[:10]} in run {run_id}; running stochastic jobs only",
+                f"deterministic nightly jobs ({len(ran_det_jobs)}) already succeeded on {head_sha[:10]} in run {run_id}; running stochastic jobs only",
             )
+        return (
+            True,
+            f"newest deterministic nightly run {run_id} on {head_sha[:10]} was incomplete; re-running",
+        )
 
     return True, f"no prior green deterministic nightly run on {head_sha[:10]}"
 

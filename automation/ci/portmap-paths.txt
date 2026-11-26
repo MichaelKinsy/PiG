@@ -110,18 +110,21 @@ skip:test/term-engines/*
 skip:test/extension-conformance/*
 
 # Standalone SDKs & piglets not cited by PORT_MAP rows
-skip:extensions/sdk/*
 skip:extensions/sdk-ts/*
-skip:extensions/sdk-rs/*
-skip:extensions/sdk-py/*
 skip:extensions/sdk-lisp/*
 skip:extensions/RUBRIC.md
 skip:piglets/*
 
-# Go source packages: ordinary code/test changes in Go packages are verified by test-fast,
-# test-fast-sharded, test-cli, test-subprocess, parity-1/2, contracts, and nightly portmap-1..12;
-# on pull_request, portmap-1..12 run when PORT_MAP.md, test/parity/*, pins, or CI definitions change,
-# or when a Go diff adds/removes/edits a `// pi:` or `// Ports ` marker (checked in classify-changes.sh).
+# Marker/delete-guarded packages (Go packages + SDK surfaces with PORT_MAP citations in
+# extensions/sdk, extensions/sdk-rs, extensions/sdk-py): ordinary code/test changes are verified
+# by test-fast, test-fast-sharded, test-cli, test-subprocess, parity-1/2, contracts, and nightly
+# portmap-1..12; on pull_request, portmap-1..12 run when PORT_MAP.md, test/parity/*, pins, or CI
+# definitions change, when a Go file (or .go/.rs/.py under extensions/sdk*) is deleted/renamed,
+# when a Go diff removes a `func Test/Benchmark/Fuzz/Example` declaration, or when a Go diff
+# adds/removes/edits a `// pi:` or `// Ports ` marker (all checked in classify-changes.sh).
+skip:extensions/sdk/*
+skip:extensions/sdk-rs/*
+skip:extensions/sdk-py/*
 skip:agent/*
 skip:ai/*
 skip:chord/*

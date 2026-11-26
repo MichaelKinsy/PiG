@@ -140,12 +140,15 @@ jobs:
         # it runs.
         run: automation/ci/ci-plan.sh "$EVENT" "$MODE" "$FULL_REQUESTED" | tee -a "$GITHUB_OUTPUT"
       # On a scheduled run ONLY (never workflow_dispatch, pull_request, push, or merge_group), skip
-      # the redundant full CI suite when main's HEAD already has a completed green full CI run
-      # (either on the same SHA or on a commit with the exact same git tree SHA, e.g. a squash-merged
-      # PR head) AND a full main CI run saved caches within the last 5 days (staying safely inside
-      # GitHub Actions' 7-day LRU cache TTL). What skipping stops finding between 5-day refreshes:
-      # only time-dependent external regressions such as runner image updates or upstream download
-      # URL rot, which the 5-day refresh cadence (and cache-warm.yml on lockfile changes) still catches.
+      # the redundant full CI suite when the newest completed full CI run for main's HEAD (either on
+      # the same SHA or on a commit with the exact same git tree SHA, e.g. a squash-merged PR head)
+      # succeeded AND a full main CI run saved caches within the last 5 days (staying safely inside
+      # GitHub Actions' 7-day LRU cache TTL). What skipping gives up between 5-day refreshes:
+      # time-dependent external regressions (runner image updates, upstream download URL rot), and
+      # when accepting a tree-equal PR full run, any path-gated jobs that did not run on that PR
+      # (chord, android, durable hosts, node runtime, and port-map) are deferred for up to 5 days
+      # until the next cache-refresh scheduled run (which runs them unconditionally; nightly.yml
+      # also runs portmap-1..12 on main).
       - name: Check whether scheduled main run is unchanged
         id: unchanged
         env:

@@ -268,7 +268,7 @@ func TestScheduledUnchangedMainSkipWiring(t *testing.T) {
 	if !foundNightlyCheck {
 		t.Error("nightly.yml head-state job does not invoke automation/ci/check-unchanged-main.py nightly")
 	}
-	for _, det := range []string{"oracle-sweeps", "pig-bolt-compiler", "allocations", "strip-matrix", "strip-tests-sets"} {
+	for _, det := range []string{"oracle-sweeps", "pig-bolt-compiler", "allocations", "strip-matrix", "strip-tests-sets", "portmap"} {
 		job, ok := nightly.Jobs[det]
 		if !ok {
 			t.Errorf("nightly.yml missing deterministic job %s", det)
@@ -277,8 +277,8 @@ func TestScheduledUnchangedMainSkipWiring(t *testing.T) {
 		if !slices.Contains(needsOf(job.Needs), "head-state") {
 			t.Errorf("nightly.yml deterministic job %s does not need head-state", det)
 		}
-		if !strings.Contains(job.If, "needs.head-state.outputs.run-deterministic == 'true'") {
-			t.Errorf("nightly.yml deterministic job %s if = %q, want run-deterministic guard", det, job.If)
+		if !strings.Contains(job.If, "!cancelled() && needs.head-state.outputs.run-deterministic != 'false'") {
+			t.Errorf("nightly.yml deterministic job %s if = %q, want fail-open run-deterministic guard", det, job.If)
 		}
 	}
 	for _, stoch := range []string{"race", "fuzz", "windows-concurrency-stress"} {
@@ -364,6 +364,8 @@ func TestPortmapPathGatingFailsClosedAndNightlyRunsAllShards(t *testing.T) {
 			}
 		}
 		write("README.md", "base\n")
+		write("coding/existing_test.go", "package coding\nfunc TestKeep() {}\n")
+		write("extensions/sdk-rs/src/lib.rs", "pub fn keep() {}\n")
 		runGitIn(t, repo, "add", "-A")
 		runGitIn(t, repo, "commit", "-q", "-m", "base")
 		base := runGitIn(t, repo, "rev-parse", "HEAD")
@@ -371,18 +373,28 @@ func TestPortmapPathGatingFailsClosedAndNightlyRunsAllShards(t *testing.T) {
 		script := filepath.Join(repoRoot(t), "automation", "ci", "classify-changes.sh")
 		cases := []struct {
 			name, path, content, want string
+			deletePath                bool
 		}{
-			{"ordinary Go file", "coding/plain.go", "package coding\n", "portmap=false"},
-			{"unknown top-level path fails closed", "unmapped_new_dir/foo.txt", "x\n", "portmap=true"},
-			{"PORT_MAP.md trigger", "docs/parity/PORT_MAP.md", "| a | b |\n", "portmap=true"},
-			{"test/parity trigger", "test/parity/portmap-reviewed.json", "{}\n", "portmap=true"},
-			{"Go // pi: marker diff", "coding/foo_test.go", "package coding\n// pi: packages/ai/src/foo.ts\n", "portmap=true"},
-			{"Go // Ports marker diff", "coding/bar.go", "package coding\n// Ports packages/ai/src/bar.ts\n", "portmap=true"},
+			{name: "ordinary Go file", path: "coding/plain.go", content: "package coding\n", want: "portmap=false"},
+			{name: "unknown top-level path fails closed", path: "unmapped_new_dir/foo.txt", content: "x\n", want: "portmap=true"},
+			{name: "PORT_MAP.md trigger", path: "docs/parity/PORT_MAP.md", content: "| a | b |\n", want: "portmap=true"},
+			{name: "test/parity trigger", path: "test/parity/portmap-reviewed.json", content: "{}\n", want: "portmap=true"},
+			{name: "Go // pi: marker diff", path: "coding/foo_test.go", content: "package coding\n// pi: packages/ai/src/foo.ts\n", want: "portmap=true"},
+			{name: "Go // Ports marker diff", path: "coding/bar.go", content: "package coding\n// Ports packages/ai/src/bar.ts\n", want: "portmap=true"},
+			{name: "removed func Test declaration", path: "coding/existing_test.go", content: "package coding\n", want: "portmap=true"},
+			{name: "deleted Go file", path: "coding/existing_test.go", deletePath: true, want: "portmap=true"},
+			{name: "deleted sdk-rs file", path: "extensions/sdk-rs/src/lib.rs", deletePath: true, want: "portmap=true"},
 		}
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
 				runGitIn(t, repo, "checkout", "-q", "--detach", base)
-				write(tc.path, tc.content)
+				if tc.deletePath {
+					if err := os.Remove(filepath.Join(repo, filepath.FromSlash(tc.path))); err != nil {
+						t.Fatal(err)
+					}
+				} else {
+					write(tc.path, tc.content)
+				}
 				runGitIn(t, repo, "add", "-A")
 				runGitIn(t, repo, "commit", "-q", "-m", tc.name)
 				head := runGitIn(t, repo, "rev-parse", "HEAD")

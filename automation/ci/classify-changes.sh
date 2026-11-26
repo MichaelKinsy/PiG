@@ -6,7 +6,8 @@
 #
 # Prints portmap=true|false as well: true on every non-pull_request event, and on a pull_request when any changed path
 # matches a `trigger:` rule of automation/ci/portmap-paths.txt, fails to match any `skip:` rule (fail-closed: an unknown
-# path runs portmap-1..12), or modifies a `// pi:` or `// Ports ` marker in a Go file.
+# path runs portmap-1..12), deletes or renames a Go file (or a Go/Rust/Python file under extensions/sdk*), removes a
+# `func Test/Benchmark/Fuzz/Example` declaration, or modifies a `// pi:` or `// Ports ` marker in a Go file.
 #
 # Prints product=true|false for a pull request or a merge group: false only when
 # every changed path is project prose or repository metadata that no product test
@@ -109,13 +110,30 @@ if [ "$event" = pull_request ] || [ "$event" = merge_group ]; then
         ;;
     esac
   done <<<"$changed"
-  # Fail closed on Go marker edits: if any changed Go file adds, removes or alters a
-  # `// pi: ...` or `// Ports ...` marker that portmapcheck reads, run portmap-1..12.
+  # Fail closed on deleted/renamed Go files (and Go/Rust/Python files under extensions/sdk*):
+  # with --no-renames, a rename appears as `D old` + `A new`, so checking status D catches both
+  # deletions and renames of files that PORT_MAP.md rows may cite.
+  if [ "$event" = pull_request ] && [ "$portmap" = false ]; then
+    deleted_status=$(git diff --name-status --no-renames "$base...$head")
+    while IFS=$'\t' read -r status del_path _rest; do
+      [ "$status" = "D" ] || continue
+      case "$del_path" in
+        *.go | extensions/sdk-rs/*.rs | extensions/sdk-py/*.py)
+          portmap=true
+          echo "portmap change (deleted or renamed cited-language file): $del_path" >&2
+          break
+          ;;
+      esac
+    done <<<"$deleted_status"
+  fi
+  # Fail closed on Go marker edits and removed test/bench/fuzz/example declarations:
+  # if any changed Go file adds/removes/alters a `// pi:` or `// Ports ` marker that portmapcheck
+  # reads, or removes a `func Test/Benchmark/Fuzz/Example` declaration, run portmap-1..12.
   if [ "$event" = pull_request ] && [ "$portmap" = false ] && [ "${#go_changed[@]}" -gt 0 ]; then
     diff_out=$(git diff -U0 --no-renames "$base...$head" -- "${go_changed[@]}")
-    if printf '%s\n' "$diff_out" | grep -Eq '^[+-][[:space:]]*//[[:space:]]*(pi:|Ports[[:space:]])'; then
+    if printf '%s\n' "$diff_out" | grep -Eq '^[+-][[:space:]]*//[[:space:]]*(pi:|Ports[[:space:]])|^-func[[:space:]]+(Test|Benchmark|Fuzz|Example)[A-Z0-9_]'; then
       portmap=true
-      echo "portmap change (Go // pi: or // Ports marker diff)" >&2
+      echo "portmap change (Go marker or removed Test/Benchmark/Fuzz/Example diff)" >&2
     fi
   fi
 fi

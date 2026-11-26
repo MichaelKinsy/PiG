@@ -31,7 +31,7 @@ env:
 
 jobs:
   # On a scheduled run, check whether main's HEAD already has a green deterministic nightly run
-  # (oracle-sweeps, pig-bolt-compiler, allocations, strip-matrix, strip-tests). If so, skip those
+  # (oracle-sweeps, pig-bolt-compiler, allocations, strip-matrix, strip-tests, portmap). If so, skip those
   # deterministic jobs while still running the stochastic/repetition jobs (race, fuzz,
   # windows-concurrency-stress). workflow_dispatch NEVER skips deterministic jobs.
   head-state:
@@ -322,7 +322,7 @@ jobs:
   oracle-sweeps:
     name: Oracle sweeps / full products
     needs: [head-state]
-    if: ${{ needs.head-state.outputs.run-deterministic == 'true' }}
+    if: ${{ !cancelled() && needs.head-state.outputs.run-deterministic != 'false' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -360,7 +360,7 @@ jobs:
   pig-bolt-compiler:
     name: Pi-Bolt compiler / build and start a compiled host
     needs: [head-state]
-    if: ${{ needs.head-state.outputs.run-deterministic == 'true' }}
+    if: ${{ !cancelled() && needs.head-state.outputs.run-deterministic != 'false' }}
     # make test-pig-bolt-build downloads the Pi-Bolt release the pig-bolt Piglet pins (signature and digests checked by the Piglet's own installer),
     # builds a compiled TypeScript host from PiG's runtime tree with it and starts the host. It guards against a pin whose compiler crashes on that
     # tree (an earlier pin segfaulted in the ahead-of-time step). The toolchain is cached by pin.
@@ -409,7 +409,7 @@ jobs:
   allocations:
     name: Allocation ratchet / allocs per op
     needs: [head-state]
-    if: ${{ needs.head-state.outputs.run-deterministic == 'true' }}
+    if: ${{ !cancelled() && needs.head-state.outputs.run-deterministic != 'false' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 150
     steps:
@@ -470,7 +470,7 @@ jobs:
   strip-matrix:
     name: Piglet strip matrix / API tags and all tags
     needs: [head-state]
-    if: ${{ needs.head-state.outputs.run-deterministic == 'true' }}
+    if: ${{ !cancelled() && needs.head-state.outputs.run-deterministic != 'false' }}
     runs-on: ubuntu-24.04
     # The default mode took 2610 s at 8 CPUs (vet of every package, the ai tests and the stripped binary for four tag sets); the hosted runner has fewer.
     timeout-minutes: 150
@@ -534,7 +534,7 @@ jobs:
   strip-tests-sets:
     name: Piglet strip tests / the sets
     needs: [head-state]
-    if: ${{ needs.head-state.outputs.run-deterministic == 'true' }}
+    if: ${{ !cancelled() && needs.head-state.outputs.run-deterministic != 'false' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     outputs:
@@ -742,6 +742,8 @@ jobs:
 
   portmap:
     name: PORT_MAP / ${{ matrix.shard }}
+    needs: [head-state]
+    if: ${{ !cancelled() && needs.head-state.outputs.run-deterministic != 'false' }}
     # Deterministic PORT_MAP evidence verification on main (all 12 shards). Pull requests run these
     # shards only when classify-changes.sh marks portmap=true (fail-closed via automation/ci/portmap-paths.txt);
     # nightly runs all 12 shards on main so every merged change is proven end-to-end.
@@ -789,6 +791,9 @@ jobs:
           key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
           restore-keys: |
             gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+      # Exact-SHA key (matching ci.yml, intentionally no restore-keys): serves re-runs of the same
+      # commit only; every new commit runs its shard cold because the per-row digest does not cover
+      # imported packages or fixtures.
       - name: Restore the PORT_MAP coverage cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
