@@ -1,0 +1,3 @@
+### Fixed
+
+- Packed Go extension builds no longer fail with `go build: undefined: sdk.ReportLoadFailure` (or any future runner-template SDK symbol) when an extension's `go.mod` local `replace` or `PIG_SDK_GO_ROOT` points to an SDK checkout older than the running `pig` binary. Required SDK symbols are now derived directly from the generated runner template; incompatible SDK roots fall back to the running binary's staged SDK, or report an actionable error naming the incompatible path, how it was selected, and the missing symbol(s) when no compatible SDK exists. <!-- fix: d7fedef9aa --> <!-- cause: findSDKRootWithPreferred accepted any Go SDK directory containing go.mod without checking that it exported the symbols called by the generated runner template -->

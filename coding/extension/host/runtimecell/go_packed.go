@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"go/ast"
 	"go/parser"
 	"go/token"
 	"go/version"
@@ -17,6 +18,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/configroot"
@@ -359,22 +361,175 @@ func findSDKRoot(extensions []GoExtension) (string, error) {
 	return findSDKRootWithPreferred(extensions, "")
 }
 
+// goRunnerSDKRequirements parses the generated packed Go runner template once
+// to derive the package-level `sdk.<Ident>` functions and `runnable` methods
+// that the template invokes, so adding any new SDK call to renderGoRunner
+// automatically tightens SDK compatibility checks with no separate hardcoded list.
+var goRunnerSDKRequirements = sync.OnceValues(func() ([]string, []string) {
+	return extractRunnerSDKRequirements(renderGoRunner(nil))
+})
+
+// extractRunnerSDKRequirements parses a rendered packed Go runner source and
+// returns the sorted package-level `sdk.<Ident>` selectors and `runnable`
+// interface method names it depends on.
+func extractRunnerSDKRequirements(runnerSrc string) (pkgSymbols, runnableMethods []string) {
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "runner.go", runnerSrc, 0)
+	if err != nil {
+		return nil, nil
+	}
+	pkgSeen := map[string]struct{}{}
+	methodSeen := map[string]struct{}{}
+	ast.Inspect(file, func(n ast.Node) bool {
+		switch node := n.(type) {
+		case *ast.SelectorExpr:
+			if id, ok := node.X.(*ast.Ident); ok && id.Name == "sdk" && node.Sel != nil {
+				pkgSeen[node.Sel.Name] = struct{}{}
+			}
+		case *ast.TypeSpec:
+			if node.Name != nil && node.Name.Name == "runnable" {
+				if iface, ok := node.Type.(*ast.InterfaceType); ok && iface.Methods != nil {
+					for _, field := range iface.Methods.List {
+						for _, name := range field.Names {
+							methodSeen[name.Name] = struct{}{}
+						}
+					}
+				}
+			}
+		}
+		return true
+	})
+	for name := range pkgSeen {
+		pkgSymbols = append(pkgSymbols, name)
+	}
+	for name := range methodSeen {
+		runnableMethods = append(runnableMethods, name)
+	}
+	sort.Strings(pkgSymbols)
+	sort.Strings(runnableMethods)
+	return pkgSymbols, runnableMethods
+}
+
+// missingGoSDKRunnerSymbols checks dir (a candidate Go SDK module root) against
+// the package-level `sdk.<Ident>` symbols and `runnable` methods derived from
+// the packed runner template. Synthetic test fixtures that write only go.mod or
+// stub files without an Extension runtime (no runnable method declared) return
+// nil; any real SDK source tree must export every required symbol.
+func missingGoSDKRunnerSymbols(dir string, pkgSymbols, runnableMethods []string) []string {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	fset := token.NewFileSet()
+	exportedPkg := map[string]struct{}{}
+	exportedMethods := map[string]struct{}{}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		file, err := parser.ParseFile(fset, filepath.Join(dir, name), nil, 0)
+		if err != nil {
+			continue
+		}
+		for _, decl := range file.Decls {
+			switch d := decl.(type) {
+			case *ast.FuncDecl:
+				if d.Name == nil || !d.Name.IsExported() {
+					continue
+				}
+				if d.Recv == nil {
+					exportedPkg[d.Name.Name] = struct{}{}
+				} else {
+					exportedMethods[d.Name.Name] = struct{}{}
+				}
+			case *ast.GenDecl:
+				for _, spec := range d.Specs {
+					switch sp := spec.(type) {
+					case *ast.TypeSpec:
+						if sp.Name != nil && sp.Name.IsExported() {
+							exportedPkg[sp.Name.Name] = struct{}{}
+						}
+					case *ast.ValueSpec:
+						for _, id := range sp.Names {
+							if id.IsExported() {
+								exportedPkg[id.Name] = struct{}{}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	// Treat marker-only or minimal stub fixtures (no runnable method declared) as synthetic test roots.
+	hasRuntime := false
+	for _, m := range runnableMethods {
+		if _, ok := exportedMethods[m]; ok {
+			hasRuntime = true
+			break
+		}
+	}
+	if !hasRuntime {
+		return nil
+	}
+	var missing []string
+	for _, sym := range pkgSymbols {
+		if _, ok := exportedPkg[sym]; !ok {
+			missing = append(missing, "sdk."+sym)
+		}
+	}
+	for _, m := range runnableMethods {
+		if _, ok := exportedMethods[m]; !ok {
+			missing = append(missing, "Extension."+m)
+		}
+	}
+	return missing
+}
+
+func missingRunnerSymbolsForSDK(dir string) []string {
+	pkgSymbols, runnableMethods := goRunnerSDKRequirements()
+	return missingGoSDKRunnerSymbols(dir, pkgSymbols, runnableMethods)
+}
+
 func findSDKRootWithPreferred(extensions []GoExtension, preferred string) (string, error) {
+	var incompatiblePath, incompatibleSource string
+	var incompatibleMissing []string
+	accept := func(candidate, source string) bool {
+		if !statHasFile(candidate, "go.mod") {
+			return false
+		}
+		missing := missingRunnerSymbolsForSDK(candidate)
+		if len(missing) == 0 {
+			return true
+		}
+		if incompatiblePath == "" {
+			incompatiblePath = candidate
+			incompatibleSource = source
+			incompatibleMissing = missing
+		}
+		return false
+	}
+
 	for _, ext := range extensions {
-		if candidate := goSDKPathOverride(ext.Root, currentGoStagedSDK(preferred)); candidate != "" {
-			return candidate, nil
+		if candidate := goSDKPathOverrideRaw(ext.Root, currentGoStagedSDK(preferred)); candidate != "" {
+			if accept(candidate, "extension go.mod replace in "+ext.Root) {
+				return candidate, nil
+			}
 		}
 	}
 	if preferred = strings.TrimSpace(preferred); preferred != "" {
 		if abs, err := filepath.Abs(preferred); err == nil {
-			if _, err := os.Stat(filepath.Join(abs, "go.mod")); err == nil {
+			if accept(abs, "staged SDK") {
 				return abs, nil
 			}
 		}
 	}
 	if root := strings.TrimSpace(os.Getenv("PIG_SDK_GO_ROOT")); root != "" {
 		if abs, err := filepath.Abs(root); err == nil {
-			if _, err := os.Stat(filepath.Join(abs, "go.mod")); err == nil {
+			if accept(abs, "PIG_SDK_GO_ROOT") {
 				return abs, nil
 			}
 		}
@@ -384,7 +539,7 @@ func findSDKRootWithPreferred(extensions []GoExtension, preferred string) (strin
 		return "", err
 	}
 	for _, sdk := range stagedGoSDKRoots() {
-		if _, err := os.Stat(filepath.Join(sdk, "go.mod")); err == nil {
+		if accept(sdk, "staged SDK") {
 			return sdk, nil
 		}
 	}
@@ -393,7 +548,7 @@ func findSDKRootWithPreferred(extensions []GoExtension, preferred string) (strin
 		for dir := wd; ; dir = filepath.Dir(dir) {
 			data, err := os.ReadFile(filepath.Join(dir, "go.mod"))
 			if err == nil && strings.Contains(string(data), "module github.com/MichaelKinsy/PiG") {
-				if sdk := filepath.Join(dir, "extensions", "sdk"); statHasFile(sdk, "go.mod") {
+				if sdk := filepath.Join(dir, "extensions", "sdk"); accept(sdk, "working-directory PiG checkout") {
 					return sdk, nil
 				}
 			}
@@ -405,9 +560,12 @@ func findSDKRootWithPreferred(extensions []GoExtension, preferred string) (strin
 	}
 	for _, root := range installedPigSourceRoots() {
 		sdk := filepath.Join(root, "extensions", "sdk")
-		if _, err := os.Stat(filepath.Join(sdk, "go.mod")); err == nil {
+		if accept(sdk, "installed PiG source") {
 			return sdk, nil
 		}
+	}
+	if incompatiblePath != "" {
+		return "", fmt.Errorf("Go SDK at %s (from %s) is older than this pig binary (missing %s) and no compatible staged SDK was found; remove the stale SDK override or update the PiG checkout", incompatiblePath, incompatibleSource, strings.Join(incompatibleMissing, ", "))
 	}
 	return "", fmt.Errorf("cannot locate github.com/MichaelKinsy/PiG SDK; install pig (so ~/.pig/source exists), run inside the pig source tree, or set PIG_SDK_GO_ROOT")
 }
@@ -428,8 +586,17 @@ func currentGoStagedSDK(preferred string) string {
 }
 
 // goSDKPathOverride returns an extension module's explicit local SDK replace
-// unless it is missing or a retired staging of stagedDir's config root.
+// unless it is missing, a retired staging of stagedDir's config root, or an
+// older SDK tree incompatible with this binary's runner template.
 func goSDKPathOverride(root, stagedDir string) string {
+	candidate := goSDKPathOverrideRaw(root, stagedDir)
+	if candidate == "" || len(missingRunnerSymbolsForSDK(candidate)) > 0 {
+		return ""
+	}
+	return candidate
+}
+
+func goSDKPathOverrideRaw(root, stagedDir string) string {
 	data, err := os.ReadFile(filepath.Join(root, "go.mod"))
 	if err != nil {
 		return ""
