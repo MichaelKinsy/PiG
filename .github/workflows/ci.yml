@@ -160,7 +160,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tree_sha="$(git rev-parse HEAD^{tree})"
+          tree_sha="$(git rev-parse 'HEAD^{tree}')"
           python3 automation/ci/check-unchanged-main.py ci             --event "$EVENT"             --repo "$REPO"             --head-sha "$HEAD_SHA"             --head-tree-sha "$tree_sha"             --current-run-id "$RUN_ID"             --cache-refresh-days 5
 
   docs:
@@ -283,7 +283,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tree_sha="$(git rev-parse HEAD^{tree})"
+          tree_sha="$(git rev-parse 'HEAD^{tree}')"
           python3 automation/ci/check-unchanged-main.py ci             --event "$EVENT"             --repo "$REPO"             --head-sha "$HEAD_SHA"             --head-tree-sha "$tree_sha"             --current-run-id "$RUN_ID"             --cache-refresh-days 5
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         if: steps.unchanged.outputs.skip-unchanged != 'true'
