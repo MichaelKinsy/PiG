@@ -364,6 +364,14 @@ func runScan(ctx context.Context, c check, d *data, ws workspace, log io.Writer)
 		return pass("no file it scans changed")
 	}
 	input := map[string]string{inputAdded: ws.added, inputChanged: ws.head, inputTree: ws.tree}[s.Input]
+	var unmap map[string]string
+	if len(s.Quarantine) > 0 && input != "" {
+		var err error
+		input, unmap, err = stageQuarantined(ws.dir, c.Name, input, s.Quarantine)
+		if err != nil {
+			return outcome{result: resultError, reason: fmt.Sprintf("prepare quarantined scan input: %v", err)}
+		}
+	}
 	out := filepath.Join(ws.dir, c.Name+".report")
 	runCtx, cancel := context.WithTimeout(ctx, scanTimeout)
 	defer cancel()
@@ -386,7 +394,11 @@ func runScan(ctx context.Context, c check, d *data, ws workspace, log io.Writer)
 		return outcome{result: resultError, reason: fmt.Sprintf("%s report: %v", name, err)}
 	}
 	for i := range found {
-		found[i].file = relativeTo(found[i].file, []string{ws.added, ws.head, ws.tree, input})
+		rel := relativeTo(found[i].file, []string{input, ws.added, ws.head, ws.tree})
+		if orig, ok := unmap[rel]; ok {
+			rel = orig
+		}
+		found[i].file = rel
 	}
 	if s.Input == inputAdded {
 		toHeadLines(found, d)
@@ -746,4 +758,75 @@ func runScans(ctx context.Context, cfg config, d *data, ev *evaluation, ws works
 	}
 	ev.finish()
 	return nil
+}
+
+// stageQuarantined builds a per-scan copy of input in which every file matching one of the quarantine paths is stored
+// under a neutral non-colliding file name, so scanners that auto-load config or ignore files from their scan target
+// (for example gitleaks reading <source>/.gitleaksignore) cannot treat PR content as configuration while still
+// scanning those files' contents. When none of the quarantine paths exist in input, input is returned unchanged.
+func stageQuarantined(wsDir, checkName, input string, quarantine []string) (staged string, unmap map[string]string, err error) {
+	quarantined := make(map[string]bool, len(quarantine))
+	hasAny := false
+	for _, q := range quarantine {
+		q = filepath.ToSlash(filepath.Clean(filepath.FromSlash(q)))
+		quarantined[q] = true
+		if target, err := inside(input, q); err == nil {
+			if _, statErr := os.Stat(target); statErr == nil {
+				hasAny = true
+			}
+		}
+	}
+	if !hasAny {
+		return input, nil, nil
+	}
+	staged = filepath.Join(wsDir, checkName+".input")
+	if err := os.RemoveAll(staged); err != nil {
+		return "", nil, err
+	}
+	if err := os.MkdirAll(staged, 0o755); err != nil {
+		return "", nil, err
+	}
+	existing := map[string]bool{}
+	var files []string
+	if err := filepath.WalkDir(input, func(p string, e fs.DirEntry, walkErr error) error {
+		if walkErr != nil || e.IsDir() {
+			return walkErr
+		}
+		rel, err := filepath.Rel(input, p)
+		if err != nil {
+			return err
+		}
+		rel = filepath.ToSlash(rel)
+		existing[rel] = true
+		files = append(files, rel)
+		return nil
+	}); err != nil {
+		return "", nil, err
+	}
+	slices.Sort(files)
+	unmap = map[string]string{}
+	neutralSeq := 0
+	for _, rel := range files {
+		destRel := rel
+		if quarantined[rel] {
+			for {
+				neutralSeq++
+				cand := fmt.Sprintf("_preflight_quarantine_%d.txt", neutralSeq)
+				if !existing[cand] {
+					destRel = cand
+					existing[cand] = true
+					break
+				}
+			}
+			unmap[destRel] = rel
+		}
+		raw, err := os.ReadFile(filepath.Join(input, filepath.FromSlash(rel)))
+		if err != nil {
+			return "", nil, err
+		}
+		if err := writeFileUnder(staged, destRel, raw); err != nil {
+			return "", nil, err
+		}
+	}
+	return staged, unmap, nil
 }

@@ -214,7 +214,8 @@ makes the check fail with that reason, never a silent skip. Each skip prints a
 
 ## Acknowledgements
 
-A warning (a copyright notice, licence text, an inline `gitleaks:allow`) does
+A warning (a copyright notice, licence text, an inline `gitleaks:allow`, or a
+change to `.gitleaksignore` or `.gitleaks.toml`) does
 not fail its check. `automation/ci/preflight/acknowledged.toml` at the PR's head
 acknowledges a check's warnings for one file at one blob; a later change to the
 file shows them again. An acknowledgement never covers a failing scan.
@@ -222,13 +223,24 @@ file shows them again. An acknowledgement never covers a failing scan.
 ## Secrets
 
 gitleaks runs from inside the added-lines tree (`dir .`) with main's
-`.gitleaks.toml` and `--ignore-gitleaks-allow`, on the added lines only, so
-`^`-anchored `paths` in `.gitleaks.toml` and relative fingerprints in
-`.gitleaksignore` match repository-relative paths instead of a temporary runner
-directory. A real false positive is allowed on main, by a maintainer, in
-`.gitleaks.toml`. trufflehog reports only secrets it verified, so a finding is a
-live credential. Either posts an alert that mentions the author: revoke the
-secret and rewrite the branch.
+`.gitleaks.toml`, `--gitleaks-ignore-path {main}`, and `--ignore-gitleaks-allow`,
+on the added lines only, so `^`-anchored `paths` in `.gitleaks.toml` and
+relative fingerprints in main's `.gitleaksignore` match repository-relative
+paths instead of a temporary runner directory. Only main's `.gitleaks.toml` and
+`.gitleaksignore` govern the scan: if a PR adds or modifies `.gitleaksignore` or
+`.gitleaks.toml`, pre-flight stages those files under neutral names in a
+per-scan directory so gitleaks cannot load PR content as configuration (gitleaks
+`dir` always loads `<source>/.gitleaksignore`), while still scanning their added
+lines and mapping any findings back to the real path and head line. Any PR that
+adds or changes `.gitleaksignore` or `.gitleaks.toml` also gets a
+`gitleaks-config` warning row. Note that a `.gitleaksignore` fingerprint uses
+the 1-based line number in the added-lines file (not the head file line number),
+because gitleaks scans the extracted added-lines tree before pre-flight maps
+findings back to PR head lines. A real false positive is allowed on main, by a
+maintainer, in `.gitleaks.toml` (preferred over `.gitleaksignore`, whose
+added-lines line numbers depend on each PR's patch). trufflehog reports only
+secrets it verified, so a finding is a live credential. Either posts an alert
+that mentions the author: revoke the secret and rewrite the branch.
 
 ## Trust
 

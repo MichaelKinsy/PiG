@@ -60,6 +60,7 @@ type scanSpec struct {
 	Select         string            `yaml:"select" json:"select,omitempty"`
 	Checkout       []string          `yaml:"checkout" json:"checkout,omitempty"`
 	Overlay        []string          `yaml:"overlay" json:"overlay,omitempty"`
+	Quarantine     []string          `yaml:"quarantine" json:"quarantine,omitempty"`
 	Run            []string          `yaml:"run" json:"run"`
 	Dir            string            `yaml:"dir" json:"dir,omitempty"`
 	Env            map[string]string `yaml:"env" json:"env,omitempty"`
@@ -292,6 +293,11 @@ func (s *scanSpec) validate() error {
 	for _, p := range append(slices.Clone(s.Checkout), s.Overlay...) {
 		if p == "" || (strings.HasPrefix(p, "/") && p != "/*") || strings.Contains(p, "..") {
 			return fmt.Errorf("path %q must be relative, or /* for the whole tree", p)
+		}
+	}
+	for _, p := range s.Quarantine {
+		if p == "" || strings.HasPrefix(p, "/") || strings.Contains(p, "..") {
+			return fmt.Errorf("quarantine path %q must be relative", p)
 		}
 	}
 	if s.Select != "" {
