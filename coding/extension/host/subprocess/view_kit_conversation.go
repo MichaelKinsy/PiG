@@ -350,7 +350,7 @@ func (b *viewBuilder) bashExecution(n *ViewNode, out *frontend.ViewNode) tui.Com
 		if c.Truncated {
 			truncation = &tui.TruncationResult{Truncated: true}
 		}
-		block.SetComplete(c.ExitCode, c.Cancelled, truncation, c.FullOutputPath, c.FullOutputError)
+		block.SetCompleteWithError(c.ExitCode, c.Cancelled, truncation, c.FullOutputPath, c.FullOutputError)
 	}
 	if loader := block.Loader(); loader != nil {
 		if n.Frame != nil && len(loader.Frames) > 0 && (fresh || sent.Frame == nil || *sent.Frame != *n.Frame) {

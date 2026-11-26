@@ -28,13 +28,13 @@ func TestOutputFilesUseNodeTmpdir(t *testing.T) {
 	if filepath.Dir(path) != first {
 		t.Fatalf("output file %s, want it in %s", path, first)
 	}
-	streamPath, f, err := CreateStream("pi-test", ".txt")
-	if err != nil {
-		t.Fatal(err)
+	stream := OpenStream("pi-test", ".txt")
+	res := stream.Close()
+	if !res.Saved() {
+		t.Fatalf("Close() = %+v, want saved", res)
 	}
-	_ = f.Close()
-	if filepath.Dir(streamPath) != first {
-		t.Fatalf("stream file %s, want it in %s", streamPath, first)
+	if filepath.Dir(res.Path) != first {
+		t.Fatalf("stream file %s, want it in %s", res.Path, first)
 	}
 }
 

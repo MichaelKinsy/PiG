@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -73,10 +74,10 @@ func (t *TuiMainScreen) crashOnDifferentialOverflow(newLines []string, index, wi
 	data = append(data, "")
 	// A failed write (full or unwritable temp dir) must not hide the width error or skip stop().
 	var logWriteErr string
-	if err := os.MkdirAll(filepath.Dir(crashLogPath), 0o777); err != nil {
+	if err := nodeerrno.MkdirAll(filepath.Dir(crashLogPath), 0o777); err != nil {
 		logWriteErr = err.Error()
 	} else if err := os.WriteFile(crashLogPath, []byte(jsstring.StreamText(strings.Join(data, "\n"))), 0o666); err != nil {
-		logWriteErr = err.Error()
+		logWriteErr = nodeerrno.FromPathError(err).Error()
 	}
 
 	// Clean up terminal state before throwing.

@@ -382,8 +382,9 @@ type ModelRegistry struct {
 	// registrationSync projects a registration change into the Services-owned snapshot before observers run.
 	registrationSync func(providerID string, provisional *ai.AuthCheck, providerOrder func() []string)
 	// availabilityAuth reads configured auth for Models-collection providers from the Services-owned snapshot.
-	availabilityAuth func(providerID string) bool
-	modelTasks       modelTaskOwner
+	availabilityAuth   func(providerID string) bool
+	providerAuthStatus func(providerID string) ai.AuthStatus
+	modelTasks         modelTaskOwner
 	// registrationRefresh queues Pi's unawaited local refresh after a registration.
 	registrationRefresh registrationRefresh
 
@@ -1650,6 +1651,12 @@ func (r *ModelRegistry) hasConfiguredAuth(ctx context.Context, providerID string
 
 func (r *ModelRegistry) GetProviderAuthStatus(providerID string) ai.AuthStatus {
 	r.mu.RLock()
+	snapshotStatus := r.providerAuthStatus
+	r.mu.RUnlock()
+	if snapshotStatus != nil {
+		return snapshotStatus(providerID)
+	}
+	r.mu.RLock()
 	defer r.mu.RUnlock()
 	if runtime := r.runtimeCredentials.Load(); runtime != nil && runtime.HasRuntimeAPIKey(providerID) {
 		return ai.AuthStatus{Configured: true, Source: ai.AuthSourceRuntime}
@@ -1659,8 +1666,11 @@ func (r *ModelRegistry) GetProviderAuthStatus(providerID string) ai.AuthStatus {
 		fallback = ai.CredentialStoreAuthStatus(context.Background(), r.credentialStore, providerID)
 		if fallback.Source == ai.AuthSourceStored {
 			// A stored credential owns the provider, so it is configured only when it resolves (#12164).
-			if cred, err := r.credentialStore.Read(context.Background(), providerID); err != nil || cred == nil || (cred.Type == ai.CredentialAPIKey && cred.Key == "") {
-				return ai.AuthStatus{Configured: false, Source: ai.AuthSourceStored}
+			// Commands do not run on any new path: only consult cached command results or non-command keys.
+			if raw, ok, err := ai.ReadRawCredential(context.Background(), r.credentialStore, providerID); err == nil && ok && raw.Type == ai.CredentialAPIKey {
+				if !storedAPIKeyResolvesWithoutNewCommand(raw.Key, raw.Env) {
+					return ai.AuthStatus{Configured: false, Source: ai.AuthSourceStored}
+				}
 			}
 			return fallback
 		}
@@ -2243,4 +2253,18 @@ func jsonStringLiteralEnd(input string, start int) (int, bool) {
 		}
 	}
 	return 0, false
+}
+
+// storedAPIKeyResolvesWithoutNewCommand checks whether a stored api_key entry
+// resolves without executing an uncached !command (Pi 713563870: "Commands do
+// not run on any new path").
+func storedAPIKeyResolvesWithoutNewCommand(key string, env map[string]string) bool {
+	if key == "" {
+		return false
+	}
+	if configvalue.IsCommandConfigValue(key) {
+		val, cached := configvalue.LookupCachedCommand(key)
+		return cached && val != ""
+	}
+	return configvalue.Resolve(key, env) != ""
 }

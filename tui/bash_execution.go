@@ -125,18 +125,25 @@ func (b *BashExecutionComponent) GetCommand() string {
 // A non-nil truncationResult with Truncated set marks the output as truncated; fullOutputPath is the file holding the untruncated output and, with a
 // truncated result, adds the "Output truncated. Full output: <path>" row. The output already streamed into the block is kept; SetCompleteWithOutput
 // replaces it with the durable output.
-func (b *BashExecutionComponent) SetComplete(exitCode *int, cancelled bool, truncationResult *TruncationResult, fullOutputPath string, fullOutputError ...string) {
-	var errText string
-	if len(fullOutputError) > 0 {
-		errText = fullOutputError[0]
-	}
-	b.finishBashExecution(exitCode, cancelled, truncationResult != nil && truncationResult.Truncated, fullOutputPath, errText)
+func (b *BashExecutionComponent) SetComplete(exitCode *int, cancelled bool, truncationResult *TruncationResult, fullOutputPath string) {
+	b.finishBashExecution(exitCode, cancelled, truncationResult != nil && truncationResult.Truncated, fullOutputPath, "")
 }
 
-// SetCompleteWithOutput replaces the streaming preview with the durable truncated output and records its full-output path (or error) before completing the block.
-func (b *BashExecutionComponent) SetCompleteWithOutput(exitCode *int, cancelled, truncated bool, output, fullOutputPath string, fullOutputError ...string) {
+// SetCompleteWithError transitions the block out of the running state, also recording why the full output could not be saved when truncated (bash-execution.ts setComplete 5th arg).
+func (b *BashExecutionComponent) SetCompleteWithError(exitCode *int, cancelled bool, truncationResult *TruncationResult, fullOutputPath, fullOutputError string) {
+	b.finishBashExecution(exitCode, cancelled, truncationResult != nil && truncationResult.Truncated, fullOutputPath, fullOutputError)
+}
+
+// SetCompleteWithOutput replaces the streaming preview with the durable truncated output and records its full-output path before completing the block.
+func (b *BashExecutionComponent) SetCompleteWithOutput(exitCode *int, cancelled, truncated bool, output, fullOutputPath string) {
 	b.tail.Reset(output)
-	b.SetComplete(exitCode, cancelled, truncationFlag(truncated), fullOutputPath, fullOutputError...)
+	b.SetComplete(exitCode, cancelled, truncationFlag(truncated), fullOutputPath)
+}
+
+// SetCompleteWithOutputAndError replaces the streaming preview with the durable truncated output and records its full-output path or error before completing the block.
+func (b *BashExecutionComponent) SetCompleteWithOutputAndError(exitCode *int, cancelled, truncated bool, output, fullOutputPath, fullOutputError string) {
+	b.tail.Reset(output)
+	b.SetCompleteWithError(exitCode, cancelled, truncationFlag(truncated), fullOutputPath, fullOutputError)
 }
 
 // truncationFlag is `truncated ? { truncated: true } : undefined`, the argument interactive-mode.ts:3883 passes.

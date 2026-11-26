@@ -126,11 +126,13 @@ func TestPortWave10NativeSelfUpdate(t *testing.T) {
 		assert.Equal(t, int32(1), downloads.Load())
 	})
 
-	// Port of Pi main e3fa711f4f57aec1e0649fba9fdc182e43afad26 (#12172): refuses updating the Windows managed install from WSL.
+	// Port of Pi main e3fa711f4f57aec1e0649fba9fdc182e43afad26 (#12172): refuses updating the Windows managed install from WSL
+	// before making any network request to the update source.
 	t.Run("rejects updating the Windows managed install from WSL", func(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("non-Windows WSL guard")
 		}
+		newPackageCommandPathsFixture(t)
 		managedRoot := t.TempDir()
 		releasesDir := filepath.Join(managedRoot, "releases", "1.0.0")
 		require.NoError(t, os.MkdirAll(releasesDir, 0o755))
@@ -139,9 +141,22 @@ func TestPortWave10NativeSelfUpdate(t *testing.T) {
 		writeStartupFixtureFile(t, filepath.Join(managedRoot, "managed-install.json"),
 			`{"kind":"pi-managed-install","schemaVersion":1,"layout":"releases-v1","entrypoint":{"type":"script","path":"C:\\Users\\user\\.pi\\agent\\bin\\pi.cmd"}}`+"\r\n")
 		t.Setenv("PI_MANAGED_INSTALL_ROOT", managedRoot)
-		err := codingagent.CheckWindowsManagedInstallFromWSL(exe)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "Running the Windows installation from WSL is unsupported")
+		restoreExe := codingagent.SetSelfUpdateExecutableForTest(func() (string, error) { return exe, nil })
+		t.Cleanup(restoreExe)
+
+		var requests atomic.Int32
+		server := signedManifestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			requests.Add(1)
+			_, _ = fmt.Fprintf(w, `{"version":"99.0.0","packageName":"@pi-in-go/pig","binaries":{}}`)
+		}))
+		t.Cleanup(server.Close)
+		t.Setenv("PIG_UPDATE_URL", server.URL)
+
+		stdout, stderr, code := capturePackageCommand(t, "update", "--self")
+		assert.Equal(t, 1, code)
+		assert.Equal(t, int32(0), requests.Load(), "WSL guard must refuse before fetching the update manifest")
+		assert.Empty(t, stdout)
+		assert.Contains(t, stderr, "Running the Windows installation from WSL is unsupported")
 	})
 
 	// upstream: packages/coding-agent/test/package-command-paths.test.ts:695

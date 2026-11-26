@@ -45,3 +45,20 @@ func TestBashExecutionSetCompleteResult(t *testing.T) {
 		})
 	}
 }
+
+func TestBashExecutionSetCompleteWithErrorRendersReason(t *testing.T) {
+	b := NewBashExecutionComponent("seq 3000", nil, false, 1)
+	b.AppendOutput("tail")
+	b.SetCompleteWithError(new(0), false, &TruncationResult{Truncated: true}, "", "ENOSPC: no space left")
+	got := strings.Join(strings.Fields(strings.Join(b.Render(120), " ")), " ")
+	if !strings.Contains(got, "Output truncated. Could not save the full output: ENOSPC: no space left") {
+		t.Fatalf("render = %q, want fullOutputError note", got)
+	}
+
+	b2 := NewBashExecutionComponent("seq 3000", nil, false, 1)
+	b2.SetCompleteWithOutputAndError(new(0), false, true, "tail2", "", "EACCES: open")
+	got2 := strings.Join(strings.Fields(strings.Join(b2.Render(120), " ")), " ")
+	if !strings.Contains(got2, "tail2") || !strings.Contains(got2, "Output truncated. Could not save the full output: EACCES: open") {
+		t.Fatalf("render2 = %q", got2)
+	}
+}

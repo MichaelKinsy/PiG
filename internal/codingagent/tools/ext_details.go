@@ -11,8 +11,9 @@ func (d *BashDetails) ToolResultDetails() any {
 		return nil
 	}
 	return &extension.BashToolDetails{
-		Truncation:     toWireTruncation(d.Truncation),
-		FullOutputPath: d.FullOutputPath,
+		Truncation:      toWireTruncation(d.Truncation),
+		FullOutputPath:  d.FullOutputPath,
+		FullOutputError: d.FullOutputError,
 	}
 }
 

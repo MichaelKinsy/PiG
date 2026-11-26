@@ -308,6 +308,22 @@ func ResolveHeaders(in map[string]string, env map[string]string) map[string]stri
 	return out
 }
 
+// LookupCachedCommand returns a previously cached !command result without
+// executing the command. The bool reports whether the command has already been
+// evaluated and cached (even if it failed and cached an empty value).
+func LookupCachedCommand(config string) (string, bool) {
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
+	entry, hit := cache[config]
+	if !hit {
+		return "", false
+	}
+	if !entry.ok {
+		return "", true
+	}
+	return entry.value, true
+}
+
 // ClearCacheEntry forgets the cached result of one config value, so its next
 // resolution runs the command again.
 func ClearCacheEntry(config string) {

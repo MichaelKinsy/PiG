@@ -701,10 +701,26 @@ var windowsEntrypointPathPattern = lazyregexp.New(`^(?:[A-Za-z]:\\|\\\\)`)
 // fetch or package-manager rebuild runs.
 //
 // Ports packages/coding-agent/src/package-manager-cli.ts (getActiveManagedInstallRoot, #12172).
+// selfUpdateExecutableForTest, when non-nil, overrides the running executable
+// path consulted by CheckWindowsManagedInstallFromWSL("").
+var selfUpdateExecutableForTest func() (string, error)
+
+// SetSelfUpdateExecutableForTest swaps the executable lookup used by
+// CheckWindowsManagedInstallFromWSL when called with an empty path. Test-only.
+func SetSelfUpdateExecutableForTest(fn func() (string, error)) func() {
+	prev := selfUpdateExecutableForTest
+	selfUpdateExecutableForTest = fn
+	return func() { selfUpdateExecutableForTest = prev }
+}
+
 func CheckWindowsManagedInstallFromWSL(exe string) error {
 	if exe == "" {
 		var err error
-		exe, err = linkerexec.Executable()
+		if selfUpdateExecutableForTest != nil {
+			exe, err = selfUpdateExecutableForTest()
+		} else {
+			exe, err = linkerexec.Executable()
+		}
 		if err != nil {
 			return nil
 		}

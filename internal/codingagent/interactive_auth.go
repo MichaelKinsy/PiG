@@ -126,8 +126,8 @@ func (m *InteractiveMode) oauthProviderList(mode string, includeStatus ...bool) 
 			case m.opts.ModelRegistry != nil:
 				status := m.opts.ModelRegistry.GetProviderAuthStatus(all[i].ID)
 				all[i].Status = authSelectorStatus(status, c.Type == ai.CredentialOAuth)
-			case c.Type == ai.CredentialAPIKey && c.Key != "":
-				if resolved, err := auth.Read(context.Background(), all[i].ID); err != nil || resolved == nil || resolved.Key == "" {
+			case c.Type == ai.CredentialAPIKey:
+				if !storedAPIKeyResolvesWithoutNewCommand(c.Key, c.Env) {
 					all[i].Status = tui.AuthSelectorStatusUnresolved()
 				} else {
 					all[i].Status = &ai.AuthCheck{Type: c.Type, Source: string(ai.AuthSourceStored)}

@@ -17,10 +17,10 @@ func TestOutputFilesAreUserOnlyWithoutAUmask(t *testing.T) {
 		t.Fatal(err)
 	}
 	requireUserOnly(t, path)
-	streamPath, f, err := CreateStream("pi-test", ".txt")
-	if err != nil {
-		t.Fatal(err)
+	stream := OpenStream("pi-test", ".txt")
+	res := stream.Close()
+	if !res.Saved() {
+		t.Fatalf("Close() = %+v, want saved", res)
 	}
-	_ = f.Close()
-	requireUserOnly(t, streamPath)
+	requireUserOnly(t, res.Path)
 }

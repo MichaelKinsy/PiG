@@ -35,6 +35,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 	"github.com/MichaelKinsy/PiG/internal/text"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -83,7 +84,7 @@ func OpenExternalEditor(ctx context.Context, initial string, configuredEditor st
 	directory, err := os.MkdirTemp("", "pi-editor-")
 	if err != nil {
 		return initial, &ExternalEditorFailure{
-			Message: fmt.Sprintf("External editor failed: %s; prompt unchanged", err.Error()),
+			Message: fmt.Sprintf("External editor failed: %s; prompt unchanged", nodeerrno.FromPathError(err).Error()),
 			Err:     fmt.Errorf("external editor: tempdir: %w", err),
 		}
 	}
@@ -92,7 +93,7 @@ func OpenExternalEditor(ctx context.Context, initial string, configuredEditor st
 
 	if err := os.WriteFile(tmpPath, []byte(initial), 0o666); err != nil {
 		return initial, &ExternalEditorFailure{
-			Message: fmt.Sprintf("External editor failed: %s; prompt unchanged", err.Error()),
+			Message: fmt.Sprintf("External editor failed: %s; prompt unchanged", nodeerrno.FromPathError(err).Error()),
 			Err:     fmt.Errorf("external editor: write initial: %w", err),
 		}
 	}
@@ -127,7 +128,7 @@ func OpenExternalEditor(ctx context.Context, initial string, configuredEditor st
 	data, err := os.ReadFile(tmpPath)
 	if err != nil {
 		return initial, &ExternalEditorFailure{
-			Message: fmt.Sprintf("External editor failed: %s; prompt unchanged", err.Error()),
+			Message: fmt.Sprintf("External editor failed: %s; prompt unchanged", nodeerrno.FromPathError(err).Error()),
 			Err:     fmt.Errorf("external editor: read result: %w", err),
 		}
 	}

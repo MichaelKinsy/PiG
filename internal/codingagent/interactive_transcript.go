@@ -462,7 +462,7 @@ func (m *InteractiveMode) renderSessionEntryListWithLive(entries []SessionEntry,
 			if truncated {
 				truncationResult = &tui.TruncationResult{Truncated: true}
 			}
-			block.SetComplete(exitCode, cancelled, truncationResult, fullOutputPath, fullOutputError)
+			block.SetCompleteWithError(exitCode, cancelled, truncationResult, fullOutputPath, fullOutputError)
 			m.toolMu.Lock()
 			m.bashOrder = append(m.bashOrder, block)
 			m.toolMu.Unlock()

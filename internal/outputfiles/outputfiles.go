@@ -10,6 +10,7 @@ import (
 	"bufio"
 	"crypto/rand"
 	"encoding/hex"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -31,10 +32,43 @@ func newPath(prefix, extension string) string {
 	return filepath.Join(nodeTmpdir(runtime.GOOS, os.Getenv), prefix+"-"+hex.EncodeToString(id[:])+extension)
 }
 
+// streamTarget is the minimal file surface Stream writes to; *os.File satisfies
+// it, and tests may inject a fault-injecting target via SetStreamOpenerForTest.
+type streamTarget interface {
+	Write([]byte) (int, error)
+	Close() error
+}
+
 // create creates the file exclusively, so it never follows a link someone else
 // placed at the path.
 func create(path string) (*os.File, error) {
 	return os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, Mode)
+}
+
+var (
+	streamOpenerMu sync.RWMutex
+	streamOpener   func(path string) (streamTarget, bool, error)
+)
+
+// SetStreamOpenerForTest replaces the file creation hook used by OpenStream
+// (returning the target, whether a file was created/opened at path, and any
+// open error) and returns a restore function. Test-only.
+func SetStreamOpenerForTest(fn func(path string) (io.WriteCloser, bool, error)) func() {
+	streamOpenerMu.Lock()
+	prev := streamOpener
+	if fn == nil {
+		streamOpener = nil
+	} else {
+		streamOpener = func(path string) (streamTarget, bool, error) {
+			return fn(path)
+		}
+	}
+	streamOpenerMu.Unlock()
+	return func() {
+		streamOpenerMu.Lock()
+		streamOpener = prev
+		streamOpenerMu.Unlock()
+	}
 }
 
 // WriteFile writes data to a new output file and returns its path. A failure
@@ -53,16 +87,6 @@ func WriteFile(prefix, extension string, data []byte) (string, error) {
 		return "", nodeerrno.FromPathError(err)
 	}
 	return path, nil
-}
-
-// CreateStream opens a new output file for streamed output. Like Node's
-// write stream, which reports an open failure asynchronously, it returns the
-// path even when the file could not be created: the error accompanies a nil
-// file and the caller keeps the path.
-func CreateStream(prefix, extension string) (string, *os.File, error) {
-	path := newPath(prefix, extension)
-	f, err := create(path)
-	return path, f, nodeerrno.FromPathError(err)
 }
 
 // StreamResult describes where streamed output ended up: a complete file, or
@@ -87,7 +111,7 @@ func (r StreamResult) Failed() bool { return r.Error != "" }
 type Stream struct {
 	mu      sync.Mutex
 	path    string
-	file    *os.File
+	file    streamTarget
 	writer  *bufio.Writer
 	opened  bool
 	closed  bool
@@ -99,10 +123,24 @@ type Stream struct {
 // Never returns an error; open failures are captured in Result() / Close().
 func OpenStream(prefix, extension string) *Stream {
 	path := newPath(prefix, extension)
-	f, err := create(path)
+	streamOpenerMu.RLock()
+	opener := streamOpener
+	streamOpenerMu.RUnlock()
+	var (
+		f      streamTarget
+		opened bool
+		err    error
+	)
+	if opener != nil {
+		f, opened, err = opener(path)
+	} else {
+		f, err = create(path)
+		opened = err == nil
+	}
 	if err != nil {
 		return &Stream{
 			path:   path,
+			opened: opened,
 			closed: true,
 			failed: nodeerrno.FromPathError(err).Error(),
 		}
@@ -111,7 +149,7 @@ func OpenStream(prefix, extension string) *Stream {
 		path:   path,
 		file:   f,
 		writer: bufio.NewWriter(f),
-		opened: true,
+		opened: opened,
 	}
 }
 

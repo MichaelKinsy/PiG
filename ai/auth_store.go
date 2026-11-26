@@ -451,7 +451,7 @@ func (s *InMemoryAuthStorage) List(ctx context.Context) ([]CredentialInfo, error
 
 // Modify serializes callbacks across providers with isolated input and result snapshots. Cancellation releases the caller immediately, but an active callback keeps its queue position until settlement and cannot commit a canceled write.
 func (s *InMemoryAuthStorage) Modify(ctx context.Context, providerID string, fn func(current *Credential) (*Credential, error)) (*Credential, error) {
-	var result *Credential
+	var result, written *Credential
 	if err := s.withLockAsync(ctx, func() error {
 		var current *Credential
 		if credential, ok := s.credentials.values[providerID]; ok {
@@ -470,12 +470,13 @@ func (s *InMemoryAuthStorage) Modify(ctx context.Context, providerID string, fn 
 		}
 		s.credentials.set(providerID, cloneCredential(*next))
 		result = new(cloneCredential(*next))
+		written = result
 		return nil
 	}); err != nil {
 		return nil, err
 	}
-	if result != nil && result.Type == CredentialAPIKey && result.Key != "" {
-		configvalue.ClearCacheEntry(result.Key)
+	if written != nil && written.Type == CredentialAPIKey && written.Key != "" {
+		configvalue.ClearCacheEntry(written.Key)
 	}
 	return result, nil
 }

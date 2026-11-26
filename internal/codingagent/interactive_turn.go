@@ -790,11 +790,12 @@ func (m *InteractiveMode) handleBashCommand(ctx context.Context, command string,
 
 func userBashResultOverride(override any) BashResult {
 	var result struct {
-		Output         string  `json:"output"`
-		ExitCode       *int    `json:"exitCode"`
-		Cancelled      bool    `json:"cancelled"`
-		Truncated      bool    `json:"truncated"`
-		FullOutputPath *string `json:"fullOutputPath"`
+		Output          string  `json:"output"`
+		ExitCode        *int    `json:"exitCode"`
+		Cancelled       bool    `json:"cancelled"`
+		Truncated       bool    `json:"truncated"`
+		FullOutputPath  *string `json:"fullOutputPath"`
+		FullOutputError *string `json:"fullOutputError"`
 	}
 	if encoded, err := json.Marshal(override); err == nil {
 		_ = json.Unmarshal(encoded, &result)
@@ -802,6 +803,9 @@ func userBashResultOverride(override any) BashResult {
 	res := BashResult{Output: result.Output, ExitCode: result.ExitCode, Cancelled: result.Cancelled, Truncated: result.Truncated}
 	if result.FullOutputPath != nil {
 		res.FullOutputPath = *result.FullOutputPath
+	}
+	if result.FullOutputError != nil {
+		res.FullOutputError = *result.FullOutputError
 	}
 	return res
 }
@@ -819,7 +823,7 @@ func (m *InteractiveMode) finishUserBash(ctx context.Context, handle Interactive
 		if recordErr != nil && !eventResult {
 			block.SetComplete(nil, false, nil, "")
 		} else {
-			block.SetCompleteWithOutput(res.ExitCode, res.Cancelled, res.Truncated, res.Output, res.FullOutputPath, res.FullOutputError)
+			block.SetCompleteWithOutputAndError(res.ExitCode, res.Cancelled, res.Truncated, res.Output, res.FullOutputPath, res.FullOutputError)
 		}
 		if recordErr != nil {
 			if eventResult {
