@@ -285,8 +285,8 @@ func (t anthTool) wire() (anthToolWire, error) {
 // anthLegacyInputSchemaOrder is the member order of the literal { type, properties, required } (anthropic-messages.ts:1589-1593, :207).
 var anthLegacyInputSchemaOrder = []string{"type", "properties", "required"}
 
-// anthLegacyOptionalRootKeys are the root members the legacy literal appends after required, in order, when present: additionalProperties, $defs and definitions (anthropic-messages.ts convertTools).
-var anthLegacyOptionalRootKeys = []string{"additionalProperties", "$defs", "definitions"}
+// anthLegacyOptionalRootKeys are the root members the legacy literal appends after required, in order, when present: additionalProperties, $schema, $defs and definitions (anthropic-messages.ts convertTools).
+var anthLegacyOptionalRootKeys = []string{"additionalProperties", "$schema", "$defs", "definitions"}
 
 // deferredToolPlaceholder mirrors upstream DEFERRED_TOOL_PLACEHOLDER: a stable
 // deferred tool declared whenever native tool changes are in use. Anthropic adds

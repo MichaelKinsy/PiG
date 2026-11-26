@@ -285,3 +285,17 @@ func TestAnthropicCopilotStrictToolsSerializedRequest(t *testing.T) {
 		assertShapeJSON(t, got[1].InputSchema, legacySchema)
 	})
 }
+
+// Port of Pi main 4245b07b499c0dca35983aef72f03f4e09496b58 (#12212).
+func TestAnthropicNonStrictToolPreservesDeclaredDialect(t *testing.T) {
+	raw := `{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","properties":{"pair":{"type":"array","items":[{"type":"string"},{"type":"string"}],"minItems":2,"maxItems":2}},"required":["pair"]}`
+	tool := anthropicStrictTestCapture(t, anthropicStrictTool(t, raw, false))
+	if _, hasStrict := tool["strict"]; hasStrict {
+		t.Fatalf("expected non-strict tool, got strict=%v", tool["strict"])
+	}
+	gotSchema, err := json.Marshal(tool["input_schema"])
+	if err != nil {
+		t.Fatalf("marshal input_schema: %v", err)
+	}
+	assertShapeJSON(t, gotSchema, `{"type":"object","properties":{"pair":{"type":"array","items":[{"type":"string"},{"type":"string"}],"minItems":2,"maxItems":2}},"required":["pair"],"$schema":"http://json-schema.org/draft-07/schema#"}`)
+}
