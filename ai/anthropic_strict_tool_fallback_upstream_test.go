@@ -131,7 +131,8 @@ func TestAnthropicPreferredStrictToolFallbackUpstream(t *testing.T) {
 				}
 				return strictFallbackReply{http.StatusOK, strictFallbackSuccess()}
 			})
-			payloadHooks, responses := 0, 0
+			payloadHooks := 0
+			var responseStatuses []int
 			result, events := strictFallbackRun(t, h.provider("test-key", ModelCompat{}), strictFallbackContext(strictFallbackTool(t, "preferred", "prefer"), strictFallbackTool(t, "required", "require"), strictFallbackTool(t, "ordinary", "")), StreamOptions{
 				CacheRetention: CacheRetentionLong,
 				OnPayload: func(payload any, _ *Model) (any, error) {
@@ -142,7 +143,7 @@ func TestAnthropicPreferredStrictToolFallbackUpstream(t *testing.T) {
 					params["inference_geo"], params["stream"] = "us", false
 					return params, nil
 				},
-				OnResponse: func(context.Context, ProviderResponse, *Model) error { responses++; return nil },
+				OnResponse: func(_ context.Context, r ProviderResponse, _ *Model) error { responseStatuses = append(responseStatuses, r.Status); return nil },
 			})
 			if result.StopReason != StopReasonStop {
 				t.Fatalf("stop = %s (%s)", result.StopReason, result.ErrorMessage)
@@ -151,8 +152,9 @@ func TestAnthropicPreferredStrictToolFallbackUpstream(t *testing.T) {
 				t.Fatalf("events = %v", events)
 			}
 			payloads := h.requests()
-			if len(payloads) != 2 || payloadHooks != 2 || responses != 1 {
-				t.Fatalf("payloads = %d, onPayload = %d, onResponse = %d", len(payloads), payloadHooks, responses)
+			// The rejected request and the fallback each report their response (#12376, Pi 8a57d42a5).
+			if len(payloads) != 2 || payloadHooks != 2 || !reflect.DeepEqual(responseStatuses, []int{400, 200}) {
+				t.Fatalf("payloads = %d, onPayload = %d, onResponse = %v", len(payloads), payloadHooks, responseStatuses)
 			}
 			first, second := strictFallbackTools(payloads[0]), strictFallbackTools(payloads[1])
 			schema := first[0]["input_schema"].(map[string]any)

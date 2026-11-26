@@ -1883,9 +1883,15 @@ func (p *openAIResponsesProvider) streamResponse(ctx context.Context, httpReq *h
 	var resp *http.Response
 	var err error
 	var releaseRequest context.CancelFunc
+	responseModel := &Model{ID: p.cfg.Model, ProviderMeta: ProviderMetadata{ProviderID: p.cfg.ProviderID, API: p.api()}}
 	if p.cfg.Codex {
 		resp, releaseRequest, err = p.doCodexSSERequest(httpReq, opts)
 	} else {
+		if opts.OnResponse != nil {
+			httpReq = httpReq.WithContext(withRetryErrorResponse(httpReq.Context(), func(r *http.Response) error {
+				return observeProviderResponse(ctx, opts, r, responseModel)
+			}))
+		}
 		resp, err = providerHTTPClient(p.client, opts.Fetch).Do(httpReq)
 	}
 	if err != nil {
@@ -1906,6 +1912,11 @@ func (p *openAIResponsesProvider) streamResponse(ctx context.Context, httpReq *h
 	builder.managed = builder.managed || p.cfg.Codex
 	return builder.responseTurn(func() error {
 		if resp.StatusCode != http.StatusOK {
+			if !p.cfg.Codex {
+				if obsErr := observeProviderResponse(ctx, opts, resp, responseModel); obsErr != nil {
+					return obsErr
+				}
+			}
 			b, _ := readWebText(resp.Body)
 			if p.cfg.Codex {
 				return fmt.Errorf("openai-responses: HTTP %d: %s", resp.StatusCode, string(b))

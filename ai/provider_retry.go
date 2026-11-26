@@ -237,6 +237,8 @@ type ProviderRetryOptions struct {
 	MaxRetryDelayMs *int
 	// NoRetryStatuses are HTTP statuses that fail at once although the default policy would retry them.
 	NoRetryStatuses []int
+	// OnErrorResponse is called for each failed attempt carrying an HTTP status, before the retry decision.
+	OnErrorResponse func(ProviderResponse) error
 }
 
 // errProviderRequestAborted is provider-retry.ts createAbortError: an Error named AbortError.
@@ -265,6 +267,15 @@ func RetryProviderRequest[T any](ctx context.Context, request func() (T, error),
 			return zero, errProviderRequestAborted
 		}
 		failure, ok := errors.AsType[ProviderRequestError](err)
+		if ok && failure.ProviderStatus() != nil && options.OnErrorResponse != nil {
+			headers := map[string]string{}
+			if rawHeaders := failure.ProviderHeaders(); rawHeaders != nil {
+				headers = headersToRecord(rawHeaders)
+			}
+			if cbErr := options.OnErrorResponse(ProviderResponse{Status: *failure.ProviderStatus(), Headers: headers}); cbErr != nil {
+				return zero, cbErr
+			}
+		}
 		if retriesRemaining <= 0 || !ok {
 			return zero, err
 		}
@@ -295,6 +306,18 @@ func RetryProviderRequest[T any](ctx context.Context, request func() (T, error),
 // request and its response headers: the RoundTrip boundary, which for a
 // streaming response returns before the SSE body is read, matching upstream
 // wrapping only `create().withResponse()`. Mid-stream errors are not retried.
+type retryErrorResponseKey struct{}
+
+// withRetryErrorResponse attaches a callback invoked by retryTransport on each non-2xx HTTP response
+// consumed by a retry attempt (before the retry delay). The final non-2xx response returned to the
+// caller is observed by the caller itself.
+func withRetryErrorResponse(ctx context.Context, fn func(*http.Response) error) context.Context {
+	if fn == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, retryErrorResponseKey{}, fn)
+}
+
 type retryTransport struct {
 	base http.RoundTripper
 	// onRetryResponse observes responses consumed by retry handling rather than returned to the caller.
@@ -347,10 +370,18 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 			return resp, err
 		}
 
-		if resp != nil && t.onRetryResponse != nil {
-			if observeErr := t.onRetryResponse(resp); observeErr != nil {
-				drainClose(resp)
-				return nil, observeErr
+		if resp != nil {
+			if observeErrFn, ok := req.Context().Value(retryErrorResponseKey{}).(func(*http.Response) error); ok && observeErrFn != nil {
+				if observeErr := observeErrFn(resp); observeErr != nil {
+					drainClose(resp)
+					return nil, observeErr
+				}
+			}
+			if t.onRetryResponse != nil {
+				if observeErr := t.onRetryResponse(resp); observeErr != nil {
+					drainClose(resp)
+					return nil, observeErr
+				}
 			}
 		}
 		retryIndex := maxRetries - retriesRemaining

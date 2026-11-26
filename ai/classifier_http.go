@@ -100,7 +100,7 @@ type classifierResponse struct {
 
 // classifierPost sends one JSON POST attempt with its own timeout. A response that is not 2xx is a
 // ClassifierHTTPError carrying its body.
-func classifierPost(ctx context.Context, options ClassifierOptions, label, target string, headers map[string]string, body []byte) (classifierResponse, error) {
+func classifierPost(ctx context.Context, options ClassifierOptions, label, target string, headers map[string]string, body []byte, observeModel *ClassifierModel) (classifierResponse, error) {
 	attemptCtx, cancel := ctx, context.CancelFunc(func() {})
 	if options.TimeoutMs != nil {
 		attemptCtx, cancel = context.WithTimeout(ctx, timeoutDuration(*options.TimeoutMs))
@@ -133,6 +133,12 @@ func classifierPost(ctx context.Context, options ClassifierOptions, label, targe
 		return fail(err)
 	}
 	defer func() { _ = response.Body.Close() }()
+	// Reported before the body is read, so a body that fails to arrive still reports its status.
+	if observeModel != nil && options.OnResponse != nil {
+		if obsErr := options.OnResponse(ProviderResponse{Status: response.StatusCode, Headers: headersToRecord(response.Header)}, *observeModel); obsErr != nil {
+			return classifierResponse{}, obsErr
+		}
+	}
 	data, err := io.ReadAll(response.Body)
 	if err != nil {
 		return fail(err)
@@ -166,7 +172,7 @@ func PostClassifierRequest(ctx context.Context, label, target string, model Clas
 	}
 	headers := providerHeadersToRecord(identityProviderHeaders(ClientIdentityTarget{Provider: model.Provider, BaseURL: model.BaseURL}, options.Identity), ProviderHeadersFromStrings(map[string]string{"authorization": "Bearer " + options.APIKey, "content-type": "application/json"}), ProviderHeadersFromStrings(model.Headers), options.Headers)
 	response, err := retryClassifierRequest(ctx, options, func() (classifierResponse, error) {
-		response, err := classifierPost(ctx, options, label, target, headers, body)
+		response, err := classifierPost(ctx, options, label, target, headers, body, &model)
 		if err == nil {
 			response.body, err = classifierJSONBody(response.body)
 		}
@@ -174,11 +180,6 @@ func PostClassifierRequest(ctx context.Context, label, target string, model Clas
 	}, noRetryStatuses...)
 	if err != nil {
 		return nil, err
-	}
-	if options.OnResponse != nil {
-		if err := options.OnResponse(ProviderResponse{Status: response.status, Headers: headersToRecord(response.headers)}, model); err != nil {
-			return nil, err
-		}
 	}
 	return response.body, nil
 }

@@ -1143,6 +1143,13 @@ func (p *googleProvider) Stream(ctx context.Context, transcript TranscriptContex
 	// @google/genai does not retry, so retryGoogleRequest is the only retry layer: the transport retry is off for each attempt, and the
 	// request's retry budget (the per-request override, else retry.provider) moves to retryGoogleRequest.
 	retryOptions := providerRetryStreamOptions(requestContext, opts)
+	if retryOptions.OnResponse != nil {
+		googleModel := providerEventModel(p.cfg.ModelMetadata, p.cfg.api, p.cfg.ProviderID, p.cfg.Model)
+		userOnResp := retryOptions.OnResponse
+		retryOptions.OnResponse = func(cbCtx context.Context, r ProviderResponse, _ *Model) error {
+			return userOnResp(cbCtx, r, googleModel)
+		}
+	}
 	attemptContext := WithProviderMaxRetries(requestContext, 0)
 	resp, err := RetryGoogleRequest(requestContext, func() (*http.Response, error) { //nolint:bodyclose // the attempt returns the open response and the SSE goroutine below closes its body
 		httpReq, err := newFetchRequest(attemptContext, http.MethodPost, endpoint, body.reader(), false)
@@ -1687,7 +1694,16 @@ func RetryGoogleRequest[T any](ctx context.Context, request func() (T, error), o
 			}
 		}
 		return value, err
-	}, ProviderRetryOptions{MaxRetries: opts.MaxRetries, MaxRetryDelayMs: opts.MaxRetryDelayMs})
+	}, ProviderRetryOptions{
+		MaxRetries:      opts.MaxRetries,
+		MaxRetryDelayMs: opts.MaxRetryDelayMs,
+		OnErrorResponse: func(r ProviderResponse) error {
+			if opts.OnResponse == nil {
+				return nil
+			}
+			return opts.OnResponse(ctx, r, nil)
+		},
+	})
 	if wrapped := (googleHeaderlessError{}); errors.As(err, &wrapped) {
 		return value, wrapped.googleStatusError
 	}
