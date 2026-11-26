@@ -308,6 +308,14 @@ func ResolveHeaders(in map[string]string, env map[string]string) map[string]stri
 	return out
 }
 
+// ClearCacheEntry forgets the cached result of one config value, so its next
+// resolution runs the command again.
+func ClearCacheEntry(config string) {
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
+	delete(cache, config)
+}
+
 // ClearCache wipes the !cmd cache. Test-only.
 func ClearCache() {
 	cacheMu.Lock()

@@ -1658,6 +1658,10 @@ func (r *ModelRegistry) GetProviderAuthStatus(providerID string) ai.AuthStatus {
 	if r.credentialStore != nil {
 		fallback = ai.CredentialStoreAuthStatus(context.Background(), r.credentialStore, providerID)
 		if fallback.Source == ai.AuthSourceStored {
+			// A stored credential owns the provider, so it is configured only when it resolves (#12164).
+			if cred, err := r.credentialStore.Read(context.Background(), providerID); err != nil || cred == nil || (cred.Type == ai.CredentialAPIKey && cred.Key == "") {
+				return ai.AuthStatus{Configured: false, Source: ai.AuthSourceStored}
+			}
 			return fallback
 		}
 	}

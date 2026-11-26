@@ -259,7 +259,7 @@ func (a *AuthStorage) Modify(ctx context.Context, providerID string, fn func(cur
 		return nil, err
 	}
 	defer a.mu.Unlock()
-	var result, held *Credential
+	var result, held, written *Credential
 	err := a.withFileLock(ctx, true, func(lock *pilock.Lock) error {
 		// The lock's context carries a heartbeat compromise as its cause, which withLockAsync's throwIfCompromised throws before the caller's abort (auth-storage.ts:168-172,180-184).
 		ctx := lock.Context()
@@ -308,9 +308,13 @@ func (a *AuthStorage) Modify(ctx context.Context, providerID string, fn func(cur
 			return err
 		}
 		result = new(cloneCredential(*next))
+		written = result
 		return nil
 	})
 	if err != nil || held == nil {
+		if err == nil && written != nil && written.Type == CredentialAPIKey && written.Key != "" {
+			configvalue.ClearCacheEntry(written.Key)
+		}
 		return result, err
 	}
 	// Persist that provider's entry alone into whatever auth.json holds now, so what the other holder wrote in the meantime stays.
@@ -327,6 +331,9 @@ func (a *AuthStorage) Modify(ctx context.Context, providerID string, fn func(cur
 	})
 	if err != nil {
 		return nil, err
+	}
+	if held.Type == CredentialAPIKey && held.Key != "" {
+		configvalue.ClearCacheEntry(held.Key)
 	}
 	return held, nil
 }
@@ -466,6 +473,9 @@ func (s *InMemoryAuthStorage) Modify(ctx context.Context, providerID string, fn 
 		return nil
 	}); err != nil {
 		return nil, err
+	}
+	if result != nil && result.Type == CredentialAPIKey && result.Key != "" {
+		configvalue.ClearCacheEntry(result.Key)
 	}
 	return result, nil
 }

@@ -162,3 +162,25 @@ func TestAuthStorageFirstHalfUpstream(t *testing.T) {
 		}
 	})
 }
+
+// Port of Pi main 71356387090d5f8060dc1837890d3d01b5b314ad (#12164): a failed command stays cached until the key is saved again.
+func TestAuthStorageCommandBackedKeyRunsAgainAfterSaveUpstream(t *testing.T) {
+	name := "PI_TEST_AUTH_STORAGE_COMMAND_RERUN"
+	t.Setenv(name, "")
+	if err := os.Unsetenv(name); err != nil {
+		t.Fatal(err)
+	}
+	cred := Credential{Type: CredentialAPIKey, Key: "!printenv " + name}
+	store, _ := authReloadFile(t, `{"anthropic":{"type":"api_key","key":"!printenv `+name+`"}}`)
+	authReloadRead(t, store, "anthropic", &Credential{Type: CredentialAPIKey, Key: ""})
+	t.Setenv(name, "command-key")
+	// Still cached from the earlier failed run.
+	authReloadRead(t, store, "anthropic", &Credential{Type: CredentialAPIKey, Key: ""})
+	// Saving the same command-backed key clears its cache entry.
+	if _, err := store.Modify(t.Context(), "anthropic", func(*Credential) (*Credential, error) {
+		return &cred, nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	authReloadRead(t, store, "anthropic", &Credential{Type: CredentialAPIKey, Key: "command-key"})
+}

@@ -122,7 +122,18 @@ func (m *InteractiveMode) oauthProviderList(mode string, includeStatus ...bool) 
 	}
 	for i := range all {
 		if c, ok := creds[all[i].ID]; ok {
-			all[i].Status = &ai.AuthCheck{Type: c.Type, Source: string(ai.AuthSourceStored)}
+			if m.opts.ModelRegistry != nil {
+				status := m.opts.ModelRegistry.GetProviderAuthStatus(all[i].ID)
+				all[i].Status = authSelectorStatus(status, c.Type == ai.CredentialOAuth)
+			} else if c.Type == ai.CredentialAPIKey && c.Key != "" {
+				if resolved, err := auth.Read(context.Background(), all[i].ID); err != nil || resolved == nil || resolved.Key == "" {
+					all[i].Status = tui.AuthSelectorStatusUnresolved()
+				} else {
+					all[i].Status = &ai.AuthCheck{Type: c.Type, Source: string(ai.AuthSourceStored)}
+				}
+			} else {
+				all[i].Status = &ai.AuthCheck{Type: c.Type, Source: string(ai.AuthSourceStored)}
+			}
 		}
 		if all[i].Status == nil {
 			if store, ok := oauthCredentialStore(all[i].ID); ok {
@@ -992,6 +1003,9 @@ func (m *InteractiveMode) loginDeviceID() string {
 // sourced from the status label, else its source (interactive-mode.ts:5790-5796). It returns an untyped nil, not a nil pointer in the interface.
 func authSelectorStatus(status ai.AuthStatus, usingOAuth bool) tui.AuthCheck {
 	if !status.Configured {
+		if status.Source == ai.AuthSourceStored {
+			return tui.AuthSelectorStatusUnresolved()
+		}
 		return nil
 	}
 	check := &ai.AuthCheck{Type: ai.CredentialAPIKey, Source: status.Label}

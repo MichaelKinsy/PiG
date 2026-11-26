@@ -119,6 +119,13 @@ func TestStalledAvailabilityRefreshUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/suite/regressions/7301-stalled-availability-refresh.test.ts:70
 	runAvailabilityCase(t, "recovers without letting the stalled refresh overwrite the newer snapshot", func(t *testing.T) {
 		session, services := newAvailabilitySession(t)
+		for _, id := range []string{"stale-provider", "current-provider"} {
+			services.Registry().RegisterExtensionProvider(id, extension.ProviderConfig{
+				API:     "openai-completions",
+				BaseURL: "https://example.test/v1",
+				Models:  []extension.ProviderModelConfig{{ID: "model", Name: "Model", Input: []string{"text"}, ContextWindow: 128000, MaxTokens: 4096}},
+			})
+		}
 		runtime := session.ModelRuntime()
 		if _, err := services.Auth().Modify(t.Context(), "stale-provider", func(*ai.Credential) (*ai.Credential, error) {
 			return &ai.Credential{Type: ai.CredentialAPIKey, Key: "stale-key"}, nil
@@ -217,4 +224,43 @@ func TestStalledAvailabilityRefreshUpstream(t *testing.T) {
 		}
 		fmt.Println("AVAILABILITY_PROVIDER_FAILURE stale error returned; current error absent")
 	})
+}
+
+// Port of Pi main 585648aafcd32d04ccda50c340863aef15276624 & 71356387090d5f8060dc1837890d3d01b5b314ad (#12164).
+func TestStoredCommandKeyAuthStatusUpstream(t *testing.T) {
+	dir := t.TempDir()
+	providers := map[string]any{
+		"failing-command": map[string]any{
+			"baseUrl": "https://example.test/v1",
+			"api":     "openai-completions",
+			"models":  []map[string]any{{"id": "model"}},
+		},
+		"working-command": map[string]any{
+			"baseUrl": "https://example.test/v1",
+			"api":     "openai-completions",
+			"models":  []map[string]any{{"id": "model"}},
+		},
+	}
+	services := registryTestServices(t, dir, providers)
+	runtime := services.ModelRuntime()
+	if _, err := services.Auth().Modify(t.Context(), "failing-command", func(*ai.Credential) (*ai.Credential, error) {
+		return &ai.Credential{Type: ai.CredentialAPIKey, Key: "!exit 1"}, nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := services.Auth().Modify(t.Context(), "working-command", func(*ai.Credential) (*ai.Credential, error) {
+		return &ai.Credential{Type: ai.CredentialAPIKey, Key: "!echo key"}, nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	runtime.Refresh(t.Context(), ai.ModelsRefreshOptions{AllowNetwork: new(false)})
+
+	requireAvailabilityAuth(t, runtime, "failing-command", ai.AuthStatus{Configured: false, Source: ai.AuthSourceStored})
+	if runtime.HasConfiguredAuth("failing-command") {
+		t.Fatal("HasConfiguredAuth(failing-command) = true, want false")
+	}
+	requireAvailabilityAuth(t, runtime, "working-command", ai.AuthStatus{Configured: true, Source: ai.AuthSourceStored})
+	if !runtime.HasConfiguredAuth("working-command") {
+		t.Fatal("HasConfiguredAuth(working-command) = false, want true")
+	}
 }
