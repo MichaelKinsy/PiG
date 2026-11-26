@@ -63,7 +63,7 @@ func builtinTypedBase(id string, fallback ai.ModelsStreamFunction) *ai.ModelsPro
 		}
 		return []*ai.Model{}
 	}
-	base := &ai.ModelsProvider{ID: id, Name: ai.ProviderDisplayName(id), BaseURL: ai.ProviderBaseURL(id), Auth: auth, GetModels: func() ([]*ai.Model, error) { return chatModels(), nil }, FilterAllModels: ai.BuiltinFilterAllModels(id), Stream: fallback, StreamSimple: fallback}
+	base := &ai.ModelsProvider{ID: id, Name: ai.ProviderDisplayName(id), BaseURL: ai.ProviderBaseURL(id), Auth: auth, GetModels: func() ([]*ai.Model, error) { return chatModels(), nil }, FilterModels: ai.BuiltinFilterModels(id), FilterAllModels: ai.BuiltinFilterAllModels(id), Stream: fallback, StreamSimple: fallback}
 	base.GetAllModels = func() ([]ai.AnyModel, error) {
 		all := ai.AnyModels(chatModels())
 		for _, image := range images {
@@ -231,7 +231,7 @@ func (r *ModelRegistry) availableProviderAllModels(ctx context.Context, id strin
 		return nil, err
 	}
 	models := r.GetProviderAllModelData(id)
-	if filterAll := ai.BuiltinFilterAllModels(id); filterAll != nil {
+	if filterAll := ai.BuiltinFilterAllModels(id); filterAll != nil && r.NativeProvider(id) == nil {
 		var credential *ai.Credential
 		r.mu.RLock()
 		store := r.credentialStore

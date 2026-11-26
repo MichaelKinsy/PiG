@@ -1,9 +1,11 @@
 package coding
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -126,4 +128,107 @@ func TestModelRuntimeRadiusClassifierListingAndClassify(t *testing.T) {
 	if len(res.Answers) != 1 || res.Answers[0].Answer != (ai.ClassifierBoolAnswer{Probability: 0.88}) {
 		t.Fatalf("unexpected answers: %+v", res.Answers)
 	}
+}
+
+// N1: Verify Radius typed provider keeps OAuth Login wired and reaches the Radius OAuth flow.
+func TestModelRuntimeRadiusOAuthLoginPresent(t *testing.T) {
+	services, _ := nativeCompatServices(t, "", nil)
+	runtime := services.ModelRuntime()
+	provider := runtime.GetProvider("radius")
+	if provider == nil {
+		t.Fatal("radius provider is nil")
+	}
+	if provider.Auth.OAuth == nil || provider.Auth.OAuth.Login == nil {
+		t.Fatalf("radius Auth.OAuth.Login is nil (OAuth=%+v)", provider.Auth.OAuth)
+	}
+	// Invoking Login with an immediately canceled context proves it enters the Radius OAuth flow
+	// rather than failing with "does not support oauth login".
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	_, err := provider.Auth.OAuth.Login(ctx, ai.AuthInteraction{}, ai.LoginOptions{})
+	if err == nil {
+		t.Fatal("expected canceled error from Radius OAuth login")
+	}
+	if strings.Contains(err.Error(), "does not support") {
+		t.Fatalf("unexpected unsupported error: %v", err)
+	}
+}
+
+// N2 & N6: Verify BuiltinFilterModels is wired on the typed Copilot base and extension-registered
+// provider objects keep their own availability snapshot instead of being overridden by builtinFilterAllModels.
+func TestModelRuntimeCopilotFilterModelsAndExtensionPrecedence(t *testing.T) {
+	t.Run("typed github-copilot provider exposes both FilterModels and FilterAllModels (N6)", func(t *testing.T) {
+		services, _ := nativeCompatServices(t, "", nil)
+		provider := services.ModelRuntime().GetProvider("github-copilot")
+		if provider == nil {
+			t.Fatal("github-copilot provider is nil")
+		}
+		if provider.FilterModels == nil || provider.FilterAllModels == nil {
+			t.Fatalf("expected both FilterModels and FilterAllModels on github-copilot, got FilterModels=%v FilterAllModels=%v", provider.FilterModels != nil, provider.FilterAllModels != nil)
+		}
+		cred := &ai.Credential{
+			Type:              ai.CredentialOAuth,
+			AvailableModelIDs: json.RawMessage(`["gpt-6-luna"]`),
+		}
+		filtered := provider.FilterModels([]*ai.Model{{ID: "gpt-6-luna"}, {ID: "gpt-4o"}}, cred)
+		if len(filtered) != 1 || filtered[0].ID != "gpt-6-luna" {
+			t.Fatalf("FilterModels = %+v, want [gpt-6-luna]", filtered)
+		}
+	})
+
+	t.Run("openai OAuth credential hides gpt-6-luna classifier in coding agent (L5)", func(t *testing.T) {
+		services, _ := nativeCompatServices(t, "", map[string]ai.Credential{
+			"openai": {
+				Type:    ai.CredentialOAuth,
+				Access:  "oauth-tok",
+				Refresh: "refresh",
+				Expires: time.Now().UnixMilli() + 3_600_000,
+			},
+		})
+		avail, err := services.ModelRuntime().GetAvailableOfType(t.Context(), ai.ModelTypeClassifier, "openai")
+		if err != nil {
+			t.Fatalf("GetAvailableOfType(openai): %v", err)
+		}
+		for _, m := range avail {
+			if m.ModelID() == "gpt-6-luna" {
+				t.Fatalf("expected openai OAuth login to hide gpt-6-luna classifier, got %v", avail)
+			}
+		}
+	})
+
+	t.Run("extension provider registered over openai keeps its own availability instead of builtinFilterAllModels (N2)", func(t *testing.T) {
+		services, _ := nativeCompatServices(t, "", map[string]ai.Credential{
+			"openai": {
+				Type:    ai.CredentialOAuth,
+				Access:  "oauth-tok",
+				Refresh: "refresh",
+				Expires: time.Now().UnixMilli() + 3_600_000,
+			},
+		})
+		customCls := &ai.ClassifierModel{
+			ID:       "ext-openai-cls",
+			Name:     "Ext OpenAI Classifier",
+			API:      ai.ClassifierAPIPiDecision,
+			Provider: "openai",
+			BaseURL:  "https://ext.example/v1",
+			Input:    []string{"text"},
+		}
+		if err := services.ModelRuntime().RegisterNativeProvider(&ai.ModelsProvider{
+			ID:           "openai",
+			Name:         "Ext OpenAI",
+			Auth:         ai.ProviderAuth{APIKey: ai.EnvAPIKeyAuth("OPENAI_API_KEY", "OPENAI_API_KEY")},
+			GetModels:    func() ([]*ai.Model, error) { return []*ai.Model{}, nil },
+			GetAllModels: func() ([]ai.AnyModel, error) { return []ai.AnyModel{customCls}, nil },
+		}); err != nil {
+			t.Fatalf("RegisterNativeProvider: %v", err)
+		}
+		services.Registry().SetRuntimeAPIKey("openai", "ext-key")
+		avail, err := services.ModelRuntime().GetAvailableOfType(t.Context(), ai.ModelTypeClassifier, "openai")
+		if err != nil {
+			t.Fatalf("GetAvailableOfType(ext openai): %v", err)
+		}
+		if len(avail) != 1 || avail[0].ModelID() != "ext-openai-cls" {
+			t.Fatalf("expected extension provider classifier preserved, got %v", avail)
+		}
+	})
 }

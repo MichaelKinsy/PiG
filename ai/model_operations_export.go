@@ -49,6 +49,14 @@ func BuiltinFilterAllModels(provider string) func([]AnyModel, *Credential) []Any
 	return builtinFilterAllModels[provider]
 }
 
+// BuiltinFilterModels returns the credential-specific chat availability filter for a built-in provider, or nil if the provider has none.
+func BuiltinFilterModels(provider string) func([]*Model, *Credential) []*Model {
+	if provider == "github-copilot" { //portlint:allow providerliteral providers/github-copilot.ts:52 filterModels
+		return filterGitHubCopilotModels
+	}
+	return nil
+}
+
 // AssertImageModel rejects a model whose type is not image (model-operations.ts assertImageModel).
 func AssertImageModel(model AnyModel) error {
 	if !IsModelType(model, ModelTypeImage) {

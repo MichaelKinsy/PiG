@@ -105,6 +105,7 @@ func newRadiusParts(options RadiusProviderOptions) *RadiusProvider {
 			APIKey: EnvAPIKeyAuth(builtinAPIKeyNames()[RadiusProviderID], getAPIKeyEnvVars(RadiusProviderID)...),
 			OAuth: &OAuthAuth{
 				Name:    name,
+				Login:   oauthNativeLogin(oauth),
 				Refresh: oauthRefresh(oauth),
 				ToAuth:  oauthToAuth(id, oauth),
 			},
