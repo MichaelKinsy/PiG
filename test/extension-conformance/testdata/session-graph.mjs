@@ -176,7 +176,7 @@ const readAll = (s) => ({
     getCacheWarmingMode: orNull(s.getCacheWarmingMode()),
     getWebSocketConnectTimeoutMs: orNull(s.getWebSocketConnectTimeoutMs()),
     getHideThinkingBlock: orNull(s.getHideThinkingBlock()),
-    getShowCacheMissNotices: orNull(s.getShowCacheMissNotices()),
+    getNotices: orNull(s.getNotices()),
     getExternalEditorCommand: orNull(s.getExternalEditorCommand()),
     getShellPath: orNull(s.getShellPath()),
     getQuietStartup: orNull(s.getQuietStartup()),
@@ -324,7 +324,7 @@ async function settingsScript({ cwd, agentDir, configDir, brokenCwd }) {
   s.setShowTerminalProgress(true);
   s.setEnableSkillCommands(false);
   s.setEnableInstallTelemetry(false);
-  s.setShowCacheMissNotices(false);
+  s.setNotice("cacheMisses", false);
   s.setDefaultModelAndProvider("anthropic", "opus");
   s.setProjectPackages(["npm:proj"]);
   s.setProjectExtensionPaths(["pe"]);

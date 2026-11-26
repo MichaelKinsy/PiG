@@ -5411,7 +5411,7 @@ pub struct ExecOptions {
 
 /// Upstream `ExtensionUIDialogOptions` for the `*_with_options` dialogs.
 /// Cancellation (upstream's `signal`) is the request's own.
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct DialogOptions {
     /// Dismisses the dialog after this many milliseconds. Pi's `timeout` is a JavaScript number: fractional and very large values are meaningful, and only a positive one starts a countdown.
     pub timeout: Option<f64>,
@@ -7289,7 +7289,7 @@ mod sdk_surface_call_tests {
             blocked_kind: None,
         };
         let (call, result) = roundtrip(
-            move |ctx| ctx.select_with_options("Pick", &["a", "b"], &opts),
+            { let opts = opts.clone(); move |ctx| ctx.select_with_options("Pick", &["a", "b"], &opts) },
             ok(Some(json!({"selected": "b", "ok": true}))),
         );
         assert_eq!(call.method, "ui.select");
@@ -7300,7 +7300,7 @@ mod sdk_surface_call_tests {
         assert_eq!(result.unwrap(), ("b".to_string(), true));
 
         let (call, result) = roundtrip(
-            move |ctx| ctx.confirm_with_options("Sure?", "Really", &opts),
+            { let opts = opts.clone(); move |ctx| ctx.confirm_with_options("Sure?", "Really", &opts) },
             ok(Some(json!({"confirmed": true}))),
         );
         assert_eq!(call.method, "ui.confirm");

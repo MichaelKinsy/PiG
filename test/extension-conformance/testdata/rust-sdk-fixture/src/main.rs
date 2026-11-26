@@ -2266,6 +2266,7 @@ fn main() {
                 &["a"],
                 &pig_sdk::DialogOptions {
                     timeout: Some(1500.5),
+                    ..Default::default()
                 },
             ) {
                 Ok(_) => CommandResult::Ok,
