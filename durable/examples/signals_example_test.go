@@ -41,12 +41,24 @@ func TestExample38Signals(t *testing.T) {
 	type greeterTask = durable.RunningTask[any, greeterState, string]
 	type greeterNext = durable.NextTaskState[greeterState, string]
 	var greeterLines printed
+	// In Go the scheduler runs on another goroutine as soon as step 1 calls Harness.Signal;
+	// hold the first greeter in "work" until steps 2-4 have delivered their probes against the
+	// live task so it cannot race to terminal before step 3 ("bad value: invalid").
+	releaseFirst := make(chan struct{})
+	var firstId durable.TaskId
 	greeter := durable.DefineTask(durable.TaskDefinition[any, greeterState, string, any]{
 		Name:    "example.greeter",
 		Version: 1,
 		Initial: func(any) greeterState { return greeterState{Phase: "work"} },
 		Phases: map[string]durable.PhaseHandler[any, greeterState, string, any]{
-			"work": func(ctx context.Context, _ greeterTask, runtime greeterRuntime) error {
+			"work": func(ctx context.Context, task greeterTask, runtime greeterRuntime) error {
+				if task.Id == firstId {
+					select {
+					case <-releaseFirst:
+					case <-ctx.Done():
+						return ctx.Err()
+					}
+				}
 				return runtime.Commit(ctx, func(durable.Tx, greeterTask) (*greeterNext, error) {
 					return &greeterNext{Status: durable.TaskSleeping, Checkpoint: &greeterState{Phase: "greeted"}, Signals: []durable.SignalKey{greetingSignal.Key("hello")}}, nil
 				})
@@ -88,6 +100,7 @@ func TestExample38Signals(t *testing.T) {
 		})
 	}
 	id := createGreeter()
+	firstId = id
 
 	var script printed
 	// 1. Delivered before the task ran at all: kept in the task. Harness.Signal also starts scheduling.
@@ -101,6 +114,7 @@ func TestExample38Signals(t *testing.T) {
 	script.add("unknown task: " + string(must(harness.Signal(background, opened, 999_999, greetingSignal, "hello", greeting{Text: "?"}))))
 
 	// The sleep finds the early value and wakes at once.
+	close(releaseFirst)
 	script.add("result: " + outcomeText(waitTask(t, opened, id)))
 	// 5. The task ended: every later delivery is `closed`.
 	script.add("after the end: " + string(must(harness.Signal(background, opened, id, greetingSignal, "hello", greeting{Text: "too late"}))))
