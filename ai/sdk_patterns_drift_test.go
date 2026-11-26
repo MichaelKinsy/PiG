@@ -148,7 +148,7 @@ func stripLineComments(section, prefix string) string {
 }
 
 var (
-	goExprLineRe = regexp.MustCompile("(?m)^\\s*(?:lazyregexp\\.NewJSIgnoreCase\\((.+)\\),|(.+),)\\s*$")
+	goExprLineRe = regexp.MustCompile(`(?m)^\s*(?:lazyregexp\.NewJSIgnoreCase\((.+)\),|(.+),)\s*$`)
 	goStrLitRe   = regexp.MustCompile("`([^`]*)`|\"((?:\\\\.|[^\"\\\\])*)\"")
 	pyStrLitRe   = regexp.MustCompile(`r?"((?:\\.|[^"\\])*)"|r'((?:\\.|[^'\\])*)'`)
 	rsStrLitRe   = regexp.MustCompile(`r#"(.*?)"#|r"([^"]*)"|"((?:\\.|[^"\\])*)"`)

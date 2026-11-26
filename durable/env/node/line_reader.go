@@ -78,8 +78,8 @@ func (reader *nodeTextLineReader) bufferedLine() (*durableenv.TextLine, bool) {
 	if reader.ended && reader.start < len(reader.buffered) {
 		text := jsstring.FromUTF8(reader.buffered[reader.start:])
 		reader.buffered = nil
-	reader.start = 0
-	reader.scanned = 0
+		reader.start = 0
+		reader.scanned = 0
 		reader.start = 0
 		reader.scanned = 0
 		return &durableenv.TextLine{Text: text}, true
