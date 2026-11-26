@@ -71,6 +71,9 @@ func TestConformance_SubprocessExtensionsDoNotReceiveOSC7577Token(t *testing.T) 
 				if h.cleanup != nil {
 					h.cleanup()
 				}
+				if h.host != nil {
+					h.host.Shutdown("test done")
+				}
 			})
 			cwd := t.TempDir()
 			h.bridge.SetHostAction("exec", func(ctx context.Context, command string, args []string, opts *extension.ExecOptions) (extension.ExecResult, error) {

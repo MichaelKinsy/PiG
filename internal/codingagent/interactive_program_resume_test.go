@@ -283,12 +283,10 @@ func TestExternalEditorChildDoesNotReceiveOSC7577Token(t *testing.T) {
 		t.Fatalf("TakeProgramResumeToken() = %q, want %q", got, token)
 	}
 	outFile := filepath.Join(t.TempDir(), "editor-env.txt")
-	script := filepath.Join(t.TempDir(), "dump-env.sh")
-	body := "#!/bin/sh\nprintenv OSC7577_TOKEN > " + quoteIfNeeded(outFile) + " 2>&1 || true\n"
-	if err := os.WriteFile(script, []byte(body), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	cmd := editorCommand(context.Background(), script, []string{filepath.Join(t.TempDir(), "prompt.md")})
+	// Reuse the cross-platform TestEditorHelperProcess binary via editorCommand so this runs on Windows as well as Unix.
+	editorBin := editorHelperName(t)
+	t.Setenv(editorHelperEnv, "1")
+	cmd := editorCommand(context.Background(), editorBin, []string{"-test.run=^TestEditorHelperProcess$", "--", "dump-osc7577", outFile, filepath.Join(t.TempDir(), "prompt.md")})
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("editorCommand failed: %v\n%s", err, out)
 	}
@@ -296,7 +294,7 @@ func TestExternalEditorChildDoesNotReceiveOSC7577Token(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read editor env dump: %v", err)
 	}
-	if strings.Contains(string(data), token) || strings.TrimSpace(string(data)) != "" {
-		t.Fatalf("external editor child saw OSC7577_TOKEN: %q", string(data))
+	if got := string(data); got != "present=false;value=" {
+		t.Fatalf("external editor child saw OSC7577_TOKEN: %q, want present=false;value=", got)
 	}
 }

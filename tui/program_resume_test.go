@@ -132,3 +132,34 @@ func TestTakeProgramResumeTokenUpstream(t *testing.T) {
 		}
 	})
 }
+
+func TestIsNodeAbsolutePathForOS(t *testing.T) {
+	cases := []struct {
+		path      string
+		wantPosix bool
+		wantWin   bool
+	}{
+		{"", false, false},
+		{"/", true, true},
+		{"/home/user/project", true, true},
+		{`\`, false, true},
+		{`\foo`, false, true},
+		{`\\server\share`, false, true},
+		{"C:", false, false},
+		{"C:foo", false, false},
+		{`C:\`, false, true},
+		{"C:/", false, true},
+		{`C:\Users\dev`, false, true},
+		{`1:\foo`, false, false},
+		{"./rel", false, false},
+		{"foo", false, false},
+	}
+	for _, tc := range cases {
+		if got := isNodeAbsolutePathForOS(tc.path, "linux"); got != tc.wantPosix {
+			t.Errorf("posix isNodeAbsolutePathForOS(%q) = %v, want %v", tc.path, got, tc.wantPosix)
+		}
+		if got := isNodeAbsolutePathForOS(tc.path, "windows"); got != tc.wantWin {
+			t.Errorf("windows isNodeAbsolutePathForOS(%q) = %v, want %v", tc.path, got, tc.wantWin)
+		}
+	}
+}

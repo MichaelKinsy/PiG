@@ -15,7 +15,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"os"
-	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -116,16 +116,41 @@ func isReportableProgramResumeText(text string) bool {
 	return true
 }
 
+// isNodeAbsolutePath matches Node node:path isAbsolute on the active platform (win32 accepts leading / or \ and drive roots like C:\ or C:/; POSIX accepts leading /).
+func isNodeAbsolutePath(p string) bool {
+	return isNodeAbsolutePathForOS(p, runtime.GOOS)
+}
+
+func isNodeAbsolutePathForOS(p, goos string) bool {
+	if p == "" {
+		return false
+	}
+	if p[0] == '/' {
+		return true
+	}
+	if goos != "windows" {
+		return false
+	}
+	if p[0] == '\\' {
+		return true
+	}
+	//portlint:allow utf16units Windows drive prefix checks only ASCII bytes (A-Z, :, / or \\), which are 1 byte in UTF-8 and 1 unit in UTF-16
+	if len(p) >= 3 && ((p[0] >= 'a' && p[0] <= 'z') || (p[0] >= 'A' && p[0] <= 'Z')) && p[1] == ':' && (p[2] == '\\' || p[2] == '/') {
+		return true
+	}
+	return false
+}
+
 func isReportableProgramResumeCommand(command ProgramResumeCommand) bool {
 	if len(command.Argv) == 0 || len(command.Argv) > programResumeMaxArgvElements {
 		return false
 	}
 	program := command.Argv[0]
 	isBareName := len(program) > 0 && !strings.HasPrefix(program, "-") && !strings.ContainsAny(program, `/\`)
-	if !isBareName && !filepath.IsAbs(program) {
+	if !isBareName && !isNodeAbsolutePath(program) {
 		return false
 	}
-	if command.Cwd != "" && (!filepath.IsAbs(command.Cwd) || !isReportableProgramResumeText(command.Cwd)) {
+	if command.Cwd != "" && (!isNodeAbsolutePath(command.Cwd) || !isReportableProgramResumeText(command.Cwd)) {
 		return false
 	}
 	for _, arg := range command.Argv {

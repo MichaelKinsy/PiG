@@ -1704,6 +1704,7 @@ func getResumeArgs(sessionManager resumeCommandSession) []string {
 	if !sessionManager.persisted || sessionManager.sessionFile == "" {
 		return nil
 	}
+	//perf:ok cold session-switch/exit resume check, matching Pi getResumeArgs fs.existsSync(sessionFile); never runs on render or input hot paths
 	if _, err := os.Stat(sessionManager.sessionFile); err != nil {
 		return nil
 	}
