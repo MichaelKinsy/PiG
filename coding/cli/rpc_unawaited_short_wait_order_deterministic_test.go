@@ -7,10 +7,13 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"path/filepath"
+	"runtime"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -24,10 +27,60 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
-// TestRPCShortWaitOrderPostAwaitNotifyOvertakesReplyDeterministic exercises serveRPCMode through its existing rpcModeOptions / rpcTransport seams with the real Node fixture testdata/rpc-settle-wait.mjs (session_info_changed awaits a TCP peer, then calls ctx.ui.notify).
-// A second command (set_thinking_level) in the same stdin batch uses an in-process thinking_level_select handler to hold commandLoop after set_session_name has woken from <-invoked and queued its RPCResponse on rpcResponseTurn, before inputTurn.End() drains it.
-// While commandLoop is held there (the exact window between <-invoked and inputTurn.End()), releasing the Node handler causes Node to send ui.notify -> readLoop -> handleIncoming -> callLane -> UIBridge -> rpcUI.Notify -> writeImmediate, writing the notification to stdout BEFORE the set_session_name reply -> [effect reply], deterministically on the unchanged code.
-func TestRPCShortWaitOrderPostAwaitNotifyOvertakesReplyDeterministic(t *testing.T) {
+// waitSubprocessCallHeldInPostAckGate observes callLane's hold-or-dispatch decision:
+// it waits until a goroutine is parked in subprocess.(*Host).awaitPostAckGate OR until an unexpected
+// record arrives on records. This distinguishes a held notification from one that proceeded past the gate
+// without relying on a fixed timer.
+func waitSubprocessCallHeldInPostAckGate(t *testing.T, records <-chan rpcRecord, checkUnexpected func(rpcRecord) error) []rpcRecord {
+	t.Helper()
+	deadline := time.After(testbudget.Wait(t))
+	buf := make([]byte, 1<<20)
+	var buffered []rpcRecord
+	for {
+		for {
+			select {
+			case rec := <-records:
+				if checkUnexpected != nil {
+					if err := checkUnexpected(rec); err != nil {
+						t.Fatal(err)
+					}
+				}
+				buffered = append(buffered, rec)
+			default:
+				goto inspectStacks
+			}
+		}
+	inspectStacks:
+		for g := range strings.SplitSeq(string(buf[:runtime.Stack(buf, true)]), "\n\n") {
+			if strings.Contains(g, "(*Host).awaitPostAckGate(") {
+				return buffered
+			}
+		}
+		select {
+		case rec := <-records:
+			if checkUnexpected != nil {
+				if err := checkUnexpected(rec); err != nil {
+					t.Fatal(err)
+				}
+			}
+			buffered = append(buffered, rec)
+		case <-deadline:
+			t.Fatal("timed out waiting for callLane to park post-ack call in awaitPostAckGate")
+		case <-time.After(time.Millisecond):
+		}
+	}
+}
+
+// TestRPCUnawaitedShortWaitPromptInputHolderOrderDeterministic exercises serveRPCMode through its existing
+// rpcModeOptions / rpcTransport seams with the real Node fixture testdata/rpc-settle-wait.mjs
+// (session_info_changed awaits a TCP peer, then calls ctx.ui.notify).
+// A second command (`prompt`) in the same stdin batch uses an in-process `input` handler to hold commandLoop
+// inside inputTurn after set_session_name has woken from <-invoked and queued its RPCResponse on rpcResponseTurn,
+// before inputTurn.End() drains it.
+// While commandLoop is held there, releasing the Node handler delivers ui.notify to the subprocess callLane;
+// the post-ack gate holds it in awaitPostAckGate until inputTurn.End() writes the set_session_name reply,
+// guaranteeing the required [reply, effect] order.
+func TestRPCUnawaitedShortWaitPromptInputHolderOrderDeterministic(t *testing.T) {
 	cwd, agentDir := t.TempDir(), t.TempDir()
 	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: cwd, AgentDir: agentDir})
 	if err != nil {
@@ -89,7 +142,7 @@ func TestRPCShortWaitOrderPostAwaitNotifyOvertakesReplyDeterministic(t *testing.
 		t.Fatal(err)
 	}
 
-	// An in-process thinking_level_select handler holds the second command of the same stdin batch before acknowledging,
+	// An in-process `input` handler holds the second command (`prompt`) of the same stdin batch before returning,
 	// keeping commandLoop inside inputTurn after set_session_name has woken from <-invoked and queued its reply.
 	turnHeld := make(chan struct{})
 	releaseTurn := make(chan struct{})
@@ -220,7 +273,7 @@ func TestRPCShortWaitOrderPostAwaitNotifyOvertakesReplyDeterministic(t *testing.
 	}
 
 	// Release the Node handler while commandLoop is still before inputTurn.End():
-	// Node finishes await and sends ui.notify -> readLoop -> handleIncoming -> callLane -> UIBridge -> rpcUI.Notify -> writeImmediate.
+	// Node finishes await and sends ui.notify -> readLoop -> handleIncoming -> callLane -> awaitPostAckGate.
 	if _, err := peerConn.Write([]byte("go\n")); err != nil {
 		t.Fatal(err)
 	}
@@ -231,36 +284,40 @@ func TestRPCShortWaitOrderPostAwaitNotifyOvertakesReplyDeterministic(t *testing.
 		unhold()
 		t.Fatal("Node ui.notify never reached Conn.readLoop while inputTurn was held")
 	}
-	// Observe whether the callLane lets ui.notify overtake the held inputTurn before releasing it.
-	// With the post-ack gate active this timer expires cleanly; if the gate is bypassed, ui.notify
-	// writes to stdout within milliseconds and fails here deterministically.
-	select {
-	case rec := <-records:
-		unhold()
+
+	// Wait for callLane's hold-or-dispatch decision: ui.notify must park in awaitPostAckGate while inputTurn
+	// is still held, and must NOT overtake the held command reply on stdout. Keep records one-way by buffering
+	// any unrelated records locally instead of writing back onto records or calling unhold() on them.
+	buffered := waitSubprocessCallHeldInPostAckGate(t, records, func(rec rpcRecord) error {
 		if isNameHandlerDone(rec, "session_info_changed") {
-			t.Fatalf("ui.notify reached stdout before held command reply: %v", rec)
+			unhold()
+			return fmt.Errorf("ui.notify reached stdout before held command reply: %v", rec)
 		}
-		records <- rec
-	case <-time.After(150 * time.Millisecond):
-	}
+		return nil
+	})
 	unhold()
 
 	var seen []string
+	recordEvent := func(rec rpcRecord) {
+		if rec["type"] == "response" && rec["id"] == "c1" {
+			seen = append(seen, "reply")
+		}
+		if isNameHandlerDone(rec, "session_info_changed") {
+			seen = append(seen, "effect")
+		}
+	}
+	for _, rec := range buffered {
+		recordEvent(rec)
+	}
 	deadline := time.After(testbudget.Wait(t))
 	for len(seen) < 2 {
 		select {
 		case rec := <-records:
-			if rec["type"] == "response" && rec["id"] == "c1" {
-				seen = append(seen, "reply")
-			}
-			if isNameHandlerDone(rec, "session_info_changed") {
-				seen = append(seen, "effect")
-			}
+			recordEvent(rec)
 		case <-deadline:
 			t.Fatalf("timed out waiting for reply and effect; seen=%v", seen)
 		}
 	}
-	unhold()
 	_ = inW.Close()
 	cancel()
 	<-done

@@ -23,9 +23,11 @@ var (
 	// Matches runnable install/get/tag-pinning references to PiG's own module or installer:
 	//   go install github.com/MichaelKinsy/PiG/...@vX.Y.Z
 	//   go get github.com/MichaelKinsy/PiG/...@vX.Y.Z
+	//   @pi-in-go/pig@X.Y.Z or @pi-in-go/pig@vX.Y.Z
 	//   @vX.Y.Z when pinned as an exact PiG release (e.g. "such as `@v0.8.0`")
 	//   PIG_VERSION=X.Y.Z or PIG_VERSION=vX.Y.Z
 	goInstallPiGVersion = regexp.MustCompile(`github\.com/MichaelKinsy/PiG[^\s` + "`" + `"'()]*@(v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)`)
+	npmPiGVersion       = regexp.MustCompile(`@pi-in-go/pig[^\s` + "`" + `"'()]*@(v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)`)
 	pigVersionEnv       = regexp.MustCompile(`\bPIG_VERSION=(v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)`)
 	bareAtPiGVersion    = regexp.MustCompile(`@(v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)`)
 )
@@ -136,12 +138,12 @@ func checkReleaseVersionsInDoc(src docSource, currentPiG string, retracted []ret
 			checkVersion(lineNo, m[1], "PIG_VERSION")
 		}
 
-		// Inside runnable shell fences, also catch bare @vX.Y.Z on lines referencing PiG or go install/get.
+		// Inside runnable shell fences, match each pinned version to its own PiG package reference
+		// so third-party packages on the same shell line (e.g. `go install .../PiG/cmd/pig@v0.8.0; go get .../go-winio@v0.6.4`)
+		// are not misattributed to PiG.
 		if inFence && isShellFenceLang(fenceLang) {
-			if strings.Contains(line, "MichaelKinsy/PiG") || strings.Contains(line, "@pi-in-go/pig") {
-				for _, m := range bareAtPiGVersion.FindAllStringSubmatch(line, -1) {
-					checkVersion(lineNo, m[1], "runnable install command")
-				}
+			for _, m := range npmPiGVersion.FindAllStringSubmatch(line, -1) {
+				checkVersion(lineNo, m[1], "runnable install command")
 			}
 		}
 
@@ -221,6 +223,26 @@ func TestReleaseVersionGuardCatchesRetractedAndStaleExamples(t *testing.T) {
 			rel:      "docs/site/docs/piglet-lifecycle.md",
 			body:     "```bash\npig piglet pull github:acme/reviewer@0.1.0\n```\n",
 			wantFail: false,
+		},
+		{
+			name:     "mixed PiG current and third-party older version on same shell line passes",
+			rel:      "docs/site/docs/quickstart.md",
+			body:     "```bash\ngo install github.com/MichaelKinsy/PiG/cmd/pig@v0.8.0; go get github.com/Microsoft/go-winio@v0.6.4\n```\n",
+			wantFail: false,
+		},
+		{
+			name:     "mixed PiG stale and third-party version on same shell line still fails",
+			rel:      "docs/site/docs/quickstart.md",
+			body:     "```bash\ngo install github.com/MichaelKinsy/PiG/cmd/pig@v0.7.0; go get github.com/Microsoft/go-winio@v0.6.4\n```\n",
+			wantFail: true,
+			wantSub:  "older PiG release v0.7.0",
+		},
+		{
+			name:     "npm @pi-in-go/pig stale version on mixed line fails",
+			rel:      "docs/site/docs/quickstart.md",
+			body:     "```bash\nnpm i -g @pi-in-go/pig@0.7.0 && go get github.com/Microsoft/go-winio@v0.6.4\n```\n",
+			wantFail: true,
+			wantSub:  "older PiG release 0.7.0",
 		},
 	}
 

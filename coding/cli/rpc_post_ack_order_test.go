@@ -14,16 +14,19 @@ import (
 	"path/filepath"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
@@ -33,6 +36,23 @@ type failingOutWriter struct {
 }
 
 func (w failingOutWriter) Write([]byte) (int, error) { return 0, w.err }
+
+// waitActiveReplyGateNil polls activeReplyGate(event) until it returns nil (since releasePostAck runs
+// in a macrotask after the response record is written to stdout) or fails when testbudget.Wait expires.
+func waitActiveReplyGateNil(t *testing.T, host *rpcHost, event, desc string) {
+	t.Helper()
+	deadline := time.After(testbudget.Wait(t))
+	for {
+		if host.activeReplyGate(event) == nil {
+			return
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("post-ack gate for %q remained active (%s)", event, desc)
+		case <-time.After(time.Millisecond):
+		}
+	}
+}
 
 // startRPCInProcessHarness wires serveRPCMode with a real subprocess.Host, custom extensions, and optional hooks
 // on responses.write and transport.out so tests can deterministically exercise single-command reply windows,
@@ -332,36 +352,35 @@ func TestRPCSingleCommandPostAckOrderThroughResponseWriteSeam(t *testing.T) {
 				t.Fatal("Node ui.notify never arrived on Conn.readLoop")
 			}
 
-			// Observe while the reply write is still paused so callLane has time to dispatch ui.notify
-			// if the post-ack gate is bypassed. With the gate active, no notification can reach stdout yet.
-			observe := time.NewTimer(150 * time.Millisecond)
-			defer observe.Stop()
-		observeLoop:
-			for {
-				select {
-				case rec := <-h.records:
-					if isNameHandlerDone(rec, tc.event) {
-						unpauseReply()
-						t.Fatal("ui.notify reached stdout before command reply write")
-					}
-				case <-observe.C:
-					break observeLoop
+			// Wait for callLane to reach its hold-or-dispatch decision: ui.notify must park in awaitPostAckGate
+			// while the reply write is still paused, and must not reach stdout ahead of the reply.
+			buffered := waitSubprocessCallHeldInPostAckGate(t, h.records, func(rec rpcRecord) error {
+				if isNameHandlerDone(rec, tc.event) {
+					unpauseReply()
+					return errors.New("ui.notify reached stdout before command reply write")
 				}
-			}
+				return nil
+			})
 
 			unpauseReply()
 
 			var seen []string
+			recordEvent := func(rec rpcRecord) {
+				if rec["type"] == "response" && rec["id"] == "c1" {
+					seen = append(seen, "reply")
+				}
+				if isNameHandlerDone(rec, tc.event) {
+					seen = append(seen, "effect")
+				}
+			}
+			for _, rec := range buffered {
+				recordEvent(rec)
+			}
 			deadline := time.After(testbudget.Wait(t))
 			for len(seen) < 2 {
 				select {
 				case rec := <-h.records:
-					if rec["type"] == "response" && rec["id"] == "c1" {
-						seen = append(seen, "reply")
-					}
-					if isNameHandlerDone(rec, tc.event) {
-						seen = append(seen, "effect")
-					}
+					recordEvent(rec)
 				case <-deadline:
 					t.Fatalf("timed out waiting for reply and effect; seen=%v", seen)
 				}
@@ -678,9 +697,9 @@ export default function (pi) {
 }
 
 // TestRPCBatchSetWidgetSlotDoesNotDeadlock proves stall case 3 end-to-end on the real Node runtime:
-// a single stdin batch carries [set_session_name (post-await setWidget), set_thinking_level (prefix setWidget)].
-// set_thinking_level prefix setWidget must NOT deadlock on set_session_name gated post-await setWidget;
-// order must be [thinking-prefix-widget, set_session_name reply, set_thinking_level reply, session-post-await-widget].
+// while set_session_name's post-await ui.setWidget ("w-post") is OBSERVABLY blocked on its post-ack gate
+// BEFORE set_thinking_level's prefix ui.setWidget ("w-prefix") runs, w-prefix must NOT deadlock on w-post's
+// widget slot; order must be [widget:w-prefix, reply:c1, reply:c2, widget:w-post].
 func TestRPCBatchSetWidgetSlotDoesNotDeadlock(t *testing.T) {
 	dir := t.TempDir()
 	extPath := filepath.Join(dir, "widget-slot.mjs")
@@ -703,37 +722,85 @@ export default function (pi) {
 	if err := os.WriteFile(extPath, []byte(extSrc), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	peer := newUnawaitedPeer(t, 0)
+	peer := newUnawaitedPeer(t, -1)
 	_, port, err := net.SplitHostPort(peer.addr())
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("WIDGET_PORT", port)
 
+	// An in-process thinking_level_select handler registered before the Node handler pauses the batch
+	// right before Node's prefix setWidget runs, so the test can release peer, observe w-post parked in
+	// awaitPostAckGate, and ONLY THEN let Node's prefix w-prefix run while w-post is genuinely held.
+	beforePrefix := make(chan struct{})
+	allowPrefix := make(chan struct{})
+	var allowPrefixOnce sync.Once
+	unblockPrefix := func() { allowPrefixOnce.Do(func() { close(allowPrefix) }) }
+	defer unblockPrefix()
+
+	holdBeforePrefix := extension.Extension{
+		Path: "hold-before-prefix",
+		Handlers: map[string][]extension.HandlerFn{
+			"input": {func(args ...any) (any, error) {
+				close(beforePrefix)
+				<-allowPrefix
+				return map[string]any{"action": "handled"}, nil
+			}},
+		},
+	}
+
 	h := startRPCInProcessHarness(t, rpcHarnessOptions{
-		extensions: []subprocess.ExtConfig{{Name: "widget-slot", Source: extPath, Enabled: true}},
+		extensions:  []subprocess.ExtConfig{{Name: "widget-slot", Source: extPath, Enabled: true}},
+		extraInproc: []extension.Extension{holdBeforePrefix},
 	})
 
-	batch := `{"id":"c1","type":"set_session_name","name":"w"}` + "\n" + `{"id":"c2","type":"set_thinking_level","level":"low"}` + "\n"
+	batch := `{"id":"c1","type":"set_session_name","name":"w"}` + "\n" +
+		`{"id":"c-hold","type":"prompt","message":"hold"}` + "\n" +
+		`{"id":"c2","type":"set_thinking_level","level":"low"}` + "\n"
 	if _, err := io.WriteString(h.inW, batch); err != nil {
 		t.Fatal(err)
 	}
 
+	peer.awaitHandler(t)
+	select {
+	case <-beforePrefix:
+	case <-time.After(testbudget.Wait(t)):
+		t.Fatal("batch did not reach thinking_level_select before-prefix barrier")
+	}
+
+	// Release peer so Node sends w-post, and confirm w-post is OBSERVABLY parked in awaitPostAckGate
+	// BEFORE allowing Node's thinking_level_select prefix w-prefix to run.
+	peer.release()
+	buffered := waitSubprocessCallHeldInPostAckGate(t, h.records, func(rec rpcRecord) error {
+		if rec["type"] == "extension_ui_request" && rec["method"] == "setWidget" && rec["widgetKey"] == "w-post" {
+			unblockPrefix()
+			return errors.New("w-post reached stdout before batch replies while gate was closed")
+		}
+		return nil
+	})
+	unblockPrefix()
+
 	var seen []string
+	recordEvent := func(rec rpcRecord) {
+		if rec["type"] == "response" {
+			if id, _ := rec["id"].(string); id == "c1" || id == "c2" {
+				seen = append(seen, "reply:"+id)
+			}
+		}
+		if rec["type"] == "extension_ui_request" && rec["method"] == "setWidget" {
+			if key, _ := rec["widgetKey"].(string); key == "w-prefix" || key == "w-post" {
+				seen = append(seen, "widget:"+key)
+			}
+		}
+	}
+	for _, rec := range buffered {
+		recordEvent(rec)
+	}
 	deadline := time.After(testbudget.Wait(t))
 	for len(seen) < 4 {
 		select {
 		case rec := <-h.records:
-			if rec["type"] == "response" {
-				if id, _ := rec["id"].(string); id == "c1" || id == "c2" {
-					seen = append(seen, "reply:"+id)
-				}
-			}
-			if rec["type"] == "extension_ui_request" && rec["method"] == "setWidget" {
-				if key, _ := rec["widgetKey"].(string); key == "w-prefix" || key == "w-post" {
-					seen = append(seen, "widget:"+key)
-				}
-			}
+			recordEvent(rec)
 		case <-deadline:
 			t.Fatalf("timed out waiting for batch setWidget order (possible slot deadlock); seen=%v", seen)
 		}
@@ -778,56 +845,82 @@ export default function (pi) {
 		t.Fatal(err)
 	}
 
-	writeTwoModels := func(t *testing.T, agentDir string) {
+	writeModels := func(t *testing.T, agentDir, modelsJSON string) {
 		t.Helper()
 		if err := os.MkdirAll(agentDir, 0o700); err != nil {
 			t.Fatal(err)
 		}
-		models := `{"providers":{"probe":{"baseUrl":"http://127.0.0.1:1","apiKey":"unused","api":"openai-completions","models":[{"id":"r1","name":"R1","reasoning":true},{"id":"r2","name":"R2","reasoning":false}]}}}`
-		if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(models), 0o600); err != nil {
+		if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(modelsJSON), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	for _, cmd := range []string{"set_model", "cycle_model"} {
-		for _, withModelSelect := range []bool{false, true} {
-			name := cmd + "/no-model-select"
-			if withModelSelect {
-				name = cmd + "/async-model-select"
-			}
-			t.Run(name, func(t *testing.T) {
-				peer := newUnawaitedPeer(t, 0)
-				_, port, err := net.SplitHostPort(peer.addr())
-				if err != nil {
-					t.Fatal(err)
-				}
-				home := t.TempDir()
-				agent := filepath.Join(home, "agent")
-				writeTwoModels(t, agent)
-				env := []string{
-					"HOME=" + home,
-					"PIG_HOME=" + filepath.Join(home, ".pig"),
-					"PIG_CODING_AGENT_DIR=" + agent,
-					"MODEL_THINK_PORT=" + port,
-				}
-				var msPeer *unawaitedPeer
+	modelTopologies := []struct {
+		name           string
+		modelsJSON     string
+		startModel     string
+		targetProvider string
+		targetModel    string
+		extraArgs      []string
+	}{
+		{
+			name:           "same-provider",
+			modelsJSON:     `{"providers":{"probe":{"baseUrl":"http://127.0.0.1:1","apiKey":"unused","api":"openai-completions","models":[{"id":"r1","name":"R1","reasoning":true},{"id":"r2","name":"R2","reasoning":false}]}}}`,
+			startModel:     "probe/r1",
+			targetProvider: "probe",
+			targetModel:    "r2",
+		},
+		{
+			name:           "cross-provider",
+			modelsJSON:     `{"providers":{"probe":{"baseUrl":"http://127.0.0.1:1","apiKey":"unused","api":"openai-completions","models":[{"id":"r1","name":"R1","reasoning":true}]},"probe-alt":{"baseUrl":"http://127.0.0.1:1","apiKey":"unused","api":"openai-completions","models":[{"id":"nr2","name":"NR2","reasoning":false}]}}}`,
+			startModel:     "probe/r1",
+			targetProvider: "probe-alt",
+			targetModel:    "nr2",
+			extraArgs:      []string{"--models", "probe/r1,probe-alt/nr2"},
+		},
+	}
+
+	for _, topo := range modelTopologies {
+		for _, cmd := range []string{"set_model", "cycle_model"} {
+			for _, withModelSelect := range []bool{false, true} {
+				name := topo.name + "/" + cmd + "/no-model-select"
 				if withModelSelect {
-					msPeer = newUnawaitedPeer(t, -1)
-					_, msPort, err := net.SplitHostPort(msPeer.addr())
+					name = topo.name + "/" + cmd + "/async-model-select"
+				}
+				t.Run(name, func(t *testing.T) {
+					peer := newUnawaitedPeer(t, 0)
+					_, port, err := net.SplitHostPort(peer.addr())
 					if err != nil {
 						t.Fatal(err)
 					}
-					env = append(env, "MODEL_SELECT_PORT="+msPort)
-				}
-				p := startRPCProcessAt(t, t.TempDir(), env, "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-session", "--model", "probe/r1", "--thinking", "high", "-e", extPath)
-				awaitReady(p)
+					home := t.TempDir()
+					agent := filepath.Join(home, "agent")
+					writeModels(t, agent, topo.modelsJSON)
+					env := []string{
+						"HOME=" + home,
+						"PIG_HOME=" + filepath.Join(home, ".pig"),
+						"PIG_CODING_AGENT_DIR=" + agent,
+						"MODEL_THINK_PORT=" + port,
+					}
+					var msPeer *unawaitedPeer
+					if withModelSelect {
+						msPeer = newUnawaitedPeer(t, -1)
+						_, msPort, err := net.SplitHostPort(msPeer.addr())
+						if err != nil {
+							t.Fatal(err)
+						}
+						env = append(env, "MODEL_SELECT_PORT="+msPort)
+					}
+					args := append([]string{"--no-extensions", "--no-skills", "--no-prompt-templates", "--no-session", "--model", topo.startModel, "--thinking", "high", "-e", extPath}, topo.extraArgs...)
+					p := startRPCProcessAt(t, t.TempDir(), env, args...)
+					awaitReady(p)
 
-				var msg map[string]any
-				if cmd == "set_model" {
-					msg = map[string]any{"id": "m1", "type": "set_model", "provider": "probe", "modelId": "r2"}
-				} else {
-					msg = map[string]any{"id": "m1", "type": "cycle_model"}
-				}
+					var msg map[string]any
+					if cmd == "set_model" {
+						msg = map[string]any{"id": "m1", "type": "set_model", "provider": topo.targetProvider, "modelId": topo.targetModel}
+					} else {
+						msg = map[string]any{"id": "m1", "type": "cycle_model"}
+					}
 				p.sendJSON(msg)
 				if msPeer != nil {
 					msPeer.awaitHandler(t)
@@ -852,8 +945,9 @@ export default function (pi) {
 				if !slices.Equal(seen, want) {
 					t.Fatalf("order = %v, want %v", seen, want)
 				}
-				p.closeAndWait("after model switch")
-			})
+					p.closeAndWait("after model switch")
+				})
+			}
 		}
 	}
 }
@@ -926,9 +1020,7 @@ func TestRPCPostAckGateReleasePaths(t *testing.T) {
 			}
 		}
 	replied:
-		if got := h.host.activeReplyGate("session_info_changed"); got != nil {
-			t.Fatal("post-ack gate remained open after set_session_name reply was written")
-		}
+		waitActiveReplyGateNil(t, h.host, "session_info_changed", "after set_session_name reply was written")
 		// Close session / cancel serveRPCMode while the handler is still waiting forever on the TCP peer.
 		h.close()
 		baseline.RequireEnded(t, testbudget.Wait(t))
@@ -945,11 +1037,24 @@ func TestRPCPostAckGateReleasePaths(t *testing.T) {
 
 		writeErrSeen := make(chan struct{})
 		var errOnce sync.Once
+		// Fail ONLY the c1 response record (not every record on stdout), and observe activeReplyGate
+		// becoming nil after the failed write and BEFORE serveRPCMode exits.
+		allowShutdown := make(chan struct{})
+		var allowShutdownOnce sync.Once
+		releaseShutdown := func() { allowShutdownOnce.Do(func() { close(allowShutdown) }) }
+		defer releaseShutdown()
+
 		h := startRPCInProcessHarness(t, rpcHarnessOptions{
 			extensions: []subprocess.ExtConfig{{Name: "write-err", Source: fixture, Enabled: true}},
-			outWriter:  failingOutWriter{err: errors.New("broken stdout pipe")},
+			outWriter: funcWriter(func(p []byte) (int, error) {
+				if strings.Contains(string(p), `"id":"c1"`) && strings.Contains(string(p), `"type":"response"`) {
+					return 0, errors.New("broken stdout pipe on c1 response")
+				}
+				return len(p), nil
+			}),
 			onStdoutErr: func(error) {
 				errOnce.Do(func() { close(writeErrSeen) })
+				<-allowShutdown
 			},
 		})
 		if _, err := io.WriteString(h.inW, `{"id":"c1","type":"set_session_name","name":"broken-pipe"}`+"\n"); err != nil {
@@ -958,16 +1063,22 @@ func TestRPCPostAckGateReleasePaths(t *testing.T) {
 		select {
 		case <-writeErrSeen:
 		case <-time.After(testbudget.Wait(t)):
-			t.Fatal("stdout write error was never observed")
+			t.Fatal("stdout write error on c1 response was never observed")
 		}
+		// Gate must release promptly after the failed write while serveRPCMode is still running (before cancel/exit).
+		waitActiveReplyGateNil(t, h.host, "session_info_changed", "after failed c1 stdout write and before serveRPCMode exit")
+		select {
+		case <-h.done:
+			t.Fatal("serveRPCMode exited before allowShutdown was released")
+		default:
+		}
+		releaseShutdown()
 		select {
 		case <-h.done:
 		case <-time.After(testbudget.Wait(t)):
 			t.Fatal("serveRPCMode hung after stdout write error")
 		}
-		if got := h.host.activeReplyGate("session_info_changed"); got != nil {
-			t.Fatal("post-ack gate remained open after stdout write error")
-		}
+		waitActiveReplyGateNil(t, h.host, "session_info_changed", "after serveRPCMode exit")
 		h.close()
 		baseline.RequireEnded(t, testbudget.Wait(t))
 	})
@@ -984,28 +1095,79 @@ func TestRPCPostAckGateReleasePaths(t *testing.T) {
 		h := startRPCInProcessHarness(t, rpcHarnessOptions{
 			extensions: []subprocess.ExtConfig{{Name: "err-release", Source: fixture, Enabled: true}},
 		})
-		// Send invalid thinking level or empty name error, plus close session before FlushEvents/SetSessionName error.
-		if _, err := io.WriteString(h.inW, `{"id":"e1","type":"set_session_name","name":"   "}`+"\n"+`{"id":"e2","type":"set_thinking_level","level":"high"}`+"\n"); err != nil {
+		// Inject a persistence failure into SessionManager so SetSessionName fails AFTER
+		// beginReplyGate("session_info_changed") has already registered the gate for e1.
+		// Restore the valid in-memory session afterward and verify e2 succeeds.
+		origSession := h.rt.Session()
+		origInner := origSession.Inner()
+		sessDir := filepath.Join(t.TempDir(), "sessions")
+		brokenMgr := codingagent.NewSessionManagerWithDir(t.TempDir(), sessDir)
+		brokenInner, err := brokenMgr.Create("", "")
+		if err != nil {
 			t.Fatal(err)
 		}
-		var seen int
+		// Persist one entry so brokenInner marks itself flushed, then replace its file with a directory
+		// so the next AppendSessionInfoName fails inside SetSessionName AFTER beginReplyGate is registered.
+		if _, err := brokenInner.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "seed"}}}}); err != nil {
+			t.Fatal(err)
+		}
+		sessPath := brokenInner.Path()
+		if err := os.Remove(sessPath); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Mkdir(sessPath, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		origSession.ReplaceInner(brokenInner)
+
+		if _, err := io.WriteString(h.inW, `{"id":"e1","type":"set_session_name","name":"fails-after-gate"}`+"\n"); err != nil {
+			t.Fatal(err)
+		}
+		counts := map[string]int{}
 		deadline := time.After(testbudget.Wait(t))
-		for seen < 2 {
+		for counts["e1"] == 0 {
 			select {
 			case rec := <-h.records:
-				if rec["type"] == "response" && (rec["id"] == "e1" || rec["id"] == "e2") {
-					seen++
+				if rec["type"] == "response" {
+					id, _ := rec["id"].(string)
+					counts[id]++
+					if id == "e1" {
+						if ok, _ := rec["success"].(bool); ok {
+							t.Fatalf("e1 expected success=false error response after gate registration, got %v", rec)
+						}
+					}
 				}
 			case <-deadline:
-				t.Fatalf("timed out waiting for error/success replies; seen=%d", seen)
+				t.Fatalf("timed out waiting for e1 error reply; counts=%v", counts)
 			}
 		}
-		if got := h.host.activeReplyGate("session_info_changed"); got != nil {
-			t.Fatal("session_info_changed gate still active")
+		waitActiveReplyGateNil(t, h.host, "session_info_changed", "after e1 SetSessionName error")
+
+		origSession.ReplaceInner(origInner)
+		if _, err := io.WriteString(h.inW, `{"id":"e2","type":"set_thinking_level","level":"high"}`+"\n"); err != nil {
+			t.Fatal(err)
 		}
-		if got := h.host.activeReplyGate("thinking_level_select"); got != nil {
-			t.Fatal("thinking_level_select gate still active")
+		for counts["e2"] == 0 {
+			select {
+			case rec := <-h.records:
+				if rec["type"] == "response" {
+					id, _ := rec["id"].(string)
+					counts[id]++
+					if id == "e2" {
+						if ok, _ := rec["success"].(bool); !ok {
+							t.Fatalf("e2 expected success=true response, got %v", rec)
+						}
+					}
+				}
+			case <-deadline:
+				t.Fatalf("timed out waiting for e2 success reply; counts=%v", counts)
+			}
 		}
+		if counts["e1"] != 1 || counts["e2"] != 1 {
+			t.Fatalf("expected exactly one response for e1 and e2, got counts=%v", counts)
+		}
+		waitActiveReplyGateNil(t, h.host, "session_info_changed", "after e1+e2")
+		waitActiveReplyGateNil(t, h.host, "thinking_level_select", "after e1+e2")
 		// Ensure multiple sequential commands never accumulate stale gates.
 		for i := range 3 {
 			if _, err := io.WriteString(h.inW, `{"id":"s`+strconv.Itoa(i)+`","type":"set_session_name","name":"n`+strconv.Itoa(i)+`"}`+"\n"); err != nil {
@@ -1026,9 +1188,7 @@ func TestRPCPostAckGateReleasePaths(t *testing.T) {
 			}
 		next:
 		}
-		if got := h.host.activeReplyGate("session_info_changed"); got != nil {
-			t.Fatal("session_info_changed gate leaked after sequential commands")
-		}
+		waitActiveReplyGateNil(t, h.host, "session_info_changed", "after sequential commands")
 		h.close()
 		baseline.RequireEnded(t, testbudget.Wait(t))
 	})

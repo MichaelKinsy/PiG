@@ -5,6 +5,7 @@ package cli
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"os"
@@ -15,10 +16,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/factoryload"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 )
+
+func requireClosedSignal(t *testing.T, ch <-chan struct{}, label string) {
+	t.Helper()
+	select {
+	case <-ch:
+	default:
+		t.Fatalf("required synchronization signal %q was not observed", label)
+	}
+}
 
 func TestRPCPostAckSyncBridgeCallAfterHeldStatusDoesNotDeadlockBatch(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -76,67 +87,125 @@ export default function (pi) {
 		t.Fatal(err)
 	}
 
-	syncCallArrived := make(chan struct{})
-	holdExt, err := factoryload.LoadExtensionFromFactory(func(api extension.API) error {
-		api.OnThinkingLevelSelect(func(ctx context.Context, _ extension.ThinkingLevelSelectEvent) error {
-			select {
-			case <-syncCallArrived:
-			case <-time.After(3 * time.Second):
-			case <-ctx.Done():
-			}
-			return nil
-		})
-		return nil
-	}, ".", extension.CreateEventBus(), extension.CreateExtensionRuntime(), "test:hold-batch")
-	if err != nil {
-		t.Fatal(err)
+	providerMatrix := []struct {
+		name          string
+		providerID    string
+		modelID       string
+		maxThinking   ai.ThinkingLevel
+		startThinking ai.ModelThinkingLevel
+		targetLevel   string
+	}{
+		{
+			name:          "faux-default-high",
+			providerID:    "faux-alpha",
+			modelID:       "alpha-1",
+			maxThinking:   ai.ThinkingLevel(ai.ThinkingHigh),
+			startThinking: ai.ThinkingOff,
+			targetLevel:   "high",
+		},
+		{
+			name:          "faux-beta-medium-from-low",
+			providerID:    "faux-beta",
+			modelID:       "beta-2",
+			maxThinking:   ai.ThinkingLevel(ai.ThinkingMedium),
+			startThinking: ai.ThinkingLow,
+			targetLevel:   "medium",
+		},
 	}
 
-	h := startRPCInProcessHarness(t, rpcHarnessOptions{
-		extensions:  []subprocess.ExtConfig{{Name: "ext1-deadlock", Source: ext1Path, Enabled: true}},
-		extraInproc: []extension.Extension{holdExt},
-		inboundObs: func(_ string, env *subprocess.Envelope) {
-			if env != nil && env.Type == subprocess.MsgCall && env.Call != nil {
-				t.Logf("INBOUND CALL: method=%s parent=%s", env.Call.Method, env.Call.ParentRequestID)
-				if env.Call.Method == "getContextUsage" {
+	for _, pm := range providerMatrix {
+		t.Run(pm.name, func(t *testing.T) {
+			provider := ai.NewFauxProvider(ai.FauxConfig{ProviderID: pm.providerID, Model: pm.modelID})
+			model := &ai.Model{
+				ID:           pm.modelID,
+				Provider:     provider,
+				Capabilities: ai.ModelCapabilities{MaxThinking: pm.maxThinking},
+				ProviderMeta: ai.ProviderMetadata{ProviderID: provider.ID()},
+			}
+
+			syncCallArrived := make(chan struct{})
+			var syncOnce sync.Once
+			barrierErr := make(chan error, 1)
+			holdExt, err := factoryload.LoadExtensionFromFactory(func(api extension.API) error {
+				api.OnThinkingLevelSelect(func(ctx context.Context, _ extension.ThinkingLevelSelectEvent) error {
 					select {
 					case <-syncCallArrived:
-					default:
-						close(syncCallArrived)
+						return nil
+					case <-time.After(3 * time.Second):
+						err := errors.New("timed out waiting for getContextUsage sync call arrival barrier")
+						select {
+						case barrierErr <- err:
+						default:
+						}
+						return err
+					case <-ctx.Done():
+						err := fmt.Errorf("context cancelled waiting for syncCallArrived barrier: %w", ctx.Err())
+						select {
+						case barrierErr <- err:
+						default:
+						}
+						return err
 					}
+				})
+				return nil
+			}, ".", extension.CreateEventBus(), extension.CreateExtensionRuntime(), "test:hold-batch-"+pm.name)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			h := startRPCInProcessHarness(t, rpcHarnessOptions{
+				extensions:    []subprocess.ExtConfig{{Name: "ext1-deadlock", Source: ext1Path, Enabled: true}},
+				extraInproc:   []extension.Extension{holdExt},
+				models:        []*ai.Model{model},
+				startThinking: pm.startThinking,
+				inboundObs: func(_ string, env *subprocess.Envelope) {
+					if env != nil && env.Type == subprocess.MsgCall && env.Call != nil {
+						t.Logf("INBOUND CALL: method=%s parent=%s", env.Call.Method, env.Call.ParentRequestID)
+						if env.Call.Method == "getContextUsage" {
+							syncOnce.Do(func() { close(syncCallArrived) })
+						}
+					}
+				},
+			})
+			defer h.close()
+
+			batch := `{"id":"r1","type":"set_session_name","name":"trigger1"}` + "\n" +
+				`{"id":"r2","type":"set_thinking_level","level":"` + pm.targetLevel + `"}` + "\n" +
+				`{"id":"r3","type":"prompt","message":"/cmd"}` + "\n"
+			if _, err := io.WriteString(h.inW, batch); err != nil {
+				t.Fatal(err)
+			}
+
+			deadline := time.After(5 * time.Second)
+			seen := map[string]bool{}
+			for !seen["r1"] || !seen["r2"] || !seen["r3"] {
+				select {
+				case err := <-barrierErr:
+					t.Fatalf("required barrier failed: %v", err)
+				case rec := <-h.records:
+					t.Logf("REC: type=%v id=%v method=%v", rec["type"], rec["id"], rec["method"])
+					if rec["type"] == "response" {
+						if id, _ := rec["id"].(string); id != "" {
+							seen[id] = true
+						}
+					}
+				case <-deadline:
+					t.Fatalf("DEADLOCK REPRODUCED: timed out after 5s waiting for batch replies (seen=%v)", seen)
 				}
 			}
-		},
-	})
-	defer h.close()
-
-	batch := `{"id":"r1","type":"set_session_name","name":"trigger1"}` + "\n" +
-		`{"id":"r2","type":"set_thinking_level","level":"high"}` + "\n" +
-		`{"id":"r3","type":"prompt","message":"/cmd"}` + "\n"
-	if _, err := io.WriteString(h.inW, batch); err != nil {
-		t.Fatal(err)
-	}
-
-	deadline := time.After(5 * time.Second)
-	seen := map[string]bool{}
-	for !seen["r1"] || !seen["r2"] || !seen["r3"] {
-		select {
-		case rec := <-h.records:
-			t.Logf("REC: type=%v id=%v method=%v", rec["type"], rec["id"], rec["method"])
-			if rec["type"] == "response" {
-				if id, _ := rec["id"].(string); id != "" {
-					seen[id] = true
-				}
+			select {
+			case err := <-barrierErr:
+				t.Fatalf("required barrier failed: %v", err)
+			default:
 			}
-		case <-deadline:
-			t.Fatalf("DEADLOCK REPRODUCED: timed out after 5s waiting for batch replies (seen=%v)", seen)
-		}
+			requireClosedSignal(t, syncCallArrived, "syncCallArrived (getContextUsage)")
+		})
 	}
 }
 
 // TestRPCPostAckTwoRepliesInOneBatchStayTogether verifies review Finding #5:
 // when one stdin batch contains two commands (r1=set_session_name whose post-ack ui.notify arrives while
-// the batch is still open, followed by r2=get_state), BOTH replies (r1 and r2) are written before the
+// the batch is still open, followed by r2=set_thinking_level), BOTH replies (r1 and r2) are written before the
 // released post-ack ui.notify lands on stdout (macrotask release after microtask batch drains).
 func TestRPCPostAckTwoRepliesInOneBatchStayTogether(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -180,14 +249,27 @@ export default function (pi) {
 
 	notifyArrived := make(chan struct{})
 	var notifyOnce sync.Once
+	barrierErr := make(chan error, 1)
 	holdExt, err := factoryload.LoadExtensionFromFactory(func(api extension.API) error {
 		api.OnThinkingLevelSelect(func(ctx context.Context, _ extension.ThinkingLevelSelectEvent) error {
 			select {
 			case <-notifyArrived:
+				return nil
 			case <-time.After(3 * time.Second):
+				err := errors.New("timed out waiting for post-ack ui.notify arrival barrier")
+				select {
+				case barrierErr <- err:
+				default:
+				}
+				return err
 			case <-ctx.Done():
+				err := fmt.Errorf("context cancelled waiting for notifyArrived barrier: %w", ctx.Err())
+				select {
+				case barrierErr <- err:
+				default:
+				}
+				return err
 			}
-			return nil
 		})
 		return nil
 	}, ".", extension.CreateEventBus(), extension.CreateExtensionRuntime(), "test:hold-batch2")
@@ -216,6 +298,8 @@ export default function (pi) {
 	deadline := time.After(5 * time.Second)
 	for len(order) < 3 {
 		select {
+		case err := <-barrierErr:
+			t.Fatalf("required barrier failed: %v", err)
 		case rec := <-h.records:
 			switch rec["type"] {
 			case "response":
@@ -231,6 +315,12 @@ export default function (pi) {
 			t.Fatalf("timed out waiting for [reply:r1 reply:r2 effect:notify], got %v", order)
 		}
 	}
+	select {
+	case err := <-barrierErr:
+		t.Fatalf("required barrier failed: %v", err)
+	default:
+	}
+	requireClosedSignal(t, notifyArrived, "notifyArrived (ui.notify)")
 	want := []string{"reply:r1", "reply:r2", "effect:notify"}
 	if !slices.Equal(order, want) {
 		t.Fatalf("batch order = %v, want %v (post-ack effect must not interleave between batch replies)", order, want)
@@ -285,6 +375,7 @@ export default function (pi) {
 		var notifyOnce sync.Once
 		writeErrSeen := make(chan struct{})
 		var writeErrOnce sync.Once
+		barrierErr := make(chan error, 1)
 
 		var failWrites atomic.Bool
 
@@ -311,6 +402,12 @@ export default function (pi) {
 						select {
 						case <-notifyArrived:
 						case <-time.After(3 * time.Second):
+							select {
+							case barrierErr <- errors.New("timed out in wrapWrite waiting for ui.notify arrival before failing stdout write"):
+							default:
+							}
+							orig(v)
+							return
 						}
 						failWrites.Store(true)
 					}
@@ -322,11 +419,15 @@ export default function (pi) {
 			t.Fatal(err)
 		}
 		select {
+		case err := <-barrierErr:
+			t.Fatalf("required barrier failed: %v", err)
 		case <-notifyArrived:
 		case <-time.After(5 * time.Second):
 			t.Fatal("ui.notify never arrived to be held")
 		}
 		select {
+		case err := <-barrierErr:
+			t.Fatalf("required barrier failed: %v", err)
 		case <-writeErrSeen:
 		case <-time.After(5 * time.Second):
 			t.Fatal("stdout write error not observed")
@@ -335,6 +436,11 @@ export default function (pi) {
 		case <-h.done:
 		case <-time.After(5 * time.Second):
 			t.Fatal("serveRPCMode hung with a held post-ack call after stdout write error")
+		}
+		select {
+		case err := <-barrierErr:
+			t.Fatalf("required barrier failed: %v", err)
+		default:
 		}
 		h.close()
 	})
@@ -356,6 +462,7 @@ func TestRPCPostAckSecondHandlerAfterSynchronousFirstHandlerRunsAheadOfReply(t *
 
 	ext2NotifyArrived := make(chan struct{})
 	var ext2NotifyOnce sync.Once
+	barrierErr := make(chan error, 1)
 	h := startRPCInProcessHarness(t, rpcHarnessOptions{
 		extensions: []subprocess.ExtConfig{
 			{Name: "ext1-sync", Source: ext1Path, Enabled: true},
@@ -374,6 +481,10 @@ func TestRPCPostAckSecondHandlerAfterSynchronousFirstHandlerRunsAheadOfReply(t *
 					select {
 					case <-ext2NotifyArrived:
 					case <-time.After(3 * time.Second):
+						select {
+						case barrierErr <- errors.New("timed out in wrapWrite waiting for ext2 synchronous ui.notify arrival"):
+						default:
+						}
 					}
 					time.Sleep(30 * time.Millisecond)
 				}
@@ -391,6 +502,8 @@ func TestRPCPostAckSecondHandlerAfterSynchronousFirstHandlerRunsAheadOfReply(t *
 	deadline := time.After(5 * time.Second)
 	for len(order) < 2 {
 		select {
+		case err := <-barrierErr:
+			t.Fatalf("required barrier failed: %v", err)
 		case rec := <-h.records:
 			switch rec["type"] {
 			case "response":
@@ -406,6 +519,12 @@ func TestRPCPostAckSecondHandlerAfterSynchronousFirstHandlerRunsAheadOfReply(t *
 			t.Fatalf("timed out waiting for [effect reply], got %v", order)
 		}
 	}
+	select {
+	case err := <-barrierErr:
+		t.Fatalf("required barrier failed: %v", err)
+	default:
+	}
+	requireClosedSignal(t, ext2NotifyArrived, "ext2NotifyArrived (ui.notify)")
 	want := []string{"effect", "reply"}
 	if !slices.Equal(order, want) {
 		t.Fatalf("order = %v, want %v (second handler after synchronous first handler must not be sealed)", order, want)
@@ -464,14 +583,27 @@ export default function (pi) {
 		}
 		syncCallArrived := make(chan struct{})
 		var syncOnce sync.Once
+		barrierErr := make(chan error, 1)
 		holdExt, err := factoryload.LoadExtensionFromFactory(func(api extension.API) error {
 			api.OnThinkingLevelSelect(func(ctx context.Context, _ extension.ThinkingLevelSelectEvent) error {
 				select {
 				case <-syncCallArrived:
+					return nil
 				case <-time.After(3 * time.Second):
+					err := errors.New("timed out waiting for getContextUsage sync call arrival barrier")
+					select {
+					case barrierErr <- err:
+					default:
+					}
+					return err
 				case <-ctx.Done():
+					err := fmt.Errorf("context cancelled waiting for syncCallArrived barrier: %w", ctx.Err())
+					select {
+					case barrierErr <- err:
+					default:
+					}
+					return err
 				}
-				return nil
 			})
 			return nil
 		}, ".", extension.CreateEventBus(), extension.CreateExtensionRuntime(), "test:hold-nd-input")
@@ -499,6 +631,8 @@ export default function (pi) {
 		seen := map[string]bool{}
 		for !seen["r1"] || !seen["r2"] || !seen["r3"] {
 			select {
+			case err := <-barrierErr:
+				t.Fatalf("required barrier failed: %v", err)
 			case rec := <-h.records:
 				if rec["type"] == "response" {
 					if id, _ := rec["id"].(string); id != "" {
@@ -509,6 +643,12 @@ export default function (pi) {
 				t.Fatalf("timed out waiting for plain-prompt input-handler batch replies (seen=%v)", seen)
 			}
 		}
+		select {
+		case err := <-barrierErr:
+			t.Fatalf("required barrier failed: %v", err)
+		default:
+		}
+		requireClosedSignal(t, syncCallArrived, "syncCallArrived (getContextUsage)")
 	})
 
 	t.Run("set-thinking-level-flush-events-with-held-status-and-sync-call", func(t *testing.T) {
@@ -537,14 +677,27 @@ export default function (pi) {
 		}
 		syncCallArrived := make(chan struct{})
 		var syncOnce sync.Once
+		barrierErr := make(chan error, 1)
 		holdExt, err := factoryload.LoadExtensionFromFactory(func(api extension.API) error {
 			api.OnSessionInfoChanged(func(ctx context.Context, _ extension.SessionInfoChangedEvent) error {
 				select {
 				case <-syncCallArrived:
+					return nil
 				case <-time.After(3 * time.Second):
+					err := errors.New("timed out waiting for getContextUsage sync call arrival barrier")
+					select {
+					case barrierErr <- err:
+					default:
+					}
+					return err
 				case <-ctx.Done():
+					err := fmt.Errorf("context cancelled waiting for syncCallArrived barrier: %w", ctx.Err())
+					select {
+					case barrierErr <- err:
+					default:
+					}
+					return err
 				}
-				return nil
 			})
 			return nil
 		}, ".", extension.CreateEventBus(), extension.CreateExtensionRuntime(), "test:hold-nd-think")
@@ -572,6 +725,8 @@ export default function (pi) {
 		seen := map[string]bool{}
 		for !seen["r1"] || !seen["r2"] || !seen["r3"] {
 			select {
+			case err := <-barrierErr:
+				t.Fatalf("required barrier failed: %v", err)
 			case rec := <-h.records:
 				if rec["type"] == "response" {
 					if id, _ := rec["id"].(string); id != "" {
@@ -582,5 +737,11 @@ export default function (pi) {
 				t.Fatalf("timed out waiting for set_thinking_level batch replies (seen=%v)", seen)
 			}
 		}
+		select {
+		case err := <-barrierErr:
+			t.Fatalf("required barrier failed: %v", err)
+		default:
+		}
+		requireClosedSignal(t, syncCallArrived, "syncCallArrived (getContextUsage)")
 	})
 }

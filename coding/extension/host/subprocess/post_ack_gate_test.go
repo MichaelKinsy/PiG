@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"io"
 	"net"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -328,6 +329,30 @@ func TestPostAckGateSlotCallDoesNotDeadlockPrefixSlotCall(t *testing.T) {
 	})
 }
 
+func waitPostAckGateState(t *testing.T, wantParked bool, desc string) {
+	t.Helper()
+	deadline := time.After(testbudget.Wait(t))
+	buf := make([]byte, 1<<20)
+	for {
+		parked := false
+		for g := range strings.SplitSeq(string(buf[:runtime.Stack(buf, true)]), "\n\n") {
+			if strings.Contains(g, "(*Host).awaitPostAckGate(") {
+				parked = true
+				break
+			}
+		}
+		if parked == wantParked {
+			return
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("timed out waiting for %s (wantParked=%t, parked=%t)", desc, wantParked, parked)
+		default:
+			time.Sleep(time.Millisecond)
+		}
+	}
+}
+
 // TestPostAckGateReleasesOnCancelAndShutdown verifies that a stuck post-ack gate (reply never written)
 // releases promptly with zero leaked goroutines on request cancellation, connection close, and Host.Shutdown,
 // for both normal calls (ui.notify) and replaceOnlySlot calls (ui.setWidget).
@@ -393,11 +418,15 @@ func TestPostAckGateReleasesOnCancelAndShutdown(t *testing.T) {
 					ID:   "c1",
 					Call: &CallPayload{Method: method, ParentRequestID: "r1"},
 				})
+				// Confirm the call worker actually reached awaitPostAckGate BEFORE triggering teardown.
+				waitPostAckGateState(t, true, "call worker parked in awaitPostAckGate")
 
 				switch mode {
 				case "request-cancel":
 					cancelReq()
 					waitSignal(t, reqDone, "cancelled request return")
+					// Observe the held call worker exit awaitPostAckGate while conn is still open and stuckGate is still closed.
+					waitPostAckGateState(t, false, "held call worker exit after request cancellation while conn open")
 					_ = conn.Close("done")
 				case "conn-close":
 					_ = conn.Close("closed")

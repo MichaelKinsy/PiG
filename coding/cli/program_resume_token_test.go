@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/mcp"
@@ -26,6 +27,27 @@ const (
 	osc7577ChildModeEnv = "PIG_TEST_OSC7577_CHILD_MODE"
 	osc7577ChildOutEnv  = "PIG_TEST_OSC7577_CHILD_OUT"
 )
+
+// resolveTestFauxModelSpec resolves the harness test-faux provider/model spec from the shared
+// coding.AgentSessionServices model runtime instead of hard-coding "test-faux/faux-1".
+func resolveTestFauxModelSpec(t *testing.T) string {
+	t.Helper()
+	t.Setenv("PIG_TEST_FAUX", "1")
+	coding.EnableTestFauxProvider()
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{
+		CWD:      t.TempDir(),
+		AgentDir: t.TempDir(),
+	})
+	if err != nil {
+		t.Fatalf("create test services: %v", err)
+	}
+	defer services.Close()
+	models := services.ModelRuntime().GetModels("test-faux")
+	if len(models) == 0 {
+		t.Fatal("test-faux provider registered no models in shared test configuration")
+	}
+	return models[0].ProviderMeta.ProviderID + "/" + models[0].ID
+}
 
 // TestMainTakesProgramResumeTokenBeforeAnyCommand proves at the AST level that Main calls
 // tui.TakeProgramResumeToken() immediately after exportTelemetryOverride(), before any subcommand,
@@ -122,11 +144,12 @@ func TestMainStripsOSC7577TokenFromChildren(t *testing.T) {
 	}
 
 	const secretToken = "cli-secret-osc7577-token-98765"
+	modelSpec := resolveTestFauxModelSpec(t)
 	root := t.TempDir()
 	outFile := filepath.Join(root, "report.json")
 	cmd := exec.CommandContext(t.Context(), os.Args[0],
 		"-test.run=^TestMainStripsOSC7577TokenFromChildren$", "--",
-		"--no-session", "--model", "test-faux/faux-1", "-p", "reply with exactly: ok")
+		"--no-session", "--model", modelSpec, "-p", "reply with exactly: ok")
 	cmd.Env = append(noHomeDirectoryEnvironment(t),
 		"HOME="+root,
 		tui.ProgramResumeTokenEnv+"="+secretToken,
