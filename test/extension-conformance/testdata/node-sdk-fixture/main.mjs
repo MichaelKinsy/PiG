@@ -14,8 +14,8 @@ import {
 // D232: a module-level counter the factory increments; every generation in one Node process shares it.
 let processFactoryCalls = 0;
 export default function (pi) {
-  pi.ownThinkingRuns(true);
   processFactoryCalls++;
+  pi.ownThinkingRuns(true);
   // factoryAgentDir is getAgentDir() while the factory runs, where Pi's extensions call it (TestConformance_HostConfigurationAgreesAcrossSDKs).
   const factoryAgentDir = getAgentDir();
   let schemaRejected = false;
