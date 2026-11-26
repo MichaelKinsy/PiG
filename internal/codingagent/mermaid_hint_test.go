@@ -9,22 +9,27 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-// Pi mermaid.ts:76-77 preserves rejected input rather than synthesizing a diagnostic. Keep the grammar and overflow inputs from the retired D50 cases at this boundary.
+// Pi mermaid.ts:80-100 preserves unrecognized diagrams and streaming oversized diagrams, and appends a width note for completed oversized diagrams.
 func TestMermaidRejectedInputRemainsUnchanged(t *testing.T) {
 	for _, tc := range []struct {
 		name, body string
 		width      int
+		wantNote   string
 	}{
-		{"unrecognized type", "gantt\n  title Plan", 200},
-		{"oversized sequence", "sequenceDiagram\n  participant Alice\n  participant Bob\n  Alice->>Bob: hello there", 12},
-		{"unmeasured width", "sequenceDiagram\n  A->>B: hello", 0},
+		{"unrecognized type", "gantt\n  title Plan", 200, ""},
+		{"oversized sequence", "sequenceDiagram\n  participant Alice\n  participant Bob\n  Alice->>Bob: hello there", 12, "Mermaid diagram not rendered: needs 21 columns, 12 available"},
+		{"unmeasured width", "sequenceDiagram\n  A->>B: hello", 0, "Mermaid diagram not rendered: needs 12 columns, 0 available"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			md := "```mermaid\n" + tc.body + "\n```"
 			for _, streaming := range []bool{false, true} {
 				got := createMermaidMarkdownTransformer(func() string { return "streaming" }, nil)(md, extension.MarkdownTransformContext{MessageType: extension.MarkdownMessageAssistant, IsStreaming: streaming, AvailableWidth: tc.width})
-				if got != md {
-					t.Fatalf("streaming=%v changed source: got %q, want %q", streaming, got, md)
+				want := md
+				if !streaming && tc.wantNote != "" {
+					want = md + "\n`" + tc.wantNote + "`  \n"
+				}
+				if got != want {
+					t.Fatalf("streaming=%v changed source: got %q, want %q", streaming, got, want)
 				}
 			}
 		})
