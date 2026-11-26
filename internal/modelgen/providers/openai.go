@@ -66,7 +66,9 @@ func openaiGPT5ChatLatest() ChatModel {
 }
 
 // OpenAI Decisions API (public beta): gpt-6-luna is its only model. It bills input tokens only,
-// with the same long-context multiplier as chat requests. Only API keys work: Sign in with ChatGPT
+// with the same long-context multiplier as chat requests. Usage reports cache reads and writes
+// within input_tokens; they are priced at the input rate here, so splitting them out of input
+// does not change the cost. Only API keys work: Sign in with ChatGPT
 // tokens are rejected on /v1/decisions, and the Codex backend has no Decisions route.
 // The endpoint rejects inputs above 922K tokens (the model's documented maximum input), but
 // requests running longer than about five seconds, currently above roughly 600K input tokens,
@@ -82,7 +84,7 @@ func openaiClassifierModels() []*Obj {
 			"provider", "openai",
 			"baseUrl", openaiBaseURL,
 			"input", Strings("text", "image"),
-			"cost", WithOpenAILongContextPricing(O("input", 0.1, "output", 0, "cacheRead", 0, "cacheWrite", 0)),
+			"cost", WithOpenAILongContextPricing(O("input", 0.1, "output", 0, "cacheRead", 0.1, "cacheWrite", 0.1)),
 			"contextWindow", 922000,
 		),
 	}

@@ -115,6 +115,46 @@ func TestOpenAIDecisionsUpstream(t *testing.T) {
 		}
 	})
 
+	// openai-decisions.test.ts:142
+	t.Run("reports cached and cache-write input tokens separately at the catalog price", func(t *testing.T) {
+		luna := GetBuiltinClassifierModel("openai", "gpt-6-luna")
+		if luna == nil {
+			t.Fatal("missing OpenAI Decisions model")
+		}
+		result := ClassifyOpenAIDecisions(t.Context(), *luna, request, openAIDecisionsOptions(func(*http.Request) (*http.Response, error) {
+			return clsJSON(200, `{"answers":`+all+`,"usage":{"input_tokens":2000,"input_tokens_details":{"cached_tokens":1600,"cache_write_tokens":100},"output_tokens":0,"total_tokens":2000}}`), nil
+		}))
+
+		if result.Usage == nil || result.Usage.Input != 300 || result.Usage.Output != 0 || result.Usage.CacheRead != 1600 || result.Usage.CacheWrite != 100 || result.Usage.TotalTokens != 2000 {
+			t.Fatalf("usage=%+v", result.Usage)
+		}
+		if math.Abs(result.Usage.Cost.Total-0.0002) > 5e-13 {
+			t.Fatalf("cost.total=%v want 0.0002", result.Usage.Cost.Total)
+		}
+		raw, err := json.Marshal(result.Usage)
+		if err != nil {
+			t.Fatalf("marshal usage: %v", err)
+		}
+		var encoded map[string]any
+		if err := json.Unmarshal(raw, &encoded); err != nil {
+			t.Fatalf("unmarshal usage: %v", err)
+		}
+		if encoded["input"] != float64(300) || encoded["output"] != float64(0) || encoded["cacheRead"] != float64(1600) || encoded["cacheWrite"] != float64(100) || encoded["totalTokens"] != float64(2000) {
+			t.Fatalf("serialized usage=%v", encoded)
+		}
+	})
+
+	t.Run("clamps cached and cache-write tokens to input_tokens", func(t *testing.T) {
+		overRead := ParseClassifierUsage(json.RawMessage(`{"input_tokens":100,"input_tokens_details":{"cached_tokens":250,"cache_write_tokens":50},"output_tokens":10}`), model)
+		if overRead == nil || overRead.Input != 0 || overRead.Output != 10 || overRead.CacheRead != 100 || overRead.CacheWrite != 0 || overRead.TotalTokens != 110 {
+			t.Fatalf("overRead=%+v", overRead)
+		}
+		overWrite := ParseClassifierUsage(json.RawMessage(`{"input_tokens":100,"input_tokens_details":{"cached_tokens":60,"cache_write_tokens":80},"output_tokens":10}`), model)
+		if overWrite == nil || overWrite.Input != 0 || overWrite.Output != 10 || overWrite.CacheRead != 60 || overWrite.CacheWrite != 40 || overWrite.TotalTokens != 110 {
+			t.Fatalf("overWrite=%+v", overWrite)
+		}
+	})
+
 	// openai-decisions.test.ts:132
 	t.Run("sends images after the state in one user message", func(t *testing.T) {
 		var input any
