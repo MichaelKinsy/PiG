@@ -7,33 +7,64 @@ import (
 	"testing"
 )
 
-// parseSSE's buffer is a byte buffer searched from where the last search stopped, and well-formed text skips the per-rune decoder. The reference is the framing it replaced: the decoded text concatenated onto a string, searched from its start after every read.
-type referenceCodexFrames struct {
-	decoder codexTextDecoder
-	buffer  string
-}
-
-func (frames *referenceCodexFrames) add(data []byte, done bool) []string {
-	if done {
-		frames.buffer += frames.decoder.decode(nil, false)
-	} else {
-		frames.buffer += frames.decoder.decode(data, true)
-	}
-	if done && trimJSWhitespace(frames.buffer) != "" {
-		frames.buffer += "\n\n"
-	}
-	var taken []string
-	for {
-		index := strings.Index(frames.buffer, "\n\n")
-		if index < 0 {
-			return taken
+// referenceCodexSSE mirrors Pi's shared SseDecoder (packages/ai/src/utils/sse.ts, Pi da7e26cc8):
+// line endings LF, CRLF (including split across chunks), and lone CR; blank line flushes;
+// data: strips at most one leading space and joins with "\n".
+func referenceCodexSSE(body []byte) []string {
+	var dec codexTextDecoder
+	text := dec.decode(body, false)
+	var events []string
+	var data []string
+	hasEvent := false
+	flush := func() {
+		if !hasEvent && len(data) == 0 {
+			return
 		}
-		taken = append(taken, frames.buffer[:index])
-		frames.buffer = frames.buffer[index+2:]
+		if len(data) > 0 {
+			events = append(events, strings.Join(data, "\n"))
+		}
+		hasEvent = false
+		data = data[:0]
 	}
+	processLine := func(line string) {
+		if line == "" {
+			flush()
+			return
+		}
+		if strings.HasPrefix(line, ":") {
+			return
+		}
+		field, val, found := strings.Cut(line, ":")
+		if !found {
+			val = ""
+		}
+		val = strings.TrimPrefix(val, " ")
+		switch field {
+		case "event":
+			hasEvent = val != ""
+		case "data":
+			data = append(data, val)
+		}
+	}
+	start := 0
+	for i := 0; i < len(text); i++ {
+		if text[i] != '\r' && text[i] != '\n' {
+			continue
+		}
+		processLine(text[start:i])
+		if text[i] == '\r' && i+1 < len(text) && text[i+1] == '\n' {
+			i++
+		}
+		start = i + 1
+	}
+	if start < len(text) {
+		processLine(text[start:])
+	}
+	flush()
+	return events
 }
 
-var codexFrameAlphabet = []string{"\n", "\n\n", "\r\n", " ", "\u00a0", "data:", "data: {\"type\":\"x\"}", ": c", "\ufeff", "é", "\xff", "\xe4\xbd", "\xa0", strings.Repeat("z", 200)}
+var codexFrameAlphabet = []string{"\n", "\n\n", "\r\n", "\r", " ", "\u00a0", "data:", "data: {\"type\":\"x\"}", ": c", "\ufeff", "é", "\xff", "\xe4\xbd", "\xa0", strings.Repeat("z", 200)}
 
 func TestCodexSSEFramesMatchReference(t *testing.T) {
 	random := rand.New(rand.NewPCG(15, 16))
@@ -43,17 +74,16 @@ func TestCodexSSEFramesMatchReference(t *testing.T) {
 			body = append(body, codexFrameAlphabet[random.IntN(len(codexFrameAlphabet))]...)
 		}
 		chunks := randomSplits(random, body, 1+random.IntN(40))
-		reference := &referenceCodexFrames{}
+		want := referenceCodexSSE(body)
 		var frames codexSSEFrames
 		var decoder codexTextDecoder
-		var got, want []string
+		var got []string
 		for i := range len(chunks) + 1 {
 			var data []byte
 			done := i == len(chunks)
 			if !done {
 				data = append([]byte(nil), chunks[i]...)
 			}
-			want = append(want, reference.add(data, done)...)
 			frames.add(&decoder, data, done)
 			// The frames must not keep the read: the body reuses its buffer.
 			for j := range data {

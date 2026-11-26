@@ -6,7 +6,6 @@ import (
 	"io"
 	"math/rand/v2"
 	"slices"
-	"strings"
 	"testing"
 )
 
@@ -46,42 +45,19 @@ func randomSSEBody(random *rand.Rand, pieces []string) []byte {
 	return body
 }
 
-// piMessagesStringBufferEvents is readPiMessagesEvents as the reader ran it before its buffer was appended to: each chunk is concatenated with the whole buffer, the CRLF replace runs over all of it and the search starts at its beginning (pi-messages.ts:286-308).
+// piMessagesStringBufferEvents is the whole-body SSE reference matching Pi's SseDecoder (Pi da7e26cc8).
 func piMessagesStringBufferEvents(chunks [][]byte) (events []string, err error) {
-	var decoder piMessagesTextDecoder
-	buffer := ""
-	emit := func(raw string) error {
-		event, ok, err := parsePiMessagesEvent(raw)
-		if err == nil && ok {
+	var full []byte
+	for _, c := range chunks {
+		full = append(full, c...)
+	}
+	for _, data := range referenceCodexSSE(full) {
+		event, ok, parseErr := parsePiMessagesData(data)
+		if parseErr != nil {
+			return events, parseErr
+		}
+		if ok {
 			events = append(events, string(event))
-		}
-		return err
-	}
-	for read := 0; ; read++ {
-		done := read == len(chunks)
-		if done {
-			buffer += decoder.flush()
-		} else {
-			buffer += decoder.decode(chunks[read])
-		}
-		buffer = strings.ReplaceAll(buffer, "\r\n", "\n")
-		for {
-			split := strings.Index(buffer, "\n\n")
-			if split == -1 {
-				break
-			}
-			if err := emit(buffer[:split]); err != nil {
-				return events, err
-			}
-			buffer = buffer[split+2:]
-		}
-		if done {
-			break
-		}
-	}
-	if trimJSWhitespace(buffer) != "" {
-		if err := emit(buffer); err != nil {
-			return events, err
 		}
 	}
 	return events, nil
