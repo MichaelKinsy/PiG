@@ -41,7 +41,7 @@ Read:
 
 ## Extend PiG
 
-PiG extensions can use Go, Rust, Python, or Node. Each language needs its own toolchain on your computer; `pig setup` shows which ones PiG finds. Source extensions normally use the subprocess host. Compatible Go factories can be fused into a Piglet Binary. [Your first extension](/docs/latest/first-extension) builds one step by step.
+PiG extensions can use Go, Rust, Python, Node, or Common Lisp. Each language needs its own toolchain on your computer; `pig setup` shows which ones PiG finds. Source extensions normally use the subprocess host. Compatible Go factories can be fused into a Piglet Binary. [Your first extension](/docs/latest/first-extension) builds one step by step.
 
 Create and validate a Go extension:
 

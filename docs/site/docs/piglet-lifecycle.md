@@ -234,7 +234,7 @@ Provenance: matches ~/.pig/piglets/reviewer.yaml
 Signed manifest:
   Piglet: reviewer 0.1.0
   target: linux/amd64
-  PiG: 0.5.3
+  PiG: 0.8.0
   Piglet definition: sha256:<digest>
   resolution record: sha256:<digest>
   component plan: sha256:<digest>

@@ -38,8 +38,6 @@ After editing `coding/extension/host/subprocess/runtime-node/`, run `go generate
 
 `make generate` vendors Pi's runtime for this host from the installed pinned Pi (`make vendor-pi-dist`, which needs `make parity-deps`) and then packs it (`make node-runtime`). `make vendor-pi-dist-drift` and `make node-runtime-drift` fail when either step is stale, and CI's bookkeeping job runs both. The observation oracles (`automation/gen/regenerate-observation-oracles.sh`) are recordings under a pinned Node, not derivations. `make generate` does not re-record them, and their timestamps are not drift.
 
-`make generate` vendors Pi's runtime for this host from the installed pinned Pi (`make vendor-pi-dist`, which needs `make parity-deps`) and then packs it (`make node-runtime`). `make vendor-pi-dist-drift` and `make node-runtime-drift` fail when either step is stale, and CI's bookkeeping job runs both. The observation oracles (`automation/gen/regenerate-observation-oracles.sh`) are recordings under a pinned Node, not derivations. `make generate` does not re-record them, and their timestamps are not drift.
-
 ## Release version
 
 Change the PiG release version with `make set-version VERSION=x.y.z`. Use `SET_VERSION_ARGS=--dry-run` to inspect the diff without writing files. The command updates the release pin, Standard development version, and changelog heading, then runs the version consistency tests. It preserves Go module requirements and checksums so `main` continues to resolve published dependencies between releases. It leaves Unreleased entries in place unless you pass `SET_VERSION_ARGS=--move-unreleased`.
@@ -52,7 +50,7 @@ See [`docs/project/RELEASING.md`](https://github.com/MichaelKinsy/PiG/blob/main/
 
 ## Mirror upstream
 
-PiG compares against one Pi build. The upstream pin is one setting, `.upstream/pin`: a release tag or a pinned pi-mono commit. PiG 0.5.0 pinned the Pi release of its own `.upstream/pin`.
+PiG compares against one Pi build. The upstream pin is one setting, `.upstream/pin`: a release tag or a pinned pi-mono commit. Each PiG release pins the Pi release recorded in its `.upstream/pin` (for PiG 0.8.0, Pi 1.6.0).
 
 ```bash
 make upstream-mirror
@@ -62,7 +60,7 @@ This target installs the lockfile-pinned Pi comparator. It retrieves the pinned 
 
 ## Model catalog generation
 
-The model catalog is Pi's: the data Pi's own catalog generator (`packages/ai/catalog/generate.ts`, `generate-models` before `build` in Pi) makes from live models.dev, OpenRouter, Vercel AI Gateway, NVIDIA NIM and Radius responses. It is not the frozen snapshot the published `@earendil-works/pi-ai` 1.5.2 package ships (that snapshot is the day Pi built its release). PiG commits the responses of one live fetch, `automation/gen/catalog-source/responses.tar.gz`, and `meta.json` beside it: the fetch time, every URL with its status and sha256, the sha256 of the archive, and the Pi commit whose generator is run over it (the pin) and the Pi commit of the three provider catalog files (`pi-overlay/`) that Pi main changed after the pin. The catalog now in the tree was fetched at the `fetchedAt` of that file. `make model-catalogs` (part of `make generate`) reads only that recording and is offline: `cmd/gen-models -replay-source` ports Pi's generator over it, the oracle Pi's own generator runs over the same recording (`automation/pin/oracle.py` installs its output into the oracle's `pi-ai` and the bundle `pi` runs), the script requires the two outputs to be identical (every file, every byte), and `cmd/gen-models -src` emits the Go catalogs from the oracle's barrel and shards. The parity scenarios therefore compare PiG with a Pi that holds the same data.
+The model catalog is Pi's: the data Pi's own catalog generator (`packages/ai/catalog/generate.ts`, `generate-models` before `build` in Pi) makes from live models.dev, OpenRouter, Vercel AI Gateway, NVIDIA NIM and Radius responses. It is not the frozen snapshot the published `@earendil-works/pi-ai` 1.6.0 package ships (that snapshot is the day Pi built its release). PiG commits the responses of one live fetch, `automation/gen/catalog-source/responses.tar.gz`, and `meta.json` beside it: the fetch time, every URL with its status and sha256, the sha256 of the archive, and the Pi commit whose generator is run over it (the pin) and the Pi commit of the three provider catalog files (`pi-overlay/`) that Pi main changed after the pin. The catalog now in the tree was fetched at the `fetchedAt` of that file. `make model-catalogs` (part of `make generate`) reads only that recording and is offline: `cmd/gen-models -replay-source` ports Pi's generator over it, the oracle Pi's own generator runs over the same recording (`automation/pin/oracle.py` installs its output into the oracle's `pi-ai` and the bundle `pi` runs), the script requires the two outputs to be identical (every file, every byte), and `cmd/gen-models -src` emits the Go catalogs from the oracle's barrel and shards. The parity scenarios therefore compare PiG with a Pi that holds the same data.
 
 A refresh is a reviewed data change, not a side effect of a build. To refresh near the cut:
 

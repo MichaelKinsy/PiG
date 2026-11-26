@@ -14,11 +14,11 @@ Run `pig --version` again to check.
 
 ## Change what the install script does
 
-`install.sh` reads these environment variables. Set them on the `sh` side of the pipe, for example `curl -fsSL https://pi-in-go.dev/install.sh | PIG_VERSION=0.5.0 sh`.
+`install.sh` reads these environment variables. Set them on the `sh` side of the pipe, for example `curl -fsSL https://pi-in-go.dev/install.sh | PIG_VERSION=0.8.0 sh`.
 
 | Variable | Meaning |
 |---|---|
-| `PIG_VERSION` | Install this release (for example `0.5.0`) instead of the latest. |
+| `PIG_VERSION` | Install this release (for example `0.8.0`) instead of the latest. |
 | `PIG_INSTALL_DIR` | Directory that receives `pig`. The default is `$HOME/.local/bin`, or `$PREFIX/bin` in Termux. |
 | `PIG_HOME` | PiG's settings directory, where the install receipt goes. The default is `$XDG_CONFIG_HOME/pig` when `XDG_CONFIG_HOME` is set, else `~/.pig`. |
 | `PIG_API_BASE` | The API that names the latest release. The default is `https://pi-in-go.dev/api`. |

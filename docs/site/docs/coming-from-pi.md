@@ -24,7 +24,7 @@ Every difference that a user or an extension can observe has a numbered record i
 | `~/.pi/agent` | `~/.pig/agent`. PiG does not read or write `~/.pi` unless you opt in. | D2 |
 | `<project>/.pi` | `<project>/.pig`. PiG reads `.pig` only from the working directory. | D2 |
 | `PI_CODING_AGENT_DIR` | `PIG_CODING_AGENT_DIR`. Pi's variable is read only in shared mode. | D2 |
-| The startup header shows Pi's version, `v1.5.1` | The startup header and the help banner show PiG's version with the Pi release it ports, for example `v0.7.0+1.5.1`. `pig --version` prints Pi's version exactly as `pi --version` does; `pig version` prints the PiG release and the Pi release as separate fields. | D2 |
+| The startup header shows Pi's version, `v1.6.0` | The startup header and the help banner show PiG's version with the Pi release it ports, for example `v0.8.0+1.6.0`. `pig --version` prints Pi's version exactly as `pi --version` does; `pig version` prints the PiG release and the Pi release as separate fields. | D2 |
 | Requests identify as `pi/<version>` | Requests identify as `pig/<version>`. PiG never identifies itself as Pi to a service. | D26, D65 |
 | Hosted endpoints on pi.dev | Hosted endpoints on pi-in-go.dev, including `/share`, the model catalog, the install report and the installer. PiG reads its version check from the update manifest of the latest GitHub Release, not from pi-in-go.dev. | D39, D64 |
 | `/bug` can upload a report | `/bug` writes a zip file and prints a link to a PiG issue form. | D62 |
@@ -120,7 +120,7 @@ A Package that hard-codes `~/.pi/agent` in its own code keeps writing there. Use
    pig list
    ```
 
-3. If the extension misbehaves, check the tables above. The records D70, D73, D74, D83 and D93 explain most differences.
+3. If the extension misbehaves, check the tables above. Most differences come from subprocess isolation, fresh processes on session replacement, Go-hosted model providers, cross-process event-bus timing, and ES module reloads (records D70, D73, D74, D83, and D93).
 
 4. If you want a native Go version for a single executable, follow [Port your extension](/docs/latest/port-your-extension).
 
