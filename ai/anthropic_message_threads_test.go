@@ -881,3 +881,30 @@ func TestAnthropicMessageThreadsAnyProviderOnAnthropicEndpoint(t *testing.T) {
 		t.Fatalf("gateway sent thread = %v, betas = %v", request.body["thread"], request.betas)
 	}
 }
+
+// Port of Pi main 8a57d42a5de8f3f87ebd0cb40c8ece4aed0fc336 (#12502, #12376):
+// Anthropic thread fallback reports the rejected 400 and the fallback 200 to OnResponse.
+func TestAnthropicThreadFallbackReportsRejectedStatusToOnResponse(t *testing.T) {
+	h := newThreadHarness(t)
+	messages := []Message{threadUser("first")}
+	h.say(t, &messages, threadTurnInput{})
+	messages = append(messages, threadUser("second"))
+	h.push(func(threadCaptured) *http.Response {
+		return threadErrorResponse(400, "rejected", "thread_unsupported_request", nil)
+	})
+	var statuses []int
+	result := h.say(t, &messages, threadTurnInput{
+		options: func(o *StreamOptions) {
+			o.OnResponse = func(_ context.Context, r ProviderResponse, _ *Model) error {
+				statuses = append(statuses, r.Status)
+				return nil
+			}
+		},
+	})
+	if result.StopReason != StopReasonStop {
+		t.Fatalf("stopReason = %v (%s)", result.StopReason, result.ErrorMessage)
+	}
+	if !reflect.DeepEqual(statuses, []int{400, 200}) {
+		t.Fatalf("OnResponse statuses = %v, want [400 200]", statuses)
+	}
+}

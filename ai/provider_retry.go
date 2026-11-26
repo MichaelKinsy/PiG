@@ -308,6 +308,15 @@ func RetryProviderRequest[T any](ctx context.Context, request func() (T, error),
 // wrapping only `create().withResponse()`. Mid-stream errors are not retried.
 type retryErrorResponseKey struct{}
 
+// retryCallbackError marks an error returned by an OnResponse / onRetryResponse callback inside
+// retryTransport so callers unwrap it cleanly instead of decorating it as an HTTP transport error.
+type retryCallbackError struct {
+	err error
+}
+
+func (e *retryCallbackError) Error() string { return e.err.Error() }
+func (e *retryCallbackError) Unwrap() error { return e.err }
+
 // withRetryErrorResponse attaches a callback invoked by retryTransport on each non-2xx HTTP response
 // consumed by a retry attempt (before the retry delay). The final non-2xx response returned to the
 // caller is observed by the caller itself.
@@ -374,13 +383,13 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 			if observeErrFn, ok := req.Context().Value(retryErrorResponseKey{}).(func(*http.Response) error); ok && observeErrFn != nil {
 				if observeErr := observeErrFn(resp); observeErr != nil {
 					drainClose(resp)
-					return nil, observeErr
+					return nil, &retryCallbackError{err: observeErr}
 				}
 			}
 			if t.onRetryResponse != nil {
 				if observeErr := t.onRetryResponse(resp); observeErr != nil {
 					drainClose(resp)
-					return nil, observeErr
+					return nil, &retryCallbackError{err: observeErr}
 				}
 			}
 		}

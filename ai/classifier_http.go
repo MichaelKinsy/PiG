@@ -136,7 +136,7 @@ func classifierPost(ctx context.Context, options ClassifierOptions, label, targe
 	// Reported before the body is read, so a body that fails to arrive still reports its status.
 	if observeModel != nil && options.OnResponse != nil {
 		if obsErr := options.OnResponse(ProviderResponse{Status: response.StatusCode, Headers: headersToRecord(response.Header)}, *observeModel); obsErr != nil {
-			return classifierResponse{}, obsErr
+			return fail(obsErr)
 		}
 	}
 	data, err := io.ReadAll(response.Body)

@@ -1904,6 +1904,9 @@ func (p *anthropicProvider) do(ctx context.Context, httpReq *http.Request, opts 
 		case errors.Is(err, context.DeadlineExceeded):
 			return nil, errors.New("Request timed out.")
 		default:
+			if cbErr, ok := errors.AsType[*retryCallbackError](err); ok {
+				return nil, cbErr.err
+			}
 			// retryProviderRequest throws validateServerRetryDelayMs's error with the SDK status error's own message appended.
 			if exceeded, ok := errors.AsType[*providerRetryDelayError](err); ok && exceeded.status != 0 {
 				if sdkErr, ok := errors.AsType[*providerError](anthHTTPError(exceeded.status, exceeded.body)); ok {

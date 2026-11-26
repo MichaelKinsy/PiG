@@ -272,3 +272,43 @@ func TestPostClassifierRequestReportsErrorResponseBeforeBodyFails(t *testing.T) 
 		t.Fatalf("responses = %#v, want 503 with retry-after=7", responses)
 	}
 }
+
+// Port of Pi main 8a57d42a5de8f3f87ebd0cb40c8ece4aed0fc336 (#12502):
+// an OnResponse callback error during a retryable attempt returns the bare callback message, not wrapped in *url.Error.
+func TestOnResponseCallbackErrorOnRetriedAttemptIsUnwrapped(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Retry-After", "0")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(`{"error":{"message":"rate limited"}}`))
+	}))
+	defer server.Close()
+
+	wantErr := "callback exploded"
+	ctxMsgs := NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("hi"), Timestamp: 1}}})
+	for _, tc := range []struct {
+		name string
+		p    Provider
+	}{
+		{"openai-completions", NewOpenAIProvider(OpenAIConfig{APIKey: "k", Model: "m", ProviderID: "test", BaseURL: server.URL})},
+		{"openai-responses", NewOpenAIResponsesProvider(OpenAIResponsesConfig{APIKey: "k", Model: "m", ProviderID: "test", BaseURL: server.URL})},
+		{"anthropic-messages", NewAnthropicProvider(AnthropicConfig{APIKey: "k", Model: "m", ProviderID: "test", BaseURL: server.URL})},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			stream, err := tc.p.Stream(t.Context(), ctxMsgs, StreamOptions{
+				MaxRetries: new(2),
+				OnResponse: func(context.Context, ProviderResponse, *Model) error {
+					return errors.New(wantErr)
+				},
+			})
+			var gotMsg string
+			if err != nil {
+				gotMsg = err.Error()
+			} else {
+				gotMsg = stream.Result().ErrorMessage
+			}
+			if gotMsg != wantErr {
+				t.Fatalf("errorMessage = %q, want bare %q", gotMsg, wantErr)
+			}
+		})
+	}
+}

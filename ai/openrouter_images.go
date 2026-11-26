@@ -118,6 +118,11 @@ func generateOpenRouterImages(ctx context.Context, model ImageModel, imagesCtx I
 	}
 	resp, err := providerHTTPClient(streamingHTTPClient(), options.Fetch).Do(req)
 	if err != nil {
+		if cbErr, ok := errors.AsType[*retryCallbackError](err); ok {
+			out.StopReason = ImagesStopReasonError
+			out.ErrorMessage = cbErr.err.Error()
+			return out
+		}
 		out.StopReason = imagesStopReasonForContext(ctx)
 		if sdkErr := openAISDKTransportError(ctx, err); sdkErr != nil {
 			out.ErrorMessage = sdkErr.Error()
