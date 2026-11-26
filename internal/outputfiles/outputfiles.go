@@ -9,11 +9,11 @@ package outputfiles
 import (
 	"bufio"
 	"crypto/rand"
-	"sync"
 	"encoding/hex"
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 )

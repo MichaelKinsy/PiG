@@ -122,16 +122,17 @@ func (m *InteractiveMode) oauthProviderList(mode string, includeStatus ...bool) 
 	}
 	for i := range all {
 		if c, ok := creds[all[i].ID]; ok {
-			if m.opts.ModelRegistry != nil {
+			switch {
+			case m.opts.ModelRegistry != nil:
 				status := m.opts.ModelRegistry.GetProviderAuthStatus(all[i].ID)
 				all[i].Status = authSelectorStatus(status, c.Type == ai.CredentialOAuth)
-			} else if c.Type == ai.CredentialAPIKey && c.Key != "" {
+			case c.Type == ai.CredentialAPIKey && c.Key != "":
 				if resolved, err := auth.Read(context.Background(), all[i].ID); err != nil || resolved == nil || resolved.Key == "" {
 					all[i].Status = tui.AuthSelectorStatusUnresolved()
 				} else {
 					all[i].Status = &ai.AuthCheck{Type: c.Type, Source: string(ai.AuthSourceStored)}
 				}
-			} else {
+			default:
 				all[i].Status = &ai.AuthCheck{Type: c.Type, Source: string(ai.AuthSourceStored)}
 			}
 		}

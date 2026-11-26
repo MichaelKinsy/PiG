@@ -5,16 +5,13 @@
 package shellconfig
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
-	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
 // Config is the resolved shell binary and its leading arguments. The command
@@ -93,22 +90,6 @@ func GitBashFromShellPath(rawOutput string, exists func(string) bool) string {
 		return bash
 	}
 	return ""
-}
-
-// runCommand runs name with args and a 5s timeout, mirroring upstream's
-// spawnSync(..., { encoding: "utf-8", timeout: 5000, windowsHide: true }).
-func runCommand(name string, args ...string) (string, bool) {
-	ctx, cancel := context.WithTimeout(context.Background(), findTimeout)
-	defer cancel()
-	//nolint:gosec // G204 (class a): name is git.exe resolved on PATH; args are fixed ["var", "GIT_SHELL_PATH"].
-	command := exec.CommandContext(ctx, name, args...)
-	nodespawn.HideWindow(command, nodespawn.Ignore, nodespawn.Pipe, nodespawn.Pipe)
-	nodespawn.SetProgram(command)
-	output, err := command.Output()
-	if err != nil {
-		return "", false
-	}
-	return string(output), true
 }
 
 // windowsDefault resolves bash on Windows:

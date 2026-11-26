@@ -1477,10 +1477,10 @@ commandLoop:
 					return
 				}
 				turn.complete(rpcSuccess(id, "bash", RPCBashResult{
-					Output:         result.Output,
-					ExitCode:       result.ExitCode,
-					Cancelled:      result.Cancelled,
-					Truncated:      result.Truncated,
+					Output:          result.Output,
+					ExitCode:        result.ExitCode,
+					Cancelled:       result.Cancelled,
+					Truncated:       result.Truncated,
 					FullOutputPath:  result.FullOutputPath,
 					FullOutputError: result.FullOutputError,
 				}))

@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/crossspawn"
-	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 	"github.com/MichaelKinsy/PiG/internal/noderealpath"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )

@@ -3,9 +3,12 @@
 package shellconfig
 
 import (
+	"context"
 	"os"
+	"os/exec"
 
 	"github.com/MichaelKinsy/PiG/internal/nodefs"
+	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
 // Default resolves bash on Windows, mirroring upstream getShellConfig's win32
@@ -23,4 +26,20 @@ func Default() (Config, error) {
 		FindExecutableOnPath,
 		runCommand,
 	)
+}
+
+// runCommand runs name with args and a 5s timeout, mirroring upstream's
+// spawnSync(..., { encoding: "utf-8", timeout: 5000, windowsHide: true }).
+func runCommand(name string, args ...string) (string, bool) {
+	ctx, cancel := context.WithTimeout(context.Background(), findTimeout)
+	defer cancel()
+	//nolint:gosec // G204 (class a): name is git.exe resolved on PATH; args are fixed ["var", "GIT_SHELL_PATH"].
+	command := exec.CommandContext(ctx, name, args...)
+	nodespawn.HideWindow(command, nodespawn.Ignore, nodespawn.Pipe, nodespawn.Pipe)
+	nodespawn.SetProgram(command)
+	output, err := command.Output()
+	if err != nil {
+		return "", false
+	}
+	return string(output), true
 }

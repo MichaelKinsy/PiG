@@ -13,8 +13,8 @@ package tools
 
 import (
 	"context"
-	"sync/atomic"
 	"strings"
+	"sync/atomic"
 	"unicode/utf16"
 
 	"github.com/MichaelKinsy/PiG/internal/outputfiles"

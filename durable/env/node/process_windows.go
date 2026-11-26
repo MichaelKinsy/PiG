@@ -16,6 +16,7 @@ import (
 	"golang.org/x/sys/windows"
 
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
+	"github.com/MichaelKinsy/PiG/internal/shellconfig"
 )
 
 const isWindows = true
@@ -78,3 +79,16 @@ func platformShellConfig(ctx context.Context) (shellConfig, error) {
 }
 
 func signalExitCode(syscall.WaitStatus) (int, bool) { return 0, false }
+
+// findGitBashOfGitOnPath asks git.exe on PATH for its Git for Windows installation via `git var GIT_SHELL_PATH`.
+func findGitBashOfGitOnPath(ctx context.Context) string {
+	git := findExecutableOnPath(ctx, "git.exe")
+	if git == "" {
+		return ""
+	}
+	output, ok := runLookupCommand(ctx, git, "var", "GIT_SHELL_PATH")
+	if !ok {
+		return ""
+	}
+	return shellconfig.GitBashFromShellPath(output, pathExists)
+}

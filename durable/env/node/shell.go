@@ -102,19 +102,6 @@ func findExecutableOnPath(ctx context.Context, executable string) string {
 	return bashFromWhichOutput(output)
 }
 
-// findGitBashOfGitOnPath asks git.exe on PATH for its Git for Windows installation via `git var GIT_SHELL_PATH`.
-func findGitBashOfGitOnPath(ctx context.Context) string {
-	git := findExecutableOnPath(ctx, "git.exe")
-	if git == "" {
-		return ""
-	}
-	output, ok := runLookupCommand(ctx, git, "var", "GIT_SHELL_PATH")
-	if !ok {
-		return ""
-	}
-	return shellconfig.GitBashFromShellPath(output, pathExists)
-}
-
 // findBashOnPath asks `which bash` (or `where bash.exe`) for the first match.
 func findBashOnPath(ctx context.Context) string {
 	if isWindows {

@@ -29,7 +29,7 @@ type BashExecutionComponent struct {
 	finishedAt         time.Time
 	truncated          bool
 	fullOutputPath     string
-	fullOutputError string
+	fullOutputError    string
 	expanded           bool
 	loader             *Loader // animated spinner while running
 	outputPad          int     // horizontal padding of the header, output and status rows (bash-execution.ts outputPad)

@@ -599,10 +599,10 @@ type RPCSetFollowUpModeCommand struct {
 // RPCBashResult is the response payload for the bash command.
 // Mirrors coding.BashResult.
 type RPCBashResult struct {
-	Output         string `json:"output"`
-	ExitCode       *int   `json:"exitCode,omitempty"`
-	Cancelled      bool   `json:"cancelled"`
-	Truncated      bool   `json:"truncated"`
+	Output          string `json:"output"`
+	ExitCode        *int   `json:"exitCode,omitempty"`
+	Cancelled       bool   `json:"cancelled"`
+	Truncated       bool   `json:"truncated"`
 	FullOutputPath  string `json:"fullOutputPath,omitempty"`
 	FullOutputError string `json:"fullOutputError,omitempty"`
 }

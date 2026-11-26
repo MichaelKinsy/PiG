@@ -2166,9 +2166,9 @@ func (s *Session) setThinkingLevelState(level ai.ModelThinkingLevel, options ...
 type BashResult struct {
 	Output string `json:"output"`
 	// ExitCode is nil when the command has no exit status, including cancellation.
-	ExitCode       *int   `json:"exitCode,omitempty"`
-	Cancelled      bool   `json:"cancelled"`
-	Truncated      bool   `json:"truncated"`
+	ExitCode        *int   `json:"exitCode,omitempty"`
+	Cancelled       bool   `json:"cancelled"`
+	Truncated       bool   `json:"truncated"`
 	FullOutputPath  string `json:"fullOutputPath,omitempty"`
 	FullOutputError string `json:"fullOutputError,omitempty"`
 }
@@ -2240,10 +2240,10 @@ func (s *Session) executeBash(ctx context.Context, command string, excludeFromCo
 		s.emitOrderedEventSync(agent.BashExecutionUpdateEvent{ID: eventID, Delta: delta})
 	}})
 	result := BashResult{
-		Output:         shared.Output,
-		ExitCode:       shared.ExitCode,
-		Cancelled:      shared.Cancelled,
-		Truncated:      shared.Truncated,
+		Output:          shared.Output,
+		ExitCode:        shared.ExitCode,
+		Cancelled:       shared.Cancelled,
+		Truncated:       shared.Truncated,
 		FullOutputPath:  shared.FullOutputPath,
 		FullOutputError: shared.FullOutputError,
 	}
