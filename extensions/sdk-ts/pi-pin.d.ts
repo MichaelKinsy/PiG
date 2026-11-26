@@ -10764,6 +10764,90 @@ jpegQuality: number;
 };
 type: string;
 };
+"chat:global.openai.gpt-6.2-astra": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsStrictMode: boolean;
+};
+thinkingLevelMap: {
+xhigh: string;
+};
+inputLimits: {
+images: {
+maxPerMessage: number;
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:global.openai.gpt-6.2-sol": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsStrictMode: boolean;
+};
+thinkingLevelMap: {
+xhigh: string;
+};
+inputLimits: {
+images: {
+maxPerMessage: number;
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
 "chat:global.xai.grok-4.6": {
 id: string;
 name: string;
@@ -12453,6 +12537,90 @@ jpegQuality: number;
 };
 type: string;
 };
+"chat:openai.gpt-6.2-astra": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsStrictMode: boolean;
+};
+thinkingLevelMap: {
+xhigh: string;
+};
+inputLimits: {
+images: {
+maxPerMessage: number;
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:openai.gpt-6.2-sol": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsStrictMode: boolean;
+};
+thinkingLevelMap: {
+xhigh: string;
+};
+inputLimits: {
+images: {
+maxPerMessage: number;
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
 "chat:openai.gpt-oss-120b": {
 id: string;
 name: string;
@@ -14007,6 +14175,90 @@ jpegQuality: number;
 type: string;
 };
 "chat:us.openai.gpt-6.1-terra": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsStrictMode: boolean;
+};
+thinkingLevelMap: {
+xhigh: string;
+};
+inputLimits: {
+images: {
+maxPerMessage: number;
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:us.openai.gpt-6.2-astra": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsStrictMode: boolean;
+};
+thinkingLevelMap: {
+xhigh: string;
+};
+inputLimits: {
+images: {
+maxPerMessage: number;
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:us.openai.gpt-6.2-sol": {
 id: string;
 name: string;
 api: string;
@@ -19746,6 +19998,102 @@ jpegQuality: number;
 };
 type: string;
 };
+"chat:gpt-6.2-astra": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: string;
+};
+compat: {
+supportsStrictMode: boolean;
+supportsOpenAIGrammarTools: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:gpt-6.2-sol": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: string;
+};
+compat: {
+supportsStrictMode: boolean;
+supportsOpenAIGrammarTools: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
 "chat:o3": {
 id: string;
 name: string;
@@ -22548,6 +22896,54 @@ jpegQuality: number;
 };
 type: string;
 };
+"chat:gemini-4-neon": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+headers: {
+"User-Agent": string;
+"Editor-Version": string;
+"Editor-Plugin-Version": string;
+"Copilot-Integration-Id": string;
+};
+compat: {
+supportsStrictMode: boolean;
+supportsStore: boolean;
+supportsReasoningEffort: boolean;
+};
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: null;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
 "chat:kimi-k3": {
 id: string;
 name: string;
@@ -23141,6 +23537,118 @@ jpegQuality: number;
 };
 type: string;
 };
+"chat:gpt-6.2-astra": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+headers: {
+"User-Agent": string;
+"Editor-Version": string;
+"Editor-Plugin-Version": string;
+"Copilot-Integration-Id": string;
+};
+compat: {
+supportsStrictMode: boolean;
+supportsMidConvoSystemMessages: boolean;
+supportsAdditionalTools: boolean;
+supportsOpenAIGrammarTools: boolean;
+};
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: string;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:gpt-6.2-sol": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+headers: {
+"User-Agent": string;
+"Editor-Version": string;
+"Editor-Plugin-Version": string;
+"Copilot-Integration-Id": string;
+};
+compat: {
+supportsStrictMode: boolean;
+supportsMidConvoSystemMessages: boolean;
+supportsAdditionalTools: boolean;
+supportsOpenAIGrammarTools: boolean;
+};
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: string;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
 "chat:grok-4.5": {
 id: string;
 name: string;
@@ -23333,6 +23841,98 @@ medium: string;
 high: string;
 xhigh: null;
 max: null;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:mai-code-2": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+headers: {
+"User-Agent": string;
+"Editor-Version": string;
+"Editor-Plugin-Version": string;
+"Copilot-Integration-Id": string;
+};
+compat: {
+supportsStrictMode: boolean;
+};
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: string;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:mai-code-2-flash": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+headers: {
+"User-Agent": string;
+"Editor-Version": string;
+"Editor-Plugin-Version": string;
+"Copilot-Integration-Id": string;
+};
+compat: {
+supportsStrictMode: boolean;
+};
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: string;
 };
 inputLimits: {
 images: {
@@ -23869,6 +24469,43 @@ jpegQuality: number;
 type: string;
 };
 "chat:gemini-4-hydrogen": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: null;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:gemini-4-neon": {
 id: string;
 name: string;
 api: string;
@@ -24633,6 +25270,45 @@ jpegQuality: number;
 type: string;
 };
 "chat:gemini-4-hydrogen": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: null;
+};
+inputLimits: {
+maxRequestBytes: number;
+images: {
+maxPerRequest: number;
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:gemini-4-neon": {
 id: string;
 name: string;
 api: string;
@@ -25646,7 +26322,70 @@ jpegQuality: number;
 };
 type: string;
 };
+"chat:meta-llama/Llama-3.1-70B-Instruct": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsStrictMode: boolean;
+};
+type: string;
+};
 "chat:meta-llama/Llama-3.1-8B-Instruct": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsStrictMode: boolean;
+};
+type: string;
+};
+"chat:meta-llama/Llama-3.2-1B-Instruct": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsStrictMode: boolean;
+};
+type: string;
+};
+"chat:meta-llama/Llama-3.2-3B-Instruct": {
 id: string;
 name: string;
 api: string;
@@ -26245,6 +26984,27 @@ supportsStrictMode: boolean;
 type: string;
 };
 "chat:Qwen/Qwen3-30B-A3B": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsStrictMode: boolean;
+};
+type: string;
+};
+"chat:Qwen/Qwen3-30B-A3B-Instruct-2507": {
 id: string;
 name: string;
 api: string;
@@ -26889,6 +27649,46 @@ max: null;
 };
 type: string;
 };
+"chat:tencent/Hy4-flash": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsStrictMode: boolean;
+};
+thinkingLevelMap: {
+off: string;
+minimal: null;
+low: null;
+medium: null;
+high: string;
+xhigh: null;
+max: null;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
 "chat:tencent/Hy4-preview": {
 id: string;
 name: string;
@@ -27090,6 +27890,27 @@ max: null;
 };
 type: string;
 };
+"chat:zai-org/GLM-4.5": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsStrictMode: boolean;
+};
+type: string;
+};
 "chat:zai-org/GLM-4.5-Air": {
 id: string;
 name: string;
@@ -27160,6 +27981,37 @@ contextWindow: number;
 maxTokens: number;
 compat: {
 supportsStrictMode: boolean;
+};
+type: string;
+};
+"chat:zai-org/GLM-4.6V": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsStrictMode: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
 };
 type: string;
 };
@@ -29674,53 +30526,6 @@ export default value;
 declare module "pi-pin:@earendil-works/pi-ai/dist/providers/data/nvidia.json" {
 const value: {
 "openai-completions": {
-"chat:deepseek-ai/deepseek-v4.1-flash": {
-id: string;
-name: string;
-api: string;
-provider: string;
-baseUrl: string;
-reasoning: boolean;
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-headers: {
-"NVCF-POLL-SECONDS": string;
-};
-compat: {
-supportsStore: boolean;
-supportsReasoningEffort: boolean;
-maxTokensField: string;
-supportsLongCacheRetention: boolean;
-supportsStrictMode: boolean;
-requiresReasoningContentOnAssistantMessages: boolean;
-thinkingFormat: string;
-};
-thinkingLevelMap: {
-minimal: null;
-low: null;
-medium: null;
-high: string;
-max: string;
-};
-inputLimits: {
-images: {
-resize: {
-maxWidth: number;
-maxHeight: number;
-maxBytes: number;
-jpegQuality: number;
-};
-};
-};
-type: string;
-};
 "chat:google/gemma-3-12b-it": {
 id: string;
 name: string;
@@ -29760,44 +30565,6 @@ jpegQuality: number;
 type: string;
 };
 "chat:google/gemma-3-4b-it": {
-id: string;
-name: string;
-api: string;
-provider: string;
-baseUrl: string;
-reasoning: boolean;
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-headers: {
-"NVCF-POLL-SECONDS": string;
-};
-compat: {
-supportsStore: boolean;
-supportsReasoningEffort: boolean;
-maxTokensField: string;
-supportsLongCacheRetention: boolean;
-supportsStrictMode: boolean;
-};
-inputLimits: {
-images: {
-resize: {
-maxWidth: number;
-maxHeight: number;
-maxBytes: number;
-jpegQuality: number;
-};
-};
-};
-type: string;
-};
-"chat:meta/llama-3.2-90b-vision-instruct": {
 id: string;
 name: string;
 api: string;
@@ -29911,72 +30678,6 @@ jpegQuality: number;
 };
 type: string;
 };
-"chat:mistralai/mistral-7b-instruct-v0.3": {
-id: string;
-name: string;
-api: string;
-provider: string;
-baseUrl: string;
-reasoning: boolean;
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-headers: {
-"NVCF-POLL-SECONDS": string;
-};
-compat: {
-supportsStore: boolean;
-supportsReasoningEffort: boolean;
-maxTokensField: string;
-supportsLongCacheRetention: boolean;
-supportsStrictMode: boolean;
-};
-type: string;
-};
-"chat:moonshotai/kimi-k2.6": {
-id: string;
-name: string;
-api: string;
-provider: string;
-baseUrl: string;
-reasoning: boolean;
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-headers: {
-"NVCF-POLL-SECONDS": string;
-};
-compat: {
-supportsStore: boolean;
-supportsReasoningEffort: boolean;
-maxTokensField: string;
-supportsLongCacheRetention: boolean;
-supportsStrictMode: boolean;
-};
-inputLimits: {
-images: {
-resize: {
-maxWidth: number;
-maxHeight: number;
-maxBytes: number;
-jpegQuality: number;
-};
-};
-};
-type: string;
-};
 "chat:nvidia/cosmos-reason2-8b": {
 id: string;
 name: string;
@@ -30012,62 +30713,6 @@ maxBytes: number;
 jpegQuality: number;
 };
 };
-};
-type: string;
-};
-"chat:nvidia/llama-3.1-nemotron-70b-instruct": {
-id: string;
-name: string;
-api: string;
-provider: string;
-baseUrl: string;
-reasoning: boolean;
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-headers: {
-"NVCF-POLL-SECONDS": string;
-};
-compat: {
-supportsStore: boolean;
-supportsReasoningEffort: boolean;
-maxTokensField: string;
-supportsLongCacheRetention: boolean;
-supportsStrictMode: boolean;
-};
-type: string;
-};
-"chat:nvidia/llama-3.1-nemotron-ultra-253b-v1": {
-id: string;
-name: string;
-api: string;
-provider: string;
-baseUrl: string;
-reasoning: boolean;
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-headers: {
-"NVCF-POLL-SECONDS": string;
-};
-compat: {
-supportsStore: boolean;
-supportsReasoningEffort: boolean;
-maxTokensField: string;
-supportsLongCacheRetention: boolean;
-supportsStrictMode: boolean;
 };
 type: string;
 };
@@ -30200,34 +30845,6 @@ maxBytes: number;
 jpegQuality: number;
 };
 };
-};
-type: string;
-};
-"chat:openai/gpt-oss-20b": {
-id: string;
-name: string;
-api: string;
-provider: string;
-baseUrl: string;
-reasoning: boolean;
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-headers: {
-"NVCF-POLL-SECONDS": string;
-};
-compat: {
-supportsStore: boolean;
-supportsReasoningEffort: boolean;
-maxTokensField: string;
-supportsLongCacheRetention: boolean;
-supportsStrictMode: boolean;
 };
 type: string;
 };
@@ -33082,6 +33699,34 @@ jpegQuality: number;
 };
 type: string;
 };
+"chat:qwen4-max": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
 };
 "google-generative-ai": {
 "chat:gemini-4-argon": {
@@ -33231,38 +33876,6 @@ jpegQuality: number;
 };
 type: string;
 };
-"chat:glm-5.2": {
-id: string;
-name: string;
-api: string;
-provider: string;
-baseUrl: string;
-reasoning: boolean;
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-compat: {
-supportsStore: boolean;
-supportsStrictMode: boolean;
-maxTokensField: string;
-};
-thinkingLevelMap: {
-off: null;
-minimal: null;
-low: null;
-medium: null;
-high: string;
-xhigh: null;
-max: string;
-};
-type: string;
-};
 "chat:glm-5.3": {
 id: string;
 name: string;
@@ -33370,6 +33983,48 @@ max: null;
 type: string;
 };
 "chat:hy4": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsStore: boolean;
+supportsStrictMode: boolean;
+maxTokensField: string;
+};
+thinkingLevelMap: {
+off: string;
+minimal: null;
+low: null;
+medium: null;
+high: string;
+xhigh: null;
+max: null;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:hy4-flash-free": {
 id: string;
 name: string;
 api: string;
@@ -34714,87 +35369,6 @@ type: string;
 };
 };
 "google-generative-ai": {
-"chat:gemini-3-flash": {
-id: string;
-name: string;
-api: string;
-provider: string;
-baseUrl: string;
-reasoning: boolean;
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-thinkingLevelMap: {
-off: null;
-minimal: string;
-low: string;
-medium: string;
-high: string;
-xhigh: null;
-max: null;
-};
-inputLimits: {
-images: {
-resize: {
-maxWidth: number;
-maxHeight: number;
-maxBytes: number;
-jpegQuality: number;
-};
-};
-};
-type: string;
-};
-"chat:gemini-3.1-pro": {
-id: string;
-name: string;
-api: string;
-provider: string;
-baseUrl: string;
-reasoning: boolean;
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-tiers: {
-inputTokensAbove: number;
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-}[];
-};
-contextWindow: number;
-maxTokens: number;
-thinkingLevelMap: {
-off: null;
-minimal: null;
-low: string;
-medium: string;
-high: string;
-xhigh: null;
-max: null;
-};
-inputLimits: {
-images: {
-resize: {
-maxWidth: number;
-maxHeight: number;
-maxBytes: number;
-jpegQuality: number;
-};
-};
-};
-type: string;
-};
 "chat:gemini-3.5-flash": {
 id: string;
 name: string;
@@ -35091,6 +35665,43 @@ jpegQuality: number;
 };
 type: string;
 };
+"chat:gemini-4-neon": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: null;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
 };
 "openai-completions": {
 "chat:beam-free": {
@@ -35301,84 +35912,6 @@ max: string;
 };
 type: string;
 };
-"chat:glm-5": {
-id: string;
-name: string;
-api: string;
-provider: string;
-baseUrl: string;
-reasoning: boolean;
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-compat: {
-supportsStore: boolean;
-supportsStrictMode: boolean;
-maxTokensField: string;
-};
-type: string;
-};
-"chat:glm-5.1": {
-id: string;
-name: string;
-api: string;
-provider: string;
-baseUrl: string;
-reasoning: boolean;
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-compat: {
-supportsStore: boolean;
-supportsStrictMode: boolean;
-maxTokensField: string;
-};
-type: string;
-};
-"chat:glm-5.2": {
-id: string;
-name: string;
-api: string;
-provider: string;
-baseUrl: string;
-reasoning: boolean;
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-compat: {
-supportsStore: boolean;
-supportsStrictMode: boolean;
-maxTokensField: string;
-};
-thinkingLevelMap: {
-off: null;
-minimal: null;
-low: null;
-medium: null;
-high: string;
-xhigh: null;
-max: string;
-};
-type: string;
-};
 "chat:glm-5.3": {
 id: string;
 name: string;
@@ -35453,7 +35986,7 @@ jpegQuality: number;
 };
 type: string;
 };
-"chat:glm-5.3-flash-free": {
+"chat:hy4-flash-free": {
 id: string;
 name: string;
 api: string;
@@ -35475,13 +36008,13 @@ supportsStrictMode: boolean;
 maxTokensField: string;
 };
 thinkingLevelMap: {
-off: null;
+off: string;
 minimal: null;
-low: string;
+low: null;
 medium: null;
 high: string;
 xhigh: null;
-max: string;
+max: null;
 };
 inputLimits: {
 images: {
@@ -35515,48 +36048,6 @@ compat: {
 supportsStore: boolean;
 supportsStrictMode: boolean;
 maxTokensField: string;
-};
-type: string;
-};
-"chat:inkling-2-small-free": {
-id: string;
-name: string;
-api: string;
-provider: string;
-baseUrl: string;
-reasoning: boolean;
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-compat: {
-supportsStore: boolean;
-supportsStrictMode: boolean;
-maxTokensField: string;
-};
-thinkingLevelMap: {
-off: string;
-minimal: string;
-low: string;
-medium: string;
-high: string;
-xhigh: null;
-max: string;
-};
-inputLimits: {
-images: {
-resize: {
-maxWidth: number;
-maxHeight: number;
-maxBytes: number;
-jpegQuality: number;
-};
-};
 };
 type: string;
 };
@@ -35853,48 +36344,6 @@ jpegQuality: number;
 };
 type: string;
 };
-"chat:minimax-m3.1-flash-free": {
-id: string;
-name: string;
-api: string;
-provider: string;
-baseUrl: string;
-reasoning: boolean;
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-compat: {
-supportsStore: boolean;
-supportsStrictMode: boolean;
-maxTokensField: string;
-};
-thinkingLevelMap: {
-off: null;
-minimal: null;
-low: string;
-medium: string;
-high: string;
-xhigh: string;
-max: string;
-};
-inputLimits: {
-images: {
-resize: {
-maxWidth: number;
-maxHeight: number;
-maxBytes: number;
-jpegQuality: number;
-};
-};
-};
-type: string;
-};
 "chat:mistral-large-4": {
 id: string;
 name: string;
@@ -36041,6 +36490,38 @@ maxBytes: number;
 jpegQuality: number;
 };
 };
+};
+type: string;
+};
+"chat:tidepool-alpha-free": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsStore: boolean;
+supportsStrictMode: boolean;
+maxTokensField: string;
+};
+thinkingLevelMap: {
+off: null;
+minimal: string;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: string;
 };
 type: string;
 };
@@ -37021,6 +37502,106 @@ jpegQuality: number;
 type: string;
 };
 "chat:gpt-6.1-sol": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+sessionAffinityFormat: string;
+supportsMidConvoSystemMessages: boolean;
+supportsAdditionalTools: boolean;
+supportsOpenAIGrammarTools: boolean;
+};
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: string;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:gpt-6.2-astra": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+sessionAffinityFormat: string;
+supportsMidConvoSystemMessages: boolean;
+supportsAdditionalTools: boolean;
+supportsOpenAIGrammarTools: boolean;
+};
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: string;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:gpt-6.2-sol": {
 id: string;
 name: string;
 api: string;
@@ -40187,29 +40768,6 @@ supportsStrictMode: boolean;
 sendSessionAffinityHeaders: boolean;
 };
 };
-"chat:cohere/north-mini-code:free": {
-type: string;
-id: string;
-name: string;
-api: string;
-baseUrl: string;
-provider: string;
-reasoning: boolean;
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-compat: {
-thinkingFormat: string;
-supportsStrictMode: boolean;
-sendSessionAffinityHeaders: boolean;
-};
-};
 "chat:deepseek/deepseek-chat": {
 type: string;
 id: string;
@@ -42038,6 +42596,90 @@ jpegQuality: number;
 };
 };
 "chat:google/gemini-4-hydrogen:batch": {
+type: string;
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: null;
+};
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+thinkingFormat: string;
+supportsStrictMode: boolean;
+sendSessionAffinityHeaders: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+};
+"chat:google/gemini-4-neon": {
+type: string;
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: null;
+};
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+thinkingFormat: string;
+supportsStrictMode: boolean;
+sendSessionAffinityHeaders: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+};
+"chat:google/gemini-4-neon:batch": {
 type: string;
 id: string;
 name: string;
@@ -44201,6 +44843,48 @@ jpegQuality: number;
 };
 };
 "chat:moonshotai/kimi-k3.1-pro": {
+type: string;
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+thinkingLevelMap: {
+off: string;
+minimal: null;
+low: string;
+medium: null;
+high: string;
+xhigh: null;
+max: string;
+};
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+thinkingFormat: string;
+supportsStrictMode: boolean;
+sendSessionAffinityHeaders: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+};
+"chat:moonshotai/kimi-k3.1-pro:batch": {
 type: string;
 id: string;
 name: string;
@@ -48151,6 +48835,400 @@ jpegQuality: number;
 };
 };
 };
+"chat:openai/gpt-6.2-astra": {
+type: string;
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: string;
+};
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+thinkingFormat: string;
+supportsStrictMode: boolean;
+sendSessionAffinityHeaders: boolean;
+supportsMidConvoSystemMessages: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+};
+"chat:openai/gpt-6.2-astra-pro": {
+type: string;
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: string;
+};
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+thinkingFormat: string;
+supportsStrictMode: boolean;
+sendSessionAffinityHeaders: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+};
+"chat:openai/gpt-6.2-astra-pro:batch": {
+type: string;
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: string;
+};
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+thinkingFormat: string;
+supportsStrictMode: boolean;
+sendSessionAffinityHeaders: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+};
+"chat:openai/gpt-6.2-astra:batch": {
+type: string;
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: string;
+};
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+thinkingFormat: string;
+supportsStrictMode: boolean;
+sendSessionAffinityHeaders: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+};
+"chat:openai/gpt-6.2-sol": {
+type: string;
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: string;
+};
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+thinkingFormat: string;
+supportsStrictMode: boolean;
+sendSessionAffinityHeaders: boolean;
+supportsMidConvoSystemMessages: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+};
+"chat:openai/gpt-6.2-sol-pro": {
+type: string;
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: string;
+};
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+thinkingFormat: string;
+supportsStrictMode: boolean;
+sendSessionAffinityHeaders: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+};
+"chat:openai/gpt-6.2-sol-pro:batch": {
+type: string;
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: string;
+};
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+thinkingFormat: string;
+supportsStrictMode: boolean;
+sendSessionAffinityHeaders: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+};
+"chat:openai/gpt-6.2-sol:batch": {
+type: string;
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: string;
+};
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+thinkingFormat: string;
+supportsStrictMode: boolean;
+sendSessionAffinityHeaders: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+};
 "chat:openai/gpt-audio": {
 type: string;
 id: string;
@@ -50216,6 +51294,48 @@ jpegQuality: number;
 };
 };
 };
+"chat:qwen/qwen4-max": {
+type: string;
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+thinkingLevelMap: {
+off: string;
+minimal: null;
+low: string;
+medium: null;
+high: string;
+xhigh: string;
+max: null;
+};
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+thinkingFormat: string;
+supportsStrictMode: boolean;
+sendSessionAffinityHeaders: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+};
 "chat:recursive/flint-v1.0:free": {
 type: string;
 id: string;
@@ -50725,6 +51845,39 @@ jpegQuality: number;
 };
 };
 };
+"chat:tencent/hy4-flash": {
+type: string;
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+thinkingFormat: string;
+supportsStrictMode: boolean;
+sendSessionAffinityHeaders: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+};
 "chat:tencent/hy4-preview": {
 type: string;
 id: string;
@@ -50800,48 +51953,6 @@ jpegQuality: number;
 };
 };
 "chat:thinkingmachines/inkling-2-small": {
-type: string;
-id: string;
-name: string;
-api: string;
-baseUrl: string;
-provider: string;
-reasoning: boolean;
-thinkingLevelMap: {
-off: null;
-minimal: string;
-low: string;
-medium: string;
-high: string;
-xhigh: null;
-max: string;
-};
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-compat: {
-thinkingFormat: string;
-supportsStrictMode: boolean;
-sendSessionAffinityHeaders: boolean;
-};
-inputLimits: {
-images: {
-resize: {
-maxWidth: number;
-maxHeight: number;
-maxBytes: number;
-jpegQuality: number;
-};
-};
-};
-};
-"chat:thinkingmachines/inkling-2-small:free": {
 type: string;
 id: string;
 name: string;
@@ -51546,49 +52657,6 @@ jpegQuality: number;
 };
 };
 };
-"chat:x-ai/grok-build-0.1": {
-type: string;
-id: string;
-name: string;
-api: string;
-baseUrl: string;
-provider: string;
-reasoning: boolean;
-thinkingLevelMap: {
-off: null;
-};
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-tiers: {
-inputTokensAbove: number;
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-}[];
-};
-contextWindow: number;
-maxTokens: number;
-compat: {
-thinkingFormat: string;
-supportsStrictMode: boolean;
-sendSessionAffinityHeaders: boolean;
-};
-inputLimits: {
-images: {
-resize: {
-maxWidth: number;
-maxHeight: number;
-maxBytes: number;
-jpegQuality: number;
-};
-};
-};
-};
 "chat:xiaomi/mimo-v2.5": {
 type: string;
 id: string;
@@ -51995,6 +53063,38 @@ sendSessionAffinityHeaders: boolean;
 };
 };
 "chat:z-ai/glm-5.2": {
+type: string;
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+thinkingLevelMap: {
+off: string;
+minimal: null;
+low: null;
+medium: null;
+high: string;
+xhigh: string;
+max: null;
+};
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+thinkingFormat: string;
+supportsStrictMode: boolean;
+sendSessionAffinityHeaders: boolean;
+};
+};
+"chat:z-ai/glm-5.2:batch": {
 type: string;
 id: string;
 name: string;
@@ -53002,6 +54102,58 @@ jpegQuality: number;
 };
 };
 "image:microsoft/mai-image-2.6-flash": {
+type: string;
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+input: string[];
+output: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+};
+"image:microsoft/mai-image-2.7": {
+type: string;
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+input: string[];
+output: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+};
+"image:microsoft/mai-image-2.7-flash": {
 type: string;
 id: string;
 name: string;
@@ -54539,7 +55691,67 @@ imageInput: string;
 sendImageOptInHeader: boolean;
 };
 };
+"classifier:liquid/d1.2": {
+type: string;
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+compat: {
+imageInput: string;
+sendImageOptInHeader: boolean;
+};
+};
+"classifier:liquid/d1.2-ultra": {
+type: string;
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+compat: {
+imageInput: string;
+sendImageOptInHeader: boolean;
+};
+};
 "classifier:microsoft/microsoft-decision-1": {
+type: string;
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+compat: {
+imageInput: string;
+sendImageOptInHeader: boolean;
+};
+};
+"classifier:microsoft/microsoft-decision-1.1": {
 type: string;
 id: string;
 name: string;
@@ -58148,6 +59360,51 @@ jpegQuality: number;
 };
 type: string;
 };
+"chat:gemini-4-neon": {
+id: string;
+name: string;
+reasoning: boolean;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: null;
+};
+input: string[];
+contextWindow: number;
+maxTokens: number;
+lab: string;
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+enabled: boolean;
+providers: {
+id: string;
+name: string;
+credential: string;
+source: string;
+}[];
+api: string;
+provider: string;
+baseUrl: string;
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
 "chat:glm-5.3": {
 id: string;
 name: string;
@@ -58598,6 +59855,110 @@ name: string;
 reasoning: boolean;
 thinkingLevelMap: {
 off: string;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: string;
+};
+input: string[];
+contextWindow: number;
+maxTokens: number;
+lab: string;
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+enabled: boolean;
+providers: {
+id: string;
+name: string;
+credential: string;
+source: string;
+}[];
+api: string;
+provider: string;
+baseUrl: string;
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:gpt-6.2-astra": {
+id: string;
+name: string;
+reasoning: boolean;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: string;
+};
+input: string[];
+contextWindow: number;
+maxTokens: number;
+lab: string;
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+enabled: boolean;
+providers: {
+id: string;
+name: string;
+credential: string;
+source: string;
+}[];
+api: string;
+provider: string;
+baseUrl: string;
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:gpt-6.2-sol": {
+id: string;
+name: string;
+reasoning: boolean;
+thinkingLevelMap: {
+off: null;
 minimal: null;
 low: string;
 medium: string;
@@ -59654,27 +61015,6 @@ contextWindow: number;
 maxTokens: number;
 type: string;
 };
-"chat:alibaba/qwen-3-235b": {
-id: string;
-name: string;
-api: string;
-baseUrl: string;
-provider: string;
-reasoning: boolean;
-input: string[];
-compat: {
-allowEmptySignature: boolean;
-};
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-type: string;
-};
 "chat:alibaba/qwen-3-30b": {
 id: string;
 name: string;
@@ -59697,27 +61037,6 @@ maxTokens: number;
 type: string;
 };
 "chat:alibaba/qwen-3-32b": {
-id: string;
-name: string;
-api: string;
-baseUrl: string;
-provider: string;
-reasoning: boolean;
-input: string[];
-compat: {
-allowEmptySignature: boolean;
-};
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-type: string;
-};
-"chat:alibaba/qwen3-coder": {
 id: string;
 name: string;
 api: string;
@@ -59809,27 +61128,6 @@ maxTokens: number;
 type: string;
 };
 "chat:alibaba/qwen3-next-80b-a3b-instruct": {
-id: string;
-name: string;
-api: string;
-baseUrl: string;
-provider: string;
-reasoning: boolean;
-input: string[];
-compat: {
-allowEmptySignature: boolean;
-};
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-type: string;
-};
-"chat:alibaba/qwen3-next-80b-a3b-thinking": {
 id: string;
 name: string;
 api: string;
@@ -60334,6 +61632,37 @@ jpegQuality: number;
 type: string;
 };
 "chat:alibaba/qwen3.8-omni-flash": {
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+input: string[];
+compat: {
+allowEmptySignature: boolean;
+};
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:alibaba/qwen4-max": {
 id: string;
 name: string;
 api: string;
@@ -62912,6 +64241,37 @@ jpegQuality: number;
 };
 type: string;
 };
+"chat:google/gemini-4-neon": {
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+input: string[];
+compat: {
+allowEmptySignature: boolean;
+};
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
 "chat:google/gemma-4-26b-a4b-it": {
 id: string;
 name: string;
@@ -63639,49 +64999,7 @@ jpegQuality: number;
 };
 type: string;
 };
-"chat:minimax/minimax-m2": {
-id: string;
-name: string;
-api: string;
-baseUrl: string;
-provider: string;
-reasoning: boolean;
-input: string[];
-compat: {
-allowEmptySignature: boolean;
-};
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-type: string;
-};
 "chat:minimax/minimax-m2.1": {
-id: string;
-name: string;
-api: string;
-baseUrl: string;
-provider: string;
-reasoning: boolean;
-input: string[];
-compat: {
-allowEmptySignature: boolean;
-};
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-type: string;
-};
-"chat:minimax/minimax-m2.1-lightning": {
 id: string;
 name: string;
 api: string;
@@ -63723,49 +65041,7 @@ contextWindow: number;
 maxTokens: number;
 type: string;
 };
-"chat:minimax/minimax-m2.5-highspeed": {
-id: string;
-name: string;
-api: string;
-baseUrl: string;
-provider: string;
-reasoning: boolean;
-input: string[];
-compat: {
-allowEmptySignature: boolean;
-};
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-type: string;
-};
 "chat:minimax/minimax-m2.7": {
-id: string;
-name: string;
-api: string;
-baseUrl: string;
-provider: string;
-reasoning: boolean;
-input: string[];
-compat: {
-allowEmptySignature: boolean;
-};
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-type: string;
-};
-"chat:minimax/minimax-m2.7-highspeed": {
 id: string;
 name: string;
 api: string;
@@ -67179,6 +68455,170 @@ jpegQuality: number;
 };
 type: string;
 };
+"chat:openai/gpt-6.2-astra": {
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+input: string[];
+compat: {
+allowEmptySignature: boolean;
+};
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+thinkingLevelMap: {
+xhigh: string;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:openai/gpt-6.2-astra-fast": {
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+input: string[];
+compat: {
+allowEmptySignature: boolean;
+};
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+thinkingLevelMap: {
+xhigh: string;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:openai/gpt-6.2-sol": {
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+input: string[];
+compat: {
+allowEmptySignature: boolean;
+};
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+thinkingLevelMap: {
+xhigh: string;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:openai/gpt-6.2-sol-fast": {
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+input: string[];
+compat: {
+allowEmptySignature: boolean;
+};
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+thinkingLevelMap: {
+xhigh: string;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
 "chat:openai/gpt-oss-120b": {
 id: string;
 name: string;
@@ -67561,6 +69001,27 @@ jpegQuality: number;
 };
 };
 };
+type: string;
+};
+"chat:recursive/flint-v1.0": {
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+input: string[];
+compat: {
+allowEmptySignature: boolean;
+};
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
 type: string;
 };
 "chat:reflection/beam": {
@@ -68275,44 +69736,6 @@ jpegQuality: number;
 };
 type: string;
 };
-"chat:spacexai/grok-build-0.1": {
-id: string;
-name: string;
-api: string;
-baseUrl: string;
-provider: string;
-reasoning: boolean;
-input: string[];
-compat: {
-allowEmptySignature: boolean;
-};
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-tiers: {
-inputTokensAbove: number;
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-}[];
-};
-contextWindow: number;
-maxTokens: number;
-inputLimits: {
-images: {
-resize: {
-maxWidth: number;
-maxHeight: number;
-maxBytes: number;
-jpegQuality: number;
-};
-};
-};
-type: string;
-};
 "chat:spacexai/grok-voice-3.0": {
 id: string;
 name: string;
@@ -68439,6 +69862,37 @@ maxTokens: number;
 type: string;
 };
 "chat:tencent/hy4": {
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+input: string[];
+compat: {
+allowEmptySignature: boolean;
+};
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:tencent/hy4-flash": {
 id: string;
 name: string;
 api: string;
@@ -69186,6 +70640,38 @@ cacheWrite: number;
 };
 contextWindow: number;
 };
+"classifier:heygen/heygen-decision-1": {
+type: string;
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+};
+"classifier:heygen/heygen-decision-1-turbo": {
+type: string;
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+};
 "classifier:liquid/d1": {
 type: string;
 id: string;
@@ -69218,7 +70704,71 @@ cacheWrite: number;
 };
 contextWindow: number;
 };
+"classifier:liquid/d1.2": {
+type: string;
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+};
+"classifier:liquid/d1.2-ultra": {
+type: string;
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+};
+"classifier:microsoft/decision-1.1": {
+type: string;
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+};
 "classifier:microsoft/microsoft-decision-1": {
+type: string;
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+};
+"classifier:modaic/mo": {
 type: string;
 id: string;
 name: string;

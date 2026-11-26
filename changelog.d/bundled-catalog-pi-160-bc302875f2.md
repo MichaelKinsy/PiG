@@ -1,0 +1,3 @@
+### Fixed
+
+- Bundled Go and Node model catalogs now match the pinned Pi 1.6.0 release snapshot (`2026-11-20T10:48:49Z`), adding 65 models that were missing in PiG 0.8.0 (including `gemini-4-neon`, `gpt-6.2-astra`, `gpt-6.2-sol`, `mai-code-2`, and `mai-code-2-flash` on `github-copilot`, plus `gemini-4-neon` on `google`, `google-vertex`, `opencode`, `radius`, `openrouter`, and `vercel-ai-gateway`) and removing 27 entries absent from Pi 1.6.0. Added `TestBundledCatalogNotOlderThanPinnedPi` to prevent future pin bumps from shipping a stale catalog recording. <!-- fix: bc302875f2 --> <!-- cause: automation/gen/catalog-source remained on a 2026-11-15 recording when .upstream/pin moved to Pi 1.6.0 -->
