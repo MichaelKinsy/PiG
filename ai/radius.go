@@ -53,29 +53,49 @@ func newRadiusParts(options RadiusProviderOptions) *RadiusProvider {
 	}
 	gateway = NormalizeRadiusGatewayURL(gateway)
 	oauth := CreateRadiusOAuth(RadiusOAuthOptions{ID: id, Name: name, Gateway: gateway})
-	// The published catalog is bound to id on the first GetModels, not at registration: startup registers the provider without listing its models.
-	var baseline []*Model
+	// The published catalog is bound to id on the first GetModels/GetAllModels, not at registration: startup registers the provider without listing its models.
+	var baseline []AnyModel
 	var baselineOnce sync.Once
-	publishedBaseline := func() []*Model {
+	publishedBaseline := func() []AnyModel {
 		baselineOnce.Do(func() {
 			if gateway == NormalizeRadiusGatewayURL(DefaultRadiusGateway) {
-				baseline = publishedRadiusModels(id)
+				for _, m := range publishedRadiusModels(id) {
+					baseline = append(baseline, m)
+				}
 			}
 		})
 		return baseline
 	}
 	var mu sync.RWMutex
 	// dynamic is the account's catalog; nil until one is known, and empty when the organization disabled every model.
-	var dynamic []*Model
-	setDynamic := func(models []*Model) func() {
+	var dynamic []AnyModel
+	setDynamic := func(models []AnyModel) func() {
 		if models == nil {
-			models = []*Model{} // an empty catalog is still a known one
+			models = []AnyModel{} // an empty catalog is still a known one
 		}
 		return func() {
 			mu.Lock()
 			dynamic = models
 			mu.Unlock()
 		}
+	}
+	getAllModels := func() ([]AnyModel, error) {
+		mu.RLock()
+		defer mu.RUnlock()
+		source := publishedBaseline()
+		if dynamic != nil {
+			source = dynamic
+		}
+		models := make([]AnyModel, 0, len(source))
+		for _, model := range source {
+			switch m := model.(type) {
+			case *Model:
+				models = append(models, cloneRadiusModel(m))
+			case *ClassifierModel:
+				models = append(models, cloneRadiusClassifierModel(m))
+			}
+		}
+		return models, nil
 	}
 	streams := PiMessagesAPI()
 	provider := &ModelsProvider{
@@ -89,21 +109,23 @@ func newRadiusParts(options RadiusProviderOptions) *RadiusProvider {
 				ToAuth:  oauthToAuth(id, oauth),
 			},
 		},
+		GetAllModels: getAllModels,
 		GetModels: func() ([]*Model, error) {
-			mu.RLock()
-			defer mu.RUnlock()
-			source := publishedBaseline()
-			if dynamic != nil {
-				source = dynamic
+			all, err := getAllModels()
+			if err != nil {
+				return nil, err
 			}
-			models := make([]*Model, 0, len(source))
-			for _, model := range source {
-				models = append(models, cloneRadiusModel(model))
+			models := make([]*Model, 0, len(all))
+			for _, model := range all {
+				if chat, ok := model.(*Model); ok {
+					models = append(models, chat)
+				}
 			}
 			return models, nil
 		},
 		Stream:       streams.Stream,
 		StreamSimple: streams.StreamSimple,
+		Classify: PiDecisionAPI().Classify,
 	}
 	provider.RefreshModels = func(refresh RefreshModelsContext) error {
 		ctx := refresh.Signal
@@ -111,14 +133,14 @@ func newRadiusParts(options RadiusProviderOptions) *RadiusProvider {
 			ctx = context.Background()
 		}
 		if refresh.Stored != nil {
-			if ok, err := refresh.Publish(ModelsPublication{Update: setDynamic(storedRadiusModels(id, *refresh.Stored))}); !ok || err != nil {
+			if ok, err := refresh.Publish(ModelsPublication{Update: setDynamic(storedRadiusAllModels(id, *refresh.Stored))}); !ok || err != nil {
 				return err
 			}
 		}
 		// Import catalogs cached by the pre-ModelsStore Radius implementation.
 		if refresh.Stored == nil && refresh.Credential != nil && refresh.Credential.Type == CredentialOAuth {
-			if legacy := GetRadiusModels(id, refresh.Credential); len(legacy) > 0 {
-				if ok, err := refresh.Publish(ModelsPublication{Persist: radiusStoreEntry(legacy), Update: setDynamic(legacy)}); !ok || err != nil {
+			if legacy := GetRadiusAllModels(id, refresh.Credential); len(legacy) > 0 {
+				if ok, err := refresh.Publish(ModelsPublication{Persist: radiusAllStoreEntry(legacy), Update: setDynamic(legacy)}); !ok || err != nil {
 					return err
 				}
 			}
@@ -130,8 +152,8 @@ func newRadiusParts(options RadiusProviderOptions) *RadiusProvider {
 		if err != nil || ctx.Err() != nil {
 			return err
 		}
-		refreshed := GetRadiusModelsFromConfig(id, config)
-		_, err = refresh.Publish(ModelsPublication{Persist: radiusStoreEntry(refreshed), Update: setDynamic(refreshed)})
+		refreshed := GetRadiusAllModelsFromConfig(id, config)
+		_, err = refresh.Publish(ModelsPublication{Persist: radiusAllStoreEntry(refreshed), Update: setDynamic(refreshed)})
 		return err
 	}
 	return &RadiusProvider{provider: provider, gateway: gateway, oauth: oauth}
@@ -194,15 +216,25 @@ func radiusCredentialKey(credential *Credential) string {
 	return credential.Key
 }
 
-// storedRadiusModels keeps the stored chat models that belong to provider id (radius.ts: stored.models.filter(model.provider === id)).
-func storedRadiusModels(id string, entry ModelsStoreEntry) []*Model {
-	restored := []*Model{}
+// storedRadiusAllModels keeps the stored chat and classifier models that belong to provider id.
+func storedRadiusAllModels(id string, entry ModelsStoreEntry) []AnyModel {
+	restored := []AnyModel{}
 	for _, stored := range entry.Models {
-		if chat, ok := stored.(*Model); ok && chat.ProviderID() == id {
-			restored = append(restored, chat)
+		if stored != nil && stored.ProviderID() == id {
+			switch stored.(type) {
+			case *Model, *ClassifierModel:
+				restored = append(restored, stored)
+			}
 		}
 	}
 	return restored
+}
+
+func radiusAllStoreEntry(models []AnyModel) *ModelsStoreEntry {
+	checkedAt := float64(time.Now().UnixMilli())
+	entry := &ModelsStoreEntry{Models: make([]AnyModel, 0, len(models)), CheckedAt: &checkedAt}
+	entry.Models = append(entry.Models, models...)
+	return entry
 }
 
 func radiusStoreEntry(models []*Model) *ModelsStoreEntry {
