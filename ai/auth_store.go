@@ -66,6 +66,7 @@ func cloneCredential(credential Credential) Credential {
 	credential.Extra = cloneCredentialExtra(credential.Extra)
 	credential.Env = maps.Clone(credential.Env)
 	credential.AvailableModelIDs = slices.Clone(credential.AvailableModelIDs)
+	credential.AvailableClassifierModelIDs = slices.Clone(credential.AvailableClassifierModelIDs)
 	credential.GatewayConfig = slices.Clone(credential.GatewayConfig)
 	credential.opaque = slices.Clone(credential.opaque)
 	return credential
@@ -605,6 +606,10 @@ func retainReadOnlyCredentialFields(raw json.RawMessage, credential Credential) 
 	if value, ok := credential.Extra["availableModelIds"]; ok {
 		credential.AvailableModelIDs = bytes.Clone(value)
 		delete(credential.Extra, "availableModelIds")
+	}
+	if value, ok := credential.Extra["availableClassifierModelIds"]; ok {
+		credential.AvailableClassifierModelIDs = bytes.Clone(value)
+		delete(credential.Extra, "availableClassifierModelIds")
 	}
 	if credential.Env == nil {
 		var values map[string]any

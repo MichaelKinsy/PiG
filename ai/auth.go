@@ -102,6 +102,8 @@ type Credential struct {
 	Scope string `json:"scope,omitempty"`
 	// AvailableModelIDs retains the account's optional picker filter, including an explicit empty list or malformed external value.
 	AvailableModelIDs json.RawMessage `json:"availableModelIds,omitempty"`
+	// AvailableClassifierModelIDs retains the account's optional classifier filter from the Copilot /models catalog.
+	AvailableClassifierModelIDs json.RawMessage `json:"availableClassifierModelIds,omitempty"`
 	// GatewayConfig is the Radius gateway catalog that pre-ModelsStore Radius
 	// builds cached on the credential. It is read once to import that catalog.
 	GatewayConfig json.RawMessage `json:"gatewayConfig,omitempty"`
@@ -129,6 +131,7 @@ type rawCredential struct {
 	Scope             string                     `json:"scope,omitempty"`
 	GatewayConfig     json.RawMessage            `json:"gatewayConfig,omitempty"`
 	AvailableModelIDs json.RawMessage            `json:"availableModelIds,omitempty"`
+	AvailableClassifierModelIDs json.RawMessage  `json:"availableClassifierModelIds,omitempty"`
 
 	expiry credentialExpiry
 	order  credentialKeyOrder
@@ -149,6 +152,7 @@ func (r rawCredential) normalize() Credential {
 		Scope:             r.Scope,
 		GatewayConfig:     r.GatewayConfig,
 		AvailableModelIDs: r.AvailableModelIDs,
+		AvailableClassifierModelIDs: r.AvailableClassifierModelIDs,
 		expiry:            r.expiry,
 	}
 	if c.Type == legacyCredentialAPIKey {
