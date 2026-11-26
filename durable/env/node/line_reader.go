@@ -80,8 +80,6 @@ func (reader *nodeTextLineReader) bufferedLine() (*durableenv.TextLine, bool) {
 		reader.buffered = nil
 		reader.start = 0
 		reader.scanned = 0
-		reader.start = 0
-		reader.scanned = 0
 		return &durableenv.TextLine{Text: text}, true
 	}
 	return nil, false

@@ -143,7 +143,10 @@ func TestAnthropicPreferredStrictToolFallbackUpstream(t *testing.T) {
 					params["inference_geo"], params["stream"] = "us", false
 					return params, nil
 				},
-				OnResponse: func(_ context.Context, r ProviderResponse, _ *Model) error { responseStatuses = append(responseStatuses, r.Status); return nil },
+				OnResponse: func(_ context.Context, r ProviderResponse, _ *Model) error {
+					responseStatuses = append(responseStatuses, r.Status)
+					return nil
+				},
 			})
 			if result.StopReason != StopReasonStop {
 				t.Fatalf("stop = %s (%s)", result.StopReason, result.ErrorMessage)

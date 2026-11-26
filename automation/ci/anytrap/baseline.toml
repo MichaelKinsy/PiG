@@ -566,7 +566,7 @@ count = 1
 
 [[hit]]
 file = "internal/codingagent/llama/client.go"
-func = "dispatchFrames"
+func = "dispatchLlamaEventData"
 call = "json.Unmarshal"
 dest = "*any"
 count = 1

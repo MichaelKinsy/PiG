@@ -1300,11 +1300,6 @@ func omitEmptyResponsesCallIDs(messages []Message) []Message {
 	return prepareProviderToolFlow(TranscriptContext{messages: blanked}).messages
 }
 
-// ConvertResponsesMessages converts a transcript to the Responses API "input" array for model: the leading system message,
-// user, assistant and tool-result messages, with tool-call ids normalized for the providers
-// in allowedToolCallProviders. Tools are declared as GetResponsesToolSupport says: in additional_tools items, in synthetic tool
-// search items, or not at all (the request's tool list carries them).
-// Ports packages/ai/src/api/openai-responses-shared.ts convertResponsesMessages.
 // PreparedResponsesPrompt is the result of PrepareResponsesPrompt
 // (packages/ai/src/api/openai-responses-shared.ts prepareResponsesPrompt, Pi a588a7bc4).
 type PreparedResponsesPrompt struct {
@@ -1313,10 +1308,7 @@ type PreparedResponsesPrompt struct {
 	RequestEffortBaseline string
 }
 
-// PrepareResponsesPrompt places transcript-derived declarations and effort changes consistently
-// in input items and top-level request fields
-// (packages/ai/src/api/openai-responses-shared.ts prepareResponsesPrompt, Pi a588a7bc4).
-func PrepareResponsesPrompt(model *Model, transcript TranscriptContext, allowedToolCallProviders map[string]bool, options ConvertResponsesMessagesOptions) (PreparedResponsesPrompt, error) {
+func renderResponsesTranscript(model *Model, transcript TranscriptContext, allowedToolCallProviders map[string]bool, options ConvertResponsesMessagesOptions) ([]ResponsesInputItem, TranscriptTools, string, error) {
 	toolSupport := GetResponsesToolSupport(ResponsesToolSupportOptions{
 		SupportsMidConvoSystemMessages: options.SupportsMidConvoSystemMessages,
 		SupportsAdditionalTools:        options.SupportsAdditionalTools,
@@ -1338,6 +1330,17 @@ func PrepareResponsesPrompt(model *Model, transcript TranscriptContext, allowedT
 	}
 	input, baseline, err := converter.convertAnchoredWithBaseline(messages, transcriptTools)
 	if err != nil {
+		return nil, TranscriptTools{}, "", err
+	}
+	return input, transcriptTools, baseline, nil
+}
+
+// PrepareResponsesPrompt places transcript-derived declarations and effort changes consistently
+// in input items and top-level request fields
+// (packages/ai/src/api/openai-responses-shared.ts prepareResponsesPrompt, Pi a588a7bc4).
+func PrepareResponsesPrompt(model *Model, transcript TranscriptContext, allowedToolCallProviders map[string]bool, options ConvertResponsesMessagesOptions) (PreparedResponsesPrompt, error) {
+	input, transcriptTools, baseline, err := renderResponsesTranscript(model, transcript, allowedToolCallProviders, options)
+	if err != nil {
 		return PreparedResponsesPrompt{}, err
 	}
 	var requestTools []ResponsesTool
@@ -1354,12 +1357,17 @@ func PrepareResponsesPrompt(model *Model, transcript TranscriptContext, allowedT
 	}, nil
 }
 
+// ConvertResponsesMessages converts a transcript to the Responses API "input" array for model: the leading system message,
+// user, assistant and tool-result messages, with tool-call ids normalized for the providers
+// in allowedToolCallProviders. Tools are declared as GetResponsesToolSupport says: in additional_tools items, in synthetic tool
+// search items, or not at all (the request's tool list carries them).
+// Ports packages/ai/src/api/openai-responses-shared.ts convertResponsesMessages.
 func ConvertResponsesMessages(model *Model, transcript TranscriptContext, allowedToolCallProviders map[string]bool, options ConvertResponsesMessagesOptions) ([]ResponsesInputItem, error) {
-	prepared, err := PrepareResponsesPrompt(model, transcript, allowedToolCallProviders, options)
+	input, _, _, err := renderResponsesTranscript(model, transcript, allowedToolCallProviders, options)
 	if err != nil {
 		return nil, err
 	}
-	return prepared.Input, nil
+	return input, nil
 }
 
 // responsesToolCallProviders lists the openai-responses providers whose models

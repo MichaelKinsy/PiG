@@ -1604,19 +1604,12 @@ func (state *googleStreamState) resolveFinishReason() (StopReason, string) {
 		}
 		return StopReasonError, fmt.Sprintf("%s stream ended without a finish reason after receiving %d %s", prefix, state.receivedChunkCount, chunkLabel)
 	}
-	return mapGoogleFinishReason(state.builder.partial.API, state.finishReason)
+	return mapGoogleFinishReason(state.finishReason)
 }
 
-// mapGoogleFinishReason applies mapStopReason to the stream's raw finish reason and derives the error message the stream end throws
-// (google-generative-ai.ts:276-283): a stream without a finish reason, an unhandled reason, or an error stop with its raw reason.
-func mapGoogleFinishReason(api API, reason string) (StopReason, string) {
-	if reason == "" {
-		// google-vertex.ts:212 names the Vertex API in its own message.
-		if api == APIGoogleVertex {
-			return StopReasonError, "Google Vertex stream ended without a finish reason"
-		}
-		return StopReasonError, "Google stream ended without a finish reason"
-	}
+// mapGoogleFinishReason applies mapStopReason to a non-empty finish reason and derives the error message the stream end throws
+// (google-generative-ai.ts:276-283): an unhandled reason, or an error stop with its raw reason.
+func mapGoogleFinishReason(reason string) (StopReason, string) {
 	stopReason, err := mapStopReason(reason)
 	if err != nil {
 		return StopReasonError, err.Error()

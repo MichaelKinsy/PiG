@@ -93,7 +93,11 @@ func normalizeGeminiChunkJS(data []byte) (normalized []byte, read geminiChunkRea
 		} else {
 			if br, ok := pfObj["blockReason"]; ok {
 				if _, isStr := br.(string); !isStr {
-					delete(pfObj, "blockReason")
+					if jsTruthy(br) {
+						pfObj["blockReason"] = jsToString(br)
+					} else {
+						delete(pfObj, "blockReason")
+					}
 				}
 			}
 			if brm, ok := pfObj["blockReasonMessage"]; ok {

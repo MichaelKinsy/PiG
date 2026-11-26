@@ -107,24 +107,6 @@ func (loop *piMessagesEventLoop) run(consume func(raw json.RawMessage) (terminal
 	}
 }
 
-// upstream: ai/src/api/pi-messages.ts:parsePiMessagesEvent
-//
-// parsePiMessagesEvent mirrors pi-messages.ts:314-323: the first line starting with "data:", trimmed, is JSON unless it is empty
-// or [DONE]. A parsed value that is falsy is no event.
-func parsePiMessagesEvent(raw string) (json.RawMessage, bool, error) {
-	var dataLines []string
-	for line := range strings.SplitSeq(raw, "\n") {
-		line = strings.TrimSuffix(line, "\r")
-		if rest, ok := strings.CutPrefix(line, "data:"); ok {
-			dataLines = append(dataLines, strings.TrimPrefix(rest, " "))
-		}
-	}
-	if len(dataLines) == 0 {
-		return nil, false, nil
-	}
-	return parsePiMessagesData(strings.Join(dataLines, "\n"))
-}
-
 func parsePiMessagesData(rawData string) (json.RawMessage, bool, error) {
 	data := trimJSWhitespace(rawData)
 	if data == "" || data == "[DONE]" {
