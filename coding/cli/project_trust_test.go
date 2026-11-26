@@ -11,6 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 func TestResolveProjectTrustedDefaultsToDeniedWithoutUI(t *testing.T) {
@@ -228,4 +229,45 @@ func TestTrustPromptNamesTheShadowedWorkspacePiglet(t *testing.T) {
 	if strings.Contains(ui.title, "defines the Piglet") {
 		t.Fatalf("trust prompt names a Piglet when none is shadowed:\n%s", ui.title)
 	}
+}
+
+// Port of Pi main 642a705e11c6f2a3baafc76fb15399fd2187fd43: built-in project trust prompt passes blockedKind "permission".
+func TestResolveProjectTrustedPassesPermissionBlockedKind(t *testing.T) {
+	var gotOpts extension.ExtensionUIDialogOptions
+	recUI := &recordingTrustSelectUI{
+		UIContext: extension.NoopUIContext,
+		onSelect: func(_ string, options []string, opts extension.ExtensionUIDialogOptions) string {
+			gotOpts = opts
+			return options[0]
+		},
+	}
+	projectDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(projectDir, codingagent.ConfigDirName()), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectDir, codingagent.ConfigDirName(), "settings.json"), []byte("{}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	store := codingagent.NewProjectTrustStore(t.TempDir())
+	trusted, err := resolveProjectTrusted(context.Background(), projectTrustResolutionOptions{
+		CWD:     projectDir,
+		Store:   store,
+		Default: "ask",
+		UI:      recUI,
+	})
+	if err != nil || !trusted {
+		t.Fatalf("trusted=%v err=%v", trusted, err)
+	}
+	if gotOpts.BlockedKind != tui.ProgramStatusKindPermission {
+		t.Fatalf("BlockedKind = %q, want %q", gotOpts.BlockedKind, tui.ProgramStatusKindPermission)
+	}
+}
+
+type recordingTrustSelectUI struct {
+	extension.UIContext
+	onSelect func(title string, options []string, opts extension.ExtensionUIDialogOptions) string
+}
+
+func (u *recordingTrustSelectUI) Select(_ context.Context, title string, options []string, opts extension.ExtensionUIDialogOptions) (string, error) {
+	return u.onSelect(title, options, opts), nil
 }

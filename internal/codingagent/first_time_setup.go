@@ -235,7 +235,8 @@ func showFirstTimeSetupWith(settings FirstTimeSetupSettings, opts StartupUIOptio
 	component := NewFirstTimeSetupComponent(FirstTimeSetupOptions{
 		OnSubmit: func(r FirstTimeSetupResult) { result = &r },
 	})
-	if _, err := runStartupComponentWith(component, opts, true, ui, terminal); err != nil {
+	blocked := DialogBlockedStatus(tui.ProgramStatusKindPermission, FirstTimeSetupQuestion)
+	if _, err := runStartupComponentWithBlocked(component, opts, true, ui, terminal, &blocked); err != nil {
 		return nil, err
 	}
 	if result == nil {

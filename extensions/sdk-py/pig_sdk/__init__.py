@@ -3232,9 +3232,14 @@ class Context:
     # after which the dialog dismisses itself, answering as a cancel does.
 
     @staticmethod
-    def _dialog_args(args: dict[str, Any], timeout: float | None) -> dict[str, Any]:
+    def _dialog_args(args: dict[str, Any], timeout: float | None, blocked_kind: str | None = None) -> dict[str, Any]:
+        opts: dict[str, Any] = {}
         if timeout is not None:
-            args["opts"] = {"timeout": timeout}
+            opts["timeout"] = timeout
+        if blocked_kind is not None:
+            opts["blockedKind"] = blocked_kind
+        if opts:
+            args["opts"] = opts
         return args
 
     # select, input and editor return Pi's result: the JSON value the user's
@@ -3251,24 +3256,24 @@ class Context:
             return None, False
         return result.get(member), True
 
-    def select(self, title: str, options: list[str], *, timeout: float | None = None) -> tuple[Any, bool]:
+    def select(self, title: str, options: list[str], *, timeout: float | None = None, blocked_kind: str | None = None) -> tuple[Any, bool]:
         self._block_for_user()
-        args = self._dialog_args({"title": title, "options": options}, timeout)
+        args = self._dialog_args({"title": title, "options": options}, timeout, blocked_kind)
         return self._dialog_value(self._call("ui.select", args).get("result") or {}, "selected")
 
-    def confirm(self, title: str, message: str, *, timeout: float | None = None) -> Any:
+    def confirm(self, title: str, message: str, *, timeout: float | None = None, blocked_kind: str | None = None) -> Any:
         self._block_for_user()
-        args = self._dialog_args({"title": title, "message": message}, timeout)
+        args = self._dialog_args({"title": title, "message": message}, timeout, blocked_kind)
         result = self._call("ui.confirm", args).get("result") or {}
         return result.get("confirmed", False)
 
-    def input(self, title: str, placeholder: str | None = None, *, timeout: float | None = None) -> tuple[Any, bool]:
+    def input(self, title: str, placeholder: str | None = None, *, timeout: float | None = None, blocked_kind: str | None = None) -> tuple[Any, bool]:
         """``placeholder=None`` is Pi's omitted placeholder (RPC mode writes no placeholder member); an empty string is a placeholder (``placeholder: ""``)."""
         self._block_for_user()
         args: dict[str, Any] = {"title": title}
         if placeholder is not None:
             args["placeholder"] = placeholder
-        return self._dialog_value(self._call("ui.input", self._dialog_args(args, timeout)).get("result") or {}, "text")
+        return self._dialog_value(self._call("ui.input", self._dialog_args(args, timeout, blocked_kind)).get("result") or {}, "text")
 
     def editor(self, title: str, prefill: str | None = None) -> tuple[Any, bool]:
         """``prefill=None`` is Pi's omitted prefill (RPC mode writes no prefill member); an empty string is a prefill (``prefill: ""``)."""

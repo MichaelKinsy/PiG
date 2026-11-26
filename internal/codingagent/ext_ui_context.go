@@ -396,16 +396,18 @@ func (u *ExtUIContext) runDialog(
 // standalone ExtensionSelectorComponent (NO filter input, fixed
 // title row, fixed hint row). A positive opts timeout counts down in the
 // title and cancels the selector when it expires.
-func (u *ExtUIContext) Select(ctx context.Context, title string, options []string, opts extension.ExtensionUIDialogOptions) (string, error) {
-	return u.selectWithStatus(ctx, title, options, opts, BlockedStatus{Kind: tui.ProgramStatusKindQuestion, Message: title})
+func dialogBlockedKind(kind, fallback tui.ProgramStatusKind) tui.ProgramStatusKind {
+	if kind != "" {
+		return kind
+	}
+	return fallback
 }
 
-// selectWithStatus is showExtensionSelector(title, options, opts, blocked): blocked is what the program reports while the selector waits.
-func (u *ExtUIContext) selectWithStatus(ctx context.Context, title string, options []string, opts extension.ExtensionUIDialogOptions, blocked BlockedStatus) (string, error) {
+func (u *ExtUIContext) Select(ctx context.Context, title string, options []string, opts extension.ExtensionUIDialogOptions) (string, error) {
 	sel := tui.NewExtensionSelectorComponent(title, options, nil, nil, tui.ExtensionSelectorOptions{OnToggleToolsExpanded: u.m.toggleAllTools})
 	return u.runDialog(ctx, sel, sel.HandleInput, func() (string, bool, bool) {
 		return sel.SelectedValue(), sel.Done(), sel.Cancelled()
-	}, dialogCountdown{timeout: dialogTimeout(opts), start: sel.StartCountdown, dispose: sel.Dispose}, blocked)
+	}, dialogCountdown{timeout: dialogTimeout(opts), start: sel.StartCountdown, dispose: sel.Dispose}, DialogBlockedStatus(dialogBlockedKind(opts.BlockedKind, tui.ProgramStatusKindQuestion), title))
 }
 
 // Confirm shows a Yes/No selector. Mirrors upstream's
@@ -415,7 +417,9 @@ func (u *ExtUIContext) Confirm(ctx context.Context, title, message string, opts 
 	if message != "" {
 		prompt = title + "\n" + message
 	}
-	result, err := u.selectWithStatus(ctx, prompt, []string{"Yes", "No"}, opts, BlockedStatus{Kind: tui.ProgramStatusKindPermission, Message: title})
+	confirmOpts := opts
+	confirmOpts.BlockedKind = dialogBlockedKind(opts.BlockedKind, tui.ProgramStatusKindPermission)
+	result, err := u.Select(ctx, prompt, []string{"Yes", "No"}, confirmOpts)
 	if err != nil {
 		return false, err
 	}
@@ -430,7 +434,7 @@ func (u *ExtUIContext) Input(ctx context.Context, title, placeholder string, opt
 	input := tui.NewExtensionInputComponent(title, placeholder, nil, nil)
 	return u.runDialog(ctx, input, input.HandleInput, func() (string, bool, bool) {
 		return input.Text(), input.Done(), input.Cancelled()
-	}, dialogCountdown{timeout: dialogTimeout(opts), start: input.StartCountdown, dispose: input.Dispose}, BlockedStatus{Kind: tui.ProgramStatusKindQuestion, Message: title})
+	}, dialogCountdown{timeout: dialogTimeout(opts), start: input.StartCountdown, dispose: input.Dispose}, DialogBlockedStatus(dialogBlockedKind(opts.BlockedKind, tui.ProgramStatusKindQuestion), title))
 }
 
 // Editor shows a multi-line editor in the editor slot. Mirrors upstream's
@@ -449,7 +453,7 @@ func (u *ExtUIContext) Editor(ctx context.Context, title, prefill string) (strin
 	})
 	return u.runDialog(ctx, ed, ed.HandleInput, func() (string, bool, bool) {
 		return value, done, cancelled
-	}, dialogCountdown{}, BlockedStatus{Kind: tui.ProgramStatusKindQuestion, Message: title})
+	}, dialogCountdown{}, DialogBlockedStatus(tui.ProgramStatusKindQuestion, title))
 }
 
 // ─── Notifications & Status ──────────────────────────────────────────────────

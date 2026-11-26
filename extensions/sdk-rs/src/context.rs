@@ -5068,6 +5068,9 @@ impl Context {
         if let Some(timeout) = options.timeout {
             opts.insert("timeout".into(), serde_json::Value::from(timeout));
         }
+        if let Some(ref blocked_kind) = options.blocked_kind {
+            opts.insert("blockedKind".into(), serde_json::Value::from(blocked_kind.as_str()));
+        }
         serde_json::Value::Object(opts)
     }
 
@@ -5412,6 +5415,8 @@ pub struct ExecOptions {
 pub struct DialogOptions {
     /// Dismisses the dialog after this many milliseconds. Pi's `timeout` is a JavaScript number: fractional and very large values are meaningful, and only a positive one starts a countdown.
     pub timeout: Option<f64>,
+    /// Kind of blocked program status (OSC 7501) the dialog reports ("permission", "question", or "auth").
+    pub blocked_kind: Option<String>,
 }
 
 /// The message of upstream `pi.sendMessage`: `CustomMessage`'s `customType`,
@@ -7281,6 +7286,7 @@ mod sdk_surface_call_tests {
     fn dialogs_with_options_send_the_timeout() {
         let opts = DialogOptions {
             timeout: Some(1500.0),
+            blocked_kind: None,
         };
         let (call, result) = roundtrip(
             move |ctx| ctx.select_with_options("Pick", &["a", "b"], &opts),

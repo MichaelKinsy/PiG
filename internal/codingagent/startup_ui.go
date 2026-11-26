@@ -61,9 +61,10 @@ func takeStartupInput() []string {
 }
 
 type StartupUIOptions struct {
-	AgentDir   string
-	Settings   Settings
-	ThemePaths []string
+	AgentDir    string
+	Settings    Settings
+	ThemePaths  []string
+	BlockedKind tui.ProgramStatusKind
 }
 
 // SelectStartupSession is Pi's selectSession(currentSessionsLoader, allSessionsLoader, settingsManager) (cli/session-picker.ts:15-54), the --resume picker. Ports packages/coding-agent/src/cli/session-picker.ts.
@@ -115,7 +116,8 @@ func newStartupSessionSelector(currentLoader, allLoader func(SessionListOptions)
 // selected=false when the user cancels.
 func ShowStartupSelector(title string, options []string, opts StartupUIOptions) (index int, selected bool, err error) {
 	selector := newStartupSelector(title, options, opts)
-	completed, err := runStartupComponent(selector, opts, true)
+	blocked := DialogBlockedStatus(dialogBlockedKind(opts.BlockedKind, tui.ProgramStatusKindQuestion), title)
+	completed, err := runStartupComponentBlocked(selector, opts, true, &blocked)
 	if err != nil {
 		return -1, false, err
 	}
@@ -130,7 +132,8 @@ func ShowStartupSelector(title string, options []string, opts StartupUIOptions) 
 // services exist. It returns selected=false when the user cancels.
 func ShowStartupInput(title, placeholder string, opts StartupUIOptions) (value string, selected bool, err error) {
 	input := newStartupInput(title, placeholder, opts)
-	completed, err := runStartupComponent(input, opts, true)
+	blocked := DialogBlockedStatus(dialogBlockedKind(opts.BlockedKind, tui.ProgramStatusKindQuestion), title)
+	completed, err := runStartupComponentBlocked(input, opts, true, &blocked)
 	if err != nil {
 		return "", false, err
 	}
@@ -164,17 +167,25 @@ type startupTerminal interface {
 
 // runStartupComponent runs a component built after configureStartupTui.
 func runStartupComponent(component startupComponent, opts StartupUIOptions, clear bool) (bool, error) {
-	ui := tui.New()
-	ui.SetLogDirectory(opts.AgentDir)
-	return runStartupComponentWith(component, opts, clear, ui, tui.NewStdioProcessTerminal())
+	return runStartupComponentBlocked(component, opts, clear, nil)
 }
 
-// runStartupComponentWith runs a startup prompt on ui and terminal. Mirrors
-// upstream startStartupTui: the prompt renders at once while the terminal's
-// colors are queried; replies, including those after the timeout, retheme the
-// prompt and are never delivered as input.
-// Ports packages/tui/src/tui.ts (terminal color reply consumption).
+func runStartupComponentBlocked(component startupComponent, opts StartupUIOptions, clear bool, blocked *BlockedStatus) (bool, error) {
+	ui := tui.New()
+	ui.SetLogDirectory(opts.AgentDir)
+	return runStartupComponentWithBlocked(component, opts, clear, ui, tui.NewStdioProcessTerminal(), blocked)
+}
+
+// runStartupComponentWith runs a startup prompt on ui and terminal without a blocked program status report.
 func runStartupComponentWith(component startupComponent, opts StartupUIOptions, clear bool, ui *tui.TuiMainScreen, terminal startupTerminal) (bool, error) {
+	return runStartupComponentWithBlocked(component, opts, clear, ui, terminal, nil)
+}
+
+// runStartupComponentWithBlocked runs a startup prompt on ui and terminal and, when blocked is non-nil,
+// reports blocked program status (OSC 7501) on terminal before starting it. Mirrors upstream showStartupDialog
+// + startStartupTui.
+// Ports packages/tui/src/tui.ts (terminal color reply consumption).
+func runStartupComponentWithBlocked(component startupComponent, opts StartupUIOptions, clear bool, ui *tui.TuiMainScreen, terminal startupTerminal, blocked *BlockedStatus) (bool, error) {
 	asyncSelector, _ := component.(*SessionSelectorComponent)
 	var updates <-chan func()
 	var ready <-chan struct{}
@@ -190,6 +201,16 @@ func runStartupComponentWith(component startupComponent, opts StartupUIOptions, 
 	ui.SetShowHardwareCursor(opts.Settings.GetShowHardwareCursor())
 	ui.SetClearOnShrink(opts.Settings.GetClearOnShrink())
 	ui.Add(component)
+	if blocked != nil {
+		if statusTerm, ok := terminal.(interface{ SetProgramStatus(tui.ProgramStatus) }); ok {
+			statusTerm.SetProgramStatus(tui.ProgramStatus{
+				App:     AppName,
+				State:   tui.ProgramStateBlocked,
+				Kind:    blocked.Kind,
+				Message: blocked.Message,
+			})
+		}
+	}
 
 	inputCh := make(chan []byte, 32)
 	inputErrCh := make(chan error, 1)

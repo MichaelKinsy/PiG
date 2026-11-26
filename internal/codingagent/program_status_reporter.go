@@ -17,6 +17,14 @@ type BlockedStatus struct {
 	Message string
 }
 
+// DialogBlockedStatus builds the blocked status for a dialog from the first line of its title;
+// later lines hold details such as paths. Mirrors upstream dialogBlockedStatus.
+func DialogBlockedStatus(kind tui.ProgramStatusKind, title string) BlockedStatus {
+	line, _, _ := strings.Cut(title, "\n")
+	line = strings.TrimSuffix(line, "\r")
+	return BlockedStatus{Kind: kind, Message: line}
+}
+
 // blockedDialog is one open dialog, keyed by its source.
 type blockedDialog struct {
 	source string
