@@ -915,13 +915,14 @@ func (c *Client) handleMessage(message JSONRPCMessage) {
 }
 
 func (c *Client) handleResponse(message JSONRPCResponse) {
-	id := message.ResponseID()
+	rawID := message.ResponseID()
+	id := normalizeOwnRequestID(rawID)
 	key := id.key()
 	c.mu.Lock()
 	entry := c.pending[key]
 	if entry == nil {
 		c.mu.Unlock()
-		c.emitError(fmt.Errorf("Received response for unknown MCP request %s", id.String()))
+		c.emitError(fmt.Errorf("Received response for unknown MCP request %s", rawID.String()))
 		return
 	}
 	c.removePendingLocked(key, entry)
@@ -1051,7 +1052,7 @@ func (c *Client) handleProgress(params json.RawMessage) {
 		return
 	}
 	c.mu.Lock()
-	requestKey, ok := c.progressRequests[token.key()]
+	requestKey, ok := c.progressRequests[normalizeOwnRequestID(token).key()]
 	entry := c.pending[requestKey]
 	if !ok || entry == nil {
 		c.mu.Unlock()
