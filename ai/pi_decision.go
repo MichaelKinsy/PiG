@@ -3,13 +3,15 @@ package ai
 // Ports packages/ai/src/api/pi-decision.ts (Pi c2f3a5cea, 9553d5834, 604359311, bff71c709).
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"slices"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 )
 
 const piDecisionLabel = "Pi Decision"
@@ -18,12 +20,13 @@ const piDecisionLabel = "Pi Decision"
 type PiDecisionOptions struct {
 	ClassifierOptions
 	// SessionID is an optional session identifier for gateway correlation/analytics.
-	SessionID string
+	// Nil omits the options object; non-nil sends {"sessionId": *SessionID}.
+	SessionID *string
 }
 
 // PiDecisionRequestOptions is the nested options object on the wire.
 type PiDecisionRequestOptions struct {
-	SessionID string `json:"sessionId,omitempty"`
+	SessionID string `json:"sessionId"`
 }
 
 // PiDecisionRequest is the wire request body sent by pi-decision to POST <baseUrl>/decision.
@@ -41,19 +44,11 @@ type PiDecisionResponse struct {
 }
 
 func piDecisionFiniteNonNegative(raw json.RawMessage) float64 {
-	var v float64
-	if len(raw) == 0 || json.Unmarshal(raw, &v) != nil || math.IsNaN(v) || math.IsInf(v, 0) || v < 0 {
+	v, ok := finiteNumberOf(raw)
+	if !ok || v < 0 {
 		return 0
 	}
 	return v
-}
-
-func piDecisionIsFiniteNumber(raw json.RawMessage) (float64, bool) {
-	var v float64
-	if len(raw) == 0 || json.Unmarshal(raw, &v) != nil || math.IsNaN(v) || math.IsInf(v, 0) {
-		return 0, false
-	}
-	return v, true
 }
 
 func piDecisionRequiredUnitInterval(raw json.RawMessage, field string) (float64, error) {
@@ -62,7 +57,7 @@ func piDecisionRequiredUnitInterval(raw json.RawMessage, field string) (float64,
 		return 0, err
 	}
 	if num < 0 || num > 1 {
-		return 0, fmt.Errorf("%s returned out-of-range %s: %g", piDecisionLabel, field, num)
+		return 0, fmt.Errorf("%s returned out-of-range %s: %s", piDecisionLabel, field, jsnumber.String(num))
 	}
 	return num, nil
 }
@@ -72,38 +67,48 @@ func parsePiDecisionUsage(raw json.RawMessage, model ClassifierModel) *Usage {
 	if !ok {
 		return nil
 	}
-	_, hasInput := piDecisionIsFiniteNumber(obj["input"])
-	_, hasOutput := piDecisionIsFiniteNumber(obj["output"])
+	_, hasInput := finiteNumberOf(obj["input"])
+	_, hasOutput := finiteNumberOf(obj["output"])
 	if !hasInput && !hasOutput {
 		return nil
 	}
-	input := piDecisionFiniteNonNegative(obj["input"])
-	output := piDecisionFiniteNonNegative(obj["output"])
-	cacheRead := piDecisionFiniteNonNegative(obj["cacheRead"])
-	cacheWrite := piDecisionFiniteNonNegative(obj["cacheWrite"])
+	inputRaw, inputPresent := obj["input"]
+	outputRaw, outputPresent := obj["output"]
+	cacheReadRaw, cacheReadPresent := obj["cacheRead"]
+	cacheWriteRaw, cacheWritePresent := obj["cacheWrite"]
+	input := classifierTokenCount(inputRaw, inputPresent)
+	output := classifierTokenCount(outputRaw, outputPresent)
+	cacheRead := classifierTokenCount(cacheReadRaw, cacheReadPresent)
+	cacheWrite := classifierTokenCount(cacheWriteRaw, cacheWritePresent)
 	totalTokens := input + output + cacheRead + cacheWrite
-	if t, ok := piDecisionIsFiniteNumber(obj["totalTokens"]); ok && t >= 0 {
-		totalTokens = t
+	if t, ok := finiteNumberOf(obj["totalTokens"]); ok && t >= 0 {
+		totalTokens = classifierTokenCount(obj["totalTokens"], true)
 	}
 	usage := &Usage{
-		Input:       int(input),
-		Output:      int(output),
-		CacheRead:   int(cacheRead),
-		CacheWrite:  int(cacheWrite),
-		TotalTokens: int(totalTokens),
+		Input:       input,
+		Output:      output,
+		CacheRead:   cacheRead,
+		CacheWrite:  cacheWrite,
+		TotalTokens: totalTokens,
 	}
 	if costObj, ok := jsonObjectOf(obj["cost"]); ok {
-		if total, ok := piDecisionIsFiniteNumber(costObj["total"]); ok {
+		if total, ok := finiteNumberOf(costObj["total"]); ok {
+			totalCost := total
+			if totalCost < 0 {
+				totalCost = 0
+			}
 			usage.Cost = UsageCost{
 				Input:      piDecisionFiniteNonNegative(costObj["input"]),
 				Output:     piDecisionFiniteNonNegative(costObj["output"]),
 				CacheRead:  piDecisionFiniteNonNegative(costObj["cacheRead"]),
 				CacheWrite: piDecisionFiniteNonNegative(costObj["cacheWrite"]),
-				Total:      math.Max(0, total),
+				Total:      totalCost,
 			}
-			var fromProvider bool
-			if len(costObj["totalFromProvider"]) > 0 && json.Unmarshal(costObj["totalFromProvider"], &fromProvider) == nil {
-				usage.Cost.TotalFromProvider = &fromProvider
+			switch string(bytes.TrimSpace(costObj["totalFromProvider"])) {
+			case "true":
+				usage.Cost.TotalFromProvider = new(true)
+			case "false":
+				usage.Cost.TotalFromProvider = new(false)
 			}
 			return usage
 		}
@@ -121,10 +126,15 @@ func parsePiDecisionProbabilities(raw json.RawMessage, id string, criteria []Cla
 	for _, c := range criteria {
 		allowed[c.Key] = struct{}{}
 	}
+	keys := make([]string, len(entries))
+	for i, entry := range entries {
+		keys[i] = entry.key
+	}
 	probs := make([]ClassifierProbability, 0, len(entries))
-	for _, entry := range entries {
+	for _, index := range jsObjectKeyOrder(keys) {
+		entry := entries[index]
 		if _, ok := allowed[entry.key]; !ok {
-			return nil, fmt.Errorf("%s returned unknown choice %q in probabilities for %s", piDecisionLabel, entry.key, id)
+			return nil, fmt.Errorf("%s returned unknown choice \"%s\" in probabilities for %s", piDecisionLabel, entry.key, id)
 		}
 		p, err := piDecisionRequiredUnitInterval(entry.value, fmt.Sprintf("probability for %s.%s", id, entry.key))
 		if err != nil {
@@ -140,12 +150,11 @@ func parsePiDecisionAnswer(id string, question ClassifierQuestion, raw json.RawM
 	if !ok {
 		return nil, fmt.Errorf("%s returned an invalid answer for %s", piDecisionLabel, id)
 	}
-	var answerType string
-	_ = json.Unmarshal(obj["type"], &answerType)
+	answerType, _ := jsonStringOf(obj["type"])
 	switch q := question.(type) {
 	case ClassifierChoiceQuestion:
-		var choice string
-		if answerType != "choice" || json.Unmarshal(obj["choice"], &choice) != nil {
+		choice, hasChoice := jsonStringOf(obj["choice"])
+		if answerType != "choice" || !hasChoice {
 			return nil, fmt.Errorf("%s did not return a choice answer for %s", piDecisionLabel, id)
 		}
 		validChoice := false
@@ -156,7 +165,7 @@ func parsePiDecisionAnswer(id string, question ClassifierQuestion, raw json.RawM
 			}
 		}
 		if !validChoice {
-			return nil, fmt.Errorf("%s returned unknown choice %q for %s", piDecisionLabel, choice, id)
+			return nil, fmt.Errorf("%s returned unknown choice \"%s\" for %s", piDecisionLabel, choice, id)
 		}
 		probs, err := parsePiDecisionProbabilities(obj["probabilities"], id, q.Criteria)
 		if err != nil {
@@ -177,7 +186,7 @@ func parsePiDecisionAnswer(id string, question ClassifierQuestion, raw json.RawM
 		}
 		maxScore := float64(max(0, len(q.Criteria)-1))
 		if score < 0 || score > maxScore {
-			return nil, fmt.Errorf("%s returned out-of-range score for %s: %g", piDecisionLabel, id, score)
+			return nil, fmt.Errorf("%s returned out-of-range score for %s: %s", piDecisionLabel, id, jsnumber.String(score))
 		}
 		conf, err := piDecisionRequiredUnitInterval(obj["confidence"], "confidence for "+id)
 		if err != nil {
@@ -201,8 +210,13 @@ func parsePiDecisionAnswers(raw json.RawMessage, request ClassifierContext) (Cla
 	if !ok {
 		return nil, errors.New(piDecisionLabel + " returned an unexpected response")
 	}
+	keys := make([]string, len(request.Questions))
+	for i, entry := range request.Questions {
+		keys[i] = entry.ID
+	}
 	answers := make(ClassifierAnswers, 0, len(request.Questions))
-	for _, entry := range request.Questions {
+	for _, index := range jsObjectKeyOrder(keys) {
+		entry := request.Questions[index]
 		ansRaw, exists := obj[entry.ID]
 		if !exists {
 			return nil, fmt.Errorf("%s did not return an answer for %s", piDecisionLabel, entry.ID)
@@ -213,7 +227,7 @@ func parsePiDecisionAnswers(raw json.RawMessage, request ClassifierContext) (Cla
 		}
 		answers = append(answers, ClassifierAnswerEntry{ID: entry.ID, Answer: ans})
 	}
-	return answers, nil
+	return orderAnswers(answers), nil
 }
 
 // ClassifyPiDecision classifies through pi's canonical POST <baseUrl>/decision protocol.
@@ -253,8 +267,8 @@ func ClassifyPiDecision(ctx context.Context, model ClassifierModel, request Clas
 		Model:   model.ID,
 		Context: reqCtx,
 	}
-	if options.SessionID != "" {
-		reqBody.Options = &PiDecisionRequestOptions{SessionID: options.SessionID}
+	if options.SessionID != nil {
+		reqBody.Options = &PiDecisionRequestOptions{SessionID: *options.SessionID}
 	}
 	target := serviceURL(model.BaseURL, "decision")
 	envelope, err := PostClassifierRequest(ctx, piDecisionLabel, target, model, reqBody, options.ClassifierOptions, nil)
@@ -265,11 +279,8 @@ func ClassifyPiDecision(ctx context.Context, model ClassifierModel, request Clas
 	if !ok {
 		return fail(errors.New(piDecisionLabel + " returned an unexpected response"))
 	}
-	if idRaw, ok := body["responseId"]; ok {
-		var id string
-		if json.Unmarshal(idRaw, &id) == nil && id != "" {
-			output.ResponseID = id
-		}
+	if id, ok := jsonStringOf(body["responseId"]); ok && id != "" {
+		output.ResponseID = id
 	}
 	if usage := parsePiDecisionUsage(body["usage"], model); usage != nil {
 		output.Usage = usage

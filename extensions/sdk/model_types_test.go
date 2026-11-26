@@ -321,7 +321,7 @@ func TestProviderConfigImplementationsAreDeclaredAndRunInTheExtension(t *testing
 			if request.State["text"] == "fail" {
 				return ClassifierResult{}, context.DeadlineExceeded
 			}
-			return ClassifierResult{API: "test-classifier", Provider: "ops", Model: "cls", Answers: NewOrderedObject("approved", map[string]any{"type": "bool", "probability": 0.25}, "again", map[string]any{"type": "bool", "probability": 0.5}), StopReason: "stop", Timestamp: 2}, nil
+			return ClassifierResult{API: "test-classifier", Provider: "ops", Model: "cls", Answers: NewOrderedObject("approved", map[string]any{"type": "bool", "probability": 0.25}, "again", map[string]any{"type": "bool", "probability": 0.5}), ResponseID: "resp-cls-1", StopReason: "stop", Timestamp: 2}, nil
 		}},
 	})
 	host, reg, done := surfaceHost(t, ext, nil)
