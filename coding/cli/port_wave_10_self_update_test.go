@@ -126,6 +126,24 @@ func TestPortWave10NativeSelfUpdate(t *testing.T) {
 		assert.Equal(t, int32(1), downloads.Load())
 	})
 
+	// Port of Pi main e3fa711f4f57aec1e0649fba9fdc182e43afad26 (#12172): refuses updating the Windows managed install from WSL.
+	t.Run("rejects updating the Windows managed install from WSL", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("non-Windows WSL guard")
+		}
+		managedRoot := t.TempDir()
+		releasesDir := filepath.Join(managedRoot, "releases", "1.0.0")
+		require.NoError(t, os.MkdirAll(releasesDir, 0o755))
+		exe := filepath.Join(releasesDir, "pig")
+		writeStartupFixtureFile(t, exe, "binary")
+		writeStartupFixtureFile(t, filepath.Join(managedRoot, "managed-install.json"),
+			`{"kind":"pi-managed-install","schemaVersion":1,"layout":"releases-v1","entrypoint":{"type":"script","path":"C:\\Users\\user\\.pi\\agent\\bin\\pi.cmd"}}`+"\r\n")
+		t.Setenv("PI_MANAGED_INSTALL_ROOT", managedRoot)
+		err := codingagent.CheckWindowsManagedInstallFromWSL(exe)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "Running the Windows installation from WSL is unsupported")
+	})
+
 	// upstream: packages/coding-agent/test/package-command-paths.test.ts:695
 	t.Run("keeps npm self-updates non-managed when the managed environment is inherited", func(t *testing.T) {
 		f := newPackageCommandPathsFixture(t)
