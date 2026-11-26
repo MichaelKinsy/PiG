@@ -205,6 +205,10 @@ func ClassifyDiagnostic(diagnostic Diagnostic, source FileSource, files map[stri
 		return RuleSetModelObject, SetModelSymbol, true
 	case strings.Contains(message, "TransformHeaders") && strings.Contains(message, "ProviderStreamOptions"):
 		return RuleTransformHeaders, "ProviderStreamOptions.TransformHeaders", true
+	case strings.Contains(message, "GetShowCacheMissNotices") && strings.Contains(message, "SettingsManager"):
+		return RuleSettingsNotices, "SettingsManager.GetShowCacheMissNotices", true
+	case strings.Contains(message, "SetShowCacheMissNotices") && strings.Contains(message, "SettingsManager"):
+		return RuleSettingsNotices, "SettingsManager.SetShowCacheMissNotices", true
 	case credentialType().MatchString(message) && importsSDK(diagnostic, source, files):
 		return credentialChange(diagnostic, source, files)
 	}

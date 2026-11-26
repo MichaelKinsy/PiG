@@ -409,3 +409,9 @@ Returns the host and the register envelope."
            (check (<= (length text) (+ pig::+diagnostic-log-max+ 1024)))
            (check-equal 1 (count-substring "further SDK diagnostics dropped" text)))
       (delete-file path))))
+
+(deftest dialog-args-includes-blocked-kind ()
+  (let* ((args (pig::dialog-args (pig:obj "title" "Deploy?") nil "permission"))
+         (opts (gethash "opts" args)))
+    (assert-true (hash-table-p opts))
+    (assert-equal "permission" (gethash "blockedKind" opts))))

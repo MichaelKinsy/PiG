@@ -735,3 +735,21 @@ func (s SettingsManager) SetNotice(key string, shown bool) error {
 	_, err := graphMethodCall[graphDone](s.object, "setNotice", key, shown)
 	return err
 }
+
+// GetShowCacheMissNotices returns whether prompt cache miss notices are enabled.
+//
+// Deprecated: use GetNotices()["cacheMisses"] instead; scheduled for removal in 0.9.0.
+func (s SettingsManager) GetShowCacheMissNotices() (bool, error) {
+	notices, err := s.GetNotices()
+	if err != nil {
+		return false, err
+	}
+	return notices["cacheMisses"], nil
+}
+
+// SetShowCacheMissNotices toggles the cacheMisses transcript notice.
+//
+// Deprecated: use SetNotice("cacheMisses", show) instead; scheduled for removal in 0.9.0.
+func (s SettingsManager) SetShowCacheMissNotices(show bool) error {
+	return s.SetNotice("cacheMisses", show)
+}

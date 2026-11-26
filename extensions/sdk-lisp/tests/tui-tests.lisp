@@ -347,3 +347,10 @@
     (check= (pig:key-hint "tui.input.submit" "to go") (pig:tool-render-context-key-hint context "tui.input.submit" "to go"))
     (check= (pig:key-hint "tui.input.submit" "to go") (pig:message-render-options-key-hint options "tui.input.submit" "to go"))
     (check= (pig:key-hint "tui.input.submit" "to go") (pig:entry-render-options-key-hint options "tui.input.submit" "to go"))))
+
+(deftest tui-hyperlink-url-length-cap-utf16 ()
+  (let* ((prefix "https://example.com/")
+         (at-limit (concatenate 'string prefix (make-string (- 8192 (length prefix)) :initial-element #\a)))
+         (over-limit (concatenate 'string at-limit "a")))
+    (assert-true (search "]8;;" (pig:tui-hyperlink "ok" at-limit)))
+    (assert-equal "ok" (pig:tui-hyperlink "ok" over-limit))))

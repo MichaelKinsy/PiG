@@ -7,9 +7,20 @@
   "pi-tui's TerminalCapabilities: IMAGES is NIL, \"kitty\" or \"iterm2\"; TRUE-COLOR and HYPERLINKS are booleans."
   images true-color hyperlinks)
 
+(defconstant +max-hyperlink-url-length+ 8192)
+
+(defun tt-utf16-length (text)
+  "Number of UTF-16 code units in TEXT (matching JS string.length)."
+  (let ((n 0))
+    (loop for ch across text
+          do (incf n (if (>= (char-code ch) #x10000) 2 1)))
+    n))
+
 (defun tui-hyperlink (text url)
-  "TEXT wrapped in an OSC 8 link to URL (pi-tui's hyperlink)."
-  (tui-cat (tui-esc "]8;;") url (tui-esc "\\") text (tui-esc "]8;;") (tui-esc "\\")))
+  "TEXT wrapped in an OSC 8 link to URL (pi-tui's hyperlink). URLs over 8192 UTF-16 code units return plain TEXT."
+  (if (> (tt-utf16-length url) +max-hyperlink-url-length+)
+      text
+      (tui-cat (tui-esc "]8;;") url (tui-esc "\\") text (tui-esc "]8;;") (tui-esc "\\"))))
 
 (defun tt-probe-tmux-hyperlinks ()
   "Whether tmux reports hyperlink support (a fixed probe with a 250 ms limit; any failure is false)."

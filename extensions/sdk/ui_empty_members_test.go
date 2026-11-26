@@ -71,3 +71,45 @@ func TestEmptyAndUnsetUIMembersStayDistinctOnTheWire(t *testing.T) {
 	}
 	surfaceShutdown(t, host, done)
 }
+
+func TestDialogBlockedKindWireEncoding(t *testing.T) {
+	ext := New("blocked-kind")
+	ext.Command("check", "", func(ctx Context, _ string) error {
+		_, _, _ = ctx.SelectWithOptions("Deploy?", []string{"Yes", "No"}, DialogOptions{BlockedKind: "permission"})
+		_, _ = ctx.ConfirmWithOptions("Proceed?", "details", DialogOptions{BlockedKind: "auth"})
+		_, _, _ = ctx.InputWithOptions("Token", "", DialogOptions{BlockedKind: "auth"})
+		return nil
+	})
+	host, _, done := surfaceHost(t, ext, nil)
+	calls, resp := runSurfaceCommand(t, host, "check", func(call *callMsg) *callResultMsg {
+		return &callResultMsg{Result: json.RawMessage(`{"ok":false}`)}
+	})
+	if resp.Error != nil {
+		t.Fatalf("response = %+v", resp)
+	}
+	want := []struct {
+		method string
+		args   map[string]any
+	}{
+		{"ui.select", map[string]any{"title": "Deploy?", "options": []any{"Yes", "No"}, "opts": map[string]any{"blockedKind": "permission"}}},
+		{"ui.confirm", map[string]any{"title": "Proceed?", "message": "details", "opts": map[string]any{"blockedKind": "auth"}}},
+		{"ui.input", map[string]any{"title": "Token", "placeholder": "", "opts": map[string]any{"blockedKind": "auth"}}},
+	}
+	if len(calls) != len(want) {
+		t.Fatalf("got %d calls, want %d: %+v", len(calls), len(want), calls)
+	}
+	for i, w := range want {
+		if calls[i].Method != w.method {
+			t.Fatalf("call[%d] method = %q, want %q", i, calls[i].Method, w.method)
+		}
+		var got map[string]any
+		if err := json.Unmarshal(calls[i].Args, &got); err != nil {
+			t.Fatalf("call[%d] unmarshal: %v", i, err)
+		}
+		if !reflect.DeepEqual(got, w.args) {
+			t.Fatalf("call[%d] (%s) args = %#v, want %#v", i, w.method, got, w.args)
+		}
+	}
+	host.close()
+	<-done
+}

@@ -282,7 +282,7 @@ pub use js_string::JsString;
 pub use before_agent_start::BeforeAgentStartEvent;
 pub use context::{
     CommandInfo, CompactCompleteHandler, CompactErrorHandler, CompactOptions, Context,
-    CustomMessage, DialogOptions, ExecOptions, ExecResult, ModelEventStream, ModelFetchRequest,
+    CustomMessage, DialogBlockedKind, DialogOptions, DialogPromptOptions, ExecOptions, ExecResult, ModelEventStream, ModelFetchRequest,
     ModelFetchResponse, ModelRegistry, ModelStreamCallbacks, MouseEvent, OverlayBounds,
     OverlayHandle, OverlayState, RemoteComponent, RemoteComponentInvalidate, RemoteComponentResult,
     SendMessageOptions, SetModelArg, SourceInfo, TerminalInputResult, TerminalInputSubscription,

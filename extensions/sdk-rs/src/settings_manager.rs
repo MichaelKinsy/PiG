@@ -973,4 +973,18 @@ impl SettingsManager {
             .call("setNotice", vec![json!(key), json!(shown)])
             .map(|_| ())
     }
+
+    #[deprecated(note = "use get_notices() instead; scheduled for removal in 0.9.0")]
+    pub fn get_show_cache_miss_notices(&self) -> io::Result<bool> {
+        let notices = self.get_notices()?;
+        Ok(notices
+            .get("cacheMisses")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false))
+    }
+
+    #[deprecated(note = "use set_notice(\"cacheMisses\", show) instead; scheduled for removal in 0.9.0")]
+    pub fn set_show_cache_miss_notices(&self, show: bool) -> io::Result<()> {
+        self.set_notice("cacheMisses", show)
+    }
 }

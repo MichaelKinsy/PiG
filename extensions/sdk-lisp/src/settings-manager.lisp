@@ -217,3 +217,12 @@ whenever the manager reads or writes a scope: it runs FN on the scope's current 
   (set-warnings (warnings))
   (get-notices ())
   (set-notice (key shown) :bool-args (shown)))
+
+(defun settings-get-show-cache-miss-notices (settings)
+  "Deprecated: use settings-get-notices instead; scheduled for removal in 0.9.0."
+  (let ((notices (settings-get-notices settings)))
+    (and (hash-table-p notices) (eq (gethash "cacheMisses" notices) t))))
+
+(defun settings-set-show-cache-miss-notices (settings show)
+  "Deprecated: use (settings-set-notice settings \"cacheMisses\" show) instead; scheduled for removal in 0.9.0."
+  (settings-set-notice settings "cacheMisses" show))
