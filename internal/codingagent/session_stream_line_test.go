@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -129,7 +130,7 @@ func TestStreamCustomParserMatchesValidAndPrepare(t *testing.T) {
 					t.Fatalf("suffix %q: lineLen=%d, want %d", suffix, lineLen, len(raw))
 				}
 				if !tc.wantStreamed {
-					if err != errStreamFallback {
+					if !errors.Is(err, errStreamFallback) {
 						t.Fatalf("suffix %q: err=%v, want errStreamFallback", suffix, err)
 					}
 					continue
@@ -161,16 +162,22 @@ func TestOversizedCustomEntryEndToEnd(t *testing.T) {
 		t.Fatal(err)
 	}
 	w := bufio.NewWriter(f)
-	fmt.Fprintf(w, "{\"type\":\"session\",\"version\":3,\"id\":\"019b76da-a800-7000-8000-000000000009\",\"timestamp\":%q,\"cwd\":%q}\n", ts, dir)
-	fmt.Fprintf(w, "{\"type\":\"message\",\"id\":\"00000001\",\"parentId\":null,\"timestamp\":%q,\"message\":{\"role\":\"user\",\"content\":\"hello\",\"timestamp\":1}}\n", ts)
+	writeLine := func(format string, args ...any) {
+		t.Helper()
+		if _, err := fmt.Fprintf(w, format, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeLine("{\"type\":\"session\",\"version\":3,\"id\":\"019b76da-a800-7000-8000-000000000009\",\"timestamp\":%q,\"cwd\":%q}\n", ts, dir)
+	writeLine("{\"type\":\"message\",\"id\":\"00000001\",\"parentId\":null,\"timestamp\":%q,\"message\":{\"role\":\"user\",\"content\":\"hello\",\"timestamp\":1}}\n", ts)
 	// Oversized normal custom entry (>4 MiB) -> streamed path.
-	fmt.Fprintf(w, "{\"type\":\"custom\",\"id\":\"00000002\",\"parentId\":\"00000001\",\"timestamp\":%q,\"customType\":\"big.state\",\"data\":{\"z\":2,\"payload\":\"%s\",\"a\":1}}\r\n", ts, strings.Repeat("q", payloadBytes))
+	writeLine("{\"type\":\"custom\",\"id\":\"00000002\",\"parentId\":\"00000001\",\"timestamp\":%q,\"customType\":\"big.state\",\"data\":{\"z\":2,\"payload\":\"%s\",\"a\":1}}\r\n", ts, strings.Repeat("q", payloadBytes))
 	// Oversized malformed custom entry (>4 MiB) -> skipped.
-	fmt.Fprintf(w, "{\"type\":\"custom\",\"id\":\"bad00001\",\"parentId\":\"00000002\",\"data\":\"%s\n", strings.Repeat("m", payloadBytes))
+	writeLine("{\"type\":\"custom\",\"id\":\"bad00001\",\"parentId\":\"00000002\",\"data\":\"%s\n", strings.Repeat("m", payloadBytes))
 	// Oversized custom entry with duplicate key -> fallback path.
-	fmt.Fprintf(w, "{\"type\":\"custom\",\"type\":\"custom\",\"id\":\"00000003\",\"parentId\":\"00000002\",\"timestamp\":%q,\"customType\":\"fallback.state\",\"data\":{\"blob\":\"%s\"}}\n", ts, strings.Repeat("f", payloadBytes))
+	writeLine("{\"type\":\"custom\",\"type\":\"custom\",\"id\":\"00000003\",\"parentId\":\"00000002\",\"timestamp\":%q,\"customType\":\"fallback.state\",\"data\":{\"blob\":\"%s\"}}\n", ts, strings.Repeat("f", payloadBytes))
 	// Trailing normal message.
-	fmt.Fprintf(w, "{\"type\":\"message\",\"id\":\"00000004\",\"parentId\":\"00000003\",\"timestamp\":%q,\"message\":{\"role\":\"user\",\"content\":\"after\",\"timestamp\":2}}\n", ts)
+	writeLine("{\"type\":\"message\",\"id\":\"00000004\",\"parentId\":\"00000003\",\"timestamp\":%q,\"message\":{\"role\":\"user\",\"content\":\"after\",\"timestamp\":2}}\n", ts)
 	if err := w.Flush(); err != nil {
 		t.Fatal(err)
 	}

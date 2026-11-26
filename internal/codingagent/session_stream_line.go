@@ -281,10 +281,10 @@ func (p *streamCustomParser) write(data []byte) {
 			if p.capturing {
 				p.appendValByte(c)
 			}
-			switch {
-			case c == '"':
+			switch c {
+			case '"':
 				p.endValue()
-			case c == '\\':
+			case '\\':
 				p.state = spInStrEsc
 			default:
 				p.failed = true
@@ -359,12 +359,13 @@ func (p *streamCustomParser) write(data []byte) {
 				}
 			}
 		case spKeyEsc:
-			if isSimpleEscape(c) {
+			switch {
+			case isSimpleEscape(c):
 				p.state = spKeyStr
-			} else if c == 'u' {
+			case c == 'u':
 				p.uHexLeft = 4
 				p.state = spKeyUHex
-			} else {
+			default:
 				p.failed = true
 				return
 			}
@@ -393,12 +394,13 @@ func (p *streamCustomParser) write(data []byte) {
 			if p.capturing {
 				p.appendValByte(c)
 			}
-			if isSimpleEscape(c) {
+			switch {
+			case isSimpleEscape(c):
 				p.state = spInStr
-			} else if c == 'u' {
+			case c == 'u':
 				p.uHexLeft = 4
 				p.state = spInStrUHex
-			} else {
+			default:
 				p.failed = true
 				return
 			}
@@ -415,51 +417,54 @@ func (p *streamCustomParser) write(data []byte) {
 				p.state = spInStr
 			}
 		case spNumNeg:
-			if c == '0' {
+			switch {
+			case c == '0':
 				if p.capturing {
 					p.appendValByte(c)
 				}
 				p.state = spNumZero
-			} else if c >= '1' && c <= '9' {
+			case c >= '1' && c <= '9':
 				if p.capturing {
 					p.appendValByte(c)
 				}
 				p.state = spNumInt
-			} else {
+			default:
 				p.failed = true
 				return
 			}
 		case spNumZero:
-			if c == '.' {
+			switch c {
+			case '.':
 				if p.capturing {
 					p.appendValByte(c)
 				}
 				p.state = spNumDot
-			} else if c == 'e' || c == 'E' {
+			case 'e', 'E':
 				if p.capturing {
 					p.appendValByte(c)
 				}
 				p.state = spNumExpSign
-			} else {
+			default:
 				p.endValue()
 				i--
 			}
 		case spNumInt:
-			if c >= '0' && c <= '9' {
+			switch {
+			case c >= '0' && c <= '9':
 				if p.capturing {
 					p.appendValByte(c)
 				}
-			} else if c == '.' {
+			case c == '.':
 				if p.capturing {
 					p.appendValByte(c)
 				}
 				p.state = spNumDot
-			} else if c == 'e' || c == 'E' {
+			case c == 'e' || c == 'E':
 				if p.capturing {
 					p.appendValByte(c)
 				}
 				p.state = spNumExpSign
-			} else {
+			default:
 				p.endValue()
 				i--
 			}
@@ -474,31 +479,33 @@ func (p *streamCustomParser) write(data []byte) {
 				return
 			}
 		case spNumFrac:
-			if c >= '0' && c <= '9' {
+			switch {
+			case c >= '0' && c <= '9':
 				if p.capturing {
 					p.appendValByte(c)
 				}
-			} else if c == 'e' || c == 'E' {
+			case c == 'e' || c == 'E':
 				if p.capturing {
 					p.appendValByte(c)
 				}
 				p.state = spNumExpSign
-			} else {
+			default:
 				p.endValue()
 				i--
 			}
 		case spNumExpSign:
-			if c == '+' || c == '-' {
+			switch {
+			case c == '+' || c == '-':
 				if p.capturing {
 					p.appendValByte(c)
 				}
 				p.state = spNumExpDig
-			} else if c >= '0' && c <= '9' {
+			case c >= '0' && c <= '9':
 				if p.capturing {
 					p.appendValByte(c)
 				}
 				p.state = spNumExp
-			} else {
+			default:
 				p.failed = true
 				return
 			}
