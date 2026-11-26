@@ -416,12 +416,24 @@ func ToGoogleSdkThinkingLevel(level GoogleThinkingLevel) GoogleSdkThinkingLevel 
 
 // ─── SSE response types ──────────────────────────────────────────────────────
 
+type geminiSafetyRating struct {
+	Category    string `json:"category,omitempty"`
+	Probability string `json:"probability,omitempty"`
+}
+
+type geminiPromptFeedback struct {
+	BlockReason        string               `json:"blockReason,omitempty"`
+	BlockReasonMessage string               `json:"blockReasonMessage,omitempty"`
+	SafetyRatings      []geminiSafetyRating `json:"safetyRatings,omitempty"`
+}
+
 type geminiStreamChunk struct {
 	// raw is the chunk's JSON as received, for OnProviderStreamEvent.
-	raw           json.RawMessage
-	Candidates    []geminiCandidate    `json:"candidates"`
-	UsageMetadata *geminiUsageMetadata `json:"usageMetadata,omitempty"`
-	ResponseID    string               `json:"responseId,omitempty"`
+	raw            json.RawMessage
+	Candidates     []geminiCandidate     `json:"candidates"`
+	PromptFeedback *geminiPromptFeedback `json:"promptFeedback,omitempty"`
+	UsageMetadata  *geminiUsageMetadata  `json:"usageMetadata,omitempty"`
+	ResponseID     string                `json:"responseId,omitempty"`
 	// read is what the JS read of a mistyped chunk yields beyond the rewritten members (decodeGeminiChunk).
 	read geminiChunkRead
 }
@@ -1316,9 +1328,11 @@ func googleRawChunkError(chunk []byte) error {
 
 // googleStreamState is the per-response state of Pi's `for await (const chunk of googleStream)` loop body (google-generative-ai.ts:103-235).
 type googleStreamState struct {
-	builder      *assistantStreamBuilder
-	usage        Usage
-	finishReason string
+	builder            *assistantStreamBuilder
+	usage              Usage
+	finishReason       string
+	receivedChunkCount int
+	promptBlockError   string
 	sawToolCall  bool
 	// finishSawToolCall is sawToolCall when the latest finish reason arrived: Pi turns a "stop" into "toolUse" only if the message holds a tool call at that
 	// chunk (google-generative-ai.ts:214-220), and never again, so a tool call in a later chunk does not.
@@ -1329,6 +1343,14 @@ type googleStreamState struct {
 
 func (state *googleStreamState) handle(chunk *geminiStreamChunk) error {
 	builder := state.builder
+	state.receivedChunkCount++
+	if chunk.PromptFeedback != nil && chunk.PromptFeedback.BlockReason != "" && state.promptBlockError == "" {
+		providerName := "Google"
+		if builder.partial.API == APIGoogleVertex {
+			providerName = "Google Vertex"
+		}
+		state.promptBlockError = formatGooglePromptBlockError(providerName, chunk.PromptFeedback)
+	}
 	if chunk.ResponseID != "" {
 		// `output.responseId ||= chunk.responseId` (google-generative-ai.ts:109). Pi's Google provider does not read modelVersion into responseModel.
 		builder.setResponseMetadata(chunk.ResponseID, "", "", "", nil)
@@ -1440,7 +1462,7 @@ func (state *googleStreamState) finish(ctx context.Context) {
 		builder.failUnfinished(StopReasonAborted, errors.New("Request was aborted"))
 		return
 	}
-	stopReason, errorMessage := mapGoogleFinishReason(state.builder.partial.API, state.finishReason)
+	stopReason, errorMessage := state.resolveFinishReason()
 	if stopReason == StopReasonStop && state.finishSawToolCall {
 		stopReason = StopReasonToolUse
 	}
@@ -1490,7 +1512,7 @@ func (p *googleProvider) parseGeminiSSE(ctx context.Context, r io.Reader, builde
 		builder.fail(StopReasonAborted, err)
 		return
 	}
-	stopReason, errorMessage := mapGoogleFinishReason(state.builder.partial.API, state.finishReason)
+	stopReason, errorMessage := state.resolveFinishReason()
 	if stopReason == StopReasonStop && state.finishSawToolCall {
 		stopReason = StopReasonToolUse
 	}
@@ -1526,6 +1548,56 @@ func mapStopReason(reason string) (StopReason, error) {
 	default:
 		return StopReasonError, fmt.Errorf("Unhandled stop reason: %s", reason)
 	}
+}
+
+func formatGooglePromptBlockError(providerName string, feedback *geminiPromptFeedback) string {
+	reason := feedback.BlockReason
+	if reason == "" {
+		reason = "unknown reason"
+	}
+	details := []string{providerName + " prompt blocked: " + reason}
+	if feedback.BlockReasonMessage != "" {
+		details = append(details, feedback.BlockReasonMessage)
+	}
+	if len(feedback.SafetyRatings) > 0 {
+		var ratings []string
+		for _, r := range feedback.SafetyRatings {
+			if r.Category == "" {
+				continue
+			}
+			if r.Probability != "" {
+				ratings = append(ratings, r.Category+" ("+r.Probability+")")
+			} else {
+				ratings = append(ratings, r.Category)
+			}
+		}
+		if len(ratings) > 0 {
+			label := "Safety ratings: "
+			if len(ratings) == 1 {
+				label = "Safety rating: "
+			}
+			details = append(details, label+strings.Join(ratings, ", "))
+		}
+	}
+	return strings.Join(details, ". ")
+}
+
+func (state *googleStreamState) resolveFinishReason() (StopReason, string) {
+	if state.finishReason == "" {
+		if state.promptBlockError != "" {
+			return StopReasonError, state.promptBlockError
+		}
+		chunkLabel := "chunks"
+		if state.receivedChunkCount == 1 {
+			chunkLabel = "chunk"
+		}
+		prefix := "Google"
+		if state.builder.partial.API == APIGoogleVertex {
+			prefix = "Google Vertex"
+		}
+		return StopReasonError, fmt.Sprintf("%s stream ended without a finish reason after receiving %d %s", prefix, state.receivedChunkCount, chunkLabel)
+	}
+	return mapGoogleFinishReason(state.builder.partial.API, state.finishReason)
 }
 
 // mapGoogleFinishReason applies mapStopReason to the stream's raw finish reason and derives the error message the stream end throws
