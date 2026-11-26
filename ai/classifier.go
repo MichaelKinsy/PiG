@@ -145,8 +145,10 @@ type ClassifierResult struct {
 	Provider string
 	Model    string
 	Answers  ClassifierAnswers
-	// Usage is the token usage priced at the model's catalog price, when the service reports token counts.
-	Usage        *Usage
+	// Usage is the token usage priced at the model's catalog price, or the billed amount (Cost.TotalFromProvider) when the service reports one, such as OpenRouter.
+	Usage *Usage
+	// ResponseID is the provider-specific response identifier when the service reports one, such as OpenRouter's generation ID.
+	ResponseID   string
 	StopReason   ClassifierStopReason
 	ErrorMessage string
 	Timestamp    int64
