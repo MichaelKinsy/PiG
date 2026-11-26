@@ -107,7 +107,7 @@ func TestDurableTelemetryRecordsInternalCompactionAdmissionsAsPhaseEventsWithout
 	addHooks(t, setup.Registry, CompactionTask.Erased(), &CompactionHooks{BeforeCompact: func(context.Context, CompactionRequest, HookApi) (*CompactionDecision, error) {
 		g := store.holdCommits()
 		held.Store(&g)
-		return &CompactionDecision{Summary: new("private-summary")}, nil
+		return &CompactionDecision{Kind: CompactionSummary, Summary: "private-summary"}, nil
 	}})
 	harness, root := openTracked(t, store, setup, recorder)
 	if _, err := root.Commit(testContext, func(tx durable.Tx) (any, error) {

@@ -95,7 +95,7 @@ func TestExample39AskAPerson(t *testing.T) {
 					return err
 				}
 				var answer *string
-				if state != nil && !state.Expired {
+				if state != nil && state.Kind == durable.SignalStateValue {
 					answer = &state.Value.Text
 				}
 				reason := "undefined"
@@ -188,8 +188,8 @@ func TestExample39AskAPerson(t *testing.T) {
 		`last onWake: {"active":false}`,
 	})
 	expectEqual(t, "ask", askLines.all(), []string{
-		`  [ask] woke: signal, read: {"value":{"text":"yes"}}`,
-		`  [ask] woke: expired, read: {"expired":true}`,
+		`  [ask] woke: signal, read: {"kind":"value","value":{"text":"yes"}}`,
+		`  [ask] woke: expired, read: {"kind":"expired"}`,
 	})
 	if err := opened.Close(background); err != nil {
 		t.Fatal(err)

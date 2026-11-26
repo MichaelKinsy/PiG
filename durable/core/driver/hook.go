@@ -464,10 +464,18 @@ func runHook(ctx context.Context, p hookEffect, target any, api harness.HookApi,
 		if out == nil || err != nil {
 			return nil, err
 		}
-		return struct {
-			Decline bool    `json:"decline,omitempty"`
-			Summary *string `json:"summary,omitempty"`
-		}{out.Decline, out.Summary}, nil
+		switch out.Kind {
+		case harness.CompactionDecline:
+			return struct {
+				Decline bool `json:"decline"`
+			}{true}, nil
+		case harness.CompactionSummary:
+			return struct {
+				Summary string `json:"summary"`
+			}{out.Summary}, nil
+		default:
+			return nil, nil
+		}
 	case "prepareArguments":
 		prepare, ok := target.(PrepareArguments)
 		if !ok {

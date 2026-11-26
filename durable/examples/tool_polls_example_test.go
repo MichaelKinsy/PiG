@@ -102,9 +102,10 @@ func TestExample41ToolPolls(t *testing.T) {
 			}
 			delayMs := min(previous*2, 60_000)
 			until := api.Now() + delayMs
-			return durable.ToolExecutionResult{Park: &durable.ToolPark{Sleep: &durable.ToolParkSleep{
+			return durable.ToolExecutionResult{Park: &durable.ToolPark{
+				Kind:       durable.ToolParkSleep,
 				Checkpoint: delta.JsonObjectOf("id", id, "polls", float64(polls), "delayMs", delayMs), HasCheckpoint: true, Until: &until,
-			}}}, nil
+			}}, nil
 		},
 	}
 

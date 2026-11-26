@@ -59,7 +59,7 @@ func TestExample38Signals(t *testing.T) {
 					return err
 				}
 				text := "(none)"
-				if state != nil && !state.Expired {
+				if state != nil && state.Kind == durable.SignalStateValue {
 					text = state.Value.Text
 				}
 				greeterLines.add(fmt.Sprintf("  [greeter] woke by %s, read %q", jsonText(wake), text))

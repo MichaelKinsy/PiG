@@ -578,7 +578,7 @@ func TestAfterRun(t *testing.T) {
 		}))
 		// The task admits its result for the model in its own commit.
 		state.admit = func(handle durable.ConversationHandle, tx durable.Tx) error {
-			_, err := handle.SubmitIn(tx, durable.SubmissionDraft{Type: durable.SubmissionTypeWrite, Entry: &durable.EntryDraft{Kind: "test.result", Model: []ai.Message{ai.UserMessage{Content: ai.UserText("tests passed"), Timestamp: 1}}}})
+			_, err := handle.Admit(tx, durable.SubmissionDraft{Type: durable.SubmissionTypeWrite, Entry: &durable.EntryDraft{Kind: "test.result", Model: []ai.Message{ai.UserMessage{Content: ai.UserText("tests passed"), Timestamp: 1}}}})
 			return err
 		}
 		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer("first"), fauxAnswer("second"), fauxAnswer("third")})
@@ -1031,7 +1031,7 @@ func TestAfterRun(t *testing.T) {
 			Tools: []*durable.ToolRegistration{slow},
 			Hooks: []durable.HookRegistration{
 				Hook(CompactionTask, beforeCompact(func(CompactionRequest) (*CompactionDecision, error) {
-					return &CompactionDecision{Summary: new("earlier work")}, nil
+					return &CompactionDecision{Kind: CompactionSummary, Summary: "earlier work"}, nil
 				})),
 				Hook(GenerationTask, &GenerationHooks{AfterRun: func(ctx context.Context, run RunSummary, api HookApi) (*HookTasks, error) {
 					page, err := api.Entries(ctx, durable.EntryQuery{MinEntryId: &run.First, MaxEntryId: &run.Last, Order: new(durable.ScanAscending)}, 100, nil)
@@ -1166,7 +1166,7 @@ func TestAfterRun(t *testing.T) {
 			}})},
 		}))
 		state.admit = func(handle durable.ConversationHandle, tx durable.Tx) error {
-			_, err := handle.SubmitIn(tx, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("fix the tests"), RequestId: new("fix-1"), WhenBusy: durable.WhenBusyFollowUp})
+			_, err := handle.Admit(tx, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("fix the tests"), RequestId: new("fix-1"), WhenBusy: durable.WhenBusyFollowUp})
 			return err
 		}
 		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer("done"), fauxAnswer("fixed")})
@@ -1213,7 +1213,7 @@ func TestAfterRun(t *testing.T) {
 		}
 		arExpectAsked(t, state)
 		must(durable.Commit(testContext, harness, func(tx durable.Tx) (durable.SubmissionId, error) {
-			return root.SubmitIn(tx, durable.SubmissionDraft{Type: durable.SubmissionTypeContinue})
+			return root.Admit(tx, durable.SubmissionDraft{Type: durable.SubmissionTypeContinue})
 		}))
 		arWaitIdle(t, root)
 		answer := arLast(arKindOf(allEntries(t, root), "pi.assistant"))
@@ -1469,7 +1469,7 @@ func TestAfterRun(t *testing.T) {
 			Name:  "slow-handoff",
 			Tools: []*durable.ToolRegistration{slowHandoff},
 			Hooks: []durable.HookRegistration{Hook(CompactionTask, beforeCompact(func(CompactionRequest) (*CompactionDecision, error) {
-				return &CompactionDecision{Summary: new("earlier work")}, nil
+				return &CompactionDecision{Kind: CompactionSummary, Summary: "earlier work"}, nil
 			}))},
 		}))
 		setup.Faux.SetResponses([]ai.FauxResponseStep{arCall("handoff", "a")})

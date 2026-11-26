@@ -40,7 +40,7 @@ func TestCommitWrites(t *testing.T) {
 		storage := commitStorage{commit: func(ctx context.Context, sent [][]durable.StorageWrite, receive func(int, durable.Seq)) (durable.CommitResult, error) {
 			gotCtx, batches = ctx, sent
 			receive(0, 7)
-			return durable.CommitResult{Stored: 1}, nil
+			return durable.CommitResult{Kind: durable.CommitStored, Stored: 1}, nil
 		}}
 		seq, err := durabletest.CommitWrites(ctx, storage, writes)
 		if err != nil || seq != 7 {
@@ -58,7 +58,7 @@ func TestCommitWrites(t *testing.T) {
 		refusal := errors.New("refused")
 		storage := commitStorage{commit: func(_ context.Context, _ [][]durable.StorageWrite, receive func(int, durable.Seq)) (durable.CommitResult, error) {
 			receive(0, 5)
-			return durable.CommitResult{Stored: 0, Refused: refusal}, nil
+			return durable.CommitResult{Kind: durable.CommitRefused, Stored: 0, Refused: refusal}, nil
 		}}
 		seq, err := durabletest.CommitWrites(ctx, storage, writes)
 		if !errors.Is(err, refusal) || seq != 0 {

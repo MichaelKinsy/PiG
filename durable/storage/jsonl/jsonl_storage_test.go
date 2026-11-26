@@ -1224,7 +1224,7 @@ func TestJsonlStorageBatches(t *testing.T) {
 		close(fileSystem.gate)
 		outcome := <-committed
 		mustDo(t, outcome.err)
-		if outcome.result.Stored != 3 || outcome.result.Refused != nil {
+		if outcome.result.Kind != durable.CommitStored || outcome.result.Stored != 3 || outcome.result.Refused != nil {
 			t.Fatalf("result = %+v, want 3 stored", outcome.result)
 		}
 		got := <-read
@@ -1303,7 +1303,7 @@ func TestJsonlStorageBatches(t *testing.T) {
 		close(fileSystem.gate)
 		outcome := <-committed
 		mustDo(t, outcome.err)
-		if outcome.result.Stored != 2 || outcome.result.Refused != nil {
+		if outcome.result.Kind != durable.CommitStored || outcome.result.Stored != 2 || outcome.result.Refused != nil {
 			t.Fatalf("result = %+v, want 2 stored", outcome.result)
 		}
 		mustDo(t, <-closed)

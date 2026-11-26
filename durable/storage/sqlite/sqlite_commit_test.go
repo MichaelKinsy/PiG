@@ -516,7 +516,7 @@ func commitCall(t *testing.T, s durable.Storage, batches [][]durable.StorageWrit
 	t.Helper()
 	var receipts [][2]int64
 	result := must(s.Commit(testContext, batches, func(index int, seq durable.Seq) { receipts = append(receipts, [2]int64{int64(index), int64(seq)}) }))
-	return callOutcome{result.Stored, result.Refused != nil, receipts}
+	return callOutcome{result.Stored, result.Kind == durable.CommitRefused, receipts}
 }
 
 func TestSqliteStorageBatchCommitsAgainstMemoryReference(t *testing.T) {
@@ -838,7 +838,7 @@ func TestSqliteStorageBatchCommitRegressions(t *testing.T) {
 				outcomes = append(outcomes, must(s.Commit(testContext, [][]durable.StorageWrite{replace, {create(12)}}, func(int, durable.Seq) {})))
 			}
 			for _, outcome := range outcomes {
-				if outcome.Stored != 1 {
+				if outcome.Kind != durable.CommitRefused || outcome.Stored != 1 {
 					t.Fatalf("stored = %d, want 1", outcome.Stored)
 				}
 				expectError(t, outcome.Refused, "Document address already has a current incarnation")

@@ -398,14 +398,14 @@ func commitIntent(ctx context.Context, runtime toolRuntime, intent ToolTaskCheck
 		if err != nil {
 			return nil, err
 		}
-		if slot := FindToolSlot(live, runtime.TaskId()); slot != nil {
-			if err := slot.Set("status", string(ToolSlotRunning)); err != nil {
+		if found := FindSlot(live, runtime.TaskId()); found != nil {
+			if err := found.Slot.Set("status", string(ToolSlotRunning)); err != nil {
 				return nil, err
 			}
 			// A nested slot shows the arguments the call runs with, which repair, hooks, and coercion may have changed.
 			// Assigned whole: an equal value records no change, and a rerun corrects what an earlier attempt showed.
-			if isNestedSlot(slot) {
-				if err := slot.Set("arguments", shown); err != nil {
+			if found.Kind == FoundSlotNested {
+				if err := found.Slot.Set("arguments", shown); err != nil {
 					return nil, err
 				}
 			}
@@ -478,17 +478,17 @@ func toolExecutePhase(ctx context.Context, task toolRecord, runtime toolRuntime)
 			if err != nil {
 				return nil, err
 			}
-			if slot := FindToolSlot(live, runtime.TaskId()); slot != nil {
+			if found := FindSlot(live, runtime.TaskId()); found != nil {
 				if checkpoint.Wake == nil {
-					ClearProgress(slot)
+					ClearProgress(found.Slot)
 				} else {
-					ClearOutput(slot)
+					ClearOutput(found.Slot)
 				}
-				if err := slot.Set("status", string(ToolSlotRunning)); err != nil {
+				if err := found.Slot.Set("status", string(ToolSlotRunning)); err != nil {
 					return nil, err
 				}
-				if isNestedSlot(slot) {
-					if err := slot.Set("arguments", shown); err != nil {
+				if found.Kind == FoundSlotNested {
+					if err := found.Slot.Set("arguments", shown); err != nil {
 						return nil, err
 					}
 				}
@@ -910,8 +910,8 @@ func parkTool(ctx context.Context, runtime toolRuntime, input ToolTaskInput, cal
 		return shape, nil
 	}
 	park := returned.Park
-	if park.Wait != nil {
-		for _, id := range park.Wait.On {
+	if park.Kind == durable.ToolParkWait {
+		for _, id := range park.On {
 			record, err := runtime.GetTask(ctx, id)
 			if err != nil {
 				return "", err
@@ -921,11 +921,13 @@ func parkTool(ctx context.Context, runtime toolRuntime, input ToolTaskInput, cal
 			}
 		}
 	}
-	parked := ToolTaskCheckpoint{Phase: toolPhaseParked, Arguments: intent.Arguments, Replay: replayOf(tool), argumentsJSON: intent.argumentsJSON}
-	if park.Sleep != nil {
-		parked.Checkpoint, parked.HasCheckpoint = park.Sleep.Checkpoint, park.Sleep.HasCheckpoint
-	} else {
-		parked.Checkpoint, parked.HasCheckpoint = park.Wait.Checkpoint, park.Wait.HasCheckpoint
+	parked := ToolTaskCheckpoint{
+		Phase:         toolPhaseParked,
+		Arguments:     intent.Arguments,
+		Replay:        replayOf(tool),
+		Checkpoint:    park.Checkpoint,
+		HasCheckpoint: park.HasCheckpoint,
+		argumentsJSON: intent.argumentsJSON,
 	}
 	streams := input.Kind != ToolTaskNested || input.Progress == nil || *input.Progress
 	reported := api.reported
@@ -958,17 +960,17 @@ func parkTool(ctx context.Context, runtime toolRuntime, input ToolTaskInput, cal
 			}
 			ClearOutput(slot)
 			status := ToolSlotWaiting
-			if park.Sleep != nil {
+			if park.Kind == durable.ToolParkSleep {
 				status = ToolSlotSleeping
 			}
 			if err := slot.Set("status", string(status)); err != nil {
 				return nil, err
 			}
 		}
-		if park.Sleep != nil {
-			return &toolNext{Status: durable.TaskSleeping, Checkpoint: &parked, Until: park.Sleep.Until, Signals: park.Sleep.Signals}, nil
+		if park.Kind == durable.ToolParkSleep {
+			return &toolNext{Status: durable.TaskSleeping, Checkpoint: &parked, Until: park.Until, Signals: park.Signals}, nil
 		}
-		return &toolNext{Status: durable.TaskWaiting, Checkpoint: &parked, On: park.Wait.On, Policy: park.Wait.Policy}, nil
+		return &toolNext{Status: durable.TaskWaiting, Checkpoint: &parked, On: park.On, Policy: park.Policy}, nil
 	})
 	if err == nil {
 		return "", nil
@@ -1555,7 +1557,7 @@ func settleTool(ctx context.Context, runtime toolRuntime, input ToolTaskInput, c
 		if err != nil {
 			return nil, err
 		}
-		slot := FindToolSlot(live, runtime.TaskId())
+		found := FindSlot(live, runtime.TaskId())
 		var settled ToolTaskResult
 		if input.Kind == ToolTaskNested {
 			nested := nestedResult(runtime.TaskId(), result, duration)
@@ -1567,11 +1569,11 @@ func settleTool(ctx context.Context, runtime toolRuntime, input ToolTaskInput, c
 			if err := storeNestedResult(tx, input, call, runtime.TaskId(), nested); err != nil {
 				return nil, err
 			}
-			if slot != nil && isNestedSlot(slot) {
-				if err := FinishSlot(slot); err != nil {
+			if found != nil && found.Kind == FoundSlotNested {
+				if err := FinishSlot(found.Slot); err != nil {
 					return nil, err
 				}
-				if err := setJSON(slot, "summary", summaryOf(nested, result.Output)); err != nil {
+				if err := setJSON(found.Slot, "summary", summaryOf(nested, result.Output)); err != nil {
 					return nil, err
 				}
 			}
@@ -1582,11 +1584,11 @@ func settleTool(ctx context.Context, runtime toolRuntime, input ToolTaskInput, c
 				return nil, err
 			}
 			entryId := entry.Id
-			if slot != nil && !isNestedSlot(slot) {
-				if err := FinishSlot(slot); err != nil {
+			if found != nil && found.Kind == FoundSlotModel {
+				if err := FinishSlot(found.Slot); err != nil {
 					return nil, err
 				}
-				if err := slot.Set("entry", float64(entryId)); err != nil {
+				if err := found.Slot.Set("entry", float64(entryId)); err != nil {
 					return nil, err
 				}
 			}

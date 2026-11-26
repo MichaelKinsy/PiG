@@ -1,6 +1,6 @@
 // Ports packages/durable/test/harness-submit-in-commit.test.ts: admission for hosts that must not start runs
 // (`whenIdle: "reject"`), and `submit(tx, draft)` inside the caller's commit (#11149). See harness_tasks_test.go for the
-// Go mappings that apply to every case; the Go form of `submit(tx, draft)` is Conversation.SubmitIn.
+// Go mappings that apply to every case; the Go form of `submit(tx, draft)` is Conversation.Admit.
 
 package harness
 
@@ -80,10 +80,10 @@ func sicSettledStatus(t *testing.T, harness Harness, id durable.SubmissionId) du
 	return must(submission.Status(testContext))
 }
 
-// sicSubmitIn admits draft through Conversation.SubmitIn in a harness commit.
-func sicSubmitIn(harness Harness, root Conversation, draft durable.SubmissionDraft) (durable.SubmissionId, error) {
+// sicAdmit admits draft through Conversation.Admit in a harness commit.
+func sicAdmit(harness Harness, root Conversation, draft durable.SubmissionDraft) (durable.SubmissionId, error) {
 	return durable.Commit(testContext, harness, func(tx durable.Tx) (durable.SubmissionId, error) {
-		return root.SubmitIn(tx, draft)
+		return root.Admit(tx, draft)
 	})
 }
 
@@ -199,7 +199,7 @@ func TestWhenIdleReject(t *testing.T) {
 			t.Fatalf("id = %d, want %d", again.Id(), first.Id())
 		}
 		// Deduplication runs before the idle rejection in the caller's commit too.
-		if id := must(sicSubmitIn(harness, root, draft)); id != first.Id() {
+		if id := must(sicAdmit(harness, root, draft)); id != first.Id() {
 			t.Fatalf("id in commit = %d, want %d", id, first.Id())
 		}
 		closeHarness(t, harness)
@@ -258,7 +258,7 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 			if err != nil {
 				return 0, err
 			}
-			admitted, err := busy.root.SubmitIn(tx, sicSteerDraft("steer"))
+			admitted, err := busy.root.Admit(tx, sicSteerDraft("steer"))
 			if err != nil {
 				return 0, err
 			}
@@ -303,7 +303,7 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 		harness, root := openChat(t, store, chatSetup(t))
 		commits := store.commitCount()
 		_, err := durable.Commit(testContext, harness, func(tx durable.Tx) (struct{}, error) {
-			if _, err := root.SubmitIn(tx, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("hi"), RequestId: new("r1")}); err != nil {
+			if _, err := root.Admit(tx, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("hi"), RequestId: new("r1")}); err != nil {
 				return struct{}{}, err
 			}
 			return struct{}{}, errors.New("host check failed")
@@ -330,7 +330,7 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 		failure := errors.New("disk full")
 		store.failNextCommit(failure)
 		_, err := durable.Commit(testContext, harness, func(tx durable.Tx) (struct{}, error) {
-			if _, err := root.SubmitIn(tx, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("hi"), RequestId: new("r1")}); err != nil {
+			if _, err := root.Admit(tx, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("hi"), RequestId: new("r1")}); err != nil {
 				return struct{}{}, err
 			}
 			_, err := tx.AppendEntry(root.Id(), durable.EntryDraft{Kind: "app.sent"})
@@ -378,7 +378,7 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer("answer")})
 		// No Resume: the admission asks for progress itself.
 		harness, root := openChat(t, newControlledStorage(), setup)
-		id := must(sicSubmitIn(harness, root, inputDraft("hi")))
+		id := must(sicAdmit(harness, root, inputDraft("hi")))
 		if record := sicSettledStatus(t, harness, id); record.Type != durable.SubmissionTypeInput || record.Status != durable.SubmissionDone {
 			t.Fatalf("record = %s", jsonText(t, record))
 		}
@@ -389,7 +389,7 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 		setup := chatSetup(t)
 		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer("answer")})
 		harness, root := openChat(t, newControlledStorage(), setup)
-		id := must(sicSubmitIn(harness, root, inputDraft("hi")))
+		id := must(sicAdmit(harness, root, inputDraft("hi")))
 		sicSettledStatus(t, harness, id)
 		type found struct {
 			status         durable.SubmissionStatus
@@ -430,7 +430,7 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 			t.Fatal(err)
 		}
 		note := ai.UserMessage{Content: ai.UserText("a note the model sees"), Timestamp: 1}
-		id := must(sicSubmitIn(harness, root, writeDraft(durable.EntryDraft{Kind: "test.note", Model: []ai.Message{note}})))
+		id := must(sicAdmit(harness, root, writeDraft(durable.EntryDraft{Kind: "test.note", Model: []ai.Message{note}})))
 		if got := sicInboxIds(t, harness, root); !reflect.DeepEqual(got, []durable.SubmissionId{id}) {
 			t.Fatalf("inbox %v, want [%d]", got, id)
 		}
@@ -449,9 +449,9 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 	t.Run("deduplicates request IDs", func(t *testing.T) {
 		busy := sicOpenBusy(t)
 		draft := sicSteerDraft("steer", func(draft *durable.SubmissionDraft) { draft.RequestId = new("r1") })
-		first := must(sicSubmitIn(busy.harness, busy.root, draft))
+		first := must(sicAdmit(busy.harness, busy.root, draft))
 		commits := busy.storage.commitCount()
-		again := must(sicSubmitIn(busy.harness, busy.root, draft))
+		again := must(sicAdmit(busy.harness, busy.root, draft))
 		if again != first {
 			t.Fatalf("again = %d, want %d", again, first)
 		}
@@ -467,7 +467,7 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 		harness, root := openChat(t, store, chatSetup(t))
 		commits := store.commitCount()
 		outcome := must(durable.Commit(testContext, harness, func(tx durable.Tx) (string, error) {
-			if _, err := root.SubmitIn(tx, sicSteerDraft("hi", sicReject)); err != nil {
+			if _, err := root.Admit(tx, sicSteerDraft("hi", sicReject)); err != nil {
 				if _, ok := errors.AsType[*durable.ConversationIdle](err); ok {
 					return "idle", nil
 				}
@@ -499,16 +499,16 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 			if _, err := tx.AppendEntry(busy.root.Id(), durable.EntryDraft{Kind: "app.note"}); err != nil {
 				return struct{}{}, err
 			}
-			_, err := busy.root.SubmitIn(tx, sicSteerDraft("steer"))
+			_, err := busy.root.Admit(tx, sicSteerDraft("steer"))
 			return struct{}{}, err
 		})
 		expectReadAfterWrite(err)
 		expectErrorContains(t, err, "submit(tx, draft) cannot read tables after the first table write")
 		_, err = durable.Commit(testContext, busy.harness, func(tx durable.Tx) (struct{}, error) {
-			if _, err := busy.root.SubmitIn(tx, sicSteerDraft("one")); err != nil {
+			if _, err := busy.root.Admit(tx, sicSteerDraft("one")); err != nil {
 				return struct{}{}, err
 			}
-			_, err := busy.root.SubmitIn(tx, sicSteerDraft("two"))
+			_, err := busy.root.Admit(tx, sicSteerDraft("two"))
 			return struct{}{}, err
 		})
 		expectReadAfterWrite(err)
@@ -521,7 +521,7 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 			if _, err := tx.AppendEntry(idleRoot.Id(), durable.EntryDraft{Kind: "app.note"}); err != nil {
 				return struct{}{}, err
 			}
-			_, err := idleRoot.SubmitIn(tx, inputDraft("hi"))
+			_, err := idleRoot.Admit(tx, inputDraft("hi"))
 			return struct{}{}, err
 		})
 		expectReadAfterWrite(err)
@@ -543,7 +543,7 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 			if _, err := tx.AppendEntry(root.Id(), durable.EntryDraft{Kind: "app.note"}); err != nil {
 				return struct{}{}, err
 			}
-			_, err := root.SubmitIn(tx, continueDraft())
+			_, err := root.Admit(tx, continueDraft())
 			return struct{}{}, err
 		})
 		if _, ok := errors.AsType[*durable.ReadAfterWrite](err); !ok {
@@ -551,7 +551,7 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 		}
 
 		id := must(durable.Commit(testContext, harness, func(tx durable.Tx) (durable.SubmissionId, error) {
-			continued, err := root.SubmitIn(tx, continueDraft())
+			continued, err := root.Admit(tx, continueDraft())
 			if err != nil {
 				return 0, err
 			}
@@ -567,11 +567,11 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 	// #11149
 	t.Run("rejects a busy continue and steers with whenIdle inside the commit", func(t *testing.T) {
 		busy := sicOpenBusy(t)
-		_, err := sicSubmitIn(busy.harness, busy.root, continueDraft())
+		_, err := sicAdmit(busy.harness, busy.root, continueDraft())
 		if _, ok := errors.AsType[*durable.ConversationBusy](err); !ok {
 			t.Fatalf("busy continue = %v, want ConversationBusy", err)
 		}
-		steer := must(sicSubmitIn(busy.harness, busy.root, sicSteerDraft("steer", sicReject)))
+		steer := must(sicAdmit(busy.harness, busy.root, sicSteerDraft("steer", sicReject)))
 		if got := sicInboxIds(t, busy.harness, busy.root); !reflect.DeepEqual(got, []durable.SubmissionId{steer}) {
 			t.Fatalf("inbox %v, want [%d]", got, steer)
 		}
@@ -584,16 +584,16 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 		bHarness, _ := openChat(t, newControlledStorage(), chatSetup(t))
 		draft := inputDraft("hi")
 		const belongs = "The transaction belongs to another Session"
-		_, err := durable.Commit(testContext, bHarness, func(tx durable.Tx) (durable.SubmissionId, error) { return aRoot.SubmitIn(tx, draft) })
+		_, err := durable.Commit(testContext, bHarness, func(tx durable.Tx) (durable.SubmissionId, error) { return aRoot.Admit(tx, draft) })
 		expectErrorContains(t, err, belongs)
 		// A wrapper of a transaction is not one.
 		type wrapped struct{ durable.Tx }
 		_, err = durable.Commit(testContext, aHarness, func(tx durable.Tx) (durable.SubmissionId, error) {
-			return aRoot.SubmitIn(wrapped{tx}, draft)
+			return aRoot.Admit(wrapped{tx}, draft)
 		})
 		expectErrorContains(t, err, belongs)
 		_, err = durable.Commit(testContext, aHarness, func(tx durable.Tx) (durable.SubmissionId, error) {
-			return aRoot.SubmitIn(wrapped{}, draft)
+			return aRoot.Admit(wrapped{}, draft)
 		})
 		expectErrorContains(t, err, belongs)
 		sicExpectNoRun(t, aHarness, aRoot.Id())
@@ -618,7 +618,7 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 		}
 		id := must(telemetry.StartSpan(recorder, telemetry.SpanOptions{Name: "caller"}, func(caller telemetry.TelemetrySpan) (durable.SubmissionId, error) {
 			return durable.Commit(chordctx.WithTelemetry(testContext, caller), harness, func(tx durable.Tx) (durable.SubmissionId, error) {
-				return root.SubmitIn(tx, sicSteerDraft("steer"))
+				return root.Admit(tx, sicSteerDraft("steer"))
 			})
 		}))
 		callers := telemetrySpans(recorder, "caller")
@@ -649,7 +649,7 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 		harness, root := openTracked(t, storage.NewMemoryStorage(), setup, recorder)
 		id := must(telemetry.StartSpan(recorder, telemetry.SpanOptions{Name: "caller"}, func(caller telemetry.TelemetrySpan) (durable.SubmissionId, error) {
 			return durable.Commit(chordctx.WithTelemetry(testContext, caller), harness, func(tx durable.Tx) (durable.SubmissionId, error) {
-				return root.SubmitIn(tx, inputDraft("hi"))
+				return root.Admit(tx, inputDraft("hi"))
 			})
 		}))
 		<-busy.reached
@@ -677,7 +677,7 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 		harness, root := openTracked(t, storage.NewMemoryStorage(), chatSetup(t), recorder)
 		id := must(telemetry.StartSpan(recorder, telemetry.SpanOptions{Name: "caller"}, func(caller telemetry.TelemetrySpan) (durable.SubmissionId, error) {
 			return durable.Commit(chordctx.WithTelemetry(testContext, caller), harness, func(tx durable.Tx) (durable.SubmissionId, error) {
-				return root.SubmitIn(tx, writeDraft(durable.EntryDraft{Kind: "app.note"}))
+				return root.Admit(tx, writeDraft(durable.EntryDraft{Kind: "app.note"}))
 			})
 		}))
 		caller := telemetrySpans(recorder, "caller")[0]
@@ -701,7 +701,7 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 		harness, root := openTracked(t, storage.NewMemoryStorage(), chatSetup(t), recorder)
 		must(telemetry.StartSpan(recorder, telemetry.SpanOptions{Name: "caller"}, func(caller telemetry.TelemetrySpan) (struct{}, error) {
 			_, err := durable.Commit(chordctx.WithTelemetry(testContext, caller), harness, func(tx durable.Tx) (struct{}, error) {
-				if _, err := root.SubmitIn(tx, writeDraft(durable.EntryDraft{Kind: "app.note"})); err != nil {
+				if _, err := root.Admit(tx, writeDraft(durable.EntryDraft{Kind: "app.note"})); err != nil {
 					return struct{}{}, err
 				}
 				return struct{}{}, errors.New("later")
@@ -740,7 +740,7 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 				return durable.ToolExecutionResult{}, errors.New("no handle")
 			}
 			value, err := api.Commit(ctx, func(tx durable.Tx) (any, error) {
-				admitted, err := handle.SubmitIn(tx, inputDraft("from the tool"))
+				admitted, err := handle.Admit(tx, inputDraft("from the tool"))
 				if err != nil {
 					return nil, err
 				}
@@ -815,7 +815,7 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 				return errors.New("no handle")
 			}
 			return runtime.Commit(ctx, func(tx durable.Tx, _ stepRecordOf[durable.SubmissionId]) (*durable.NextTaskState[stepState, durable.SubmissionId], error) {
-				id, err := handle.SubmitIn(tx, inputDraft("from the task"))
+				id, err := handle.Admit(tx, inputDraft("from the task"))
 				if err != nil {
 					return nil, err
 				}
@@ -897,8 +897,8 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 		if _, err := bound.Submit(testContext, draft); err == nil {
 			t.Fatal("Submit through an aborted handle succeeded")
 		}
-		if _, err := durable.Commit(testContext, harness, func(tx durable.Tx) (durable.SubmissionId, error) { return bound.SubmitIn(tx, draft) }); err == nil {
-			t.Fatal("SubmitIn through an aborted handle succeeded")
+		if _, err := durable.Commit(testContext, harness, func(tx durable.Tx) (durable.SubmissionId, error) { return bound.Admit(tx, draft) }); err == nil {
+			t.Fatal("Admit through an aborted handle succeeded")
 		}
 		sicExpectNoRun(t, harness, created.Id())
 		release.resolve()
@@ -906,8 +906,8 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 			t.Fatal(err)
 		}
 		must(run.Wait(testContext))
-		if _, err := durable.Commit(testContext, harness, func(tx durable.Tx) (durable.SubmissionId, error) { return bound.SubmitIn(tx, draft) }); err == nil {
-			t.Fatal("SubmitIn through an ended handle succeeded")
+		if _, err := durable.Commit(testContext, harness, func(tx durable.Tx) (durable.SubmissionId, error) { return bound.Admit(tx, draft) }); err == nil {
+			t.Fatal("Admit through an ended handle succeeded")
 		}
 		sicExpectNoRun(t, harness, created.Id())
 		closeHarness(t, harness)

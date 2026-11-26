@@ -123,7 +123,7 @@ func (s *controlledStorage) Commit(ctx context.Context, batches [][]durable.Stor
 	}
 	s.mu.Unlock()
 	if failure != nil {
-		return durable.CommitResult{Refused: failure}, nil
+		return durable.CommitResult{Kind: durable.CommitRefused, Refused: failure}, nil
 	}
 	return s.MemoryStorage.Commit(ctx, batches, func(index int, seq durable.Seq) {
 		s.adopting.Store(true)
@@ -220,7 +220,7 @@ func refusingAt(ctx context.Context, commit func(ctx context.Context, batches []
 	if err != nil || result.Stored < at {
 		return result, err
 	}
-	return durable.CommitResult{Stored: at, Refused: refusal}, nil
+	return durable.CommitResult{Kind: durable.CommitRefused, Stored: at, Refused: refusal}, nil
 }
 
 func (s *controlledStorage) Close(ctx context.Context) error {

@@ -180,7 +180,7 @@ func tpSignalTool(runs *tpRuns, edit ...func(*durable.ToolRegistration)) *durabl
 		if err != nil {
 			return durable.ToolExecutionResult{}, err
 		}
-		if state != nil && !state.Expired {
+		if state != nil && state.Kind == durable.SignalStateValue {
 			return ownText(state.Value.Text), nil
 		}
 		api.Output("started\n")
@@ -188,14 +188,15 @@ func tpSignalTool(runs *tpRuns, edit ...func(*durable.ToolRegistration)) *durabl
 		if err := api.Details(ctx, map[string]any{"build": float64(count)}); err != nil {
 			return durable.ToolExecutionResult{}, err
 		}
-		return durable.ToolExecutionResult{Park: &durable.ToolPark{Sleep: &durable.ToolParkSleep{
+		return durable.ToolExecutionResult{Park: &durable.ToolPark{
+			Kind:       durable.ToolParkSleep,
 			Checkpoint: map[string]any{"build": float64(count)}, HasCheckpoint: true, Signals: []durable.SignalKey{tpDone.Key("done")},
-		}}}, nil
+		}}, nil
 	}, edit...)
 }
 
 func tpSleep(signals ...durable.SignalKey) durable.ToolExecutionResult {
-	return durable.ToolExecutionResult{Park: &durable.ToolPark{Sleep: &durable.ToolParkSleep{Signals: signals}}}
+	return durable.ToolExecutionResult{Park: &durable.ToolPark{Kind: durable.ToolParkSleep, Signals: signals}}
 }
 
 func tpSignal(t *testing.T, harness Harness, id durable.TaskId, key, text string) durable.SignalResult {
@@ -324,7 +325,7 @@ func TestToolParksOnASignal(t *testing.T) {
 			wakes.add(tpSeen(api))
 			if api.Wake() == nil {
 				until := api.Now() + 500
-				return durable.ToolExecutionResult{Park: &durable.ToolPark{Sleep: &durable.ToolParkSleep{Until: &until}}}, nil
+				return durable.ToolExecutionResult{Park: &durable.ToolPark{Kind: durable.ToolParkSleep, Until: &until}}, nil
 			}
 			return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}}, nil
 		}))
@@ -471,7 +472,7 @@ func TestToolParksOnTasks(t *testing.T) {
 				return durable.ToolExecutionResult{}, err
 			}
 			child.Store(int64(id))
-			return durable.ToolExecutionResult{Park: &durable.ToolPark{Wait: &durable.ToolParkWait{On: []durable.TaskId{id}, Policy: durable.JoinAny}}}, nil
+			return durable.ToolExecutionResult{Park: &durable.ToolPark{Kind: durable.ToolParkWait, On: []durable.TaskId{id}, Policy: durable.JoinAny}}, nil
 		}, func(tool *durable.ToolRegistration) { tool.Replay = durable.ReplaySafe }))
 		setup.Faux.SetResponses([]ai.FauxResponseStep{tpCall("spawn"), tlDone()})
 		harness, root := tpOpen(t, setup)
@@ -496,16 +497,16 @@ func TestToolParksInvalid(t *testing.T) {
 			name     string
 			returned durable.ToolExecutionResult
 		}{
-			{"mixed", durable.ToolExecutionResult{Park: &durable.ToolPark{
-				Sleep: &durable.ToolParkSleep{Until: new(1.0)},
-				Wait:  &durable.ToolParkWait{On: []durable.TaskId{}, Policy: durable.JoinAny},
+			{"unknown", durable.ToolExecutionResult{Park: &durable.ToolPark{
+				Kind:  durable.ToolParkKind("nap"),
+				Until: new(1.0),
 			}}},
 			{"result", durable.ToolExecutionResult{
-				Park:   &durable.ToolPark{Sleep: &durable.ToolParkSleep{Until: new(1.0)}},
+				Park:   &durable.ToolPark{Kind: durable.ToolParkSleep, Until: new(1.0)},
 				Output: []ai.ToolResultMessageContent{},
 			}},
-			{"empty", durable.ToolExecutionResult{Park: &durable.ToolPark{Sleep: &durable.ToolParkSleep{}}}},
-			{"unowned", durable.ToolExecutionResult{Park: &durable.ToolPark{Wait: &durable.ToolParkWait{On: []durable.TaskId{1}, Policy: durable.JoinAny}}}},
+			{"empty", durable.ToolExecutionResult{Park: &durable.ToolPark{Kind: durable.ToolParkSleep}}},
+			{"unowned", durable.ToolExecutionResult{Park: &durable.ToolPark{Kind: durable.ToolParkWait, On: []durable.TaskId{1}, Policy: durable.JoinAny}}},
 		}
 		for _, park := range parks {
 			setup := chatSetup(t)
@@ -523,6 +524,11 @@ func TestToolParksInvalid(t *testing.T) {
 			}
 			if got := trText(result); !strings.Contains(got, fmt.Sprintf("Tool %s returned an invalid park", park.name)) {
 				t.Fatalf("%s: text %q", park.name, got)
+			}
+			if park.name == "unknown" {
+				if got := trText(result); !strings.Contains(got, "a park's kind is sleep or wait, not nap") {
+					t.Fatalf("%s: text %q, want tagged-union park kind error", park.name, got)
+				}
 			}
 			if slot := tpSlot(t, harness); slot != nil {
 				t.Fatalf("%s: slot %+v, want none", park.name, slot)
@@ -633,9 +639,10 @@ func TestToolParksCancel(t *testing.T) {
 		var cleaned syncList[string]
 		addTool(t, setup.Registry, tpTool("ci", func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			if api.Wake() == nil {
-				return durable.ToolExecutionResult{Park: &durable.ToolPark{Sleep: &durable.ToolParkSleep{
+				return durable.ToolExecutionResult{Park: &durable.ToolPark{
+					Kind:       durable.ToolParkSleep,
 					Checkpoint: "first", HasCheckpoint: true, Signals: []durable.SignalKey{tpDone.Key("done")},
-				}}}, nil
+				}}, nil
 			}
 			running.resolve()
 			err := abortedBy(ctx)
@@ -704,9 +711,10 @@ func TestToolParksCancel(t *testing.T) {
 			if err := release.wait(testContext); err != nil {
 				return durable.ToolExecutionResult{}, err
 			}
-			return durable.ToolExecutionResult{Park: &durable.ToolPark{Sleep: &durable.ToolParkSleep{
+			return durable.ToolExecutionResult{Park: &durable.ToolPark{
+				Kind:       durable.ToolParkSleep,
 				Checkpoint: "started", HasCheckpoint: true, Signals: []durable.SignalKey{tpDone.Key("k")},
-			}}}, nil
+			}}, nil
 		}, func(tool *durable.ToolRegistration) {
 			tool.Cancel = func(ctx context.Context, _ any, api durable.ToolExecutionApi) error {
 				cancels.add(tpSeen(api))
@@ -794,9 +802,10 @@ func TestToolParksWaking(t *testing.T) {
 		addTool(t, setup.Registry, tpTool("ci", func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			runs.Add(1)
 			if api.Wake() == nil {
-				return durable.ToolExecutionResult{Park: &durable.ToolPark{Sleep: &durable.ToolParkSleep{
+				return durable.ToolExecutionResult{Park: &durable.ToolPark{
+					Kind:       durable.ToolParkSleep,
 					Checkpoint: "first", HasCheckpoint: true, Signals: []durable.SignalKey{tpDone.Key("done")},
-				}}}, nil
+				}}, nil
 			}
 			api.Output("rerun\n")
 			if err := api.Details(ctx, map[string]any{"woken": true}); err != nil {
@@ -848,9 +857,10 @@ func TestToolParksWaking(t *testing.T) {
 				if err := api.Details(ctx, map[string]any{"build": float64(1)}); err != nil {
 					return durable.ToolExecutionResult{}, err
 				}
-				return durable.ToolExecutionResult{Park: &durable.ToolPark{Sleep: &durable.ToolParkSleep{
+				return durable.ToolExecutionResult{Park: &durable.ToolPark{
+					Kind:       durable.ToolParkSleep,
 					Checkpoint: "first", HasCheckpoint: true, Signals: []durable.SignalKey{tpDone.Key("done")},
-				}}}, nil
+				}}, nil
 			}
 			if count == 2 {
 				api.Output("cut off\n")
@@ -901,9 +911,9 @@ func TestToolParksWrappers(t *testing.T) {
 					wrapped := *inner
 					wrapped.Execute = func(ctx context.Context, args any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 						returned, err := inner.Execute(ctx, args, api)
-						if own && err == nil && returned.Park != nil && returned.Park.Sleep != nil {
-							sleep := *returned.Park.Sleep
-							return durable.ToolExecutionResult{Park: &durable.ToolPark{Sleep: &sleep}}, nil
+						if own && err == nil && returned.Park != nil && returned.Park.Kind == durable.ToolParkSleep {
+							copied := *returned.Park
+							return durable.ToolExecutionResult{Park: &copied}, nil
 						}
 						return returned, err
 					}
@@ -937,7 +947,7 @@ func TestToolParksWrappers(t *testing.T) {
 	// harness-tool-parks.test.ts:645 it("accept one park object its base returns to calls running at once")
 	t.Run("accept one park object its base returns to calls running at once", func(t *testing.T) {
 		setup := chatSetup(t)
-		shared := &durable.ToolPark{Sleep: &durable.ToolParkSleep{Signals: []durable.SignalKey{tpDone.Key("done")}}}
+		shared := &durable.ToolPark{Kind: durable.ToolParkSleep, Signals: []durable.SignalKey{tpDone.Key("done")}}
 		base := tpTool("ci", func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			state, err := durable.ReadSignal(ctx, api, tpDone, "done")
 			if err != nil {
@@ -997,7 +1007,7 @@ func TestToolParksWrappers(t *testing.T) {
 						return durable.ToolExecutionResult{Park: earlier}, nil
 					}
 					returned, err := inner.Execute(ctx, args, api)
-					if err == nil && returned.Park != nil && returned.Park.Sleep != nil {
+					if err == nil && returned.Park != nil && returned.Park.Kind == durable.ToolParkSleep {
 						mu.Lock()
 						kept = returned.Park
 						mu.Unlock()

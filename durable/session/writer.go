@@ -381,7 +381,7 @@ func (writer *Writer) publish(parts []*Part, seqs []durable.Seq, received []bool
 			switch {
 			case rejected != nil:
 				err = rejected
-			case result != nil && index == result.Stored && result.Refused != nil:
+			case result != nil && index == result.Stored && result.Kind == durable.CommitRefused:
 				err = result.Refused
 			default:
 				err = errors.New("Storage committed without adopting the batch")

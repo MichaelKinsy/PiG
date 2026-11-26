@@ -85,7 +85,7 @@ func hkDeciderTask(plan hkPlan, seen *hkSeen) stepTask {
 				}
 				return runtime.Commit(ctx, func(tx durable.Tx, _ stepRecord) (*durable.NextTaskState[stepState, durable.JsonValue], error) {
 					if plan.steer != "" {
-						if _, err := handle.SubmitIn(tx, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText(plan.steer), WhenBusy: durable.WhenBusySteer}); err != nil {
+						if _, err := handle.Admit(tx, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText(plan.steer), WhenBusy: durable.WhenBusySteer}); err != nil {
 							return nil, err
 						}
 					}

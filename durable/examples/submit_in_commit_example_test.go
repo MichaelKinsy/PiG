@@ -1,5 +1,5 @@
 // Ports packages/durable/test/examples/34-submit-in-commit.ts: a host lets people message an agent while it works: a
-// message must join the current run as a steer and never start a run of its own. Conversation.SubmitIn admits it inside
+// message must join the current run as a steer and never start a run of its own. Conversation.Admit admits it inside
 // the host's own commit, together with the host's check and its own state; WhenIdleReject refuses it when no run is
 // working. The script's printing is the transcript this test reads.
 //
@@ -84,7 +84,7 @@ func TestExample34SubmitInCommit(t *testing.T) {
 				return from + " is muted", nil
 			}
 			// Before the commit's own table writes; document writes may come before or after.
-			id, err := root.SubmitIn(tx, durable.SubmissionDraft{
+			id, err := root.Admit(tx, durable.SubmissionDraft{
 				Type:      durable.SubmissionTypeInput,
 				Content:   ai.UserText(from + ": " + text),
 				WhenBusy:  durable.WhenBusySteer,

@@ -46,8 +46,8 @@ type sigAskInput struct {
 
 // sigSeen is a SignalState read by Ask: nil is `null` (nothing came).
 type sigSeen struct {
-	Value   *sigAnswer `json:"value,omitempty"`
-	Expired bool       `json:"expired,omitempty"`
+	Kind  durable.SignalStateKind `json:"kind"`
+	Value *sigAnswer              `json:"value,omitempty"`
 }
 
 type sigAskResult struct {
@@ -85,10 +85,10 @@ var sigAsk = durable.DefineTask(durable.TaskDefinition[sigAskInput, stepState, s
 				switch {
 				case state == nil:
 					states = append(states, nil)
-				case state.Expired:
-					states = append(states, &sigSeen{Expired: true})
+				case state.Kind == durable.SignalStateExpired:
+					states = append(states, &sigSeen{Kind: durable.SignalStateExpired})
 				default:
-					states = append(states, &sigSeen{Value: &state.Value})
+					states = append(states, &sigSeen{Kind: durable.SignalStateValue, Value: &state.Value})
 				}
 			}
 			wake := task.State.Wake
@@ -160,7 +160,7 @@ func sigWakeSignal(key string) map[string]any {
 }
 
 func sigValue(text string) map[string]any {
-	return map[string]any{"value": map[string]any{"text": text}}
+	return map[string]any{"kind": "value", "value": map[string]any{"text": text}}
 }
 
 // sigResultOf is the JSON form of the result a task completed with.
@@ -443,7 +443,7 @@ func TestSleepingOnSignals(t *testing.T) {
 		harness.Resume()
 		expectOutcome(t, tkWaitOutcome(t, harness, id), outcomeCompleted(map[string]any{
 			"wake":   map[string]any{"reason": "expired"},
-			"states": []any{map[string]any{"expired": true}},
+			"states": []any{map[string]any{"kind": "expired"}},
 		}))
 		mustClose(t, harness)
 	})
@@ -466,7 +466,7 @@ func TestSleepingOnSignals(t *testing.T) {
 		if want := map[string]any{"reason": "expired"}; !reflect.DeepEqual(result["wake"], want) {
 			t.Fatalf("wake %v, want %v", result["wake"], want)
 		}
-		if want := []any{map[string]any{"expired": true}}; !reflect.DeepEqual(result["states"], want) {
+		if want := []any{map[string]any{"kind": "expired"}}; !reflect.DeepEqual(result["states"], want) {
 			t.Fatalf("states %v, want %v", result["states"], want)
 		}
 		mustClose(t, harness)
@@ -785,7 +785,7 @@ func TestSleepingOnSignals(t *testing.T) {
 			t.Fatalf("delivery: %s %v", result, err)
 		}
 		tkWaitOutcome(t, harness, id)
-		if got, want := reads.all(), []*durable.SignalState[newCount]{{Value: newCount{N: 42}}}; !reflect.DeepEqual(got, want) {
+		if got, want := reads.all(), []*durable.SignalState[newCount]{{Kind: durable.SignalStateValue, Value: newCount{N: 42}}}; !reflect.DeepEqual(got, want) {
 			t.Fatalf("reads %v, want %v", got, want)
 		}
 		mustClose(t, harness)

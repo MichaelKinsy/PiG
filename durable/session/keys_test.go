@@ -149,7 +149,7 @@ func (storage recordingStorage) record(call string, args ...any) {
 
 func (storage recordingStorage) Commit(_ context.Context, batches [][]durable.StorageWrite, _ func(int, durable.Seq)) (durable.CommitResult, error) {
 	storage.record("commit", " ", len(batches))
-	return durable.CommitResult{Stored: len(batches)}, nil
+	return durable.CommitResult{Kind: durable.CommitStored, Stored: len(batches)}, nil
 }
 
 func (storage recordingStorage) MintId() (int64, error) {

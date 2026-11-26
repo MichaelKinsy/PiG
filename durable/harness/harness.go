@@ -67,8 +67,8 @@ func (conversation *conversationImpl) Submit(ctx context.Context, submission dur
 	return conversation.host.submissions.Submit(ctx, conversation.id, submission)
 }
 
-// SubmitIn admits a submission inside the caller's commit tx, with the same rules as Submit.
-func (conversation *conversationImpl) SubmitIn(tx durable.Tx, submission durable.SubmissionDraft) (durable.SubmissionId, error) {
+// Admit admits a submission inside the caller's commit tx, with the same rules as Submit.
+func (conversation *conversationImpl) Admit(tx durable.Tx, submission durable.SubmissionDraft) (durable.SubmissionId, error) {
 	return conversation.host.submissions.Admit(tx, conversation.id, submission)
 }
 
@@ -490,9 +490,9 @@ func (bound *boundConversation) bind(ctx context.Context) context.Context {
 
 func (bound *boundConversation) Id() durable.ConversationId { return bound.id }
 
-// SubmitIn is the transaction form of Submit. The caller's commit carries its own context, so the invocation's abort is
+// Admit is the transaction form of Submit. The caller's commit carries its own context, so the invocation's abort is
 // checked here.
-func (bound *boundConversation) SubmitIn(tx durable.Tx, draft durable.SubmissionDraft) (durable.SubmissionId, error) {
+func (bound *boundConversation) Admit(tx durable.Tx, draft durable.SubmissionDraft) (durable.SubmissionId, error) {
 	if err := bound.binding.Check(); err != nil {
 		return 0, err
 	}

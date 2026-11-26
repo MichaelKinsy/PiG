@@ -242,9 +242,9 @@ func (storage *StoreStorage) Commit(ctx context.Context, batches [][]durable.Sto
 		return durable.CommitResult{}, err
 	}
 	if result.Kind == chordstore.SeriesRefused {
-		return durable.CommitResult{Stored: result.Stored, Refused: result.Refused}, nil
+		return durable.RefusedCommit(result.Stored, result.Refused), nil
 	}
-	return durable.CommitResult{Stored: result.Stored}, nil
+	return durable.StoredCommit(result.Stored), nil
 }
 
 // Publishing runs a commit's publication in the attached host's batch (`batch.Within`: it joins a running batch,
