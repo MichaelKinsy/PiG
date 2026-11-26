@@ -30,6 +30,39 @@ env:
   PIG_PERF_TIMING_REPORT_ONLY: '1'
 
 jobs:
+  # On a scheduled run, check whether main's HEAD already has a green deterministic nightly run
+  # (oracle-sweeps, pig-bolt-compiler, allocations, strip-matrix, strip-tests, portmap). If so, skip those
+  # deterministic jobs while still running the stochastic/repetition jobs (race, fuzz,
+  # windows-concurrency-stress). workflow_dispatch NEVER skips deterministic jobs.
+  head-state:
+    name: Check unchanged main state
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      run-deterministic: ${{ steps.check.outputs.run-deterministic }}
+      skip-reason: ${{ steps.check.outputs.skip-reason }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: automation/ci/check-unchanged-main.py
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Decide whether deterministic nightly jobs must run
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 automation/ci/check-unchanged-main.py nightly             --event "$EVENT"             --repo "$REPO"             --head-sha "$HEAD_SHA"             --current-run-id "$RUN_ID"
+
   race:
     name: Race / ${{ matrix.os }} / ${{ matrix.group }}${{ matrix.shard && format(' / {0}', matrix.shard) || '' }}
     runs-on: ${{ matrix.os }}
@@ -288,6 +321,8 @@ jobs:
 
   oracle-sweeps:
     name: Oracle sweeps / full products
+    needs: [head-state]
+    if: ${{ !cancelled() && needs.head-state.outputs.run-deterministic != 'false' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -324,6 +359,8 @@ jobs:
 
   pig-bolt-compiler:
     name: Pi-Bolt compiler / build and start a compiled host
+    needs: [head-state]
+    if: ${{ !cancelled() && needs.head-state.outputs.run-deterministic != 'false' }}
     # make test-pig-bolt-build downloads the Pi-Bolt release the pig-bolt Piglet pins (signature and digests checked by the Piglet's own installer),
     # builds a compiled TypeScript host from PiG's runtime tree with it and starts the host. It guards against a pin whose compiler crashes on that
     # tree (an earlier pin segfaulted in the ahead-of-time step). The toolchain is cached by pin.
@@ -371,6 +408,8 @@ jobs:
 
   allocations:
     name: Allocation ratchet / allocs per op
+    needs: [head-state]
+    if: ${{ !cancelled() && needs.head-state.outputs.run-deterministic != 'false' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 150
     steps:
@@ -430,6 +469,8 @@ jobs:
 
   strip-matrix:
     name: Piglet strip matrix / API tags and all tags
+    needs: [head-state]
+    if: ${{ !cancelled() && needs.head-state.outputs.run-deterministic != 'false' }}
     runs-on: ubuntu-24.04
     # The default mode took 2610 s at 8 CPUs (vet of every package, the ai tests and the stripped binary for four tag sets); the hosted runner has fewer.
     timeout-minutes: 150
@@ -492,6 +533,8 @@ jobs:
 
   strip-tests-sets:
     name: Piglet strip tests / the sets
+    needs: [head-state]
+    if: ${{ !cancelled() && needs.head-state.outputs.run-deterministic != 'false' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     outputs:
@@ -629,10 +672,11 @@ jobs:
         with:
           fetch-depth: 1
           persist-credentials: false
-      - name: Keep Go build cache under RUNNER_TEMP
+      - name: Keep Go and oracle scratch under RUNNER_TEMP
         shell: pwsh
         run: |
           "GOCACHE=$(Join-Path $env:RUNNER_TEMP 'go-build')" >> $env:GITHUB_ENV
+          "PIG_PI_BUILD_STORE=$(Join-Path $env:RUNNER_TEMP 'pi-builds')" >> $env:GITHUB_ENV
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: .go-version
@@ -652,6 +696,42 @@ jobs:
           key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
           restore-keys: |
             gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+      # pilock and auth-storage stress groups include cross-process lock interop tests against Pi's
+      # pinned FileAuthStorageBackend and proper-lockfile (TestConcurrentStoreWritesWithPiBackend,
+      # TestHeartbeatReadsLockBeingRemovedAsNodeStatDoesUpstream, TestAcquireWithOptionsRetriesEveryAttemptErrorUpstream,
+      # TestAuthStorageLock*Upstream), so restore and link the cached Windows Pi oracle matching ci.yml.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: Restore the npm cache
+        id: cache-npm
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~\AppData\Local\npm-cache
+          key: node-cache-${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('extensions/sdk-ts/package-lock.json', 'test/parity/interface-extractor/package-lock.json') }}
+          restore-keys: |
+            node-cache-${{ runner.os }}-${{ runner.arch }}-npm-
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Restore the Pi oracle build
+        id: cache-pi-oracle-build
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}\pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
+      - name: Install the pinned Pi oracle
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm_version="$(awk '/^  NPM_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
+          automation/ci/install-npm-toolchain.sh
+          bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
+          cygpath -w "$bin" >> "$GITHUB_PATH"
+          export PATH="$bin:$PATH"
+          test "$(npm --version)" = "$npm_version"
+          py="$(command -v python3 || command -v python)"
+          "$py" automation/pin/pin.py install-oracle
       - name: Run Windows concurrency stress suite
         shell: bash
         env:
@@ -659,3 +739,142 @@ jobs:
           PIG_WIN_STRESS_COUNT: '20'
           PIG_WIN_STRESS_TIMEOUT: '15m'
         run: automation/ci/windows-concurrency-stress.sh
+
+  portmap:
+    name: PORT_MAP / ${{ matrix.shard }}
+    needs: [head-state]
+    if: ${{ !cancelled() && needs.head-state.outputs.run-deterministic != 'false' }}
+    # Deterministic PORT_MAP evidence verification on main (all 12 shards). Pull requests run these
+    # shards only when classify-changes.sh marks portmap=true (fail-closed via automation/ci/portmap-paths.txt);
+    # nightly runs all 12 shards on main so every merged change is proven end-to-end.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      PIG_REQUIRE_PI_ORACLE: "1"
+    strategy:
+      fail-fast: false
+      matrix:
+        shard:
+          - portmap-1
+          - portmap-2
+          - portmap-3
+          - portmap-4
+          - portmap-5
+          - portmap-6
+          - portmap-7
+          - portmap-8
+          - portmap-9
+          - portmap-10
+          - portmap-11
+          - portmap-12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Restore the Go module cache
+        id: cache-gomod
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+      # Exact-SHA key (matching ci.yml, intentionally no restore-keys): serves re-runs of the same
+      # commit only; every new commit runs its shard cold because the per-row digest does not cover
+      # imported packages or fixtures.
+      - name: Restore the PORT_MAP coverage cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/portmap-coverage
+          key: portmap-coverage-${{ matrix.shard }}-${{ github.sha }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: Restore the npm cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm
+          key: node-cache-${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('extensions/sdk-ts/package-lock.json', 'test/parity/interface-extractor/package-lock.json', 'automation/images/ci-parity/package-lock.json', 'automation/images/npm-runtime/package-lock.json') }}
+          restore-keys: |
+            node-cache-${{ runner.os }}-${{ runner.arch }}-npm-
+      - name: Restore the Pi oracle build
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-dev/pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
+      - name: Install native test tools, Rust and the pinned Pi oracle
+        shell: bash
+        run: |
+          set -euo pipefail
+          automation/ci/install-native-test-packages.sh
+          rust="$(awk '/^  RUST_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
+          npm_version="$(awk '/^  NPM_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
+          echo "RUST_VERSION=$rust" >> "$GITHUB_ENV"
+          rustup toolchain install "$rust" --profile minimal
+          rustup default "$rust"
+          automation/ci/install-npm-toolchain.sh
+          bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
+          echo "$bin" >> "$GITHUB_PATH"
+          export PATH="$bin:$PATH"
+          test "$(npm --version)" = "$npm_version"
+          make upstream-mirror
+      - name: Restore the Cargo targets of the PORT_MAP evidence tests
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cache/pig-dev/cargo-target
+          key: cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml', 'automation/ci/test-warm.sh') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-
+      - name: Restore the pinned SBCL
+        id: cache-pinned-sbcl
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-sbcl
+          key: sbcl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-sbcl.sh') }}
+      - name: Install the pinned SBCL
+        shell: bash
+        run: |
+          set -euo pipefail
+          prefix="$(automation/ci/install-sbcl.sh)"
+          echo "PIG_SBCL=$prefix/bin/sbcl" >> "$GITHUB_ENV"
+          echo "SBCL_HOME=$prefix/lib/sbcl" >> "$GITHUB_ENV"
+          echo "$prefix/bin" >> "$GITHUB_PATH"
+      - name: Restore the pinned zstd
+        id: cache-pinned-zstd
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-zstd
+          key: zstd-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-zstd.sh') }}
+      - name: Install the pinned zstd
+        shell: bash
+        run: |
+          set -euo pipefail
+          zstd="$(automation/ci/install-zstd.sh)"
+          echo "PIG_ZSTD=$zstd" >> "$GITHUB_ENV"
+          echo "PIG_REQUIRE_ZSTD=1" >> "$GITHUB_ENV"
+      - name: Run PORT_MAP evidence shard
+        env:
+          CI: '1'
+          PIG_GRIDTERM_TMUX_REQUIRED: '1'
+        run: make "ci-${{ matrix.shard }}"
+      - name: Save the PORT_MAP coverage cache
+        if: ${{ always() && env.CACHE_SAVE == 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/portmap-coverage
+          key: portmap-coverage-${{ matrix.shard }}-${{ github.sha }}

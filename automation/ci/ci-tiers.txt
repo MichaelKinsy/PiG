@@ -4,6 +4,9 @@
 #
 #   pr     runs on every event, in the light pull-request run and in the full run.
 #   queue  runs only in the full run: merge_group, schedule, workflow_dispatch, and a pull_request while the
+#          (portmap-1..12 are additionally path-gated on pull_request via automation/ci/portmap-paths.txt, fail-closed,
+#          and run on merge_group, release/**, and workflow_dispatch. On schedule, ci.yml skips the Linux shards on an
+#          unchanged main, and nightly.yml skips portmap-1..12 when main's HEAD already has a green deterministic nightly run.)
 #          repository variable PIG_PR_CI_LIGHT is empty or the pull request asked for the full run (the ci:full label,
 #          or ready for review).
 #

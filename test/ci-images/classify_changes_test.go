@@ -74,15 +74,16 @@ func TestChangeClassifierReadsBothSidesOfARename(t *testing.T) {
 		edit       func()
 		osSpecific string
 		product    string
+		portmap    string
 	}{
-		{"a Windows file renamed to a neutral name", move("tui/clipboard_windows.go", "tui/clipboard.go"), "true", "true"},
-		{"a neutral file renamed to a Windows name", move("tui/neutral.go", "tui/neutral_windows.go"), "true", "true"},
-		{"a neutral file renamed to a neutral name", move("tui/neutral.go", "tui/other.go"), "false", "true"},
-		{"a macOS file copied to a neutral name", copyOf("tui/keys_darwin.go", "tui/keys.go"), "false", "true"},
-		{"a neutral file copied to a macOS name", copyOf("tui/neutral.go", "tui/neutral_darwin.go"), "true", "true"},
-		{"a Windows file deleted", func() { runGitIn(t, repo, "rm", "-q", "tui/clipboard_windows.go") }, "true", "true"},
-		{"a product file renamed into the prose paths", move("coding/session.go", "docs/media/session.txt"), "false", "true"},
-		{"prose renamed within the prose paths", move("README.md", "docs/media/readme.txt"), "false", "false"},
+		{"a Windows file renamed to a neutral name", move("tui/clipboard_windows.go", "tui/clipboard.go"), "true", "true", "true"},
+		{"a neutral file renamed to a Windows name", move("tui/neutral.go", "tui/neutral_windows.go"), "true", "true", "true"},
+		{"a neutral file renamed to a neutral name", move("tui/neutral.go", "tui/other.go"), "false", "true", "true"},
+		{"a macOS file copied to a neutral name", copyOf("tui/keys_darwin.go", "tui/keys.go"), "false", "true", "false"},
+		{"a neutral file copied to a macOS name", copyOf("tui/neutral.go", "tui/neutral_darwin.go"), "true", "true", "false"},
+		{"a Windows file deleted", func() { runGitIn(t, repo, "rm", "-q", "tui/clipboard_windows.go") }, "true", "true", "true"},
+		{"a product file renamed into the prose paths", move("coding/session.go", "docs/media/session.txt"), "false", "true", "true"},
+		{"prose renamed within the prose paths", move("README.md", "docs/media/readme.txt"), "false", "false", "false"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			head := change(tc.name, tc.edit)
@@ -93,7 +94,7 @@ func TestChangeClassifierReadsBothSidesOfARename(t *testing.T) {
 				t.Fatalf("%v\n%s", err, output)
 			}
 			lines := strings.Split(strings.TrimSpace(string(output)), "\n")
-			want := []string{"product=" + tc.product, "os-specific=" + tc.osSpecific}
+			want := []string{"product=" + tc.product, "os-specific=" + tc.osSpecific, "portmap=" + tc.portmap}
 			if strings.Join(lines, " ") != strings.Join(want, " ") {
 				t.Errorf("classified %q, want %q", lines, want)
 			}

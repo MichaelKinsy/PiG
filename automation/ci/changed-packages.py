@@ -10,12 +10,12 @@ module:
 
 - direct: the package whose directory holds a changed Go file, the package
   that embeds a changed file, the package whose directory (or a testdata
-  directory beneath it) holds a changed file, and a package whose Go source
-  names the changed file's repository path, as one string or as the quoted
-  components of a filepath.Join call, and, for a file in changelog.d (the
-  fragments the changelog, release-notes and bug-ledger tools and the docs
-  tests list by globbing the directory), a package whose Go source names
-  changelog.d.
+  directory beneath it) holds a changed file, and a package whose non-comment
+  Go source names the changed file's repository path (as one string or as the
+  quoted components of a filepath.Join call), names any 3+ component ancestor
+  directory of the file as a directory or glob reference, names its 3+
+  component fixture/testdata/scenario parent directory (including sibling
+  paths inside it), or names a listed top-level directory (changelog.d).
 - affected: every main-module package whose tests import a direct package,
   directly or transitively (the reverse closure of `go list -test -deps`),
   plus the direct packages themselves.
@@ -46,6 +46,39 @@ MODULE_WIDE = {"go.mod", "go.sum", "go.work", "go.work.sum"}
 
 # Top-level directories whose every file is read by listing the directory, so no Go source names a file in it by path. A changed file in one belongs to each package whose Go source names the directory (the tools and tests that glob it). Only a directory of such files may be listed: a directory like docs or test names a whole area, and its name would select most packages.
 NAMED_DIRECTORIES = ("changelog.d",)
+
+# Path components that identify a fixture, scenario, or test-vector tree where a 3+ component parent directory may also match sibling-file literals inside it.
+FIXTURE_DIR_PARTS = frozenset({"testdata", "scenarios", "fixtures", "corpus", "sdk-vectors", "locks"})
+
+# Matches Go string/rune literals (kept verbatim) and // or /* */ comments (stripped).
+# Uses linear-time non-backtracking character classes inside quoted literals.
+_GO_TOKEN_RE = re.compile(
+    r"""
+    (?P<raw>`[^`]*`)
+    |(?P<str>"[^"\\]*(?:\\.[^"\\]*)*")
+    |(?P<rune>'[^'\\]*(?:\\.[^'\\]*)*')
+    |(?P<line>//[^\n]*)
+    |(?P<block>/\*[\s\S]*?\*/)
+    """,
+    re.VERBOSE,
+)
+
+
+def strip_go_comments(text: str) -> str:
+    """Strip Go // and /* */ comments while preserving string, raw-string, and rune literals."""
+    if "//" not in text and "/*" not in text:
+        return text
+
+    def _replace(match: re.Match[str]) -> str:
+        if match.group("line") is not None:
+            return ""
+        block = match.group("block")
+        if block is not None:
+            newlines = block.count("\n")
+            return "\n" * newlines if newlines else " "
+        return match.group(0)
+
+    return _GO_TOKEN_RE.sub(_replace, text)
 
 
 def git(*args: str) -> str:
@@ -111,9 +144,14 @@ def select(root: Path, files: list[str], packages: list[dict], main_module: str,
     sources: dict[str, dict[Path, None]] = {}
     tested: set[str] = set()
     for pkg in packages:
+        base_import = strip_variant(pkg["ImportPath"])
         path = owner_of(pkg)
         directory = pkg.get("Dir")
         if not directory or path.endswith(".test"):
+            continue
+        # `go list -test -deps` emits test-variant dependency packages (e.g. `dep [pkg.test]` with `ForTest: pkg`).
+        # Skip those when recording directory/embed/source ownership so a dependency's files are attributed only to the dependency itself; the reverse-closure pass below still pulls `pkg` into `affected`.
+        if base_import not in (path, path + "_test"):
             continue
         try:
             rel = Path(directory).resolve().relative_to(root).as_posix()
@@ -179,27 +217,61 @@ _TEXT_CACHE: dict[Path, str] = {}
 
 
 def source_text(source: Path) -> str | None:
-    """Read a Go source once per run: the test variants of a package list the same file, and every changed non-Go file scans every source."""
+    """Read and comment-strip a Go source once per run: every changed non-Go file scans every source."""
     if source not in _TEXT_CACHE:
         try:
-            _TEXT_CACHE[source] = source.read_text(errors="replace")
+            _TEXT_CACHE[source] = strip_go_comments(source.read_text(errors="replace"))
         except OSError:
             return None
     return _TEXT_CACHE[source]
 
 
+def is_fixture_dir(parent: PurePosixPath) -> bool:
+    """Return True when parent is a 3+ component directory inside a fixture, scenario, or test-vector tree."""
+    return len(parent.parts) >= 3 and any(part in FIXTURE_DIR_PARTS for part in parent.parts)
+
+
+def ancestor_dirs_3plus(path: PurePosixPath) -> list[PurePosixPath]:
+    """Return every ancestor directory of path with 3 or more path components, deepest first."""
+    dirs: list[PurePosixPath] = []
+    cur = path.parent
+    while len(cur.parts) >= 3:
+        dirs.append(cur)
+        cur = cur.parent
+    return dirs
+
+
+def dir_ref_pattern(path: PurePosixPath) -> str:
+    """Return a regular expression matching an exact directory or glob reference (not a sibling file inside it)."""
+    posix = re.escape(path.as_posix())
+    joined = re.escape(", ".join(f'"{part}"' for part in path.parts))
+    # Match:
+    # - exact dir literal: "a/b/c" or "a/b/c/"
+    # - slash glob with optional literal filename prefix: "a/b/c/*.md" or "a/b/c/bug-*.md"
+    # - filepath.Join ending at dir: ..., "a", "b", "c")
+    # - filepath.Join with glob arg after dir: ..., "a", "b", "c", "*.md") or ..., "a", "b", "c", "bug-*.md")
+    return rf"""{posix}(?:/[^"`\s]*[*?\[][^"`\s]*|/?["`])|{joined}(?:\s*\)|\s*,\s*["`][^"`\s]*[*?\[][^"`\s]*["`]\s*\))"""
+
+
 def referencing(name: str, sources: dict[str, dict[Path, None]], tested: set[str]) -> set[str]:
-    """Return main-module packages whose Go source spells the file's repository path, or its directory when that has three or more components (path_pattern)."""
-    patterns = [path_pattern(PurePosixPath(name))]
-    parent = PurePosixPath(name).parent
+    """Return main-module packages whose non-comment Go source names the file, a 3+ component ancestor directory reference, its fixture parent, or a listed top-level directory."""
+    file_path = PurePosixPath(name)
+    patterns = [path_pattern(file_path)]
+    parent = file_path.parent
+    literals = [file_path.name]
     if parent.parts[:1] and parent.parts[0] in NAMED_DIRECTORIES:
         patterns.append(re.escape(parent.parts[0]))
-    # A directory of three or more components names one fixture tree (test/parity/scenarios/rpc); a shorter one names a whole area of the repository and would select most packages.
-    if len(parent.parts) >= 3:
+        literals.append(parent.parts[0])
+    # Any 3+ component ancestor directory may be read as a whole directory or glob (WalkDir, ReadDir, Glob).
+    # Using dir_ref_pattern avoids matching sibling-file literals in prose/code dirs (docs/site/docs/other.md, automation/ci/preflight/scanner_test.go).
+    for ancestor in ancestor_dirs_3plus(file_path):
+        patterns.append(dir_ref_pattern(ancestor))
+        literals.append(ancestor.name)
+    # Inside fixture/scenario/testdata trees (test/parity/scenarios/rpc), sibling-file literals also imply a shared fixture family.
+    if is_fixture_dir(parent):
         patterns.append(path_pattern(parent))
+        literals.append(parent.name)
     needle = re.compile("|".join(patterns))
-    # Every pattern spells the file's last component, or its directory's last component, so a source naming neither cannot match; a substring test skips the regular expression for nearly every source.
-    literals = [PurePosixPath(name).name] + ([parent.name] if len(parent.parts) >= 3 else []) + ([parent.parts[0]] if parent.parts[:1] and parent.parts[0] in NAMED_DIRECTORIES else [])
     hits = set()
     for path, files in sources.items():
         if path not in tested:
@@ -215,7 +287,7 @@ def referencing(name: str, sources: dict[str, dict[Path, None]], tested: set[str
 def path_pattern(path: PurePosixPath) -> str:
     """Return a regular expression for the ways Go source names a repository path.
 
-    A path of two or more components matches anywhere, comments included, as one slash-separated string or as filepath.Join's quoted components ("docs", "x.md"). A root file's bare name ("Makefile", "README.md") also names files of other directories and other things, so it matches only as a relative path ("../../Makefile") or a later filepath.Join argument (root, "Makefile").
+    A path of two or more components matches in non-comment code as one slash-separated string or as filepath.Join's quoted components ("docs", "x.md"). A root file's bare name ("Makefile", "README.md") also names files of other directories and other things, so it matches only as a relative path ("../../Makefile") or a later filepath.Join argument (root, "Makefile").
     """
     joined = re.escape(", ".join(f'"{part}"' for part in path.parts))
     if len(path.parts) == 1:

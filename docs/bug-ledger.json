@@ -21087,6 +21087,31 @@
       ]
     },
     {
+      "id": "BF-58f8238",
+      "title": "Nightly `windows-concurrency-stress` now restores and links the cached Windows pinned Pi oracle before…",
+      "symptom": "Nightly `windows-concurrency-stress` now restores and links the cached Windows pinned Pi oracle before running `automation/ci/windows-concurrency-stress.sh`, fixing missing `proper-lockfile` module failures in Go+Pi lock interop tests, and scheduled `ci.yml` / `nightly.yml` runs skip redundant work on an unchanged `main` while preserving the 5-day cache refresh cadence and stochastic nightly jobs.",
+      "rootCause": "nightly.yml windows-concurrency-stress omitted Node and pinned Pi oracle setup required by pilock/ai interop tests",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Nightly `windows-concurrency-stress` now restores and links the cached Windows pinned Pi oracle before running `automation/ci/windows-concurrency-stress.sh`, fixing missing `proper-lockfile` module failures in Go+Pi lock interop tests, and scheduled `ci.yml` / `nightly.yml` runs skip redundant work on an unchanged `main` while preserving the 5-day cache refresh cadence and stochastic nightly jobs.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "58f8238101",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "automation/ci/test_check_unchanged_main.py",
+        "test/ci-images/light_pr_guards_test.go::TestNightlyWindowsConcurrencyStressJobWired",
+        "test/ci-images/light_pr_guards_test.go::TestScheduledUnchangedMainSkipWiring",
+        "test/ci-images/merge_queue_test.go::TestCIResultRequiresEveryPlannedJob"
+      ]
+    },
+    {
       "id": "BF-59456ae",
       "title": "Pressing a key in a subprocess extension's overlay no longer freezes interactive mode when the key reaches…",
       "symptom": "Pressing a key in a subprocess extension's overlay no longer freezes interactive mode when the key reaches the overlay on the main loop (public PR #197).",
@@ -23056,6 +23081,28 @@
       ],
       "tests": [
         "mcp/oauth/oauth_test.go::TestMCPOAuthRejectsNonHTTPAuthorizationEndpointsWhichThePlatformURLHandlerWouldLaunch"
+      ]
+    },
+    {
+      "id": "BF-61a2559",
+      "title": "Restructured `check-unchanged-main.py` so `decide_ci` and `decide_nightly` return skip from a single proved…",
+      "symptom": "Restructured `check-unchanged-main.py` so `decide_ci` and `decide_nightly` return skip from a single proved path (failing open on any error, unparseable timestamp, budget cap, unread jobs page, or attempt mismatch), shared one unchanged-main decision between Changes and Bookkeeping in `.github/workflows/ci.yml`, sanitized `GITHUB_OUTPUT` values, matched prefixed/joined globs in `changed-packages.py`, and detected removed unnamed `func Example()` declarations in `classify-changes.sh`.",
+      "rootCause": "PR #574 review caught cache-timestamp typo returning True, split unchanged-main checks, continue-on-error loops, and glob/Example regex edges",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Restructured `check-unchanged-main.py` so `decide_ci` and `decide_nightly` return skip from a single proved path (failing open on any error, unparseable timestamp, budget cap, unread jobs page, or attempt mismatch), shared one unchanged-main decision between Changes and Bookkeeping in `.github/workflows/ci.yml`, sanitized `GITHUB_OUTPUT` values, matched prefixed/joined globs in `changed-packages.py`, and detected removed unnamed `func Example()` declarations in `classify-changes.sh`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "61a2559d2b",
+          "date": "2026-11-26"
+        }
+      ],
+      "tests": [
+        "test/ci-images/unconditional_jobs_test.go::TestChangesAndBookkeepingJobsStayUnconditional"
       ]
     },
     {
@@ -39935,6 +39982,28 @@
       ]
     },
     {
+      "id": "BF-9425774",
+      "title": "`TestAuthCommandsMatchPiEndToEnd` now gives each concurrent Pi subprocess its own seeded temporary agent…",
+      "symptom": "`TestAuthCommandsMatchPiEndToEnd` now gives each concurrent Pi subprocess its own seeded temporary agent directory so concurrent `pi auth check` and `pi auth check --no-refresh` probes cannot race on unlocked `auth.json` creation and fail JSON parsing with exit 2 (`invalid`).",
+      "rootCause": "TestAuthCommandsMatchPiEndToEnd shared dirs[p.setup] across 8 concurrent Pi subprocesses while FileAuthStorageBackend.ensureFileExists wrote auth.json outside any lock",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`TestAuthCommandsMatchPiEndToEnd` now gives each concurrent Pi subprocess its own seeded temporary agent directory so concurrent `pi auth check` and `pi auth check --no-refresh` probes cannot race on unlocked `auth.json` creation and fail JSON parsing with exit 2 (`invalid`).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9425774166",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "coding/cli/auth_cli_oracle_test.go::TestAuthCommandsMatchPiEndToEnd"
+      ]
+    },
+    {
       "id": "BF-94284ac",
       "title": "`pig -e git:\u003crepo\u003e@\u003cbranch\u003e` no longer stays on its first checkout",
       "symptom": "`pig -e git:\u003crepo\u003e@\u003cbranch\u003e` no longer stays on its first checkout.",
@@ -42261,6 +42330,26 @@
         {
           "hash": "9ee5c21f21",
           "date": "2026-11-09"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-9f08e13",
+      "title": "`automation/ci/changed-packages.py` no longer pulls in unrelated packages from Go comments or non-fixture…",
+      "symptom": "`automation/ci/changed-packages.py` no longer pulls in unrelated packages from Go comments or non-fixture sibling literals, while matching exact directory/glob references for every 3+ component ancestor directory of a changed non-Go file (cutting light-PR `test-fast` selection on PR #572 from 186 fast-parallel packages to 13 while preserving whole-directory readers such as `test/parity/cmd/sdksurface`, `test/wiring`, `test/extension-conformance`, `test/docs-drift`, `automation/ci/preflight/reviewed`, and `automation/ci/divsplit`).",
+      "rootCause": "referencing() scanned raw Go source including comments, matched any 3-segment parent directory as a fixture tree, attributed go list test-variant dependency sources to the importing test package, and previously gated dir_ref_pattern behind a static two-directory list",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`automation/ci/changed-packages.py` no longer pulls in unrelated packages from Go comments or non-fixture sibling literals, while matching exact directory/glob references for every 3+ component ancestor directory of a changed non-Go file (cutting light-PR `test-fast` selection on PR #572 from 186 fast-parallel packages to 13 while preserving whole-directory readers such as `test/parity/cmd/sdksurface`, `test/wiring`, `test/extension-conformance`, `test/docs-drift`, `automation/ci/preflight/reviewed`, and `automation/ci/divsplit`).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9f08e13f59",
+          "date": "2026-11-26"
         }
       ],
       "tests": []
@@ -53252,6 +53341,26 @@
         "tui/markdown_task_item_oracle_test.go::TestMarkdownTaskItemFirstLineIsTextMatchesPi",
         "tui/markdown_task_item_oracle_test.go::TestMarkdownTaskItemNeedsATextAfterTheSpacesMatchesPi"
       ]
+    },
+    {
+      "id": "BF-ca818aa",
+      "title": "Quoted `git rev-parse 'HEAD^{tree}'` in `.github/workflows/ci.yml` to satisfy shellcheck SC1083 and synced…",
+      "symptom": "Quoted `git rev-parse 'HEAD^{tree}'` in `.github/workflows/ci.yml` to satisfy shellcheck SC1083 and synced `variables/versions.yaml` (`npm: 12.2.1`, `node: 24.22.2`, `pi: v1.6.0`) with the repository's committed toolchain and Pi pins.",
+      "rootCause": "unquoted braces in ci.yml triggered actionlint SC1083 and variables/versions.yaml had drifted from the committed npm, node, and Pi pins checked by preflight mandatory.yaml",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Quoted `git rev-parse 'HEAD^{tree}'` in `.github/workflows/ci.yml` to satisfy shellcheck SC1083 and synced `variables/versions.yaml` (`npm: 12.2.1`, `node: 24.22.2`, `pi: v1.6.0`) with the repository's committed toolchain and Pi pins.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ca818aa221",
+          "date": "2026-11-26"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-ca83bfc",
