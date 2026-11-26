@@ -126,6 +126,14 @@ func (c *Chain) reload(k uint32) []byte {
 	return chunk
 }
 
+// reloadRecordLenMatches reports whether a reloaded record length fits the indexed entry without narrowing wraparound.
+func reloadRecordLenMatches(expected uint32, got int) bool {
+	if err := checkRecordSize(got); err != nil {
+		return false
+	}
+	return expected == uint32(got)
+}
+
 // fill reads entries first..last of the chain from storage into chunk at their offsets.
 func (c *Chain) fill(chunk []byte, first, last int) error {
 	if c.st.loader == nil {
@@ -134,7 +142,7 @@ func (c *Chain) fill(chunk []byte, first, last int) error {
 	i := first
 	var bad bool
 	err := c.st.loader(c.Conv, c.ents[first].id, c.ents[last].id, func(id, _ int64, rec []byte) bool {
-		if i > last || c.ents[i].id != id || c.ents[i].n != uint32(len(rec)) {
+		if i > last || c.ents[i].id != id || !reloadRecordLenMatches(c.ents[i].n, len(rec)) {
 			bad = true
 			return false
 		}

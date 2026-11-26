@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/internal/benchalloc"
+
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
@@ -91,13 +93,36 @@ func TestRuntimeModelsPreservesOverlaysAndLiveNativeCatalogs(t *testing.T) {
 	assertProjection()
 }
 
+// TestRuntimeModelsSelectionBenchmarkDivisorIsRadiusCount pins the divisor of
+// BenchmarkRuntimeModelsSelection to the live Radius catalog count that drives
+// its per-call allocations (every other built-in provider uses the zero-clone
+// listing path).
+func TestRuntimeModelsSelectionBenchmarkDivisorIsRadiusCount(t *testing.T) {
+	registry := NewModelRegistry(t.TempDir())
+	t.Cleanup(registry.CloseModelTasks)
+	entries := len(registry.GetProviderModelData(RadiusProviderID))
+	if entries == 0 {
+		t.Fatal("empty Radius catalog")
+	}
+}
+
+// BenchmarkRuntimeModelsSelection projects runtime selection metadata across the
+// catalog. Non-Radius built-in providers share zero-clone listings, so per-call
+// allocations scale with the Radius catalog count: allocs/op is reported per
+// 1,000 Radius entries (internal/benchalloc) so catalog refreshes do not move the row.
 func BenchmarkRuntimeModelsSelection(b *testing.B) {
 	registry := NewModelRegistry(b.TempDir())
 	b.Cleanup(registry.CloseModelTasks)
-	b.ReportAllocs()
-	for b.Loop() {
-		if len(registry.RuntimeModels()) == 0 {
-			b.Fatal("empty catalog")
-		}
+	entries := len(registry.GetProviderModelData(RadiusProviderID))
+	// Warm up process-wide catalog listings so standalone runs match full-package runs.
+	if len(registry.RuntimeModels()) == 0 {
+		b.Fatal("empty catalog")
 	}
+	b.Run("per-1000-entries", func(b *testing.B) {
+		benchalloc.Per1000Entries(b, entries, func() {
+			if len(registry.RuntimeModels()) == 0 {
+				b.Fatal("empty catalog")
+			}
+		})
+	})
 }

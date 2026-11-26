@@ -19,10 +19,12 @@ func TestRecordSizeBounds(t *testing.T) {
 		t.Fatalf("checkRecordSize(-1) = %v, want %v", err, ErrRecordTooLarge)
 	}
 	if math.MaxInt > math.MaxInt32 {
-		if err := checkRecordSize(math.MaxInt32 + 1); !errors.Is(err, ErrRecordTooLarge) {
+		var overInt32 int64 = math.MaxInt32 + 1
+		if err := checkRecordSize(int(overInt32)); !errors.Is(err, ErrRecordTooLarge) {
 			t.Fatalf("checkRecordSize(MaxInt32+1) = %v, want %v", err, ErrRecordTooLarge)
 		}
-		if err := checkRecordSize(math.MaxUint32); !errors.Is(err, ErrRecordTooLarge) {
+		var maxU32 int64 = math.MaxUint32
+		if err := checkRecordSize(int(maxU32)); !errors.Is(err, ErrRecordTooLarge) {
 			t.Fatalf("checkRecordSize(MaxUint32) = %v, want %v", err, ErrRecordTooLarge)
 		}
 	}
@@ -36,8 +38,11 @@ func TestRecordSizeBounds(t *testing.T) {
 	if !chunkFits(math.MaxInt32-10, math.MaxInt32, 10) {
 		t.Fatal("chunkFits(MaxInt32-10, MaxInt32, 10) = false, want true at exact MaxInt32 bound")
 	}
-	if math.MaxInt > math.MaxInt32 && chunkFits(math.MaxInt32-10, math.MaxInt32+100, 11) {
-		t.Fatal("chunkFits(MaxInt32-10, MaxInt32+100, 11) = true, want false past MaxInt32")
+	if math.MaxInt > math.MaxInt32 {
+		var capPast int64 = math.MaxInt32 + 100
+		if chunkFits(math.MaxInt32-10, int(capPast), 11) {
+			t.Fatal("chunkFits(MaxInt32-10, MaxInt32+100, 11) = true, want false past MaxInt32")
+		}
 	}
 
 	if got, err := checkChunkSize(100, 200); err != nil || got != 300 {
@@ -73,5 +78,35 @@ func TestReloadOversizedChunkSetsLoadErrWithoutPanic(t *testing.T) {
 	}
 	if err := st.Err(); !errors.Is(err, ErrRecordTooLarge) {
 		t.Fatalf("st.Err() = %v, want %v", err, ErrRecordTooLarge)
+	}
+}
+
+func TestReloadRecordLenMatchesRejectsNarrowingWraparound(t *testing.T) {
+	if !reloadRecordLenMatches(32, 32) {
+		t.Fatal("reloadRecordLenMatches(32, 32) = false, want true")
+	}
+	if reloadRecordLenMatches(32, 31) {
+		t.Fatal("reloadRecordLenMatches(32, 31) = true, want false")
+	}
+	if reloadRecordLenMatches(0, -1) {
+		t.Fatal("reloadRecordLenMatches(0, -1) = true, want false")
+	}
+	if math.MaxInt > math.MaxUint32 {
+		var fourGiB uint64 = 1 << 32
+		wrapped := int(uint64(32) + fourGiB)
+		if reloadRecordLenMatches(32, wrapped) {
+			t.Fatalf("reloadRecordLenMatches(32, %d) = true, want false for uint32 wraparound", wrapped)
+		}
+		record4G := int(fourGiB)
+		if reloadRecordLenMatches(0, record4G) {
+			t.Fatalf("reloadRecordLenMatches(0, %d) = true, want false for 4 GiB record", record4G)
+		}
+	}
+	if math.MaxInt > math.MaxInt32 {
+		var over64 int64 = math.MaxInt32 + 1
+		overInt32 := int(over64)
+		if reloadRecordLenMatches(uint32(over64), overInt32) {
+			t.Fatalf("reloadRecordLenMatches(%d, %d) = true, want false above MaxInt32", overInt32, overInt32)
+		}
 	}
 }
