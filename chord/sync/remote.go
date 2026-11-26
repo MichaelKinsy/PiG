@@ -53,10 +53,6 @@ const (
 	// PutNotHead: no slot starts at After, and the history does not end there (Head): a slot there would branch the chain
 	// inside a batch or leave a gap. The uploader's history is not the remote's from After on.
 	PutNotHead PutBatchType = "not_head"
-	// PutStaleEpoch: the upload's epoch is not the session's current one (Epoch): another device was given the right to
-	// write the session since this one was. Who grants it, and when, is the remote's (RFC 0074's single writer); Chord only
-	// reports it.
-	PutStaleEpoch PutBatchType = "stale_epoch"
 )
 
 // PutBatchResult is the outcome of PutBatch; the members its Type names are set.
@@ -65,16 +61,12 @@ type PutBatchResult struct {
 	To     Seq
 	Device string
 	Head   Seq
-	Epoch  int64
 }
 
 // PutBatchOptions are what an upload tells the remote besides its slot.
 type PutBatchOptions struct {
 	// Archive: the body is a store archive instead of commits.
 	Archive bool
-	// Epoch is the writer's epoch: a remote that issues epochs refuses a stale one (PutStaleEpoch); others ignore it. Nil
-	// sends none.
-	Epoch *int64
 }
 
 // SessionSummary is a session as the remote's listing describes it.

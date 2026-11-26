@@ -350,38 +350,6 @@ func TestSyncingASessionBetweenDevices(t *testing.T) {
 		same(t, "replica copy", reads(t, replica.store()), reads(t, laptop.store()))
 	})
 
-	t.Run("passes the writer's epoch to the remote and reports a refused one as stale_epoch", func(t *testing.T) {
-		remote := newRemote(t)
-		laptop := newDevice(t, "laptop", remote)
-		laptop.commit(seedBatches()[:2])
-		shared := lastSeq(laptop.store())
-		current := int64(1)
-		var epochs []*int64
-		// A remote that issues epochs (Radius): refuses an upload whose epoch is not the current one.
-		issuing := overriding{SessionSyncMaintenance: remote, putBatch: func(ctx context.Context, sessionID string, after, to Seq, device string, body SyncBody, options PutBatchOptions) (PutBatchResult, error) {
-			epochs = append(epochs, options.Epoch)
-			if options.Epoch == nil || *options.Epoch != current {
-				return PutBatchResult{Type: PutStaleEpoch, Epoch: current}, nil
-			}
-			return remote.PutBatch(ctx, sessionID, after, to, device, body, options)
-		}}
-		source := laptop.store()
-		upload := func(epoch int64) UploadResult {
-			result, err := UploadSession(background, UploadOptions{SessionID: session, Device: "laptop", Source: source, Store: issuing, State: laptop.state, Epoch: &epoch})
-			noError(t, err)
-			return result
-		}
-		if got := upload(1).Type; got != Uploaded {
-			t.Fatalf("upload = %s, want uploaded", got)
-		}
-		// The remote gave the session to another writer: this device's epoch is stale.
-		current = 2
-		laptop.commit([]rows{entry(100)})
-		same(t, "stale upload", upload(1), UploadResult{Type: StaleEpoch, At: shared, Epoch: 2})
-		one := int64(1)
-		same(t, "epochs", epochs, []*int64{&one, &one})
-	})
-
 	t.Run("refuses to upload a copy that lost uploaded commits, and pulls them back", func(t *testing.T) {
 		remote := newRemote(t)
 		batches := seedBatches()
