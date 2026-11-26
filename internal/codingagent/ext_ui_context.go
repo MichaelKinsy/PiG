@@ -942,23 +942,53 @@ func (u *ExtUIContext) serveRemoteInput(ctx context.Context, runOnOwner func(con
 
 // ─── Editor access ───────────────────────────────────────────────────────────
 
+// PasteToEditor simulates bracketed paste into the editor on the owner loop
+// and requests a coalesced render (upstream interactive-mode.ts pasteToEditor,
+// Pi 8c1afaae5). When runCtx is active it waits for the owner loop to apply
+// the edit so a following call on the same extension lane (e.g. getEditorText)
+// observes the updated editor snapshot without racing tui.Editor.
 func (u *ExtUIContext) PasteToEditor(text string) {
-	if u.m.editor != nil {
-		// Simulate bracketed paste per upstream
-		u.m.editor.HandleInput("\x1b[200~" + text + "\x1b[201~")
-		if u.m.tuiInst != nil {
-			u.m.tuiInst.Render()
+	apply := func() {
+		if u.m.editor != nil {
+			// Simulate bracketed paste per upstream
+			u.m.editor.HandleInput("\x1b[200~" + text + "\x1b[201~")
+			if u.m.tuiInst != nil {
+				u.m.requestRender()
+			}
 		}
 	}
+	if u.m.runCtx == nil {
+		apply()
+		return
+	}
+	_ = u.m.runOnMainAndWait(u.m.runCtx, func() error {
+		apply()
+		return nil
+	})
 }
 
+// SetEditorText replaces the editor text on the owner loop and requests a
+// coalesced render (upstream interactive-mode.ts setEditorText, Pi 8c1afaae5).
+// When runCtx is active it waits for the owner loop to apply the edit so a
+// following call on the same extension lane observes the updated editor text
+// without racing tui.Editor.
 func (u *ExtUIContext) SetEditorText(text string) {
-	if u.m.editor != nil {
-		u.m.editor.SetText(text)
-		if u.m.tuiInst != nil {
-			u.m.tuiInst.Render()
+	apply := func() {
+		if u.m.editor != nil {
+			u.m.editor.SetText(text)
+			if u.m.tuiInst != nil {
+				u.m.requestRender()
+			}
 		}
 	}
+	if u.m.runCtx == nil {
+		apply()
+		return
+	}
+	_ = u.m.runOnMainAndWait(u.m.runCtx, func() error {
+		apply()
+		return nil
+	})
 }
 
 // GetEditorText reads owner-published expanded text after binding, including paste contents. Before binding the caller owns the editor directly.
