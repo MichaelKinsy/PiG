@@ -662,15 +662,15 @@ func resolveCodexReasoningEffort(model *Model, requested string) *string {
 // applyCodexReasoning is openai-codex-responses.ts buildRequestBody's reasoning: a given effort is mapped through the model's levels ("none" through
 // its off entry) and sent unless that maps to null, with the summary defaulting to "auto"; with no effort a reasoning model whose off is not null sends
 // its off effort. A summary alone requests nothing.
-func (p *openAIResponsesProvider) applyCodexReasoning(req *respRequest, opts StreamOptions, configurationUpdateEffort string) {
+func (p *openAIResponsesProvider) applyCodexReasoning(req *respRequest, opts StreamOptions, requestEffortBaseline string) {
 	model := p.resolvedModel()
 	levels := model.ThinkingLevelMap
 	// streamSimple's reasoning level (already clamped to the model) is the effort unless it is off.
 	requested := cmp.Or(opts.ReasoningEffort, strings.TrimPrefix(string(opts.Thinking), string(ThinkingOff)))
 	if requested != "" {
 		var effort *string
-		if configurationUpdateEffort != "" {
-			effort = new(configurationUpdateRequestEffort)
+		if requestEffortBaseline != "" {
+			effort = new(requestEffortBaseline)
 		} else {
 			effort = resolveCodexReasoningEffort(model, requested)
 		}
@@ -835,6 +835,9 @@ type ConvertResponsesMessagesOptions struct {
 	// with its recorded level (ProviderThinkingLevel), and one with this effort at the end, so earlier input never
 	// changes (openai-responses-shared.ts convertResponsesMessages configurationUpdateEffort).
 	ConfigurationUpdateEffort string
+	// EffortBaseline, when set to "initial", pins the first effort to the top-level request baseline
+	// and emits configuration_update items only when the effort changes (Pi a588a7bc4, #12437).
+	EffortBaseline string
 }
 
 // responsesMessageConverter holds what convertResponsesMessages reads from its model and options.
@@ -1043,7 +1046,27 @@ func (p *openAIResponsesProvider) convertMessages(messages []Message, grammarPro
 // ResolveTranscriptTools over it: the first FoldedSystemMessages system messages leave their tool changes to the request's
 // tool list, every later one carries its own in place.
 func (c responsesMessageConverter) convertAnchored(messages []Message, transcriptTools TranscriptTools) ([]ResponsesInputItem, error) {
+	items, _, err := c.convertAnchoredWithBaseline(messages, transcriptTools)
+	return items, err
+}
+
+func (c responsesMessageConverter) convertAnchoredWithBaseline(messages []Message, transcriptTools TranscriptTools) ([]ResponsesInputItem, string, error) {
 	items := []ResponsesInputItem{}
+	var requestEffortBaseline string
+	var previousEffort string
+	shouldEmitConfigUpdate := func(effort string) bool {
+		if c.options.EffortBaseline == "initial" {
+			if previousEffort == effort {
+				return false
+			}
+			previousEffort = effort
+			if requestEffortBaseline == "" {
+				requestEffortBaseline = effort
+				return false
+			}
+		}
+		return true
+	}
 	messageIndex := 0
 	systemIndex := 0
 	supportsImages := c.supportsImages
@@ -1059,7 +1082,7 @@ func (c responsesMessageConverter) convertAnchored(messages []Message, transcrip
 			if anchorsToolChanges {
 				additions, err := c.systemToolAdditions(&changes, message, fmt.Sprintf("system:%d", messageIndex))
 				if err != nil {
-					return nil, err
+					return nil, "", err
 				}
 				items = append(items, additions...)
 			}
@@ -1111,9 +1134,9 @@ func (c responsesMessageConverter) convertAnchored(messages []Message, transcrip
 						stored, err := jsonstringify.Canonicalize([]byte(block.ThinkingSignature))
 						if err != nil {
 							if message := jsonparse.SyntaxError([]byte(block.ThinkingSignature)); message != nil {
-								return nil, errors.New(jsstring.FromUTF16(message))
+								return nil, "", errors.New(jsstring.FromUTF16(message))
 							}
-							return nil, err
+							return nil, "", err
 						}
 						// The members the converter reads; a stored value that is not an object of this shape has none.
 						var reasoning ResponsesInputItem
@@ -1163,7 +1186,7 @@ func (c responsesMessageConverter) convertAnchored(messages []Message, transcrip
 					if isGrammar {
 						input, err := getGrammarToolInput(block.Name, block.Arguments, property)
 						if err != nil {
-							return nil, err
+							return nil, "", err
 						}
 						items = append(items, ResponsesInputItem{Type: "custom_tool_call", ID: itemID, CallID: callID, Name: block.Name, Namespace: namespace, Status: "completed", Input: sanitizeSurrogates(input)})
 					} else {
@@ -1176,7 +1199,9 @@ func (c responsesMessageConverter) convertAnchored(messages []Message, transcrip
 				continue
 			}
 			if c.options.ConfigurationUpdateEffort != "" && sameModel && message.ProviderThinkingLevel != "" {
-				items = slices.Insert(items, initialItemCount, configurationUpdateItem(message.ProviderThinkingLevel))
+				if shouldEmitConfigUpdate(message.ProviderThinkingLevel) {
+					items = slices.Insert(items, initialItemCount, configurationUpdateItem(message.ProviderThinkingLevel))
+				}
 			}
 		}
 		if !isLeadingSystemMessage {
@@ -1184,9 +1209,11 @@ func (c responsesMessageConverter) convertAnchored(messages []Message, transcrip
 		}
 	}
 	if c.options.ConfigurationUpdateEffort != "" {
-		items = append(items, configurationUpdateItem(c.options.ConfigurationUpdateEffort))
+		if shouldEmitConfigUpdate(c.options.ConfigurationUpdateEffort) {
+			items = append(items, configurationUpdateItem(c.options.ConfigurationUpdateEffort))
+		}
 	}
-	return items, nil
+	return items, requestEffortBaseline, nil
 }
 
 // configurationUpdateItem is a configuration_update input item that sets the reasoning effort from that point on.
@@ -1523,8 +1550,11 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	configurationUpdateEffort := p.configurationUpdateEffort(compat, opts, apiKey)
 	converter := p.messageConverter(compat, grammarProps)
 	converter.options.ConfigurationUpdateEffort = configurationUpdateEffort
+	if p.cfg.Codex {
+		converter.options.EffortBaseline = "initial"
+	}
 	// The system prompt goes into a leading developer item, not top-level `instructions`, as in Codex (#12273).
-	msgs, err := converter.convertAnchored(messages, transcriptTools)
+	msgs, requestEffortBaseline, err := converter.convertAnchoredWithBaseline(messages, transcriptTools)
 	if err != nil {
 		return nil, err
 	}
@@ -1592,7 +1622,7 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	// An omitted effort remains omitted; the model's off mapping controls the default request.
 	// upstream: packages/ai/src/api/openai-responses.ts:buildParams
 	if p.cfg.Codex {
-		p.applyCodexReasoning(&req, opts, configurationUpdateEffort)
+		p.applyCodexReasoning(&req, opts, requestEffortBaseline)
 	} else if p.cfg.IsReasoning || opts.IsReasoning {
 		model := p.resolvedModel()
 		if model.Capabilities.MaxThinking == "" {
