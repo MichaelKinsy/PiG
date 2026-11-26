@@ -245,7 +245,12 @@ def dir_ref_pattern(path: PurePosixPath) -> str:
     """Return a regular expression matching an exact directory or glob reference (not a sibling file inside it)."""
     posix = re.escape(path.as_posix())
     joined = re.escape(", ".join(f'"{part}"' for part in path.parts))
-    return rf"""{posix}(?:/\*[^"`\s]*|/?["`])|{joined}\s*\)"""
+    # Match:
+    # - exact dir literal: "a/b/c" or "a/b/c/"
+    # - slash glob with optional literal filename prefix: "a/b/c/*.md" or "a/b/c/bug-*.md"
+    # - filepath.Join ending at dir: ..., "a", "b", "c")
+    # - filepath.Join with glob arg after dir: ..., "a", "b", "c", "*.md") or ..., "a", "b", "c", "bug-*.md")
+    return rf"""{posix}(?:/[^"`\s]*[*?\[][^"`\s]*|/?["`])|{joined}(?:\s*\)|\s*,\s*["`][^"`\s]*[*?\[][^"`\s]*["`]\s*\))"""
 
 
 def referencing(name: str, sources: dict[str, dict[Path, None]], tested: set[str]) -> set[str]:

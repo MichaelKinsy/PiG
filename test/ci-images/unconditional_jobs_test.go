@@ -10,10 +10,10 @@ import (
 // TestChangesAndBookkeepingJobsStayUnconditional guards the root of ci.yml's job graph. Every product job waits for Changed paths (the plan)
 // and for Bookkeeping (the fail-fast gates), and each of their conditions reads those two jobs' results: a job that carried an `if`
 // could be skipped, and everything behind it with it, which is how a run once tested nothing while it reported success. So `changes` has
-// no condition and no prerequisite, and `bookkeeping` has no condition and waits for the verdict job alone.
+// no condition and no prerequisite, and `bookkeeping` has no condition and waits only for the unconditional verdict and changes jobs.
 func TestChangesAndBookkeepingJobsStayUnconditional(t *testing.T) {
 	jobs := verificationJobs(t)
-	for name, needs := range map[string][]string{"changes": nil, "bookkeeping": {"verdict"}} {
+	for name, needs := range map[string][]string{"changes": nil, "bookkeeping": {"verdict", "changes"}} {
 		job, ok := jobs[name]
 		if !ok {
 			t.Fatalf("ci.yml has no %s job", name)

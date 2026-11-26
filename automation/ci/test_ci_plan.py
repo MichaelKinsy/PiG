@@ -182,6 +182,10 @@ class CIPlanTest(unittest.TestCase):
             # Remove func TestKeep from coding/plain.go -> must set portmap=true
             removed_test = commit_file("coding/plain.go", "package coding\n")
 
+            # Remove unnamed func Example() while keeping file -> must set portmap=true
+            added_ex = commit_file("coding/example_test.go", "package coding\nfunc Example() {}\n")
+            removed_ex = commit_file("coding/example_test.go", "package coding\n")
+
             # Delete coding/plain.go -> must set portmap=true
             (repo / "coding/plain.go").unlink()
             git("add", "-A")
@@ -203,7 +207,8 @@ class CIPlanTest(unittest.TestCase):
             self.assertEqual(classify(sdk_rs, unknown)["portmap"], "true")
             self.assertEqual(classify(unknown, marker)["portmap"], "true")
             self.assertEqual(classify(marker, removed_test)["portmap"], "true")
-            self.assertEqual(classify(removed_test, deleted_go)["portmap"], "true")
+            self.assertEqual(classify(added_ex, removed_ex)["portmap"], "true")
+            self.assertEqual(classify(removed_ex, deleted_go)["portmap"], "true")
             self.assertEqual(classify(deleted_go, deleted_rs)["portmap"], "true")
 
 

@@ -244,7 +244,7 @@ jobs:
 
   bookkeeping:
     name: Bookkeeping
-    needs: [verdict]
+    needs: [verdict, changes]
     # A failed verdict skips this job, every job after it, and fails CI result.
     # The fail-fast gate: every job that spends real minutes waits for it, so a stale generated file, a stale ledger, a missing
     # sign-off or a broken policy gate stops the run in minutes. It runs only what needs Go, Python and the Pi source mirror
@@ -259,7 +259,6 @@ jobs:
     timeout-minutes: 50
     permissions:
       contents: read
-      actions: read
     # The job installs the Pi oracle (make upstream-mirror): a test that cannot find its Pi source fails here instead of skipping (internal/pioracle.Missing).
     env:
       PIG_REQUIRE_PI_ORACLE: "1"
@@ -269,31 +268,17 @@ jobs:
           # The bug ledger and the DCO check read the history.
           fetch-depth: 0
           persist-credentials: false
-      # Bookkeeping stays unconditional (needs: [verdict], no job-level if:), so on an unchanged scheduled
-      # main run it short-circuits its expensive steps here instead of spending ~10-15 minutes re-running gates.
-      - name: Check whether scheduled main run is unchanged
-        id: unchanged
-        if: github.event_name == 'schedule'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          EVENT: ${{ github.event_name }}
-          REPO: ${{ github.repository }}
-          HEAD_SHA: ${{ github.sha }}
-          RUN_ID: ${{ github.run_id }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          tree_sha="$(git rev-parse 'HEAD^{tree}')"
-          python3 automation/ci/check-unchanged-main.py ci             --event "$EVENT"             --repo "$REPO"             --head-sha "$HEAD_SHA"             --head-tree-sha "$tree_sha"             --current-run-id "$RUN_ID"             --cache-refresh-days 5
+      # Bookkeeping stays unconditional (no job-level if:), and reuses needs.changes.outputs.skip-unchanged
+      # so Changes and Bookkeeping always agree on one unchanged-main decision.
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        if: steps.unchanged.outputs.skip-unchanged != 'true'
+        if: needs.changes.outputs.skip-unchanged != 'true'
         with:
           go-version-file: .go-version
           # The job restores its own Go build cache below; setup-go's copy would download a second, older one.
           cache: false
       - name: Restore the Go module cache
         id: cache-the-go-module-cache
-        if: steps.unchanged.outputs.skip-unchanged != 'true'
+        if: needs.changes.outputs.skip-unchanged != 'true'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/go/pkg/mod
@@ -303,26 +288,26 @@ jobs:
       # The regeneration of stale frames (the changelog, the SDK bundles, the docs pages) needs the zstd the committed frames were written with; see the linux job.
       - name: Restore the pinned zstd
         id: cache-pinned-zstd
-        if: steps.unchanged.outputs.skip-unchanged != 'true'
+        if: needs.changes.outputs.skip-unchanged != 'true'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pig-zstd
           key: zstd-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-zstd.sh') }}
       - name: Install the pinned zstd
-        if: steps.unchanged.outputs.skip-unchanged != 'true'
+        if: needs.changes.outputs.skip-unchanged != 'true'
         shell: bash
         run: |
           set -euo pipefail
           echo "PIG_ZSTD=$(automation/ci/install-zstd.sh)" >> "$GITHUB_ENV"
           echo "PIG_REQUIRE_ZSTD=1" >> "$GITHUB_ENV"
       - name: Save the pinned zstd
-        if: ${{ steps.unchanged.outputs.skip-unchanged != 'true' && env.CACHE_SAVE == 'true' && steps.cache-pinned-zstd.outputs.cache-hit != 'true' }}
+        if: ${{ needs.changes.outputs.skip-unchanged != 'true' && env.CACHE_SAVE == 'true' && steps.cache-pinned-zstd.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pig-zstd
           key: zstd-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-zstd.sh') }}
       - name: Restore the Go build cache
-        if: steps.unchanged.outputs.skip-unchanged != 'true'
+        if: needs.changes.outputs.skip-unchanged != 'true'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/go-build
@@ -331,10 +316,10 @@ jobs:
             gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
       # Dependabot commits carry no Signed-off-by trailer; the maintainer's signed-off squash merge records the DCO for them.
       - name: Test the sign-off check
-        if: steps.unchanged.outputs.skip-unchanged != 'true'
+        if: needs.changes.outputs.skip-unchanged != 'true'
         run: python3 -B -m unittest automation/ci/test_check_dco.py
       - name: Test the shard verdict
-        if: steps.unchanged.outputs.skip-unchanged != 'true'
+        if: needs.changes.outputs.skip-unchanged != 'true'
         run: python3 -B -m unittest automation/ci/test_bookkeeping_shards.py
       - name: Check commit sign-offs
         if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
@@ -351,12 +336,12 @@ jobs:
       # port-map-drift, coverage-drift and divergence-guard read Pi's source mirror, and a commit pin's mirror takes its generated
       # provider data from the oracle build, so this prepares the oracle as the Linux shards do (the build is cached by pin).
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        if: steps.unchanged.outputs.skip-unchanged != 'true'
+        if: needs.changes.outputs.skip-unchanged != 'true'
         with:
           node-version-file: .node-version
       - name: Restore the npm cache
         id: cache-npm
-        if: steps.unchanged.outputs.skip-unchanged != 'true'
+        if: needs.changes.outputs.skip-unchanged != 'true'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.npm
@@ -364,7 +349,7 @@ jobs:
           restore-keys: |
             node-cache-${{ runner.os }}-${{ runner.arch }}-npm-
       - name: Install pinned npm
-        if: steps.unchanged.outputs.skip-unchanged != 'true'
+        if: needs.changes.outputs.skip-unchanged != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -375,17 +360,17 @@ jobs:
           test "$(npm --version)" = "$NPM_VERSION"
       - name: Restore the Pi oracle build
         id: cache-pi-oracle-build
-        if: steps.unchanged.outputs.skip-unchanged != 'true'
+        if: needs.changes.outputs.skip-unchanged != 'true'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pig-dev/pi-builds
           key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
       - name: Prepare pinned Pi oracle
-        if: steps.unchanged.outputs.skip-unchanged != 'true'
+        if: needs.changes.outputs.skip-unchanged != 'true'
         run: make upstream-mirror
       - name: Run the bookkeeping gates
         id: gates
-        if: steps.unchanged.outputs.skip-unchanged != 'true'
+        if: needs.changes.outputs.skip-unchanged != 'true'
         # The step's failure is reported by the last step, after the autofix step has looked at the log.
         continue-on-error: true
         env:
@@ -427,19 +412,19 @@ jobs:
           echo "::error::bookkeeping gates failed; see the Run the bookkeeping gates step"
           exit 1
       - name: Save the Go module cache
-        if: ${{ steps.unchanged.outputs.skip-unchanged != 'true' && env.CACHE_SAVE == 'true' && steps.cache-the-go-module-cache.outcome == 'success' && steps.cache-the-go-module-cache.outputs.cache-hit != 'true' }}
+        if: ${{ needs.changes.outputs.skip-unchanged != 'true' && env.CACHE_SAVE == 'true' && steps.cache-the-go-module-cache.outcome == 'success' && steps.cache-the-go-module-cache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/go/pkg/mod
           key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
       - name: Save the npm cache
-        if: ${{ steps.unchanged.outputs.skip-unchanged != 'true' && env.CACHE_SAVE == 'true' && steps.cache-npm.outputs.cache-hit != 'true' }}
+        if: ${{ needs.changes.outputs.skip-unchanged != 'true' && env.CACHE_SAVE == 'true' && steps.cache-npm.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.npm
           key: node-cache-${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('extensions/sdk-ts/package-lock.json', 'test/parity/interface-extractor/package-lock.json', 'automation/images/ci-parity/package-lock.json', 'automation/images/npm-runtime/package-lock.json') }}
       - name: Save the Pi oracle build
-        if: ${{ steps.unchanged.outputs.skip-unchanged != 'true' && env.CACHE_SAVE == 'true' && steps.cache-pi-oracle-build.outputs.cache-hit != 'true' }}
+        if: ${{ needs.changes.outputs.skip-unchanged != 'true' && env.CACHE_SAVE == 'true' && steps.cache-pi-oracle-build.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pig-dev/pi-builds

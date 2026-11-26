@@ -157,6 +157,14 @@ class ReferencingTest(unittest.TestCase):
             )
 
 
+    def test_dir_ref_pattern_matches_prefixed_and_join_globs_without_sibling_leakage(self) -> None:
+        pat = re.compile(cp.dir_ref_pattern(cp.PurePosixPath("docs/site/docs")))
+        self.assertIsNotNone(pat.search('filepath.Glob("docs/site/docs/bug-*.md")'))
+        self.assertIsNotNone(pat.search('filepath.Join(root, "docs", "site", "docs", "*.md")'))
+        self.assertIsNotNone(pat.search('filepath.Join(root, "docs", "site", "docs", "bug-*.md")'))
+        self.assertIsNone(pat.search('os.ReadFile("docs/site/docs/bug-ledger.md")'))
+        self.assertIsNone(pat.search('filepath.Join(root, "docs", "site", "docs", "bug-ledger.md")'))
+
 class RepoRegressionTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

@@ -293,9 +293,16 @@ class CheckUnchangedMainCITests(unittest.TestCase):
                 return {"commit": {"tree": {"sha": "treeOLD"}}}
             raise AssertionError(f"unexpected endpoint: {endpoint}")
 
-        with mock.patch.object(MOD, "_gh_api_json", side_effect=fake_api):
+        seen = []
+        def tracking_api(endpoint: str):
+            seen.append(endpoint)
+            return fake_api(endpoint)
+
+        with mock.patch.object(MOD, "_gh_api_json", side_effect=tracking_api):
             skip, reason = MOD.decide_ci("schedule", "o/r", "squashed333", 999, "treeSAME", 5)
         self.assertFalse(skip, reason)
+        self.assertIn("no prior full green CI run found", reason)
+        self.assertTrue(any("/actions/runs/301/jobs" in ep for ep in seen), seen)
 
     def test_forces_full_run_when_cache_refresh_window_expired(self) -> None:
         run_205 = {
@@ -418,6 +425,125 @@ class CheckUnchangedMainCITests(unittest.TestCase):
         self.assertFalse(skip, reason)
         self.assertIn("fail-open", reason)
 
+    def test_unparseable_cache_timestamp_fails_open_to_run_ci(self) -> None:
+        bad_run = {
+            "id": 210,
+            "event": "schedule",
+            "head_branch": "main",
+            "head_sha": "aaa111",
+            "conclusion": "success",
+            "created_at": "not-a-timestamp",
+        }
+        with mock.patch.object(MOD, "_gh_api_json", return_value={"workflow_runs": [bad_run]}):
+            skip, reason = MOD.decide_ci("schedule", "o/r", "aaa111", 999, "treeAAA", 5)
+        self.assertFalse(skip, reason)
+        self.assertIn("unparseable created_at", reason)
+
+    def test_candidate_tree_api_error_fails_open_without_falling_through(self) -> None:
+        fresh_main = {
+            "id": 200,
+            "event": "schedule",
+            "head_branch": "main",
+            "head_sha": "aaa111",
+            "conclusion": "success",
+            "created_at": "2026-11-25T06:41:00Z",
+        }
+        newer_pr = {
+            "id": 310,
+            "event": "pull_request",
+            "head_branch": "feat/x",
+            "head_sha": "prsha1",
+            "conclusion": "failure",
+            "created_at": "2026-11-25T18:00:00Z",
+        }
+
+        def fake_api(endpoint: str):
+            if "event=schedule" in endpoint:
+                return {"workflow_runs": [fresh_main]}
+            if "event=workflow_dispatch" in endpoint:
+                return {"workflow_runs": []}
+            if "/workflows/ci.yml/runs?" in endpoint:
+                return {"workflow_runs": [newer_pr, fresh_main]}
+            if "/actions/runs/200/jobs" in endpoint:
+                return {"jobs": FULL_CI_JOBS}
+            if "/commits/prsha1" in endpoint:
+                raise RuntimeError("502 bad gateway")
+            raise AssertionError(f"unexpected endpoint: {endpoint}")
+
+        with mock.patch.object(MOD, "_gh_api_json", side_effect=fake_api):
+            skip, reason = MOD.decide_ci("schedule", "o/r", "aaa111", 999, "treeAAA", 5)
+        self.assertFalse(skip, reason)
+        self.assertIn("fail-open", reason)
+
+    def test_tree_check_budget_exhaustion_fails_open(self) -> None:
+        fresh_main = {
+            "id": 200,
+            "event": "schedule",
+            "head_branch": "main",
+            "head_sha": "aaa111",
+            "conclusion": "success",
+            "created_at": "2026-11-25T06:41:00Z",
+        }
+        pr_runs = [
+            {
+                "id": 400 + i,
+                "event": "pull_request",
+                "head_branch": f"pr/{i}",
+                "head_sha": f"prsha{i}",
+                "conclusion": "success",
+                "created_at": f"2026-11-25T18:{i:02d}:00Z",
+            }
+            for i in range(16)
+        ]
+
+        def fake_api(endpoint: str):
+            if "event=schedule" in endpoint:
+                return {"workflow_runs": [fresh_main]}
+            if "event=workflow_dispatch" in endpoint:
+                return {"workflow_runs": []}
+            if "/workflows/ci.yml/runs?" in endpoint:
+                return {"workflow_runs": pr_runs + [fresh_main]}
+            if "/actions/runs/200/jobs" in endpoint:
+                return {"jobs": FULL_CI_JOBS}
+            if "/commits/prsha" in endpoint:
+                return {"commit": {"tree": {"sha": "treeOTHER"}}}
+            raise AssertionError(f"unexpected endpoint: {endpoint}")
+
+        with mock.patch.object(MOD, "_gh_api_json", side_effect=fake_api):
+            skip, reason = MOD.decide_ci("schedule", "o/r", "aaa111", 999, "treeAAA", 5)
+        self.assertFalse(skip, reason)
+        self.assertIn("tree-check budget reached", reason)
+
+    def test_attempt_scoped_jobs_endpoint_used_and_multiline_output_sanitized(self) -> None:
+        run_200 = {
+            "id": 200,
+            "run_attempt": 2,
+            "event": "schedule",
+            "head_branch": "main",
+            "head_sha": "aaa111",
+            "conclusion": "success",
+            "created_at": "2026-11-25T06:41:00Z",
+        }
+        seen = []
+
+        def fake_api(endpoint: str):
+            seen.append(endpoint)
+            if "event=schedule" in endpoint:
+                return {"workflow_runs": [run_200]}
+            if "event=workflow_dispatch" in endpoint:
+                return {"workflow_runs": []}
+            if "/workflows/ci.yml/runs?" in endpoint:
+                return {"workflow_runs": [run_200]}
+            if "/actions/runs/200/attempts/2/jobs" in endpoint:
+                return {"jobs": FULL_CI_JOBS}
+            raise AssertionError(f"unexpected endpoint: {endpoint}")
+
+        with mock.patch.object(MOD, "_gh_api_json", side_effect=fake_api):
+            skip, reason = MOD.decide_ci("schedule", "o/r", "aaa111", 999, "treeAAA", 5)
+        self.assertTrue(skip, reason)
+        self.assertTrue(any("/actions/runs/200/attempts/2/jobs" in ep for ep in seen), seen)
+        self.assertEqual(MOD._sanitize_output_value("line1\nline2\r\nline3"), "line1 line2 line3")
+
 class CheckUnchangedMainNightlyTests(unittest.TestCase):
     def test_workflow_dispatch_always_runs_deterministic(self) -> None:
         run_det, _ = MOD.decide_nightly("workflow_dispatch", "o/r", "aaa111", 999)
@@ -538,6 +664,164 @@ class CheckUnchangedMainNightlyTests(unittest.TestCase):
         self.assertTrue(run_det)
         self.assertIn("fail-open", reason)
 
+
+    def test_jobs_api_error_on_matched_nightly_run_keeps_deterministic_enabled(self) -> None:
+        newer = {"id": 602, "run_attempt": 1, "event": "schedule", "head_sha": "head1", "conclusion": "failure"}
+        older = {"id": 601, "run_attempt": 1, "event": "schedule", "head_sha": "head1", "conclusion": "success"}
+
+        def fake_api(endpoint: str):
+            if "workflows/nightly.yml/runs" in endpoint:
+                return {"workflow_runs": [newer, older]}
+            if "/actions/runs/602/attempts/1/jobs" in endpoint:
+                raise RuntimeError("transient 502 on page 2")
+            if "/actions/runs/601/attempts/1/jobs" in endpoint:
+                return {"jobs": FULL_DET_NIGHTLY_JOBS}
+            raise AssertionError(f"unexpected endpoint: {endpoint}")
+
+        with mock.patch.object(MOD, "_gh_api_json", side_effect=fake_api):
+            run_det, reason = MOD.decide_nightly("schedule", "o/r", "head1", 999)
+        self.assertTrue(run_det, reason)
+        self.assertIn("fail-open", reason)
+
+class FailOpenInjectionTableTests(unittest.TestCase):
+    """Table-driven verification that every lookup error, parse error, budget cap, unread jobs page,
+    or attempt mismatch fails open to run (never returns skip)."""
+
+    def setUp(self) -> None:
+        self._now = mock.patch.object(
+            MOD,
+            "_now_utc",
+            return_value=MOD._parse_iso("2026-11-26T06:41:00Z"),
+        )
+        self._now.start()
+
+    def tearDown(self) -> None:
+        self._now.stop()
+
+    def test_ci_failure_injection_table_always_runs(self) -> None:
+        fresh_main = {
+            "id": 200,
+            "run_attempt": 1,
+            "event": "schedule",
+            "head_branch": "main",
+            "head_sha": "aaa111",
+            "conclusion": "success",
+            "created_at": "2026-11-25T06:41:00Z",
+        }
+        pr_run = {
+            "id": 310,
+            "run_attempt": 2,
+            "event": "pull_request",
+            "head_branch": "feat/x",
+            "head_sha": "prsha1",
+            "conclusion": "success",
+            "created_at": "2026-11-25T18:00:00Z",
+        }
+
+        cases = [
+            ("list_main_runs_error", "main_list", RuntimeError("502 main list")),
+            ("cache_created_at_unparseable", "bad_ts", None),
+            ("cache_jobs_api_error", "cache_jobs", RuntimeError("502 cache jobs")),
+            ("list_all_runs_error", "all_list", RuntimeError("502 all list")),
+            ("head_tree_api_error", "head_tree", RuntimeError("502 head tree")),
+            ("candidate_tree_api_error", "cand_tree", RuntimeError("502 cand tree")),
+            ("tree_budget_exhausted", "budget", None),
+            ("matched_jobs_api_error", "matched_jobs", RuntimeError("502 matched jobs")),
+            ("matched_jobs_unread_page_total_count", "unread_total", None),
+            ("matched_jobs_unread_page_cap", "unread_cap", None),
+            ("matched_jobs_attempt_mismatch", "attempt_mismatch", None),
+        ]
+
+        for name, fault, exc in cases:
+            with self.subTest(fault=name):
+                def fake_api(endpoint: str, _fault=fault, _exc=exc):
+                    if "event=schedule" in endpoint:
+                        if _fault == "main_list":
+                            raise _exc
+                        if _fault == "bad_ts":
+                            return {"workflow_runs": [{**fresh_main, "created_at": "bad-date"}]}
+                        return {"workflow_runs": [fresh_main]}
+                    if "event=workflow_dispatch" in endpoint:
+                        return {"workflow_runs": []}
+                    if "/actions/runs/200/" in endpoint:
+                        if _fault == "cache_jobs":
+                            raise _exc
+                        return {"jobs": FULL_CI_JOBS, "total_count": len(FULL_CI_JOBS)}
+                    if "/workflows/ci.yml/runs?status=completed" in endpoint:
+                        if _fault == "all_list":
+                            raise _exc
+                        if _fault == "budget":
+                            many = [
+                                {**pr_run, "id": 400 + i, "head_sha": f"other{i}"}
+                                for i in range(MOD.MAX_TREE_LOOKUPS + 1)
+                            ]
+                            return {"workflow_runs": many + [fresh_main]}
+                        return {"workflow_runs": [pr_run, fresh_main]}
+                    if "/commits/aaa111" in endpoint:
+                        if _fault == "head_tree":
+                            raise _exc
+                        return {"commit": {"tree": {"sha": "treeAAA"}}}
+                    if "/commits/prsha1" in endpoint:
+                        if _fault == "cand_tree":
+                            raise _exc
+                        return {"commit": {"tree": {"sha": "treeAAA"}}}
+                    if "/commits/other" in endpoint:
+                        return {"commit": {"tree": {"sha": "treeOTHER"}}}
+                    if "/actions/runs/310/" in endpoint:
+                        if _fault == "matched_jobs":
+                            raise _exc
+                        if _fault == "unread_total":
+                            return {"jobs": FULL_CI_JOBS, "total_count": len(FULL_CI_JOBS) + 5}
+                        if _fault == "unread_cap":
+                            return {"jobs": [{"name": f"Linux / s{i}", "conclusion": "success"} for i in range(100)]}
+                        if _fault == "attempt_mismatch":
+                            return {"jobs": [{**j, "run_attempt": 3} for j in FULL_CI_JOBS]}
+                        return {"jobs": FULL_CI_JOBS, "total_count": len(FULL_CI_JOBS)}
+                    raise AssertionError(f"unexpected endpoint: {endpoint}")
+
+                head_tree = "" if fault == "head_tree" else "treeAAA"
+                with mock.patch.object(MOD, "_gh_api_json", side_effect=fake_api):
+                    skip, reason = MOD.decide_ci("schedule", "o/r", "aaa111", 999, head_tree, 5)
+                self.assertFalse(skip, f"{name}: unexpectedly skipped: {reason}")
+
+    def test_nightly_failure_injection_table_always_runs(self) -> None:
+        newer = {"id": 602, "run_attempt": 2, "event": "schedule", "head_sha": "head1", "conclusion": "success"}
+        older = {"id": 601, "run_attempt": 1, "event": "schedule", "head_sha": "head1", "conclusion": "success"}
+        cases = [
+            "list_runs_error",
+            "page1_error",
+            "page2_error",
+            "unread_total_count",
+            "unread_page_cap",
+            "attempt_mismatch",
+        ]
+        for fault in cases:
+            with self.subTest(fault=fault):
+                def fake_api(endpoint: str, _fault=fault):
+                    if "workflows/nightly.yml/runs" in endpoint:
+                        if _fault == "list_runs_error":
+                            raise RuntimeError("502 list")
+                        return {"workflow_runs": [newer, older]}
+                    if "/actions/runs/602/attempts/2/jobs" in endpoint:
+                        if _fault == "page1_error":
+                            raise RuntimeError("502 page 1")
+                        if _fault == "page2_error":
+                            if "page=2" in endpoint:
+                                raise RuntimeError("502 page 2")
+                            return {"jobs": [{"name": f"Race {i}", "conclusion": "success"} for i in range(100)]}
+                        if _fault == "unread_total_count":
+                            return {"jobs": FULL_DET_NIGHTLY_JOBS, "total_count": len(FULL_DET_NIGHTLY_JOBS) + 10}
+                        if _fault == "unread_page_cap":
+                            return {"jobs": [{"name": f"Race {i}", "conclusion": "success"} for i in range(100)]}
+                        if _fault == "attempt_mismatch":
+                            return {"jobs": [{**j, "run_attempt": 1} for j in FULL_DET_NIGHTLY_JOBS]}
+                    if "/actions/runs/601/" in endpoint:
+                        return {"jobs": FULL_DET_NIGHTLY_JOBS, "total_count": len(FULL_DET_NIGHTLY_JOBS)}
+                    raise AssertionError(f"unexpected endpoint: {endpoint}")
+
+                with mock.patch.object(MOD, "_gh_api_json", side_effect=fake_api):
+                    run_det, reason = MOD.decide_nightly("schedule", "o/r", "head1", 999)
+                self.assertTrue(run_det, f"{fault}: unexpectedly skipped deterministic jobs: {reason}")
 
 if __name__ == "__main__":
     unittest.main()

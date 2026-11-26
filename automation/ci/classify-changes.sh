@@ -131,7 +131,7 @@ if [ "$event" = pull_request ] || [ "$event" = merge_group ]; then
   # reads, or removes a `func Test/Benchmark/Fuzz/Example` declaration, run portmap-1..12.
   if [ "$event" = pull_request ] && [ "$portmap" = false ] && [ "${#go_changed[@]}" -gt 0 ]; then
     diff_out=$(git diff -U0 --no-renames "$base...$head" -- "${go_changed[@]}")
-    if printf '%s\n' "$diff_out" | grep -Eq '^[+-][[:space:]]*//[[:space:]]*(pi:|Ports[[:space:]])|^-func[[:space:]]+(Test|Benchmark|Fuzz|Example)[A-Z0-9_]'; then
+    if printf '%s\n' "$diff_out" | grep -Eq '^[+-][[:space:]]*//[[:space:]]*(pi:|Ports[[:space:]])|^-func[[:space:]]+((Test|Benchmark|Fuzz)[A-Z0-9_]|Example([A-Z0-9_]|\())'; then
       portmap=true
       echo "portmap change (Go marker or removed Test/Benchmark/Fuzz/Example diff)" >&2
     fi
