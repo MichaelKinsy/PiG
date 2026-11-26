@@ -25,7 +25,11 @@ func TestResumedBashExecutionEntryRendersLikePi(t *testing.T) {
 		t.Fatal(err)
 	}
 	m.renderInitialMessages()
-	got := stripANSITest(strings.Join(m.chatContainer.Render(80), "\n"))
+	lines := m.chatContainer.Render(80)
+			for i, l := range lines {
+				lines[i] = strings.TrimRight(stripANSITest(l), " ")
+			}
+			got := strings.Join(lines, "\n")
 	for _, want := range []string{"before the shell command", "$ make test", "two", "(exit 2)", "$ sleep 9", "(cancelled)"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("transcript lacks %q:\n%s", want, got)
@@ -39,29 +43,42 @@ func TestResumedBashExecutionEntryRendersLikePi(t *testing.T) {
 	}
 }
 
-// upstream: interactive-mode.ts:3870-3887 and :7009/:7037 build a BashExecutionComponent without setExpanded, and the component starts collapsed
-// (bash-execution.ts:29 expanded = false), so with tool output expanded a resumed or new `!cmd` block still shows only the last
-// PREVIEW_LINES (20) rows until the next toggle (setToolsExpanded, :4562) expands every child.
-func TestResumedBashExecutionStartsCollapsedWhileToolsAreExpanded(t *testing.T) {
-	m := resumeThinkingMode(t, false, userMsg("before the shell command"))
-	cwd := t.TempDir()
-	m.opts.CWD = cwd
-	m.opts.ResumePath = filepath.Join(cwd, "session.jsonl")
-	m.opts.SettingsManager = NewSettingsManagerWithProjectTrust(cwd, t.TempDir(), true)
-	inner := m.opts.SessionHandle.(*recordingCompactHandle).inner
-	var output strings.Builder
-	for i := 1; i <= 30; i++ {
-		fmt.Fprintf(&output, "row-%02d\n", i)
-	}
-	code := 0
-	if _, err := inner.AppendBashExecution(BashExecutionMessage{Command: "seq 30", Output: output.String(), ExitCode: &code, Timestamp: 1}); err != nil {
-		t.Fatal(err)
-	}
-	m.toolsExpanded = true
-	m.renderInitialMessages()
-	got := stripANSITest(strings.Join(m.chatContainer.Render(80), "\n"))
-	if !strings.Contains(got, "row-30") || strings.Contains(got, "row-01") {
-		t.Fatalf("a resumed bash block must start collapsed to its last 20 rows:\n%s", got)
+// Port of Pi main 0ab23c37b074252d04e31f5cfb99491f0613fb80 (packages/coding-agent/test/interactive-mode-status.test.ts):
+// rebuilt `!` output follows ctrl+o (toolsExpanded) state.
+func TestResumedBashExecutionFollowsToolsExpanded(t *testing.T) {
+	for _, expanded := range []bool{true, false} {
+		t.Run(fmt.Sprintf("expanded=%v", expanded), func(t *testing.T) {
+			m := resumeThinkingMode(t, false, userMsg("before the shell command"))
+			cwd := t.TempDir()
+			m.opts.CWD = cwd
+			m.opts.ResumePath = filepath.Join(cwd, "session.jsonl")
+			m.opts.SettingsManager = NewSettingsManagerWithProjectTrust(cwd, t.TempDir(), true)
+			inner := m.opts.SessionHandle.(*recordingCompactHandle).inner
+			var output strings.Builder
+			for i := 1; i <= 40; i++ {
+				fmt.Fprintf(&output, "line-%d\n", i)
+			}
+			code := 0
+			if _, err := inner.AppendBashExecution(BashExecutionMessage{Command: "seq 1 40", Output: output.String(), ExitCode: &code, Timestamp: 1}); err != nil {
+				t.Fatal(err)
+			}
+			m.toolsExpanded = expanded
+			m.renderInitialMessages()
+			lines := m.chatContainer.Render(80)
+			for i, l := range lines {
+				lines[i] = strings.TrimRight(stripANSITest(l), " ")
+			}
+			got := strings.Join(lines, "\n")
+			if !strings.Contains(got, "line-40") {
+				t.Fatalf("missing line-40:\n%s", got)
+			}
+			if strings.Contains(got, "line-1\n") != expanded {
+				t.Fatalf("line-1 visibility = %v, want %v:\n%s", strings.Contains(got, "line-1\n"), expanded, got)
+			}
+			if strings.Contains(got, "to expand") != !expanded {
+				t.Fatalf("expand hint visibility = %v, want %v:\n%s", strings.Contains(got, "to expand"), !expanded, got)
+			}
+		})
 	}
 }
 

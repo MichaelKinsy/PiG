@@ -152,9 +152,8 @@ func TestResumedSessionRendersPersistedBashExecutionBlocks(t *testing.T) {
 	}
 }
 
-// Pi addMessageToChat never calls setExpanded on a bashExecution component, so a rebuilt block starts collapsed
-// even while tool output is expanded; Ctrl+O afterwards expands it with every other expandable child.
-func TestResumedBashExecutionBlockStartsCollapsed(t *testing.T) {
+// Port of Pi main 0ab23c37b074252d04e31f5cfb99491f0613fb80: a rebuilt bashExecution block follows toolOutputExpanded (ctrl+o).
+func TestResumedBashExecutionBlockFollowsToolsExpanded(t *testing.T) {
 	output := strings.Repeat("line\n", 24) + "last"
 	m := resumeBashMode(t, BashExecutionMessage{Command: "seq 25", Output: output, ExitCode: new(0)})
 	m.toolsExpanded = true
@@ -163,13 +162,12 @@ func TestResumedBashExecutionBlockStartsCollapsed(t *testing.T) {
 	if len(blocks) != 1 {
 		t.Fatalf("bash blocks = %d, want 1", len(blocks))
 	}
-	if plain := stripANSITest(strings.Join(blocks[0].Render(80), "\n")); !strings.Contains(plain, "... 5 more lines") {
-		t.Fatalf("rebuilt block is not collapsed: %q", plain)
+	if plain := stripANSITest(strings.Join(blocks[0].Render(80), "\n")); strings.Contains(plain, "more lines") || !strings.Contains(plain, "to collapse") {
+		t.Fatalf("rebuilt block did not follow toolsExpanded=true: %q", plain)
 	}
 	m.setAllToolsExpanded(false)
-	m.setAllToolsExpanded(true)
-	if plain := stripANSITest(strings.Join(blocks[0].Render(80), "\n")); strings.Contains(plain, "more lines") || !strings.Contains(plain, "to collapse") {
-		t.Fatalf("Ctrl+O did not expand the resumed block: %q", plain)
+	if plain := stripANSITest(strings.Join(blocks[0].Render(80), "\n")); !strings.Contains(plain, "... 5 more lines") {
+		t.Fatalf("Ctrl+O did not collapse the resumed block: %q", plain)
 	}
 }
 

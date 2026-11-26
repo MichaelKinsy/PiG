@@ -465,7 +465,7 @@ func (m *InteractiveMode) renderSessionEntryListWithLive(entries []SessionEntry,
 			m.toolMu.Lock()
 			m.bashOrder = append(m.bashOrder, block)
 			m.toolMu.Unlock()
-			// upstream: interactive-mode.ts:3871,7009,7037 never call setExpanded on a new BashExecutionComponent; it starts collapsed.
+			block.SetExpanded(m.toolsExpanded)
 			m.chatContainer.Add(block)
 		case msg.Role() == agent.RoleCustom:
 			// upstream addMessageToChat case "custom" (interactive-mode.ts:3901-3913): only a displayed message is drawn.
