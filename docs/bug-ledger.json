@@ -53091,6 +53091,37 @@
       ]
     },
     {
+      "id": "BF-ca588df",
+      "title": "Pre-flight `gitleaks` now runs from inside the added-lines directory (`dir .`) instead of passing an absolute…",
+      "symptom": "Pre-flight `gitleaks` now runs from inside the added-lines directory (`dir .`) instead of passing an absolute temporary directory path, so `^`-anchored `paths` allowlist entries in `.gitleaks.toml` and relative fingerprints in main's `.gitleaksignore` match repository-relative paths, while quarantining PR copies of `.gitleaksignore` and `.gitleaks.toml` under neutral names (and warning via `gitleaks-config`) so PR content cannot act as gitleaks configuration.",
+      "rootCause": "automation/ci/preflight/config.yaml passed absolute {input} to gitleaks dir and gitleaks auto-loads \u003csource\u003e/.gitleaksignore from its scan directory",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Pre-flight `gitleaks` now runs from inside the added-lines directory (`dir .`) instead of passing an absolute temporary directory path, so `^`-anchored `paths` allowlist entries in `.gitleaks.toml` and relative fingerprints in main's `.gitleaksignore` match repository-relative paths, while quarantining PR copies of `.gitleaksignore` and `.gitleaks.toml` under neutral names (and warning via `gitleaks-config`) so PR content cannot act as gitleaks configuration.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ca588df48a",
+          "date": "2026-11-25"
+        },
+        {
+          "hash": "ca88756cd3",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "automation/ci/preflight/config_test.go::TestConfigRejects",
+        "automation/ci/preflight/gitleaks_scan_test.go::TestGitleaksQuarantineStagesAndMapsFindingsBack",
+        "automation/ci/preflight/gitleaks_scan_test.go::TestGitleaksScanAllowlistAndRealFindings",
+        "automation/ci/preflight/gitleaks_scan_test.go::TestGitleaksScanCommandRunsInsideAddedTree",
+        "automation/ci/preflight/gitleaks_scan_test.go::TestShippedGitleaksConfigWarningCheck",
+        "automation/ci/preflight/rules_test.go::TestRuleParamsRejected"
+      ]
+    },
+    {
       "id": "BF-ca675e0",
       "title": "A list item whose text is `[ ] ` or `[x] ` with nothing after the spaces on the line is plain text, not a…",
       "symptom": "A list item whose text is `[ ] ` or `[x] ` with nothing after the spaces on the line is plain text, not a task item (marked's listIsTask needs a non-whitespace character after the spaces), so `- [ ] ` renders as `- [ ]` like Pi.",

@@ -120,15 +120,31 @@ checks:
     rule: added-lines-warn
     with: {pattern: 'gitleaks:allow', text: 'adds an inline `gitleaks:allow` suppression'}
 
+  - name: gitleaks-config
+    when: {always: true}
+    stage: cheap
+    reads: [files]
+    rule: changed-paths-warn
+    with:
+      paths: [.gitleaksignore, .gitleaks.toml]
+      text: 'changes gitleaks scan configuration; only main''s files govern PR scans, and merging this updates future runs'
+
   - name: gitleaks
     when: {always: true}
     stage: scan
     alert: 'a secret was found in this PR. Revoke it now, then remove it from the branch history (rewrite and force-push; a later commit that deletes it is not enough). A false positive is allowed only on main: a maintainer adds an allowlist entry to .gitleaks.toml.'
-    main: [.gitleaks.toml]
+    main: [.gitleaks.toml, .gitleaksignore]
     scan:
       input: added
+      # Quarantine PR copies of gitleaks config/ignore files under neutral names in a per-scan view so gitleaks
+      # never reads PR-controlled .gitleaksignore (cmd/root.go:317) or .gitleaks.toml, while still scanning their
+      # added lines and mapping any findings back to the real path and head line.
+      quarantine: [.gitleaksignore, .gitleaks.toml]
+      # Run from inside the added-lines tree with relative path `.` so ^-anchored paths in main's .gitleaks.toml
+      # and relative fingerprints in main's .gitleaksignore match repository-relative paths.
+      dir: '{input}'
       # An inline gitleaks:allow in the PR is not trusted; a false positive is allowed only in main's .gitleaks.toml.
-      run: [gitleaks, dir, '{input}', --config, '{main}/.gitleaks.toml', --gitleaks-ignore-path, '{main}', --ignore-gitleaks-allow, --max-archive-depth, '3', --no-banner, --redact, --exit-code, '3', --report-format, json, --report-path, '{out}']
+      run: [gitleaks, dir, '.', --config, '{main}/.gitleaks.toml', --gitleaks-ignore-path, '{main}', --ignore-gitleaks-allow, --max-archive-depth, '3', --no-banner, --redact, --exit-code, '3', --report-format, json, --report-path, '{out}']
       # Exit 3 means leaks; gitleaks exits 1 on its own errors.
       exit: {clean: [0], findings: [3]}
       report: {in: out, format: json, file: File, line: StartLine, message: RuleID}

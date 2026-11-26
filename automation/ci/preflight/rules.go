@@ -162,6 +162,7 @@ func init() {
 		"no-advisories":      {func(p params) error { return needList(p, "severities") }, ruleNoAdvisories},
 		"license-notices":    {validateLicenseNotices, ruleLicenseNotices},
 		"added-lines-warn":   {validateAddedLinesWarn, ruleAddedLinesWarn},
+		"changed-paths-warn": {validateChangedPathsWarn, ruleChangedPathsWarn},
 	}
 }
 
@@ -889,4 +890,46 @@ func ruleAddedLinesWarn(d *data, p params, _ *ruleEnv) outcome {
 		}
 	}
 	return o
+}
+
+func validateChangedPathsWarn(p params) error {
+	if err := needList(p, "paths"); err != nil {
+		return err
+	}
+	for _, glob := range p.strs("paths") {
+		if _, err := globRegexp(glob); err != nil {
+			return fmt.Errorf("paths: %w", err)
+		}
+	}
+	return p.need("text")
+}
+
+func ruleChangedPathsWarn(d *data, p params, _ *ruleEnv) outcome {
+	var matchers []*regexp.Regexp
+	for _, glob := range p.strs("paths") {
+		matchers = append(matchers, mustGlobRegexp(glob))
+	}
+	o := pass("checked changed paths")
+	for _, f := range d.Files {
+		for _, re := range matchers {
+			if re.MatchString(f.Filename) {
+				o.warnings = append(o.warnings, warning{
+					File:   f.Filename,
+					Blob:   f.SHA,
+					Notice: f.Status + " " + f.Filename,
+					Text:   p.str("text"),
+				})
+				break
+			}
+		}
+	}
+	return o
+}
+
+func mustGlobRegexp(glob string) *regexp.Regexp {
+	re, err := globRegexp(glob)
+	if err != nil {
+		panic(err)
+	}
+	return re
 }

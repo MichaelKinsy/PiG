@@ -1,0 +1,3 @@
+### Fixed
+
+- Pre-flight `gitleaks` now runs from inside the added-lines directory (`dir .`) instead of passing an absolute temporary directory path, so `^`-anchored `paths` allowlist entries in `.gitleaks.toml` and relative fingerprints in main's `.gitleaksignore` match repository-relative paths, while quarantining PR copies of `.gitleaksignore` and `.gitleaks.toml` under neutral names (and warning via `gitleaks-config`) so PR content cannot act as gitleaks configuration. <!-- fix: ca588df48a, ca88756cd --> <!-- cause: automation/ci/preflight/config.yaml passed absolute {input} to gitleaks dir and gitleaks auto-loads <source>/.gitleaksignore from its scan directory -->

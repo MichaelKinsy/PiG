@@ -84,6 +84,21 @@ func TestRuleAddedLinesWarn(t *testing.T) {
 	}
 }
 
+func TestRuleChangedPathsWarn(t *testing.T) {
+	d := &data{Files: []prFile{
+		{Filename: "pkg/a.go", Status: "modified", SHA: "s1"},
+		{Filename: ".gitleaksignore", Status: "added", SHA: "s2"},
+		{Filename: ".gitleaks.toml", Status: "modified", SHA: "s3"},
+	}}
+	o := ruleChangedPathsWarn(d, params{"paths": []any{".gitleaksignore", ".gitleaks.toml"}, "text": "changes config"}, nil)
+	if o.result != resultPass || len(o.warnings) != 2 {
+		t.Fatalf("outcome %+v", o)
+	}
+	if o.warnings[0].File != ".gitleaksignore" || o.warnings[0].Blob != "s2" || o.warnings[1].File != ".gitleaks.toml" || o.warnings[1].Blob != "s3" {
+		t.Fatalf("warnings = %+v", o.warnings)
+	}
+}
+
 func TestAcknowledgedWarnings(t *testing.T) {
 	w := warning{File: "a.sh", Line: 2, Blob: "blob1", Notice: "# Copyright 2020 X", Text: "adds a copyright notice"}
 	d := &data{Files: []prFile{{Filename: "a.sh", SHA: "blob1"}, {Filename: "b.sh", SHA: "blob9"}}}
@@ -397,6 +412,9 @@ func TestRuleParamsRejected(t *testing.T) {
 		{"license-notices with a broken code-files", `{name: a, when: {always: true}, stage: cheap, reads: [files], rule: license-notices, with: {notice-files: [x], code-files: '('}}`, "code-files:"},
 		{"added-lines-warn without text", `{name: a, when: {always: true}, stage: cheap, reads: [files], rule: added-lines-warn, with: {pattern: x}}`, "needs text"},
 		{"added-lines-warn with a broken pattern", `{name: a, when: {always: true}, stage: cheap, reads: [files], rule: added-lines-warn, with: {pattern: '(', text: t}}`, "pattern:"},
+		{"changed-paths-warn without paths", `{name: a, when: {always: true}, stage: cheap, reads: [files], rule: changed-paths-warn, with: {text: t}}`, "needs a list paths"},
+		{"changed-paths-warn without text", `{name: a, when: {always: true}, stage: cheap, reads: [files], rule: changed-paths-warn, with: {paths: [.gitleaksignore]}}`, "needs text"},
+		{"changed-paths-warn with absolute path", `{name: a, when: {always: true}, stage: cheap, reads: [files], rule: changed-paths-warn, with: {paths: [/.gitleaksignore], text: t}}`, "must be relative"},
 		{"fix-ledger without ledger", `{name: a, when: {always: true}, stage: cheap, reads: [files], rule: fix-ledger}`, "needs ledger"},
 		{"test-expectation without inventories", `{name: a, when: {always: true}, stage: cheap, reads: [files], rule: test-expectation}`, "inventories"},
 		{"no-advisories without severities", `{name: a, when: {always: true}, stage: cheap, reads: [dependency-graph], rule: no-advisories}`, "severities"},

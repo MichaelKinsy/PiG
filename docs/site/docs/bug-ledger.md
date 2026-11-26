@@ -1946,6 +1946,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ca06a0b](#bf-ca06a0b) | Tool arguments that TypeBox's Convert wraps in an array (an object where the schema asks for an array, such… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ca27ba6](#bf-ca27ba6) | The Go extension SDK accepts a native Provider object with no auth methods, as Pi's `ProviderAuth` (both… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ca41377](#bf-ca41377) | fix(tui): the alt-screen frame serves a render's viewport reads and ends a screen's callbacks at disposal… | PiG's own defect | All platforms | Unreleased |
+| [BF-ca588df](#bf-ca588df) | Pre-flight `gitleaks` now runs from inside the added-lines directory (`dir .`) instead of passing an absolute… | PiG's own defect | All platforms | Unreleased |
 | [BF-ca675e0](#bf-ca675e0) | A list item whose text is `[ ] ` or `[x] ` with nothing after the spaces on the line is plain text, not a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ca83bfc](#bf-ca83bfc) | ai: an Azure OpenAI Responses base URL that already carries the full Responses endpoint path with a query… | PiG's own defect | All platforms | 0.8.0 |
 | [BF-caae28a](#bf-caae28a) | In RPC mode, `exit.log` no longer says "received SIGTERM" for a single signal that arrived during a shutdown… | PiG's own defect | All platforms | 0.8.0 |
@@ -29228,6 +29229,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `ca413772f0` (2026-10-31)
 - **Tests:** `coding/extension/host/subprocess/tui_alt_dispose_test.go::TestDisposingAScreenEndsAFrameThatWaitsForAnExtensionThatNeverAnswers`, `coding/extension/host/subprocess/tui_alt_frame_calls_test.go::TestTuiAltCallsFromARenderDoNotTakeTheFrameLockAgain`, `tui/tui_alt_frame_test.go::TestAltScreenFrameReadsAndMovesTheViewportAtOnce`
+
+### BF-ca588df
+
+**Pre-flight `gitleaks` now runs from inside the added-lines directory (`dir .`) instead of passing an absolute…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Pre-flight `gitleaks` now runs from inside the added-lines directory (`dir .`) instead of passing an absolute temporary directory path, so `^`-anchored `paths` allowlist entries in `.gitleaks.toml` and relative fingerprints in main's `.gitleaksignore` match repository-relative paths, while quarantining PR copies of `.gitleaksignore` and `.gitleaks.toml` under neutral names (and warning via `gitleaks-config`) so PR content cannot act as gitleaks configuration.
+- **Root cause:** automation/ci/preflight/config.yaml passed absolute {input} to gitleaks dir and gitleaks auto-loads <source>/.gitleaksignore from its scan directory
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ca588df48a` (2026-11-25), `ca88756cd3` (2026-11-25)
+- **Tests:** `automation/ci/preflight/config_test.go::TestConfigRejects`, `automation/ci/preflight/gitleaks_scan_test.go::TestGitleaksQuarantineStagesAndMapsFindingsBack`, `automation/ci/preflight/gitleaks_scan_test.go::TestGitleaksScanAllowlistAndRealFindings`, `automation/ci/preflight/gitleaks_scan_test.go::TestGitleaksScanCommandRunsInsideAddedTree`, `automation/ci/preflight/gitleaks_scan_test.go::TestShippedGitleaksConfigWarningCheck`, `automation/ci/preflight/rules_test.go::TestRuleParamsRejected`
+- **Release note:** Pre-flight `gitleaks` now runs from inside the added-lines directory (`dir .`) instead of passing an absolute temporary directory path, so `^`-anchored `paths` allowlist entries in `.gitleaks.toml` and relative fingerprints in main's `.gitleaksignore` match repository-relative paths, while quarantining PR copies of `.gitleaksignore` and `.gitleaks.toml` under neutral names (and warning via `gitleaks-config`) so PR content cannot act as gitleaks configuration.
 
 ### BF-ca675e0
 
