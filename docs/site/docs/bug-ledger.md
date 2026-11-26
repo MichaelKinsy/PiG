@@ -1956,6 +1956,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ca41377](#bf-ca41377) | fix(tui): the alt-screen frame serves a render's viewport reads and ends a screen's callbacks at disposal… | PiG's own defect | All platforms | Unreleased |
 | [BF-ca588df](#bf-ca588df) | Pre-flight `gitleaks` now runs from inside the added-lines directory (`dir .`) instead of passing an absolute… | PiG's own defect | All platforms | Unreleased |
 | [BF-ca675e0](#bf-ca675e0) | A list item whose text is `[ ] ` or `[x] ` with nothing after the spaces on the line is plain text, not a… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-ca818aa](#bf-ca818aa) | Quoted `git rev-parse 'HEAD^{tree}'` in `.github/workflows/ci.yml` to satisfy shellcheck SC1083 and synced… | PiG's own defect | All platforms | Unreleased |
 | [BF-ca83bfc](#bf-ca83bfc) | ai: an Azure OpenAI Responses base URL that already carries the full Responses endpoint path with a query… | PiG's own defect | All platforms | 0.8.0 |
 | [BF-caae28a](#bf-caae28a) | In RPC mode, `exit.log` no longer says "received SIGTERM" for a single signal that arrived during a shutdown… | PiG's own defect | All platforms | 0.8.0 |
 | [BF-cafa121](#bf-cafa121) | fix(llama): default llama.cpp server URL is port 9931 (Pi, #12001); NVIDIA RTX guide mirror (Pi) | PiG's own defect | All platforms | Unreleased |
@@ -29378,6 +29379,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `ca675e0af0` (2026-10-11)
 - **Tests:** `tui/markdown_task_item_oracle_test.go::TestMarkdownTaskItemFirstLineIsTextMatchesPi`, `tui/markdown_task_item_oracle_test.go::TestMarkdownTaskItemNeedsATextAfterTheSpacesMatchesPi`
 - **Release note:** A list item whose text is `[ ] ` or `[x] ` with nothing after the spaces on the line is plain text, not a task item (marked's listIsTask needs a non-whitespace character after the spaces), so `- [ ] ` renders as `- [ ]` like Pi.
+
+### BF-ca818aa
+
+**Quoted `git rev-parse 'HEAD^{tree}'` in `.github/workflows/ci.yml` to satisfy shellcheck SC1083 and synced…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Quoted `git rev-parse 'HEAD^{tree}'` in `.github/workflows/ci.yml` to satisfy shellcheck SC1083 and synced `variables/versions.yaml` (`npm: 12.2.1`, `node: 24.22.2`, `pi: v1.6.0`) with the repository's committed toolchain and Pi pins.
+- **Root cause:** unquoted braces in ci.yml triggered actionlint SC1083 and variables/versions.yaml had drifted from the committed npm, node, and Pi pins checked by preflight mandatory.yaml
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ca818aa221` (2026-11-26)
+- **Tests:** None recorded.
+- **Release note:** Quoted `git rev-parse 'HEAD^{tree}'` in `.github/workflows/ci.yml` to satisfy shellcheck SC1083 and synced `variables/versions.yaml` (`npm: 12.2.1`, `node: 24.22.2`, `pi: v1.6.0`) with the repository's committed toolchain and Pi pins.
 
 ### BF-ca83bfc
 

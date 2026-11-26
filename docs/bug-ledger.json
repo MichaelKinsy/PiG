@@ -53321,6 +53321,26 @@
       ]
     },
     {
+      "id": "BF-ca818aa",
+      "title": "Quoted `git rev-parse 'HEAD^{tree}'` in `.github/workflows/ci.yml` to satisfy shellcheck SC1083 and synced…",
+      "symptom": "Quoted `git rev-parse 'HEAD^{tree}'` in `.github/workflows/ci.yml` to satisfy shellcheck SC1083 and synced `variables/versions.yaml` (`npm: 12.2.1`, `node: 24.22.2`, `pi: v1.6.0`) with the repository's committed toolchain and Pi pins.",
+      "rootCause": "unquoted braces in ci.yml triggered actionlint SC1083 and variables/versions.yaml had drifted from the committed npm, node, and Pi pins checked by preflight mandatory.yaml",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Quoted `git rev-parse 'HEAD^{tree}'` in `.github/workflows/ci.yml` to satisfy shellcheck SC1083 and synced `variables/versions.yaml` (`npm: 12.2.1`, `node: 24.22.2`, `pi: v1.6.0`) with the repository's committed toolchain and Pi pins.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ca818aa221",
+          "date": "2026-11-26"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-ca83bfc",
       "title": "ai: an Azure OpenAI Responses base URL that already carries the full Responses endpoint path with a query…",
       "symptom": "ai: an Azure OpenAI Responses base URL that already carries the full Responses endpoint path with a query string (such as `https://\u003cresource\u003e.openai.azure.com/openai/responses?api-version=2025-04-01-preview` or a gateway `.../responses?api-version=...`) now reaches the endpoint, as in Pi, instead of appending `/responses?api-version=...` onto the query string and failing the request.",
