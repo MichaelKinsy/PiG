@@ -440,3 +440,40 @@ func TestWatchNamesTheServerAndTheCauseWhenTheSSEConnectionFails(t *testing.T) {
 		t.Fatalf("aborted watch error = %v, want the abort rethrown unchanged", err)
 	}
 }
+
+// Port of Pi main da7e26cc8bca83c15f04e83c9b468e79d8a35cfe (#12451, #12224):
+// llama.cpp SSE framing accepts lone CR, CRLF split across chunks, and large chunked events in linear time.
+func TestWatchHandlesSplitCRLFAndLoneCRAndLargeEvents(t *testing.T) {
+	t.Run("split CRLF and lone CR", func(t *testing.T) {
+		var events []LlamaModelEvent
+		var parser llamaSSEParser
+		for _, chunk := range []string{
+			`data: {"model":"m1","event":"load","data":{"ok":true}}` + "\r",
+			"\n\r",
+			"\n" + `data: {"model":"m2","event":"ready"}` + "\r\r",
+		} {
+			parser.push([]byte(chunk), func(ev LlamaModelEvent) { events = append(events, ev) })
+		}
+		if len(events) != 2 || events[0].Model != "m1" || events[1].Model != "m2" {
+			t.Fatalf("events = %+v, want m1 and m2", events)
+		}
+	})
+
+	t.Run("large chunked event in linear time", func(t *testing.T) {
+		payload := strings.Repeat("a", 1<<20)
+		full := `data: {"model":"big","event":"progress","data":{"msg":"` + payload + `"}}` + "\n\n"
+		var events []LlamaModelEvent
+		var parser llamaSSEParser
+		const step = 4096
+		for i := 0; i < len(full); i += step {
+			end := min(i+step, len(full))
+			parser.push([]byte(full[i:end]), func(ev LlamaModelEvent) { events = append(events, ev) })
+		}
+		if len(events) != 1 || events[0].Model != "big" {
+			t.Fatalf("events = %+v", events)
+		}
+		if msg, _ := stringField(events[0].Data, "msg"); len(msg) != len(payload) {
+			t.Fatalf("msg len = %d, want %d", len(msg), len(payload))
+		}
+	})
+}
