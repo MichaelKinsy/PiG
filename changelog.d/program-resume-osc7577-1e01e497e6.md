@@ -4,4 +4,4 @@
 
 ### Fixed
 
-- Fixed a Piglet Binary's session-exit resume hint to print the binary's own name instead of `pig` (`ResumeProgramName`). <!-- fix: 1e01e497e6 --> <!-- cause: exit resume hint hardcoded pig instead of the active binary name -->
+- Fixed a Piglet Binary's session-exit resume hint to print the binary's own name instead of `pig` (`ResumeProgramName`). <!-- fix: 1e01e497e6,c448089b49 --> <!-- cause: exit resume hint hardcoded pig instead of the active binary name -->
