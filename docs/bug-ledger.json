@@ -53091,6 +53091,29 @@
       ]
     },
     {
+      "id": "BF-ca588df",
+      "title": "Pre-flight `gitleaks` now runs from inside the added-lines directory (`dir .`) instead of passing an absolute…",
+      "symptom": "Pre-flight `gitleaks` now runs from inside the added-lines directory (`dir .`) instead of passing an absolute temporary directory path, so `^`-anchored `paths` allowlist entries in `.gitleaks.toml` and relative fingerprints in `.gitleaksignore` match repository-relative paths.",
+      "rootCause": "automation/ci/preflight/config.yaml passed absolute {input} to gitleaks dir, preventing ^-anchored allowlist paths and relative .gitleaksignore fingerprints from matching",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Pre-flight `gitleaks` now runs from inside the added-lines directory (`dir .`) instead of passing an absolute temporary directory path, so `^`-anchored `paths` allowlist entries in `.gitleaks.toml` and relative fingerprints in `.gitleaksignore` match repository-relative paths.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ca588df48a",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "automation/ci/preflight/gitleaks_scan_test.go::TestGitleaksScanAllowlistAndRealFindings",
+        "automation/ci/preflight/gitleaks_scan_test.go::TestGitleaksScanCommandRunsInsideAddedTree"
+      ]
+    },
+    {
       "id": "BF-ca675e0",
       "title": "A list item whose text is `[ ] ` or `[x] ` with nothing after the spaces on the line is plain text, not a…",
       "symptom": "A list item whose text is `[ ] ` or `[x] ` with nothing after the spaces on the line is plain text, not a task item (marked's listIsTask needs a non-whitespace character after the spaces), so `- [ ] ` renders as `- [ ]` like Pi.",
