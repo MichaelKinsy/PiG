@@ -10453,7 +10453,6 @@
         "coding/cli/rpc_post_ack_order_test.go::TestRPCPostAckGateReleasePaths",
         "coding/cli/rpc_post_ack_order_test.go::TestRPCSingleCommandPostAckOrderThroughResponseWriteSeam",
         "coding/cli/rpc_post_ack_order_test.go::TestRPCTwoNodeExtensionsPostAckOrder",
-        "coding/cli/rpc_unawaited_short_wait_order_deterministic_test.go::TestRPCShortWaitOrderPostAwaitNotifyOvertakesReplyDeterministic",
         "coding/extension/host/invocation/ack_test.go::TestAcknowledgedBySuspensionDistinguishesCompleteFromAcknowledge",
         "coding/extension/host/invocation/ack_test.go::TestAcknowledgedReportsReleaseState",
         "coding/extension/host/subprocess/ack_hold_test.go::TestBlockedAcknowledgmentOfAnEffectCallWaitsForTheHandlersProgress",
