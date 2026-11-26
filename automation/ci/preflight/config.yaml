@@ -127,8 +127,11 @@ checks:
     main: [.gitleaks.toml]
     scan:
       input: added
+      # Run from inside the added-lines tree with relative path `.` so ^-anchored paths in main's .gitleaks.toml
+      # and relative fingerprints in main's .gitleaksignore match repository-relative paths.
+      dir: '{input}'
       # An inline gitleaks:allow in the PR is not trusted; a false positive is allowed only in main's .gitleaks.toml.
-      run: [gitleaks, dir, '{input}', --config, '{main}/.gitleaks.toml', --gitleaks-ignore-path, '{main}', --ignore-gitleaks-allow, --max-archive-depth, '3', --no-banner, --redact, --exit-code, '3', --report-format, json, --report-path, '{out}']
+      run: [gitleaks, dir, '.', --config, '{main}/.gitleaks.toml', --gitleaks-ignore-path, '{main}', --ignore-gitleaks-allow, --max-archive-depth, '3', --no-banner, --redact, --exit-code, '3', --report-format, json, --report-path, '{out}']
       # Exit 3 means leaks; gitleaks exits 1 on its own errors.
       exit: {clean: [0], findings: [3]}
       report: {in: out, format: json, file: File, line: StartLine, message: RuleID}

@@ -221,8 +221,11 @@ file shows them again. An acknowledgement never covers a failing scan.
 
 ## Secrets
 
-gitleaks runs with main's `.gitleaks.toml` and `--ignore-gitleaks-allow`, on the
-added lines only. A real false positive is allowed on main, by a maintainer, in
+gitleaks runs from inside the added-lines tree (`dir .`) with main's
+`.gitleaks.toml` and `--ignore-gitleaks-allow`, on the added lines only, so
+`^`-anchored `paths` in `.gitleaks.toml` and relative fingerprints in
+`.gitleaksignore` match repository-relative paths instead of a temporary runner
+directory. A real false positive is allowed on main, by a maintainer, in
 `.gitleaks.toml`. trufflehog reports only secrets it verified, so a finding is a
 live credential. Either posts an alert that mentions the author: revoke the
 secret and rewrite the branch.
