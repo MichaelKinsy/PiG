@@ -132,6 +132,30 @@
   (check-equal "... [truncated]" (pig:truncate-line "abcdef" -2))
   (check-equal "... [truncated]" (pig:truncate-line "ab" -5)))
 
+(deftest truncate-tail-over-long-line-followed-by-blank-line
+  ;; Pi 9e9609216 (#12355): keeps the end of an over-long line followed by blank lines,
+  ;; rejects over-long blank lines (ASCII and multi-byte NBSP), and back-scans whitespace suffixes.
+  (let ((r (pig:truncate-tail (format nil "first~%~AEND~%~%" (make-string 20 :initial-element #\y)) :max-bytes 10)))
+    (check-equal (list (format nil "yyyyyyEND~%") 2 10 t "bytes")
+                 (list (pig:truncation-result-content r) (pig:truncation-result-output-lines r)
+                       (pig:truncation-result-output-bytes r) (pig:truncation-result-last-line-partial r)
+                       (pig:truncation-result-truncated-by r))))
+  (let ((r (pig:truncate-tail (format nil "~C~C~C~%~%" (code-char #x00A0) (code-char #x00A0) (code-char #x00A0)) :max-bytes 5)))
+    (check-equal (list "" 1 0 nil "bytes")
+                 (list (pig:truncation-result-content r) (pig:truncation-result-output-lines r)
+                       (pig:truncation-result-output-bytes r) (pig:truncation-result-last-line-partial r)
+                       (pig:truncation-result-truncated-by r))))
+  (let ((r (pig:truncate-tail (format nil "    ~%~%") :max-bytes 3)))
+    (check-equal (list "" 1 0 nil "bytes")
+                 (list (pig:truncation-result-content r) (pig:truncation-result-output-lines r)
+                       (pig:truncation-result-output-bytes r) (pig:truncation-result-last-line-partial r)
+                       (pig:truncation-result-truncated-by r))))
+  (let ((r (pig:truncate-tail (format nil "x    ~%~%") :max-bytes 3)))
+    (check-equal (list (format nil "  ~%") 2 3 t "bytes")
+                 (list (pig:truncation-result-content r) (pig:truncation-result-output-lines r)
+                       (pig:truncation-result-output-bytes r) (pig:truncation-result-last-line-partial r)
+                       (pig:truncation-result-truncated-by r)))))
+
 (deftest truncate-to-visual-lines-matches-pi
   (dolist (case (coerce (ct-cases "truncateToVisualLines") 'list))
     (let* ((padding (ct-arg case 3)) (keep (ct-arg case 4))

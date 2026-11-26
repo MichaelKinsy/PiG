@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"math"
+	"strings"
 	"testing"
 )
 
@@ -65,5 +66,39 @@ func TestFormatSizeDoesNotOverflowNearMaxInt(t *testing.T) {
 		if got := FormatSize(bytes); got != want {
 			t.Errorf("FormatSize(%d) = %q, want %q", bytes, got, want)
 		}
+	}
+}
+
+// Pi 9e9609216 (#12355): an over-long line followed by blank lines keeps the end of the line with LastLinePartial.
+func TestTruncateTailOverLongLineFollowedByBlankLines(t *testing.T) {
+	input := "first\n" + strings.Repeat("y", 20) + "END\n\n"
+	r := TruncateTail(input, TruncationOptions{MaxBytes: new(10)})
+	if !r.Truncated || !r.LastLinePartial || r.TruncatedBy != "bytes" || r.OutputLines != 2 || r.Content != "yyyyyyEND\n" {
+		t.Fatalf("got %+v, want content %q outputLines=2 lastLinePartial=true", r, "yyyyyyEND\n")
+	}
+}
+
+// Deterministic tests for Pi 9e9609216 (#12355) multi-byte whitespace, !isBlankLine conjunct, and back-scan.
+func TestTruncateTailOverLongBlankAndWhitespaceLineEdgeCases(t *testing.T) {
+	cases := []struct {
+		name            string
+		content         string
+		maxBytes        int
+		wantContent     string
+		wantOutputLines int
+		wantOutputBytes int
+		wantPartial     bool
+	}{
+		{"multi-byte whitespace split by scan window", "\u00a0\u00a0\u00a0\n\n", 5, "", 1, 0, false},
+		{"over-long ASCII blank line before blank line", "    \n\n", 3, "", 1, 0, false},
+		{"over-long non-blank line with whitespace suffix", "x    \n\n", 3, "  \n", 2, 3, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := TruncateTail(tc.content, TruncationOptions{MaxBytes: new(tc.maxBytes)})
+			if r.Content != tc.wantContent || r.OutputLines != tc.wantOutputLines || r.OutputBytes != tc.wantOutputBytes || r.LastLinePartial != tc.wantPartial || r.TruncatedBy != "bytes" {
+				t.Fatalf("got %+v, want content=%q outputLines=%d outputBytes=%d partial=%v by=bytes", r, tc.wantContent, tc.wantOutputLines, tc.wantOutputBytes, tc.wantPartial)
+			}
+		})
 	}
 }

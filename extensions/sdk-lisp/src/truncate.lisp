@@ -66,7 +66,7 @@
           (sb-ext:octets-to-string data :start (min start size) :external-format :utf-8)))))
 
 (defun truncate-tail (content &key max-lines max-bytes)
-  "Pi's truncateTail: keeps the last lines and bytes of CONTENT (command output). When the last line alone exceeds the byte limit it keeps the end of that line and sets last-line-partial."
+  "Pi's truncateTail: keeps the last lines and bytes of CONTENT (command output). When an over-long line at the end (possibly followed by blank lines) exceeds the byte limit it keeps the end of that line and sets last-line-partial."
   (let* ((max-lines (or max-lines +default-max-lines+))
          (max-bytes (or max-bytes +default-max-bytes+))
          (total-bytes (cx-utf8-length content))
@@ -80,9 +80,17 @@
             do (let ((line-bytes (+ (cx-utf8-length (svref lines i)) (if kept 1 0))))
                  (when (> (+ output-bytes line-bytes) max-bytes)
                    (setf truncated-by "bytes")
-                   (unless kept
-                     (let ((text (cx-tail-of-bytes (svref lines i) max-bytes)))
-                       (push text kept) (incf count) (setf output-bytes (cx-utf8-length text) partial t)))
+                   (let* ((extra (if kept 1 0))
+                          (remaining (- max-bytes output-bytes extra)))
+                     (when (or (null kept)
+                               (and (not (string= (cx-js-trim (svref lines i)) ""))
+                                    (every (lambda (l) (string= (cx-js-trim l) "")) kept)
+                                    (> remaining 0)))
+                       (let ((text (cx-tail-of-bytes (svref lines i) remaining)))
+                         (push text kept)
+                         (incf count)
+                         (incf output-bytes (+ (- line-bytes (cx-utf8-length (svref lines i))) (cx-utf8-length text)))
+                         (setf partial t))))
                    (return))
                  (push (svref lines i) kept) (incf count) (incf output-bytes line-bytes)))
       (when (and (>= count max-lines) (<= output-bytes max-bytes)) (setf truncated-by "lines"))

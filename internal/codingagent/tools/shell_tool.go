@@ -281,7 +281,7 @@ func formatShellOutput(snapshot OutputSnapshot, lastLineBytes int, emptyText str
 	switch {
 	case tr.LastLinePartial:
 		text += fmt.Sprintf("\n\n[Showing last %s of line %d (line is %s). Full output: %s]",
-			FormatSize(tr.OutputBytes), endLine, FormatSize(lastLineBytes), snapshot.FullOutputPath)
+			FormatSize(tr.OutputBytes), startLine, FormatSize(lastLineBytes), snapshot.FullOutputPath)
 	case tr.TruncatedBy == "lines":
 		text += fmt.Sprintf("\n\n[Showing lines %d-%d of %d. Full output: %s]",
 			startLine, endLine, tr.TotalLines, snapshot.FullOutputPath)
