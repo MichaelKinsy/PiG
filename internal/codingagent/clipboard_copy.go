@@ -247,7 +247,7 @@ func (c clipboardCopier) writerCommands() [][]string {
 		commands = append(commands, []string{"termux-clipboard-set"})
 	}
 	if c.getenv("WAYLAND_DISPLAY") != "" {
-		commands = append(commands, []string{"wl-copy"})
+		commands = append(commands, []string{"wl-copy", "-t", "text/plain"})
 	}
 	if c.getenv("DISPLAY") != "" {
 		commands = append(commands, []string{"xclip", "-selection", "clipboard"}, []string{"xsel", "--clipboard", "--input"})

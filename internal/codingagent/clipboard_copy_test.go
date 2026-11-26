@@ -294,7 +294,21 @@ func TestCopyToClipboardWSLWithADisplayPrefersLinuxTools(t *testing.T) {
 	if !slices.Equal(f.run.calls, []string{"wl-copy"}) || f.out.Len() != 0 {
 		t.Fatalf("calls = %v, output = %q", f.run.calls, f.out)
 	}
-	if len(f.run.args[0]) != 0 || f.run.input[0] == nil || *f.run.input[0] != "hello" || f.run.timeouts[0] != 5*time.Second {
+	if !slices.Equal(f.run.args[0], []string{"-t", "text/plain"}) || f.run.input[0] == nil || *f.run.input[0] != "hello" || f.run.timeouts[0] != 5*time.Second {
+		t.Fatalf("wl-copy options = args %q, input %v, timeouts %v", f.run.args, f.run.input, f.run.timeouts)
+	}
+}
+
+// Port of Pi main 2d8133085dbb7fce726c894daa042206df7bbdd7 (packages/coding-agent/test/clipboard.test.ts).
+func TestCopyToClipboardWlCopyUsesTextPlainMIME(t *testing.T) {
+	f := newClipboardFixture(t, "linux", map[string]string{"WAYLAND_DISPLAY": "wayland-0"})
+	if err := f.copier.copy("def foo"); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(f.run.calls, []string{"wl-copy"}) {
+		t.Fatalf("calls = %v, want [wl-copy]", f.run.calls)
+	}
+	if !slices.Equal(f.run.args[0], []string{"-t", "text/plain"}) || f.run.input[0] == nil || *f.run.input[0] != "def foo" || f.run.timeouts[0] != 5*time.Second {
 		t.Fatalf("wl-copy options = args %q, input %v, timeouts %v", f.run.args, f.run.input, f.run.timeouts)
 	}
 }
