@@ -89,9 +89,9 @@ func TestOpenAIResponsesNamespaceUpstream(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			want := `[{"type":"function_call","id":"fc_test","call_id":"call_test","name":"lookup","arguments":"{\"value\":\"hello\"}","namespace":"dynamic_tools"}]`
+			want := `[{"type":"function_call","status":"completed","id":"fc_test","call_id":"call_test","namespace":"dynamic_tools","name":"lookup","arguments":"{\"value\":\"hello\"}"}]`
 			if custom {
-				want = `[{"type":"custom_tool_call","id":"ctc_test","call_id":"call_test","name":"query","input":"hello","namespace":"dynamic_tools"}]`
+				want = `[{"type":"custom_tool_call","status":"completed","id":"ctc_test","call_id":"call_test","namespace":"dynamic_tools","name":"query","input":"hello"}]`
 			}
 			assertShapeJSON(t, data, want)
 		})

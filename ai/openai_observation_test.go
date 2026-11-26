@@ -168,7 +168,7 @@ func TestOpenAIStartRequiresSuccessfulResponseSetup(t *testing.T) {
 				if len(events) != 1 || events[0] != EventError || result.StopReason != StopReasonError {
 					t.Fatalf("failed setup fabricated start: %v %#v", events, result)
 				}
-				if called != (status == http.StatusOK) || (called && result.ErrorMessage != rejected.Error()) {
+				if !called || result.ErrorMessage != rejected.Error() {
 					t.Fatalf("response hook called=%t error=%s", called, result.ErrorMessage)
 				}
 			})

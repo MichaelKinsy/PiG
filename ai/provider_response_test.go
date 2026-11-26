@@ -25,16 +25,16 @@ func TestProviderResponseBoundaries(t *testing.T) {
 		errorsVisible bool
 		make          func(string) Provider
 	}{
-		{"completions", false, func(url string) Provider {
+		{"completions", true, func(url string) Provider {
 			return NewOpenAIProvider(OpenAIConfig{APIKey: "key", Model: "probe", BaseURL: url})
 		}},
-		{"responses", false, func(url string) Provider {
+		{"responses", true, func(url string) Provider {
 			return NewOpenAIResponsesProvider(OpenAIResponsesConfig{APIKey: "key", Model: "probe", BaseURL: url})
 		}},
-		{"azure", false, func(url string) Provider {
+		{"azure", true, func(url string) Provider {
 			return NewAzureOpenAIResponsesProvider(AzureOpenAIResponsesConfig{APIKey: "key", Model: "probe", BaseURL: url})
 		}},
-		{"anthropic", false, func(url string) Provider {
+		{"anthropic", true, func(url string) Provider {
 			return NewAnthropicProvider(AnthropicConfig{APIKey: "key", Model: "probe", BaseURL: url})
 		}},
 		{"mistral", true, func(url string) Provider {
