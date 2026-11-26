@@ -29235,14 +29235,14 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 **Pre-flight `gitleaks` now runs from inside the added-lines directory (`dir .`) instead of passing an absolute…**
 
 - **Source:** PiG's own defect
-- **Symptom:** Pre-flight `gitleaks` now runs from inside the added-lines directory (`dir .`) instead of passing an absolute temporary directory path, so `^`-anchored `paths` allowlist entries in `.gitleaks.toml` and relative fingerprints in `.gitleaksignore` match repository-relative paths.
-- **Root cause:** automation/ci/preflight/config.yaml passed absolute {input} to gitleaks dir, preventing ^-anchored allowlist paths and relative .gitleaksignore fingerprints from matching
-- **User impact:** Wrong output or ordering
+- **Symptom:** Pre-flight `gitleaks` now runs from inside the added-lines directory (`dir .`) instead of passing an absolute temporary directory path, so `^`-anchored `paths` allowlist entries in `.gitleaks.toml` and relative fingerprints in main's `.gitleaksignore` match repository-relative paths, while quarantining PR copies of `.gitleaksignore` and `.gitleaks.toml` under neutral names (and warning via `gitleaks-config`) so PR content cannot act as gitleaks configuration.
+- **Root cause:** automation/ci/preflight/config.yaml passed absolute {input} to gitleaks dir and gitleaks auto-loads <source>/.gitleaksignore from its scan directory
+- **User impact:** An operation failed or was rejected
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `ca588df48a` (2026-11-25)
-- **Tests:** `automation/ci/preflight/gitleaks_scan_test.go::TestGitleaksScanAllowlistAndRealFindings`, `automation/ci/preflight/gitleaks_scan_test.go::TestGitleaksScanCommandRunsInsideAddedTree`
-- **Release note:** Pre-flight `gitleaks` now runs from inside the added-lines directory (`dir .`) instead of passing an absolute temporary directory path, so `^`-anchored `paths` allowlist entries in `.gitleaks.toml` and relative fingerprints in `.gitleaksignore` match repository-relative paths.
+- **Fix commits:** `ca588df48a` (2026-11-25), `ca88756cd3` (2026-11-25)
+- **Tests:** `automation/ci/preflight/config_test.go::TestConfigRejects`, `automation/ci/preflight/gitleaks_scan_test.go::TestGitleaksQuarantineStagesAndMapsFindingsBack`, `automation/ci/preflight/gitleaks_scan_test.go::TestGitleaksScanAllowlistAndRealFindings`, `automation/ci/preflight/gitleaks_scan_test.go::TestGitleaksScanCommandRunsInsideAddedTree`, `automation/ci/preflight/gitleaks_scan_test.go::TestShippedGitleaksConfigWarningCheck`, `automation/ci/preflight/rules_test.go::TestRuleParamsRejected`
+- **Release note:** Pre-flight `gitleaks` now runs from inside the added-lines directory (`dir .`) instead of passing an absolute temporary directory path, so `^`-anchored `paths` allowlist entries in `.gitleaks.toml` and relative fingerprints in main's `.gitleaksignore` match repository-relative paths, while quarantining PR copies of `.gitleaksignore` and `.gitleaks.toml` under neutral names (and warning via `gitleaks-config`) so PR content cannot act as gitleaks configuration.
 
 ### BF-ca675e0
 
