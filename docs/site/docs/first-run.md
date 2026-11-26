@@ -45,7 +45,7 @@ pig: 0.8.0
 upstream pi: 1.6.0
 go: go1.27.4
 platform: linux/amd64
-build: dev
+build: 73585394f40cde45fd40889db265179ac3c2af99
 ```
 
 `pig --version` prints only the Pi release, `1.6.0` here, exactly as `pi --version` does.

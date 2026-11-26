@@ -25,7 +25,7 @@ pig: 0.8.0
 upstream pi: 1.6.0
 go: go1.27.4
 platform: linux/amd64
-build: dev
+build: 73585394f40cde45fd40889db265179ac3c2af99
 ```
 
 `pig diagnose` prints where PiG keeps things. Start here when a path is not what you expected. It is not in `pig --help`. The top of its output:
@@ -35,7 +35,7 @@ pig diagnostics
 ────────────────────────────────────────────────────────────
 pig-version:       0.8.0
 upstream-pin:      1.6.0
-build:             dev
+build:             73585394f40cde45fd40889db265179ac3c2af99
 go runtime:        go1.27.4
 platform:          linux/amd64
 binary:            /usr/local/bin/pig
@@ -72,13 +72,13 @@ Next steps:
 PiG runs without these tools. They are needed only for the extension languages and Piglet builds listed above.
 ```
 
-`pig verify` checks the binary you are running and prints its SHA-256 digest. A development build is unsigned, and a released one shows its signature state:
+`pig verify` checks the binary you are running and prints its SHA-256 digest and Piglet signature state:
 
 ```text
-pig 0.8.0+1.6.0 go1.27.4 linux/amd64 287c13dbe894528ab44cddbecee5ed9048a6abfe, build dev
+pig 0.8.0+1.6.0 go1.27.4 linux/amd64 , build 73585394f40cde45fd40889db265179ac3c2af99
 
 /usr/local/bin/pig (binary)
-  sha256:2eb81e4a48e0e9732d117e6eef34d71cc4ba7af998b3dc02d3b813204e5ade6a
+  sha256:107179c71474929b251f8fd46e7231988b2652d520c5614eeb798d8688637178
   n/a  piglet signature: unsigned (no signature: anyone who can rewrite this file can rewrite its build record)
 ```
 
