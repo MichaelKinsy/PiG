@@ -283,7 +283,6 @@ var (
 		`^(Throttling error|Service unavailable):`,
 		`rate limit`,
 		`too many requests`,
-		`rate increased too quickly`,
 	)
 	cerebrasBodylessOverflowPattern = lazyRegexp(`^4(?:00|13)\s*(?:status code)?\s*\(no body\)`)
 
@@ -309,6 +308,7 @@ var (
 		`model is at capacity`,
 		`rate.?limit`,
 		`too many requests`,
+		`rate increased too quickly`,
 		// Status codes must not be part of a longer word or number, e.g. a request id or byte count (#11057). Pi spells it (?<![a-z0-9])(?:429|500|502|503|504|520|524)(?![a-z0-9]);
 		// RE2 has no lookaround, so the neighbours are matched, which a boolean test cannot tell apart.
 		`(?:^|[^a-z0-9])(?:429|500|502|503|504|520|524)(?:[^a-z0-9]|$)`,
@@ -358,6 +358,7 @@ var (
 		`http2 request did not get a response`,
 		// Codex CLI mid-stream disconnect, relayed by proxies that wrap the Codex CLI, e.g. "stream disconnected before completion: stream closed before response.completed" (#11057).
 		`stream disconnected before completion`,
+		`cut short after the reply had begun`,
 		`pending stream has been canceled`,
 		`retry delay`,
 		`you can retry your request`,

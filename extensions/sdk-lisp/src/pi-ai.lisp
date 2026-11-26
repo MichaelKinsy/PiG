@@ -473,7 +473,7 @@ only the end of the text. Supported: literals, . [] [^] \\d \\w \\s \\S, (?:) ()
    "context[_ ]length[_ ]exceeded" "too many tokens" "token limit exceeded"
    ;; HTTP 413 means request-size overflow regardless of provider or body text.
    "^(?:[\\w -]+ API error \\(413\\):|413(?:\\s|:|$))"))
-(defvar *ai-non-overflow-patterns* (ai-compile-each "^(Throttling error|Service unavailable):" "rate limit" "too many requests" "rate increased too quickly"))
+(defvar *ai-non-overflow-patterns* (ai-compile-each "^(Throttling error|Service unavailable):" "rate limit" "too many requests"))
 (defvar *ai-cerebras-bodyless-overflow* (rx-compile "^4(?:00|13)\\s*(?:status code)?\\s*\\(no body\\)"))
 
 (defun ai-join-alternatives (&rest alternatives) (format nil "~{~A~^|~}" alternatives))
@@ -488,7 +488,7 @@ only the end of the text. Supported: literals, . [] [^] \\d \\w \\s \\S, (?:) ()
 (defvar *ai-retryable-provider-error*
   (rx-compile (ai-join-alternatives
                "overloaded" "server_busy" "servers are currently busy" "currently experiencing high demand" "model is at capacity" "rate.?limit"
-               "too many requests"
+               "too many requests" "rate increased too quickly"
                ;; status codes must not be part of a longer word or number, e.g. a request id or byte count
                "(?<![a-z0-9])(?:429|500|502|503|504|520|524)(?![a-z0-9])"
                "service.?(?:is.?)?(?:temporarily.?)?unavailable" "server.?error" "internal.?error" "provider.?returned.?(?:an.?)?error"
@@ -506,7 +506,7 @@ only the end of the text. Supported: literals, . [] [^] \\d \\w \\s \\S, (?:) ()
                "websocket.?connection.?limit.?reached"
                "ended without" "stream ended before message_stop"
                "stream ended before a terminal response event" "http2 request did not get a response"
-               "stream disconnected before completion"
+               "stream disconnected before completion" "cut short after the reply had begun"
                "pending stream has been canceled" "retry delay" "you can retry your request" "try your request again"
                "please retry your request" "ResourceExhausted" "subscription_sharing_usage_unavailable" "subscription_sharing_user_unavailable" "provider finish_reason: error" "provider stopped with: error" "returned an empty response")))
 

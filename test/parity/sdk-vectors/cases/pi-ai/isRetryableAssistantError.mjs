@@ -203,3 +203,16 @@ for (const errorMessage of [
   "websocket connection limit", "websocket limit reached", "websocket connection  limit reached", "connection limit reached on the websocket", "websocket connection limit reached: insufficient_quota",
 ]) cases.push({ name: `case ${String(cases.length + 1).padStart(4, "0")}`, args: [failed(errorMessage)] });
 
+
+// Pi 1.6.1 (0888fd79a, 4f3d2be9a, 9b911b409): request-rate throttle, finish_reason "error", and OpenRouter empty stops.
+for (const errorMessage of [
+  "Your request rate increased too quickly",
+  "Request rate increased too quickly. To ensure system stability, please adjust your client logic to scale requests more smoothly over time.",
+  "Provider finish_reason: error",
+  "Provider finish_reason: error (native_finish_reason: MALFORMED_FUNCTION_CALL)",
+  "Provider stopped with: error",
+  "Provider stopped with: content_filter",
+  "OpenRouter returned an empty response (native_finish_reason: MALFORMED_RESPONSE)",
+  "Provider returned an empty response",
+  "Your request rate increased too quickly: insufficient_quota",
+]) cases.push({ name: `case ${String(cases.length + 1).padStart(4, "0")}`, args: [failed(errorMessage)] });
