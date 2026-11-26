@@ -46,6 +46,8 @@ var retryableProviderErrorPattern = buildProviderErrorPattern([]string{
 	"model is at capacity",
 	"rate.?limit",
 	"too many requests",
+	// OpenAI 429 `slow_down` (Codex) and Alibaba Qwen throttle wording (#12240, #2952).
+	"rate increased too quickly",
 	// Status codes must not be part of a longer word or number, e.g. a request id or byte count (#11057, Pi 6e491cfa).
 	// Pi spells it (?<![a-z0-9])(?:429|500|502|503|504|520|524)(?![a-z0-9]); RE2 has no lookaround, so the neighbours are matched, which a boolean test cannot tell apart.
 	"(?:^|[^a-z0-9])(?:429|500|502|503|504|520|524)(?:[^a-z0-9]|$)",
