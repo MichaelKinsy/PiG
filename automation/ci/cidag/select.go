@@ -184,11 +184,13 @@ func Select(files []string, g *Graph, rules []PathRule, opts Options) Plan {
 
 	// Classify all non-rule files through the Go graph (compile vs test-only vs unowned).
 	// Also scan rule-matched .go files (such as protocol*.go or runtime_node_digest_generated.go)
-	// so their compile reverse closure and affected packages stay sound.
+	// and rule-matched non-Go files with known embed edges (such as runtime-node.pack)
+	// so their compile reverse closure and affected packages stay sound while keeping
+	// rule-owned files without embed edges exempt from the unowned check.
 	goInputs := append([]string(nil), goCandidates...)
 	for _, f := range cleanFiles {
-		if strings.HasSuffix(f, ".go") {
-			if _, matched := MatchRule(f, rules); matched {
+		if _, matched := MatchRule(f, rules); matched {
+			if strings.HasSuffix(f, ".go") || len(g.EmbedSrc[f]) > 0 || len(g.EmbedTest[f]) > 0 {
 				goInputs = append(goInputs, f)
 			}
 		}
@@ -420,10 +422,8 @@ func classifyGoFiles(unmatched, allGoInputs []string, g *Graph) (compilePkgs, te
 			continue
 		}
 
-		// Non-Go files are classified only when not already owned by a path rule.
-		if !unmatchedSet[f] {
-			continue
-		}
+		// Always propagate known //go:embed edges even for path-rule-owned files
+		// so reverse dependents of embedded assets stay in the compile closure.
 		hit := false
 		if pkgs, ok := g.EmbedSrc[f]; ok && len(pkgs) > 0 {
 			for _, p := range pkgs {
@@ -436,6 +436,11 @@ func classifyGoFiles(unmatched, allGoInputs []string, g *Graph) (compilePkgs, te
 				testOnlyPkgs[p] = true
 			}
 			hit = true
+		}
+		// Remaining heuristics (string references, testdata, unowned fallback) apply
+		// only to non-Go files not already owned by a path rule.
+		if !unmatchedSet[f] {
+			continue
 		}
 		if refSrc := g.Referencing(f, g.SrcFiles); len(refSrc) > 0 {
 			for p := range refSrc {
@@ -521,8 +526,16 @@ func selectParityScenarios(files []string, compilePkgs, affected map[string]bool
 				mappedDirs[d] = true
 			}
 		}
-		if len(mappedFiles) == 0 {
-			// Unprovable scenario (no PORT_MAP edge) stays selected whenever cmd/pig code changed.
+		unprovable := len(mappedFiles) == 0
+		for _, up := range ups {
+			if len(g.PortMapEdges[up]) == 0 {
+				unprovable = true
+				break
+			}
+		}
+		if unprovable {
+			// Any covers path lacking a PORT_MAP edge makes the scenario unprovable;
+			// keep it selected whenever cmd/pig code changed.
 			if len(codeHit) > 0 {
 				scenClosure[scen] = true
 				scenDir[scen] = true

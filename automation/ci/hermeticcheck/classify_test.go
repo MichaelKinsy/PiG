@@ -654,22 +654,192 @@ esac
 
 	// 2. Nightly schedule with opt-in set MUST still enforce -count=1 everywhere.
 	for _, tc := range []struct {
-		name, event, ref string
+		name, event, ref, baseRef string
 	}{
-		{"schedule", "schedule", "refs/heads/main"},
-		{"release-push", "push", "refs/heads/release/0.8.0"},
-		{"main-push", "push", "refs/heads/main"},
-		{"opt-in-off", "pull_request", "refs/pull/42/merge"},
+		{"schedule", "schedule", "refs/heads/main", ""},
+		{"release-push", "push", "refs/heads/release/0.8.0", ""},
+		{"release-pr-base", "pull_request", "refs/pull/99/merge", "release/0.8.1"},
+		{"main-push", "push", "refs/heads/main", ""},
+		{"opt-in-off", "pull_request", "refs/pull/42/merge", "main"},
 	} {
 		opt := "PIG_GO_HERMETIC_TEST_CACHE=1"
 		if tc.name == "opt-in-off" {
 			opt = "PIG_GO_HERMETIC_TEST_CACHE=0"
 		}
-		lines := runCase(tc.name, []string{opt, "GITHUB_EVENT_NAME=" + tc.event, "GITHUB_REF=" + tc.ref})
+		extra := []string{opt, "GITHUB_EVENT_NAME=" + tc.event, "GITHUB_REF=" + tc.ref}
+		if tc.baseRef != "" {
+			extra = append(extra, "GITHUB_BASE_REF="+tc.baseRef)
+		}
+		lines := runCase(tc.name, extra)
 		for _, line := range lines {
 			if !strings.Contains(line, "-count=1") {
 				t.Errorf("%s: expected -count=1 on every go test call, got: %s", tc.name, line)
 			}
 		}
+	}
+}
+
+func TestCgoTaggedTestFileDetectedUnderDefaultCGOInspection(t *testing.T) {
+	root := baseSyntheticModule(t)
+	writeFiles(t, root, map[string]string{
+		"pure/cgo_only_test.go": `//go:build cgo
+
+package pure
+
+import (
+	"os/exec"
+	"testing"
+)
+
+func TestCgoExec(t *testing.T) {
+	_ = exec.Command("true")
+}
+`,
+	})
+	// Default Analyze inspects both CGO_ENABLED=0 and CGO_ENABLED=1, so the cgo-tagged
+	// test file importing os/exec MUST flip the package to non-hermetic.
+	res := analyzeOne(t, root, "./pure", false)
+	if res.Hermetic {
+		t.Fatalf("package with //go:build cgo test importing os/exec must be non-hermetic")
+	}
+	foundExec := false
+	for _, r := range res.Reasons {
+		if r.Code == "import:os/exec" {
+			foundExec = true
+			break
+		}
+	}
+	if !foundExec {
+		t.Fatalf("expected import:os/exec reason from cgo-enabled scan, got: %+v", res.Reasons)
+	}
+}
+
+func TestUntrackedAbsolutePathReadRejectedWhileScratchDirAllowed(t *testing.T) {
+	// 1. Direct absolute path read outside module root is rejected.
+	rootAbs := baseSyntheticModule(t)
+	writeFiles(t, rootAbs, map[string]string{
+		"pure/abs_test.go": `package pure
+
+import (
+	"os"
+	"testing"
+)
+
+func TestAbsRead(t *testing.T) {
+	_, _ = os.ReadFile("/var/tmp/pig-fixture")
+}
+`,
+	})
+	resAbs := analyzeOne(t, rootAbs, "./pure", false)
+	if resAbs.Hermetic {
+		t.Fatalf("test reading untracked absolute path /var/tmp/pig-fixture must be non-hermetic")
+	}
+	foundCode := false
+	for _, r := range resAbs.Reasons {
+		if r.Code == "external-path-read" {
+			foundCode = true
+			break
+		}
+	}
+	if !foundCode {
+		t.Fatalf("expected external-path-read reason, got: %+v", resAbs.Reasons)
+	}
+
+	// 2. Variable-bound absolute path read is also rejected even when another test uses t.TempDir().
+	rootBound := baseSyntheticModule(t)
+	writeFiles(t, rootBound, map[string]string{
+		"pure/bound_test.go": `package pure
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestScratch(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "ok.txt")
+	_ = os.WriteFile(p, []byte("hi"), 0o644)
+	_, _ = os.ReadFile(p)
+}
+
+func TestBoundAbs(t *testing.T) {
+	const ext = "/var/tmp/pig-fixture"
+	_, _ = os.ReadFile(ext)
+}
+`,
+	})
+	resBound := analyzeOne(t, rootBound, "./pure", false)
+	if resBound.Hermetic {
+		t.Fatalf("test reading variable-bound absolute path must be non-hermetic")
+	}
+
+	// 3. Scratch-directory reads inside t.TempDir() remain eligible for caching.
+	rootScratch := baseSyntheticModule(t)
+	writeFiles(t, rootScratch, map[string]string{
+		"pure/scratch_test.go": `package pure
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestTempDirReadWrite(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "data.txt")
+	if err := os.WriteFile(p, []byte("ok"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(p)
+	if err != nil || string(got) != "ok" {
+		t.Fatalf("got %q (%v)", got, err)
+	}
+}
+`,
+	})
+	resScratch := analyzeOne(t, rootScratch, "./pure", false)
+	if !resScratch.Hermetic {
+		t.Fatalf("test reading only from t.TempDir() should remain hermetic, got reasons: %+v", resScratch.Reasons)
+	}
+}
+
+func TestCheckFailsWhenExpectedPackageNotAnalyzed(t *testing.T) {
+	root := baseSyntheticModule(t)
+	writeFiles(t, root, map[string]string{
+		"impure/impure.go": `package impure
+
+func Hello() string { return "hi" }
+`,
+		"impure/impure_test.go": `package impure
+
+import (
+	"os"
+	"testing"
+)
+
+func TestEnv(t *testing.T) {
+	_ = os.Getenv("PATH")
+}
+`,
+		"expect.txt": "./pure\n./impure\n",
+	})
+
+	// Passing positional ./pure alongside --expect-hermetic containing ./pure and ./impure
+	// leaves ./impure unanalyzed and MUST exit nonzero rather than silently passing.
+	var out, errBuf bytes.Buffer
+	code := run([]string{"--root", root, "--check", "--expect-hermetic", filepath.Join(root, "expect.txt"), "./pure"}, &out, &errBuf)
+	if code == 0 {
+		t.Fatalf("expected --check with unverified expectation ./impure to fail, got exit 0")
+	}
+	if !strings.Contains(errBuf.String(), "UNVERIFIED ./impure") {
+		t.Fatalf("expected UNVERIFIED ./impure diagnostic, got: %s", errBuf.String())
+	}
+
+	// When expectation file lists only ./pure and ./pure is analyzed, --check passes.
+	writeFiles(t, root, map[string]string{"expect-pure.txt": "./pure\n"})
+	out.Reset()
+	errBuf.Reset()
+	code = run([]string{"--root", root, "--check", "--expect-hermetic", filepath.Join(root, "expect-pure.txt"), "./pure"}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("expected --check with all expectations verified to pass, got exit %d: %s", code, errBuf.String())
 	}
 }

@@ -28,6 +28,9 @@ const (
 	outputIDLen      = 32
 	envelopeHeaderSz = len(envelopeMagic) + outputIDLen
 	emptySHA256Hex   = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+	// DefaultMaxRemoteBytes caps a single remote cache object payload (plus envelope header)
+	// so an oversized or hostile remote response cannot OOM the helper process.
+	DefaultMaxRemoteBytes int64 = 128 << 20 // 128 MiB
 )
 
 // S3Config configures the zero-external-dependency S3/R2-compatible remote backend.
@@ -44,6 +47,7 @@ type S3Config struct {
 	PathStyle            bool // force path-style URLs even when Endpoint is empty
 	Timeout              time.Duration
 	MaxConsecutiveErrors int
+	MaxObjectBytes       int64
 	Client               *http.Client
 	Now                  func() time.Time
 }
@@ -99,6 +103,9 @@ func NewS3Backend(cfg S3Config) (*S3Backend, error) {
 	}
 	if cfg.MaxConsecutiveErrors <= 0 {
 		cfg.MaxConsecutiveErrors = 5
+	}
+	if cfg.MaxObjectBytes <= 0 {
+		cfg.MaxObjectBytes = DefaultMaxRemoteBytes
 	}
 	client := cfg.Client
 	if client == nil {
@@ -195,8 +202,11 @@ func (b *S3Backend) Get(ctx context.Context, actionHex string) ([]byte, []byte, 
 		b.recordFailure()
 		return nil, nil, time.Time{}, false, err
 	}
+	drainBody := true
 	defer func() {
-		_, _ = io.Copy(io.Discard, resp.Body)
+		if drainBody {
+			_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 64<<10))
+		}
 		_ = resp.Body.Close()
 	}()
 
@@ -209,10 +219,22 @@ func (b *S3Backend) Get(ctx context.Context, actionHex string) ([]byte, []byte, 
 		return nil, nil, time.Time{}, false, fmt.Errorf("s3 get %s: HTTP %d", actionHex[:min(len(actionHex), 12)], resp.StatusCode)
 	}
 
-	raw, err := io.ReadAll(resp.Body)
+	maxWireBytes := b.cfg.MaxObjectBytes + int64(envelopeHeaderSz)
+	if resp.ContentLength > maxWireBytes {
+		drainBody = false
+		b.recordSuccess()
+		return nil, nil, time.Time{}, false, nil
+	}
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxWireBytes+1))
 	if err != nil {
+		drainBody = false
 		b.recordFailure()
 		return nil, nil, time.Time{}, false, err
+	}
+	if int64(len(raw)) > maxWireBytes {
+		drainBody = false
+		b.recordSuccess()
+		return nil, nil, time.Time{}, false, nil
 	}
 	outputID, payload, err := decodeEnvelope(raw)
 	if err != nil {

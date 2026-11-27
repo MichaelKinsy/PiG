@@ -106,7 +106,6 @@ parity  ./test/parity/interface-closure/autobind/rules
 shared  ./automation/ci/bugledger
 shared  ./automation/ci/changelogfrag
 shared  ./automation/ci/cidag
-shared  ./automation/ci/cidag/cmd/cidag
 shared  ./automation/ci/divguard
 shared  ./automation/ci/perflint
 shared  ./automation/ci/portlint

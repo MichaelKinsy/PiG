@@ -96,9 +96,43 @@ emit_env() {
   fi
 }
 
+clear_env() {
+  local key="$1"
+  if [[ -n "$GITHUB_ENV_FILE" ]]; then
+    printf '%s=\n' "$key" >> "$GITHUB_ENV_FILE"
+  fi
+  if [[ "$PRINT_ENV" == "1" ]]; then
+    printf 'unset %s\n' "$key"
+  fi
+}
+
+# Encode a single argument for Go's cmd/internal/quoted.Split parser (used by GOCACHEPROG).
+# Plain paths without whitespace or quotes stay bare; paths containing spaces or quotes
+# are wrapped in single quotes (or double quotes if the path contains a single quote).
+quote_go_arg() {
+  local arg="$1"
+  local sq="'"
+  local dq='"'
+  case "$arg" in
+    *"$sq"*)
+      case "$arg" in
+        *"$dq"*) return 1 ;;
+        *) printf '"%s"' "$arg" ;;
+      esac
+      ;;
+    *"$dq"*|*[[:space:]]*)
+      printf '%s%s%s' "$sq" "$arg" "$sq"
+      ;;
+    *)
+      printf '%s' "$arg"
+      ;;
+  esac
+}
+
 fallback_local() {
   local reason="$1"
   echo "[setup-gocacheprog] falling back to local Go disk cache ($reason)" >&2
+  clear_env "GOCACHEPROG"
   emit_output "enabled" "false"
   emit_output "mode" "local-fallback"
   emit_output "gocacheprog" ""
@@ -265,7 +299,10 @@ fi
 if [[ "$VERBOSE" == "1" || "$VERBOSE" == "true" ]]; then
   emit_env "PIG_GOCACHE_VERBOSE" "1"
 fi
-emit_env "GOCACHEPROG" "$NATIVE_BIN"
+if ! QUOTED_NATIVE_BIN=$(quote_go_arg "$NATIVE_BIN"); then
+  fallback_local "helper path contains both single and double quotes and cannot be encoded for GOCACHEPROG"
+fi
+emit_env "GOCACHEPROG" "$QUOTED_NATIVE_BIN"
 
 emit_output "enabled" "true"
 emit_output "mode" "remote-${EFFECTIVE_MODE}"

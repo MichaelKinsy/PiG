@@ -425,23 +425,23 @@ func TestSetupScriptFallbackAndPoisoningGuard(t *testing.T) {
 		return string(eb), string(ob), string(out)
 	}
 
-	t.Run("missing bucket falls back cleanly to local disk", func(t *testing.T) {
+	t.Run("missing bucket falls back cleanly to local disk and clears GOCACHEPROG", func(t *testing.T) {
 		envText, outText, _ := runWrapper(t)
-		if strings.Contains(envText, "GOCACHEPROG=") {
-			t.Fatalf("expected GOCACHEPROG unset on fallback, got:\n%s", envText)
+		if strings.TrimSpace(envText) != "GOCACHEPROG=" {
+			t.Fatalf("expected fallback to clear GOCACHEPROG= in GITHUB_ENV, got:\n%s", envText)
 		}
 		if !strings.Contains(outText, "enabled=false") || !strings.Contains(outText, "mode=local-fallback") {
 			t.Fatalf("unexpected outputs:\n%s", outText)
 		}
 	})
 
-	t.Run("fork PR with bucket but no credentials falls back cleanly", func(t *testing.T) {
+	t.Run("fork PR with bucket but no credentials falls back cleanly and clears GOCACHEPROG", func(t *testing.T) {
 		envText, outText, _ := runWrapper(t,
 			"PIG_GOCACHE_BUCKET=pig-ci-cache",
 			"GITHUB_EVENT_NAME=pull_request",
 		)
-		if strings.Contains(envText, "GOCACHEPROG=") {
-			t.Fatalf("expected GOCACHEPROG unset without credentials, got:\n%s", envText)
+		if strings.TrimSpace(envText) != "GOCACHEPROG=" {
+			t.Fatalf("expected fallback to clear GOCACHEPROG= without credentials, got:\n%s", envText)
 		}
 		if !strings.Contains(outText, "enabled=false") {
 			t.Fatalf("expected enabled=false, got:\n%s", outText)
@@ -481,4 +481,349 @@ func TestSetupScriptFallbackAndPoisoningGuard(t *testing.T) {
 			t.Fatalf("expected remote-readwrite output, got:\n%s", outText)
 		}
 	})
+}
+
+func TestSelfCheckProbesDiskWritability(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod 0555 directory read-only check runs on Unix")
+	}
+	if os.Geteuid() == 0 {
+		t.Skip("root bypasses POSIX read-only directory permissions")
+	}
+	readOnlyDir := filepath.Join(t.TempDir(), "ro-cache")
+	if err := os.MkdirAll(filepath.Join(readOnlyDir, "obj"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(filepath.Join(readOnlyDir, "obj"), 0o555); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(readOnlyDir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chmod(readOnlyDir, 0o755)
+		_ = os.Chmod(filepath.Join(readOnlyDir, "obj"), 0o755)
+	})
+
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"-self-check", "-disk-dir", readOnlyDir}, strings.NewReader(""), &stdout, &stderr)
+	if code == 0 {
+		t.Fatalf("expected non-zero exit when disk-dir is not writable, got 0 (stdout=%q stderr=%q)", stdout.String(), stderr.String())
+	}
+
+	// Writable directory passes self-check and leaves no probe file behind.
+	writableDir := t.TempDir()
+	stdout.Reset()
+	stderr.Reset()
+	code = run([]string{"-self-check", "-disk-dir", writableDir}, strings.NewReader(""), &stdout, &stderr)
+	if code != 0 || !strings.HasPrefix(stdout.String(), "ok ") {
+		t.Fatalf("expected ok self-check on writable dir, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+	entries, err := os.ReadDir(filepath.Join(writableDir, "obj"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("self-check left probe files behind: %v", entries)
+	}
+}
+
+func TestWriteLocalRepairsCorruptExistingObjectOnRemoteHit(t *testing.T) {
+	mem, httpSrv := newMemS3Server(t)
+
+	action := sha256.Sum256([]byte("repair-corrupt-action"))
+	payload := []byte("full-valid-compiled-artifact-payload")
+	output := sha256.Sum256(payload)
+	framed, err := encodeEnvelope(output[:], payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	key := "/pig-cache/v1/" + hex.EncodeToString(action[:])[:2] + "/" + hex.EncodeToString(action[:])
+	mem.mu.Lock()
+	mem.objects[key] = framed
+	mem.mu.Unlock()
+
+	backend, err := NewS3Backend(S3Config{
+		Bucket:          "pig-cache",
+		Endpoint:        httpSrv.URL,
+		Region:          "auto",
+		Prefix:          "v1",
+		AccessKeyID:     "AKIA",
+		SecretAccessKey: "SECRET",
+		ReadOnly:        true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	diskDir := t.TempDir()
+	srv, err := NewServer(ServerConfig{DiskDir: diskDir, Remote: backend, ReadOnly: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Seed a truncated/corrupt local object AND matching meta with the true size,
+	// so handleGet misses on size and fetches the verified bytes from remote.
+	objPath := srv.objectPath(hex.EncodeToString(output[:]))
+	if err := os.MkdirAll(filepath.Dir(objPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(objPath, []byte("trunc"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	metaPath, _ := srv.entryPaths(hex.EncodeToString(action[:]))
+	if err := os.MkdirAll(filepath.Dir(metaPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	metaJSON, _ := json.Marshal(localMeta{OutputID: hex.EncodeToString(output[:]), Size: int64(len(payload)), TimeUnix: time.Now().Unix()})
+	if err := os.WriteFile(metaPath, metaJSON, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	c := startTestServer(t, srv)
+	resp := c.roundTrip(Request{ID: 1, Command: CmdGet, ActionID: action[:]}, nil)
+	if resp.Miss || resp.Err != "" {
+		t.Fatalf("expected repaired remote hit, got %+v", resp)
+	}
+	got, err := os.ReadFile(resp.DiskPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, payload) {
+		t.Fatalf("local object was not repaired: got %q, want %q", got, payload)
+	}
+	c.close()
+}
+
+func TestPruneDiskStoreBoundsSizeAndPreservesLivePaths(t *testing.T) {
+	diskDir := t.TempDir()
+	now := time.Date(2026, 11, 26, 12, 0, 0, 0, time.UTC)
+
+	srv, err := NewServer(ServerConfig{
+		DiskDir:      diskDir,
+		MaxDiskBytes: 256,
+		MaxDiskAge:   24 * time.Hour,
+		LiveGrace:    time.Hour,
+		Now:          func() time.Time { return now },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Seed an old entry (modified 3 days ago) that exceeds both age and size budget.
+	oldAction := sha256.Sum256([]byte("old-action"))
+	oldBody := bytes.Repeat([]byte("A"), 200)
+	oldOut := sha256.Sum256(oldBody)
+	oldObjPath, err := srv.writeLocal(hex.EncodeToString(oldAction[:]), oldOut[:], oldBody, now.Add(-72*time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldMetaPath, _ := srv.entryPaths(hex.EncodeToString(oldAction[:]))
+	// Unpin and backdate the old files as if written by a prior process days ago.
+	srv.mu.Lock()
+	delete(srv.inUseObj, oldObjPath)
+	delete(srv.inUseObj, oldMetaPath)
+	srv.mu.Unlock()
+	oldTime := now.Add(-72 * time.Hour)
+	if err := os.Chtimes(oldObjPath, oldTime, oldTime); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(oldMetaPath, oldTime, oldTime); err != nil {
+		t.Fatal(err)
+	}
+
+	// Write a fresh entry through the live protocol; its DiskPath is pinned and must survive close pruning.
+	c := startTestServer(t, srv)
+	liveAction := sha256.Sum256([]byte("live-action"))
+	liveBody := bytes.Repeat([]byte("B"), 200)
+	liveOut := sha256.Sum256(liveBody)
+	putResp := c.roundTrip(Request{
+		ID:       1,
+		Command:  CmdPut,
+		ActionID: liveAction[:],
+		OutputID: liveOut[:],
+		BodySize: int64(len(liveBody)),
+	}, liveBody)
+	if putResp.Err != "" {
+		t.Fatalf("live put failed: %+v", putResp)
+	}
+	c.close()
+
+	// Old entry (both meta and object) must be evicted.
+	if _, err := os.Stat(oldMetaPath); !os.IsNotExist(err) {
+		t.Errorf("expected old meta %s to be evicted, stat err=%v", oldMetaPath, err)
+	}
+	if _, err := os.Stat(oldObjPath); !os.IsNotExist(err) {
+		t.Errorf("expected old object %s to be evicted, stat err=%v", oldObjPath, err)
+	}
+	// Live DiskPath must be preserved.
+	if _, err := os.Stat(putResp.DiskPath); err != nil {
+		t.Errorf("expected live DiskPath %s to remain intact, stat err=%v", putResp.DiskPath, err)
+	}
+}
+
+func TestS3GetRejectsOversizedStreamWithoutDraining(t *testing.T) {
+	var bytesWritten atomic.Int64
+	srvHTTP := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Stream chunked response (no Content-Length) much larger than MaxObjectBytes.
+		w.WriteHeader(http.StatusOK)
+		flusher, _ := w.(http.Flusher)
+		chunk := bytes.Repeat([]byte("X"), 4096)
+		for range 200 {
+			n, err := w.Write(chunk)
+			bytesWritten.Add(int64(n))
+			if err != nil {
+				return
+			}
+			if flusher != nil {
+				flusher.Flush()
+			}
+		}
+	}))
+	t.Cleanup(srvHTTP.Close)
+
+	backend, err := NewS3Backend(S3Config{
+		Bucket:          "pig-cache",
+		Endpoint:        srvHTTP.URL,
+		Region:          "auto",
+		AccessKeyID:     "AKIA",
+		SecretAccessKey: "SECRET",
+		ReadOnly:        true,
+		MaxObjectBytes:  1024, // tiny limit
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	action := sha256.Sum256([]byte("oversized"))
+	outID, body, _, hit, err := backend.Get(context.Background(), hex.EncodeToString(action[:]))
+	if err != nil {
+		t.Fatalf("oversized object should be treated as miss, not error: %v", err)
+	}
+	if hit || outID != nil || body != nil {
+		t.Fatalf("expected cache miss for oversized object, got hit=%v len=%d", hit, len(body))
+	}
+	if backend.CircuitOpen() {
+		t.Fatalf("oversized miss must not trip the circuit breaker")
+	}
+}
+
+func TestSetupScriptEnableThenLocalClearsEnvAndQuotesSpacePath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell wrapper test runs on Unix")
+	}
+	repoRoot, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	script := filepath.Join(repoRoot, "automation", "ci", "setup-gocacheprog.sh")
+	tmp := t.TempDir()
+	envFile := filepath.Join(tmp, "github.env")
+	outFile := filepath.Join(tmp, "github.out")
+	// Use a bin-dir containing spaces to test Go quoted.Split quoting.
+	binDirWithSpaces := filepath.Join(tmp, "runner temp with spaces", "bin")
+	diskDir := filepath.Join(tmp, "runner temp with spaces", "disk")
+
+	baseCleanEnv := func() []string {
+		var env []string
+		for _, kv := range os.Environ() {
+			k, _, _ := strings.Cut(kv, "=")
+			if strings.HasPrefix(k, "PIG_GOCACHE") || strings.HasPrefix(k, "AWS_") || strings.HasPrefix(k, "GITHUB_") || k == "GOCACHEPROG" {
+				continue
+			}
+			env = append(env, kv)
+		}
+		return env
+	}
+
+	// Step 1: Enable remote cache into a path containing spaces.
+	cmd1 := exec.Command("bash", script,
+		"--github-env", envFile,
+		"--github-output", outFile,
+		"--bin-dir", binDirWithSpaces,
+		"--disk-dir", diskDir,
+		"--print-env",
+	)
+	cmd1.Dir = repoRoot
+	cmd1.Env = append(baseCleanEnv(),
+		"PIG_GOCACHE_BUCKET=pig-ci-cache",
+		"PIG_GOCACHE_ACCESS_KEY_ID=AKIA",
+		"PIG_GOCACHE_SECRET_ACCESS_KEY=SECRET",
+		"PIG_GOCACHE_MODE=readonly",
+		"GITHUB_EVENT_NAME=pull_request",
+	)
+	out1, err := cmd1.CombinedOutput()
+	if err != nil {
+		t.Fatalf("enable step failed: %v\n%s", err, out1)
+	}
+	env1, err := os.ReadFile(envFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out1Text, err := os.ReadFile(outFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expectedRawBin := filepath.Join(binDirWithSpaces, "pig-gocacheprog")
+	if !strings.Contains(string(env1), "GOCACHEPROG='"+expectedRawBin+"'") {
+		t.Fatalf("expected single-quoted GOCACHEPROG for path with spaces, got env:\n%s", env1)
+	}
+	if !strings.Contains(string(out1Text), "gocacheprog="+expectedRawBin+"\n") {
+		t.Fatalf("expected raw unquoted gocacheprog action output, got:\n%s", out1Text)
+	}
+
+	// Verify real `go env` / `go test` accepts the quoted GOCACHEPROG with spaces!
+	var exportedProg string
+	for line := range strings.SplitSeq(string(env1), "\n") {
+		if val, ok := strings.CutPrefix(line, "GOCACHEPROG="); ok {
+			exportedProg = val
+		}
+	}
+	modDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(modDir, "go.mod"), []byte("module example.com/spacetest\n\ngo 1.24.0\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(modDir, "s_test.go"), []byte("package spacetest\nimport \"testing\"\nfunc TestS(t *testing.T) {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	goCmd := exec.Command("go", "test", ".")
+	goCmd.Dir = modDir
+	goCmd.Env = append(baseCleanEnv(),
+		"GOCACHEPROG="+exportedProg,
+		"PIG_GOCACHE_DISK_DIR="+diskDir,
+	)
+	if goOut, err := goCmd.CombinedOutput(); err != nil {
+		t.Fatalf("go test failed with quoted space path GOCACHEPROG=%s: %v\n%s", exportedProg, err, goOut)
+	}
+
+	// Step 2: Re-run with --mode local using the same GITHUB_ENV file and --print-env.
+	// Must clear previously exported GOCACHEPROG in GITHUB_ENV and emit `unset GOCACHEPROG`.
+	cmd2 := exec.Command("bash", script,
+		"--mode", "local",
+		"--github-env", envFile,
+		"--github-output", outFile,
+		"--print-env",
+	)
+	cmd2.Dir = repoRoot
+	cmd2.Env = append(baseCleanEnv(), "GOCACHEPROG="+exportedProg)
+	out2, err := cmd2.CombinedOutput()
+	if err != nil {
+		t.Fatalf("local fallback step failed: %v\n%s", err, out2)
+	}
+	if !strings.Contains(string(out2), "unset GOCACHEPROG") {
+		t.Fatalf("expected --print-env on local fallback to emit unset GOCACHEPROG, got:\n%s", out2)
+	}
+	env2, err := os.ReadFile(envFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Last GOCACHEPROG assignment in GITHUB_ENV must be empty ("GOCACHEPROG=").
+	lastVal := "<unset>"
+	for line := range strings.SplitSeq(string(env2), "\n") {
+		if val, ok := strings.CutPrefix(line, "GOCACHEPROG="); ok {
+			lastVal = val
+		}
+	}
+	if lastVal != "" {
+		t.Fatalf("expected last GITHUB_ENV entry for GOCACHEPROG to be cleared empty, got %q\nfull env:\n%s", lastVal, env2)
+	}
 }

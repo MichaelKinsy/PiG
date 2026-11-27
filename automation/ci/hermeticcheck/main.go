@@ -30,6 +30,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 	root := fs.String("root", ".", "repository root directory")
 	platformsFlag := fs.String("platforms", "linux/amd64,darwin/arm64,windows/amd64", "comma-separated GOOS/GOARCH targets to inspect")
+	cgoFlag := fs.String("cgo", "0,1", "comma-separated CGO_ENABLED values to inspect (default: 0,1 to cover both cgo-disabled and cgo-enabled runners)")
 	listHermetic := fs.Bool("list-hermetic", false, "print one provably hermetic tested package import path per line")
 	listNonHermetic := fs.Bool("list-nonhermetic", false, "print one non-hermetic tested package import path per line")
 	relPaths := fs.Bool("rel", false, "print relative ./pkg paths instead of full import paths for --list-*")
@@ -62,6 +63,11 @@ Flags:
 		_, _ = fmt.Fprintf(stderr, "hermeticcheck: %v\n", err)
 		return 2
 	}
+	cgoValues, err := parseCGOValues(*cgoFlag)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "hermeticcheck: %v\n", err)
+		return 2
+	}
 
 	patterns := fs.Args()
 	var expectList []string
@@ -90,6 +96,7 @@ Flags:
 		Platforms:    platforms,
 		IncludeEmpty: *includeEmpty || *checkFlag,
 		Race:         *raceFlag,
+		CGOValues:    cgoValues,
 	})
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "hermeticcheck: %v\n", err)
@@ -145,14 +152,32 @@ func checkSummary(sum *Summary, expectList []string, stderr io.Writer) int {
 	for _, w := range expectList {
 		wantSet[w] = true
 	}
+	matchedExpect := make(map[string]bool, len(expectList))
 	failed := 0
 	for _, p := range sum.Packages {
-		if len(wantSet) > 0 && !wantSet[p.ImportPath] && !wantSet[p.RelPath] {
-			continue
+		if len(wantSet) > 0 {
+			matched := false
+			if wantSet[p.ImportPath] {
+				matchedExpect[p.ImportPath] = true
+				matched = true
+			}
+			if wantSet[p.RelPath] {
+				matchedExpect[p.RelPath] = true
+				matched = true
+			}
+			if !matched {
+				continue
+			}
 		}
 		if !p.Hermetic {
 			failed++
 			_, _ = fmt.Fprintf(stderr, "NON-HERMETIC %s: %s\n", p.RelPath, summarizeReasons(p.Reasons))
+		}
+	}
+	for _, w := range expectList {
+		if !matchedExpect[w] {
+			failed++
+			_, _ = fmt.Fprintf(stderr, "UNVERIFIED %s: expected package was not analyzed\n", w)
 		}
 	}
 	if failed > 0 {
@@ -273,6 +298,31 @@ func parsePlatforms(raw string) ([]TargetPlatform, error) {
 	}
 	if len(out) == 0 {
 		return nil, fmt.Errorf("no valid platforms in %q", raw)
+	}
+	return out, nil
+}
+
+func parseCGOValues(raw string) ([]string, error) {
+	if strings.TrimSpace(raw) == "" {
+		return []string{"0", "1"}, nil
+	}
+	seen := make(map[string]bool)
+	var out []string
+	for entry := range strings.SplitSeq(raw, ",") {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+		if entry != "0" && entry != "1" {
+			return nil, fmt.Errorf("invalid cgo value %q: expected 0 or 1", entry)
+		}
+		if !seen[entry] {
+			seen[entry] = true
+			out = append(out, entry)
+		}
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("no valid cgo values in %q", raw)
 	}
 	return out, nil
 }

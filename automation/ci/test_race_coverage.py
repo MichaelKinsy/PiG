@@ -126,5 +126,28 @@ class RaceCoverageTests(unittest.TestCase):
         self.assertEqual(0, run_gate(files, "", exclusions="ceiling 1\n./p why\n").returncode)
 
 
+    def test_nested_module_entry_covers_subpackages_and_no_subpackage_listed(self):
+        # Verify real automation/ci/race-packages.txt has no entry pointing inside a nested module
+        # (e.g. ./automation/ci/cidag/cmd/cidag when ./automation/ci/cidag/go.mod exists),
+        # because test-race-nightly.sh runs plain entries from the root module.
+        repo_root = Path(__file__).resolve().parents[2]
+        list_path = repo_root / "automation" / "ci" / "race-packages.txt"
+        nested_roots = sorted(
+            str(p.parent.relative_to(repo_root))
+            for p in repo_root.rglob("go.mod")
+            if p.parent != repo_root and ".upstream" not in p.parts and "node_modules" not in p.parts
+        )
+        for raw in list_path.read_text(encoding="utf-8").splitlines():
+            line = raw.split("#", 1)[0].strip()
+            if not line:
+                continue
+            parts = line.split()
+            if len(parts) < 2 or parts[0] == "exempt":
+                continue
+            rel = parts[1].removeprefix("./")
+            for mod in nested_roots:
+                if rel != mod and rel.startswith(mod + "/"):
+                    self.fail(f"race-packages.txt lists {parts[1]} inside nested module ./{mod}; list only ./{mod}")
+
 if __name__ == "__main__":
     unittest.main()

@@ -22,9 +22,9 @@
 
 # Optional DAG selector switch via PIG_CI_DAG (default: off):
 #   off     (default, or unset) existing static ci-tiers.txt behavior, 100% unchanged.
-#   shadow  computes the affected-package DAG plan (via automation/ci/cidag/cmd/cidag) into PIG_CI_DAG_PLAN_OUT (default
-#           ci-plan.json when set) and optional GITHUB_STEP_SUMMARY, while emitting the exact static ci-tiers.txt outputs
-#           with zero gating changes. Any selector failure logs a warning and falls back cleanly.
+#   shadow  computes the affected-package DAG plan (via automation/ci/cidag/cmd/cidag) into PIG_CI_DAG_PLAN_OUT (written
+#           only when PIG_CI_DAG_PLAN_OUT is set) and optional GITHUB_STEP_SUMMARY, while emitting the exact static
+#           ci-tiers.txt outputs with zero gating changes. Any selector failure logs a warning and falls back cleanly.
 #   on      intersects the pull_request plan with the fail-closed DAG selector (still honoring global-invariant gates,
 #           unowned -> full, >300 files -> full, non-pull_request -> full, and failing closed to the static table on any
 #           selector error).
@@ -33,7 +33,7 @@
 #   PIG_CI_DAG_BASE         git base ref/SHA for the diff (e.g., github.event.pull_request.base.sha)
 #   PIG_CI_DAG_HEAD         git head ref/SHA (default: HEAD)
 #   PIG_CI_DAG_FILES_FROM   optional file listing changed paths (one per line) instead of git diff
-#   PIG_CI_DAG_PLAN_OUT     optional path to write ci-plan.json (default in shadow mode: ci-plan.json if unset? only when set, to avoid dirtying trees)
+#   PIG_CI_DAG_PLAN_OUT     optional path to write ci-plan.json (shadow mode writes a plan file only when this is set)
 #   PIG_CI_DAG_BIN          optional prebuilt cidag binary (otherwise runs `go run ./automation/ci/cidag/cmd/cidag`)
 #
 # Usage: ci-plan.sh <event> <mode> <full-requested> [tiers-file]
@@ -72,28 +72,50 @@ case "$dag_mode" in
     ;;
 esac
 
+resolve_caller_path() {
+  local p="$1" caller_dir="$2"
+  if [ -z "$p" ] || [ "$p" = "-" ]; then
+    printf '%s' "$p"
+    return 0
+  fi
+  case "$p" in
+    /*) printf '%s' "$p" ;;
+    *) printf '%s/%s' "$caller_dir" "$p" ;;
+  esac
+}
+
 run_cidag() {
-  local root
+  local caller_dir root
+  caller_dir=$(pwd)
   root=$(cd -- "$(dirname "$0")/../.." && pwd)
+  local resolved_table resolved_files_from resolved_plan_out resolved_summary
+  resolved_table=$(resolve_caller_path "$table" "$caller_dir")
+  resolved_files_from=$(resolve_caller_path "${PIG_CI_DAG_FILES_FROM:-}" "$caller_dir")
+  resolved_plan_out=$(resolve_caller_path "${PIG_CI_DAG_PLAN_OUT:-}" "$caller_dir")
+  resolved_summary=$(resolve_caller_path "${GITHUB_STEP_SUMMARY:-}" "$caller_dir")
   local -a args=(
     -root "$root"
     -mode "$dag_mode"
     -event "$event"
     -light-mode "$mode"
-    -tiers-file "$table"
+    -tiers-file "$resolved_table"
   )
   [ "$requested" = true ] && args+=(-full-requested)
-  if [ -n "${PIG_CI_DAG_FILES_FROM:-}" ]; then
-    args+=(-files-from "$PIG_CI_DAG_FILES_FROM")
+  if [ -n "$resolved_files_from" ]; then
+    args+=(-files-from "$resolved_files_from")
   elif [ -n "${PIG_CI_DAG_BASE:-}" ]; then
     args+=(-base "$PIG_CI_DAG_BASE" -head "${PIG_CI_DAG_HEAD:-HEAD}")
   else
     return 1
   fi
-  [ -n "${PIG_CI_DAG_PLAN_OUT:-}" ] && args+=(-plan-out "$PIG_CI_DAG_PLAN_OUT")
-  [ -n "${GITHUB_STEP_SUMMARY:-}" ] && args+=(-summary "$GITHUB_STEP_SUMMARY")
+  [ -n "$resolved_plan_out" ] && args+=(-plan-out "$resolved_plan_out")
+  [ -n "$resolved_summary" ] && args+=(-summary "$resolved_summary")
   if [ -n "${PIG_CI_DAG_BIN:-}" ]; then
-    (cd "$root" && "$PIG_CI_DAG_BIN" "${args[@]}" "$@")
+    local resolved_bin="$PIG_CI_DAG_BIN"
+    case "$resolved_bin" in
+      */*) resolved_bin=$(resolve_caller_path "$resolved_bin" "$caller_dir") ;;
+    esac
+    (cd "$root" && "$resolved_bin" "${args[@]}" "$@")
   else
     (cd "$root/automation/ci/cidag" && GOWORK=off go run ./cmd/cidag "${args[@]}" "$@")
   fi

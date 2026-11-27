@@ -50,6 +50,9 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	anonymous := fs.Bool("anonymous", parseEnvBool("PIG_GOCACHE_ANONYMOUS"), "allow unsigned remote GETs for public-read buckets (implies --readonly)")
 	timeout := fs.Duration("timeout", parseEnvDuration("PIG_GOCACHE_TIMEOUT", 10*time.Second), "per-request remote HTTP timeout")
 	maxErrors := fs.Int("max-remote-errors", 5, "consecutive remote errors before bypassing remote for this process")
+	maxDiskBytes := fs.Int64("max-disk-bytes", parseEnvInt64("PIG_GOCACHE_MAX_DISK_BYTES", DefaultMaxDiskBytes), "maximum local disk cache size in bytes (0 = default)")
+	maxDiskAge := fs.Duration("max-disk-age", parseEnvDuration("PIG_GOCACHE_MAX_DISK_AGE", DefaultMaxDiskAge), "maximum local disk cache entry age (0 = default)")
+	maxRemoteBytes := fs.Int64("max-remote-bytes", parseEnvInt64("PIG_GOCACHE_MAX_REMOTE_BYTES", DefaultMaxRemoteBytes), "maximum remote object size in bytes before treating as a miss")
 	verbose := fs.Bool("verbose", parseEnvBool("PIG_GOCACHE_VERBOSE"), "log cache summary statistics to stderr on close")
 	selfCheck := fs.Bool("self-check", false, "verify configuration and local disk writability, print mode, and exit")
 
@@ -78,6 +81,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			Anonymous:            *anonymous,
 			Timeout:              *timeout,
 			MaxConsecutiveErrors: *maxErrors,
+			MaxObjectBytes:       *maxRemoteBytes,
 		})
 		if err != nil {
 			// Never fail the build when credentials are missing (e.g. fork PRs) or endpoint is misconfigured.
@@ -93,11 +97,13 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	}
 
 	srv, err := NewServer(ServerConfig{
-		DiskDir:  *diskDir,
-		Remote:   remote,
-		ReadOnly: effectiveReadOnly,
-		Verbose:  *verbose,
-		Log:      stderr,
+		DiskDir:      *diskDir,
+		Remote:       remote,
+		ReadOnly:     effectiveReadOnly,
+		Verbose:      *verbose,
+		Log:          stderr,
+		MaxDiskBytes: *maxDiskBytes,
+		MaxDiskAge:   *maxDiskAge,
 	})
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "gocacheprog: %v\n", err)
@@ -105,6 +111,10 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	}
 
 	if *selfCheck {
+		if err := srv.ProbeDiskWritable(); err != nil {
+			_, _ = fmt.Fprintf(stderr, "gocacheprog: self-check disk write probe failed: %v\n", err)
+			return 1
+		}
 		_, _ = fmt.Fprintf(stdout, "ok mode=%s disk=%s\n", mode, srv.diskDir)
 		return 0
 	}
@@ -140,6 +150,17 @@ func parseEnvDuration(name string, fallback time.Duration) time.Duration {
 	}
 	if secs, err := strconv.Atoi(raw); err == nil && secs > 0 {
 		return time.Duration(secs) * time.Second
+	}
+	return fallback
+}
+
+func parseEnvInt64(name string, fallback int64) int64 {
+	raw := strings.TrimSpace(os.Getenv(name))
+	if raw == "" {
+		return fallback
+	}
+	if n, err := strconv.ParseInt(raw, 10, 64); err == nil && n > 0 {
+		return n
 	}
 	return fallback
 }

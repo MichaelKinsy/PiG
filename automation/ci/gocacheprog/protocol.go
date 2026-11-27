@@ -13,9 +13,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -71,26 +74,46 @@ type Stats struct {
 
 // Server serves the GOCACHEPROG JSON protocol over stdin/stdout backed by a
 // local content-addressed disk store and an optional RemoteBackend.
-type Server struct {
-	diskDir  string
-	remote   RemoteBackend
-	readOnly bool // disables remote writes; local disk writes always work for Go builds
-	verbose  bool
-	logw     io.Writer
-	workers  int
+const (
+	// DefaultMaxDiskBytes caps the persistent local backing store at 4 GiB.
+	DefaultMaxDiskBytes int64 = 4 << 30
+	// DefaultMaxDiskAge expires local cache files untouched for more than 7 days.
+	DefaultMaxDiskAge = 7 * 24 * time.Hour
+	// minLiveGrace protects files touched by concurrent Go processes from eviction.
+	minLiveGrace = 10 * time.Minute
+)
 
-	mu    sync.Mutex
-	stats Stats
+type Server struct {
+	diskDir      string
+	remote       RemoteBackend
+	readOnly     bool // disables remote writes; local disk writes always work for Go builds
+	verbose      bool
+	logw         io.Writer
+	workers      int
+	maxDiskBytes int64
+	maxDiskAge   time.Duration
+	liveGrace    time.Duration
+	now          func() time.Time
+
+	mu       sync.Mutex
+	stats    Stats
+	inUseObj map[string]bool
 }
 
 // ServerConfig configures a GOCACHEPROG Server.
 type ServerConfig struct {
-	DiskDir  string
-	Remote   RemoteBackend
-	ReadOnly bool
-	Verbose  bool
-	Log      io.Writer
-	Workers  int
+	DiskDir      string
+	Remote       RemoteBackend
+	ReadOnly     bool
+	Verbose      bool
+	Log          io.Writer
+	Workers      int
+	MaxDiskBytes int64
+	MaxDiskAge   time.Duration
+	// LiveGrace overrides the minimum age before an object not pinned by this
+	// process may be evicted (defaults to 10 minutes; tests may set a tiny value).
+	LiveGrace time.Duration
+	Now       func() time.Time
 }
 
 // NewServer constructs a GOCACHEPROG Server.
@@ -113,13 +136,34 @@ func NewServer(cfg ServerConfig) (*Server, error) {
 	if workers <= 0 {
 		workers = max(runtime.NumCPU(), 4)
 	}
+	maxDiskBytes := cfg.MaxDiskBytes
+	if maxDiskBytes <= 0 {
+		maxDiskBytes = DefaultMaxDiskBytes
+	}
+	maxDiskAge := cfg.MaxDiskAge
+	if maxDiskAge <= 0 {
+		maxDiskAge = DefaultMaxDiskAge
+	}
+	liveGrace := cfg.LiveGrace
+	if liveGrace <= 0 {
+		liveGrace = minLiveGrace
+	}
+	nowFn := cfg.Now
+	if nowFn == nil {
+		nowFn = func() time.Time { return time.Now().UTC() }
+	}
 	return &Server{
-		diskDir:  absDir,
-		remote:   cfg.Remote,
-		readOnly: cfg.ReadOnly,
-		verbose:  cfg.Verbose,
-		logw:     logw,
-		workers:  workers,
+		diskDir:      absDir,
+		remote:       cfg.Remote,
+		readOnly:     cfg.ReadOnly,
+		verbose:      cfg.Verbose,
+		logw:         logw,
+		workers:      workers,
+		maxDiskBytes: maxDiskBytes,
+		maxDiskAge:   maxDiskAge,
+		liveGrace:    liveGrace,
+		now:          nowFn,
+		inUseObj:     make(map[string]bool),
 	}, nil
 }
 
@@ -128,6 +172,26 @@ func (s *Server) Stats() Stats {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.stats
+}
+
+// ProbeDiskWritable verifies that s.diskDir (and its object shard root) can be
+// written by creating, closing, and removing a probe temporary file.
+func (s *Server) ProbeDiskWritable() error {
+	objRoot := filepath.Join(s.diskDir, "obj")
+	if err := os.MkdirAll(objRoot, 0o755); err != nil {
+		return err
+	}
+	f, err := os.CreateTemp(objRoot, ".probe-*")
+	if err != nil {
+		return err
+	}
+	name := f.Name()
+	closeErr := f.Close()
+	removeErr := os.Remove(name)
+	if closeErr != nil {
+		return closeErr
+	}
+	return removeErr
 }
 
 // Serve runs the GOCACHEPROG JSON-lines protocol until CmdClose or stdin EOF.
@@ -212,6 +276,7 @@ func (s *Server) Serve(ctx context.Context, r io.Reader, w io.Writer) error {
 			// Wait for all in-flight get/put operations (including remote uploads) to
 			// finish before replying to close so Go does not terminate us early.
 			wg.Wait()
+			s.pruneDiskStore()
 			if s.verbose {
 				st := s.Stats()
 				_, _ = fmt.Fprintf(s.logw, "gocacheprog: close stats local_hits=%d remote_hits=%d misses=%d puts=%d remote_puts=%d remote_errors=%d\n",
@@ -287,6 +352,7 @@ func (s *Server) handleGet(ctx context.Context, req Request) Response {
 			if outputID, err := hex.DecodeString(meta.OutputID); err == nil {
 				objPath := s.objectPath(meta.OutputID)
 				if info, err := os.Stat(objPath); err == nil && info.Size() == meta.Size {
+					s.markInUse(objPath, metaPath)
 					t := time.Unix(meta.TimeUnix, 0).UTC()
 					s.mu.Lock()
 					s.stats.LocalHits++
@@ -374,13 +440,35 @@ func (s *Server) handlePut(ctx context.Context, req Request, body []byte) Respon
 	}
 }
 
+func (s *Server) markInUse(objPath, metaPath string) {
+	s.mu.Lock()
+	s.inUseObj[objPath] = true
+	s.inUseObj[metaPath] = true
+	s.mu.Unlock()
+	now := s.now()
+	_ = os.Chtimes(objPath, now, now)
+	_ = os.Chtimes(metaPath, now, now)
+}
+
+func fileMatchesContent(path string, expected []byte) bool {
+	info, err := os.Stat(path)
+	if err != nil || info.IsDir() || info.Size() != int64(len(expected)) {
+		return false
+	}
+	existing, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	return bytes.Equal(existing, expected)
+}
+
 func (s *Server) writeLocal(actionHex string, outputID, body []byte, modTime time.Time) (string, error) {
 	outputHex := hex.EncodeToString(outputID)
 	objPath := s.objectPath(outputHex)
 	if err := os.MkdirAll(filepath.Dir(objPath), 0o755); err != nil {
 		return "", err
 	}
-	if _, err := os.Stat(objPath); err != nil {
+	if !fileMatchesContent(objPath, body) {
 		if err := writeAtomic(objPath, body); err != nil {
 			return "", err
 		}
@@ -390,7 +478,7 @@ func (s *Server) writeLocal(actionHex string, outputID, body []byte, modTime tim
 		return "", err
 	}
 	if modTime.IsZero() {
-		modTime = time.Now().UTC()
+		modTime = s.now()
 	}
 	metaBytes, err := json.Marshal(localMeta{
 		OutputID: outputHex,
@@ -403,7 +491,165 @@ func (s *Server) writeLocal(actionHex string, outputID, body []byte, modTime tim
 	if err := writeAtomic(metaPath, metaBytes); err != nil {
 		return "", err
 	}
+	s.markInUse(objPath, metaPath)
 	return objPath, nil
+}
+
+// pruneDiskStore enforces maxDiskAge and maxDiskBytes across both metadata files
+// and content-addressed object files in s.diskDir, while never removing any
+// DiskPath or metadata entry pinned by this server or modified within liveGrace
+// (protecting concurrent Go processes sharing the backing store).
+func (s *Server) pruneDiskStore() {
+	if s.maxDiskBytes <= 0 && s.maxDiskAge <= 0 {
+		return
+	}
+	s.mu.Lock()
+	pinned := make(map[string]bool, len(s.inUseObj))
+	for p := range s.inUseObj {
+		pinned[p] = true
+	}
+	s.mu.Unlock()
+
+	now := s.now()
+	ageCutoff := now.Add(-s.maxDiskAge)
+	liveCutoff := now.Add(-s.liveGrace)
+
+	type diskEntry struct {
+		path     string
+		size     int64
+		modTime  time.Time
+		isMeta   bool
+		outputID string
+	}
+	var metas []diskEntry
+	var objs []diskEntry
+	var totalBytes int64
+
+	_ = filepath.WalkDir(s.diskDir, func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		base := d.Name()
+		if strings.HasPrefix(base, ".tmp-") || strings.HasPrefix(base, ".probe-") {
+			return nil
+		}
+		info, statErr := d.Info()
+		if statErr != nil || !info.Mode().IsRegular() {
+			return nil
+		}
+		e := diskEntry{
+			path:    p,
+			size:    info.Size(),
+			modTime: info.ModTime().UTC(),
+			isMeta:  strings.HasSuffix(base, ".meta"),
+		}
+		totalBytes += e.size
+		if e.isMeta {
+			if raw, rerr := os.ReadFile(p); rerr == nil {
+				var lm localMeta
+				if json.Unmarshal(raw, &lm) == nil {
+					e.outputID = lm.OutputID
+				}
+			}
+			metas = append(metas, e)
+		} else {
+			objs = append(objs, e)
+		}
+		return nil
+	})
+
+	// Track objects still referenced by surviving metadata files so we never leave
+	// live metadata dangling when evicting objects.
+	refCount := make(map[string]int, len(metas))
+	for _, m := range metas {
+		if m.outputID != "" {
+			refCount[s.objectPath(m.outputID)]++
+		}
+	}
+
+	canEvict := func(p string, modTime time.Time) bool {
+		if pinned[p] {
+			return false
+		}
+		if modTime.After(liveCutoff) {
+			return false
+		}
+		return true
+	}
+
+	removed := make(map[string]bool)
+
+	// Pass 1: evict expired metadata first, then expired unreferenced objects.
+	if s.maxDiskAge > 0 {
+		for _, m := range metas {
+			if m.modTime.Before(ageCutoff) && canEvict(m.path, m.modTime) {
+				if os.Remove(m.path) == nil {
+					removed[m.path] = true
+					totalBytes -= m.size
+					if m.outputID != "" {
+						refCount[s.objectPath(m.outputID)]--
+					}
+				}
+			}
+		}
+		for _, o := range objs {
+			if o.modTime.Before(ageCutoff) && refCount[o.path] <= 0 && canEvict(o.path, o.modTime) {
+				if os.Remove(o.path) == nil {
+					removed[o.path] = true
+					totalBytes -= o.size
+				}
+			}
+		}
+	}
+
+	// Pass 2: if still over maxDiskBytes, evict oldest entries (metadata + their
+	// unreferenced objects) until totalBytes <= maxDiskBytes.
+	if s.maxDiskBytes > 0 && totalBytes > s.maxDiskBytes {
+		sort.Slice(metas, func(i, j int) bool { return metas[i].modTime.Before(metas[j].modTime) })
+		sort.Slice(objs, func(i, j int) bool { return objs[i].modTime.Before(objs[j].modTime) })
+
+		// First remove oldest unreferenced orphan objects.
+		for _, o := range objs {
+			if totalBytes <= s.maxDiskBytes {
+				break
+			}
+			if removed[o.path] || refCount[o.path] > 0 || !canEvict(o.path, o.modTime) {
+				continue
+			}
+			if os.Remove(o.path) == nil {
+				removed[o.path] = true
+				totalBytes -= o.size
+			}
+		}
+		// Build quick size/mtime lookup for objects.
+		objByPath := make(map[string]diskEntry, len(objs))
+		for _, o := range objs {
+			objByPath[o.path] = o
+		}
+		// Evict oldest metadata entries and, once refCount drops to 0, their object.
+		for _, m := range metas {
+			if totalBytes <= s.maxDiskBytes {
+				break
+			}
+			if removed[m.path] || !canEvict(m.path, m.modTime) {
+				continue
+			}
+			if os.Remove(m.path) == nil {
+				removed[m.path] = true
+				totalBytes -= m.size
+				if m.outputID != "" {
+					op := s.objectPath(m.outputID)
+					refCount[op]--
+					if o, ok := objByPath[op]; ok && !removed[op] && refCount[op] <= 0 && canEvict(op, o.modTime) {
+						if os.Remove(op) == nil {
+							removed[op] = true
+							totalBytes -= o.size
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 func (s *Server) recordRemoteError(op, actionHex string, err error) {
@@ -440,9 +686,19 @@ func writeAtomic(dest string, data []byte) error {
 		return err
 	}
 	if err := os.Rename(tmpName, dest); err != nil {
-		// On Windows, concurrent writers to the same content-addressed object path can
-		// collide on Rename; if dest already exists, the content is identical.
-		if _, statErr := os.Stat(dest); statErr == nil {
+		// On Windows, Rename over an existing destination can fail; attempt explicit
+		// removal and retry once, or verify an existing destination has identical bytes
+		// before treating a concurrent write race as success.
+		if fileMatchesContent(dest, data) {
+			return nil
+		}
+		if removeErr := os.Remove(dest); removeErr == nil {
+			if retryErr := os.Rename(tmpName, dest); retryErr == nil {
+				cleanup = false
+				return nil
+			}
+		}
+		if fileMatchesContent(dest, data) {
 			return nil
 		}
 		return err

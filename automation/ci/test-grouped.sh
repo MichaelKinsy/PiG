@@ -261,6 +261,9 @@ hermetic_cache_should_enable() {
   case "${GITHUB_REF:-}" in
     refs/heads/main|refs/heads/release/*|refs/tags/*) return 1 ;;
   esac
+  case "${GITHUB_BASE_REF:-}" in
+    release/*) return 1 ;;
+  esac
   return 0
 }
 is_hermetic_pkg() {

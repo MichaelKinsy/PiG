@@ -158,7 +158,7 @@ func RenderCIPlan(rows []TierRow, event, lightMode string, fullRequested bool, d
 	full := true
 	required := false
 	if event == "pull_request" && lightMode != "" {
-		if !fullRequested {
+		if !fullRequested && (dagPlan == nil || !dagPlan.Full) {
 			full = false
 		}
 		if lightMode == "label" {
@@ -196,11 +196,14 @@ func RenderCIPlan(rows []TierRow, event, lightMode string, fullRequested bool, d
 
 	for _, row := range rows {
 		runs := full || row.Tier == TierPR
-		if dagActive && runs {
+		if dagActive {
 			lane := TierRowLane(row)
-			// Fail closed: an unmapped row stays enabled.
-			if lane != "" && !allowedLanes[lane] {
-				runs = false
+			_, knownLane := LookupLane(lane)
+			// Fail closed: rows with no catalogue entry keep their static tier decision.
+			if lane != "" && knownLane {
+				// Allow explicit DAG PRLanes membership to promote mapped queue-tier rows
+				// on light PRs, and prune known lanes outside the allowlist.
+				runs = allowedLanes[lane]
 			}
 		}
 		if row.Job == "single" {

@@ -252,16 +252,22 @@ func resolveChangedFiles(ctx context.Context, absRoot, filesFrom, filesCSV, base
 			diffRange = mb + "..." + head
 		}
 	}
-	out, err := gitOutput(ctx, absRoot, "diff", "--name-only", "--no-renames", diffRange)
+	out, err := gitOutput(ctx, absRoot, "diff", "--name-only", "--no-renames", "-z", diffRange)
 	if err != nil {
 		return nil, "", "", fmt.Errorf("git diff %s: %w", diffRange, err)
 	}
-	for line := range strings.SplitSeq(out, "\n") {
-		if trimmed := strings.TrimSpace(line); trimmed != "" {
-			files = append(files, trimmed)
+	files = splitGitNULPaths(out)
+	return files, base, head, nil
+}
+
+func splitGitNULPaths(raw string) []string {
+	var files []string
+	for entry := range strings.SplitSeq(raw, "\x00") {
+		if entry != "" {
+			files = append(files, entry)
 		}
 	}
-	return files, base, head, nil
+	return files
 }
 
 func gitOutput(ctx context.Context, dir string, args ...string) (string, error) {
@@ -345,16 +351,11 @@ func runReplay(ctx context.Context, absRoot string, n int, includeMerges bool, m
 		if !ok || sha == "" {
 			continue
 		}
-		diffOut, err := gitOutput(ctx, absRoot, "diff-tree", "--no-commit-id", "--name-only", "--no-renames", "-r", "-m", "--first-parent", sha)
+		diffOut, err := gitOutput(ctx, absRoot, "diff-tree", "--no-commit-id", "--name-only", "--no-renames", "-z", "-r", "-m", "--first-parent", sha)
 		if err != nil {
 			return fmt.Errorf("git diff-tree %s: %w", sha[:9], err)
 		}
-		var files []string
-		for f := range strings.SplitSeq(diffOut, "\n") {
-			if trimmed := strings.TrimSpace(f); trimmed != "" {
-				files = append(files, trimmed)
-			}
-		}
+		files := splitGitNULPaths(diffOut)
 		commits = append(commits, commitEntry{sha: sha, subject: subj, files: files})
 	}
 	if len(commits) == 0 {

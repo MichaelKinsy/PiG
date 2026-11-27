@@ -21,22 +21,32 @@ import (
 // ListPackage is the subset of `go list -e -test -deps -json` fields required
 // to build the cross-GOOS package graph and file ownership index.
 type ListPackage struct {
-	ImportPath      string   `json:"ImportPath"`
-	ForTest         string   `json:"ForTest"`
-	Dir             string   `json:"Dir"`
-	Module          *ModInfo `json:"Module"`
-	Imports         []string `json:"Imports"`
-	Deps            []string `json:"Deps"`
-	EmbedFiles      []string `json:"EmbedFiles"`
-	TestEmbedFiles  []string `json:"TestEmbedFiles"`
-	XTestEmbedFiles []string `json:"XTestEmbedFiles"`
-	GoFiles         []string `json:"GoFiles"`
-	CgoFiles        []string `json:"CgoFiles"`
-	TestGoFiles     []string `json:"TestGoFiles"`
-	XTestGoFiles    []string `json:"XTestGoFiles"`
-	IgnoredGoFiles  []string `json:"IgnoredGoFiles"`
+	ImportPath      string          `json:"ImportPath"`
+	ForTest         string          `json:"ForTest"`
+	Dir             string          `json:"Dir"`
+	Module          *ModInfo        `json:"Module"`
+	Imports         []string        `json:"Imports"`
+	Deps            []string        `json:"Deps"`
+	EmbedFiles      []string        `json:"EmbedFiles"`
+	TestEmbedFiles  []string        `json:"TestEmbedFiles"`
+	XTestEmbedFiles []string        `json:"XTestEmbedFiles"`
+	GoFiles         []string        `json:"GoFiles"`
+	CgoFiles        []string        `json:"CgoFiles"`
+	TestGoFiles     []string        `json:"TestGoFiles"`
+	XTestGoFiles    []string        `json:"XTestGoFiles"`
+	IgnoredGoFiles  []string        `json:"IgnoredGoFiles"`
+	Incomplete      bool            `json:"Incomplete"`
+	Error           *PackageError   `json:"Error"`
+	DepsErrors      []*PackageError `json:"DepsErrors"`
 	// GOOS tags which `go list` invocation emitted this entry (populated by LoadGraph).
 	GOOS string `json:"-"`
+}
+
+// PackageError captures Error / DepsErrors records emitted by `go list -e -json`.
+type PackageError struct {
+	ImportStack []string `json:"ImportStack"`
+	Pos         string   `json:"Pos"`
+	Err         string   `json:"Err"`
 }
 
 // ModInfo captures the Module.Path returned by `go list -json`.
@@ -631,7 +641,7 @@ func LoadGraph(ctx context.Context, root string, goosList []string, tags string)
 		return nil, err
 	}
 
-	const fields = "ImportPath,ForTest,Dir,Module,Imports,Deps,EmbedFiles,TestEmbedFiles,XTestEmbedFiles,GoFiles,TestGoFiles,XTestGoFiles,IgnoredGoFiles,CgoFiles"
+	const fields = "ImportPath,ForTest,Dir,Module,Imports,Deps,EmbedFiles,TestEmbedFiles,XTestEmbedFiles,GoFiles,TestGoFiles,XTestGoFiles,IgnoredGoFiles,CgoFiles,Error,Incomplete,DepsErrors"
 	pkgsByGOOS := make(map[string][]ListPackage, len(goosList))
 	for _, goos := range goosList {
 		//nolint:gosec // go binary and fixed flags; GOOS comes from validated DefaultGOOSList or caller config.
@@ -696,6 +706,30 @@ func detectMainModule(ctx context.Context, absRoot string) (string, error) {
 	return "", fmt.Errorf("no Go module rooted at %s", absRoot)
 }
 
+func isPlatformExclusionError(e *PackageError) bool {
+	if e == nil {
+		return false
+	}
+	msg := strings.ToLower(e.Err)
+	return strings.Contains(msg, "build constraints exclude all go files") ||
+		strings.Contains(msg, "no buildable go source files")
+}
+
+func validateListPackage(pkg ListPackage, goos string) error {
+	if pkg.Error != nil && !isPlatformExclusionError(pkg.Error) {
+		return fmt.Errorf("package %s (GOOS=%s): %s", pkg.ImportPath, goos, pkg.Error.Err)
+	}
+	for _, de := range pkg.DepsErrors {
+		if de != nil && !isPlatformExclusionError(de) {
+			return fmt.Errorf("package %s dep error (GOOS=%s): %s", pkg.ImportPath, goos, de.Err)
+		}
+	}
+	if pkg.Incomplete && (pkg.Error == nil || !isPlatformExclusionError(pkg.Error)) {
+		return fmt.Errorf("package %s (GOOS=%s): incomplete package metadata", pkg.ImportPath, goos)
+	}
+	return nil
+}
+
 func decodeListPackages(data []byte, goos string) ([]ListPackage, error) {
 	dec := json.NewDecoder(bytes.NewReader(data))
 	var pkgs []ListPackage
@@ -708,6 +742,9 @@ func decodeListPackages(data []byte, goos string) ([]ListPackage, error) {
 			return nil, err
 		}
 		pkg.GOOS = goos
+		if err := validateListPackage(pkg, goos); err != nil {
+			return nil, err
+		}
 		pkgs = append(pkgs, pkg)
 	}
 	return pkgs, nil

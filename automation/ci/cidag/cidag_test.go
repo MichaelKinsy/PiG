@@ -571,3 +571,251 @@ func TestCIPlanScriptHookModes(t *testing.T) {
 		t.Fatalf("unexpected fallback output:\n%s", outFallback)
 	}
 }
+
+func TestRuleMatchedEmbeddedFilePreservesReverseDependents(t *testing.T) {
+	g, sources := buildFixtureGraph(t)
+	// Simulate coding/extension/host/subprocess embedding runtime-node.pack and coding/cli importing subprocess.
+	subPkg := DefaultModule + "/coding/extension/host/subprocess"
+	cliPkg := DefaultModule + "/coding/cli"
+	g.EmbedSrc["coding/extension/host/subprocess/runtime-node.pack"] = []string{subPkg}
+	g.RevDeps[subPkg] = []string{cliPkg}
+
+	plan := Select([]string{"coding/extension/host/subprocess/runtime-node.pack"}, g, DefaultRules, Options{ReadFile: readFromMap(sources)})
+	if plan.Full {
+		t.Fatalf("rule-matched embedded file unexpectedly failed closed to full: %v", plan.FullReason)
+	}
+	if !slices.Contains(plan.CompilePackages, "./coding/extension/host/subprocess") {
+		t.Errorf("expected ./coding/extension/host/subprocess in compile packages, got %v", plan.CompilePackages)
+	}
+	if !slices.Contains(plan.AffectedPackages, "./coding/cli") {
+		t.Errorf("expected reverse dependent ./coding/cli in affected packages, got %v", plan.AffectedPackages)
+	}
+	// Explicit rule lanes remain unioned with graph lanes.
+	for _, wantLane := range []string{"node-runtime", "node-loader", "test-cli-1", "win-cli"} {
+		if !slices.Contains(plan.Lanes, wantLane) {
+			t.Errorf("expected lane %s in unioned lanes %v", wantLane, plan.Lanes)
+		}
+	}
+
+	// A rule-matched non-Go file with NO embed edges stays exempt from the unowned check.
+	nonEmbedPlan := Select([]string{"coding/extension/host/subprocess/runtime-node/index.mjs"}, g, DefaultRules, Options{ReadFile: readFromMap(sources)})
+	if nonEmbedPlan.Full || len(nonEmbedPlan.Unowned) > 0 {
+		t.Fatalf("rule-owned non-embedded file should stay exempt from unowned check: full=%v unowned=%v", nonEmbedPlan.Full, nonEmbedPlan.Unowned)
+	}
+}
+
+func TestPartiallyMappedParityScenarioIsUnprovable(t *testing.T) {
+	g, sources := buildFixtureGraph(t)
+	// Scenario covers BOTH a mapped upstream file (cli.ts -> coding/cli/cli.go) and an unmapped one.
+	// Changing ai/openai.go changes cmd/pig closure; the scenario must be selected even in direct/dir tiers
+	// because its unmapped covers path cannot be proven unaffected.
+	mixedScen := "test/parity/scenarios/mixed/01-partial.toml"
+	g.ScenarioCovers[mixedScen] = []string{
+		"packages/coding-agent/src/cli.ts",
+		"packages/unknown/src/unmapped.ts",
+	}
+	g.ScenarioTexts[mixedScen] = `name = "01-partial"`
+
+	p := Select([]string{"ai/openai.go"}, g, DefaultRules, Options{ReadFile: readFromMap(sources)})
+	if !slices.Contains(p.ScenariosDirect, mixedScen) || !slices.Contains(p.ScenariosDir, mixedScen) || !slices.Contains(p.ScenariosClosure, mixedScen) {
+		t.Fatalf("partially mapped scenario %s must be conservatively selected across all tiers; direct=%v dir=%v closure=%v",
+			mixedScen, p.ScenariosDirect, p.ScenariosDir, p.ScenariosClosure)
+	}
+}
+
+func TestRenderCIPlanFullFallbackPromotedQueueAndUnknownCatalogueRow(t *testing.T) {
+	rows := []TierRow{
+		{Job: "linux", Shard: "build", Tier: TierPR, LightTarget: "ci-build-pr"},
+		{Job: "linux", Shard: "checks", Tier: TierPR, LightTarget: "ci-checks-pr"},
+		{Job: "linux", Shard: "contracts", Tier: TierPR},
+		{Job: "linux", Shard: "test-subprocess", Tier: TierPR},
+		{Job: "windows", Shard: "native-1", Tier: TierQueue},
+		{Job: "windows", Shard: "native-5", Tier: TierQueue}, // passes table validation, absent from LaneCatalogue
+		{Job: "macos", Shard: "native", Tier: TierQueue},
+		{Job: "single", Shard: "node-runtime", Tier: TierQueue},
+		{Job: "single", Shard: "chord", Tier: TierQueue},
+	}
+
+	// 1. Active DAG full fallback (e.g. unowned file on light PR) must render Full=true with queue rows enabled.
+	fullFallbackPlan := &Plan{Full: true, FullReason: []string{"unowned:mystery.bin"}}
+	fallbackOut, err := RenderCIPlan(rows, "pull_request", "queue", false, fullFallbackPlan)
+	if err != nil {
+		t.Fatalf("RenderCIPlan full fallback: %v", err)
+	}
+	if !fallbackOut.Full {
+		t.Fatalf("expected Full=true when active dagPlan.Full is true")
+	}
+	if len(fallbackOut.Windows) != 2 || len(fallbackOut.MacOS) != 1 {
+		t.Fatalf("expected queue windows/macos rows to run on full fallback, got win=%v mac=%v", fallbackOut.Windows, fallbackOut.MacOS)
+	}
+	for _, s := range fallbackOut.Singles {
+		if !s.Run {
+			t.Errorf("expected single %s to run on full fallback", s.Name)
+		}
+	}
+
+	// 2. Active light PR plan where PRLanes promotes queue-tier node-runtime must enable run-node-runtime=true
+	//    while keeping unpromoted queue-tier chord=false.
+	promotedPlan := &Plan{
+		Full:    false,
+		Lanes:   []string{"preflight", "build", "checks", "contracts", "test-subprocess", "node-runtime"},
+		PRLanes: []string{"preflight", "build", "checks", "contracts", "test-subprocess", "node-runtime"},
+	}
+	promoOut, err := RenderCIPlan(rows, "pull_request", "queue", false, promotedPlan)
+	if err != nil {
+		t.Fatalf("RenderCIPlan promoted queue row: %v", err)
+	}
+	if promoOut.Full {
+		t.Fatalf("expected Full=false for selective light PR plan")
+	}
+	singleRuns := map[string]bool{}
+	for _, s := range promoOut.Singles {
+		singleRuns[s.Name] = s.Run
+	}
+	if !singleRuns["node-runtime"] {
+		t.Errorf("expected DAG-promoted queue single node-runtime to run, got singles=%+v", promoOut.Singles)
+	}
+	if singleRuns["chord"] {
+		t.Errorf("expected unpromoted queue single chord to remain false, got singles=%+v", promoOut.Singles)
+	}
+
+	// 3. Active full-tier PR plan (lightMode="") must keep windows | native-5 | queue because win-native-5
+	//    has no LaneCatalogue entry (fail closed), while pruning known native-1 when not in allowedLanes.
+	fullTierOut, err := RenderCIPlan(rows, "pull_request", "", false, promotedPlan)
+	if err != nil {
+		t.Fatalf("RenderCIPlan unknown catalogue row: %v", err)
+	}
+	var winShards []string
+	for _, w := range fullTierOut.Windows {
+		winShards = append(winShards, w.Shard)
+	}
+	if !slices.Contains(winShards, "native-5") {
+		t.Errorf("expected unmapped catalogue row native-5 to stay enabled, got windows=%v", winShards)
+	}
+	if slices.Contains(winShards, "native-1") {
+		t.Errorf("expected known unallowed lane native-1 to be pruned, got windows=%v", winShards)
+	}
+}
+
+func TestDecodeListPackagesLoadErrorsVsPlatformExclusion(t *testing.T) {
+	// Real load error (Error field) fails closed.
+	errJSON := `{"ImportPath":"example.com/bad","Dir":"/repo/bad","Incomplete":true,"Error":{"Err":"broken syntax"}}`
+	if _, err := decodeListPackages([]byte(errJSON), "linux"); err == nil {
+		t.Fatalf("expected decodeListPackages to fail on package Error")
+	}
+
+	// Dependency load error (DepsErrors) fails closed.
+	depsErrJSON := `{"ImportPath":"example.com/a","Dir":"/repo/a","Incomplete":true,"DepsErrors":[{"Err":"missing dep"}]}`
+	if _, err := decodeListPackages([]byte(depsErrJSON), "linux"); err == nil {
+		t.Fatalf("expected decodeListPackages to fail on DepsErrors")
+	}
+
+	// Incomplete without platform exclusion fails closed.
+	incompleteJSON := `{"ImportPath":"example.com/a","Dir":"/repo/a","Incomplete":true}`
+	if _, err := decodeListPackages([]byte(incompleteJSON), "linux"); err == nil {
+		t.Fatalf("expected decodeListPackages to fail on Incomplete metadata")
+	}
+
+	// Platform build-constraint exclusion is allowed (not a load failure).
+	exclJSON := `{"ImportPath":"example.com/winonly","Dir":"/repo/winonly","Incomplete":true,"Error":{"Err":"build constraints exclude all Go files in /repo/winonly"}}`
+	pkgs, err := decodeListPackages([]byte(exclJSON), "linux")
+	if err != nil {
+		t.Fatalf("platform exclusion should not fail decodeListPackages: %v", err)
+	}
+	if len(pkgs) != 1 {
+		t.Fatalf("expected 1 decoded package, got %d", len(pkgs))
+	}
+}
+
+func TestCIPlanScriptResolvesRelativePathsBeforeCD(t *testing.T) {
+	root, err := filepath.Abs("../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Pre-build cidag once, then also verify relative path resolution when invoked from repo root
+	// using a relative script path and relative tier table / files-from / plan-out / summary paths,
+	// plus the "-" stdin sentinel.
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "cidag")
+	build := exec.CommandContext(t.Context(), "go", "build", "-o", bin, "./cmd/cidag")
+	build.Dir = filepath.Join(root, "automation", "ci", "cidag")
+	build.Env = append(os.Environ(), "GOWORK=off")
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build cidag: %v\n%s", err, out)
+	}
+
+	// Create a caller directory distinct from root with relative files.
+	callerDir := t.TempDir()
+	relFiles := "rel-files.txt"
+	relPlan := "out/rel-plan.json"
+	relSummary := "rel-summary.md"
+	relTiers := "rel-tiers.txt"
+	if err := os.WriteFile(filepath.Join(callerDir, relFiles), []byte("README.md\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	tiersBytes, err := os.ReadFile(filepath.Join(root, "automation", "ci", "ci-tiers.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(callerDir, relTiers), tiersBytes, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	scriptPath := filepath.Join(root, "automation", "ci", "ci-plan.sh")
+	cmd := exec.CommandContext(t.Context(), "bash", scriptPath, "pull_request", "queue", "false", relTiers)
+	cmd.Dir = callerDir
+	cmd.Env = append(os.Environ(),
+		"PIG_CI_DAG=on",
+		"PIG_CI_DAG_BIN="+bin,
+		"PIG_CI_DAG_FILES_FROM="+relFiles,
+		"PIG_CI_DAG_PLAN_OUT="+relPlan,
+		"GITHUB_STEP_SUMMARY="+relSummary,
+	)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("ci-plan.sh with relative paths failed: %v\n%s", err, out)
+	}
+	if strings.Contains(string(out), "selector failed") {
+		t.Fatalf("ci-plan.sh fell back to static plan instead of resolving relative paths:\n%s", out)
+	}
+	if _, err := os.Stat(filepath.Join(callerDir, relPlan)); err != nil {
+		t.Fatalf("expected relative plan-out written in caller dir: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(callerDir, relSummary)); err != nil {
+		t.Fatalf("expected relative summary written in caller dir: %v", err)
+	}
+
+	// Verify "-" stdin sentinel is preserved.
+	stdinCmd := exec.CommandContext(t.Context(), "bash", scriptPath, "pull_request", "queue", "false", relTiers)
+	stdinCmd.Dir = callerDir
+	stdinCmd.Stdin = strings.NewReader("README.md\n")
+	stdinCmd.Env = append(os.Environ(),
+		"PIG_CI_DAG=on",
+		"PIG_CI_DAG_BIN="+bin,
+		"PIG_CI_DAG_FILES_FROM=-",
+	)
+	stdinOut, err := stdinCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("ci-plan.sh with stdin sentinel failed: %v\n%s", err, stdinOut)
+	}
+	if strings.Contains(string(stdinOut), "selector failed") {
+		t.Fatalf("ci-plan.sh stdin sentinel fell back:\n%s", stdinOut)
+	}
+
+	// Verify invoking by relative script path from repo root without PIG_CI_DAG_BIN (go run launcher)
+	// resolves default relative tier table automation/ci/ci-tiers.txt before cd into automation/ci/cidag.
+	goRunCmd := exec.CommandContext(t.Context(), "bash", "automation/ci/ci-plan.sh", "pull_request", "queue", "false")
+	goRunCmd.Dir = root
+	goRunCmd.Stdin = strings.NewReader("README.md\n")
+	goRunCmd.Env = append(os.Environ(),
+		"PIG_CI_DAG=on",
+		"PIG_CI_DAG_FILES_FROM=-",
+	)
+	goRunOut, err := goRunCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("ci-plan.sh via go run launcher failed: %v\n%s", err, goRunOut)
+	}
+	if strings.Contains(string(goRunOut), "selector failed") {
+		t.Fatalf("ci-plan.sh go run launcher failed to resolve default relative tier table:\n%s", goRunOut)
+	}
+}
