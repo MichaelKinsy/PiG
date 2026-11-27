@@ -107,7 +107,7 @@
     },
     {
       "source": "test/parity/testdata/test-faux-provider.ts",
-      "sha256": "26bdb7e827d602bf0462fe80d91cb7fece5ce9ee0e0be557c72ad23d507e633e",
+      "sha256": "2cabe6bd9eb687a6c83d9851afe7c9170154e945c6d9cdb7d6d38e91e80a2f93",
       "reason": "Canned followups exercise specific orchestration/rendering questions, not complete result metadata. Full RPC tool records and real-provider mode scenarios supply result acceptance independently of final prose."
     }
   ],
@@ -13491,6 +13491,17 @@
         {
           "kind": "cwd_snapshot_digits",
           "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/tools/36-print-bash-long-line-blank-line.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "pi-bash-[0-9a-f]{16}\\.log",
+          "with": "pi-bash-ID.log",
+          "reason": "The full-output file name carries 16 random hex digits (bash.ts); the directory, prefix and extension stay compared."
         }
       ]
     },
