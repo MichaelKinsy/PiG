@@ -402579,6 +402579,28 @@
       "shapeHash": "sha256:a25ca2dde16f4c7d179d915d26f5bd6051f9838d4ab17973d556130a94b5407e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#isNodeAbsolutePath",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "isNodeAbsolutePath",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(p string) bool"
+      },
+      "shapeHash": "sha256:2e23580fd18bd8893d4f40024423bfd636627df5bf6f2da925406bfc7c7288f3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#isNodeAbsolutePathForOS",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "isNodeAbsolutePathForOS",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(p string, goos string) bool"
+      },
+      "shapeHash": "sha256:07127c4d340ccd6d2b0c0863262d6b041f76ab42b920c25e1891f15cebbd32ed"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#isPasteMarker",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "isPasteMarker",
