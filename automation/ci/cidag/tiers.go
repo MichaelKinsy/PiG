@@ -168,7 +168,7 @@ func RenderCIPlan(rows []TierRow, event, lightMode string, fullRequested bool, d
 
 	// Build DAG lane allowlist when a non-full DAG plan is active on a pull request.
 	var allowedLanes map[string]bool
-	dagActive := event == "pull_request" && dagPlan != nil && !dagPlan.Full && !fullRequested
+	dagActive := event == "pull_request" && lightMode != "" && dagPlan != nil && !dagPlan.Full && !fullRequested
 	if dagActive {
 		lanes := dagPlan.Lanes
 		if !full {

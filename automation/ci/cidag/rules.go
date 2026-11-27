@@ -125,6 +125,18 @@ var DefaultRules = []PathRule{
 		Lanes:    []string{"checks"},
 	},
 	{
+		Name: "protocol-and-sdk-conformance",
+		Kind: RuleLanes,
+		Patterns: []string{
+			"coding/extension/host/subprocess/protocol*.go",
+			"coding/extension/host/subprocess/*sdk*",
+			"test/extension-conformance/sdkscenarios/*",
+			"test/parity/sdk-vectors/*",
+			"test/parity/sdk-bulk/*",
+		},
+		Lanes: protocolLanes,
+	},
+	{
 		Name: "parity-ledgers-and-docs",
 		Kind: RuleLanes,
 		Patterns: []string{
@@ -156,18 +168,6 @@ var DefaultRules = []PathRule{
 		Kind:     RuleLanes,
 		Patterns: []string{"docs/*", ".github/AGENTS.md", ".github/badges/*", "AGENTS.md"},
 		Lanes:    []string{"checks"},
-	},
-	{
-		Name: "protocol-and-sdk-conformance",
-		Kind: RuleLanes,
-		Patterns: []string{
-			"coding/extension/host/subprocess/protocol*.go",
-			"coding/extension/host/subprocess/*sdk*",
-			"test/extension-conformance/sdkscenarios/*",
-			"test/parity/sdk-vectors/*",
-			"test/parity/sdk-bulk/*",
-		},
-		Lanes: protocolLanes,
 	},
 	{
 		Name: "node-runtime-embedded",
@@ -308,7 +308,6 @@ func MatchRule(relPath string, rules []PathRule) (PathRule, bool) {
 
 // normalizePath cleans a repository-relative path into canonical POSIX form.
 func normalizePath(p string) string {
-	p = strings.ReplaceAll(p, "\\", "/")
 	p = strings.TrimPrefix(p, "./")
 	p = path.Clean(p)
 	if p == "." {

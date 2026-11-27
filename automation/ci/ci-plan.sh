@@ -34,7 +34,7 @@
 #   PIG_CI_DAG_HEAD         git head ref/SHA (default: HEAD)
 #   PIG_CI_DAG_FILES_FROM   optional file listing changed paths (one per line) instead of git diff
 #   PIG_CI_DAG_PLAN_OUT     optional path to write ci-plan.json (shadow mode writes a plan file only when this is set)
-#   PIG_CI_DAG_BIN          optional prebuilt cidag binary (otherwise runs `go run ./automation/ci/cidag/cmd/cidag`)
+#   PIG_CI_DAG_BIN          optional prebuilt cidag binary (otherwise builds ./cmd/cidag with GOWORK=off and runs it)
 #
 # Usage: ci-plan.sh <event> <mode> <full-requested> [tiers-file]
 set -euo pipefail
@@ -117,7 +117,16 @@ run_cidag() {
     esac
     (cd "$root" && "$resolved_bin" "${args[@]}" "$@")
   else
-    (cd "$root/automation/ci/cidag" && GOWORK=off go run ./cmd/cidag "${args[@]}" "$@")
+    local tmp_dir tmp_bin rc=0
+    tmp_dir=$(mktemp -d)
+    tmp_bin="$tmp_dir/cidag"
+    if (cd "$root/automation/ci/cidag" && GOWORK=off go build -o "$tmp_bin" ./cmd/cidag); then
+      (cd "$root" && "$tmp_bin" "${args[@]}" "$@") || rc=$?
+    else
+      rc=$?
+    fi
+    rm -rf "$tmp_dir"
+    return "$rc"
   fi
 }
 

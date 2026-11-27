@@ -133,3 +133,26 @@ func TestGitNULPathsPreserveLeadingSpaceFilenames(t *testing.T) {
 			row.Full, row.DocsOnly, row.Unowned, row.FullReason)
 	}
 }
+
+func TestResolveChangedFilesFromPreservesFilenameWhitespace(t *testing.T) {
+	tmp := t.TempDir()
+	listPath := filepath.Join(tmp, "files.txt")
+	content := " README.md\nREADME.md \r\n\tdocs/note.md\n\n"
+	if err := os.WriteFile(listPath, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	files, _, _, err := resolveChangedFiles(context.Background(), tmp, listPath, "", "", "")
+	if err != nil {
+		t.Fatalf("resolveChangedFiles(-files-from): %v", err)
+	}
+	want := []string{" README.md", "README.md ", "\tdocs/note.md"}
+	if !slices.Equal(files, want) {
+		t.Fatalf("files = %#v, want %#v", files, want)
+	}
+	g := &cidag.Graph{Root: tmp, Module: cidag.DefaultModule}
+	plan := cidag.Select([]string{files[0]}, g, cidag.DefaultRules, cidag.Options{})
+	if !plan.Full || plan.DocsOnly || !slices.Contains(plan.Unowned, " README.md") {
+		t.Fatalf("leading-space filename from -files-from must fail closed as unowned -> full, got full=%v docsOnly=%v unowned=%v",
+			plan.Full, plan.DocsOnly, plan.Unowned)
+	}
+}

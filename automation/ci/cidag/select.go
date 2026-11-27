@@ -293,7 +293,12 @@ func Select(files []string, g *Graph, rules []PathRule, opts Options) Plan {
 				add([]string{"win-native-4"}, "win-native:"+sp, true)
 			}
 		}
-		// macOS native tests.
+		// macOS native tests: workflow runs ./ai ./internal/codingagent/tools ./internal/nativeplatform ./tui.
+		for _, sp := range []string{"./ai", "./internal/codingagent/tools", "./internal/nativeplatform", "./tui"} {
+			if shortAffected[sp] {
+				add([]string{"mac-native"}, "mac-native:"+sp, true)
+			}
+		}
 		for p := range g.OSTests["darwin"] {
 			if affected[p] {
 				add([]string{"mac-native"}, "mac-native:"+g.ShortPkg(p), true)
@@ -397,33 +402,9 @@ func classifyGoFiles(unmatched, allGoInputs []string, g *Graph) (compilePkgs, te
 		}
 		seen[f] = true
 
-		if strings.HasSuffix(f, ".go") {
-			// S4: a Go file excluded under every queried GOOS (not //go:build ignore) is unowned -> full.
-			if g.IgnoredAll[f] && unmatchedSet[f] {
-				unowned = append(unowned, f)
-				continue
-			}
-			dir := path.Dir(f)
-			if dir == "" {
-				dir = "."
-			}
-			pkg, ok := g.ByDir[dir]
-			if !ok {
-				if unmatchedSet[f] {
-					unowned = append(unowned, f)
-				}
-				continue
-			}
-			if strings.HasSuffix(f, "_test.go") {
-				testOnlyPkgs[pkg] = true
-			} else {
-				compilePkgs[pkg] = true
-			}
-			continue
-		}
-
-		// Always propagate known //go:embed edges even for path-rule-owned files
-		// so reverse dependents of embedded assets stay in the compile closure.
+		// Always propagate known //go:embed edges regardless of file suffix or path-rule
+		// ownership so reverse dependents of embedded assets (including embedded .go
+		// fixtures) stay in the compile closure.
 		hit := false
 		if pkgs, ok := g.EmbedSrc[f]; ok && len(pkgs) > 0 {
 			for _, p := range pkgs {
@@ -436,6 +417,31 @@ func classifyGoFiles(unmatched, allGoInputs []string, g *Graph) (compilePkgs, te
 				testOnlyPkgs[p] = true
 			}
 			hit = true
+		}
+
+		if strings.HasSuffix(f, ".go") {
+			// S4: a Go file excluded under every queried GOOS (not //go:build ignore) is unowned -> full.
+			if g.IgnoredAll[f] && unmatchedSet[f] && !hit {
+				unowned = append(unowned, f)
+				continue
+			}
+			dir := path.Dir(f)
+			if dir == "" {
+				dir = "."
+			}
+			pkg, ok := g.ByDir[dir]
+			if !ok {
+				if unmatchedSet[f] && !hit {
+					unowned = append(unowned, f)
+				}
+				continue
+			}
+			if strings.HasSuffix(f, "_test.go") {
+				testOnlyPkgs[pkg] = true
+			} else {
+				compilePkgs[pkg] = true
+			}
+			continue
 		}
 		// Remaining heuristics (string references, testdata, unowned fallback) apply
 		// only to non-Go files not already owned by a path rule.

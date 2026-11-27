@@ -227,8 +227,9 @@ func resolveChangedFiles(ctx context.Context, absRoot, filesFrom, filesCSV, base
 			return nil, "", "", fmt.Errorf("read files-from: %w", err)
 		}
 		for line := range strings.SplitSeq(string(data), "\n") {
-			if trimmed := strings.TrimSpace(line); trimmed != "" {
-				files = append(files, trimmed)
+			line = strings.TrimSuffix(line, "\r")
+			if line != "" {
+				files = append(files, line)
 			}
 		}
 		return files, base, head, nil

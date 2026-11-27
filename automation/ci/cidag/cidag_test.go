@@ -679,21 +679,42 @@ func TestRenderCIPlanFullFallbackPromotedQueueAndUnknownCatalogueRow(t *testing.
 		t.Errorf("expected unpromoted queue single chord to remain false, got singles=%+v", promoOut.Singles)
 	}
 
-	// 3. Active full-tier PR plan (lightMode="") must keep windows | native-5 | queue because win-native-5
-	//    has no LaneCatalogue entry (fail closed), while pruning known native-1 when not in allowedLanes.
+	// 3. When lightMode="" on a pull_request, Full=true must retain the static full matrices
+	//    (do not report a pruned matrix as Full=true).
 	fullTierOut, err := RenderCIPlan(rows, "pull_request", "", false, promotedPlan)
 	if err != nil {
-		t.Fatalf("RenderCIPlan unknown catalogue row: %v", err)
+		t.Fatalf("RenderCIPlan full-tier PR: %v", err)
+	}
+	if !fullTierOut.Full {
+		t.Fatalf("expected Full=true when lightMode is empty")
 	}
 	var winShards []string
 	for _, w := range fullTierOut.Windows {
 		winShards = append(winShards, w.Shard)
 	}
-	if !slices.Contains(winShards, "native-5") {
-		t.Errorf("expected unmapped catalogue row native-5 to stay enabled, got windows=%v", winShards)
+	if !slices.Contains(winShards, "native-1") || !slices.Contains(winShards, "native-5") {
+		t.Errorf("expected full-tier PR (lightMode=\"\") to keep all windows rows, got windows=%v", winShards)
 	}
-	if slices.Contains(winShards, "native-1") {
-		t.Errorf("expected known unallowed lane native-1 to be pruned, got windows=%v", winShards)
+	if len(fullTierOut.MacOS) != 1 || fullTierOut.MacOS[0].Shard != "native" {
+		t.Errorf("expected full-tier PR (lightMode=\"\") to keep macos native row, got macos=%v", fullTierOut.MacOS)
+	}
+
+	// 4. On a light PR (lightMode="queue"), unmapped catalogue row windows | native-5 | pr
+	//    keeps its static tier decision (fail closed) while known unallowed native-1 is pruned.
+	prRows := append(slices.Clone(rows), TierRow{Job: "windows", Shard: "native-9", Tier: TierPR})
+	lightUnknownOut, err := RenderCIPlan(prRows, "pull_request", "queue", false, promotedPlan)
+	if err != nil {
+		t.Fatalf("RenderCIPlan light unknown catalogue row: %v", err)
+	}
+	var lightWinShards []string
+	for _, w := range lightUnknownOut.Windows {
+		lightWinShards = append(lightWinShards, w.Shard)
+	}
+	if !slices.Contains(lightWinShards, "native-9") {
+		t.Errorf("expected unmapped PR-tier catalogue row native-9 to stay enabled, got windows=%v", lightWinShards)
+	}
+	if slices.Contains(lightWinShards, "native-1") {
+		t.Errorf("expected known unallowed lane native-1 to be pruned on light PR, got windows=%v", lightWinShards)
 	}
 }
 
@@ -817,5 +838,57 @@ func TestCIPlanScriptResolvesRelativePathsBeforeCD(t *testing.T) {
 	}
 	if strings.Contains(string(goRunOut), "selector failed") {
 		t.Fatalf("ci-plan.sh go run launcher failed to resolve default relative tier table:\n%s", goRunOut)
+	}
+}
+
+func TestSDKVectorsTakePrecedenceOverGenericParityFiles(t *testing.T) {
+	g, _ := buildFixtureGraph(t)
+	p := Select([]string{"test/parity/sdk-vectors/example.json"}, g, DefaultRules, Options{})
+	if p.Full {
+		t.Fatalf("expected selective plan for SDK vector, got full: %v", p.FullReason)
+	}
+	for _, want := range []string{"test-subprocess", "test-conformance"} {
+		if !slices.Contains(p.Lanes, want) {
+			t.Errorf("expected %s in lanes for test/parity/sdk-vectors/example.json, got %v", want, p.Lanes)
+		}
+	}
+	// Top-level parity metadata still routes to parity-ledgers-and-docs.
+	r, ok := MatchRule("test/parity/coverage.json", DefaultRules)
+	if !ok || r.Name != "parity-ledgers-and-docs" {
+		t.Fatalf("expected top-level parity json to match parity-ledgers-and-docs, got ok=%v rule=%q", ok, r.Name)
+	}
+}
+
+func TestLiteralBackslashPathStaysUnownedAndForcesFull(t *testing.T) {
+	g, _ := buildFixtureGraph(t)
+	p := Select([]string{`docs\notes.txt`}, g, DefaultRules, Options{})
+	if !p.Full {
+		t.Fatalf("expected literal backslash path docs\\notes.txt to force full plan, got lanes=%v", p.Lanes)
+	}
+	if !slices.Contains(p.Unowned, `docs\notes.txt`) {
+		t.Fatalf("expected docs\\notes.txt in Unowned, got %v", p.Unowned)
+	}
+}
+
+func TestMacNativeSelectedForWorkflowPackagesWithoutDarwinOnlyTest(t *testing.T) {
+	g, _ := buildFixtureGraph(t)
+	// Ensure ./ai has NO Darwin-only test file in OSTests["darwin"].
+	delete(g.OSTests["darwin"], DefaultModule+"/ai")
+	p := Select([]string{"ai/openai.go"}, g, DefaultRules, Options{})
+	if !slices.Contains(p.Lanes, "mac-native") {
+		t.Fatalf("expected mac-native when ./ai changes even without Darwin-only test file, got lanes=%v", p.Lanes)
+	}
+}
+
+func TestEmbeddedGoAssetPropagatesCompileOwnership(t *testing.T) {
+	g, _ := buildFixtureGraph(t)
+	aiPkg := DefaultModule + "/ai"
+	g.EmbedSrc["examples/testdata/input.go"] = []string{aiPkg}
+	p := Select([]string{"examples/testdata/input.go"}, g, DefaultRules, Options{})
+	if p.Full {
+		t.Fatalf("expected selective plan for embedded .go fixture, got full: %v", p.FullReason)
+	}
+	if !slices.Contains(p.AffectedPackages, "./ai") {
+		t.Fatalf("expected embedding package ./ai in AffectedPackages, got %v", p.AffectedPackages)
 	}
 }
