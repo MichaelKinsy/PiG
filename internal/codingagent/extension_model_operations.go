@@ -134,11 +134,13 @@ type imagesWireOptions struct {
 	TimeoutMs       *int               `json:"timeoutMs"`
 	MaxRetries      *int               `json:"maxRetries"`
 	MaxRetryDelayMs *int               `json:"maxRetryDelayMs"`
+	AspectRatio     string             `json:"aspectRatio"`
+	Size            string             `json:"size"`
 	Metadata        map[string]any     `json:"metadata"`
 }
 
 func (o imagesWireOptions) options() ai.ModelsImagesOptions {
-	options := ai.ModelsImagesOptions{Headers: o.Headers, Env: o.Env, Metadata: o.Metadata}
+	options := ai.ModelsImagesOptions{ImagesOptions: ai.ImagesOptions{Headers: o.Headers, Env: o.Env, AspectRatio: o.AspectRatio, Size: o.Size, Metadata: o.Metadata}}
 	if o.TimeoutMs != nil {
 		options.TimeoutMs = *o.TimeoutMs
 	}

@@ -54,9 +54,6 @@ var vendoredIdentityPatches = map[string][][2]string{
 	"pi-coding-agent/package-manager-cli.js": {
 		{`const DEFAULT_INSTALLER_API_BASE = "https://pi.dev/api/installer/releases";`, `const DEFAULT_INSTALLER_API_BASE = "` + pigidentity.HostedOrigin + `/api/installer/releases";`},
 	},
-	"pi-coding-agent/modes/interactive/interactive-mode.js": {
-		{"void fetch(`https://pi.dev/api/report-install?version=", "void fetch(`" + pigidentity.HostedOrigin + "/api/report-install?version="},
-	},
 	// D62: PiG never uploads bug reports; D64: PiG's /share never sends a Radius token to a gateway.
 	"pi-coding-agent/core/bug-report-upload.js": {
 		{"export async function uploadBugReport(bundle, options = {}) {\n", "export async function uploadBugReport(bundle, options = {}) {\n    throw new Error(\"PiG does not upload bug reports (D62): export the report and attach it to a PiG issue instead.\"); // pig divergence (D26, D62)\n"},

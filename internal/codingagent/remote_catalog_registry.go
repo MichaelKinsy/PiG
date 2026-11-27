@@ -73,8 +73,9 @@ func (r *ModelRegistry) builtinBase(id string, fallback ai.ModelsStreamFunction)
 			Auth:         radius.Auth(),
 			GetModels:    func() ([]*ai.Model, error) { return radius.GetModels(), nil },
 			GetAllModels: func() ([]ai.AnyModel, error) { return radius.GetAllModels(), nil },
-			Classify:     radius.Classify,
-			Stream:       fallback,
+			Classify:       radius.Classify,
+			GenerateImages: radius.GenerateImages,
+			Stream:         fallback,
 			StreamSimple: r.simpleFallback(id, fallback),
 		}
 		return base

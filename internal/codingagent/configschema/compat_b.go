@@ -24,6 +24,7 @@ func AnthropicMessagesCompatSchema() *Schema {
 func BedrockCompatSchema() *Schema {
 	return OpenObject([]Prop{
 		optionalCompatBoolean("supportsStrictMode", D("Whether the model supports Bedrock strict tool schemas."), Default(false)),
+		Optional("supportsReasoningReplay", Boolean(D("Whether the model accepts reasoning blocks from earlier assistant messages. When false, earlier reasoning is not sent back. The generated catalog disables this for Kimi K3 models, which fail on Converse when it is sent."), Default(true))),
 	}, D("Compatibility settings for Amazon Bedrock models."), Opt{"additionalProperties", true})
 }
 

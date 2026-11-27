@@ -29,7 +29,7 @@ fs.writeFileSync(file, JSON.stringify(pkg, null, 2));
 # Pi lists its own app name as the third self-update target ('update [source|self|pi]'); pig accepts 'pig' there.
 # pig divergence (D64): /share prints the PiG gateway's URL, so PI_SHARE_VIEWER_URL is unused.
 # The patched app name selects PIG_CODING_AGENT_DIR, not PI_CODING_AGENT_DIR.
-# pig divergence (D2): the help names PIG_OFFLINE, PIG_SELF_UPDATE_COMMAND and PIG_TELEMETRY, PiG's names beside Pi's PI_ names,
+# pig divergence (D2): the help names PIG_OFFLINE and PIG_SELF_UPDATE_COMMAND, PiG's names beside Pi's PI_ names,
 # which pig still reads; each rule keeps the description column.
 # Never load the invoking agent's state or let terminal color enter the artifact.
 # Pi exits immediately after printing help. Node writes regular files synchronously, so capture before filtering rather than giving it a pipe that can lose queued bytes.
@@ -46,7 +46,6 @@ grep -v 'PI_SHARE_VIEWER_URL' "$work/help.raw" \
     -e 's/(same as PI_OFFLINE=1)$/(same as PIG_OFFLINE=1)/' \
     -e 's/^  PI_OFFLINE  /  PIG_OFFLINE /' \
     -e 's/^  PI_SELF_UPDATE_COMMAND  /  PIG_SELF_UPDATE_COMMAND /' \
-    -e 's/^  PI_TELEMETRY  /  PIG_TELEMETRY /' \
   >"$output"
 chmod 644 "$output"
 mv "$output" "$root/coding/cli/help_upstream.txt"

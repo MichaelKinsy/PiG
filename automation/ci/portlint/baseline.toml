@@ -2006,11 +2006,6 @@ file = "internal/buildprogress/reporter.go"
 func = "New"
 snippet = "go r.animate()"
 
-[[hit]]
-check = "golifetime"
-file = "internal/codingagent/install_telemetry.go"
-func = "reportInstallTelemetry"
-snippet = "go sendInstallTelemetry(endpoint, version)"
 
 [[hit]]
 check = "golifetime"
@@ -5964,11 +5959,6 @@ file = "internal/codingagent/extension_session_replacement.go"
 func = "InteractiveMode.extensionReplacementActions"
 snippet = "return switchSession(context.Background(), path, opts)"
 
-[[hit]]
-check = "ctxbackground"
-file = "internal/codingagent/install_telemetry.go"
-func = "sendInstallTelemetry"
-snippet = "ctx, cancel := context.WithTimeout(context.Background(), installTelemetryTimeout)"
 
 [[hit]]
 check = "ctxbackground"

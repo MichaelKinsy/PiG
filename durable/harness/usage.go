@@ -100,6 +100,9 @@ func usageJSON(usage ai.Usage) *delta.JsonObject {
 	if usage.Reasoning != nil {
 		value.Set("reasoning", float64(*usage.Reasoning))
 	}
+	if usage.ImageOutput != nil {
+		value.Set("imageOutput", float64(*usage.ImageOutput))
+	}
 	value.Set("totalTokens", float64(usage.TotalTokens))
 	value.Set("cost", cost)
 	return value
@@ -125,6 +128,11 @@ func addUsageDraft(total *delta.Object, usage ai.Usage) error {
 	}
 	if usage.Reasoning != nil {
 		if err := add(total, "reasoning", float64(*usage.Reasoning)); err != nil {
+			return err
+		}
+	}
+	if usage.ImageOutput != nil {
+		if err := add(total, "imageOutput", float64(*usage.ImageOutput)); err != nil {
 			return err
 		}
 	}
@@ -165,6 +173,13 @@ func AddUsage(total *ai.Usage, usage ai.Usage) {
 		}
 		total.Reasoning = &sum
 	}
+	if usage.ImageOutput != nil {
+		sum := *usage.ImageOutput
+		if total.ImageOutput != nil {
+			sum += *total.ImageOutput
+		}
+		total.ImageOutput = &sum
+	}
 	total.Cost.Input += usage.Cost.Input
 	total.Cost.Output += usage.Cost.Output
 	total.Cost.CacheRead += usage.Cost.CacheRead
@@ -200,6 +215,10 @@ func copyUsage(usage ai.Usage) ai.Usage {
 	if usage.Reasoning != nil {
 		value := *usage.Reasoning
 		usage.Reasoning = &value
+	}
+	if usage.ImageOutput != nil {
+		value := *usage.ImageOutput
+		usage.ImageOutput = &value
 	}
 	return usage
 }

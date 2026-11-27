@@ -244,8 +244,11 @@ func (r *run) modelGlobals(models modelRuntime) []sandbox.Tool {
 				return nil
 			}, func(resolved ai.AnyModel) modelCallResult {
 				image, _ := resolved.(*ai.ImageModel)
-				_ = imageOpts // Forwarded to ai.ModelsImagesOptions once Lane 1 adds AspectRatio/Size to ai.ImagesOptions.
-				generated := models.GenerateImages(ctx, image, request)
+				var callOpts []ai.ModelsImagesOptions
+				if imageOpts != nil {
+					callOpts = []ai.ModelsImagesOptions{{ImagesOptions: ai.ImagesOptions{AspectRatio: imageOpts.AspectRatio, Size: imageOpts.Size}}}
+				}
+				generated := models.GenerateImages(ctx, image, request, callOpts...)
 				count := 0
 				for _, block := range generated.Output {
 					if _, ok := block.(ai.ImageContent); ok {

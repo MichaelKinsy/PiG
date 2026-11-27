@@ -50,7 +50,11 @@ func ModelCostTierSchema() *Schema {
 
 func ModelCostSchema() *Schema {
 	props := modelCostRates()
-	return OpenObject(append(props, Optional("tiers", Array(ModelCostTierSchema(), D("Request-wide pricing tiers. The highest matching input threshold applies to the full request.")))))
+	props = append(props,
+		Optional("imageOutput", Number(D("Image output cost in USD per million tokens, for models that generate images. Image output tokens use this rate and the rest of output (text and reasoning) uses `output`. Unset means image tokens cost `output`."))),
+		Optional("tiers", Array(ModelCostTierSchema(), D("Request-wide pricing tiers. The highest matching input threshold applies to the full request."))),
+	)
+	return OpenObject(props)
 }
 
 func modelImageResizeOptions(opts ...Opt) *Schema {

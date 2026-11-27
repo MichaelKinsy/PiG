@@ -25,6 +25,9 @@ func CombineUsage(first, second ai.Usage) ai.Usage {
 	if first.Reasoning != nil || second.Reasoning != nil {
 		sum.Reasoning = new(deref(first.Reasoning) + deref(second.Reasoning))
 	}
+	if first.ImageOutput != nil || second.ImageOutput != nil {
+		sum.ImageOutput = new(deref(first.ImageOutput) + deref(second.ImageOutput))
+	}
 	return sum
 }
 
