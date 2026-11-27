@@ -200,15 +200,19 @@ func TestExtUIEditorCallsRepaintCustomEditorWhileIdle(t *testing.T) {
 				t.Fatalf("custom editor text = %q, want %q", component.text, tc.wantText)
 			}
 
-			// Verify a render was requested via requestRender() and drain any
-			// remoteEditorEvents (EditorFrame / SetRemoteFrame) posted by the
-			// custom editor component onto the owner loop.
-			select {
-			case render := <-scheduled:
-				runPostedTasks(t, m)
-				render()
-			case <-t.Context().Done():
-				t.Fatalf("%s did not request a render for custom editor", tc.method)
+			// Drain any remaining posted remoteEditorEvents (EditorFrame calls
+			// tuiInst.Render() directly, which paints and cancels the throttled
+			// timer if it ran before the timer fired) and run any scheduled render
+			// that did fire via requestRender().
+			runPostedTasks(t, m)
+			if !strings.Contains(out.String(), "factory-editor:"+tc.wantText) {
+				select {
+				case render := <-scheduled:
+					runPostedTasks(t, m)
+					render()
+				case <-t.Context().Done():
+					t.Fatalf("%s neither painted via EditorFrame nor requested a render for custom editor", tc.method)
+				}
 			}
 
 			if got := out.String(); !strings.Contains(got, "factory-editor:"+tc.wantText) {
