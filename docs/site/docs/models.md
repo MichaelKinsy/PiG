@@ -85,6 +85,20 @@ Use `promptCache` to declare the provider's cache lifetime in seconds for the `s
 
 A model without a lifetime for the active tier is not eligible for cache warming. A `modelOverrides` entry can set `inputLimits` or `promptCache` for a built-in or extension model. See [cache warming](settings.md#cache-warming).
 
+### Map thinking levels
+
+Use `thinkingLevelMap` to choose which thinking levels `/thinking` offers and which provider value PiG sends for each:
+
+```json
+{
+  "id": "reasoning-model",
+  "reasoning": true,
+  "thinkingLevelMap": { "minimal": null, "xhigh": "xhigh", "max": "max" }
+}
+```
+
+A string is sent to the provider as the effort value, and `null` hides the level. Levels left out use the provider's default value for `off` through `high`. `xhigh` and `max` are opt-in: PiG offers them only when the map gives them a string, which must be a value the provider accepts. Set the map in `models.json`, on a custom model or in a `modelOverrides` entry for a built-in model, not in `settings.json`.
+
 ### Configure sampling by thinking level
 
 OpenAI-compatible APIs support free-form `samplingParams` model defaults and `samplingParamsByThinkingLevel` overrides in `models.json`. The keys of `samplingParamsByThinkingLevel` are PiG thinking levels (`off`, `minimal`, `low`, `medium`, `high`, `xhigh` and `max`), not the provider values from `thinkingLevelMap`:
@@ -138,7 +152,7 @@ A model is reasoning-capable when its catalog entry sets `reasoning: true`; `thi
 
 Extensions read the active model with `ctx.model` (Node) or `Context.GetModelInfo()` (Go SDK, returns `(*ModelInfo, error)`). The Go SDK's `ModelInfo` carries `ID`, `Name`, `Provider`, `ContextWindow`, `MaxOutputTokens`, `Reasoning`, `InputLimits` and the per-million-token costs `InputCostPer1M`, `OutputCostPer1M`, `CacheReadCostPer1M` and `CacheWriteCostPer1M`.
 
-## Use classifier models
+## Use decision models
 
 Classifier models do not chat. They answer typed questions about JSON state: pick one of several choices, answer yes or no, or give a score, each with probabilities. The built-in catalog includes TypeSafe's Jev model from these providers, Cloudflare's Clef and Clef Flash models from Workers AI, and OpenAI's GPT-6 Luna through the [Decisions API](https://developers.openai.com/api/docs/guides/decisions):
 

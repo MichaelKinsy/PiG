@@ -2,6 +2,7 @@
  * Component for displaying bash command execution with streaming output.
  */
 import { Container, Loader, Spacer, Text } from "../../../../../pi-tui.mjs";
+import { bashTruncationNote } from "../../../core/messages.js";
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, truncateTail, } from "../../../core/tools/truncate.js";
 import { stripAnsi } from "../../../utils/ansi.js";
 import { theme } from "../theme/theme.js";
@@ -18,6 +19,7 @@ export class BashExecutionComponent extends Container {
     loader;
     truncationResult;
     fullOutputPath;
+    fullOutputError;
     expanded = false;
     contentContainer;
     /** `dim` marks `!!` commands, whose output is excluded from the model context. */
@@ -72,7 +74,7 @@ export class BashExecutionComponent extends Container {
         }
         this.updateDisplay();
     }
-    setComplete(exitCode, cancelled, truncationResult, fullOutputPath) {
+    setComplete(exitCode, cancelled, truncationResult, fullOutputPath, fullOutputError) {
         this.exitCode = exitCode;
         this.status = cancelled
             ? "cancelled"
@@ -81,6 +83,7 @@ export class BashExecutionComponent extends Container {
                 : "complete";
         this.truncationResult = truncationResult;
         this.fullOutputPath = fullOutputPath;
+        this.fullOutputError = fullOutputError;
         // Stop loader
         this.loader.stop();
         this.updateDisplay();
@@ -154,8 +157,8 @@ export class BashExecutionComponent extends Container {
             }
             // Add truncation warning (context truncation, not preview truncation)
             const wasTruncated = this.truncationResult?.truncated || contextTruncation.truncated;
-            if (wasTruncated && this.fullOutputPath) {
-                statusParts.push(theme.fg("warning", `Output truncated. Full output: ${this.fullOutputPath}`));
+            if (wasTruncated) {
+                statusParts.push(theme.fg("warning", bashTruncationNote({ fullOutputPath: this.fullOutputPath, fullOutputError: this.fullOutputError })));
             }
             if (statusParts.length > 0) {
                 this.contentContainer.addChild(new Text(`\n${statusParts.join("\n")}`, this.outputPad, 0));

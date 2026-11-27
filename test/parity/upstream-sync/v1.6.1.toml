@@ -1,0 +1,989 @@
+from = "1.6.0"
+to = "1.6.1"
+
+[[files]]
+path = "packages/agent/src/proxy.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/sse_stream_decoder_test.go#TestSseDecoderUpstream", "test:agent/proxy_test.go"]
+rationale = "Pi v1.6.1 (da7e26cc8 fix(mcp,ai,agent,coding-agent,tui): read large streamed lines and events in linear time (#12451)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/api/anthropic-messages.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream", "test:ai/anthropic_microtask_trace_test.go#TestAnthropicMicrotaskTrace", "test:ai/anthropic_setup_test.go#TestAnthropicSetupCancellationAwaitsResponseObserver", "test:ai/anthropic_injected_client_test.go#TestAnthropicInjectedClientCallObservesTheAbort", "test:ai/anthropic_stream_test.go#TestAnthropicSSEReaderAbortAndReadErrors", "test:ai/anthropic_sse_terminal_test.go#TestAnthropicSSECancellationAfterMessageStop", "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsDoNotRecordUncleanReplies", "test:ai/provider_response_test.go#TestProviderResponseBoundaries", "test:ai/provider_payload_hook_test.go#TestProviderPayloadHookReceivesModelAPIAndPayload", "test:ai/provider_abort_oracle_test.go#TestProviderAbortMatchesPi", "test:ai/provider_stream_event_rejection_test.go#TestProviderStreamEventObserverRejectionEndsTheStreamOnEveryAPI"]
+rationale = "Pi v1.6.1 (da7e26cc8 fix(mcp,ai,agent,coding-agent,tui): read large streamed lines and events in linear time (#12451); 8a57d42a5 fix(ai,coding-agent): report HTTP error responses to onResponse (#12502); 4245b07b4 fix(ai): preserve declared dialect in non-strict Anthropic tools). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/api/azure-openai-responses.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/azure_responses_tick_order_test.go#TestAzureResponsesTickOrder", "test:ai/azure_setup_error_order_test.go#TestAzureMissingEndpointOrderFollowsPisAPIBoundary", "test:ai/provider_response_test.go#TestProviderResponseBoundaries", "test:ai/provider_payload_hook_test.go#TestProviderPayloadHookReceivesModelAPIAndPayload", "test:ai/api_stream_auth_abort_oracle_test.go#TestAPIStreamMissingAuthStopReasonMatchesPi", "test:ai/provider_stream_events_upstream_test.go#TestProviderStreamEventsUpstream", "test:ai/provider_stream_event_rejection_test.go#TestProviderStreamEventObserverRejectionEndsTheStreamOnEveryAPI"]
+rationale = "Pi v1.6.1 (8a57d42a5 fix(ai,coding-agent): report HTTP error responses to onResponse (#12502); a588a7bc4 fix(ai): pin Codex request effort to the initial selection (#12437)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/api/bedrock-converse-stream.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go#TestBedrockStrictToolLimitRememberedPerSession", "test:ai/providers/bedrock/bedrock_observation_test.go#TestBedrockObservationMatchesPi", "test:ai/providers/bedrock/bedrock_observation_test.go#TestBedrockCancellationMatchesPiOutcome", "test:ai/providers/bedrock/bedrock_body_tap_test.go#TestBedrockCancellationJoinsBodyReader", "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream", "test:ai/provider_response_test.go#TestProviderResponseBoundaries"]
+rationale = "Pi v1.6.1 (be269f57b fix(ai): resolve Bedrock SSO credentials through HTTPS_PROXY (#12365)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/api/classifier-shared.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/classifier_request_lifecycle_test.go#TestClassifiersEndWithTheOutcomeOfTheRequestLifecycle", "test:ai/classifier_shared_exports_test.go#TestPostClassifierRequestNoRetryStatusFailsAtOnceAndOtherStatusesRetry", "test:ai/classifier_http_error_name_test.go#TestClassifierHTTPErrorNameDistinguishesTimeoutFromHTTPFailure"]
+rationale = "Pi v1.6.1 (8a57d42a5 fix(ai,coding-agent): report HTTP error responses to onResponse (#12502); e5d93ea0a fix(ai): report OpenAI Decisions cache read and write tokens (#12358)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/api/google-generative-ai.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/google_stream_lifetime_test.go#TestGoogleStreamFailuresFollowThePiLoop", "test:ai/google_stream_lifetime_test.go#TestGoogleStreamReleasesItsGoroutines", "test:ai/google_sdk_pipeline_test.go#TestGoogleSDKPipelineMatchesNodeTickOrder", "test:ai/google_sdk_pipeline_test.go#TestGoogleProviderConsumerMatchesNodeTickOrder", "test:ai/google_real_socket_test.go#TestGoogleProviderRoundsMatchNodeRealSockets", "test:ai/google_retry_owner_test.go#TestGoogleRetryGoogleRequestIsTheOnlyRetryLayer", "test:ai/provider_abort_oracle_test.go#TestProviderAbortMatchesPi", "test:ai/provider_payload_hook_test.go#TestProviderPayloadHookReceivesModelAPIAndPayload", "test:ai/provider_stream_event_rejection_test.go#TestProviderStreamEventObserverRejectionEndsTheStreamOnEveryAPI"]
+rationale = "Pi v1.6.1 (8a57d42a5 fix(ai,coding-agent): report HTTP error responses to onResponse (#12502); 001ffff32 fix(ai): support xhigh thinking on Gemini 4 Hydrogen and Neon; 117eac3a0 fix(ai): distinguish Google prompt blocks from incomplete streams (#12357); fe8a6f5dc fix(ai): Gemini 3+ detection for prefixed Google model IDs, add compat.supportsStrictMode (#12371)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/api/google-shared.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/google_retry_request_test.go#TestRetryGoogleRequestRetriesAHeaderlessSDKErrorWithARetryableStatus", "test:ai/google_retry_request_test.go#TestRetryGoogleRequestDoesNotRetryWhenMaxRetriesIsUnset", "test:ai/google_retry_request_test.go#TestRetryGoogleRequestPassesTheDelayCapOn", "test:ai/google_retry_owner_test.go#TestGoogleRetryGoogleRequestIsTheOnlyRetryLayer", "test:ai/provider_retry_request_upstream_test.go#TestRetryProviderRequestAbortsTheRetryDelay", "test:ai/google_sdk_pipeline_test.go#TestGoogleSDKPipelineMatchesNodeTickOrder"]
+rationale = "Pi v1.6.1 (8a57d42a5 fix(ai,coding-agent): report HTTP error responses to onResponse (#12502); 001ffff32 fix(ai): support xhigh thinking on Gemini 4 Hydrogen and Neon; 117eac3a0 fix(ai): distinguish Google prompt blocks from incomplete streams (#12357); fe8a6f5dc fix(ai): Gemini 3+ detection for prefixed Google model IDs, add compat.supportsStrictMode (#12371)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/api/google-vertex.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/google_vertex_adc_test.go#TestGoogleVertexADCRequestCancellation"]
+rationale = "Pi v1.6.1 (8a57d42a5 fix(ai,coding-agent): report HTTP error responses to onResponse (#12502); 001ffff32 fix(ai): support xhigh thinking on Gemini 4 Hydrogen and Neon; 117eac3a0 fix(ai): distinguish Google prompt blocks from incomplete streams (#12357); fe8a6f5dc fix(ai): Gemini 3+ detection for prefixed Google model IDs, add compat.supportsStrictMode (#12371)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/api/llama-cpp-classify.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/classifier_request_lifecycle_test.go#TestClassifiersEndWithTheOutcomeOfTheRequestLifecycle", "test:ai/classifier_join_test.go#TestRunJoinedLetsSiblingsRunToCompletionAfterAFailure", "test:ai/classifier_join_test.go#TestLlamaCppClassifyTemplateFailureLeavesLabelLookupsRunning", "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream", "test:ai/llama_cpp_classify_oracle_test.go#TestLlamaCppClassifyMatchesPi"]
+rationale = "Pi v1.6.1 (8a57d42a5 fix(ai,coding-agent): report HTTP error responses to onResponse (#12502)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/api/mistral-conversations.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/mistral_oracle_test.go#TestMistralDirectMatchesPiTickOrder", "test:ai/mistral_oracle_test.go#TestMistralCancelMatchesPi", "test:ai/mistral_ticks_test.go#TestMistralBodyPathTicksMatchPi", "test:ai/mistral_ticks_test.go#TestMistralRealBodyTicksMatchPi", "test:ai/mistral_transport_error_test.go#TestMistralTransportCancellationRemainsAborted", "test:ai/provider_response_test.go#TestProviderResponseBoundaries", "test:ai/provider_payload_hook_test.go#TestProviderPayloadHookReceivesModelAPIAndPayload", "test:ai/provider_abort_oracle_test.go#TestProviderAbortMatchesPi", "test:ai/provider_stream_event_rejection_test.go#TestProviderStreamEventObserverRejectionEndsTheStreamOnEveryAPI"]
+rationale = "Pi v1.6.1 (da7e26cc8 fix(mcp,ai,agent,coding-agent,tui): read large streamed lines and events in linear time (#12451); 4f3d2be9a fix(ai): classify finish_reason \"error\" in the retry classifier, not in provider messages (#12455)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/api/openai-codex-responses.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/codex_transport_failure_abort_test.go#TestCodexTransportFailureHandledAfterTheAbortRecordsNoDiagnostic", "test:ai/codex_websocket_failure_diagnostic_test.go#TestCodexWebSocketTransportFailureIsPisDiagnosticAndErrorText", "test:ai/codex_websocket_failure_diagnostic_test.go#TestCodexWebSocketAbortAfterTheStreamStartedAddsNoTransportDiagnostic", "test:ai/codex_websocket_failure_diagnostic_test.go#TestCodexWebSocketFramesAreParsedLikePi", "test:ai/codex_responses_oracle_test.go#TestCodexResponsesMatchPi", "test:ai/openai_codex_sse_upstream_test.go#TestCodexSSEAndPayloadUpstream", "test:ai/openai_codex_sse_upstream_test.go#TestCodexSSELifetimeUpstream", "test:ai/openai_codex_retry_upstream_test.go#TestCodexSSERetriesUpstream", "test:ai/openai_codex_retry_backoff_release_test.go#TestCodexSSERetryBackoffReleasesTheCallerContext", "test:ai/openai_codex_sse_stream_test.go#TestCodexSSEFramingMatchesPiParseSSE", "test:ai/openai_codex_sse_stream_test.go#TestCodexSSEStreamJoinsBodyWorker", "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream", "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketTimeoutsUpstream", "test:ai/openai_codex_ws_upstream_test.go#TestCodexProviderStreamEventCallbackFailureSkipsTransportRecovery", "test:ai/openai_codex_transport_regression_test.go#TestCodexConnectionLimitTwiceFallsBackToSSE", "test:ai/openai_codex_transport_regression_test.go#TestCodexMidStreamWebSocketFailureMakesSessionFallBackToSSE", "test:ai/openai_codex_transport_regression_test.go#TestCodexIdleServerClosedCachedSocketReconnectsWebSocket", "test:ai/openai_codex_transport_regression_test.go#TestCodexAbortWhileWaitingForFirstWebSocketEvent", "test:ai/openai_codex_transport_regression_test.go#TestCodexAbortDuringHandshakeDoesNotActivateSSEFallback", "test:ai/openai_codex_websocket_test.go#TestAcquireCodexWebSocket_BusyConnectionKeepsCachedOwner", "test:ai/openai_codex_websocket_test.go#TestOpenAICodexResponses_AutoReusesWebSocketWithInputDelta", "test:ai/openai_codex_http_error_test.go#TestCodexHTTPErrorEmptyBodyFallsBackToTheReasonPhrase", "scenario:test/parity/scenarios/providers-faux-streaming/11-codex-ws-connect-fallback.toml", "scenario:test/parity/scenarios/providers-faux-streaming/24-codex-payload-lifetime.toml", "scenario:test/parity/scenarios/providers-faux-streaming/25-codex-continuation-recovery.toml"]
+rationale = "Pi v1.6.1 (da7e26cc8 fix(mcp,ai,agent,coding-agent,tui): read large streamed lines and events in linear time (#12451); a588a7bc4 fix(ai): pin Codex request effort to the initial selection (#12437)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/api/openai-completions.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/rpc33_provider_abort_test.go#TestOpenAIProviderAbortAfterAdmission", "test:ai/openai_buffered_abort_test.go#TestOpenAIBufferedAbortRetainsDeliveredBodyValues", "test:ai/provider_response_test.go#TestProviderResponseBoundaries", "test:ai/provider_response_test.go#TestProviderResponseAwaitCancellationAndCleanup", "test:ai/provider_payload_hook_test.go#TestProviderPayloadHookReceivesModelAPIAndPayload", "test:ai/provider_abort_oracle_test.go#TestProviderAbortMatchesPi", "test:ai/api_stream_auth_abort_oracle_test.go#TestAPIStreamMissingAuthStopReasonMatchesPi", "test:ai/provider_stream_events_upstream_test.go#TestProviderStreamEventsUpstream", "test:ai/provider_stream_event_order_test.go#TestProviderStreamEventObserverFollowsNormalization", "test:ai/provider_stream_event_rejection_test.go#TestProviderStreamEventObserverRejectionEndsTheStreamOnEveryAPI"]
+rationale = "Pi v1.6.1 (9b911b409 fix(ai): retry OpenRouter empty stops with a failing native_finish_reason; 8a57d42a5 fix(ai,coding-agent): report HTTP error responses to onResponse (#12502); ddf5868d2 fix(ai): record OpenRouter native_finish_reason). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/api/openai-responses-shared.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/provider_stream_events_upstream_test.go#TestProviderStreamEventsUpstream", "test:ai/provider_stream_event_order_test.go#TestProviderStreamEventObserverFollowsNormalization", "test:ai/openai_responses_test.go#TestResponsesSSE_ContextCancellation", "test:ai/azure_responses_tick_order_test.go#TestAzureResponsesTickOrder", "test:ai/openai_codex_ws_upstream_test.go#TestCodexProviderStreamEventCallbackFailureSkipsTransportRecovery"]
+rationale = "Pi v1.6.1 (a588a7bc4 fix(ai): pin Codex request effort to the initial selection (#12437); 69a699348 fix(ai): replay Responses tool calls with status \"completed\"). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/api/openai-responses.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/rpc33_provider_abort_test.go#TestOpenAIProviderAbortAfterAdmission", "test:ai/openai_buffered_abort_test.go#TestOpenAIBufferedAbortRetainsDeliveredBodyValues", "test:ai/openai_responses_test.go#TestResponsesSSE_ContextCancellation", "test:ai/provider_response_test.go#TestProviderResponseBoundaries", "test:ai/provider_payload_hook_test.go#TestProviderPayloadHookReceivesModelAPIAndPayload", "test:ai/provider_abort_oracle_test.go#TestProviderAbortMatchesPi", "test:ai/api_stream_auth_abort_oracle_test.go#TestAPIStreamMissingAuthStopReasonMatchesPi", "test:ai/provider_stream_events_upstream_test.go#TestProviderStreamEventsUpstream", "test:ai/provider_stream_event_rejection_test.go#TestProviderStreamEventObserverRejectionEndsTheStreamOnEveryAPI"]
+rationale = "Pi v1.6.1 (8a57d42a5 fix(ai,coding-agent): report HTTP error responses to onResponse (#12502); a588a7bc4 fix(ai): pin Codex request effort to the initial selection (#12437)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/api/openrouter-images.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/openrouter_images_upstream_test.go#TestOpenRouterImagesUpstream"]
+rationale = "Pi v1.6.1 (8a57d42a5 fix(ai,coding-agent): report HTTP error responses to onResponse (#12502)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/api/pi-decision.lazy.ts"
+change = "added"
+disposition = "designed-out"
+evidence = ["test:ai/pi_decision_test.go#TestClassifyPiDecisionAndOpenRouterClassifier"]
+rationale = "Pi v1.6.1 (9553d5834 feat(ai): rename pi-classifier API to pi-decision). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/api/pi-decision.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:ai/pi_decision_test.go#TestClassifyPiDecisionAndOpenRouterClassifier", "test:ai/provider_error_response_test.go#TestPostClassifierRequestReportsErrorResponseBeforeBodyFails"]
+rationale = "Pi v1.6.1 (604359311 feat(ai): post pi-decision requests to /decision; 9553d5834 feat(ai): rename pi-classifier API to pi-decision). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/api/pi-messages.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/pi_messages_oracle_test.go#TestPiMessagesDirectMatchesPiTickOrder", "test:ai/pi_messages_oracle_test.go#TestPiMessagesCancelMatchesPi", "test:ai/pi_messages_oracle_test.go#TestPiMessagesOpaqueFetchMatchesPendingDelivery", "test:ai/pi_messages_ticks_test.go#TestPiMessagesBodyPathTicksMatchPi", "test:ai/pi_messages_test.go#TestPiMessagesAbortReportsAborted", "test:ai/provider_response_test.go#TestProviderResponseBoundaries", "test:ai/provider_payload_hook_test.go#TestProviderPayloadHookReceivesModelAPIAndPayload", "test:ai/provider_stream_event_rejection_test.go#TestProviderStreamEventObserverRejectionEndsTheStreamOnEveryAPI"]
+rationale = "Pi v1.6.1 (da7e26cc8 fix(mcp,ai,agent,coding-agent,tui): read large streamed lines and events in linear time (#12451)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/api/system-one-shared.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/classifier_request_lifecycle_test.go#TestClassifiersEndWithTheOutcomeOfTheRequestLifecycle", "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream", "test:ai/system_one_shared_test.go#TestSystemOneSharedFailureMessages"]
+rationale = "Pi v1.6.1 (bff71c709 feat(ai): expose OpenRouter classifier responseId and reported cost). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/api/typesafe-system-one.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/pi_decision_test.go#TestClassifyPiDecisionAndOpenRouterClassifier"]
+rationale = "Pi v1.6.1 (bff71c709 feat(ai): expose OpenRouter classifier responseId and reported cost). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/auth/oauth/github-copilot.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/githubcopilot_login_cancelled_test.go#TestLoginGitHubCopilotPromptOutcomesMatchPi", "test:ai/githubcopilot_retry_test.go#TestCopilotRetryBudgetCancelsInFlightRequest", "test:ai/githubcopilot_retry_test.go#TestCopilotRetryCancelsRateLimitBodyBeforeRetry", "test:ai/githubcopilot_retry_test.go#TestCopilotRetryPropagatesBodyCancellationFailure", "test:ai/githubcopilot_test.go#TestLoginGitHubCopilot_PolicyOnlyForUnconfigured"]
+rationale = "Pi v1.6.1 (90ef46ffe fix(ai,coding-agent): add Copilot gpt-6-luna-decisions and filter classifiers by account (#12495)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/index.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = ["test:ai/pi_decision_test.go#TestClassifyPiDecisionAndOpenRouterClassifier"]
+rationale = "Pi v1.6.1 (9553d5834 feat(ai): rename pi-classifier API to pi-decision; c2f3a5cea feat(ai): add pi-classifier API (#12421)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/models.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/models_provider_setup_abort_pi_test.go#TestModelsProviderSetupFailureReasonFollowsTheRequestSignal", "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream", "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream", "test:ai/models_runtime_available_test.go#TestModelsGetAvailableRejectsBeforeOtherChecksSettle", "test:ai/models_runtime_lifetime_test.go#TestModelsCompletedRefreshSignalFollowsItsCaller", "scenario:test/parity/scenarios/model-runtime-store-catalog/19-models-runtime.toml", "test:ai/models_async_contract_test.go#TestModelsLoginWithAnAbortedSignalSettlesWithItsReasonBeforeAnyOtherCheck", "test:ai/models_async_contract_test.go#TestModelsLoginProviderWithAnAbortedSignalSettlesWithItsReasonBeforeTheLoginMethodCheck", "test:ai/models_async_contract_test.go#TestModelsLoginNamesAnUnknownProvider", "test:ai/models_async_contract_test.go#TestModelsLoginAbortWhileTheFlowRunsSettlesWithTheReasonAndStoresNothing", "test:ai/models_async_contract_test.go#TestModelsLoginStoreFailureIsWrappedAndAnAbortDuringTheModifyWins", "test:ai/models_async_contract_test.go#TestModelsLoginAbortBeforeTheModifyStartedDoesNotWaitForTheStore", "test:ai/models_async_contract_test.go#TestModelsLoginHandsTheFlowTheCallersOptionsAndSignal", "test:ai/models_async_contract_test.go#TestModelsLogoutAbortStoreSignalAndFailureWrap", "test:ai/models_async_contract_test.go#TestModelsGenerateImagesAbortedSignalReachesTheProviderAndEndsAborted", "test:ai/models_async_contract_test.go#TestModelsGenerateImagesTransformHeadersIsAwaitedWithTheSignalAndItsRejectionIsTheResult", "test:ai/models_async_contract_test.go#TestModelsClassifyAbortedSignalReachesTheProviderAndEndsAborted", "test:ai/models_async_contract_test.go#TestModelsGetAllAvailableAbortSettlesWhileAnAuthCheckIsPending", "test:ai/models_await_operation_test.go#TestAwaitModelsOperationWithAnAbortedSignalStartsNothingAndSettlesWithTheReason", "test:ai/models_await_operation_test.go#TestAwaitModelsOperationResultThatArrivesWithTheAbortIsTheReason", "test:ai/images_models_mismatch_test.go#TestModelsGenerateImagesTurnsTheRegistrysMismatchedAPIThrowIntoAnErrorResult", "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream", "test:ai/classifier_images_oracle_test.go#TestModelsClassifyChecksImageInputBeforeTheProvider"]
+rationale = "Pi v1.6.1 (073b0bae8 fix(ai): merge createProvider model catalog once per publish, not per read (#12366)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/providers/compat-schema.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/google_prefixed_ids_test.go", "test:internal/codingagent/configschema/compat_schema_exports_test.go#TestCompatSchemaExportsMatchPi"]
+rationale = "Pi v1.6.1 (fe8a6f5dc fix(ai): Gemini 3+ detection for prefixed Google model IDs, add compat.supportsStrictMode (#12371)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/providers/github-copilot.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/github_copilot_classifier_test.go"]
+rationale = "Pi v1.6.1 (90ef46ffe fix(ai,coding-agent): add Copilot gpt-6-luna-decisions and filter classifiers by account (#12495)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/providers/model-schema.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/compat_schema_exports_test.go#TestCompatSchemaExportsMatchPi"]
+rationale = "Pi v1.6.1 (d91ac96a4 docs(coding-agent): clarify xhigh and max in thinkingLevelMap (#12435)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/providers/radius-config.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/compat_radius_cancellation_test.go#TestLoadRadiusGatewayConfigIsCancelledWhileTheGatewayHasNotAnswered"]
+rationale = "Pi v1.6.1 (9553d5834 feat(ai): rename pi-classifier API to pi-decision; f25aecaa1 feat(ai): add classifier model support to Radius provider). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/providers/radius.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/radius_builtin_test.go#TestRadiusProviderAbortedRefreshSkipsTheGateway", "test:ai/radius_builtin_test.go#TestRadiusProviderRefreshAbortedDuringLoadDoesNotPublish", "test:ai/radius_test.go#TestRadiusProviderStopsWhenPublicationIsSuperseded", "test:ai/radius_test.go#TestRadiusProviderOverlaysRefreshedModels"]
+rationale = "Pi v1.6.1 (9553d5834 feat(ai): rename pi-classifier API to pi-decision; f25aecaa1 feat(ai): add classifier model support to Radius provider). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/types.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/union_constants_upstream_test.go#TestUpstreamStringUnionsMatchTheGoConstants"]
+rationale = "Pi v1.6.1 (9553d5834 feat(ai): rename pi-classifier API to pi-decision; 8a57d42a5 fix(ai,coding-agent): report HTTP error responses to onResponse (#12502); bff71c709 feat(ai): expose OpenRouter classifier responseId and reported cost; c2f3a5cea feat(ai): add pi-classifier API (#12421); fe8a6f5dc fix(ai): Gemini 3+ detection for prefixed Google model IDs, add compat.supportsStrictMode (#12371)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/utils/openrouter-cost.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/pi_decision_test.go#TestClassifyPiDecisionAndOpenRouterClassifier"]
+rationale = "Pi v1.6.1 (bff71c709 feat(ai): expose OpenRouter classifier responseId and reported cost). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/utils/openrouter-finish-reason.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:ai/openrouter_finish_reason_test.go"]
+rationale = "Pi v1.6.1 (e2cb38ac1 docs(ai): explain which OpenRouter stops are retried; 9b911b409 fix(ai): retry OpenRouter empty stops with a failing native_finish_reason; ddf5868d2 fix(ai): record OpenRouter native_finish_reason). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/utils/overflow.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/overflow_test.go#TestOverflowRequestTooLargeIdentifierBoundaries"]
+rationale = "Pi v1.6.1 (32c7f6d7b fix(ai): avoid overflow matches inside longer identifiers (#12438)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/utils/provider-retry.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/provider_retry_request_upstream_test.go#TestRetryProviderRequestAbortsTheRetryDelay", "test:ai/provider_retry_request_upstream_test.go#TestRetryProviderRequestRejectsDelayAboveTheLimit", "test:ai/provider_retry_request_upstream_test.go#TestRetryProviderRequestZeroDisablesTheDelayCap"]
+rationale = "Pi v1.6.1 (8a57d42a5 fix(ai,coding-agent): report HTTP error responses to onResponse (#12502)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/utils/retry.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/assistant_retry_patterns_upstream_test.go", "test:ai/sdk_patterns_drift_test.go#TestSDKRetryAndOverflowPatternsMatchAI"]
+rationale = "Pi v1.6.1 (4f3d2be9a fix(ai): classify finish_reason \"error\" in the retry classifier, not in provider messages (#12455); 0888fd79a fix(ai): retry \"request rate increased too quickly\" errors (#12434); a00a5048d fix(ai): retry more temporary provider failures; 25190b72c fix(ai): retry gateway provider-unavailable and partial-response errors (#12352); fb62c069b fix(ai): retry Cloudflare 525 errors; 51ba3ab5b fix(ai): remove abort listeners after retry backoff (#12348)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/utils/sse.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:ai/sse_stream_decoder_test.go#TestSseDecoderUpstream", "test:ai/sse_shared_behavior_test.go"]
+rationale = "Pi v1.6.1 (da7e26cc8 fix(mcp,ai,agent,coding-agent,tui): read large streamed lines and events in linear time (#12451)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/ai/src/utils/version.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/registry_test.go"]
+rationale = "Pi v1.6.1 (ef4a1cfcc Release v1.6.1). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/chord/src/data/args.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/data/args_test.go"]
+rationale = "Pi v1.6.1 (befc2d59b fix(chord): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/chord/src/link/binary.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/link/message_test.go"]
+rationale = "Pi v1.6.1 (befc2d59b fix(chord): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/chord/src/link/internal.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/link/message_test.go"]
+rationale = "Pi v1.6.1 (befc2d59b fix(chord): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/chord/src/link/message.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/link/message_test.go"]
+rationale = "Pi v1.6.1 (befc2d59b fix(chord): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/chord/src/link/text.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/link/message_test.go"]
+rationale = "Pi v1.6.1 (befc2d59b fix(chord): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/chord/src/node/http/admission.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_changes_test.go"]
+rationale = "Pi v1.6.1 (befc2d59b fix(chord): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/chord/src/node/plugins/build.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_build_test.go#TestEsbuildBuildReturnsASyntaxErrorAndAMissingFacetAsFailedResultsNeverAThrow", "test:chord/nextnode/plugins/plugins_build_test.go#TestEsbuildBuildAnAbortedContextIsItsCause", "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestEsbuildBuildGivesAPlainStylesheetsURLAnAsset"]
+rationale = "Pi v1.6.1 (befc2d59b fix(chord): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/chord/src/node/plugins/install.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_install_test.go#TestInstallDependenciesRejectsWithTheCommandsOutputWhenItFailsAndWhenTheContextAborts", "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallDependenciesRefusesAnEmptyCommandAndAnAbortedContextBeforeRunningAnything", "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginReturnsTheAbortsReasonAndRemovesWhatItCreated"]
+rationale = "Pi v1.6.1 (befc2d59b fix(chord): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/chord/src/node/plugins/plugins.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsFixRound1SerializesReloadsOfOneHostTwoStartedTogetherKeepBothChanges", "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsRolloutCountsAHostsErrorAsTheStepsBuiltPluginsFailingThereAHostStoppedCleanlyDirtiesNothing", "test:chord/nextnode/plugins/plugins_watcher_test.go#TestTheWatchersMarksFromRealFileEventsPublishingTheMarksToAWatch", "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsTheAppsAPIRequiredRootsAndInstallsInstallsAPluginIntoOneOfItsRootsAndMarksSetRefusesADirectoryThatIsNoRoot"]
+rationale = "Pi v1.6.1 (23cba8556 fix(chord): RolloutHost is a tagged union (kind: reloaded, stopped, failed)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/chord/src/node/plugins/stack.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_plugins_test.go"]
+rationale = "Pi v1.6.1 (befc2d59b fix(chord): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/chord/src/node/surfaces/published.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfacePublishesANewSetOnARolloutWithoutWaitingForClientsThePreviousFilesStayServed", "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfaceKeepsAPluginsAssetsWhileItKeepsItsOldScriptAfterFailedBuildsOpusL4FableM3", "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestARolloutStepDuringTheBuildStopsWaitingAtItsContextsAbortBeforeTheBuildEndsTheBuildGoesOn"]
+rationale = "Pi v1.6.1 (23cba8556 fix(chord): RolloutHost is a tagged union (kind: reloaded, stopped, failed)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/chord/src/node/surfaces/surface-build.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/surfaces/surfaces_build_test.go#TestOneSharedBuildBuildsOnceForEveryWaiterTheScriptsObjectShowsAnEmptySetBeforeTheFirstSetAfter", "test:chord/nextnode/surfaces/surfaces_build_test.go#TestAFailedBuildAnswers503ForTheSurfacesFilesAndFailsItsStepsHost", "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestARolloutStepDuringTheBuildStopsWaitingAtItsContextsAbortBeforeTheBuildEndsTheBuildGoesOn", "test:chord/nextnode/surfaces/surfaces_build_test.go#TestAFailedBuildStaysFailedEveryLaterRequestAnswers503AndNothingRebuilds", "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestTheServersCloseFailsTheBuildInFlightItsWaitersAnswer503", "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestClosingASurfaceDoesNotWaitForItsBuildInFlightWaitJoinsIt", "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestWaitingForASurfaceBuildReturnsTheContextsErrorWhenItEndsFirst", "test:chord/nextnode/surfaces/surfaces_build_test.go#TestASurfaceClosedBeforeItsBuildStartedNeverStartsOneItsWaitersAnswer503"]
+rationale = "Pi v1.6.1 (23cba8556 fix(chord): RolloutHost is a tagged union (kind: reloaded, stopped, failed)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/chord/src/node/workers/control.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_control_test.go"]
+rationale = "Pi v1.6.1 (23cba8556 fix(chord): RolloutHost is a tagged union (kind: reloaded, stopped, failed)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/chord/src/node/workers/main.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_main_test.go#TestTheWorkersSideSendsStartedWhenTheAppConnectsThenReadyWithItsLoadReportAndIdleState", "test:chord/nextnode/workers/workers_main_test.go#TestTheWorkersSideSendsFatalWithTheRedactedErrorAndExits1", "test:chord/nextnode/workers/workers_main_test.go#TestTheWorkersSideShutsDownDuringItsStartupAbortsItRunsTheClosersRegisteredSoFarInReverseOrderExits0", "test:chord/nextnode/workers/workers_signal_unix_test.go#TestTheWorkersSideShutsDownOnSIGTERM", "test:chord/nextnode/workers/workers_main_test.go#TestTheWorkersSideShutsDownOnTheParentsDisconnect", "test:chord/nextnode/workers/workers_workers_test.go#TestKeepAliveStopsAWorkerIdleSinceIdleMsAHoldKeepsOneRunningBusyKeepsItToo"]
+rationale = "Pi v1.6.1 (23cba8556 fix(chord): RolloutHost is a tagged union (kind: reloaded, stopped, failed)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/chord/src/node/workers/workers.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_workers_test.go#TestFailuresStayAStartThatFailsFailsTheAddressHoldersFailWaitingWithItANewHoldForksNothingRetryStartsIt", "test:chord/nextnode/workers/workers_workers_test.go#TestStopAStopDuringAStartWaitsForItThenStopsAStartDuringAStopWaitsForItsExit", "test:chord/nextnode/workers/workers_workers_test.go#TestFixRound1CloseDuringAnAppsStartThatIgnoresItsSignalReturnsAtOnceNothingForksAfterIt", "test:chord/nextnode/workers/workers_workers_test.go#TestFixRound1CloseDuringAForkedStartThatNeverConnectsReturnsAtOnceNoFailure", "test:chord/nextnode/workers/workers_workers_test.go#TestCloseCancelsAStartWaitingInStartAddressNothingForksNewStartsRejectNoWorkerFailedAtShutdown", "test:chord/nextnode/workers/workers_workers_test.go#TestFailuresStayAnExitBeforeStartedFailsTheStartAWorkerThatNeverConnectsIsKilledAtTheStartTimer", "test:chord/nextnode/workers/workers_workers_test.go#TestFailuresStayTheStartTimerCoversOnlyTheStartASlowLoadAfterConnectingIsNotKilled", "test:chord/nextnode/workers/workers_workers_test.go#TestKeepAliveStopsAWorkerIdleSinceIdleMsAHoldKeepsOneRunningBusyKeepsItToo", "test:chord/nextnode/workers/workers_rollout_test.go#TestTheRolloutStepShipsTheCurrentSetToRunningWorkersRetriesHeldFailedOnesListsEach", "test:chord/nextnode/workers/workers_workers_test.go#TestStartsOnDemandStartsAWorkerForTheFirstHoldStartingThenRunningItsLinkBindsTheHolder", "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayARunningWorkersLostLinkABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceItsHoldersGetANewWorkerASecondWithinAMinuteFailsTheAddress", "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor", "test:chord/nextnode/workers/workers_rollout_test.go#TestFixRound1TwoRolloutsStartedTogetherEachShipTheirOwnBuildTheLaterOneStays", "test:chord/nextnode/workers/workers_retry_resolving_test.go#TestARetryThatEntersAfterTheStartReadTheCrashAndBeforeTheRouteHandledItsRejectionStartsTheWorkerAgainOnce", "test:chord/nextnode/workers/workers_retry_resolving_test.go#TestARolloutThatEntersAfterTheStartReadTheCrashAndBeforeTheRouteHandledItsRejectionStartsTheWorkerAgainOnce", "test:chord/nextnode/workers/workers_retry_resolving_test.go#TestARetryThatEntersAfterAFailedAddressAnsweredANewHoldAndBeforeTheRouteHandledItsRejectionStartsTheWorkerAgainOnce", "test:chord/nextnode/workers/workers_retry_resolving_test.go#TestACallToTheRoutesRetryThatEndsNoFailureOfTheWorkersIsNotFollowedByTheRejectionItEntersBefore", "test:chord/nextnode/workers/workers_retry_failing_start_test.go#TestARetryDuringAStartThatThenFailsOnItsOwnIsOneResolveOneReportAndTheAddressStaysFailed"]
+rationale = "Pi v1.6.1 (23cba8556 fix(chord): RolloutHost is a tagged union (kind: reloaded, stopped, failed)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/chord/src/remote/consumer.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_consumer_test.go#TestConsumerReferencesOverALink", "test:chord/next/host/remote_consumer_test.go#TestConsumerCallWindow", "test:chord/next/host/remote_consumer_test.go#TestConsumerLimitsPerPart", "test:chord/next/host/remote_consumer_events_test.go#TestConsumerEvents", "test:chord/next/host/remote_consumer_test.go#TestCancellingOneReferencesCallsOnASharedHoldAFiniteWindowTheReleasedOnesQueuedCallLeavesUnsentItsSentOneIsAbortedTheOthersQueuedCallGoesOut", "test:chord/next/host/remote_consumer_test.go#TestCancellingOneReferencesCallsOnASharedHoldSeveralSentCallsAreAbortedNewestFirstAReplyCrossingTheReleaseIsIgnoredTheLastReleaseSendsRelease"]
+rationale = "Pi v1.6.1 (befc2d59b fix(chord): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/chord/src/remote/host-link.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_consumer_test.go#TestConsumerLimitsPerPart", "test:chord/next/host/remote_host_link_test.go#TestHostLinkPartsCompressionAndLimits", "test:chord/next/host/remote_provider_test.go#TestProviderLimitsPerPart"]
+rationale = "Pi v1.6.1 (befc2d59b fix(chord): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/chord/src/store/expression.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/store/store_test.go"]
+rationale = "Pi v1.6.1 (befc2d59b fix(chord): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/chord/src/store/jsonl.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/store/jsonl_test.go#TestJsonl"]
+rationale = "Pi v1.6.1 (da7e26cc8 fix(mcp,ai,agent,coding-agent,tui): read large streamed lines and events in linear time (#12451)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/chord/src/store/open-query.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/store/open_query_binding_test.go#TestOpenQueryABindingChangingWhileTheQueryIsMadeLeavesItCompiledForTheBindingThatStays"]
+rationale = "Pi v1.6.1 (befc2d59b fix(chord): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/chord/src/store/store.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/store/store_test.go#TestStore", "test:chord/next/store/group_commit_test.go#TestGroupCommit", "test:chord/next/store/outbox_test.go#TestOutbox", "test:chord/next/store/outbox_test.go#TestOutboxReadsStoredWritesAsJSONParse", "test:chord/next/host/host_tiling_test.go#TestTilingACommitGroupOfTwoOwners"]
+rationale = "Pi v1.6.1 (befc2d59b fix(chord): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/chord/src/surfaces/active-language.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState", "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce", "test:chord/next/surfaces/surfaces_follower_cancel_test.go#TestCancellingAFollowersContextBeforeItsPickWatchBindsEndsQuietly", "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestStoppingAFollowerBeforeItsPickWatchBindsEndsQuietly", "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAFollowersCallbackMayStopItAndChangeTheDevice", "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAnOutboxDeliversAgainAfterADeliveryPanicked", "test:chord/next/host/host_reference_watch_then_test.go#TestAMemberWatchOfAReferenceNotBoundYetIsOpenInTheTurnThatBindsIt"]
+rationale = "Pi v1.6.1 (befc2d59b fix(chord): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/chord/src/sync/batch.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/sync/sync_test.go"]
+rationale = "Pi v1.6.1 (da7e26cc8 fix(mcp,ai,agent,coding-agent,tui): read large streamed lines and events in linear time (#12451)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/chord/src/sync/client.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices", "test:chord/sync/sync_test.go#TestFlushScheduler", "test:chord/sync/sync_test.go#TestFlushSchedulerCloseAgainstAFiredTimer"]
+rationale = "Pi v1.6.1 (b81e9ed66 fix(chord,p2): start a backup over when its remote copy was deleted; a4c097630 refactor(chord,p2): remove sync writer epochs). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/chord/src/sync/index.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/sync/remote_protocol_test.go"]
+rationale = "Pi v1.6.1 (122db8483 feat(chord,p2): send the sync protocol version with every Radius request). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/chord/src/sync/remote.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/sync/sync_test.go"]
+rationale = "Pi v1.6.1 (a4c097630 refactor(chord,p2): remove sync writer epochs; 122db8483 feat(chord,p2): send the sync protocol version with every Radius request). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/cli/project-trust.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/cli/project_trust_async_wcli_test.go#TestProjectTrustContextDismissedConfirmAnswersFalse", "test:coding/cli/project_trust_async_wcli_test.go#TestProjectTrustContextCallerCancellationPropagates", "test:coding/cli/project_trust_context_test.go#TestProjectTrustContextFollowsCreateProjectTrustContext", "test:coding/cli/project_trust_context_test.go#TestProjectTrustContextDismissedStartupDialogAnswersUndefined"]
+rationale = "Pi v1.6.1 (642a705e1 fix(coding-agent): report project trust and first-time setup as permission requests (#12490); 27a40ea2a fix(coding-agent): report blocked program status for startup dialogs (#12487)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/cli/startup-ui.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/startup_ui_stop_order_async_wcli2_test.go#TestRunStartupComponentClearsAndSettlesBeforeStoppingTheTerminalReader", "test:internal/codingagent/startup_ui_async_wcli_test.go#TestRunStartupComponentClearsFrameAndSettlesBeforeReturning", "test:internal/codingagent/startup_ui_async_wcli_test.go#TestStartupColorQueryAppliesBeforeTheNextInputChunk", "test:internal/codingagent/startup_ui_test.go#TestRunStartupComponentRetainsSeparateReadDuringTeardown"]
+rationale = "Pi v1.6.1 (642a705e1 fix(coding-agent): report project trust and first-time setup as permission requests (#12490); 27a40ea2a fix(coding-agent): report blocked program status for startup dialogs (#12487); f8149d1ab feat(coding-agent): simplify first-time setup with colored logo and default system theme). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/core/agent-session.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/session_preflight_cancellation_test.go#TestPreparedPromptAbortReachesClaimedSignal", "test:coding/session_preflight_test.go#TestPromptRunStartClaimsTheSessionBeforePreparation", "test:coding/session_preflight_test.go#TestAbandonedRunStartReturnsTheSessionToIdle", "test:coding/session_queue_images_test.go#TestSessionRemovesAnImageOnlySteeringMessageAfterDelivery", "test:coding/session_queue_consumption_reentrant_test.go#TestSessionConsumedQueueSubscriberReentrantUpdates", "test:coding/session_pi_bugs_test.go#TestIdleCustomMessageSendReturnsAtOnceAndTheStartingRunIsBusy", "test:coding/session_close_test.go#TestAbortWaitsForRunToEnd", "test:coding/session_settled_idle_test.go#TestWaitForIdleStaysPendingThroughEveryDeferredPrompt", "test:coding/session_settled_idle_test.go#TestAbortFromAgentSettledSubscriberDiscardsQueuedContinuation", "test:coding/session_turn_end_abort_test.go#TestTurnEndBoundaryAfterAbortGetsLiveContext", "test:coding/session_before_settle_test.go#TestAgentBeforeSettleCommitsCustomMessageAndContinuesOnce", "test:coding/session_tool_orchestration_upstream_test.go#TestSessionToolOrchestrationSupportsToolsThatCallOtherToolsUnderAnyNameThroughTheExtensionAPI", "test:coding/session_extension_events_upstream_test.go#TestSessionThinkingLevelSelectDoesNotAwaitSuspendedHandlers", "test:coding/session_owner_loop_wait_test.go#TestUnawaitedEventDoesNotHoldTheOwnerLoop", "test:coding/session_owner_loop_wait_test.go#TestUnawaitedEventKeepsTheFirstPrefixOffTheOwnerLoop", "test:internal/codingagent/name_handler_sleep_tmux_test.go#TestTypingEchoesWhileASessionNameHandlerSleeps", "test:coding/session_model_dispatch_test.go#TestModelChangePrefixAndAwaitedNotification", "test:coding/session_compact_abort_test.go#TestCompactAbortsActiveRun", "test:coding/session_compaction_cancellation_upstream_test.go#TestAutomaticCompactionCancellationUpstream", "test:coding/session_compaction_event_order_test.go#TestCompactionFailureWaitsForEndListeners", "test:coding/session_rpc_test.go#TestSessionAbortRetryCancelsDelay", "test:coding/session_bash_wire_test.go#TestCancelledBashWireAndPersistence", "test:coding/session_branch_summary_upstream_test.go#TestBranchSummaryAgentStreamCancellation", "test:coding/session_tree_streaming_upstream_test.go#TestUpstreamTreeDuringStreamingRejectsNavigationWithoutChangingActiveLeaf", "test:coding/session_tree_prompt_overlap_test.go#TestNavigationIsRejectedDuringAnAwaitedInputHook", "test:coding/session_reload_async_session_test.go#TestSessionReloadAwaitsBeforeSessionStartThenSessionStartThenResourceDiscovery", "test:coding/session_reload_async_session_test.go#TestSessionBindExtensionsAwaitsSessionStartBeforeResourceDiscovery", "test:coding/session_reload_busy_test.go#TestSessionReloadRejectedWhileRunningOrCompacting", "test:coding/session_extension_bridges_async_session_test.go#TestExtensionAbortWithoutAHandlerRequestsAbortWithoutWaitingForTheRun", "test:coding/session_extension_bridges_async_session_test.go#TestExtensionSendMessageFailureIsReportedNotReturned", "test:coding/session_run_state_test.go#TestSendUserMessageWithoutDeliveryModeWhileStreamingReportsError", "test:coding/session_bug_report_async_session_test.go#TestSummarizeForBugReportCancelsTheInFlightRequestWithTheCaller", "test:coding/session_test.go#TestCompactCancelsSynchronouslyFromStartEvent", "test:coding/session_prompt_disposition_upstream_test.go#TestPromptReportsHandledForCommandsAndInputHandlers", "test:coding/session_prompt_disposition_upstream_test.go#TestQueuedInputDispositions", "test:coding/session_before_settle_abort_async_session_test.go#TestAbortDuringAgentBeforeSettleDropsTheContinuationWithoutReportingIt", "test:coding/session_before_settle_abort_async_session_test.go#TestAgentBeforeSettleReportsAContinuationThatCannotRun", "test:coding/session_nested_queue_async_session_test.go#TestSessionNestedCallToASequentialToolWaitsForTheExclusiveCallBeforeIt", "test:coding/session_summarization_auth_signal_async_session_test.go#TestSummaryAbortEndsARequestAuthStillBeingResolved"]
+rationale = "Pi v1.6.1 (943a99e3c fix(coding-agent,tui): stop temp file write failures from crashing pi (#12452)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/core/auth-storage.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/auth_file_lock_cancellation_test.go#TestAuthStorageFileLockWaitCancellation", "test:ai/auth_storage_memory_queue_test.go#TestInMemoryAuthStorageCancelledQueueOperations", "test:ai/auth_storage_memory_upstream_test.go#TestAuthStorageInMemoryCancellationAndOrderingUpstream", "test:ai/auth_reload_lifecycle_test.go#TestAuthStorageReadCancellationStopsReloadUpstream", "test:ai/auth_reload_lifecycle_test.go#TestAuthStorageFailedReloadRetainsSnapshotAndRetries", "test:ai/auth_modify_cancel_async_modelsb_test.go#TestAuthStorageModifyCancelledDuringTheCallbackRejectsAnUnchangedResult", "test:ai/auth_storage_lock_failure_upstream_test.go#TestAuthStorageReleasesLockAcquiredConcurrentlyWithCancellationUpstream", "test:ai/auth_storage_lock_failure_upstream_test.go#TestAuthStorageCompromisedLockAtAcquisitionUpstream"]
+rationale = "Pi v1.6.1 (713563870 houskape@gmail.com). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/core/bash-executor.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/bash_executor_oracle_test.go#TestExecuteBashWithOperationsMatchesPi", "test:internal/codingagent/tools/bash_executor_truncation_test.go#TestExecuteBashWithOperationsReportsDiscardedChunks10164", "test:internal/codingagent/tools/bash_executor_oracle_test.go#TestExecuteBashWithOperationsFileIsCompleteWhenItReturns", "test:internal/codingagent/tools/bash_executor_oracle_test.go#TestBashOracleReadsPiSpillFileOnlyOnceItsStreamHasClosed"]
+rationale = "Pi v1.6.1 (8209929fb fix(coding-agent): correct the fallbacks for unsaved bash output files (#12461); 943a99e3c fix(coding-agent,tui): stop temp file write failures from crashing pi (#12452)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/runner.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/extension/host/inproc/emit_order_async_exta_test.go#TestRunnerEmitsAwaitEachHandlerBeforeStartingTheNext", "test:coding/extension/host/inproc/emit_order_async_exta_test.go#TestRunnerMessageEndChainsReplacementsPastAFailingHandler", "test:coding/extension/host/inproc/emit_order_async_exta_test.go#TestRunnerBeforeProviderHeadersChainsMutationsPastAFailingHandler", "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerToolResult", "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary", "test:coding/extension/host/inproc/tool_dispatch_test.go#TestEmitToolCall_HandlerErrorStopsDispatch", "test:coding/extension/host/inproc/mcp_change_order_async_exta_test.go#TestRunnerMcpServersChangeRunsTheFirstHandlersSynchronousPartInsideTheRegistration", "test:coding/extension/host/inproc/mcp_change_order_async_exta_test.go#TestRunnerMcpServersChangeRunsOnlyTheFirstHandlerInsideTheRegistration", "test:coding/extension/host/inproc/mcp_change_order_async_exta_test.go#TestRunnerMcpServersChangeReportsUnhandledServersOnceTheHandlerRemovedItself", "test:coding/extension/host/inproc/mcp_change_order_async_exta_test.go#TestRunnerMcpServersChangeNestsARegistrationMadeInTheHandlersSynchronousPart", "test:coding/extension/host/inproc/mcp_change_order_async_exta_test.go#TestRunnerMcpServersChangeDoesNotWaitForTheHandlerOnTheOwnerLoop", "test:coding/extension/host/inproc/mcp_change_order_async_exta_test.go#TestRunnerMcpServersChangeDrainWaitsForTheRunningEmissions", "test:coding/mcpext/runtime_registration_async_test.go#TestAServerRegisteredAtRunTimeIsListedWhenTheRegistrationReturns", "test:coding/extension/host/inproc/mcp_change_order_async_exta_test.go#TestRunnerMcpServersChangeStartsNoHandlerOnceTheRunnerIsInvalidated", "test:coding/session_shutdown_async_exta_test.go#TestSessionEmitSessionShutdownAwaitsTheHandlerBeforeReturning", "test:coding/extension/host/inproc/emit_more_async_exta_test.go#TestRunnerContextWithSystemChainsMessagesPastAFailingHandler", "test:coding/extension/host/inproc/emit_more_async_exta_test.go#TestRunnerBeforeAgentStartCollectsMessagesInOrderPastAFailingHandler", "test:coding/extension/host/inproc/emit_more_async_exta_test.go#TestRunnerResourcesDiscoverAggregatesInOrderPastAFailingHandler", "test:coding/extension/host/inproc/chain_dispatch_test.go#TestEmitContext_ChainCompounds", "test:coding/extension/host/inproc/chain_dispatch_test.go#TestEmitContext_HandlerErrorRoutesViaEmitErrorAndContinues", "test:coding/extension/host/inproc/project_trust_dispatch_test.go#TestEmitProjectTrustFirstDecisiveResultWinsAfterErrorsAndUndecided", "test:coding/extension/host/inproc/project_trust_dispatch_test.go#TestEmitProjectTrustAwaitsHandlerCompletion", "test:coding/extension/host/inproc/cache_warming_test.go#TestCacheWarmingDecisionAwaitsAndReportsHandlers", "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBeforeAgentStart"]
+rationale = "Pi v1.6.1 (943a99e3c fix(coding-agent,tui): stop temp file write failures from crashing pi (#12452)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/types.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/startup_ui_program_status_test.go#TestExtensionDialogBlockedStatusFirstLineAndKind"]
+rationale = "Pi v1.6.1 (8a57d42a5 fix(ai,coding-agent): report HTTP error responses to onResponse (#12502); 642a705e1 fix(coding-agent): report project trust and first-time setup as permission requests (#12490)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/core/messages.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:agent/messages_bash_error_test.go"]
+rationale = "Pi v1.6.1 (943a99e3c fix(coding-agent,tui): stop temp file write failures from crashing pi (#12452)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/core/model-resolver.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/model_resolver_async_modelsa_test.go#TestResolveModelScopeCancelledContextRejectsAsyncModelsA", "test:internal/codingagent/model_scope_async_modelsa_test.go#TestResolveModelScopeAbortedAvailabilityBuildsNoScopeAndWarnsNothing"]
+rationale = "Pi v1.6.1 (4d6a37d08 fix(ai,coding-agent): replace retired Mistral models devstral-medium-latest and pixtral-12b (#12449)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/core/model-runtime.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/model_runtime_credential_queue_async_modelsa_test.go#TestModelRuntimeCredentialOperationsShareOneFIFOQueuePerProvider", "test:coding/model_runtime_create_async_modelsa_test.go#TestCreateModelRuntimeRefreshEndsWithTheCallerSignalOrTheTimeout", "test:coding/model_runtime_images_async_modelsa_test.go#TestModelRuntimeGenerateImagesReportsAbortAtEveryAwait", "test:coding/model_availability_failfast_test.go#TestAvailabilityFirstRejectionDoesNotWaitForEarlierBranch", "test:coding/model_availability_failfast_test.go#TestProviderAvailabilityErrorsUseSettlementOrder", "test:coding/model_availability_boundaries_test.go#TestAvailabilityCancellationPreservesLastErrorAndJoins", "test:coding/model_runtime_login_test.go#TestModelRuntimeLoginSerializesComposedProvider", "test:coding/model_runtime_credential_sync_test.go#TestModelRuntimeCredentialSynchronizationErrorRetainsCommit", "test:coding/model_runtime_credential_sync_test.go#TestModelRuntimeRuntimeAPIKeyOperationsReportSynchronizationFailure", "test:coding/model_runtime_credential_sync_test.go#TestModelRuntimeRuntimeAPIKeyOperationHonorsACancelledContext", "test:coding/model_registration_refresh_test.go#TestRegistrationsBeforeAYieldShareOneRefresh", "test:coding/model_registration_refresh_test.go#TestServicesCloseCancelsARunningRegistrationRefresh", "test:coding/model_registration_refresh_test.go#TestCredentialOperationCoversItsProvidersRegistrationRefresh", "test:coding/model_registration_refresh_test.go#TestScopedGetAvailableStartsTheRegistrationRefresh", "test:coding/services_model_tasks_test.go#TestServicesOwnBackgroundModelTasksNotBorrowingRuntime", "test:coding/model_runtime_native_async_test.go#TestNativeRefreshCancellationRejectsLatePublication", "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRegistryClassifyForwardsOptionsAndACancelledRequestIsAborted", "test:coding/model_runtime_native_deferred_test.go#TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider", "test:coding/virtual_models_async_session_test.go#TestVirtualModelRouterReceivesTheRequestSignalAndAbortEndsTheRequestAsAborted", "test:ai/runtime_credentials_settled_test.go#TestRuntimeCredentialsSettledWaitsUntilPendingModificationsAreWritten", "test:ai/runtime_credentials_settled_test.go#TestRuntimeCredentialsSettledResolvesAfterAPendingModificationFails", "test:ai/runtime_credentials_settled_test.go#TestRuntimeCredentialsSettledIgnoresLaterModificationsAndHonoursCancellation", "test:ai/models_dispatch_abort_test.go#TestModelsDispatchSetupErrorsAreAbortedWhenTheRequestSignalIsAborted"]
+rationale = "Pi v1.6.1 (713563870 houskape@gmail.com; 585648aaf fix(coding-agent): report unresolved stored credentials as not configured (#12454)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/core/project-trust.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/cli/project_trust_async_modelsb_test.go#TestResolveProjectTrustedExtensionDecisionBeatsASavedDecision", "test:coding/cli/project_trust_async_modelsb_test.go#TestResolveProjectTrustedReportsAThrowingHandlerAndContinues", "test:coding/cli/project_trust_async_modelsb_test.go#TestResolveProjectTrustedCancelledDialogAnswersNotTrusted", "test:coding/cli/project_trust_async_modelsb_test.go#TestResolveProjectTrustedPromptsOnlyAfterTheHandlersFinish", "test:coding/cli/project_trust_context_test.go#TestResolveProjectTrustedPassesTheContextToHandlers"]
+rationale = "Pi v1.6.1 (642a705e1 fix(coding-agent): report project trust and first-time setup as permission requests (#12490)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/core/provider-composer.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/native_provider_refresh_order_async_modelsa_test.go#TestComposedRefreshModelsRunsBaseThenExtensionThenPublishes", "test:internal/codingagent/native_provider_refresh_order_async_modelsa_test.go#TestComposedRefreshModelsRunsBaseThenExtensionThenPublishes", "test:internal/codingagent/native_provider_refresh_order_async_modelsa_test.go#TestComposedRefreshModelsRunsBaseThenExtensionThenPublishes", "test:internal/codingagent/native_provider_refresh_order_async_modelsa_test.go#TestComposedRefreshModelsRunsBaseThenExtensionThenPublishes", "test:internal/codingagent/native_provider_refresh_order_async_modelsa_test.go#TestComposedProviderAuthAwaitsItsCallbacksWithTheCallersSignal", "test:coding/model_runtime_native_lifecycle_test.go#TestNativeProviderInvalidRefreshDoesNotPublish", "test:coding/model_runtime_native_async_test.go#TestNativeRefreshCancellationRejectsLatePublication"]
+rationale = "Pi v1.6.1 (713563870 houskape@gmail.com). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/core/resolve-config-value.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/stored_credential_auth_test.go"]
+rationale = "Pi v1.6.1 (713563870 houskape@gmail.com). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/core/session-manager.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/session_context_upstream_test.go"]
+rationale = "Pi v1.6.1 (da7e26cc8 fix(mcp,ai,agent,coding-agent,tui): read large streamed lines and events in linear time (#12451); cb1205e46 fix(coding-agent): load sessions with very many entries after the last compaction (#12360)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/core/settings-defaults.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/settings_notices_test.go#TestSettingsManagerNotices"]
+rationale = "Pi v1.6.1 (e24c9d5f0 Revert \"feat(coding-agent): show transcript notices by default\"; cba14324c feat(coding-agent): show transcript notices by default; 88c6e00f7 feat(coding-agent): add one setting per transcript notice). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/core/settings-manager.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/settings_write_queue_async_test.go#TestSettingsSettersOfSeveralGoroutinesWriteInOrderAndReturnAfterTheirOwnWrite", "test:internal/codingagent/settings_write_queue_async_test.go#TestSettingsSetterCalledFromInsideAWriteReturnsAndWritesAfterIt", "test:internal/codingagent/settings_write_queue_async_test.go#TestSettingsSetterCalledFromInsideAWriteReturnsNilAndItsFailureIsOnlyRecorded", "test:internal/codingagent/settings_write_queue_async_test.go#TestSettingsWriteFailureIsRecordedOnceAndTheQueueGoesOn", "test:internal/codingagent/settings_write_queue_async_test.go#TestSettingsWriteAfterAFailedOneSavesWhatItDidNotSave", "test:internal/codingagent/settings_write_queue_async_test.go#TestQueuedProjectWriteIsRefusedWhenTheTrustWasWithdrawnBeforeItRuns", "test:internal/codingagent/settings_write_queue_async_test.go#TestSettingsFlushAndReloadWaitForAWriteInProgress", "test:internal/codingagent/settings_write_queue_oracle_test.go#TestSettingsWriteQueueErrorPathMatchesPi", "test:internal/codingagent/settings_flush_writes_async_test.go#TestFlushSettingsWritesWaitsForAWriteInProgress", "test:internal/codingagent/settings_flush_writes_async_test.go#TestSettingsWriteThatEndsItsGoroutineDoesNotStrandTheQueue", "test:coding/cli/settings_write_exit_async_test.go#TestExitProcessWaitsForASettingsWriteInProgress", "test:coding/runtime_close_settings_writes_async_test.go#TestRuntimeCloseWaitsForASettingsWriteInProgress"]
+rationale = "Pi v1.6.1 (88c6e00f7 feat(coding-agent): add one setting per transcript notice). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/core/settings-schema.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/settings_notices_test.go#TestSettingsManagerNotices"]
+rationale = "Pi v1.6.1 (88c6e00f7 feat(coding-agent): add one setting per transcript notice). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/bash.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/bash_test.go#TestBashKillsProcessGroupOnCancel", "test:internal/codingagent/tools/bash_test.go#TestBashAbortReturnsBufferedOutput", "test:internal/codingagent/tools/bash_test.go#TestBashTimeoutMessage", "test:internal/codingagent/tools/bash_test.go#TestBashTimeoutKeepsTheOutputWrittenBeforeTheKill", "test:internal/codingagent/tools/bash_test.go#TestBashStreamsLiveOutput", "test:internal/codingagent/tools/bash_test.go#TestBashRejectsOverlargeTimeout", "test:internal/codingagent/tools/bash_timeout_shell_exit_unix_test.go#TestBashTimeoutAfterShellExit11613", "test:internal/codingagent/tools/bash_late_output_test.go#TestFinishedShellOutputDoesNotRetainLateChunks", "test:internal/codingagent/tools/shell_tracked_test.go#TestKillTrackedDetachedChildrenKillsARunningBashCall", "test:internal/codingagent/tools/bash_background_test.go#TestBashTool_BackgroundChildKeepsResult", "test:internal/codingagent/tools/powershell_test.go#TestShellToolTimeoutAndAbortStatus"]
+rationale = "Pi v1.6.1 (8209929fb fix(coding-agent): correct the fallbacks for unsaved bash output files (#12461); 943a99e3c fix(coding-agent,tui): stop temp file write failures from crashing pi (#12452); 9e9609216 fix(coding-agent): show the end of an over-long line followed by a blank line in bash output (#12355)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/output-accumulator.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/output_file_failures_upstream_test.go#TestOutputFileStreamFailuresUpstream"]
+rationale = "Pi v1.6.1 (8209929fb fix(coding-agent): correct the fallbacks for unsaved bash output files (#12461); 943a99e3c fix(coding-agent,tui): stop temp file write failures from crashing pi (#12452); 9e9609216 fix(coding-agent): show the end of an over-long line followed by a blank line in bash output (#12355)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/renderers/bash.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/tool_render_shell_details_test.go"]
+rationale = "Pi v1.6.1 (8209929fb fix(coding-agent): correct the fallbacks for unsaved bash output files (#12461)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/truncate.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/truncate/tail_window_test.go"]
+rationale = "Pi v1.6.1 (9e9609216 fix(coding-agent): show the end of an over-long line followed by a blank line in bash output (#12355)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/llama/client.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/llama/client_test.go#TestLoadAndWaitReportsSSEProgressAndWaitsForLoadedCatalogState", "test:internal/codingagent/llama/client_test.go#TestDownloadAndWaitReportsByteProgressAndReturnsRefreshedCatalog", "test:internal/codingagent/llama/client_test.go#TestLoadAndWaitReportsExitCodeAndCancellation", "test:internal/codingagent/llama/client_test.go#TestClientRequestErrorsMirrorFetch", "test:internal/codingagent/llama/client_test.go#TestWatchNamesTheServerAndTheCauseWhenTheSSEConnectionFails", "test:internal/codingagent/llama/client_test.go#TestLlamaSSEParserHandlesSplitAndMalformedEvents", "test:internal/codingagent/llama/index_test.go#TestLlamaCommandOffersRetryWhenTheServerIsUnreachable", "test:internal/codingagent/llama/index_test.go#TestLlamaCommandReportsLoadFailuresAfterRestoringModels", "test:internal/codingagent/llama/native_provider_test.go#TestModelsProviderRefreshReportsNetworkErrorsAndAbortedCallers"]
+rationale = "Pi v1.6.1 (da7e26cc8 fix(mcp,ai,agent,coding-agent,tui): read large streamed lines and events in linear time (#12451)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/resources.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/mcpext/resources_internal_test.go#TestResourceToolsListEveryServerInLocaleCompareOrder", "test:coding/mcpext/extension_test.go#TestAgentSessionMCPListsAndReadsResourcesWithCodexResourceTools", "test:coding/mcpext/extension_test.go#TestAgentSessionMCPResourceToolsKeepTheMembersAndOrderTheServerSent", "test:coding/mcpext/extension_test.go#TestAgentSessionMCPResourceToolsTrimServerArgumentsLikeJavaScript", "test:coding/mcpext/extension_test.go#TestAgentSessionMCPToolSearchAndTheResourceToolsWaitForEveryServer", "test:coding/mcpext/extension_test.go#TestAgentSessionMCPMakesTheResourceToolsCallableFromCodemodeForCodemodeServers", "test:coding/mcpext/review_regression_test.go#TestConvertMcpResultNamesASavedBlobByTheExtensionOfAnOpaqueURI"]
+rationale = "Pi v1.6.1 (1acc72acd fix(p2): MCP results reach scripts as pi's whole CallToolResult, model content as pi's). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/tools.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/mcpext/review_regression_test.go#TestMcpToolReportsProgressNumbersAsJavaScriptStrings", "test:coding/mcpext/review_regression_test.go#TestConvertMcpResultNamesASavedBlobByTheExtensionOfAnOpaqueURI", "test:coding/mcpext/tools_test.go#TestMCPToolsShowsBlobsOfTextTypesWithBOMPaddedMimeTypesAsText", "test:coding/mcpext/command_test.go#TestMcpToolCallPassesTheInputInItsMemberOrderToReachesTools", "test:coding/mcpext/extension_test.go#TestAgentSessionMCPDeclaresDirectlyExposedMCPToolsToTheModel", "test:coding/mcpext/extension_test.go#TestAgentSessionMCPWaitsForServersWithDirectToolsBeforeListingTheServers"]
+rationale = "Pi v1.6.1 (1acc72acd fix(p2): MCP results reach scripts as pi's whole CallToolResult, model content as pi's). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/main.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/cli/credential_print_test.go#TestCredentialPrintCancellationEndsTheCallBeforeRefreshing", "test:coding/cli/credential_print_test.go#TestCredentialPrintRefreshesExpiredOAuthTokenBeforePrinting", "test:coding/cli/credential_print_test.go#TestAuthCommandExitCodesAndErrors", "test:coding/cli/credential_print_test.go#TestAuthCheckNoRefreshCreatesNothingAndDoesNotRefresh", "test:coding/cli/main_test.go#TestReadPipedStdinTrimsContent", "test:coding/cli/print_signal_exit_test.go#TestPrintModeSignalDuringPipedStdinRead", "test:coding/cli/startup_session_test.go#TestConfirmCrossProjectSessionDefaultsNo", "test:coding/cli/startup_session_test.go#TestResolveStartupSessionSelectionFindsGlobalPrefixBeforeRuntime", "test:coding/cli/startup_native_provider_test.go#TestStartupRefreshMakesExtensionNativeProviderAvailable", "test:coding/cli/startup_native_provider_test.go#TestStartupNativeProviderCallbacksWaitForEveryExtensionFactory", "test:coding/cli/startup_benchmark_pty_test.go#TestStartupBenchmarkInitsAndStopsInteractiveMode", "test:coding/cli/rpc_startup_name_order_test.go#TestRPCStartupNamePrecedesTheInitialModelEntries", "test:coding/cli/model_tasks_exit_test.go#TestExitProcessDrainsModelTasksBeforeExtensionTransports", "test:coding/services_model_tasks_test.go#TestServicesOwnBackgroundModelTasksNotBorrowingRuntime", "test:coding/cli/metadata_stdout_test.go#TestRuntimeMetadataUsesLoadedExtensionsInEveryMode", "test:coding/cli/auth_login_test.go#TestAuthLoginCtrlCDuringTheCatalogRefreshSkipsItAndKeepsTheLogin", "test:coding/cli/auth_logout_test.go#TestAuthLogoutRemovesAStoredAccountLogin", "test:coding/cli/startup_session_test.go#TestApplyMissingCWDChoiceContinuesOrForks"]
+rationale = "Pi v1.6.1 (f8149d1ab feat(coding-agent): simplify first-time setup with colored logo and default system theme). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/bash-execution.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/bash_execution_set_complete_test.go"]
+rationale = "Pi v1.6.1 (943a99e3c fix(coding-agent,tui): stop temp file write failures from crashing pi (#12452)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/first-time-setup.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/first_time_setup_test.go#TestFirstTimeSetupOmitsThemePickerAndCancelsOnEsc"]
+rationale = "Pi v1.6.1 (27a40ea2a fix(coding-agent): report blocked program status for startup dialogs (#12487); f8149d1ab feat(coding-agent): simplify first-time setup with colored logo and default system theme). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/mermaid.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/mermaid_hint_test.go"]
+rationale = "Pi v1.6.1 (9034e8a89 fix(coding-agent): explain why oversized Mermaid diagrams show source (#12442)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/oauth_selector_upstream_test.go"]
+rationale = "Pi v1.6.1 (713563870 houskape@gmail.com). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/settings-selector.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/settings_notices_test.go#TestSettingsSelectorNoticesSubmenu"]
+rationale = "Pi v1.6.1 (88c6e00f7 feat(coding-agent): add one setting per transcript notice). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/external-editor.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/external_editor_test.go#TestExternalEditorUpstream", "test:internal/codingagent/external_editor_test.go#TestOpenExternalEditorPreservesInitialOnError", "test:internal/codingagent/external_editor_test.go#TestOpenExternalEditorRoundTrip"]
+rationale = "Pi v1.6.1 (943a99e3c fix(coding-agent,tui): stop temp file write failures from crashing pi (#12452)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/login_cancel_test.go#TestOAuthLoginCancellationDoesNotCompleteAuthentication", "test:internal/codingagent/interactive_flush_compaction_queue_order_test.go#TestFlushCompactionQueueAwaitsEachExtensionCommand", "test:internal/codingagent/startup_prompt_commands_test.go#TestInitialExtensionCommandsRunInOrder", "test:internal/codingagent/login_persistence_cancel_test.go#TestLoginCancelWhileCredentialStoreLocked", "test:internal/codingagent/interactive_post_login_discovery_test.go#TestPostLoginCompletesBeforeBackgroundRefresh", "test:internal/codingagent/signal_handler_lifetime_upstream_test.go#TestSignalShutdownDefersTerminalCleanupUntilDisposalCompletesUpstream", "test:internal/codingagent/upstream_signal_shutdown_test.go#TestSignalShutdownJoinsCleanupBeforeOwnerTeardown", "test:internal/codingagent/upstream_signal_shutdown_test.go#TestUpstreamSignalShutdownExtensionCleanup", "test:internal/codingagent/interactive_teardown_test.go#TestRequestShutdownDoesNotTearDownOffLoop", "test:internal/codingagent/shutdown_input_owner_test.go#TestInteractiveShutdownJoinsInputBeforeTerminalTeardown", "test:internal/codingagent/interactive_user_bash_lifetime_test.go#TestInteractiveUserBashShutdownCancelsAndDrainsHook", "test:internal/codingagent/interactive_prompt_routing_test.go#TestSettleActiveRunAbortsAndWaitsForTheRun", "test:internal/codingagent/interactive_prompt_routing_test.go#TestExtensionAbortSettlesTheRunAndTheNextPromptRuns", "test:internal/codingagent/interactive_agent_settled_aborted_test.go#TestInteractiveAgentSettledReportsEscapeAbort", "test:internal/codingagent/interactive_test.go#TestInteractiveMode_QueuedEnterSendsAfterCompactionEnd", "test:internal/codingagent/interactive_test.go#TestInteractiveMode_CompactionQueueFlushSkipsTurnWhenBusy", "test:internal/codingagent/interactive_test.go#TestCompactionFlushStartsTurnWhenIsIdleIsStaleFalse", "test:internal/codingagent/interactive_session_test.go#TestInteractiveMessageQueuedDuringEndOfTurnCompactionIsDelivered", "test:internal/codingagent/interactive_extension_delivery_test.go#TestDeliverUserMessageIsNotDroppedWhenTheUIQueueIsFull", "test:internal/codingagent/tmux_check_test.go#TestTmuxKeyboardQueriesStartConcurrently", "test:internal/codingagent/update_notice_test.go#TestStartupVersionCheckShowsTheReleaseItReports", "test:internal/codingagent/reload_notices_caller_test.go#TestExtensionReloadShowsTheReloadStatus", "test:internal/codingagent/session_cwd_resume_upstream_test.go#TestResumeWithAMissingCwdRemovesTheForkWhenAnExtensionCancelsTheSwitch", "test:internal/codingagent/session_cwd_resume_upstream_test.go#TestResumeWithAMissingCwdCreatesNoForkWhenTheUserCancels", "test:internal/codingagent/interactive_abort_text_test.go#TestInteractiveAbortRewritesTheMessageTheSessionPersists", "test:internal/codingagent/interactive_abort_text_test.go#TestInteractiveStopUnsubscribesBeforeTheRuntimeAbortsTheTurn", "test:internal/codingagent/interactive_abort_text_test.go#TestAbortWithoutTheInteractiveModeKeepsTheProvidersText", "test:internal/codingagent/interactive_extension_abort_test.go#TestExtensionAbortReturnsToAHandlerTheRunAwaits", "test:internal/codingagent/interactive_extension_abort_queue_test.go#TestExtensionAbortMovesQueuedMessagesToTheEditor", "test:internal/codingagent/interactive_extension_abort_queue_test.go#TestExtensionActionsReturnToAHandlerTheRunAwaits", "test:internal/codingagent/interactive_inproc_abort_test.go#TestInProcessExtensionAbortRestoresTheQueueUnderEveryRunnerBinding", "test:coding/cli/extension_abort_interactive_test.go#TestExtensionAbortFromAHandlerInInteractiveMode", "test:internal/codingagent/interactive_quit_while_streaming_test.go#TestQuitByKeysWhileARunStreamsServesTheOwnerLoopUntilTheRunSettles", "test:internal/codingagent/interactive_quit_dispose_after_stop_unix_test.go#TestQuitByKeysDisposesAsAModeWhoseInputEnded", "test:internal/codingagent/interactive_quit_dispose_after_stop_unix_test.go#TestSignalShutdownDisposesWhileItsInputIsAttached", "test:coding/cli/interactive_provider_abort_quit_linux_test.go#TestInteractiveQuitWhileABuiltInProviderTurnStreams", "test:coding/cli/interactive_provider_abort_quit_linux_test.go#TestInteractiveQuitWithAnExtensionProviderTurnInFlight", "test:coding/cli/interactive_provider_abort_quit_linux_test.go#TestInteractiveQuitDoesNotJoinAUsersBashCommand", "test:coding/runtime_quit_input_end_test.go#TestInputEndedDisposeArmsTheDrainBeforeItTellsTheHostThatInputEnded", "test:coding/runtime_quit_input_end_test.go#TestInputEndedDisposeEndsWithADrainReportWhileItIsPending", "test:coding/runtime_quit_input_end_test.go#TestInputEndedDisposeWithoutAnExtensionHostIsThePlainDispose", "test:coding/cli/interactive_quit_every_runtime_linux_test.go#TestInteractiveQuitWaitsForACommandInFlight", "test:coding/cli/interactive_quit_every_runtime_linux_test.go#TestInteractiveHeldQuitOfANativeCommandEndsOnTheKeyAndTheSignalsPiEnds", "test:coding/cli/rpc_held_quit_native_command_signal_test.go#TestRPCHeldQuitOfANativeCommandEndsOnTheSignalsPiEnds", "test:coding/extension/host/subprocess/quit_every_runtime_test.go#TestQuitDrainWaitsForEveryNodeProcess", "test:coding/extension/host/subprocess/quit_every_runtime_test.go#TestQuitDrainWaitsForANativeCommandInFlight", "test:coding/extension/host/subprocess/quit_every_runtime_test.go#TestQuitDrainDoesNotWaitForANativeSettleTailHandler", "test:coding/extension/host/subprocess/quit_every_runtime_node_test.go#TestQuitDrainLastsAsLongAsAnotherNodeProcessHoldsATimer", "test:coding/extension/host/subprocess/quit_every_runtime_node_test.go#TestQuitDrainCountsAnIdleNodeProcess", "test:test/extension-conformance/quit_every_runtime_conformance_test.go#TestConformance_QuitWaitsForACommandInFlight", "test:test/extension-conformance/quit_every_runtime_conformance_test.go#TestConformance_QuitLastsAsLongAsANodeTimer", "test:coding/runtime_quit_input_end_test.go#TestInputEndedDisposeDoesNotEndWithAQuitYield"]
+rationale = "Pi v1.6.1 (88c6e00f7 feat(coding-agent): add one setting per transcript notice; 642a705e1 fix(coding-agent): report project trust and first-time setup as permission requests (#12490); 27a40ea2a fix(coding-agent): report blocked program status for startup dialogs (#12487); 0ab23c37b fix(coding-agent): rebuilt ! output follows ctrl+o (#12427); 943a99e3c fix(coding-agent,tui): stop temp file write failures from crashing pi (#12452); 713563870 houskape@gmail.com; 31b407dc6 fix(coding-agent): run shutdown cleanup when the Windows console closes (#11889); 8c1afaae5 fix(coding-agent): repaint editor after extension pasteToEditor and setEditorText (#12349)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/program-status-reporter.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/startup_ui_program_status_test.go"]
+rationale = "Pi v1.6.1 (27a40ea2a fix(coding-agent): report blocked program status for startup dialogs (#12487)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/session-share.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/session_share_test.go#TestShareLoaderEscapeCancelsUpload", "test:internal/codingagent/session_share_async_wcli_test.go#TestShareSessionRemovesItsTempDirectoryOnEveryOutcome", "test:internal/codingagent/session_share_test.go#TestUploadShareArtifactHonorsCancellationAndCanonicalOrigin"]
+rationale = "Pi v1.6.1 (943a99e3c fix(coding-agent,tui): stop temp file write failures from crashing pi (#12452)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/modes/print-mode.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/cli/print_signal_exit_test.go#TestPrintModeSignalExitCodes", "test:coding/cli/print_signal_exit_test.go#TestPrintModeSignalDisposalRunsLikePisEventLoop", "test:coding/cli/print_signal_exit_test.go#TestPrintModeJSONSignalStopsOutputAndPersistence", "test:coding/cli/print_signal_exit_test.go#TestPrintModeSignalDuringPipedStdinRead", "test:coding/cli/print_final_disposal_signal_test.go#TestPrintModeSignalDuringFinalDisposalWaitsForIt", "test:coding/cli/print_final_disposal_signal_test.go#TestPrintModeRepeatedSignalAfterStdoutFailureExitsAtOnce", "test:coding/cli/print_mode_test.go#TestPrintModeReportsRunErrorsVerbatim", "test:coding/cli/print_mode_test.go#TestPrintModePrintsOnlyTheFinalMessage", "test:coding/cli/print_mode_test.go#TestPrintModePrintsAnswerAfterOverflowRecovery", "test:coding/cli/app_mode_binary_test.go#TestPrintModeSendsEveryPositionalMessage", "test:coding/cli/app_mode_binary_test.go#TestPrintModeWaitsForExtensionPromptFromAgentSettled", "test:coding/cli/print_mode_run_signal_test.go#TestPrintModeReportsRunSignalChangesToTheExtensionHost", "test:coding/cli/json_mode_writer_after_session_start_test.go#TestJSONModeWritesWhatSessionStartEmitsInEverySDK", "test:coding/cli/json_mode_writer_after_session_start_test.go#TestJSONModeWritesSessionStartEventsOfAReplacementInEverySDK", "test:coding/cli/writer_after_session_start_structure_test.go#TestSessionOriginWritersObeyTheWriterSubscribedGate"]
+rationale = "Pi v1.6.1 (31b407dc6 fix(coding-agent): run shutdown cleanup when the Windows console closes (#11889)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/modes/rpc/jsonl.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/cli/rpc_mode_test.go"]
+rationale = "Pi v1.6.1 (da7e26cc8 fix(mcp,ai,agent,coding-agent,tui): read large streamed lines and events in linear time (#12451)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/modes/rpc/rpc-mode.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/cli/rpc_replacement_order_test.go#TestRPCCloneAfterNewSessionOfOneBatchUsesTheRequestingSession", "test:coding/cli/rpc_replacement_order_test.go#TestRPCFailedSwitchSessionAnswersBeforeTheReplacementAheadOfIt", "test:coding/cli/rpc_replacement_order_test.go#TestRPCEarlyReplacementErrorFollowsTheCompactionStart", "test:coding/cli/rpc_set_model_pipeline_test.go#TestRPCPipelinedSetModelsApplyInInputOrder", "test:coding/cli/rpc_retry_reactions_test.go#TestRPCRetryCancellationReactionBatches", "test:coding/cli/rpc_dispatch_test.go#TestRPCResponseTurnDefersAlreadyFulfilledAwait", "test:coding/cli/rpc_dispatch_test.go#TestRPCResponseTurnProtectsLaterInputAndDoesNotStrandCompletions", "test:coding/cli/rpc_dispatch_test.go#TestRPCCycleAndAbortRetrySameInputCallback", "test:coding/cli/rpc_queue_await_test.go#TestRPCQueueRepliesYieldToInputBatch", "test:coding/cli/rpc_prompt_admission_test.go#TestRPCPromptPreflightAdmitsQueueBatch", "test:coding/cli/rpc_async_modes_test.go#TestRPCParseErrorAndRejectedHandlerAnswerInOrderAndTheLoopContinues", "test:coding/cli/rpc_replacement_order_test.go#TestRPCReplacementsOfOneBatchRunInRequestOrder", "test:coding/cli/rpc_replacement_order_test.go#TestRPCReplacementStartsAfterItsBatchWasDispatched", "test:coding/cli/rpc_replacement_order_test.go#TestRPCReplacementAbortsTheCompactionOfItsBatch", "test:coding/cli/rpc_replacement_order_test.go#TestRPCCompactsOfOneBatchDoNotCancelEachOther", "test:coding/cli/rpc_admission_test.go#TestRPCAwaitInOrderResolvesInArrivalOrder", "test:coding/cli/rpc_admission_test.go#TestRPCAwaitWorkResumesAfterTheBatchsMicrotasks", "test:coding/cli/rpc_set_model_await_test.go#TestRPCSetModelAppliesAfterTheBatchesLaterCommands", "test:coding/cli/rpc_async_modes_test.go#TestRPCAbortBashAnswersWhileTheBashCommandIsInFlight", "test:coding/cli/rpc_queue_await_test.go#TestRPCBashCompletesWhileProviderIsPending", "test:coding/cli/rpc_async_modes_test.go#TestRPCAgentSubscriberWaitsForStdoutBackpressureOnEveryEvent", "test:coding/cli/rpc_dialog_async_modes_test.go#TestRPCUIDialogWithAnAbortedSignalWritesNoRequest", "test:coding/cli/rpc_ui_test.go#TestRPCUICancelAndTimeout", "test:coding/cli/rpc_shutdown_gate_test.go#TestRPCShutdownGate", "test:coding/cli/rpc_shutdown_test.go#TestRPCShutdownTriggers", "test:coding/cli/rpc_shutdown_settle_test.go#TestRPCShutdownRepeatedSignalKeepsItsExitStatus", "test:coding/cli/rpc_shutdown_settle_test.go#TestRPCShutdownRepeatedSignalExitsWhileAnotherExitFlushes", "scenario:test/parity/scenarios/rpc/55-rpc-replacement-concurrent-get-state.toml", "scenario:test/parity/scenarios/rpc/31-rpc-cycle-await-interleaving.toml", "scenario:test/parity/scenarios/rpc/32-rpc-cycle-prefix-and-completion.toml", "scenario:test/parity/scenarios/rpc/13-rpc-steering-queue.toml", "scenario:test/parity/scenarios/rpc/20-rpc-runtime-boundary-values.toml", "scenario:test/parity/scenarios/rpc/35-rpc-queue-prompt-await.toml", "scenario:test/parity/scenarios/rpc/36-rpc-preflight-admission.toml", "test:coding/cli/rpc_session_start_once_upstream_test.go#TestRPCNewSessionRunsSessionStartOnceUpstream", "test:coding/cli/rpc_session_start_once_upstream_test.go#TestRPCStreamsEntriesAppendedByTheStartupSessionStartUpstream", "test:coding/cli/rpc_writer_after_session_start_test.go#TestRPCWritesSessionStartEmissionsOnceInEverySDK", "test:coding/cli/writer_after_session_start_structure_test.go#TestRPCWritersSubscribeBeforeSessionStart", "scenario:test/parity/scenarios/rpc/87-rpc-replacement-session-start-once.toml", "scenario:test/parity/scenarios/rpc/88-rpc-startup-session-start-events.toml"]
+rationale = "Pi v1.6.1 (31b407dc6 fix(coding-agent): run shutdown cleanup when the Windows console closes (#11889)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/package-manager-cli.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/cli/package_async_ext_b_test.go#TestRefreshModelCatalogsAbortsAtFifteenSecondsAndReleasesTheTimer", "test:internal/codingagent/selfupdate_steps_async_ext_b_test.go#TestRunPackageManagerStepsRunsStepsInOrderAndStopsAtTheFirstFailure"]
+rationale = "Pi v1.6.1 (e3fa711f4 fix(coding-agent): refuse pi update of the Windows install run from WSL (#12457)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/utils/clipboard.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/clipboard_copy_oracle_test.go#TestCopyToClipboardMatchesPi", "test:internal/codingagent/clipboard_copy_test.go#TestCopyToClipboardWaitsForTheNativeWriteBeforeRemoteOSC52", "test:internal/codingagent/clipboard_copy_test.go#TestCopyToClipboardRejectedNativeWriteFallsBackToPbcopy", "test:internal/codingagent/clipboard_copy_test.go#TestCopyToClipboardRemoteNativeAndCommandFailure", "test:internal/codingagent/clipboard_read_text_test.go#TestReadClipboardTextAwaitsNativeTextAndCatchesRejectedReads", "test:internal/codingagent/clipboard_read_text_test.go#TestReadClipboardTextCommandResultStopsFallback"]
+rationale = "Pi v1.6.1 (2d8133085 fix(coding-agent): pass explicit text/plain MIME type to wl-copy (#12446)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/utils/output-files.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/outputfiles/outputfiles_test.go#TestWriteFileIsUserOnlyInTheTempDirectory", "test:internal/outputfiles/outputfiles_test.go#TestCreateStreamIsUserOnlyAndWritable"]
+rationale = "Pi v1.6.1 (8209929fb fix(coding-agent): correct the fallbacks for unsaved bash output files (#12461); 943a99e3c fix(coding-agent,tui): stop temp file write failures from crashing pi (#12452)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/coding-agent/src/utils/shell.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/shellconfig/shellconfig_test.go"]
+rationale = "Pi v1.6.1 (e8ee38887 fix(coding-agent): find Git Bash of git on PATH on Windows (#12494); 31b407dc6 fix(coding-agent): run shutdown cleanup when the Windows console closes (#11889)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/durable/src/codemode/codemode.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/codemode/codemode_test.go#TestDurableCodeMode", "test:durable/codemode/call_test.go#TestAScriptsTimeoutLimitsItsRun", "test:durable/codemode/call_test.go#TestACallLaunchesOnlyOnceItsIssuedCountIsCommitted", "test:durable/codemode/call_test.go#TestTheFirstRunRecordsTheVMsFingerprint", "test:durable/codemode/call_test.go#TestALaunchedCallEntersBeforeTheNextOneIsLaunched", "test:durable/codemode/call_test.go#TestAReplayedCallEntersBeforeTheNextOneIsStarted", "test:durable/codemode/call_test.go#TestOnlyTheFirstDivergenceOrFailureOfACallDecidesItsEnd", "test:durable/codemode/call_test.go#TestAScriptsEndWaitsForTheReplayedCallsItIssued", "test:durable/codemode/call_replay_pi_test.go#TestResumeAtTheDeadlineEndsTheCallAndOneMillisecondBeforeDoesNot", "test:durable/codemode/call_restart_scenarios_pi_test.go#TestAResumedScriptThatEndsInItsFirstRunDivergesOnlyWhereTheLiveRunWentOn", "test:durable/codemode/call_restart_scenarios_pi_test.go#TestAResumedScriptThatEndsAfterAResultDivergesOnlyWhereALaterEntryAnswersACallItNeverMade", "test:durable/codemode/call_restart_scenarios_pi_test.go#TestANestedCallThatFailsBecauseTheHostClosedLeavesTheScriptToALaterAttempt"]
+rationale = "Pi v1.6.1 (32c71a6d4 fix(durable): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/durable/src/codemode/output.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/codemode/output_test.go#TestFormatResultMatchesPi", "test:durable/codemode/output_tool_test.go#TestDurableCodeModeOutputAndToolSearch"]
+rationale = "Pi v1.6.1 (32c71a6d4 fix(durable): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/durable/src/env/node.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/env/node/watch_close_waits_pi_test.go#TestFileWatcherStopWaitsForTheRescanInProgress"]
+rationale = "Pi v1.6.1 (da7e26cc8 fix(mcp,ai,agent,coding-agent,tui): read large streamed lines and events in linear time (#12451); e8ee38887 fix(coding-agent): find Git Bash of git on PATH on Windows (#12494)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/durable/src/harness/agent.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/agent_model_tools_test.go#TestAddToolsExtendsToolsAndModelTools", "test:durable/harness/agent_regression_test.go#TestAddToolsEditsTheStoredToolFilter", "test:durable/harness/agent_regression_test.go#TestConfigureStoresTheArrayAndObjectFormsOfExtensions", "test:durable/harness/harness_conversations_test.go#TestHarnessAgent", "test:durable/harness/agent_resolve_pi_oracle_test.go#TestResolveAgentMatchesPi"]
+rationale = "Pi v1.6.1 (32c71a6d4 fix(durable): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/durable/src/harness/compaction.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_compaction_test.go#TestManualCompaction", "test:durable/harness/harness_compaction_test.go#TestManualCompactionConcurrency", "test:durable/harness/harness_compaction_test.go#TestBackgroundThresholdCompaction", "test:durable/harness/harness_compaction_test.go#TestBlockingThresholdCompaction", "test:durable/harness/harness_compaction_test.go#TestCompactionOutcomes", "test:durable/harness/harness_compaction_test.go#TestCompactionRecovery", "test:durable/core/driver/compaction_failure_core_test.go#TestCoreACompactionFailureIsVisibleUntilASummaryIsProduced"]
+rationale = "Pi v1.6.1 (32c71a6d4 fix(durable): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/durable/src/harness/define.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/wrap_yield_tag_test.go"]
+rationale = "Pi v1.6.1 (32c71a6d4 fix(durable): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/durable/src/harness/generation.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_generation_test.go#TestGeneration", "test:durable/harness/harness_generation_recovery_test.go#TestGenerationRecovery", "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredGenerationPartials", "test:durable/harness/harness_deferred_progress_upstream_test.go#TestAHeldDeferredPollIsResumedAfterACrash", "test:durable/harness/scheduler_wake_clock_test.go#TestGenerationRetryWaitSettlesWhenWakeRecomputedAfterBackoffCameDue", "test:durable/harness/hook_runner_test.go#TestHookRunnerEachPropagatesTheErrorOnceTheInvocationIsSignalled", "test:durable/harness/harness_run_failure_test.go#TestRunFailure", "test:durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryReportsHookFailuresOnThePhaseAndClockFailuresWithoutAPhaseContext"]
+rationale = "Pi v1.6.1 (32c71a6d4 fix(durable): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/durable/src/harness/harness.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_lifecycle_test.go#TestHarnessOpen", "test:durable/harness/harness_lifecycle_test.go#TestHarnessClose", "test:durable/harness/harness_conversations_test.go#TestHarnessRootAndConversations", "test:durable/harness/harness_conversations_test.go#TestHarnessAgent", "test:durable/harness/harness_conversations_test.go#TestHarnessLifecycleHandles", "test:durable/harness/harness_structured_test.go#TestConversationAbortAndBoundaries", "test:durable/harness/harness_structured_test.go#TestWaiting", "test:durable/harness/wait_deliveries_test.go#TestACancelledContextEndsAHarnessWaitForTheListenersAtOnce", "test:durable/harness/harness_observers_test.go#TestObserveConversationAndObserveTaskGraph", "test:durable/harness/harness_tasks_recovery_test.go#TestTaskRecoveryHarnessOpen", "test:durable/harness/goroutines_test.go#TestHarnessLeavesNoGoroutineBehindWhenItClosesAroundARunningTask"]
+rationale = "Pi v1.6.1 (32c71a6d4 fix(durable): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/durable/src/harness/live.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_live_deltas_test.go#TestLiveDeltas", "test:durable/harness/tool_nested_records_test.go#TestARunningNestedCallSlotKeepsPiMemberOrder", "test:durable/harness/harness_run_failure_test.go#TestRunFailure"]
+rationale = "Pi v1.6.1 (32c71a6d4 fix(durable): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/durable/src/harness/parks.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_tool_parks_test.go#TestToolParksOnASignal", "test:durable/harness/harness_tool_parks_test.go#TestToolParksInvalid"]
+rationale = "Pi v1.6.1 (32c71a6d4 fix(durable): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/durable/src/harness/scheduler.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_tasks_scheduling_test.go#TestTaskRuntime", "test:durable/harness/harness_tasks_scheduling_test.go#TestTaskScheduling", "test:durable/harness/harness_tasks_scheduling_test.go#TestTaskAbort", "test:durable/harness/harness_tasks_scheduling_test.go#TestTaskClose", "test:durable/harness/harness_tasks_scheduling_test.go#TestTaskCloseSignalsHandlersOnlyAfterEveryCloseListenerRan", "test:durable/harness/harness_tasks_test.go#TestTaskPhases", "test:durable/harness/harness_tasks_recovery_test.go#TestTaskRecovery", "test:durable/harness/harness_tasks_recovery_test.go#TestTaskCrashRecovery", "test:durable/harness/harness_cancellation_barrier_test.go#TestWorkBelowACancelledOwner", "test:durable/harness/harness_cancellation_barrier_test.go#TestACascadeTakesItsReasonFromTheNearestCancellingOwner", "test:durable/harness/task_abort_owned_test.go#TestTaskRuntimeAbortOwned", "test:durable/harness/await_context_regression_test.go#TestTaskRuntimeAgentRejectsAnAlreadyCancelledCallerAfterResolution", "test:durable/harness/waiter_cancel_test.go#TestACancelledWaitOfAContinuationDoesNotHoldLaterPublications", "test:durable/harness/harness_idle_scopes_test.go#TestIdleWaitersByScope", "test:durable/harness/harness_idle_scopes_test.go#TestIncrementalIdleStateEqualsAFullRecomputeAfterEveryStepOfRandomNestedWork", "test:durable/harness/scheduler_wake_clock_test.go#TestWakeRecomputedAfterSleepCameDueArmsItsTimer", "test:durable/harness/goroutines_test.go#TestHarnessLeavesNoGoroutineBehindWhenItClosesAroundARunningTask", "test:durable/harness/harness_delivery_contract_test.go#TestAListenerThatBlocksOnAChannelStallsHarnessWaitForTaskUntilItCallsDeliveryEntered", "test:durable/harness/scheduler_storage_failure_test.go#TestASchedulerChainReadThatFailsTheSessionEndsIt", "test:durable/harness/scheduler_notifications_test.go#TestFinalizePassKeepsAHolderCheckPublishedWhilePlanning", "test:durable/harness/scheduler_notifications_test.go#TestReservationPassKeepsAWaiterMadeACandidateWhilePlanning"]
+rationale = "Pi v1.6.1 (32c71a6d4 fix(durable): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/durable/src/harness/tool.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_tools_test.go#TestToolResults", "test:durable/harness/harness_tools_test.go#TestToolExecutionApi", "test:durable/harness/harness_tools_recovery_test.go#TestToolRecovery", "test:durable/harness/harness_tools_progress_test.go#TestToolProgressAndLifetime", "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredToolOutput", "test:durable/harness/tool_hooks_test.go#TestBeforeToolFailureBlocks", "test:durable/harness/harness_tool_hooks_test.go#TestAfterToolOnResultsTheCallPhaseDecides", "test:durable/harness/harness_tool_hooks_test.go#TestAfterToolOnResultsRebuiltFromTheSlot", "test:durable/harness/harness_tool_hooks_test.go#TestCallsToToolsTheRequestDidNotOffer", "test:durable/harness/tool_nested_test.go#TestACallerThatReturnsAbortsTheNestedCallsItLeftRunning", "test:durable/harness/tool_nested_test.go#TestNestedCallsAreAbortedWithTheirCaller", "test:durable/harness/tool_nested_test.go#TestARunningNestedCallIsAbortedWhenItsCallerThrows", "test:durable/harness/tool_nested_test.go#TestCancellingTheWaitForANestedCallStopsOnlyTheWait", "test:durable/harness/tool_nested_test.go#TestConcurrentCallsWithOneKeyAdmitOneNestedCall", "test:durable/harness/tool_nested_test.go#TestEveryNestedCallLeftRunningIsAbortedBeforeAnyIsWaitedFor", "test:durable/harness/tool_nested_test.go#TestNestedCallsOfNestedCallsEndChildrenFirst", "test:durable/harness/tool_nested_records_test.go#TestANestedCallWhoseAdmissionWasCommittingWhenItsCallerReturnedIsAborted", "test:durable/harness/tool_nested_restart_test.go#TestANestedCallAnEarlierAttemptLeftRunningAndTheRerunNeverMadeAgainIsAborted", "test:durable/harness/hook_runner_test.go#TestHookRunnerEachRejectsAfterTheInvocationEnds", "test:durable/harness/harness_tool_memo_test.go#TestToolExecutionApiMemoReadsAbsentThenTheFirstCandidateWins"]
+rationale = "Pi v1.6.1 (32c71a6d4 fix(durable): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/durable/src/harness/types.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/wrap_yield_tag_test.go"]
+rationale = "Pi v1.6.1 (32c71a6d4 fix(durable): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/durable/src/images/node-worker.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/images/node/worker_test.go#TestTheWorkersFailuresReachTheirCallerAndTheWorkerGoesOn", "test:durable/images/node/worker_test.go#TestTheWorkerPreparesOneImageAtATime", "test:durable/images/node/worker_test.go#TestTheWorkerPreparesOnItsOwnGoroutine", "test:durable/images/node/worker_test.go#TestTheWorkerKeepsTheCallersBytes"]
+rationale = "Pi v1.6.1 (32c71a6d4 fix(durable): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/durable/src/images/node.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/images/node/worker_test.go#TestTheWorkerExitsWhenIdleAndTheNextImageStartsAnother", "test:durable/images/node/worker_test.go#TestTheWorkerPreparesOneImageAtATime", "test:durable/images/node/worker_test.go#TestTheWorkerPreparesImagesInCallOrder", "test:durable/images/node/worker_test.go#TestWorkerFalsePreparesWithThePlainProcessor", "test:durable/images/node/worker_test.go#TestTheWorkerHonoursACancelledContext", "test:durable/images/node/worker_test.go#TestTheWorkerGivesTheSameResultAsTheCallingGoroutine", "test:durable/images/node/node_test.go#TestTheNodeProcessorPreparesConcurrentImagesEachOnItsOwn", "test:durable/images/node/node_test.go#TestTheNodeProcessorKeepsTheCallersBytes"]
+rationale = "Pi v1.6.1 (32c71a6d4 fix(durable): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/durable/src/session/transaction.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/session/session_tables_test.go#TestSessionTransactionTables", "test:durable/session/session_documents_test.go#TestSessionDocumentTransactions", "test:durable/session/session_tx_scan_tasks_test.go#TestSessionTransactionScanTasksFiltersPagesAndFailsAfterAWrite", "test:durable/session/session_tx_submission_reads_test.go#TestSessionTransactionLatestHeadMarkerSubmissionByRequestAndPlaceSubmission", "test:durable/session/session_tx_place_submission_test.go#TestSessionTransactionPlaceSubmissionIsATableWriteAndRefusedAfterSettling", "test:durable/session/read_after_write_methods_upstream_test.go#TestEveryTableReadFailsWithItsOwnNameAfterATableWrite", "test:durable/session/settle_submission_order_test.go#TestSettleSubmissionChecksOpenAndMarksTheWriteBeforeCopying", "test:durable/session/transaction_context_release_internal_test.go#TestSettledTransactionDoesNotRetainTheCallersTelemetrySpan"]
+rationale = "Pi v1.6.1 (32c71a6d4 fix(durable): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/durable/src/session/writer.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/session/session_group_commit_test.go#TestGroupCommitBatching", "test:durable/session/session_group_commit_test.go#TestGroupCommitOutcomes", "test:durable/session/session_group_commit_test.go#TestGroupCommitFailuresPerPart", "test:durable/session/session_group_commit_test.go#TestGroupCommitAFailureBetweenTwoPublications", "test:durable/session/session_group_commit_test.go#TestGroupCommitBackpressureAndBounds", "test:durable/session/session_group_commit_test.go#TestGroupCommitTheHopWaitsForTheSynchronousPartOfAListener", "test:durable/session/wait_delivery_test.go#TestGroupCommitAListenerThatClosesTheSessionDoesNotStallTheHop", "test:durable/session/session_group_commit_test.go#TestGroupCommitAPublicationThatThrows"]
+rationale = "Pi v1.6.1 (32c71a6d4 fix(durable): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/durable/src/signals.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/signal_state_tag_test.go"]
+rationale = "Pi v1.6.1 (32c71a6d4 fix(durable): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/durable/src/storage/indexeddb.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = ["test:durable/commit_result_tag_test.go"]
+rationale = "Pi v1.6.1 (32c71a6d4 fix(durable): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/durable/src/storage/jsonl/storage.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/storage/jsonl/jsonl_storage_test.go#TestPicoJsonlStoragePublicationAndRecovery", "test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStoragePoisonsWhenAnAppendFailsAfterItsBatchesApplied", "test:durable/storage/jsonl/poisoned_storage_test.go#TestJsonlStoragePoisonsWithOneCausedErrorForEveryLaterCall", "test:durable/storage/jsonl/closed_before_poison_test.go#TestJsonlClosedErrorWinsOverThePoison", "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage", "test:durable/storage/jsonl/open_close_semantics_test.go#TestJsonlOpenResolvesCreatesAndReportsEachFailingStep", "test:durable/storage/jsonl/publication_failure_messages_pi_test.go#TestJsonlPublicationFailuresNameTheFailedStep", "test:durable/storage/jsonl/recovery_validation_pi_test.go#TestJsonlRecoveryTruncatesFromTheFirstUnconfirmedSidecarRecord", "test:durable/storage/jsonl/jsonl_storage_reads_test.go#TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose", "test:durable/storage/jsonl/jsonl_storage_read_only_test.go#TestJsonlStorageReadOnlyOpen"]
+rationale = "Pi v1.6.1 (32c71a6d4 fix(durable): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/durable/src/storage/memory.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/storage/memory_storage_test.go#TestMemoryStorageConformance", "test:durable/storage/memory_storage_test.go#TestMemoryStorageDoesNotExposeRetainedStateThroughAPreparedCommit", "test:durable/storage/memory_storage_test.go#TestMemoryStorageDeliversTheReceiptsOfTheBatchesAppliedBeforeOneWhoseApplyThrowsThenRejects", "test:durable/storage/prepared_commit_apply_test.go#TestPreparedMemoryCommitAppliesOnceAndStaysInvisibleUntilApplied", "test:durable/storage/memory_read_api_pi_test.go#TestMemoryStorageReadApiMirrorsPisStorageContract", "test:durable/storage/storage_request_error_test.go#TestMemoryStorageReadsRejectInvalidRequestsWithStorageRequestError", "test:durable/storage/storage_runtime_boundary_test.go#TestDurableStorageRuntimeBoundaries"]
+rationale = "Pi v1.6.1 (32c71a6d4 fix(durable): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/durable/src/storage/sqlite/storage.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageConformance", "test:durable/storage/sqlite/sqlite_storage_test.go#TestPicoSqliteStorage", "test:durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageBatches", "test:durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageKeepsRecordKeyOrder", "test:durable/storage/sqlite/sqlite_storage_methods_test.go#TestSqliteStorageLookupsAndScansReadCommittedRecords", "test:durable/storage/sqlite/storage_request_error_test.go#TestBuiltinStoragesRejectInvalidReadsWithStorageRequestError", "test:durable/storage/sqlite/working_set_test.go#TestWorkingSetFollowsCommits", "test:durable/storage/sqlite/working_set_test.go#TestWorkingSetIgnoresAFailedCommit", "test:durable/storage/sqlite/working_set_test.go#TestWorkingSetSeesAnotherConnectionsWrites", "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"]
+rationale = "Pi v1.6.1 (32c71a6d4 fix(durable): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/durable/src/testing/commit-writes.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/durabletest/conformance_meta_test.go#TestStorageConformanceCasesPassForMemoryStorageAndFailForBrokenStorage"]
+rationale = "Pi v1.6.1 (32c71a6d4 fix(durable): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/durable/src/testing/storage-conformance.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/durabletest/storage_conformance_cases_test.go#TestCreateStorageConformanceCasesMatchUpstream", "test:durable/durabletest/storage_conformance_options_test.go#TestStorageConformanceOptionsSupplyAssertionsAndFreshStoragePerCase", "test:durable/durabletest/storage_conformance_options_test.go#TestRegisterStorageConformanceUsesTheProviderOncePerCase", "test:durable/durabletest/conformance_meta_test.go#TestStorageConformanceCasesPassForMemoryStorageAndFailForBrokenStorage", "test:durable/storage/memory_storage_test.go#TestMemoryStorageConformance", "test:durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageConformance", "test:durable/storage/store/store_storage_test.go#TestStoreStorageConformance"]
+rationale = "Pi v1.6.1 (32c71a6d4 fix(durable): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/durable/src/types.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/session/session_tx_submission_reads_test.go#TestSessionTransactionLatestHeadMarkerSubmissionByRequestAndPlaceSubmission", "test:durable/session/keys_test.go#TestGatedStorageReadsTouchTheirKeysFirst", "test:durable/storage/sqlite/sqlite_storage_methods_test.go#TestSqliteStorageLookupsAndScansReadCommittedRecords", "test:durable/storage/storage_read_contract_test.go#TestStorageReadContractAgainstSeededData"]
+rationale = "Pi v1.6.1 (32c71a6d4 fix(durable): tagged unions instead of \"in\" checks). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/env/src/remote-env.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:env/remote_write_abort_test.go#TestRemoteWriteFileAbortedBetweenChunksSettlesTheChunksInFlightAndStops", "test:env/remote_write_abort_test.go#TestRemoteAppendFileAbortedDuringTheTransferAppendsEverythingThenFails", "test:env/remote_write_abort_test.go#TestRemoteExecThrowingOnOutputCancelsTheCommandAndFailsWithTheCallbackError", "test:env/remote_test.go#TestRemoteExecutionEnv", "test:env/conformance_test.go#TestRemoteExecutionEnvOverAPipeConformance", "test:env/differential_test.go#TestRemoteExecutionEnvAgainstNodeExecutionEnv", "test:env/remote_shell_options_test.go#TestShellCleanupKillsRunningCommands", "test:env/remote_env_temp_join_test.go#TestRemoteExecutionEnvCreateTempDirAbortsBeforeTouchingTheDaemon", "test:env/regressions_test.go#TestRemoteWatcherOutlivesTheContextThatOpenedIt", "test:env/watch_test.go#TestRemoteWatcherFailsToOpenOverTheDirectoryBudgetLikeNodeFileWatcher", "test:env/watch_semantics_test.go#TestRemoteWatcherStopReturnsOnlyAfterTheWatchRequestHasFinished", "test:env/remote_watch_abort_test.go#TestRemoteExecutionEnvWatchWithAnAbortedContextFailsAbortedBeforeTouchingTheConnection", "test:env/remote_abort_test.go#TestRemoteExecOnAHostThatDoesNotAnswer", "test:env/remote_abort_test.go#TestRemoteFileOperationsStopWaitingForTheConnectionWhenAborted"]
+rationale = "Pi v1.6.1 (da7e26cc8 fix(mcp,ai,agent,coding-agent,tui): read large streamed lines and events in linear time (#12451)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/mcp/src/client.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:mcp/client_order_test.go#TestClientWritesRequestsInIDOrder", "test:mcp/client_test.go#TestClientCancelsAbortedAndTimedOutRequests", "test:mcp/client_test.go#TestClientRenewsTheTimeoutOnProgress", "test:mcp/client_test.go#TestClientDoesNotSendCancelledForATimedOutInitialize", "test:mcp/client_test.go#TestClientReportsTransportErrorsWithoutFailingPendingRequests", "test:mcp/client_test.go#TestClientAnswersRootsListAndDispatchesNotifications", "test:mcp/client_test.go#TestClientNotifiesCloseListenersOnceWhenTheTransportDrops"]
+rationale = "Pi v1.6.1 (c717e647d fix(mcp): match responses that echo numeric request ids as strings (#12430)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/mcp/src/index.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = ["test:mcp/model_content_pi_test.go", "test:mcp/result_schema_pi_test.go"]
+rationale = "Pi v1.6.1 (1acc72acd fix(p2): MCP results reach scripts as pi's whole CallToolResult, model content as pi's). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/mcp/src/model-content.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:mcp/model_content_pi_test.go#TestToMcpModelContentSavesBinaryResourcesShowsTextBlobsAsTextAndKeepsImages", "test:mcp/model_content_pi_test.go#TestToMcpModelContentLeavesBinaryResourcesOutWithoutASaverAndSaysWhyWhenSavingFails"]
+rationale = "Pi v1.6.1 (1acc72acd fix(p2): MCP results reach scripts as pi's whole CallToolResult, model content as pi's). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/mcp/src/protocol/jsonrpc.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:mcp/jsonrpc_id_test.go"]
+rationale = "Pi v1.6.1 (c717e647d fix(mcp): match responses that echo numeric request ids as strings (#12430)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/mcp/src/result-schema.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:mcp/result_schema_pi_test.go#TestCreateMcpResultSchemaDeclaresTheCallToolResultWithAnyStructuredContentWithoutAnOutputSchema"]
+rationale = "Pi v1.6.1 (1acc72acd fix(p2): MCP results reach scripts as pi's whole CallToolResult, model content as pi's). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/mcp/src/transports/streamable-http.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:mcp/sse_cr_pi_test.go#TestConsumeSSEStreamRecognizesCRLFAndCRLineEndingsIncludingCRLFSplitAcrossChunks", "test:mcp/streamable_http_body_cap_pi_test.go#TestStreamableHTTPAppliesMaxMessageBytesToJSONResponses"]
+rationale = "Pi v1.6.1 (da7e26cc8 fix(mcp,ai,agent,coding-agent,tui): read large streamed lines and events in linear time (#12451); c717e647d fix(mcp): match responses that echo numeric request ids as strings (#12430)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/tui/src/components/editor.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/editor_async_provider_test.go#TestForcedAutocompleteQueryDoesNotHoldInput", "test:tui/editor_async_provider_test.go#TestAsyncAutocompleteProviderErrorIsVisible", "test:tui/editor_async_provider_test.go#TestForcedAutocompleteAsksShouldTriggerFileCompletion", "test:tui/editor_autocomplete_flush_test.go#TestFlushAutocompleteAnswersTheLastRequestOfAReadOnce", "test:tui/editor_autocomplete_flush_test.go#TestFlushAutocompleteDropsARequestTheEditorMovedOnFrom", "test:tui/editor_autocomplete_flush_test.go#TestFlushAutocompleteLeavesTheSymbolDebounceToItsTimer", "test:tui/editor_autocomplete_flush_test.go#TestFlushAutocompleteAfterShutdownStartsNothing", "test:tui/editor_completion_upstream_test.go#TestUpstreamEditorCompletionDebouncesWhileTyping", "test:tui/editor_completion_upstream_test.go#TestUpstreamEditorCompletionRequeriesOnCursorMove", "test:tui/editor_completion_upstream_test.go#TestUpstreamEditorCompletionAbortsActiveRequest", "test:internal/codingagent/autocomplete_wrappers_test.go#TestAutocompleteFailureReachesUncaughtCrash", "test:internal/codingagent/autocomplete_wrappers_test.go#TestAutocompleteCompletionHoldsInputUntilOwnerApply", "test:internal/codingagent/autocomplete_read_checkpoint_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuThatReadOpened", "test:internal/codingagent/autocomplete_read_checkpoint_test.go#TestEnterInTheSameReadAsTheTextSubmitsIt", "test:internal/codingagent/autocomplete_extension_read_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuAnExtensionProviderOpened", "test:internal/codingagent/autocomplete_extension_read_test.go#TestEnterInTheReadAfterTheTextSubmitsWhileAnExtensionProviderAwaitsIO", "test:internal/codingagent/autocomplete_extension_read_test.go#TestEnterWaitsForAnExtensionProviderThatBlocksUntilItReturns", "test:tui/editor_autocomplete_hold_test.go#TestFlushAutocompleteStartsTheExtensionChainOncePerRead", "test:tui/editor_autocomplete_hold_test.go#TestExtensionChainAwaitingIOReleasesTheHold", "test:tui/editor_autocomplete_hold_test.go#TestExtensionChainBehindAnUnfinishedRequestDoesNotHold", "test:tui/editor_autocomplete_hold_test.go#TestDebouncedExtensionRequestDoesNotHold", "test:test/extension-conformance/autocomplete_settle_test.go#TestAutocompleteSettlementAcrossSDKs", "scenario:test/parity/scenarios/autocomplete/12-editor-completion-lifecycle.toml", "scenario:test/parity/scenarios/autocomplete/12-extension-wrapper-error.toml", "probe:docs/findings/fix-rigidity-b.md", "test:tui/editor_sticky_paste_upstream_test.go#TestUpstreamEditorPasteMarkerAtomicBehavior", "test:tui/editor_autocomplete_flush_test.go#TestFlushAutocompleteJoinsARequestStillOnTheWorker", "test:tui/editor_completion_owner_test.go#TestOwnedAutocompleteJoinsCancelledPredecessors", "test:tui/editor_typed_race_oracle_test.go#TestEditorTypedKeysThatTriggerNothingLeaveAPendingRequestAloneLikePi", "test:tui/editor_completion_owner_test.go#TestOwnedAutocompleteProgrammaticCancel", "test:tui/editor_completion_owner_test.go#TestOwnedAutocompleteErrorRunsOnOwner", "test:tui/editor_completion_owner_test.go#TestOwnedAutocompleteWaitsForOwnerPublication", "test:tui/editor_completion_owner_test.go#TestOwnedAutocompleteShutdownRejectsQueuedQuery", "test:tui/editor_paste_autocomplete_test.go#TestEditorTypingRaceLeavesStaleAutocompleteForEnter", "test:tui/editor_autocomplete_supersede_test.go#TestAutocompleteAnswerOfASupersededRequestIsNeverShown", "test:tui/editor_autocomplete_supersede_test.go#TestAutocompleteAnswerOfACancelledRequestIsNeverShown", "test:tui/editor_autocomplete_supersede_test.go#TestAutocompleteRequestCancelledBeforeItsStartAsksTheProviderNothing"]
+rationale = "Pi v1.6.1 (06a20368a fix(tui): move repeated prompts to the front of editor history instead of duplicating them (#12370)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/tui/src/components/markdown.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/markdown_latex_upstream_test.go"]
+rationale = "Pi v1.6.1 (362bf6f1b fix(tui): keep Markdown after an unclosed currency dollar sign (#12472)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/tui/src/stdin-buffer.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/stdin_buffer_test.go"]
+rationale = "Pi v1.6.1 (da7e26cc8 fix(mcp,ai,agent,coding-agent,tui): read large streamed lines and events in linear time (#12451)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/tui/src/terminal-image.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/terminal_image_upstream_test.go"]
+rationale = "Pi v1.6.1 (6ca01d1e9 fix(tui): do not emit OSC 8 hyperlinks for URLs over 8192 characters (#12475)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/tui/src/tui-alt-screen.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/async_contract_closure_test.go#TestAltScreenCopySelectionCallbackRunsWithoutTheScreenLockAndFlashesAfterItSettles"]
+rationale = "Pi v1.6.1 (165c70df9 fix(tui): skip synthetic right-click paste in Tabby on Windows (#12473)). Ported and verified against Pi 1.6.1."
+
+[[files]]
+path = "packages/tui/src/tui-main-screen.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/render_overflow_test.go"]
+rationale = "Pi v1.6.1 (943a99e3c fix(coding-agent,tui): stop temp file write failures from crashing pi (#12452)). Ported and verified against Pi 1.6.1."

@@ -10,20 +10,21 @@ export function formatAuthSelectorProviderType(authType, subscription) {
 }
 /** Themed suffix describing whether and how a login option is configured, for example " ✓ configured". */
 export function formatAuthSelectorProviderStatus(provider) {
-    if (!provider.status)
+    const { status } = provider;
+    if (!status)
         return theme.fg("muted", " • not configured");
-    if (provider.status.type !== provider.authType) {
-        const label = `${formatAuthSelectorProviderType(provider.status.type, provider.subscription)} configured`;
+    if (status.kind === "unresolved")
+        return theme.fg("muted", " • ") + theme.fg("error", "stored key did not resolve");
+    if (status.type !== provider.authType) {
+        const label = `${formatAuthSelectorProviderType(status.type, provider.subscription)} configured`;
         return theme.fg("muted", " • ") + theme.fg("warning", label);
     }
-    if (!provider.status.source ||
-        provider.status.source === "OAuth" ||
-        provider.status.source === "stored credential") {
+    if (!status.source || status.source === "OAuth" || status.source === "stored credential") {
         return theme.fg("success", " ✓ configured");
     }
-    const source = /^[A-Z][A-Z0-9_]*(?:, [A-Z][A-Z0-9_]*)*$/.test(provider.status.source)
-        ? `env: ${provider.status.source}`
-        : provider.status.source;
+    const source = /^[A-Z][A-Z0-9_]*(?:, [A-Z][A-Z0-9_]*)*$/.test(status.source)
+        ? `env: ${status.source}`
+        : status.source;
     return theme.fg("success", ` ✓ ${source}`);
 }
 const MAX_VISIBLE = 8;

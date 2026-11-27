@@ -32,8 +32,8 @@ for (const spec of JSON.parse(input)) {
 		sections: extension.sections.map((section) => ({ key: section.key, render: () => `R:${section.key}:${extension.name}` })),
 		wraps: extension.wraps.map((wrap) =>
 			wrap.kind === "tool"
-				? { tool: wrap.target, wrap: wrapper(wrap.mode, (tool) => ({ ...tool, description: `${tool.description}+${++counter}` }), (tool) => ({ ...tool, name: `${tool.name}x` })) }
-				: { section: wrap.target, wrap: wrapper(wrap.mode, (section) => ({ ...section, render: () => `${section.render()}+${++counter}` }), (section) => ({ ...section, key: `${section.key}x` })) },
+				? { kind: "tool", tool: wrap.target, wrap: wrapper(wrap.mode, (tool) => ({ ...tool, description: `${tool.description}+${++counter}` }), (tool) => ({ ...tool, name: `${tool.name}x` })) }
+				: { kind: "section", section: wrap.target, wrap: wrapper(wrap.mode, (section) => ({ ...section, render: () => `${section.render()}+${++counter}` }), (section) => ({ ...section, key: `${section.key}x` })) },
 		),
 	}));
 	const snapshot = { installed: () => extensions, extension: (name) => extensions.find((extension) => extension.name === name) };

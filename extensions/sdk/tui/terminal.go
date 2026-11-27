@@ -37,8 +37,29 @@ type CapabilityOverrides struct {
 	Hyperlinks *bool
 }
 
+// maxHyperlinkURLLength is the longest URL (in UTF-16 code units) that Hyperlink wraps in an OSC 8 sequence.
+const maxHyperlinkURLLength = 8192
+
+func hyperlinkUTF16Len(s string) int {
+	n := 0
+	for _, r := range s {
+		if r >= 0x10000 {
+			n += 2
+		} else {
+			n++
+		}
+	}
+	return n
+}
+
 // Hyperlink is pi-tui's hyperlink: text wrapped in an OSC 8 link to url.
-func Hyperlink(text, url string) string { return "\x1b]8;;" + url + "\x1b\\" + text + "\x1b]8;;\x1b\\" }
+// URLs longer than 8192 UTF-16 code units return plain text.
+func Hyperlink(text, url string) string {
+	if hyperlinkUTF16Len(url) > maxHyperlinkURLLength {
+		return text
+	}
+	return "\x1b]8;;" + url + "\x1b\\" + text + "\x1b]8;;\x1b\\"
+}
 
 // probeTmuxHyperlinks is pi-tui's probeTmuxHyperlinks: tmux re-emits OSC 8 only when the attached client's client_termfeatures lists
 // hyperlinks. Any error, including the 250 ms timeout, reports false.

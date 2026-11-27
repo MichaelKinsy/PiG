@@ -942,3 +942,60 @@ func TestStreamableHTTPTransportSendsTheProtocolVersionSetOnIt(t *testing.T) {
 		t.Fatalf("protocol version headers = %q, want each set version in order", got)
 	}
 }
+
+// Port of Pi main c717e647d152a9cf71cbd657df187669a5f23129:
+// packages/mcp/test/streamable-http.test.ts "matches a streamed response that echoes the request id as a string".
+func TestStreamableHTTPTransportMatchesStreamedResponseWithStringID(t *testing.T) {
+	url, requests := startServer(t, func(w http.ResponseWriter, r *http.Request, requests *requestLog) {
+		if r.Method != "POST" {
+			protocolHandler(w, r, requests, nil)
+			return
+		}
+		message := readJSONBody(r)
+		if message["method"] != "tools/call" {
+			protocolHandler(w, r, requests, message)
+			return
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(200)
+		reply, _ := json.Marshal(map[string]any{
+			"jsonrpc": "2.0",
+			"id":      fmt.Sprint(message["id"]),
+			"result":  map[string]any{"content": []any{map[string]any{"type": "text", "text": "hello"}}},
+		})
+		_, _ = fmt.Fprintf(w, "id: e1\nretry: 5\ndata: %s\n\n", reply)
+	})
+	client := newHTTPClient()
+	var errsMu sync.Mutex
+	var errs []error
+	client.OnError(func(err error) {
+		errsMu.Lock()
+		errs = append(errs, err)
+		errsMu.Unlock()
+	})
+	if _, err := client.Connect(t.Context(), newHTTPTransport(t, mcp.StreamableHTTPTransportOptions{URL: url, OpenGetStream: new(false)})); err != nil {
+		t.Fatal(err)
+	}
+	result, err := client.CallTool(t.Context(), "echo", map[string]any{}, mcp.RequestOptions{TimeoutMs: 2_000})
+	if err != nil {
+		t.Fatalf("CallTool failed: %v", err)
+	}
+	if len(result.Content) != 1 || result.Content[0].Type != "text" || result.Content[0].Text != "hello" {
+		t.Fatalf("CallTool content = %+v, want single text block hello", result.Content)
+	}
+	time.Sleep(50 * time.Millisecond)
+	errsMu.Lock()
+	gotErrs := append([]error(nil), errs...)
+	errsMu.Unlock()
+	if len(gotErrs) != 0 {
+		t.Fatalf("unexpected client errors: %v", gotErrs)
+	}
+	for _, entry := range requests.all() {
+		if entry.method == "GET" {
+			t.Fatalf("unexpected GET resume request: %+v", entry)
+		}
+	}
+	if err := client.Close(); err != nil {
+		t.Fatal(err)
+	}
+}

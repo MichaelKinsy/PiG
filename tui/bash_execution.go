@@ -29,6 +29,7 @@ type BashExecutionComponent struct {
 	finishedAt         time.Time
 	truncated          bool
 	fullOutputPath     string
+	fullOutputError    string
 	expanded           bool
 	loader             *Loader // animated spinner while running
 	outputPad          int     // horizontal padding of the header, output and status rows (bash-execution.ts outputPad)
@@ -125,13 +126,24 @@ func (b *BashExecutionComponent) GetCommand() string {
 // truncated result, adds the "Output truncated. Full output: <path>" row. The output already streamed into the block is kept; SetCompleteWithOutput
 // replaces it with the durable output.
 func (b *BashExecutionComponent) SetComplete(exitCode *int, cancelled bool, truncationResult *TruncationResult, fullOutputPath string) {
-	b.finishBashExecution(exitCode, cancelled, truncationResult != nil && truncationResult.Truncated, fullOutputPath)
+	b.finishBashExecution(exitCode, cancelled, truncationResult != nil && truncationResult.Truncated, fullOutputPath, "")
+}
+
+// SetCompleteWithError transitions the block out of the running state, also recording why the full output could not be saved when truncated (bash-execution.ts setComplete 5th arg).
+func (b *BashExecutionComponent) SetCompleteWithError(exitCode *int, cancelled bool, truncationResult *TruncationResult, fullOutputPath, fullOutputError string) {
+	b.finishBashExecution(exitCode, cancelled, truncationResult != nil && truncationResult.Truncated, fullOutputPath, fullOutputError)
 }
 
 // SetCompleteWithOutput replaces the streaming preview with the durable truncated output and records its full-output path before completing the block.
 func (b *BashExecutionComponent) SetCompleteWithOutput(exitCode *int, cancelled, truncated bool, output, fullOutputPath string) {
 	b.tail.Reset(output)
 	b.SetComplete(exitCode, cancelled, truncationFlag(truncated), fullOutputPath)
+}
+
+// SetCompleteWithOutputAndError replaces the streaming preview with the durable truncated output and records its full-output path or error before completing the block.
+func (b *BashExecutionComponent) SetCompleteWithOutputAndError(exitCode *int, cancelled, truncated bool, output, fullOutputPath, fullOutputError string) {
+	b.tail.Reset(output)
+	b.SetCompleteWithError(exitCode, cancelled, truncationFlag(truncated), fullOutputPath, fullOutputError)
 }
 
 // truncationFlag is `truncated ? { truncated: true } : undefined`, the argument interactive-mode.ts:3883 passes.
@@ -142,7 +154,7 @@ func truncationFlag(truncated bool) *TruncationResult {
 	return &TruncationResult{Truncated: true}
 }
 
-func (b *BashExecutionComponent) finishBashExecution(exitCode *int, cancelled, truncated bool, fullOutputPath string) {
+func (b *BashExecutionComponent) finishBashExecution(exitCode *int, cancelled, truncated bool, fullOutputPath, fullOutputError string) {
 	if cancelled {
 		b.status = bashStatusCancelled
 	} else {
@@ -151,6 +163,7 @@ func (b *BashExecutionComponent) finishBashExecution(exitCode *int, cancelled, t
 	b.exitCode = exitCode
 	b.truncated = truncated
 	b.fullOutputPath = fullOutputPath
+	b.fullOutputError = fullOutputError
 	b.finishedAt = time.Now()
 	b.updateDisplay()
 	b.Container.Invalidate()
@@ -288,8 +301,17 @@ func (b *BashExecutionComponent) statusLines(hidden int, contextTruncated bool) 
 		}
 	}
 	// The truncation warning does not depend on the status (bash-execution.ts:200-203).
-	if (b.truncated || contextTruncated) && b.fullOutputPath != "" {
-		lines = append(lines, theme.Fg("warning", "Output truncated. Full output: "+b.fullOutputPath))
+	if b.truncated || contextTruncated {
+		var note string
+		switch {
+		case b.fullOutputPath != "":
+			note = "Output truncated. Full output: " + b.fullOutputPath
+		case b.fullOutputError != "":
+			note = "Output truncated. Could not save the full output: " + b.fullOutputError
+		default:
+			note = "Output truncated"
+		}
+		lines = append(lines, theme.Fg("warning", note))
 	}
 	return lines
 }

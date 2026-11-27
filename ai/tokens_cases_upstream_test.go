@@ -31,7 +31,7 @@ func tokensUpstreamCases() []tokensUpstreamCase {
 		// .upstream/v0.87.1/packages/ai/test/tokens.test.ts:207
 		{"should include token stats when aborted mid-stream", "zai", "glm-5.2", "", false, "", false},
 		// .upstream/v0.87.1/packages/ai/test/tokens.test.ts:215
-		{"should include token stats when aborted mid-stream", "mistral", "devstral-medium-latest", "", false, "", false},
+		{"should include token stats when aborted mid-stream", "mistral", "mistral-medium-latest", "", false, "", false},
 		// .upstream/v0.87.1/packages/ai/test/tokens.test.ts:223
 		{"should include token stats when aborted mid-stream", "minimax", "MiniMax-M2.7", "", false, "", false},
 		// .upstream/v0.87.1/packages/ai/test/tokens.test.ts:231

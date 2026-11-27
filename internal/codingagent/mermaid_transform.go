@@ -210,18 +210,26 @@ func isMermaidInfo(info string) bool {
 	return strings.EqualFold(fields[0], "mermaid")
 }
 
-// renderMermaidToken preserves the raw source when the natural layout is unsupported or wider than the available area, including during streaming.
+// renderMermaidToken preserves the raw source when the natural layout is unsupported, has parse warnings, or is wider than the available area.
 func renderMermaidToken(raw, text string, context extension.MarkdownTransformContext, theme *tui.Theme) string {
 	art, ok := mermaid.Render(text)
-	if !ok || art.Width > context.AvailableWidth {
+	if !ok {
 		return raw
 	}
+	// Warnings come first: a diagram with warnings stays unrendered at any width.
+	// While streaming, warnings come from unfinished source, so the partial diagram renders.
 	if !context.IsStreaming && len(art.Warnings) > 0 {
 		suffix := ""
 		if len(art.Warnings) > 1 {
 			suffix = " (+" + strconv.Itoa(len(art.Warnings)-1) + " more)"
 		}
 		return raw + mermaidHint(art.Warnings[0]+suffix, context, theme)
+	}
+	if art.Width > context.AvailableWidth {
+		if context.IsStreaming {
+			return raw
+		}
+		return raw + mermaidHint("needs "+strconv.Itoa(art.Width)+" columns, "+strconv.Itoa(context.AvailableWidth)+" available", context, theme)
 	}
 	lines := art.Plain
 	if theme != nil {

@@ -715,6 +715,22 @@ func TestClassifyNamesTheRemovedTransformHeaders(t *testing.T) {
 	}
 }
 
+func TestClassifyNamesTheReplacedShowCacheMissNotices(t *testing.T) {
+	for _, tc := range []struct {
+		method string
+		symbol string
+	}{
+		{"GetShowCacheMissNotices", "SettingsManager.GetShowCacheMissNotices"},
+		{"SetShowCacheMissNotices", "SettingsManager.SetShowCacheMissNotices"},
+	} {
+		output := "# example.com/x\n./x.go:9:4: sm." + tc.method + " undefined (type sdk.SettingsManager has no field or method " + tc.method + ")\n"
+		drifts := upgrade.Classify(upgrade.ParseDiagnostics([]byte(output)), nil)
+		if len(drifts) != 1 || drifts[0].Rule != upgrade.RuleSettingsNotices || drifts[0].Symbol != tc.symbol || drifts[0].Rewrites {
+			t.Fatalf("%s: drifts = %+v", tc.method, drifts)
+		}
+	}
+}
+
 func TestEveryRuleSymbolIsUnique(t *testing.T) {
 	seen := map[string]string{}
 	for _, rule := range upgrade.Rules() {

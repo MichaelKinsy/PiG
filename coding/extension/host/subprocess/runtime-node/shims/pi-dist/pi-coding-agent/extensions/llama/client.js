@@ -1,3 +1,4 @@
+import { SseDecoder } from "../../../pi-ai/utils/sse.js";
 function errorMessage(payload, fallback) {
     if (typeof payload !== "object" || payload === null)
         return fallback;
@@ -208,22 +209,12 @@ export class LlamaClient {
         if (!response.ok || !response.body)
             throw new Error(`llama.cpp SSE returned HTTP ${response.status}`);
         const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
+        const sse = new SseDecoder();
         while (true) {
             const chunk = await reader.read();
             if (chunk.done)
                 break;
-            buffer += decoder.decode(chunk.value, { stream: true }).replaceAll("\r\n", "\n");
-            let boundary = buffer.indexOf("\n\n");
-            while (boundary >= 0) {
-                const frame = buffer.slice(0, boundary);
-                buffer = buffer.slice(boundary + 2);
-                const data = frame
-                    .split("\n")
-                    .filter((line) => line.startsWith("data:"))
-                    .map((line) => line.slice(5).trimStart())
-                    .join("\n");
+            for (const { data } of sse.push(chunk.value)) {
                 if (data) {
                     try {
                         const event = JSON.parse(data);
@@ -234,7 +225,6 @@ export class LlamaClient {
                         // Ignore malformed events; catalog polling remains authoritative.
                     }
                 }
-                boundary = buffer.indexOf("\n\n");
             }
         }
     }

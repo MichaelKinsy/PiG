@@ -179,31 +179,31 @@ test("a continue submits as a draft of its own type, with no content", async () 
   assert.equal("content" in body, false)
 })
 
-test("submit(tx, draft) admits through the transaction's submit operation and answers the submission ID", async () => {
+test("admit(tx, draft) admits through the transaction's submit operation and answers the submission ID", async () => {
   const { core, log } = line(ev => ev.body.op === "submit" ? { result: { id: 7, status: "queued" } } : { result: null })
   const h = await harness(core)
   const c = new Conversation(h, 3)
-  const id = await h.commit(tx => c.submit(tx, { type: "input", content: "steer", whenBusy: "steer", whenIdle: "reject", requestId: "r1" }), context)
+  const id = await h.commit(tx => c.admit(tx, { type: "input", content: "steer", whenBusy: "steer", whenIdle: "reject", requestId: "r1" }), context)
   assert.equal(id, 7)
   const op = log.find(entry => entry.op === "submit")!
   assert.deepEqual({ conversationId: op.conversationId, type: op.type, content: op.content, whenBusy: op.whenBusy, whenIdle: op.whenIdle, requestId: op.requestId }, { conversationId: 3, type: "input", content: "steer", whenBusy: "steer", whenIdle: "reject", requestId: "r1" })
   assert.equal(core.ofKind(EVENT.submit).length, 0, "no submit event: the admission is part of the caller's commit")
 })
 
-test("submit(tx, draft) throws for a transaction of another Session, or a wrapped or plain one, before any operation", async () => {
+test("admit(tx, draft) throws for a transaction of another Session, or a wrapped or plain one, before any operation", async () => {
   const { core, log } = line(() => ({ result: null }))
   const h = await harness(core)
   const { core: otherCore } = line(() => ({ result: { id: 1, status: "queued" } }))
   const other = await harness(otherCore)
   const c = new Conversation(h, 1)
   const draft = { type: "input", content: "hi" }
-  await assert.rejects(other.commit(tx => c.submit(tx, draft), context), /The transaction belongs to another Session/)
-  await assert.rejects(h.commit(tx => c.submit(new Proxy(tx, {}), draft), context), /The transaction belongs to another Session/)
-  await assert.rejects(h.commit(() => c.submit({ doc: () => undefined }, draft), context), /The transaction belongs to another Session/)
+  await assert.rejects(other.commit(tx => c.admit(tx, draft), context), /The transaction belongs to another Session/)
+  await assert.rejects(h.commit(tx => c.admit(new Proxy(tx, {}), draft), context), /The transaction belongs to another Session/)
+  await assert.rejects(h.commit(() => c.admit({ doc: () => undefined }, draft), context), /The transaction belongs to another Session/)
   assert.equal(log.some(entry => entry.op === "submit"), false)
 })
 
-test("a submit(tx, draft) after a table write is Pi's ReadAfterWrite, which names the operation", async () => {
+test("an admit(tx, draft) after a table write is Pi's ReadAfterWrite, which names the operation", async () => {
   const { core } = line(() => ({ result: null }))
   const h = await harness(core)
   core.respond = ev => {
@@ -213,7 +213,7 @@ test("a submit(tx, draft) after a table write is Pi's ReadAfterWrite, which name
     return { notices: [txResult(ev.id!, { result: null })] }
   }
   const c = new Conversation(h, 1)
-  const late = h.commit(async tx => { await tx.appendEntry(1, { kind: "app.note" }); await c.submit(tx, { type: "continue" }) }, context)
+  const late = h.commit(async tx => { await tx.appendEntry(1, { kind: "app.note" }); await c.admit(tx, { type: "continue" }) }, context)
   await assert.rejects(late, (e: Error) => e instanceof ReadAfterWrite && e.message === "submit(tx, draft) cannot read tables after the first table write")
 })
 

@@ -50,13 +50,13 @@ func TestMCPToolsCreatesProviderSafeToolNames(t *testing.T) {
 func TestMCPToolsDeclaresTheCallToolResultScriptsReceiveKeepingReferencesInTheServersOutputSchema(t *testing.T) {
 	content := `content: Array<{ data?: string; mimeType?: string; text?: string; type: "text" | "image" | "audio" | "resource_link" | "resource"; [key: string]: unknown; }>; isError?: boolean;`
 	// #10416: without an output schema, structured content may be any JSON value.
-	rendered := codemode.RenderToolOutputType(mcpext.CreateMcpResultSchema(nil))
+	rendered := codemode.RenderToolOutputType(mcp.CreateMcpResultSchema(nil))
 	if want := "{ " + content + " structuredContent?: unknown; [key: string]: unknown; }"; rendered != want {
 		t.Errorf("without an output schema:\n got %s\nwant %s", rendered, want)
 	}
 
 	hit := `{"type":"object","properties":{"id":{"type":"string"}},"required":["id"]}`
-	schema := mcpext.CreateMcpResultSchema(json.RawMessage(`{
+	schema := mcp.CreateMcpResultSchema(json.RawMessage(`{
 		"type": "object",
 		"properties": {
 			"hits": {"type": "array", "items": {"$ref": "#/$defs/Hit~1v1"}},
@@ -280,11 +280,11 @@ func TestMCPToolsTrimsToolDescriptionsLikeJavaScript(t *testing.T) {
 	}
 }
 
-// upstream mcp/tools.ts isTextMimeType: `mimeType.split(";")[0].trim()`, so a BOM around the type is dropped.
+// upstream mcp/src/model-content.ts isTextMimeType: `mimeType.split(";")[0].trim()`, so a BOM around the type is dropped.
 func TestMCPToolsShowsBlobsOfTextTypesWithBOMPaddedMimeTypesAsText(t *testing.T) {
 	blob := "aGk="
-	content := mcpext.ToModelContent("docs", []mcp.ContentBlock{{Type: "resource", Resource: &mcp.ResourceContents{URI: "file:///a", MimeType: "\uFEFFtext/plain \uFEFF; charset=utf-8", Blob: &blob}}}, mcpext.ConvertMcpResultOptions{})
-	if len(content) != 1 || content[0].(ai.TextContent).Text != "hi" {
+	content := mcp.ToMcpModelContent("docs", mcp.CallToolResult{Content: []mcp.ContentBlock{{Type: "resource", Resource: &mcp.ResourceContents{URI: "file:///a", MimeType: "\uFEFFtext/plain \uFEFF; charset=utf-8", Blob: &blob}}}}, mcp.McpModelContentOptions{})
+	if len(content) != 1 || content[0].Text != "hi" {
 		t.Fatalf("content = %#v", content)
 	}
 }
@@ -298,7 +298,7 @@ func TestMCPToolsKeepAnExplicitEmptyTitle(t *testing.T) {
 		if err := json.Unmarshal([]byte(raw), &block); err != nil {
 			t.Fatal(err)
 		}
-		return mcpext.ToModelContent("docs", []mcp.ContentBlock{block}, mcpext.ConvertMcpResultOptions{})[0].(ai.TextContent).Text
+		return mcp.ToMcpModelContent("docs", mcp.CallToolResult{Content: []mcp.ContentBlock{block}}, mcp.McpModelContentOptions{})[0].Text
 	}
 	for raw, want := range map[string]string{
 		`{"type":"resource_link","uri":"a://1","name":"one","title":""}`:    `[Resource a://1 ""]`,

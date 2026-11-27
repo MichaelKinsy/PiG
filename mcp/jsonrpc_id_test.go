@@ -28,7 +28,7 @@ func TestJSONRPCIDAcceptsOnlyAStringOrAFiniteNumber(t *testing.T) {
 
 func TestJSONRPCIDKeepsStringAndNumberApart(t *testing.T) {
 	if StringID("1").key() == NumberID(1).key() {
-		t.Error("string id \"1\" and number id 1 share a pending-request key: a response with id \"1\" would resolve request 1")
+		t.Error("string id \"1\" and number id 1 share a raw key: StringID and NumberID must stay distinct before own-request normalization")
 	}
 	if !StringID("x").IsString() || NumberID(1).IsString() {
 		t.Error("IsString does not tell a string id from a number id")
@@ -107,6 +107,39 @@ func TestJSONRPCIDMarshalRejectsAnUnsetOrNonFiniteNumber(t *testing.T) {
 	for want, id := range map[string]JSONRPCID{`"abc"`: StringID("abc"), `""`: StringID(""), `7`: NumberID(7), `-0.5`: NumberID(-0.5), `1e+21`: NumberID(1e21)} {
 		if data, err := json.Marshal(id); err != nil || string(data) != want {
 			t.Errorf("id marshalled to %s, %v, want %s", data, err, want)
+		}
+	}
+}
+
+// normalizeOwnRequestID matches Pi's canonical non-negative integer string normalization (client.ts/streamable-http.ts):
+// canonical decimal forms ("0", "1", "42") normalize to the matching numeric ID, while leading zeros ("01"),
+// floats ("1.0"), exponents ("1e0"), whitespace (" 1"), negatives ("-1"), empty strings, and non-numeric strings stay strings.
+func TestNormalizeOwnRequestID(t *testing.T) {
+	cases := []struct {
+		in   JSONRPCID
+		want JSONRPCID
+	}{
+		{NumberID(1), NumberID(1)},
+		{NumberID(0), NumberID(0)},
+		{StringID("0"), NumberID(0)},
+		{StringID("1"), NumberID(1)},
+		{StringID("42"), NumberID(42)},
+		{StringID("01"), StringID("01")},
+		{StringID("1.0"), StringID("1.0")},
+		{StringID("1e0"), StringID("1e0")},
+		{StringID(" 1"), StringID(" 1")},
+		{StringID("1 "), StringID("1 ")},
+		{StringID("-1"), StringID("-1")},
+		{StringID(""), StringID("")},
+		{StringID("abc"), StringID("abc")},
+		{StringID("9007199254740991"), NumberID(9007199254740991)},
+		// Like JS Number("9007199254740992") under /^(0|[1-9]\d*)$/, any finite canonical decimal parses as a float64 number.
+		{StringID("9007199254740992"), NumberID(9007199254740992)},
+	}
+	for _, tc := range cases {
+		got := normalizeOwnRequestID(tc.in)
+		if got.key() != tc.want.key() {
+			t.Errorf("normalizeOwnRequestID(%+v) = %+v (key %q), want %+v (key %q)", tc.in, got, got.key(), tc.want, tc.want.key())
 		}
 	}
 }

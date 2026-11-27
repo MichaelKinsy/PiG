@@ -155,7 +155,7 @@ func (m *InteractiveMode) renderSessionEntriesWithHistory(populateHistory bool) 
 
 // sessionEntriesToRender reads the entries the transcript paints from the current Session.
 func (m *InteractiveMode) sessionEntriesToRender() []SessionEntry {
-	return transcriptEntries(m.currentSession(), m.showCacheMissNotices())
+	return transcriptEntries(m.currentSession(), m.notices().CacheMisses)
 }
 
 // transcriptEntries reads the entries the transcript paints from session: the kept range and everything after it render the same from the
@@ -299,7 +299,7 @@ func (m *InteractiveMode) renderSessionEntryListWithLive(entries []SessionEntry,
 	}
 
 	cacheMissNotices := make(map[string]string)
-	if m.showCacheMissNotices() {
+	if m.notices().CacheMisses {
 		// upstream collectCacheMisses(sessionManager.getEntries()): every entry of the file in file order, not only the rendered branch, so a
 		// response compares with the request before it in the file, as the live notice does. The branch's messages keep their decoded copies.
 		branchMessages := make(map[string]*agent.AssistantMessage, len(branch))
@@ -457,15 +457,16 @@ func (m *InteractiveMode) renderSessionEntryListWithLive(entries []SessionEntry,
 			cancelled, _ := msg.Custom["cancelled"].(bool)
 			truncated, _ := msg.Custom["truncated"].(bool)
 			fullOutputPath, _ := msg.Custom["fullOutputPath"].(string)
+			fullOutputError, _ := msg.Custom["fullOutputError"].(string)
 			var truncationResult *tui.TruncationResult
 			if truncated {
 				truncationResult = &tui.TruncationResult{Truncated: true}
 			}
-			block.SetComplete(exitCode, cancelled, truncationResult, fullOutputPath)
+			block.SetCompleteWithError(exitCode, cancelled, truncationResult, fullOutputPath, fullOutputError)
 			m.toolMu.Lock()
 			m.bashOrder = append(m.bashOrder, block)
 			m.toolMu.Unlock()
-			// upstream: interactive-mode.ts:3871,7009,7037 never call setExpanded on a new BashExecutionComponent; it starts collapsed.
+			block.SetExpanded(m.toolsExpanded)
 			m.chatContainer.Add(block)
 		case msg.Role() == agent.RoleCustom:
 			// upstream addMessageToChat case "custom" (interactive-mode.ts:3901-3913): only a displayed message is drawn.

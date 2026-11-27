@@ -86,7 +86,7 @@ The helpers are `ctx.Yield()` and `ctx.Sleep(d)` (Go), `ctx.yield_now()` and `ct
 
 ### Per-run prompt sections
 
-`before_agent_start` handlers receive `event.messageType`: `"user"` with `event.prompt` and `event.images` for a run that a user message starts, and `"custom"` with `event.message` for a run that `sendMessage` with `triggerTurn` starts while the agent is idle. A custom run also checks compaction first, applies the handlers' result and delivers pending `nextTurn` messages, as a user run does. Either run counts as busy while its handlers run, so messages sent meanwhile join it and a prompt or `sendUserMessage` must name its delivery. Handlers that should act only on user prompts check `event.messageType === "user"`, as `examples/extensions/plan-mode` does. This is Pi 1.6.0's behavior (Pi #5581, Pi PR #10739).
+`before_agent_start` handlers receive `event.messageType`: `"user"` with `event.prompt` and `event.images` for a run that a user message starts, and `"custom"` with `event.message` for a run that `sendMessage` with `triggerTurn` starts while the agent is idle. A custom run also checks compaction first, applies the handlers' result and delivers pending `nextTurn` messages, as a user run does. Either run counts as busy while its handlers run, so messages sent meanwhile join it and a prompt or `sendUserMessage` must name its delivery. Handlers that should act only on user prompts check `event.messageType === "user"`, as `examples/extensions/plan-mode` does. This is Pi 1.6.1's behavior (Pi #5581, Pi PR #10739).
 
 `before_agent_start` handlers can edit `event.systemPromptOptions.sections`. PiG preserves authored section order, validates XML tag names, records section deltas in the Session, and removes a per-run section when the next unmodified run starts. The host awaits the handler and retains section mutations before it reports an error. These mutations do not change the Session's base options.
 
@@ -263,7 +263,7 @@ A card that a click expands is written as Pi writes it, with the pieces the SDK 
 
 The host owns the state of a view's lists: keys the focused list binds move it, and its callbacks arrive as `kit.Event`s (`select`, `cancel`, `selectionChange`, `change`) on the overlay's input queue, after the input sent before them; every other key reaches the input handler. `View.theme` overrides theme tokens for one surface. An image's bytes cross the wire once per connection. The `lines` node's `image`, `progress` and `list` annotations are frontend-only: the SDKs send them only while a frontend draws.
 
-The conversation kinds (§2.1) follow Pi 1.6.0's components. A tool card and
+The conversation kinds (§2.1) follow Pi 1.6.1's components. A tool card and
 a `!` command take Pi's `outputPad` (default 1; Pi's `ToolExecutionOptions`
 and `BashExecutionComponent` argument) and `setOutputPad`, and a tool result
 carries the final result's `durationMs`, which a shell card draws as
@@ -422,6 +422,7 @@ The Go SDK changes that the upgrade reports since 0.4.1:
 - `HostHelpers.HighlightCode` has no `markdown` parameter: `getMarkdownTheme().highlightCode` is `highlightCode`.
 
 - `Context.SetModel` takes a model object (`map[string]any`) instead of the `provider/id` string, and `Context.SetModelNamed` takes the string. The upgrade rewrites a call whose argument is a string; it lists a call whose argument has another type.
+- `SettingsManager.GetShowCacheMissNotices` and `SettingsManager.SetShowCacheMissNotices` are deprecated in 0.8.1 (delegating to `notices.cacheMisses`) and scheduled for removal in 0.9.0; migrate to `SettingsManager.GetNotices()` and `SettingsManager.SetNotice(key, shown)`.
 
 `make sdk-apidiff` fails an incompatible change to an extension SDK package that has no upgrade rule or release note.
 

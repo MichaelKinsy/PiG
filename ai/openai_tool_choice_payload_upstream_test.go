@@ -152,8 +152,6 @@ func TestOpenAICompletionsToolChoicePayloadUpstream(t *testing.T) {
 		})
 	}
 	for _, tc := range []struct{ name, id, want string }{
-		// .upstream/v0.87.1/packages/ai/test/openai-completions-tool-choice.test.ts:298
-		{"maps Groq Qwen reasoning levels to default reasoning_effort", "qwen/qwen3.6-27b", "default"},
 		// .upstream/v0.87.1/packages/ai/test/openai-completions-tool-choice.test.ts:326
 		{"keeps normal reasoning_effort for groq models without compat mapping", "openai/gpt-oss-20b", "medium"},
 	} {

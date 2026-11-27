@@ -186,11 +186,12 @@ const (
 type FromWorkerKind string
 
 const (
-	FromWorkerStarted  FromWorkerKind = "started"
-	FromWorkerReady    FromWorkerKind = "ready"
-	FromWorkerIdle     FromWorkerKind = "idle"
-	FromWorkerFatal    FromWorkerKind = "fatal"
-	FromWorkerReloaded FromWorkerKind = "reloaded"
+	FromWorkerStarted      FromWorkerKind = "started"
+	FromWorkerReady        FromWorkerKind = "ready"
+	FromWorkerIdle         FromWorkerKind = "idle"
+	FromWorkerFatal        FromWorkerKind = "fatal"
+	FromWorkerReloaded     FromWorkerKind = "reloaded"
+	FromWorkerReloadFailed FromWorkerKind = "reload_failed"
 )
 
 // envelopeKey is the envelope's key: a control message is `{ "chord.workers": message }`.
@@ -274,7 +275,7 @@ type ToWorker struct {
 }
 
 // FromWorker is what a worker sends the server: Idle with FromWorkerReady and FromWorkerIdle, Report with
-// FromWorkerReady and a FromWorkerReloaded that applied, Error with FromWorkerFatal and a FromWorkerReloaded that failed.
+// FromWorkerReady and FromWorkerReloaded, Error with FromWorkerFatal and FromWorkerReloadFailed.
 type FromWorker struct {
 	Kind   FromWorkerKind
 	Idle   bool
@@ -339,11 +340,9 @@ func (m FromWorker) json() *delta.JsonObject {
 	case FromWorkerFatal:
 		object.Set("error", m.Error.json())
 	case FromWorkerReloaded:
-		if m.Report != nil {
-			object.Set("report", m.Report.json())
-		} else {
-			object.Set("error", m.Error.json())
-		}
+		object.Set("report", m.Report.json())
+	case FromWorkerReloadFailed:
+		object.Set("error", m.Error.json())
 	}
 	return object
 }
@@ -368,19 +367,17 @@ func (FromWorker) fromJSON(object *delta.JsonObject) (any, error) {
 		}
 		message.Error = &crossedError
 	case FromWorkerReloaded:
-		if object.Has("report") {
-			report, err := crossedReportFromJSON(object.Value("report"))
-			if err != nil {
-				return nil, err
-			}
-			message.Report = report
-		} else {
-			crossedError, err := crossedErrorFromJSON(object.Value("error"))
-			if err != nil {
-				return nil, err
-			}
-			message.Error = &crossedError
+		report, err := crossedReportFromJSON(object.Value("report"))
+		if err != nil {
+			return nil, err
 		}
+		message.Report = report
+	case FromWorkerReloadFailed:
+		crossedError, err := crossedErrorFromJSON(object.Value("error"))
+		if err != nil {
+			return nil, err
+		}
+		message.Error = &crossedError
 	case FromWorkerStarted:
 	default:
 		return nil, fmt.Errorf("workers: unknown control message %q", kind)

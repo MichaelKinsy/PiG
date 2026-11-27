@@ -23,32 +23,52 @@ const DEFAULT_PROJECT_TRUST_LABELS = {
     never: "Never trust",
 };
 const DEFAULT_PROJECT_TRUST_BY_LABEL = new Map(Object.entries(DEFAULT_PROJECT_TRUST_LABELS).map(([value, label]) => [label, value]));
+const WARNING_TOGGLES = [
+    {
+        key: "anthropicExtraUsage",
+        label: "Anthropic extra usage",
+        description: "Warn when Anthropic subscription auth may use paid extra usage",
+    },
+];
+const NOTICE_TOGGLES = [
+    {
+        key: "cacheMisses",
+        label: "Cache misses",
+        description: "Show a notice when a response re-bills a significant part of the prompt cache",
+    },
+    {
+        key: "cacheWarming",
+        label: "Cache warming",
+        description: "Show the cost of cache warming requests",
+    },
+    {
+        key: "compactionCosts",
+        label: "Compaction costs",
+        description: "Show the cost of compactions and branch summaries",
+    },
+    {
+        key: "reasoningDrops",
+        label: "Reasoning drops",
+        description: "Show a notice when a provider drops reasoning items from a request",
+    },
+];
 /**
- * A submenu component for selecting from a list of options.
+ * A submenu of true/false settings that are stored together in one settings object, such as `warnings`.
  */
-class WarningSettingsSubmenu extends Container {
+class ToggleSettingsSubmenu extends Container {
     settingsList;
-    state;
-    constructor(warnings, onChange, onCancel) {
+    constructor(toggles, values, defaults, onChange, onCancel) {
         super();
-        this.state = { ...warnings };
-        const items = [
-            {
-                id: "anthropic-extra-usage",
-                label: "Anthropic extra usage",
-                description: "Warn when Anthropic subscription auth may use paid extra usage",
-                currentValue: (this.state.anthropicExtraUsage ?? SETTINGS_DEFAULTS.warnings.anthropicExtraUsage) ? "true" : "false",
-                values: ["true", "false"],
-            },
-        ];
-        this.settingsList = new SettingsList(items, Math.min(items.length, 10), getSettingsListTheme(), (id, newValue) => {
-            switch (id) {
-                case "anthropic-extra-usage":
-                    this.state = { ...this.state, anthropicExtraUsage: newValue === "true" };
-                    onChange({ ...this.state });
-                    break;
-            }
-        }, onCancel);
+        const items = toggles.map((toggle) => ({
+            id: toggle.key,
+            label: toggle.label,
+            description: toggle.description,
+            currentValue: (values[toggle.key] ?? defaults[toggle.key]) ? "true" : "false",
+            values: ["true", "false"],
+        }));
+        this.settingsList = new SettingsList(items, Math.min(items.length, 10), getSettingsListTheme(), 
+        // Item ids are the toggle keys.
+        (id, newValue) => onChange(id, newValue === "true"), onCancel);
         this.addChild(this.settingsList);
     }
     handleInput(data) {
@@ -261,6 +281,7 @@ export class SettingsSelectorComponent extends Container {
         const followUpKey = keyDisplayText("app.message.followUp");
         const cycleThinkingKey = keyDisplayText("app.thinking.cycle");
         let currentWarnings = { ...config.warnings };
+        let currentNotices = { ...config.notices };
         const currentModelThinkingLevels = { ...config.modelThinkingLevels };
         const defaultModelByValue = new Map(config.availableDefaultModels.map((model) => [modelSettingKey(model), model]));
         const currentDefaultModelKey = defaultModelByValue.has(config.defaultModel) ? config.defaultModel : undefined;
@@ -330,13 +351,6 @@ export class SettingsSelectorComponent extends Container {
                 values: ["off", "final", "streaming"],
             },
             {
-                id: "cache-miss-notices",
-                label: "Cache miss notices",
-                description: "Show transcript notices for cache costs and provider recovery diagnostics",
-                currentValue: config.showCacheMissNotices ? "true" : "false",
-                values: ["true", "false"],
-            },
-            {
                 id: "collapse-changelog",
                 label: "Collapse changelog",
                 description: "Show condensed changelog after updates",
@@ -383,9 +397,19 @@ export class SettingsSelectorComponent extends Container {
                 label: "Warnings",
                 description: "Enable or disable individual warnings",
                 currentValue: "configure",
-                submenu: (_currentValue, done) => new WarningSettingsSubmenu(currentWarnings, (warnings) => {
-                    currentWarnings = warnings;
-                    callbacks.onWarningsChange(warnings);
+                submenu: (_currentValue, done) => new ToggleSettingsSubmenu(WARNING_TOGGLES, currentWarnings, SETTINGS_DEFAULTS.warnings, (key, value) => {
+                    currentWarnings = { ...currentWarnings, [key]: value };
+                    callbacks.onWarningsChange(currentWarnings);
+                }, () => done()),
+            },
+            {
+                id: "notices",
+                label: "Notices",
+                description: "Notices about cache misses, cache warming, compaction costs and dropped reasoning",
+                currentValue: "configure",
+                submenu: (_currentValue, done) => new ToggleSettingsSubmenu(NOTICE_TOGGLES, currentNotices, SETTINGS_DEFAULTS.notices, (key, shown) => {
+                    currentNotices = { ...currentNotices, [key]: shown };
+                    callbacks.onNoticeChange(key, shown);
                 }, () => done()),
             },
             {
@@ -679,9 +703,6 @@ export class SettingsSelectorComponent extends Container {
                     break;
                 case "mermaid-rendering":
                     callbacks.onMermaidRenderingModeChange(newValue);
-                    break;
-                case "cache-miss-notices":
-                    callbacks.onShowCacheMissNoticesChange(newValue === "true");
                     break;
                 case "collapse-changelog":
                     callbacks.onCollapseChangelogChange(newValue === "true");

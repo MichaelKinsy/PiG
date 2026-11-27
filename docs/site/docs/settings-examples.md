@@ -6,7 +6,7 @@ The outputs below come from PiG run against a scripted test model, with each key
 
 Settings are merged from two files, and a key in the project file wins: `~/.pig/agent/settings.json` (yours) and `<project>/.pig/settings.json` (the project's, read only after you trust the project). Some keys are read from the global file only and are ignored in a project file: `defaultProjectTrust`, `httpProxy`, `cacheWarming`, `extensionsAutoUpgrade`, `extensionsTypescriptRuntime` and `deviceId`.
 
-If the file is not valid JSON, PiG warns at startup (`Invalid settings file …`) and uses defaults for what it cannot read. A value of the wrong JSON type, such as `"skills": 5`, is ignored with one warning that names it, and the other keys apply. Pi 1.6.0 exits with a `TypeError` instead (D158). After an edit, start PiG again (or `/reload`) and look at the first lines of the screen.
+If the file is not valid JSON, PiG warns at startup (`Invalid settings file …`) and uses defaults for what it cannot read. A value of the wrong JSON type, such as `"skills": 5`, is ignored with one warning that names it, and the other keys apply. Pi 1.6.1 exits with a `TypeError` instead (D158). After an edit, start PiG again (or `/reload`) and look at the first lines of the screen.
 
 ## Choose the model, and how hard it thinks
 
@@ -222,7 +222,7 @@ PiG-only (D80). When you enter an API key in `/login`, PiG shows dots, a charact
 
 ## Every other key
 
-Each row gives a value to try, what it does and the line in Pi 1.6.0's `packages/coding-agent/src/core/settings-schema.ts` that defines it. These were not run on this page. Most are visible in the first screen after you restart, in `/settings`, or in the behaviour named.
+Each row gives a value to try, what it does and the line in Pi 1.6.1's `packages/coding-agent/src/core/settings-schema.ts` that defines it. These were not run on this page. Most are visible in the first screen after you restart, in `/settings`, or in the behaviour named.
 
 | Key | Example | What you see | Pi |
 |---|---|---|---|
@@ -260,7 +260,7 @@ Each row gives a value to try, what it does and the line in Pi 1.6.0's `packages
 | `retry.provider` | `{"maxRetries": 2, "timeoutMs": 120000}` | Retries inside one provider request, and that request's timeout. Keep `maxRetries` at `0` unless you need it. See [Settings](/docs/latest/settings#provider-retries). | |
 | `codemode` | `{"mode": "only", "inlineBudget": 2000}` | See [Codemode](/docs/latest/codemode). | `:381` |
 | `warnings` | `{"anthropicExtraUsage": false}` | Hides the paid-extra-usage warning. | `:380` |
-| `showCacheMissNotices` | `true` | A notice appears for each prompt-cache miss and refresh. | `:239` |
+| `notices` | `{"cacheMisses": true, "cacheWarming": true}` | Enables individual transcript notices (`cacheMisses`, `cacheWarming`, `compactionCosts`, `reasoningDrops`). | `:421` |
 | `enableInstallTelemetry` | `false` | No install or update ping is sent (D64). `PIG_TELEMETRY=0` does the same, and so does Pi's `PI_TELEMETRY=0`; `PIG_TELEMETRY` decides when both are set. | `:280` |
 | `enableAnalytics`, `trackingId` | written by the first-time setup | `false` after you choose `Don't share` (see [Your first ten minutes](/docs/latest/first-run)). | `:286,292` |
 | `extensionsAutoUpgrade`, `extensionsTypescriptRuntime` | `true`, `"bun"` | PiG-only (D109, D19). See [TypeScript extension runtimes](/docs/latest/typescript-runtimes). | none |

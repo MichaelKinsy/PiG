@@ -493,14 +493,12 @@ func (c *LlamaClient) watch(ctx context.Context, onEvent func(LlamaModelEvent), 
 	if response.StatusCode < 200 || response.StatusCode > 299 {
 		return fmt.Errorf("llama.cpp SSE returned HTTP %d", response.StatusCode)
 	}
-	var decoder utf8StreamDecoder
-	buffer := ""
+	var parser llamaSSEParser
 	chunk := make([]byte, 32*1024)
 	for {
 		n, readErr := response.Body.Read(chunk)
 		if n > 0 {
-			buffer += strings.ReplaceAll(decoder.decode(chunk[:n]), "\r\n", "\n")
-			buffer = dispatchFrames(buffer, onEvent)
+			parser.push(chunk[:n], onEvent)
 		}
 		if errors.Is(readErr, io.EOF) {
 			return nil
@@ -514,39 +512,93 @@ func (c *LlamaClient) watch(ctx context.Context, onEvent func(LlamaModelEvent), 
 	}
 }
 
-// dispatchFrames emits every complete SSE frame in buffer and returns the
-// unconsumed remainder.
-func dispatchFrames(buffer string, onEvent func(LlamaModelEvent)) string {
-	for {
-		boundary := strings.Index(buffer, "\n\n")
-		if boundary < 0 {
-			return buffer
+// llamaSSEParser decodes SSE events from /models/sse in linear time, accepting
+// LF, CRLF (including split across chunks), and lone CR line endings (Pi da7e26cc8, #12451).
+type llamaSSEParser struct {
+	decoder       utf8StreamDecoder
+	pendingLine   strings.Builder
+	skipLeadingLF bool
+	data          []string
+}
+
+func (p *llamaSSEParser) push(chunk []byte, onEvent func(LlamaModelEvent)) {
+	text := p.decoder.decode(chunk)
+	if text == "" {
+		return
+	}
+	i := 0
+	if p.skipLeadingLF {
+		p.skipLeadingLF = false
+		if text[0] == '\n' {
+			i = 1
 		}
-		frame := buffer[:boundary]
-		buffer = buffer[boundary+2:]
-		var data []string
-		// upstream: coding-agent/src/extensions/llama/client.ts:LlamaModelEvent
-		for line := range strings.SplitSeq(frame, "\n") {
-			if rest, ok := strings.CutPrefix(line, "data:"); ok {
-				data = append(data, jsstring.TrimStart(rest))
+	}
+	start := i
+	for ; i < len(text); i++ {
+		ch := text[i]
+		if ch != '\r' && ch != '\n' {
+			continue
+		}
+		var line string
+		if p.pendingLine.Len() > 0 {
+			p.pendingLine.WriteString(text[start:i])
+			line = p.pendingLine.String()
+			p.pendingLine.Reset()
+		} else {
+			line = text[start:i]
+		}
+		p.processLine(line, onEvent)
+		if ch == '\r' {
+			if i+1 < len(text) {
+				if text[i+1] == '\n' {
+					i++
+				}
+			} else {
+				p.skipLeadingLF = true
 			}
 		}
-		joined := strings.Join(data, "\n")
-		if joined == "" {
-			continue
+		start = i + 1
+	}
+	if start < len(text) {
+		p.pendingLine.WriteString(text[start:])
+	}
+}
+
+func (p *llamaSSEParser) processLine(line string, onEvent func(LlamaModelEvent)) {
+	if line == "" {
+		if len(p.data) == 0 {
+			return
 		}
-		// Ignore malformed events; catalog polling remains authoritative.
-		var event any
-		// upstream: coding-agent/src/extensions/llama/client.ts:LlamaModelEvent
-		if json.Unmarshal([]byte(joined), &event) != nil {
-			continue
-		}
-		model, modelOK := stringField(event, "model")
-		name, nameOK := stringField(event, "event")
-		if modelOK && nameOK {
-			payload, _ := objectField(event, "data")
-			onEvent(LlamaModelEvent{Model: model, Event: name, Data: payload})
-		}
+		joined := strings.Join(p.data, "\n")
+		p.data = p.data[:0]
+		dispatchLlamaEventData(joined, onEvent)
+		return
+	}
+	if strings.HasPrefix(line, ":") {
+		return
+	}
+	// upstream: packages/coding-agent/src/extensions/llama/client.ts:watch
+	if rest, ok := strings.CutPrefix(line, "data:"); ok {
+		rest = strings.TrimPrefix(rest, " ")
+		p.data = append(p.data, rest)
+	}
+}
+
+func dispatchLlamaEventData(joined string, onEvent func(LlamaModelEvent)) {
+	if joined == "" {
+		return
+	}
+	// Ignore malformed events; catalog polling remains authoritative.
+	var event any
+	// upstream: coding-agent/src/extensions/llama/client.ts:LlamaModelEvent
+	if json.Unmarshal([]byte(joined), &event) != nil {
+		return
+	}
+	model, modelOK := stringField(event, "model")
+	name, nameOK := stringField(event, "event")
+	if modelOK && nameOK {
+		payload, _ := objectField(event, "data")
+		onEvent(LlamaModelEvent{Model: model, Event: name, Data: payload})
 	}
 }
 

@@ -396,16 +396,18 @@ func (u *ExtUIContext) runDialog(
 // standalone ExtensionSelectorComponent (NO filter input, fixed
 // title row, fixed hint row). A positive opts timeout counts down in the
 // title and cancels the selector when it expires.
-func (u *ExtUIContext) Select(ctx context.Context, title string, options []string, opts extension.ExtensionUIDialogOptions) (string, error) {
-	return u.selectWithStatus(ctx, title, options, opts, BlockedStatus{Kind: tui.ProgramStatusKindQuestion, Message: title})
+func dialogBlockedKind(kind, fallback tui.ProgramStatusKind) tui.ProgramStatusKind {
+	if kind != "" {
+		return kind
+	}
+	return fallback
 }
 
-// selectWithStatus is showExtensionSelector(title, options, opts, blocked): blocked is what the program reports while the selector waits.
-func (u *ExtUIContext) selectWithStatus(ctx context.Context, title string, options []string, opts extension.ExtensionUIDialogOptions, blocked BlockedStatus) (string, error) {
+func (u *ExtUIContext) Select(ctx context.Context, title string, options []string, opts extension.ExtensionUIDialogOptions) (string, error) {
 	sel := tui.NewExtensionSelectorComponent(title, options, nil, nil, tui.ExtensionSelectorOptions{OnToggleToolsExpanded: u.m.toggleAllTools})
 	return u.runDialog(ctx, sel, sel.HandleInput, func() (string, bool, bool) {
 		return sel.SelectedValue(), sel.Done(), sel.Cancelled()
-	}, dialogCountdown{timeout: dialogTimeout(opts), start: sel.StartCountdown, dispose: sel.Dispose}, blocked)
+	}, dialogCountdown{timeout: dialogTimeout(opts), start: sel.StartCountdown, dispose: sel.Dispose}, DialogBlockedStatus(dialogBlockedKind(opts.BlockedKind, tui.ProgramStatusKindQuestion), title))
 }
 
 // Confirm shows a Yes/No selector. Mirrors upstream's
@@ -415,7 +417,9 @@ func (u *ExtUIContext) Confirm(ctx context.Context, title, message string, opts 
 	if message != "" {
 		prompt = title + "\n" + message
 	}
-	result, err := u.selectWithStatus(ctx, prompt, []string{"Yes", "No"}, opts, BlockedStatus{Kind: tui.ProgramStatusKindPermission, Message: title})
+	confirmOpts := opts
+	confirmOpts.BlockedKind = dialogBlockedKind(opts.BlockedKind, tui.ProgramStatusKindPermission)
+	result, err := u.Select(ctx, prompt, []string{"Yes", "No"}, confirmOpts)
 	if err != nil {
 		return false, err
 	}
@@ -430,7 +434,7 @@ func (u *ExtUIContext) Input(ctx context.Context, title, placeholder string, opt
 	input := tui.NewExtensionInputComponent(title, placeholder, nil, nil)
 	return u.runDialog(ctx, input, input.HandleInput, func() (string, bool, bool) {
 		return input.Text(), input.Done(), input.Cancelled()
-	}, dialogCountdown{timeout: dialogTimeout(opts), start: input.StartCountdown, dispose: input.Dispose}, BlockedStatus{Kind: tui.ProgramStatusKindQuestion, Message: title})
+	}, dialogCountdown{timeout: dialogTimeout(opts), start: input.StartCountdown, dispose: input.Dispose}, DialogBlockedStatus(dialogBlockedKind(opts.BlockedKind, tui.ProgramStatusKindQuestion), title))
 }
 
 // Editor shows a multi-line editor in the editor slot. Mirrors upstream's
@@ -449,7 +453,7 @@ func (u *ExtUIContext) Editor(ctx context.Context, title, prefill string) (strin
 	})
 	return u.runDialog(ctx, ed, ed.HandleInput, func() (string, bool, bool) {
 		return value, done, cancelled
-	}, dialogCountdown{}, BlockedStatus{Kind: tui.ProgramStatusKindQuestion, Message: title})
+	}, dialogCountdown{}, DialogBlockedStatus(tui.ProgramStatusKindQuestion, title))
 }
 
 // ─── Notifications & Status ──────────────────────────────────────────────────
@@ -942,23 +946,53 @@ func (u *ExtUIContext) serveRemoteInput(ctx context.Context, runOnOwner func(con
 
 // ─── Editor access ───────────────────────────────────────────────────────────
 
+// PasteToEditor simulates bracketed paste into the editor on the owner loop
+// and requests a coalesced render (upstream interactive-mode.ts pasteToEditor,
+// Pi 8c1afaae5). When runCtx is active it waits for the owner loop to apply
+// the edit so a following call on the same extension lane (e.g. getEditorText)
+// observes the updated editor snapshot without racing tui.Editor.
 func (u *ExtUIContext) PasteToEditor(text string) {
-	if u.m.editor != nil {
-		// Simulate bracketed paste per upstream
-		u.m.editor.HandleInput("\x1b[200~" + text + "\x1b[201~")
-		if u.m.tuiInst != nil {
-			u.m.tuiInst.Render()
+	apply := func() {
+		if u.m.editor != nil {
+			// Simulate bracketed paste per upstream
+			u.m.editor.HandleInput("\x1b[200~" + text + "\x1b[201~")
+			if u.m.tuiInst != nil {
+				u.m.requestRender()
+			}
 		}
 	}
+	if u.m.runCtx == nil {
+		apply()
+		return
+	}
+	_ = u.m.runOnMainAndWait(u.m.runCtx, func() error {
+		apply()
+		return nil
+	})
 }
 
+// SetEditorText replaces the editor text on the owner loop and requests a
+// coalesced render (upstream interactive-mode.ts setEditorText, Pi 8c1afaae5).
+// When runCtx is active it waits for the owner loop to apply the edit so a
+// following call on the same extension lane observes the updated editor text
+// without racing tui.Editor.
 func (u *ExtUIContext) SetEditorText(text string) {
-	if u.m.editor != nil {
-		u.m.editor.SetText(text)
-		if u.m.tuiInst != nil {
-			u.m.tuiInst.Render()
+	apply := func() {
+		if u.m.editor != nil {
+			u.m.editor.SetText(text)
+			if u.m.tuiInst != nil {
+				u.m.requestRender()
+			}
 		}
 	}
+	if u.m.runCtx == nil {
+		apply()
+		return
+	}
+	_ = u.m.runOnMainAndWait(u.m.runCtx, func() error {
+		apply()
+		return nil
+	})
 }
 
 // GetEditorText reads owner-published expanded text after binding, including paste contents. Before binding the caller owns the editor directly.

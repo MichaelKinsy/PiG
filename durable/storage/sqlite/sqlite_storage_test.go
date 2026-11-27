@@ -795,7 +795,7 @@ func TestSqliteStorageBatches(t *testing.T) {
 		if result.Stored != 3 {
 			t.Fatalf("stored = %d, refused = %v, want 3 stored (change, retire, create) and the duplicate refused", result.Stored, result.Refused)
 		}
-		if result.Refused == nil {
+		if result.Kind != durable.CommitRefused || result.Refused == nil {
 			t.Fatal("the duplicate create of a pointer-form write was not refused")
 		}
 	})
@@ -825,7 +825,7 @@ func TestSqliteStorageBatches(t *testing.T) {
 				{durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}}},
 			}, func(index int, _ durable.Seq) { receipts = append(receipts, index) })
 			mustDo(t, err)
-			if refused.Stored != 1 {
+			if refused.Kind != durable.CommitRefused || refused.Stored != 1 {
 				t.Fatalf("stored = %d, want 1", refused.Stored)
 			}
 			expectError(t, refused.Refused, "already belongs to conversation")

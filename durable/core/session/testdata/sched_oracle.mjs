@@ -48,7 +48,7 @@ storage.commit = async (batches, receive, ctx) => {
 	if (cut === batches.length) return run(batches);
 	await run(batches.slice(0, cut));
 	if (shape.rejectAt !== undefined) throw new Error("rejected");
-	return { stored: cut, refused: new Error("refused") };
+	return { kind: "refused", stored: cut, refused: new Error("refused") };
 };
 
 // ---- scripted task definitions

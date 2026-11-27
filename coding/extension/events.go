@@ -291,7 +291,9 @@ type McpServersChangeEvent struct {
 	Servers []RegisteredMcpServer `json:"servers"`
 }
 
-// AfterProviderResponseEvent: upstream types.ts AfterProviderResponseEvent.
+// AfterProviderResponseEvent is fired for each provider HTTP response, including error responses and retried attempts.
+// Successful responses fire before the response stream is consumed. Coverage depends on provider and transport.
+// upstream: types.ts AfterProviderResponseEvent.
 type AfterProviderResponseEvent struct {
 	Type    string            `json:"type"`
 	Status  int               `json:"status"`
@@ -1183,8 +1185,9 @@ type TruncationResult struct {
 // BashToolDetails mirrors upstream bash.ts:31. Attached only when output
 // was truncated.
 type BashToolDetails struct {
-	Truncation     *TruncationResult `json:"truncation,omitempty"`
-	FullOutputPath string            `json:"fullOutputPath,omitempty"`
+	Truncation      *TruncationResult `json:"truncation,omitempty"`
+	FullOutputPath  string            `json:"fullOutputPath,omitempty"`
+	FullOutputError string            `json:"fullOutputError,omitempty"`
 }
 
 // PowerShellToolDetails is the bash details shape (upstream powershell.ts).

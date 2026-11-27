@@ -456,7 +456,10 @@ func (jsonl *JsonlStorage) Commit(
 		receive(index, seq)
 	}
 	jsonl.reclaimSidecars(ctx, reclamations)
-	return durable.CommitResult{Stored: len(seqs), Refused: refused}, nil
+	if refused != nil {
+		return durable.RefusedCommit(len(seqs), refused), nil
+	}
+	return durable.StoredCommit(len(seqs)), nil
 }
 
 // failedCommit is the error of a commit that failed after stored batches applied in memory: memory runs ahead of the

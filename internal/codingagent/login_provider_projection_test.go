@@ -51,8 +51,11 @@ func TestLoginProviderOwnedAuthOptionsProjection(t *testing.T) {
 // typed nil), a configured one is typed by whether the provider uses OAuth and takes its source from the status label, else
 // from the status source.
 func TestAuthSelectorStatusFollowsPiLoginProviderOptions(t *testing.T) {
-	if status := authSelectorStatus(ai.AuthStatus{Source: ai.AuthSourceStored}, true); status != nil {
+	if status := authSelectorStatus(ai.AuthStatus{}, true); status != nil {
 		t.Fatalf("unconfigured auth has status %#v, want an untyped nil", status)
+	}
+	if status := authSelectorStatus(ai.AuthStatus{Source: ai.AuthSourceStored}, true); status != tui.AuthSelectorStatusUnresolved() {
+		t.Fatalf("unconfigured stored auth has status %#v, want unresolved", status)
 	}
 	for _, tc := range []struct {
 		name       string

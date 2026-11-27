@@ -73,7 +73,7 @@ func (backend *countingBackend) Commit(_ context.Context, batches [][]durable.St
 		receive(index, durable.Seq(index+1))
 	}
 	backend.mu.Unlock()
-	return durable.CommitResult{Stored: len(batches)}, nil
+	return durable.CommitResult{Kind: durable.CommitStored, Stored: len(batches)}, nil
 }
 
 func (backend *countingBackend) Task(_ context.Context, id durable.TaskId) (*anyTask, error) {
@@ -112,7 +112,7 @@ func (backend *countingBackend) holdReads() (release func(), entered <-chan stru
 func publishBatch(t *testing.T, storage *session.CachedStorage, writes ...durable.StorageWrite) {
 	t.Helper()
 	result, err := storage.Commit(ctx, [][]durable.StorageWrite{writes}, func(int, durable.Seq) {})
-	if err != nil || result.Stored != 1 || result.Refused != nil {
+	if err != nil || result.Kind != durable.CommitStored || result.Stored != 1 || result.Refused != nil {
 		t.Fatalf("commit = %+v, %v", result, err)
 	}
 	storage.Published(writes)
@@ -209,7 +209,7 @@ func TestCachedStorageAppliesBatchStoredWithCommitWhenPublishedNotAtReceipt(t *t
 	batch := []durable.StorageWrite{taskWrite(taskRecord(2, durable.TaskRunning))}
 	var receipts []int
 	result, err := storage.Commit(ctx, [][]durable.StorageWrite{batch}, func(index int, _ durable.Seq) { receipts = append(receipts, index) })
-	if err != nil || result != (durable.CommitResult{Stored: 1}) {
+	if err != nil || result != (durable.CommitResult{Kind: durable.CommitStored, Stored: 1}) {
 		t.Fatalf("commit = %+v, %v", result, err)
 	}
 	if len(receipts) != 1 || receipts[0] != 0 {

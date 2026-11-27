@@ -7,7 +7,7 @@ import {
   openBrowser,
   questionTerminal,
   updateMcpServerConfig
-} from "./chunk-TQI2362R.js";
+} from "./chunk-ZSAMFY4Z.js";
 import {
   ArminComponent
 } from "./chunk-M6IUD7SG.js";
@@ -32,6 +32,7 @@ import {
   THINKING_LEVEL_OPTIONS,
   applyHttpProxySettings,
   assertValidSessionId,
+  bashTruncationNote,
   bugReportArchiveFileName,
   bugReportFiles,
   buildContextEntries,
@@ -123,13 +124,13 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-OSE7DX4D.js";
+} from "./chunk-P2EKETZU.js";
 import {
   CredentialSynchronizationError,
   InMemoryCodingAgentModelsStore,
   ModelRuntime,
   VIRTUAL_MODEL_STATE_ENTRY
-} from "./chunk-LWMW44S6.js";
+} from "./chunk-GGFXZTDN.js";
 import {
   convertToPng,
   createBashToolDefinition,
@@ -162,7 +163,7 @@ import {
   resolveReadPath,
   withFileMutationQueue,
   writeRenderers
-} from "./chunk-W25FOIG4.js";
+} from "./chunk-7PPV3CBH.js";
 import {
   fetchWithRetry,
   getPiUserAgent
@@ -172,13 +173,13 @@ import {
   TOOL_SEARCH_TOOL_NAME,
   createCodemodeToolDefinition,
   createToolSearchToolDefinition
-} from "./chunk-V55VLW7G.js";
+} from "./chunk-VK6FCESH.js";
 import {
   SETTINGS_DEFAULTS,
   addUsageToTotals,
   createUsageTotals,
   getUsageCostBreakdown
-} from "./chunk-2VCX4NLH.js";
+} from "./chunk-V4RD65TK.js";
 import {
   VisualLinePreview,
   formatReadLineRange,
@@ -188,7 +189,7 @@ import {
   stripAnsi,
   truncateToVisualLines,
   writeOutputFile
-} from "./chunk-QSKV7LUU.js";
+} from "./chunk-TZ35YCTP.js";
 import {
   SYSTEM_THEME_NAME,
   THEME_TOKENS,
@@ -232,7 +233,7 @@ import {
   getMcpToolExposure,
   raceWithAbortSignal,
   readStoredCredential
-} from "./chunk-4Q37KZ2Z.js";
+} from "./chunk-5VMS2WUR.js";
 import {
   DEFAULT_MAX_BYTES,
   DEFAULT_MAX_LINES,
@@ -244,7 +245,7 @@ import {
   truncateHead,
   truncateLine,
   truncateTail
-} from "./chunk-RWSVZTAH.js";
+} from "./chunk-T3RX74C7.js";
 import {
   APP_NAME,
   APP_TITLE,
@@ -340,10 +341,10 @@ import { join as join2, resolve } from "node:path";
 import { createMcpToolName, mcpNamespace, mcpServerSummary } from "../../pi-mcp/index.js";
 
 // pi-dist/pi-coding-agent/extensions/mcp/resources.js
-import { limitMcpContent as limitMcpContent2 } from "../../pi-mcp/index.js";
+import { limitMcpContent as limitMcpContent2, toMcpModelContent as toMcpModelContent2 } from "../../pi-mcp/index.js";
 
 // pi-dist/pi-coding-agent/extensions/mcp/tools.js
-import { limitMcpContent, normalizeMcpInputSchema, toLlmContent } from "../../pi-mcp/index.js";
+import { createMcpResultSchema, limitMcpContent, normalizeMcpInputSchema, toMcpModelContent } from "../../pi-mcp/index.js";
 import { Container, Spacer, Text } from "../../../pi-tui.mjs";
 function toToolExposure(exposure) {
   return exposure === "codemode" ? "deferred" : exposure;
@@ -358,112 +359,16 @@ function textOf(content) {
   return content.filter((block) => block.type === "text").map((block) => block.text).join("\n");
 }
 __name(textOf, "textOf");
-var CONTENT_BLOCK_SCHEMA = {
-  type: "object",
-  properties: {
-    type: { enum: ["text", "image", "audio", "resource_link", "resource"] },
-    text: { type: "string" },
-    data: { type: "string" },
-    mimeType: { type: "string" }
-  },
-  required: ["type"],
-  additionalProperties: true
-};
-var SCHEMA_DATA_KEYWORDS = /* @__PURE__ */ new Set(["const", "enum", "default", "examples"]);
-var SCHEMA_MAP_KEYWORDS = /* @__PURE__ */ new Set([
-  "properties",
-  "patternProperties",
-  "dependentSchemas",
-  "dependencies",
-  "$defs",
-  "definitions"
-]);
-function relocateSchema(schema, pointer) {
-  if (Array.isArray(schema))
-    return schema.map((item) => relocateSchema(item, pointer));
-  if (typeof schema !== "object" || schema === null)
-    return schema;
-  const relocated = {};
-  for (const [key, value] of Object.entries(schema)) {
-    if (key === "$ref" && typeof value === "string" && (value === "#" || value.startsWith("#/"))) {
-      relocated[key] = `${pointer}${value.slice(1)}`;
-    } else if (SCHEMA_DATA_KEYWORDS.has(key)) {
-      relocated[key] = value;
-    } else if (SCHEMA_MAP_KEYWORDS.has(key) && typeof value === "object" && value !== null && !Array.isArray(value)) {
-      relocated[key] = Object.fromEntries(Object.entries(value).map(([name, subschema]) => [name, relocateSchema(subschema, pointer)]));
-    } else {
-      relocated[key] = relocateSchema(value, pointer);
-    }
-  }
-  return relocated;
-}
-__name(relocateSchema, "relocateSchema");
-function createMcpResultSchema(structuredContentSchema) {
-  return {
-    type: "object",
-    properties: {
-      content: { type: "array", items: CONTENT_BLOCK_SCHEMA },
-      // Servers may send structured content without declaring a schema for it, and it may be any JSON value.
-      structuredContent: structuredContentSchema ? relocateSchema(structuredContentSchema, "#/properties/structuredContent") : {},
-      isError: { type: "boolean" }
-    },
-    required: ["content"],
-    // Fields newer protocol versions add.
-    additionalProperties: true
-  };
-}
-__name(createMcpResultSchema, "createMcpResultSchema");
-function extensionOf(uri) {
-  const path6 = URL.canParse(uri) ? new URL(uri).pathname : uri;
-  return /\.[A-Za-z0-9]{1,8}$/.exec(path6)?.[0] ?? ".bin";
-}
-__name(extensionOf, "extensionOf");
-function isTextMimeType(mimeType) {
-  if (!mimeType)
-    return false;
-  const type = mimeType.split(";", 1)[0].trim().toLowerCase();
-  return type.startsWith("text/") || type === "application/json" || type.endsWith("+json") || type.endsWith("+xml");
-}
-__name(isTextMimeType, "isTextMimeType");
-async function blockToContent(server, block, options) {
-  if (block.type === "resource_link") {
-    const details = [block.mimeType, block.size === void 0 ? void 0 : formatSize(block.size)].filter(Boolean);
-    const read = options.readableResources ? `. Read it with ${READ_MCP_RESOURCE_TOOL} (server "${server}")` : "";
-    const description = block.description ? `: ${block.description}` : "";
-    return [
-      {
-        type: "text",
-        text: `[Resource ${block.uri} "${block.title ?? block.name}"${details.length > 0 ? ` (${details.join(", ")})` : ""}${description}${read}]`
-      }
-    ];
-  }
-  if (block.type === "resource" && "blob" in block.resource && !block.resource.mimeType?.startsWith("image/")) {
-    const { uri, mimeType, blob } = block.resource;
-    const data = Buffer.from(blob, "base64");
-    if (isTextMimeType(mimeType))
-      return [{ type: "text", text: data.toString("utf8") }];
-    const kind = `${mimeType ?? "unknown type"}, ${formatSize(data.length)}`;
-    try {
-      const path6 = await (options.saveOutput ?? saveToTempFile)(data, extensionOf(uri));
-      return [{ type: "text", text: `[Binary resource ${uri} (${kind}) saved to ${path6}]` }];
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
-      return [{ type: "text", text: `[Binary resource ${uri} (${kind}) could not be saved: ${reason}]` }];
-    }
-  }
-  return toLlmContent({ content: [block] });
-}
-__name(blockToContent, "blockToContent");
-async function toModelContent(server, blocks, options = {}) {
-  return (await Promise.all(blocks.map((block) => blockToContent(server, block, options)))).flat();
-}
-__name(toModelContent, "toModelContent");
 async function convertMcpResult(server, tool, result, options = {}) {
-  const converted = result.content.length > 0 ? await toModelContent(server, result.content, options) : toLlmContent(result);
+  const saveOutput = options.saveOutput ?? saveToTempFile;
+  const converted = await toMcpModelContent(server, result, {
+    saveOutput,
+    ...options.readableResources ? { readResourceTool: READ_MCP_RESOURCE_TOOL } : {}
+  });
   if (result.isError && textOf(converted) === "") {
     converted.push({ type: "text", text: `MCP tool ${server}/${tool} returned an error` });
   }
-  const { content, fullOutputPath } = await limitMcpContent(converted, options.saveOutput ?? saveToTempFile);
+  const { content, fullOutputPath } = await limitMcpContent(converted, saveOutput);
   const { _meta: _ignored, ...scriptResult } = result;
   return {
     content,
@@ -495,6 +400,7 @@ function createMcpToolDefinition(options) {
     description: tool.description?.trim() || title || `MCP tool ${tool.name} from server ${server}`,
     // An object schema, which is what TypeBox schemas are at runtime.
     parameters: normalizeMcpInputSchema(tool.inputSchema),
+    // A JSON schema object, which is what TypeBox schemas are at runtime.
     outputSchema: createMcpResultSchema(tool.outputSchema),
     exposure: toToolExposure(options.exposure),
     namespace: options.namespace,
@@ -780,7 +686,7 @@ function createMcpResourceToolDefinitions(options) {
         ...result.contents.length > 1 ? [{ type: "text", text: `${contents2.uri}:` }] : [],
         { type: "resource", resource: contents2 }
       ]);
-      const converted = await toModelContent(server.name, blocks);
+      const converted = await toMcpModelContent2(server.name, { content: blocks }, { saveOutput: saveToTempFile });
       const { content, fullOutputPath } = await limitMcpContent2(converted.length > 0 ? converted : [{ type: "text", text: `Resource ${uri} is empty.` }], saveToTempFile);
       const contents = result.contents.map(({ _meta: _ignored, ...rest }) => rest);
       return {
@@ -799,7 +705,7 @@ function createMcpResourceToolDefinitions(options) {
 __name(createMcpResourceToolDefinitions, "createMcpResourceToolDefinitions");
 
 // pi-dist/pi-coding-agent/extensions/mcp/runtime.lazy.js
-var loadMcpRuntime = /* @__PURE__ */ __name(() => import("./chunk-ZPUZVG2F.js"), "loadMcpRuntime");
+var loadMcpRuntime = /* @__PURE__ */ __name(() => import("./chunk-YX2QD4KZ.js"), "loadMcpRuntime");
 
 // pi-dist/pi-coding-agent/extensions/mcp/ui.js
 import { Container as Container3, Input, SelectList, Spacer as Spacer2, Text as Text3, truncateToWidth, visibleWidth } from "../../../pi-tui.mjs";
@@ -966,7 +872,7 @@ async function copyToClipboard(text) {
       if (env.TERMUX_VERSION)
         commands.push(["termux-clipboard-set", []]);
       if (env.WAYLAND_DISPLAY)
-        commands.push(["wl-copy", []]);
+        commands.push(["wl-copy", ["-t", "text/plain"]]);
       if (env.DISPLAY) {
         commands.push(["xclip", ["-selection", "clipboard"]], ["xsel", ["--clipboard", "--input"]]);
       }
@@ -3586,28 +3492,46 @@ var ExtensionSelectorComponent = class extends Container5 {
 
 // pi-dist/pi-coding-agent/modes/interactive/components/first-time-setup.js
 import { Container as Container6, getKeybindings as getKeybindings3, Spacer as Spacer5, Text as Text6 } from "../../../pi-tui.mjs";
-var THEME_OPTIONS = [
-  { value: SYSTEM_THEME_NAME, label: "System (matches your terminal colors)" },
-  { value: "dark", label: "Dark" },
-  { value: "light", label: "Light" }
-];
+
+// pi-dist/pi-coding-agent/modes/interactive/components/pi-logo.js
+import { backgroundAnsi, foregroundAnsi, isAppleTerminalSession, rgbColor } from "../../../pi-tui.mjs";
+var CORAL = rgbColor(228, 138, 122);
+var BLUE = rgbColor(79, 142, 179);
+var YELLOW = rgbColor(234, 182, 93);
+var RESET = "\x1B[0m";
+function piLogoLines() {
+  const mode = theme.getColorMode();
+  const fg = /* @__PURE__ */ __name((color) => foregroundAnsi(color, mode), "fg");
+  const top = `${fg(CORAL)}${backgroundAnsi(BLUE, mode)}\u2580${RESET}${fg(CORAL)}\u2580\u2588${RESET} `;
+  const bottom = `${fg(BLUE)}\u2588\u2580${RESET} ${fg(YELLOW)}\u2588${RESET}`;
+  return [top, bottom];
+}
+__name(piLogoLines, "piLogoLines");
+function supportsPiLogo() {
+  return !isAppleTerminalSession();
+}
+__name(supportsPiLogo, "supportsPiLogo");
+function piWordmark() {
+  const mode = theme.getColorMode();
+  return `${foregroundAnsi(CORAL, mode)}P${RESET}${foregroundAnsi(YELLOW, mode)}i${RESET}`;
+}
+__name(piWordmark, "piWordmark");
+
+// pi-dist/pi-coding-agent/modes/interactive/components/first-time-setup.js
+var FIRST_TIME_SETUP_QUESTION = "Opt-in to anonymous usage data sharing?";
 var ANALYTICS_OPTIONS = [
   { value: true, label: "Share anonymous usage data" },
   { value: false, label: "Don't share" }
 ];
-var SETUP_LOGO_LINES = ["\u2588\u2588\u2588\u2588\u2588\u2588", "\u2588\u2588  \u2588\u2588", "\u2588\u2588\u2588\u2588  \u2588\u2588", "\u2588\u2588    \u2588\u2588"];
 var FirstTimeSetupComponent = class extends Container6 {
   static {
     __name(this, "FirstTimeSetupComponent");
   }
-  step = "theme";
-  themeIndex;
   analyticsIndex = 0;
   options;
   constructor(options) {
     super();
     this.options = options;
-    this.themeIndex = 0;
     this.update();
   }
   /** Rebuild on theme changes, e.g. when the system theme receives the terminal's colors. */
@@ -3615,27 +3539,21 @@ var FirstTimeSetupComponent = class extends Container6 {
     this.update();
     super.invalidate();
   }
-  // Rebuild the whole dialog on every change so theme previews recolor all text.
   update() {
     this.clear();
     this.addChild(new DynamicBorder());
     this.addChild(new Spacer5(1));
-    this.addChild(new Text6(theme.fg("accent", SETUP_LOGO_LINES.join("\n")), 1, 0));
+    const logo = supportsPiLogo() ? piLogoLines().join("\n") : piWordmark();
+    this.addChild(new Text6(logo, 1, 0));
     this.addChild(new Spacer5(1));
     this.addChild(new Text6(theme.fg("accent", theme.bold(`Welcome to ${APP_NAME}, the minimal coding agent.`)), 1, 0));
     this.addChild(new Spacer5(1));
-    if (this.step === "theme") {
-      this.addChild(new Text6(theme.fg("text", "Pick a theme."), 1, 0));
-      this.addChild(new Spacer5(1));
-      this.addOptionList(THEME_OPTIONS.map((option) => option.label), this.themeIndex);
-    } else {
-      this.addChild(new Text6(theme.fg("text", "Opt-in to anonymous usage data sharing?"), 1, 0));
-      this.addChild(new Text6(theme.fg("muted", "Opting in stores a tracking identifier in settings.json and enables anonymous\nusage analytics. This helps us to better debug, reproduce, and resolve issues\nand bugs within Pi. You can observe what is shared using /privacy and make\nchanges anytime in settings.json."), 1, 0));
-      this.addChild(new Spacer5(1));
-      this.addOptionList(ANALYTICS_OPTIONS.map((option) => option.label), this.analyticsIndex);
-    }
+    this.addChild(new Text6(theme.fg("text", FIRST_TIME_SETUP_QUESTION), 1, 0));
+    this.addChild(new Text6(theme.fg("muted", "Opting in stores a tracking identifier in settings.json and enables anonymous\nusage analytics. This helps us to better debug, reproduce, and resolve issues\nand bugs within Pi. You can observe what is shared using /privacy and make\nchanges anytime in settings.json."), 1, 0));
     this.addChild(new Spacer5(1));
-    this.addChild(new Text6(rawKeyHint("\u2191\u2193", "navigate") + "  " + keyHint("tui.select.confirm", this.step === "theme" ? "continue" : "finish") + "  " + keyHint("tui.select.cancel", "skip setup"), 1, 0));
+    this.addOptionList(ANALYTICS_OPTIONS.map((option) => option.label), this.analyticsIndex);
+    this.addChild(new Spacer5(1));
+    this.addChild(new Text6(rawKeyHint("\u2191\u2193", "navigate") + "  " + keyHint("tui.select.confirm", "finish") + "  " + keyHint("tui.select.cancel", "skip setup"), 1, 0));
     this.addChild(new Spacer5(1));
     this.addChild(new DynamicBorder());
   }
@@ -3648,15 +3566,7 @@ var FirstTimeSetupComponent = class extends Container6 {
     }
   }
   moveSelection(delta) {
-    if (this.step === "theme") {
-      const next = Math.max(0, Math.min(THEME_OPTIONS.length - 1, this.themeIndex + delta));
-      if (next !== this.themeIndex) {
-        this.themeIndex = next;
-        this.options.onThemePreview(THEME_OPTIONS[this.themeIndex].value);
-      }
-    } else {
-      this.analyticsIndex = Math.max(0, Math.min(ANALYTICS_OPTIONS.length - 1, this.analyticsIndex + delta));
-    }
+    this.analyticsIndex = Math.max(0, Math.min(ANALYTICS_OPTIONS.length - 1, this.analyticsIndex + delta));
     this.update();
   }
   handleInput(keyData) {
@@ -3666,18 +3576,114 @@ var FirstTimeSetupComponent = class extends Container6 {
     } else if (kb.matches(keyData, "tui.select.down") || keyData === "j") {
       this.moveSelection(1);
     } else if (kb.matches(keyData, "tui.select.confirm") || keyData === "\n") {
-      if (this.step === "theme") {
-        this.step = "analytics";
-        this.update();
-      } else {
-        this.options.onSubmit({
-          theme: THEME_OPTIONS[this.themeIndex].value,
-          shareAnalytics: ANALYTICS_OPTIONS[this.analyticsIndex].value
-        });
-      }
+      this.options.onSubmit({
+        shareAnalytics: ANALYTICS_OPTIONS[this.analyticsIndex].value
+      });
     } else if (kb.matches(keyData, "tui.select.cancel")) {
       this.options.onCancel();
     }
+  }
+};
+
+// pi-dist/pi-coding-agent/modes/interactive/program-status-reporter.js
+function dialogBlockedStatus(kind, title) {
+  return { kind, message: title.split(/\r?\n/, 1)[0] };
+}
+__name(dialogBlockedStatus, "dialogBlockedStatus");
+function firstLine2(text) {
+  return text?.split(/\r?\n/, 1)[0]?.trim() || "Error";
+}
+__name(firstLine2, "firstLine");
+var ProgramStatusReporter = class {
+  static {
+    __name(this, "ProgramStatusReporter");
+  }
+  getTerminal;
+  getSessionName;
+  runActive = false;
+  compacting = false;
+  /** Outcome of the current run, reported once it settles. */
+  runResult = { state: "done" };
+  /** Status while no run is active. */
+  restingStatus = { state: "idle" };
+  /** Open dialogs by source, in the order they opened. The most recent one is reported. */
+  blocked = /* @__PURE__ */ new Map();
+  lastReport;
+  constructor(getTerminal, getSessionName) {
+    this.getTerminal = getTerminal;
+    this.getSessionName = getSessionName;
+  }
+  handleEvent(event) {
+    switch (event.type) {
+      case "agent_start":
+        this.runActive = true;
+        this.runResult = { state: "done" };
+        break;
+      case "message_end":
+        if (event.message.role !== "assistant")
+          return;
+        this.runResult = event.message.stopReason === "error" ? { state: "error", message: firstLine2(event.message.errorMessage) } : { state: "done" };
+        break;
+      case "compaction_start":
+        this.compacting = true;
+        break;
+      case "compaction_end":
+        this.compacting = false;
+        if (this.runActive) {
+          if (event.aborted)
+            this.runResult = { state: "idle" };
+          else if (event.errorMessage)
+            this.runResult = { state: "error", message: firstLine2(event.errorMessage) };
+        } else if (event.aborted) {
+          this.restingStatus = { state: "idle" };
+        } else if (event.reason === "manual") {
+          this.restingStatus = event.errorMessage ? { state: "error", message: firstLine2(event.errorMessage) } : { state: "done" };
+        }
+        break;
+      case "agent_settled":
+        this.runActive = false;
+        this.restingStatus = event.aborted ? { state: "idle" } : this.runResult;
+        break;
+      case "session_info_changed":
+        break;
+      default:
+        return;
+    }
+    this.report();
+  }
+  /** Report `blocked` for a dialog until it is cleared with `undefined`. Reopening a source replaces it. */
+  setBlocked(source, status) {
+    this.blocked.delete(source);
+    if (status)
+      this.blocked.set(source, status);
+    this.report();
+  }
+  /** Forget the previous session's run, for example after switching sessions. */
+  reset() {
+    this.runActive = false;
+    this.compacting = false;
+    this.runResult = { state: "done" };
+    this.restingStatus = { state: "idle" };
+    this.report();
+  }
+  report() {
+    const status = { ...this.currentStatus(), app: APP_NAME };
+    const key = JSON.stringify(status);
+    if (key === this.lastReport)
+      return;
+    this.lastReport = key;
+    this.getTerminal().setProgramStatus(status);
+  }
+  currentStatus() {
+    const blocked = [...this.blocked.values()].at(-1);
+    if (blocked)
+      return { state: "blocked", ...blocked };
+    if (this.compacting)
+      return { state: "working", message: "Compacting context" };
+    const status = this.runActive ? { state: "working" } : this.restingStatus;
+    if (status.state === "working" || status.state === "done")
+      return { ...status, message: this.getSessionName() };
+    return status;
   }
 };
 
@@ -3966,6 +3972,13 @@ function queryStartupTerminalColors(ui, onColors) {
   });
 }
 __name(queryStartupTerminalColors, "queryStartupTerminalColors");
+function showStartupDialog(ui, component, blocked, settingsManager) {
+  ui.addChild(component);
+  ui.setFocus(component);
+  ui.terminal.setProgramStatus({ state: "blocked", app: APP_NAME, ...blocked });
+  startStartupTui(ui, settingsManager);
+}
+__name(showStartupDialog, "showStartupDialog");
 async function clearStartupTui(ui) {
   ui.clear();
   ui.requestRender();
@@ -3989,7 +4002,7 @@ function shouldRunFirstTimeSetup(settingsPath = getSettingsPath()) {
   return !existsSync2(settingsPath);
 }
 __name(shouldRunFirstTimeSetup, "shouldRunFirstTimeSetup");
-async function showStartupSelector(settingsManager, title, options) {
+async function showStartupSelector(settingsManager, title, options, blockedKind = "question") {
   const ui = await createStartupTui(settingsManager);
   return new Promise((resolve7) => {
     let settled = false;
@@ -4004,9 +4017,7 @@ async function showStartupSelector(settingsManager, title, options) {
       resolve7(result);
     }, "finish");
     const selector = new ExtensionSelectorComponent(title, options.map((option) => option.label), (option) => void finish(options.find((entry) => entry.label === option)?.value), () => void finish(void 0), { tui: ui });
-    ui.addChild(selector);
-    ui.setFocus(selector);
-    startStartupTui(ui, settingsManager);
+    showStartupDialog(ui, selector, dialogBlockedStatus(blockedKind, title), settingsManager);
   });
 }
 __name(showStartupSelector, "showStartupSelector");
@@ -4020,7 +4031,6 @@ async function showFirstTimeSetup(settingsManager) {
       }
       settled = true;
       if (result) {
-        settingsManager.setTheme(result.theme);
         settingsManager.setEnableAnalytics(result.shareAnalytics);
         await settingsManager.flush();
       }
@@ -4029,26 +4039,15 @@ async function showFirstTimeSetup(settingsManager) {
       await flushStdout();
       resolve7();
     }, "finish");
-    ui.start();
-    let previewTheme = SYSTEM_THEME_NAME;
-    setTheme(previewTheme);
     const component = new FirstTimeSetupComponent({
-      onThemePreview: /* @__PURE__ */ __name((themeName) => {
-        previewTheme = themeName;
-        setTheme(themeName);
-        ui.requestRender();
-      }, "onThemePreview"),
       onSubmit: /* @__PURE__ */ __name((result) => void finish(result), "onSubmit"),
       onCancel: /* @__PURE__ */ __name(() => void finish(void 0), "onCancel")
     });
-    ui.addChild(component);
-    ui.setFocus(component);
-    ui.requestRender();
-    queryStartupTerminalColors(ui, () => setTheme(previewTheme));
+    showStartupDialog(ui, component, dialogBlockedStatus("permission", FIRST_TIME_SETUP_QUESTION), settingsManager);
   });
 }
 __name(showFirstTimeSetup, "showFirstTimeSetup");
-async function showStartupInput(settingsManager, title, placeholder) {
+async function showStartupInput(settingsManager, title, placeholder, blockedKind = "question") {
   const ui = await createStartupTui(settingsManager);
   return new Promise((resolve7) => {
     let settled = false;
@@ -4066,9 +4065,7 @@ async function showStartupInput(settingsManager, title, placeholder) {
     const input2 = new ExtensionInputComponent(title, placeholder, (value) => void finish(value), () => void finish(void 0), {
       tui: ui
     });
-    ui.addChild(input2);
-    ui.setFocus(input2);
-    startStartupTui(ui, settingsManager);
+    showStartupDialog(ui, input2, dialogBlockedStatus(blockedKind, title), settingsManager);
   });
 }
 __name(showStartupInput, "showStartupInput");
@@ -4080,16 +4077,16 @@ function createProjectTrustContext(options) {
     mode: options.mode === "interactive" ? "tui" : options.mode,
     hasUI: options.hasUI,
     ui: {
-      select: /* @__PURE__ */ __name(async (title, selectOptions) => {
+      select: /* @__PURE__ */ __name(async (title, selectOptions, opts) => {
         if (!options.hasUI) {
           return void 0;
         }
         if (options.mode !== "interactive") {
           return void 0;
         }
-        return showStartupSelector(options.settingsManager, title, selectOptions.map((option) => ({ label: option, value: option })));
+        return showStartupSelector(options.settingsManager, title, selectOptions.map((option) => ({ label: option, value: option })), opts?.blockedKind);
       }, "select"),
-      confirm: /* @__PURE__ */ __name(async (title, message) => {
+      confirm: /* @__PURE__ */ __name(async (title, message, opts) => {
         if (!options.hasUI) {
           return false;
         }
@@ -4100,16 +4097,16 @@ function createProjectTrustContext(options) {
 ${message}`, [
           { label: "Yes", value: true },
           { label: "No", value: false }
-        ]) ?? false;
+        ], opts?.blockedKind ?? "permission") ?? false;
       }, "confirm"),
-      input: /* @__PURE__ */ __name(async (title, placeholder) => {
+      input: /* @__PURE__ */ __name(async (title, placeholder, opts) => {
         if (!options.hasUI) {
           return void 0;
         }
         if (options.mode !== "interactive") {
           return void 0;
         }
-        return showStartupInput(options.settingsManager, title, placeholder);
+        return showStartupInput(options.settingsManager, title, placeholder, opts?.blockedKind);
       }, "input"),
       notify: /* @__PURE__ */ __name((message, type = "info") => {
         if (options.mode !== "interactive") {
@@ -5209,7 +5206,7 @@ This allows ${APP_NAME} to load ${CONFIG_DIR_NAME} settings and resources, insta
 __name(formatProjectTrustPrompt, "formatProjectTrustPrompt");
 async function selectProjectTrustOption(cwd, ctx) {
   const options = getProjectTrustOptions(cwd, { includeSessionOnly: true });
-  const selected = await ctx.ui.select(formatProjectTrustPrompt(cwd), options.map((option) => option.label));
+  const selected = await ctx.ui.select(formatProjectTrustPrompt(cwd), options.map((option) => option.label), { blockedKind: "permission" });
   return options.find((option) => option.label === selected);
 }
 __name(selectProjectTrustOption, "selectProjectTrustOption");
@@ -5284,6 +5281,7 @@ function deduplicateDiagnostics(diagnostics) {
 __name(deduplicateDiagnostics, "deduplicateDiagnostics");
 
 // pi-dist/pi-coding-agent/extensions/llama/client.js
+import { SseDecoder } from "../../pi-ai/utils/sse.js";
 function errorMessage3(payload, fallback) {
   if (typeof payload !== "object" || payload === null)
     return fallback;
@@ -5505,18 +5503,12 @@ var LlamaClient = class {
     if (!response.ok || !response.body)
       throw new Error(`llama.cpp SSE returned HTTP ${response.status}`);
     const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
+    const sse = new SseDecoder();
     while (true) {
       const chunk = await reader.read();
       if (chunk.done)
         break;
-      buffer += decoder.decode(chunk.value, { stream: true }).replaceAll("\r\n", "\n");
-      let boundary = buffer.indexOf("\n\n");
-      while (boundary >= 0) {
-        const frame3 = buffer.slice(0, boundary);
-        buffer = buffer.slice(boundary + 2);
-        const data = frame3.split("\n").filter((line) => line.startsWith("data:")).map((line) => line.slice(5).trimStart()).join("\n");
+      for (const { data } of sse.push(chunk.value)) {
         if (data) {
           try {
             const event = JSON.parse(data);
@@ -5525,7 +5517,6 @@ var LlamaClient = class {
           } catch {
           }
         }
-        boundary = buffer.indexOf("\n\n");
       }
     }
   }
@@ -6669,7 +6660,7 @@ var builtInExtensions = [
 ];
 
 // pi-dist/pi-coding-agent/extensions/mcp/cli.lazy.js
-var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-KRQWQAEI.js"), "loadMcpCommand");
+var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-HFF2X35D.js"), "loadMcpCommand");
 
 // pi-dist/pi-coding-agent/migrations.js
 import chalk4 from "../../../chalk/source/index.js";
@@ -7758,9 +7749,10 @@ import { mkdtempSync, readFileSync as readFileSync7, rmSync as rmSync3, writeFil
 import { tmpdir as tmpdir3 } from "node:os";
 import { join as join8 } from "node:path";
 async function editInExternalEditor(options) {
-  const directory = mkdtempSync(join8(tmpdir3(), "pi-editor-"));
-  const filePath = join8(directory, "prompt.md");
+  let directory;
   try {
+    directory = mkdtempSync(join8(tmpdir3(), "pi-editor-"));
+    const filePath = join8(directory, "prompt.md");
     writeFileSync4(filePath, options.content, "utf-8");
     const [editor, ...editorArgs] = options.command.split(" ");
     process.stdout.write(`Launching external editor: ${options.command}
@@ -7784,9 +7776,15 @@ Pi will resume when the editor exits.
       };
     }
     return { status: "complete", content: stripBom(readFileSync7(filePath, "utf-8")).replace(/\n$/, "") };
+  } catch (error) {
+    return {
+      status: "failed",
+      message: `External editor failed: ${error instanceof Error ? error.message : String(error)}; prompt unchanged`
+    };
   } finally {
     try {
-      rmSync3(directory, { recursive: true, force: true });
+      if (directory)
+        rmSync3(directory, { recursive: true, force: true });
     } catch {
     }
   }
@@ -7909,7 +7907,13 @@ function exportSessionForShare(filePath, session) {
 }
 __name(exportSessionForShare, "exportSessionForShare");
 async function shareSession(context) {
-  const tempDir = fs.mkdtempSync(path3.join(os.tmpdir(), "pi-share-"));
+  let tempDir;
+  try {
+    tempDir = fs.mkdtempSync(path3.join(os.tmpdir(), "pi-share-"));
+  } catch (error) {
+    context.showError(`Failed to export session: ${error instanceof Error ? error.message : "Unknown error"}`);
+    return;
+  }
   const jsonlFile = path3.join(tempDir, "session.jsonl");
   const htmlFile = path3.join(tempDir, "session.html");
   try {
@@ -8505,6 +8509,7 @@ var BashExecutionComponent = class extends Container12 {
   loader;
   truncationResult;
   fullOutputPath;
+  fullOutputError;
   expanded = false;
   contentContainer;
   /** `dim` marks `!!` commands, whose output is excluded from the model context. */
@@ -8550,11 +8555,12 @@ var BashExecutionComponent = class extends Container12 {
     }
     this.updateDisplay();
   }
-  setComplete(exitCode, cancelled, truncationResult, fullOutputPath) {
+  setComplete(exitCode, cancelled, truncationResult, fullOutputPath, fullOutputError) {
     this.exitCode = exitCode;
     this.status = cancelled ? "cancelled" : exitCode !== 0 && exitCode !== void 0 && exitCode !== null ? "error" : "complete";
     this.truncationResult = truncationResult;
     this.fullOutputPath = fullOutputPath;
+    this.fullOutputError = fullOutputError;
     this.loader.stop();
     this.updateDisplay();
   }
@@ -8614,8 +8620,8 @@ ${styledOutput}`;
         statusParts.push(theme.fg("error", `(exit ${this.exitCode})`));
       }
       const wasTruncated = this.truncationResult?.truncated || contextTruncation.truncated;
-      if (wasTruncated && this.fullOutputPath) {
-        statusParts.push(theme.fg("warning", `Output truncated. Full output: ${this.fullOutputPath}`));
+      if (wasTruncated) {
+        statusParts.push(theme.fg("warning", bashTruncationNote({ fullOutputPath: this.fullOutputPath, fullOutputError: this.fullOutputError })));
       }
       if (statusParts.length > 0) {
         this.contentContainer.addChild(new Text12(`
@@ -9568,15 +9574,20 @@ function createMermaidMarkdownTransformer(options) {
       if (!isMermaid(token))
         return token.raw;
       const art = render(token.text);
-      if (!art || art.width > context.availableWidth)
+      if (!art)
         return token.raw;
-      if (!context.isStreaming && art.warnings.length > 0) {
-        const suffix = art.warnings.length > 1 ? ` (+${art.warnings.length - 1} more)` : "";
-        const warning = `Mermaid diagram not rendered: ${art.warnings[0]}${suffix}`;
+      const withWarning = /* @__PURE__ */ __name((warning) => {
         const styledWarning = options.theme ? options.theme.fg("warning", warning) : warning;
         return `${token.raw}
 ${codeSpan(styledWarning)}  
 `;
+      }, "withWarning");
+      if (!context.isStreaming && art.warnings.length > 0) {
+        const suffix = art.warnings.length > 1 ? ` (+${art.warnings.length - 1} more)` : "";
+        return withWarning(`Mermaid diagram not rendered: ${art.warnings[0]}${suffix}`);
+      }
+      if (art.width > context.availableWidth) {
+        return context.isStreaming ? token.raw : withWarning(`Mermaid diagram not rendered: needs ${art.width} columns, ${context.availableWidth} available`);
       }
       const lines = options.theme ? themedLines(art, options.theme) : art.plain;
       return `${lines.map(codeSpan).join("  \n")}
@@ -9989,7 +10000,7 @@ var ModelSelectorComponent = class extends Container19 {
 import { Container as Container20, fuzzyFilter as fuzzyFilter4, getKeybindings as getKeybindings8, getSelectPageIndex as getSelectPageIndex3, Input as Input7, Spacer as Spacer19, TruncatedText as TruncatedText2 } from "../../../pi-tui.mjs";
 
 // pi-dist/pi-coding-agent/modes/interactive/components/provider-brand.js
-import { foregroundAnsi, mixColors, parseColor } from "../../../pi-tui.mjs";
+import { foregroundAnsi as foregroundAnsi2, mixColors, parseColor } from "../../../pi-tui.mjs";
 function getProviderBrandStyle(providerId) {
   if (providerId === RADIUS_PROVIDER_ID)
     return radiusShimmer;
@@ -10014,7 +10025,7 @@ function radiusShimmer(text, elapsedMs) {
     const amount = t * t * (3 - 2 * t);
     const from = RADIUS_COLORS[band];
     const to = RADIUS_COLORS[(band + 1) % RADIUS_COLORS.length];
-    result += foregroundAnsi(mixColors(from, to, amount, "srgb"), mode) + char;
+    result += foregroundAnsi2(mixColors(from, to, amount, "srgb"), mode) + char;
     index++;
   }
   return `${result}\x1B[39m`;
@@ -10028,7 +10039,7 @@ var GLOW_PERIOD_MS = 2400;
 function openRouterGlow(text, elapsedMs) {
   const { base, peak } = OPENROUTER_GLOW[theme.appearance];
   const amount = (1 - Math.cos(2 * Math.PI * elapsedMs / GLOW_PERIOD_MS)) / 2;
-  return `${foregroundAnsi(mixColors(base, peak, amount, "oklch"), theme.getColorMode())}${text}\x1B[39m`;
+  return `${foregroundAnsi2(mixColors(base, peak, amount, "oklch"), theme.getColorMode())}${text}\x1B[39m`;
 }
 __name(openRouterGlow, "openRouterGlow");
 var ANIMATION_FRAME_MS = 50;
@@ -10050,16 +10061,19 @@ function formatAuthSelectorProviderType(authType, subscription) {
 }
 __name(formatAuthSelectorProviderType, "formatAuthSelectorProviderType");
 function formatAuthSelectorProviderStatus(provider) {
-  if (!provider.status)
+  const { status } = provider;
+  if (!status)
     return theme.fg("muted", " \u2022 not configured");
-  if (provider.status.type !== provider.authType) {
-    const label = `${formatAuthSelectorProviderType(provider.status.type, provider.subscription)} configured`;
+  if (status.kind === "unresolved")
+    return theme.fg("muted", " \u2022 ") + theme.fg("error", "stored key did not resolve");
+  if (status.type !== provider.authType) {
+    const label = `${formatAuthSelectorProviderType(status.type, provider.subscription)} configured`;
     return theme.fg("muted", " \u2022 ") + theme.fg("warning", label);
   }
-  if (!provider.status.source || provider.status.source === "OAuth" || provider.status.source === "stored credential") {
+  if (!status.source || status.source === "OAuth" || status.source === "stored credential") {
     return theme.fg("success", " \u2713 configured");
   }
-  const source = /^[A-Z][A-Z0-9_]*(?:, [A-Z][A-Z0-9_]*)*$/.test(provider.status.source) ? `env: ${provider.status.source}` : provider.status.source;
+  const source = /^[A-Z][A-Z0-9_]*(?:, [A-Z][A-Z0-9_]*)*$/.test(status.source) ? `env: ${status.source}` : status.source;
   return theme.fg("success", ` \u2713 ${source}`);
 }
 __name(formatAuthSelectorProviderStatus, "formatAuthSelectorProviderStatus");
@@ -10208,30 +10222,6 @@ var OAuthSelectorComponent = class extends Container20 {
     }
   }
 };
-
-// pi-dist/pi-coding-agent/modes/interactive/components/pi-logo.js
-import { backgroundAnsi, foregroundAnsi as foregroundAnsi2, isAppleTerminalSession, rgbColor } from "../../../pi-tui.mjs";
-var CORAL = rgbColor(228, 138, 122);
-var BLUE = rgbColor(79, 142, 179);
-var YELLOW = rgbColor(234, 182, 93);
-var RESET = "\x1B[0m";
-function piLogoLines() {
-  const mode = theme.getColorMode();
-  const fg = /* @__PURE__ */ __name((color) => foregroundAnsi2(color, mode), "fg");
-  const top = `${fg(CORAL)}${backgroundAnsi(BLUE, mode)}\u2580${RESET}${fg(CORAL)}\u2580\u2588${RESET} `;
-  const bottom = `${fg(BLUE)}\u2588\u2580${RESET} ${fg(YELLOW)}\u2588${RESET}`;
-  return [top, bottom];
-}
-__name(piLogoLines, "piLogoLines");
-function supportsPiLogo() {
-  return !isAppleTerminalSession();
-}
-__name(supportsPiLogo, "supportsPiLogo");
-function piWordmark() {
-  const mode = theme.getColorMode();
-  return `${foregroundAnsi2(CORAL, mode)}P${RESET}${foregroundAnsi2(YELLOW, mode)}i${RESET}`;
-}
-__name(piWordmark, "piWordmark");
 
 // pi-dist/pi-coding-agent/modes/interactive/components/radius-login-selector.js
 import { Text as Text20 } from "../../../pi-tui.mjs";
@@ -10763,32 +10753,57 @@ var DEFAULT_PROJECT_TRUST_LABELS = {
   never: "Never trust"
 };
 var DEFAULT_PROJECT_TRUST_BY_LABEL = new Map(Object.entries(DEFAULT_PROJECT_TRUST_LABELS).map(([value, label]) => [label, value]));
-var WarningSettingsSubmenu = class extends Container23 {
+var WARNING_TOGGLES = [
+  {
+    key: "anthropicExtraUsage",
+    label: "Anthropic extra usage",
+    description: "Warn when Anthropic subscription auth may use paid extra usage"
+  }
+];
+var NOTICE_TOGGLES = [
+  {
+    key: "cacheMisses",
+    label: "Cache misses",
+    description: "Show a notice when a response re-bills a significant part of the prompt cache"
+  },
+  {
+    key: "cacheWarming",
+    label: "Cache warming",
+    description: "Show the cost of cache warming requests"
+  },
+  {
+    key: "compactionCosts",
+    label: "Compaction costs",
+    description: "Show the cost of compactions and branch summaries"
+  },
+  {
+    key: "reasoningDrops",
+    label: "Reasoning drops",
+    description: "Show a notice when a provider drops reasoning items from a request"
+  }
+];
+var ToggleSettingsSubmenu = class extends Container23 {
   static {
-    __name(this, "WarningSettingsSubmenu");
+    __name(this, "ToggleSettingsSubmenu");
   }
   settingsList;
-  state;
-  constructor(warnings, onChange, onCancel) {
+  constructor(toggles, values, defaults, onChange, onCancel) {
     super();
-    this.state = { ...warnings };
-    const items = [
-      {
-        id: "anthropic-extra-usage",
-        label: "Anthropic extra usage",
-        description: "Warn when Anthropic subscription auth may use paid extra usage",
-        currentValue: this.state.anthropicExtraUsage ?? SETTINGS_DEFAULTS.warnings.anthropicExtraUsage ? "true" : "false",
-        values: ["true", "false"]
-      }
-    ];
-    this.settingsList = new SettingsList(items, Math.min(items.length, 10), getSettingsListTheme(), (id, newValue) => {
-      switch (id) {
-        case "anthropic-extra-usage":
-          this.state = { ...this.state, anthropicExtraUsage: newValue === "true" };
-          onChange({ ...this.state });
-          break;
-      }
-    }, onCancel);
+    const items = toggles.map((toggle2) => ({
+      id: toggle2.key,
+      label: toggle2.label,
+      description: toggle2.description,
+      currentValue: values[toggle2.key] ?? defaults[toggle2.key] ? "true" : "false",
+      values: ["true", "false"]
+    }));
+    this.settingsList = new SettingsList(
+      items,
+      Math.min(items.length, 10),
+      getSettingsListTheme(),
+      // Item ids are the toggle keys.
+      (id, newValue) => onChange(id, newValue === "true"),
+      onCancel
+    );
     this.addChild(this.settingsList);
   }
   handleInput(data) {
@@ -11010,6 +11025,7 @@ var SettingsSelectorComponent = class extends Container23 {
     const followUpKey = keyDisplayText("app.message.followUp");
     const cycleThinkingKey = keyDisplayText("app.thinking.cycle");
     let currentWarnings = { ...config.warnings };
+    let currentNotices = { ...config.notices };
     const currentModelThinkingLevels = { ...config.modelThinkingLevels };
     const defaultModelByValue = new Map(config.availableDefaultModels.map((model) => [modelSettingKey(model), model]));
     const currentDefaultModelKey = defaultModelByValue.has(config.defaultModel) ? config.defaultModel : void 0;
@@ -11079,13 +11095,6 @@ var SettingsSelectorComponent = class extends Container23 {
         values: ["off", "final", "streaming"]
       },
       {
-        id: "cache-miss-notices",
-        label: "Cache miss notices",
-        description: "Show transcript notices for cache costs and provider recovery diagnostics",
-        currentValue: config.showCacheMissNotices ? "true" : "false",
-        values: ["true", "false"]
-      },
-      {
         id: "collapse-changelog",
         label: "Collapse changelog",
         description: "Show condensed changelog after updates",
@@ -11132,9 +11141,19 @@ var SettingsSelectorComponent = class extends Container23 {
         label: "Warnings",
         description: "Enable or disable individual warnings",
         currentValue: "configure",
-        submenu: /* @__PURE__ */ __name((_currentValue, done) => new WarningSettingsSubmenu(currentWarnings, (warnings) => {
-          currentWarnings = warnings;
-          callbacks.onWarningsChange(warnings);
+        submenu: /* @__PURE__ */ __name((_currentValue, done) => new ToggleSettingsSubmenu(WARNING_TOGGLES, currentWarnings, SETTINGS_DEFAULTS.warnings, (key, value) => {
+          currentWarnings = { ...currentWarnings, [key]: value };
+          callbacks.onWarningsChange(currentWarnings);
+        }, () => done()), "submenu")
+      },
+      {
+        id: "notices",
+        label: "Notices",
+        description: "Notices about cache misses, cache warming, compaction costs and dropped reasoning",
+        currentValue: "configure",
+        submenu: /* @__PURE__ */ __name((_currentValue, done) => new ToggleSettingsSubmenu(NOTICE_TOGGLES, currentNotices, SETTINGS_DEFAULTS.notices, (key, shown) => {
+          currentNotices = { ...currentNotices, [key]: shown };
+          callbacks.onNoticeChange(key, shown);
         }, () => done()), "submenu")
       },
       {
@@ -11412,9 +11431,6 @@ var SettingsSelectorComponent = class extends Container23 {
           break;
         case "mermaid-rendering":
           callbacks.onMermaidRenderingModeChange(newValue);
-          break;
-        case "cache-miss-notices":
-          callbacks.onShowCacheMissNoticesChange(newValue === "true");
           break;
         case "collapse-changelog":
           callbacks.onCollapseChangelogChange(newValue === "true");
@@ -13408,104 +13424,6 @@ var UserMessageSelectorComponent = class extends Container30 {
   }
   getMessageList() {
     return this.messageList;
-  }
-};
-
-// pi-dist/pi-coding-agent/modes/interactive/program-status-reporter.js
-function firstLine2(text) {
-  return text?.split(/\r?\n/, 1)[0]?.trim() || "Error";
-}
-__name(firstLine2, "firstLine");
-var ProgramStatusReporter = class {
-  static {
-    __name(this, "ProgramStatusReporter");
-  }
-  getTerminal;
-  getSessionName;
-  runActive = false;
-  compacting = false;
-  /** Outcome of the current run, reported once it settles. */
-  runResult = { state: "done" };
-  /** Status while no run is active. */
-  restingStatus = { state: "idle" };
-  /** Open dialogs by source, in the order they opened. The most recent one is reported. */
-  blocked = /* @__PURE__ */ new Map();
-  lastReport;
-  constructor(getTerminal, getSessionName) {
-    this.getTerminal = getTerminal;
-    this.getSessionName = getSessionName;
-  }
-  handleEvent(event) {
-    switch (event.type) {
-      case "agent_start":
-        this.runActive = true;
-        this.runResult = { state: "done" };
-        break;
-      case "message_end":
-        if (event.message.role !== "assistant")
-          return;
-        this.runResult = event.message.stopReason === "error" ? { state: "error", message: firstLine2(event.message.errorMessage) } : { state: "done" };
-        break;
-      case "compaction_start":
-        this.compacting = true;
-        break;
-      case "compaction_end":
-        this.compacting = false;
-        if (this.runActive) {
-          if (event.aborted)
-            this.runResult = { state: "idle" };
-          else if (event.errorMessage)
-            this.runResult = { state: "error", message: firstLine2(event.errorMessage) };
-        } else if (event.aborted) {
-          this.restingStatus = { state: "idle" };
-        } else if (event.reason === "manual") {
-          this.restingStatus = event.errorMessage ? { state: "error", message: firstLine2(event.errorMessage) } : { state: "done" };
-        }
-        break;
-      case "agent_settled":
-        this.runActive = false;
-        this.restingStatus = event.aborted ? { state: "idle" } : this.runResult;
-        break;
-      case "session_info_changed":
-        break;
-      default:
-        return;
-    }
-    this.report();
-  }
-  /** Report `blocked` for a dialog until it is cleared with `undefined`. Reopening a source replaces it. */
-  setBlocked(source, status) {
-    this.blocked.delete(source);
-    if (status)
-      this.blocked.set(source, status);
-    this.report();
-  }
-  /** Forget the previous session's run, for example after switching sessions. */
-  reset() {
-    this.runActive = false;
-    this.compacting = false;
-    this.runResult = { state: "done" };
-    this.restingStatus = { state: "idle" };
-    this.report();
-  }
-  report() {
-    const status = { ...this.currentStatus(), app: APP_NAME };
-    const key = JSON.stringify(status);
-    if (key === this.lastReport)
-      return;
-    this.lastReport = key;
-    this.getTerminal().setProgramStatus(status);
-  }
-  currentStatus() {
-    const blocked = [...this.blocked.values()].at(-1);
-    if (blocked)
-      return { state: "blocked", ...blocked };
-    if (this.compacting)
-      return { state: "working", message: "Compacting context" };
-    const status = this.runActive ? { state: "working" } : this.restingStatus;
-    if (status.state === "working" || status.state === "done")
-      return { ...status, message: this.getSessionName() };
-    return status;
   }
 };
 
@@ -15584,8 +15502,14 @@ ${warningLines()}`, 0, 0));
       setHeader: /* @__PURE__ */ __name((factory) => this.setExtensionHeader(factory), "setHeader"),
       setTitle: /* @__PURE__ */ __name((title) => this.ui.terminal.setTitle(title), "setTitle"),
       custom: /* @__PURE__ */ __name((factory, options) => this.showExtensionCustom(factory, options), "custom"),
-      pasteToEditor: /* @__PURE__ */ __name((text) => this.editor.handleInput(`\x1B[200~${text}\x1B[201~`), "pasteToEditor"),
-      setEditorText: /* @__PURE__ */ __name((text) => this.editor.setText(text), "setEditorText"),
+      pasteToEditor: /* @__PURE__ */ __name((text) => {
+        this.editor.handleInput(`\x1B[200~${text}\x1B[201~`);
+        this.ui.requestRender();
+      }, "pasteToEditor"),
+      setEditorText: /* @__PURE__ */ __name((text) => {
+        this.editor.setText(text);
+        this.ui.requestRender();
+      }, "setEditorText"),
       getEditorText: /* @__PURE__ */ __name(() => this.editor.getExpandedText?.() ?? this.editor.getText(), "getEditorText"),
       editor: /* @__PURE__ */ __name((title, prefill) => this.showExtensionEditor(title, prefill), "editor"),
       addAutocompleteProvider: /* @__PURE__ */ __name((factory) => {
@@ -15647,7 +15571,7 @@ ${warningLines()}`, 0, 0));
   /**
    * Show a selector for extensions.
    */
-  showExtensionSelector(title, options, opts, blocked = { kind: "question", message: title }) {
+  showExtensionSelector(title, options, opts) {
     return new Promise((resolve7) => {
       if (opts?.signal?.aborted) {
         resolve7(void 0);
@@ -15662,7 +15586,7 @@ ${warningLines()}`, 0, 0));
       const onAbort = /* @__PURE__ */ __name(() => finish(void 0), "onAbort");
       opts?.signal?.addEventListener("abort", onAbort, { once: true });
       const selector = new ExtensionSelectorComponent(title, options, (option) => finish(option), () => finish(void 0), { tui: this.ui, timeout: opts?.timeout, onToggleToolsExpanded: /* @__PURE__ */ __name(() => this.toggleToolOutputExpansion(), "onToggleToolsExpanded") });
-      this.pushExtensionDialog(selector, blocked);
+      this.pushExtensionDialog(selector, dialogBlockedStatus(opts?.blockedKind ?? "question", title));
     });
   }
   /**
@@ -15670,9 +15594,9 @@ ${warningLines()}`, 0, 0));
    */
   async showExtensionConfirm(title, message, opts) {
     const result = await this.showExtensionSelector(`${title}
-${message}`, ["Yes", "No"], opts, {
-      kind: "permission",
-      message: title
+${message}`, ["Yes", "No"], {
+      ...opts,
+      blockedKind: opts?.blockedKind ?? "permission"
     });
     return result === "Yes";
   }
@@ -15699,7 +15623,7 @@ ${message}`, ["Yes", "No"], opts, {
       const onAbort = /* @__PURE__ */ __name(() => finish(void 0), "onAbort");
       opts?.signal?.addEventListener("abort", onAbort, { once: true });
       const input2 = new ExtensionInputComponent(title, placeholder, (value) => finish(value), () => finish(void 0), { tui: this.ui, timeout: opts?.timeout });
-      this.pushExtensionDialog(input2, { kind: "question", message: title });
+      this.pushExtensionDialog(input2, dialogBlockedStatus(opts?.blockedKind ?? "question", title));
     });
   }
   /**
@@ -15712,7 +15636,7 @@ ${message}`, ["Yes", "No"], opts, {
         resolve7(value);
       }, "finish");
       const editor = new ExtensionEditorComponent(this.ui, this.keybindings, title, prefill, (value) => finish(value), () => finish(void 0), void 0, this.settingsManager.getExternalEditorCommand());
-      this.pushExtensionDialog(editor, { kind: "question", message: title });
+      this.pushExtensionDialog(editor, dialogBlockedStatus("question", title));
     });
   }
   /**
@@ -16574,7 +16498,8 @@ ${message}`, ["Yes", "No"], opts, {
         if (message.output) {
           component.appendOutput(message.output);
         }
-        component.setComplete(message.exitCode, message.cancelled, message.truncated ? { truncated: true } : void 0, message.fullOutputPath);
+        component.setComplete(message.exitCode, message.cancelled, message.truncated ? { truncated: true } : void 0, message.fullOutputPath, message.fullOutputError);
+        component.setExpanded(this.toolOutputExpanded);
         this.chatContainer.addChild(component);
         break;
       }
@@ -16645,7 +16570,7 @@ ${message}`, ["Yes", "No"], opts, {
   renderSessionItems(items, messageMeta, options = {}) {
     this.pendingTools.clear();
     const renderedPendingTools = /* @__PURE__ */ new Map();
-    const cacheMisses = this.settingsManager.getShowCacheMissNotices() ? collectCacheMisses(this.sessionManager.getEntries(), this.session.modelRuntime) : /* @__PURE__ */ new Map();
+    const cacheMisses = this.settingsManager.getNotices().cacheMisses ? collectCacheMisses(this.sessionManager.getEntries(), this.session.modelRuntime) : /* @__PURE__ */ new Map();
     if (options.updateFooter) {
       this.footer.invalidate();
       this.updateEditorBorderColor();
@@ -16744,7 +16669,7 @@ ${message}`, ["Yes", "No"], opts, {
     this.renderSessionItems(items, messageMeta, options);
   }
   addCacheWarmingUsage(entry) {
-    if (!this.settingsManager.getShowCacheMissNotices())
+    if (!this.settingsManager.getNotices().cacheWarming)
       return;
     const previous = this.cacheWarmingNotice;
     if (previous && this.chatContainer.children.at(-1) === previous.component && previous.note === entry.note) {
@@ -16763,7 +16688,7 @@ ${message}`, ["Yes", "No"], opts, {
    * from persisted summary usage and is not stored as a separate session entry.
    */
   addCompactionCostNotice(notice) {
-    if (!this.settingsManager.getShowCacheMissNotices())
+    if (!this.settingsManager.getNotices().compactionCosts)
       return;
     const { usage } = notice;
     const tokens = usage.input + usage.output + usage.cacheRead + usage.cacheWrite;
@@ -16773,7 +16698,7 @@ ${message}`, ["Yes", "No"], opts, {
     this.chatContainer.addChild(new ThemedText(() => theme.fg("warning", `${label}: ${formatTokens(tokens)} tokens billed${cost}`), 1, 0));
   }
   maybeShowThinkingDropNotice(message) {
-    if (!this.settingsManager.getShowCacheMissNotices())
+    if (!this.settingsManager.getNotices().reasoningDrops)
       return;
     const dropped = getDroppedReasoning(message);
     if (!dropped)
@@ -16800,7 +16725,7 @@ ${message}`, ["Yes", "No"], opts, {
    * a model switch, or an idle gap past the cache TTL.
    */
   maybeShowCacheMissNotice(message) {
-    if (!this.settingsManager.getShowCacheMissNotices())
+    if (!this.settingsManager.getNotices().cacheMisses)
       return;
     const miss = detectCacheMiss(this.sessionManager.getEntries(), message, this.session.modelRuntime);
     if (miss)
@@ -17417,7 +17342,6 @@ ${packageLines}`, 1, 0));
         doubleEscapeAction: this.settingsManager.getDoubleEscapeAction(),
         treeFilterMode: this.settingsManager.getTreeFilterMode(),
         showHardwareCursor: this.settingsManager.getShowHardwareCursor(),
-        showCacheMissNotices: this.settingsManager.getShowCacheMissNotices(),
         defaultProjectTrust: this.settingsManager.getDefaultProjectTrust(),
         editorPaddingX: this.settingsManager.getEditorPaddingX(),
         outputPad: this.settingsManager.getOutputPad(),
@@ -17430,7 +17354,8 @@ ${packageLines}`, 1, 0));
         fullscreenScrollbar: this.settingsManager.getFullscreenScrollbar(),
         fullscreenCopyOnSelect: this.settingsManager.getFullscreenCopyOnSelect(),
         fullscreenWheelScrollLines: this.settingsManager.getFullscreenWheelScrollLines(),
-        warnings: this.settingsManager.getWarnings()
+        warnings: this.settingsManager.getWarnings(),
+        notices: this.settingsManager.getNotices()
       }, {
         onAutoCompactChange: /* @__PURE__ */ __name((enabled) => {
           this.session.setAutoCompactionEnabled(enabled);
@@ -17518,10 +17443,6 @@ ${packageLines}`, 1, 0));
           this.chatContainer.invalidate();
           this.ui.requestRender();
         }, "onMermaidRenderingModeChange"),
-        onShowCacheMissNoticesChange: /* @__PURE__ */ __name((shown) => {
-          this.settingsManager.setShowCacheMissNotices(shown);
-          this.rebuildChatFromMessages();
-        }, "onShowCacheMissNoticesChange"),
         onCollapseChangelogChange: /* @__PURE__ */ __name((collapsed) => {
           this.settingsManager.setCollapseChangelog(collapsed);
         }, "onCollapseChangelogChange"),
@@ -17611,6 +17532,10 @@ ${packageLines}`, 1, 0));
         onWarningsChange: /* @__PURE__ */ __name((warnings) => {
           this.settingsManager.setWarnings(warnings);
         }, "onWarningsChange"),
+        onNoticeChange: /* @__PURE__ */ __name((key, shown) => {
+          this.settingsManager.setNotice(key, shown);
+          this.rebuildChatFromMessages();
+        }, "onNoticeChange"),
         onCancel: /* @__PURE__ */ __name(() => {
           done();
           this.ui.requestRender();
@@ -18135,10 +18060,13 @@ ${packageLines}`, 1, 0));
     const options = [];
     for (const provider of this.session.modelRuntime.getProviders()) {
       const authStatus = this.session.modelRuntime.getProviderAuthStatus(provider.id);
-      const status = authStatus.configured ? {
-        type: this.session.modelRuntime.isUsingOAuth(provider.id) ? "oauth" : "api_key",
-        source: authStatus.label ?? authStatus.source
-      } : void 0;
+      let status;
+      if (authStatus.configured) {
+        const type = this.session.modelRuntime.isUsingOAuth(provider.id) ? "oauth" : "api_key";
+        status = { kind: "configured", type, source: authStatus.label ?? authStatus.source };
+      } else if (authStatus.source === "stored") {
+        status = { kind: "unresolved" };
+      }
       const subscription = provider.auth.oauth?.isSubscription === true;
       if ((!authType || authType === "oauth") && provider.auth.oauth) {
         options.push({
@@ -18170,7 +18098,7 @@ ${packageLines}`, 1, 0));
         id: providerId,
         name: provider?.name ?? providerId,
         authType: type,
-        status: { type, source: "stored credential" },
+        status: { kind: "configured", type, source: "stored credential" },
         subscription: provider?.auth.oauth?.isSubscription === true
       };
     }).sort(compareProviders);
@@ -19116,7 +19044,7 @@ ${theme.fg("muted", debugLogPath)}`, 1, 1));
       if (result.output) {
         this.bashComponent.appendOutput(result.output);
       }
-      this.bashComponent.setComplete(result.exitCode, result.cancelled, result.truncated ? { truncated: true, content: result.output } : void 0, result.fullOutputPath);
+      this.bashComponent.setComplete(result.exitCode, result.cancelled, result.truncated ? { truncated: true, content: result.output } : void 0, result.fullOutputPath, result.fullOutputError);
       this.session.recordBashResult(command, result, { excludeFromContext });
       this.bashComponent = void 0;
       this.ui.requestRender();
@@ -19140,7 +19068,7 @@ ${theme.fg("muted", debugLogPath)}`, 1, 1));
         }
       }, { excludeFromContext, operations: eventResult?.operations });
       if (this.bashComponent) {
-        this.bashComponent.setComplete(result.exitCode, result.cancelled, result.truncated ? { truncated: true, content: result.output } : void 0, result.fullOutputPath);
+        this.bashComponent.setComplete(result.exitCode, result.cancelled, result.truncated ? { truncated: true, content: result.output } : void 0, result.fullOutputPath, result.fullOutputError);
       }
     } catch (error) {
       if (this.bashComponent) {
@@ -19362,22 +19290,21 @@ function attachJsonlLineReader(stream2, onLine) {
     onLine(line.endsWith("\r") ? line.slice(0, -1) : line);
   }, "emitLine");
   const onData = /* @__PURE__ */ __name((chunk) => {
-    buffer += typeof chunk === "string" ? chunk : decoder.write(chunk);
-    while (true) {
-      const newlineIndex = buffer.indexOf("\n");
-      if (newlineIndex === -1) {
-        return;
-      }
-      emitLine(buffer.slice(0, newlineIndex));
-      buffer = buffer.slice(newlineIndex + 1);
+    const text = typeof chunk === "string" ? chunk : decoder.write(chunk);
+    let start = 0;
+    for (let newlineIndex = text.indexOf("\n"); newlineIndex !== -1; newlineIndex = text.indexOf("\n", start)) {
+      const line = buffer + text.slice(start, newlineIndex);
+      buffer = "";
+      start = newlineIndex + 1;
+      emitLine(line);
     }
+    buffer += text.slice(start);
   }, "onData");
   const onEnd = /* @__PURE__ */ __name(() => {
-    buffer += decoder.end();
-    if (buffer.length > 0) {
-      emitLine(buffer);
-      buffer = "";
-    }
+    const line = buffer + decoder.end();
+    buffer = "";
+    if (line.length > 0)
+      emitLine(line);
   }, "onEnd");
   stream2.on("data", onData);
   stream2.on("end", onEnd);
@@ -21405,13 +21332,18 @@ function getActiveManagedInstallRoot() {
   if (getCwdRelativePath(canonicalizePath(getPackageDir()), releasesDir) === void 0)
     return void 0;
   const markerPath = join14(managedRoot, MANAGED_INSTALL_MARKER);
+  let marker;
   try {
-    const marker = JSON.parse(stripBom(readFileSync11(markerPath, "utf8")));
+    marker = JSON.parse(stripBom(readFileSync11(markerPath, "utf8")));
     if (marker.kind !== "pi-managed-install" || marker.schemaVersion !== 1 || marker.layout !== "releases-v1") {
       throw new Error();
     }
   } catch {
     throw new Error(`Managed install marker is missing or invalid: ${markerPath}`);
+  }
+  const entrypointPath = marker.entrypoint?.path;
+  if (process.platform !== "win32" && typeof entrypointPath === "string" && /^(?:[A-Za-z]:\\|\\\\)/.test(entrypointPath)) {
+    throw new Error(`This is the Windows installation of ${APP_NAME}, run from WSL. Running the Windows installation from WSL is unsupported, so it cannot update itself here. Update it from Windows, or install ${APP_NAME} in WSL.`);
   }
   return managedRoot;
 }

@@ -28,8 +28,14 @@ pub struct CapabilityOverrides {
     pub hyperlinks: Option<bool>,
 }
 
+const MAX_HYPERLINK_URL_LENGTH: usize = 8192;
+
 /// pi-tui's `hyperlink`: `text` wrapped in an OSC 8 link to `url`.
+/// URLs longer than 8192 UTF-16 code units return plain `text`.
 pub fn hyperlink(text: &str, url: &str) -> String {
+    if url.encode_utf16().count() > MAX_HYPERLINK_URL_LENGTH {
+        return text.to_string();
+    }
     format!("\x1b]8;;{url}\x1b\\{text}\x1b]8;;\x1b\\")
 }
 
@@ -249,4 +255,25 @@ pub fn set_capability_overrides(overrides: CapabilityOverrides) {
 /// pi-tui's `setCapabilities`: replace the cached capabilities.
 pub fn set_capabilities(capabilities: TerminalCapabilities) {
     STATE.lock().unwrap_or_else(|e| e.into_inner()).cached = Some(capabilities);
+}
+
+#[cfg(test)]
+mod hyperlink_tests {
+    use super::*;
+
+    #[test]
+    fn hyperlink_url_length_cap_utf16() {
+        let prefix = "https://example.com/";
+        let at_limit = format!(
+            "{prefix}{}",
+            "a".repeat(MAX_HYPERLINK_URL_LENGTH - prefix.len())
+        );
+        assert!(hyperlink("ok", &at_limit).contains("\x1b]8;;"));
+        assert_eq!(hyperlink("ok", &format!("{at_limit}a")), "ok");
+        assert!(hyperlink("ok", &format!("{prefix}{}", "中".repeat(4000))).contains("\x1b]8;;"));
+        assert_eq!(
+            hyperlink("ok", &format!("{prefix}{}", "😀".repeat(4100))),
+            "ok"
+        );
+    }
 }

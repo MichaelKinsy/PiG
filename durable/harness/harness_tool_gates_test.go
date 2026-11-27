@@ -68,7 +68,7 @@ func tgApprovals(passes *atomic.Int64) durable.HookRegistration {
 		switch {
 		case state == nil:
 			return &BeforeToolResult{Sleep: &GateSleep{Signals: []durable.SignalKey{tgApprovalSignal.Key(key)}, Until: &until}}, nil
-		case state.Expired:
+		case state.Kind == durable.SignalStateExpired:
 			return &BeforeToolResult{Block: new("No approval within a day")}, nil
 		case state.Value.Allow:
 			return nil, nil

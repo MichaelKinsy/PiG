@@ -328,7 +328,7 @@ func (e *encoder) node(node kit.Node, depth int) (viewNode, error) {
 			out.OutputPad = new(n.OutputPad)
 		}
 		if c := n.Complete; c != nil {
-			out.Complete = &viewBashComplete{ExitCode: c.ExitCode, Cancelled: c.Cancelled, Truncated: c.Truncated, FullOutputPath: c.FullOutputPath}
+			out.Complete = &viewBashComplete{ExitCode: c.ExitCode, Cancelled: c.Cancelled, Truncated: c.Truncated, FullOutputPath: c.FullOutputPath, FullOutputError: c.FullOutputError}
 		}
 		return out, nil
 	case *kit.Diff:

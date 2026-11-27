@@ -734,7 +734,7 @@ owner = "PluginSource"
 field = "Version"
 wire_name = "-"
 classification = "external"
-rationale = "The npm package version of the `{ npm, version }` plugin source (packages/chord/src/node/plugins/install.ts); the npm registry owns the version syntax and the install runs `npm pack` at it, so it is an external-standard version, not a Pig format discriminator."
+rationale = "The npm package version of the `{ kind: \"npm\", npm, version }` plugin source (packages/chord/src/node/plugins/install.ts); the npm registry owns the version syntax and the install runs `npm pack` at it, so it is an external-standard version, not a Pig format discriminator."
 
 [[fields]]
 id = "chord/nextnode/plugins/plugins_node.go#NodeHostError.Version:go:-"

@@ -172,8 +172,16 @@ func (r *compactionRun) beforeCompact(view *history.View, plan history.SelectPla
 			return
 		}
 		if decision != nil {
+			if str(decision, "kind") == "decline" {
+				r.complete()
+				return
+			}
 			if d, ok := decision.Get("decline"); ok && d != nil {
 				r.complete()
+				return
+			}
+			if str(decision, "kind") == "summary" {
+				r.place(plan.FirstKept, str(decision, "summary"))
 				return
 			}
 			if _, ok := decision.Get("summary"); ok {

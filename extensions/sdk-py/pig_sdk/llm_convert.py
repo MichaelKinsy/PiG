@@ -77,8 +77,13 @@ def _bash_execution_to_text(message: Mapping[str, Any]) -> str:
         text += "\n\n(command cancelled)"
     elif "exitCode" in message and message["exitCode"] is not None and not _is_number_zero(message["exitCode"]):
         text += "\n\nCommand exited with code " + _js_to_string(message, "exitCode")
-    if _js_truthy(message.get("truncated")) and _js_truthy(message.get("fullOutputPath")):
-        text += "\n\n[Output truncated. Full output: " + _js_to_string(message, "fullOutputPath") + "]"
+    if _js_truthy(message.get("truncated")):
+        if _js_truthy(message.get("fullOutputPath")):
+            text += "\n\n[Output truncated. Full output: " + _js_to_string(message, "fullOutputPath") + "]"
+        elif _js_truthy(message.get("fullOutputError")):
+            text += "\n\n[Output truncated. Could not save the full output: " + _js_to_string(message, "fullOutputError") + "]"
+        else:
+            text += "\n\n[Output truncated]"
     return text
 
 

@@ -79,7 +79,7 @@ func TestMapMistralStopReason(t *testing.T) {
 		{input: "length", wantReason: StopReasonLength},
 		{input: "model_length", wantReason: StopReasonLength},
 		{input: "tool_calls", wantReason: StopReasonToolUse},
-		{input: "error", wantReason: StopReasonError, wantMessage: "Provider stopped with: error (server error)"},
+		{input: "error", wantReason: StopReasonError, wantMessage: "Provider stopped with: error"},
 		{input: "unknown", wantReason: StopReasonError, wantMessage: "Provider stopped with: unknown"},
 	}
 	for _, test := range cases {
@@ -98,7 +98,7 @@ func TestMistralErrorRetainsUsage(t *testing.T) {
 	provider := &mistralProvider{}
 	go provider.consumeStream(context.Background(), body, builder)
 	result := builder.stream.Result()
-	if result.StopReason != StopReasonError || result.ErrorMessage != "Provider stopped with: error (server error)" {
+	if result.StopReason != StopReasonError || result.ErrorMessage != "Provider stopped with: error" {
 		t.Fatalf("result = %#v", result)
 	}
 	if result.Usage.Input != 7 || result.Usage.Output != 2 || result.Usage.TotalTokens != 9 {

@@ -22,8 +22,7 @@ func TestCodexSSEFramingMatchesPiParseSSE(t *testing.T) {
 		stop  StopReason
 		error string
 	}{
-		{"crlf records are not split", "data: " + created + "\r\n\r\ndata: " + completed + "\r\n\r\n", StopReasonError,
-			"Invalid Codex SSE JSON: Unexpected non-whitespace character after JSON at position 51 (line 2 column 1)"},
+		{"crlf records are split cleanly", "data: " + created + "\r\n\r\ndata: " + completed + "\r\n\r\n", StopReasonStop, ""},
 		{"leading byte order mark", "\ufeffdata: " + created + "\n\ndata: " + completed + "\n\n", StopReasonStop, ""},
 		{"no space, comment and event fields", "data:" + created + "\n\n: comment\n\nevent: x\ndata: " + completed + "\n\n", StopReasonStop, ""},
 		{"residual frame at EOF", "data: " + created + "\n\ndata: " + completed, StopReasonStop, ""},

@@ -1125,6 +1125,7 @@ func (s *Session) AppendBashExecution(message BashExecutionMessage) (string, err
 		Cancelled:          message.Cancelled,
 		Truncated:          message.Truncated,
 		FullOutputPath:     message.FullOutputPath,
+		FullOutputError:    message.FullOutputError,
 		ExcludeFromContext: message.ExcludeFromContext,
 		MessageTimestamp:   message.Timestamp,
 	}

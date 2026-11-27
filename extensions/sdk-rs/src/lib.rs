@@ -282,14 +282,15 @@ pub use js_string::JsString;
 pub use before_agent_start::BeforeAgentStartEvent;
 pub use context::{
     CommandInfo, CompactCompleteHandler, CompactErrorHandler, CompactOptions, Context,
-    CustomMessage, DialogOptions, ExecOptions, ExecResult, ModelEventStream, ModelFetchRequest,
-    ModelFetchResponse, ModelRegistry, ModelStreamCallbacks, MouseEvent, OverlayBounds,
-    OverlayHandle, OverlayState, RemoteComponent, RemoteComponentInvalidate, RemoteComponentResult,
-    SendMessageOptions, SetModelArg, SourceInfo, TerminalInputResult, TerminalInputSubscription,
-    ToolInfo, ToolInfoReachesTools, UnfocusTarget, UsageInfo, ViewComponent,
-    create_assistant_message_event_stream, is_bash_tool_result, is_edit_tool_result,
-    is_find_tool_result, is_grep_tool_result, is_ls_tool_result, is_powershell_tool_result,
-    is_read_tool_result, is_tool_call_event_type, is_write_tool_result, message_role, message_text,
+    CustomMessage, DialogBlockedKind, DialogOptions, DialogPromptOptions, ExecOptions, ExecResult,
+    ModelEventStream, ModelFetchRequest, ModelFetchResponse, ModelRegistry, ModelStreamCallbacks,
+    MouseEvent, OverlayBounds, OverlayHandle, OverlayState, RemoteComponent,
+    RemoteComponentInvalidate, RemoteComponentResult, SendMessageOptions, SetModelArg, SourceInfo,
+    TerminalInputResult, TerminalInputSubscription, ToolInfo, ToolInfoReachesTools, UnfocusTarget,
+    UsageInfo, ViewComponent, create_assistant_message_event_stream, is_bash_tool_result,
+    is_edit_tool_result, is_find_tool_result, is_grep_tool_result, is_ls_tool_result,
+    is_powershell_tool_result, is_read_tool_result, is_tool_call_event_type, is_write_tool_result,
+    message_role, message_text,
 };
 pub use events::*;
 mod child_session;

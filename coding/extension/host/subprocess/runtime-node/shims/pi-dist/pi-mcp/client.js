@@ -1,4 +1,4 @@
-import { isJsonRpcId, isJsonRpcNotification, isJsonRpcRequest, isJsonRpcResponse, isObject, JSON_RPC_ERROR_CODES, McpAbortError, McpConnectionClosedError, McpError, McpTimeoutError, toError, } from "./protocol/jsonrpc.js";
+import { isJsonRpcId, isJsonRpcNotification, isJsonRpcRequest, isJsonRpcResponse, isObject, JSON_RPC_ERROR_CODES, McpAbortError, McpConnectionClosedError, McpError, McpTimeoutError, normalizeOwnRequestId, toError, } from "./protocol/jsonrpc.js";
 import { LATEST_PROTOCOL_VERSION, SUPPORTED_PROTOCOL_VERSIONS, } from "./protocol/types.js";
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 const MAX_LIST_PAGES = 1_000;
@@ -309,12 +309,13 @@ export class McpClient {
         this.emitError(new McpError(JSON_RPC_ERROR_CODES.invalidRequest, "Received invalid JSON-RPC message"));
     }
     handleResponse(message) {
-        const entry = this.pending.get(message.id);
+        const id = normalizeOwnRequestId(message.id);
+        const entry = this.pending.get(id);
         if (!entry) {
             this.emitError(new Error(`Received response for unknown MCP request ${String(message.id)}`));
             return;
         }
-        this.removePending(message.id, entry);
+        this.removePending(id, entry);
         if ("error" in message)
             entry.reject(new McpError(message.error.code, message.error.message, message.error.data));
         else
@@ -370,7 +371,7 @@ export class McpClient {
     handleProgress(params) {
         if (!isObject(params) || !isJsonRpcId(params.progressToken) || typeof params.progress !== "number")
             return;
-        const requestId = this.progressRequests.get(params.progressToken);
+        const requestId = this.progressRequests.get(normalizeOwnRequestId(params.progressToken));
         const entry = requestId === undefined ? undefined : this.pending.get(requestId);
         if (requestId === undefined || !entry)
             return;

@@ -31,6 +31,8 @@ func anthropicClaudeFable52() ChatModel {
 		"cost", O("input", 8, "output", 40, "cacheRead", 0.2, "cacheWrite", 10),
 		"contextWindow", 1000000,
 		"maxTokens", 128000,
+		// Without a models.dev entry the shared rule cannot tell; Fable rejects `thinking: {type: "disabled"}`.
+		"thinkingLevelMap", O("off", nil),
 	)
 }
 
@@ -44,7 +46,7 @@ func anthropic() ProviderDefinition {
 				Map: func(model ChatModel, _ *ModelsDevModel) (ChatModel, error) {
 					id := model.Str("id")
 					if anthropicModels55[id] {
-						MergeThinking(model, Claude55ThinkingLevels(id))
+						MergeThinking(model, Claude55ThinkingLevels())
 					}
 					if anthropicModelsWith1MContext[id] {
 						model.Set("contextWindow", 1000000)

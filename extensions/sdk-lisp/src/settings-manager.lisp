@@ -134,10 +134,8 @@ whenever the manager reads or writes a scope: it runs FN on the scope's current 
   (get-provider-retry-settings ())
   (get-web-socket-connect-timeout-ms ())
   (get-hide-thinking-block () :bool t)
-  (get-show-cache-miss-notices () :bool t)
   (get-external-editor-command ())
   (set-hide-thinking-block (hide) :bool-args (hide))
-  (set-show-cache-miss-notices (show) :bool-args (show))
   (get-shell-path ())
   (set-shell-path (&optional path))
   (get-quiet-startup ())
@@ -216,4 +214,15 @@ whenever the manager reads or writes a scope: it runs FN on the scope's current 
   (get-mermaid-rendering-mode ())
   (set-mermaid-rendering-mode (mode))
   (get-warnings ())
-  (set-warnings (warnings)))
+  (set-warnings (warnings))
+  (get-notices ())
+  (set-notice (key shown) :bool-args (shown)))
+
+(defun settings-get-show-cache-miss-notices (settings)
+  "Deprecated: use settings-get-notices instead; scheduled for removal in 0.9.0."
+  (let ((notices (settings-get-notices settings)))
+    (and (hash-table-p notices) (eq (gethash "cacheMisses" notices) t))))
+
+(defun settings-set-show-cache-miss-notices (settings show)
+  "Deprecated: use (settings-set-notice settings key show) instead; scheduled for removal in 0.9.0."
+  (call-graph settings "setShowCacheMissNotices" (list (bool-value show))))

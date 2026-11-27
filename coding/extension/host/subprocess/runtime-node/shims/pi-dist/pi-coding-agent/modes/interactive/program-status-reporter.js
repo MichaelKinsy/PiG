@@ -1,4 +1,8 @@
 import { APP_NAME } from "../../config.js";
+/** Blocked status for a dialog. Its message is the first line of the title; later lines hold details such as paths. */
+export function dialogBlockedStatus(kind, title) {
+    return { kind, message: title.split(/\r?\n/, 1)[0] };
+}
 function firstLine(text) {
     return text?.split(/\r?\n/, 1)[0]?.trim() || "Error";
 }

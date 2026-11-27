@@ -23,6 +23,7 @@ const (
 	ClassifierAPICloudflareWorkersAISystemOne ClassifierAPI = "cloudflare-workers-ai-system-one"
 	ClassifierAPILlamaCppClassify             ClassifierAPI = "llama-cpp-classify"
 	ClassifierAPIOpenAIDecisions              ClassifierAPI = "openai-decisions"
+	ClassifierAPIPiDecision                   ClassifierAPI = "pi-decision"
 )
 
 // SystemOneImageAsset is a System One image asset: base64 file bytes, referenced by its name from the state.
@@ -324,8 +325,23 @@ func ClassifySystemOne(ctx context.Context, transport SystemOneTransport, model 
 	if err != nil {
 		return fail(err)
 	}
+	if idRaw, ok := result["id"]; ok {
+		var id string
+		if json.Unmarshal(idRaw, &id) == nil && id != "" {
+			output.ResponseID = id
+		}
+	}
 	// Set before parsing answers: a request with malformed answers was still billed.
-	output.Usage = ParseClassifierUsage(result["usage"], model)
+	usage := ParseClassifierUsage(result["usage"], model)
+	if usage != nil {
+		if isOpenRouterModel(model.Provider, model.BaseURL) {
+			var accounting openRouterUsageAccounting
+			if json.Unmarshal(result["usage"], &accounting) == nil {
+				applyOpenRouterReportedCost(usage, accounting)
+			}
+		}
+		output.Usage = usage
+	}
 	answers, err := parseAnswers(transport.Label, result["answers"], request)
 	if err != nil {
 		return fail(err)
@@ -415,8 +431,7 @@ var typesafeSystemOneTransport = SystemOneTransport{
 	Label: "System One API",
 	// OpenRouter by provider ID, which survives baseUrl overrides, or by host, which covers regional endpoints.
 	DetectCompat: func(model ClassifierModel) ResolvedSystemOneCompat {
-		//portlint:allow providerliteral typesafe-system-one.ts:20 detectCompat tests model.provider === "openrouter" || model.baseUrl.includes("openrouter.ai")
-		if model.Provider == "openrouter" || strings.Contains(model.BaseURL, "openrouter.ai") {
+		if isOpenRouterModel(model.Provider, model.BaseURL) {
 			return ResolvedSystemOneCompat{ImageInput: SystemOneImageInputStateImageURLs}
 		}
 		return ResolvedSystemOneCompat{ImageInput: SystemOneImageInputAssets, SendImageOptInHeader: true}

@@ -285,8 +285,8 @@ func (t anthTool) wire() (anthToolWire, error) {
 // anthLegacyInputSchemaOrder is the member order of the literal { type, properties, required } (anthropic-messages.ts:1589-1593, :207).
 var anthLegacyInputSchemaOrder = []string{"type", "properties", "required"}
 
-// anthLegacyOptionalRootKeys are the root members the legacy literal appends after required, in order, when present: additionalProperties, $defs and definitions (anthropic-messages.ts convertTools).
-var anthLegacyOptionalRootKeys = []string{"additionalProperties", "$defs", "definitions"}
+// anthLegacyOptionalRootKeys are the root members the legacy literal appends after required, in order, when present: additionalProperties, $schema, $defs and definitions (anthropic-messages.ts convertTools).
+var anthLegacyOptionalRootKeys = []string{"additionalProperties", "$schema", "$defs", "definitions"}
 
 // deferredToolPlaceholder mirrors upstream DEFERRED_TOOL_PLACEHOLDER: a stable
 // deferred tool declared whenever native tool changes are in use. Anthropic adds
@@ -1268,14 +1268,25 @@ func (p *anthropicProvider) send(ctx, requestContext context.Context, client ant
 	httpRequest := outgoing.http.WithContext(requestContext)
 	if client.injected != nil {
 		// upstream: anthropic-messages.ts:650-658 retryProviderRequest around client.beta.messages.create(params, requestOptions).asResponse()
+		var onErrResp func(ProviderResponse) error
+		if onResp := opts.OnResponse; onResp != nil {
+			responseModel := providerEventModel(p.cfg.ModelMetadata, APIAnthropicMessages, p.cfg.ProviderID, p.cfg.Model)
+			onErrResp = func(r ProviderResponse) error { return onResp(ctx, r, responseModel) }
+		}
 		return RetryProviderRequest(requestContext, func() (*http.Response, error) {
 			return client.injected.CreateMessage(requestContext, AnthropicCreateParams{Body: outgoing.body.Bytes(), Betas: outgoing.betas, UserProfileID: outgoing.params.userProfileID, WorkspaceID: outgoing.params.workspaceID}, AnthropicRequestOptions{TimeoutMs: opts.TimeoutMs})
-		}, ProviderRetryOptions{MaxRetries: opts.MaxRetries, MaxRetryDelayMs: opts.MaxRetryDelayMs})
+		}, ProviderRetryOptions{MaxRetries: opts.MaxRetries, MaxRetryDelayMs: opts.MaxRetryDelayMs, OnErrorResponse: onErrResp})
 	}
 	if client.federation != nil {
 		if err := client.federation.authorize(requestContext, httpRequest); err != nil {
 			return nil, err
 		}
+	}
+	if onResp := opts.OnResponse; onResp != nil {
+		responseModel := providerEventModel(p.cfg.ModelMetadata, APIAnthropicMessages, p.cfg.ProviderID, p.cfg.Model)
+		httpRequest = httpRequest.WithContext(withRetryErrorResponse(httpRequest.Context(), func(r *http.Response) error {
+			return onResp(ctx, ProviderResponse{Status: r.StatusCode, Headers: headersToRecord(r.Header)}, responseModel)
+		}))
 	}
 	resp, err := p.do(ctx, httpRequest, opts)
 	if err == nil {
@@ -1292,6 +1303,10 @@ func (p *anthropicProvider) streamResponse(ctx, requestContext context.Context, 
 		return err
 	}
 	if resp.StatusCode != http.StatusOK {
+		if obsErr := observeProviderResponse(ctx, opts, resp, model); obsErr != nil {
+			_ = resp.Body.Close()
+			return obsErr
+		}
 		b, _ := readWebText(resp.Body)
 		_ = resp.Body.Close()
 		// pig divergence (D37): retry once without rejected thinking signatures.
@@ -1326,6 +1341,10 @@ func (p *anthropicProvider) streamResponse(ctx, requestContext context.Context, 
 			return err
 		}
 		if resp.StatusCode != http.StatusOK {
+			if obsErr := observeProviderResponse(ctx, opts, resp, model); obsErr != nil {
+				_ = resp.Body.Close()
+				return obsErr
+			}
 			b2, _ := readWebText(resp.Body)
 			_ = resp.Body.Close()
 			noteFailureResponse(ctx, resp)
@@ -1885,6 +1904,9 @@ func (p *anthropicProvider) do(ctx context.Context, httpReq *http.Request, opts 
 		case errors.Is(err, context.DeadlineExceeded):
 			return nil, errors.New("Request timed out.")
 		default:
+			if cbErr, ok := errors.AsType[*retryCallbackError](err); ok {
+				return nil, cbErr.err
+			}
 			// retryProviderRequest throws validateServerRetryDelayMs's error with the SDK status error's own message appended.
 			if exceeded, ok := errors.AsType[*providerRetryDelayError](err); ok && exceeded.status != 0 {
 				if sdkErr, ok := errors.AsType[*providerError](anthHTTPError(exceeded.status, exceeded.body)); ok {

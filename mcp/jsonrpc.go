@@ -41,6 +41,29 @@ func (id JSONRPCID) String() string {
 	return jsnumber.String(id.num)
 }
 
+// normalizeOwnRequestID maps a canonical decimal string ("0", "1", "42") to its
+// numeric ID and leaves every other ID unchanged. The client creates only
+// integer request IDs and progress tokens; some servers echo them back as
+// strings.
+func normalizeOwnRequestID(id JSONRPCID) JSONRPCID {
+	if !id.isString || len(id.str) == 0 {
+		return id
+	}
+	if len(id.str) > 1 && id.str[0] == '0' {
+		return id
+	}
+	for i := 0; i < len(id.str); i++ {
+		if id.str[i] < '0' || id.str[i] > '9' {
+			return id
+		}
+	}
+	n, err := strconv.ParseFloat(id.str, 64) //portlint:allow numbers id.str is validated as canonical unsigned ASCII digits above, matching JS Number(str) exactly
+	if err != nil || math.IsInf(n, 0) || math.IsNaN(n) {
+		return id
+	}
+	return NumberID(n)
+}
+
 // key is the id as a JavaScript Map key: a string never equals a number, and -0 is 0 (SameValueZero).
 func (id JSONRPCID) key() string {
 	if id.isString {

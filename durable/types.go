@@ -1420,11 +1420,32 @@ type EntryAt struct {
 	CommitSeq Seq
 }
 
-// CommitResult is what Storage.Commit stored: the number of durable batches, and why the next one was refused, if one
-// was.
+// CommitResultKind is the tag of a CommitResult: stored (every batch stored) or refused (a batch was refused).
+type CommitResultKind string
+
+const (
+	// CommitStored indicates every batch in the Storage.Commit call was stored.
+	CommitStored CommitResultKind = "stored"
+	// CommitRefused indicates a batch in the Storage.Commit call was refused.
+	CommitRefused CommitResultKind = "refused"
+)
+
+// CommitResult is what Storage.Commit stored: Kind CommitStored with the number of durable batches, or Kind
+// CommitRefused with the number stored before the refusal and why the next one was refused.
 type CommitResult struct {
+	Kind    CommitResultKind
 	Stored  int
 	Refused error
+}
+
+// StoredCommit builds a stored CommitResult for stored durable batches.
+func StoredCommit(stored int) CommitResult {
+	return CommitResult{Kind: CommitStored, Stored: stored}
+}
+
+// RefusedCommit builds a refused CommitResult for stored durable batches before refused.
+func RefusedCommit(stored int, refused error) CommitResult {
+	return CommitResult{Kind: CommitRefused, Stored: stored, Refused: refused}
 }
 
 // PublishingStorage is the optional Publishing capability of a Storage. Publishing runs publish, the Session's

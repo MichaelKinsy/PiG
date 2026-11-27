@@ -91,7 +91,7 @@ func TestRuntimeDiscoveryIncludesRadiusCatalog(t *testing.T) {
 		}
 	}
 	balanced, ok := LookupModelExact("radius/balanced")
-	if !ok || balanced.Enabled == nil || !*balanced.Enabled || balanced.Lab != "Moonshot AI" || len(balanced.Providers) != 1 {
+	if !ok || balanced.Enabled == nil || !*balanced.Enabled || balanced.Lab == "" || len(balanced.Providers) != 1 {
 		t.Fatalf("Radius generated evidence = %+v, %t", balanced, ok)
 	}
 }

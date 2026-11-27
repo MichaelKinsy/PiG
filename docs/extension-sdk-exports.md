@@ -12,8 +12,8 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 |---|---|---|---|---|---|---|---|
 | `pi-coding-agent` | 930 | 310 | 920 | 258 | 258 | 258 | 258 |
 | `pi-tui` | 372 | 85 | 371 | 102 | 102 | 102 | 102 |
-| `pi-ai` | 114 | 200 | 114 | 82 | 82 | 82 | 82 |
-| `pi-ai/compat` | 174 | 207 | 174 | 139 | 139 | 139 | 139 |
+| `pi-ai` | 114 | 204 | 114 | 82 | 82 | 82 | 82 |
+| `pi-ai/compat` | 174 | 211 | 174 | 139 | 139 | 139 | 139 |
 | `pi-agent-core` | 45 | 35 | 45 | 45 | 45 | 45 | 45 |
 
 ## Lanes that own gaps
@@ -653,6 +653,7 @@ None.
 | `SettingsManager.getLastChangelogVersion` | 0 | served | native:SettingsManager.GetLastChangelogVersion | native:SettingsManager::get_last_changelog_version | native:SettingsManager.get_last_changelog_version | native:pig:settings-get-last-changelog-version |
 | `SettingsManager.getMermaidRenderingMode` | 0 | served | native:SettingsManager.GetMermaidRenderingMode | native:SettingsManager::get_mermaid_rendering_mode | native:SettingsManager.get_mermaid_rendering_mode | native:pig:settings-get-mermaid-rendering-mode |
 | `SettingsManager.getModelThinkingLevel` | 0 | served | native:SettingsManager.GetModelThinkingLevel | native:SettingsManager::get_model_thinking_level | native:SettingsManager.get_model_thinking_level | native:pig:settings-get-model-thinking-level |
+| `SettingsManager.getNotices` | 0 | served | native:SettingsManager.GetNotices | native:SettingsManager::get_notices | native:SettingsManager.get_notices | native:pig:settings-get-notices |
 | `SettingsManager.getNpmCommand` | 0 | served | native:SettingsManager.GetNpmCommand | native:SettingsManager::get_npm_command | native:SettingsManager.get_npm_command | native:pig:settings-get-npm-command |
 | `SettingsManager.getOrCreateDeviceId` | 0 | served | native:SettingsManager.GetOrCreateDeviceID | native:SettingsManager::get_or_create_device_id | native:SettingsManager.get_or_create_device_id | native:pig:settings-get-or-create-device-id |
 | `SettingsManager.getOutputPad` | 0 | served | native:SettingsManager.GetOutputPad | native:SettingsManager::get_output_pad | native:SettingsManager.get_output_pad | native:pig:settings-get-output-pad |
@@ -668,7 +669,6 @@ None.
 | `SettingsManager.getSettings` | 0 | served | native:SettingsManager.GetSettings | native:SettingsManager::get_settings | native:SettingsManager.get_settings | native:pig:settings-get-settings |
 | `SettingsManager.getShellCommandPrefix` | 0 | served | native:SettingsManager.GetShellCommandPrefix | native:SettingsManager::get_shell_command_prefix | native:SettingsManager.get_shell_command_prefix | native:pig:settings-get-shell-command-prefix |
 | `SettingsManager.getShellPath` | 0 | served | native:SettingsManager.GetShellPath | native:SettingsManager::get_shell_path | native:SettingsManager.get_shell_path | native:pig:settings-get-shell-path |
-| `SettingsManager.getShowCacheMissNotices` | 0 | served | native:SettingsManager.GetShowCacheMissNotices | native:SettingsManager::get_show_cache_miss_notices | native:SettingsManager.get_show_cache_miss_notices | native:pig:settings-get-show-cache-miss-notices |
 | `SettingsManager.getShowHardwareCursor` | 0 | served | native:SettingsManager.GetShowHardwareCursor | native:SettingsManager::get_show_hardware_cursor | native:SettingsManager.get_show_hardware_cursor | native:pig:settings-get-show-hardware-cursor |
 | `SettingsManager.getShowImages` | 0 | served | native:SettingsManager.GetShowImages | native:SettingsManager::get_show_images | native:SettingsManager.get_show_images | native:pig:settings-get-show-images |
 | `SettingsManager.getShowTerminalProgress` | 0 | served | native:SettingsManager.GetShowTerminalProgress | native:SettingsManager::get_show_terminal_progress | native:SettingsManager.get_show_terminal_progress | native:pig:settings-get-show-terminal-progress |
@@ -719,6 +719,7 @@ None.
 | `SettingsManager.setLastChangelogVersion` | 0 | served | native:SettingsManager.SetLastChangelogVersion | native:SettingsManager::set_last_changelog_version | native:SettingsManager.set_last_changelog_version | native:pig:settings-set-last-changelog-version |
 | `SettingsManager.setMermaidRenderingMode` | 0 | served | native:SettingsManager.SetMermaidRenderingMode | native:SettingsManager::set_mermaid_rendering_mode | native:SettingsManager.set_mermaid_rendering_mode | native:pig:settings-set-mermaid-rendering-mode |
 | `SettingsManager.setModelThinkingLevel` | 0 | served | native:SettingsManager.SetModelThinkingLevel | native:SettingsManager::set_model_thinking_level | native:SettingsManager.set_model_thinking_level | native:pig:settings-set-model-thinking-level |
+| `SettingsManager.setNotice` | 0 | served | native:SettingsManager.SetNotice | native:SettingsManager::set_notice | native:SettingsManager.set_notice | native:pig:settings-set-notice |
 | `SettingsManager.setNpmCommand` | 0 | served | native:SettingsManager.SetNpmCommand | native:SettingsManager::set_npm_command | native:SettingsManager.set_npm_command | native:pig:settings-set-npm-command |
 | `SettingsManager.setOutputPad` | 0 | served | native:SettingsManager.SetOutputPad | native:SettingsManager::set_output_pad | native:SettingsManager.set_output_pad | native:pig:settings-set-output-pad |
 | `SettingsManager.setPackages` | 0 | served | native:SettingsManager.SetPackages | native:SettingsManager::set_packages | native:SettingsManager.set_packages | native:pig:settings-set-packages |
@@ -734,7 +735,6 @@ None.
 | `SettingsManager.setSessionShareDestination` | 0 | served | native:SettingsManager.SetSessionShareDestination | native:SettingsManager::set_session_share_destination | native:SettingsManager.set_session_share_destination | native:pig:settings-set-session-share-destination |
 | `SettingsManager.setShellCommandPrefix` | 0 | served | native:SettingsManager.SetShellCommandPrefix | native:SettingsManager::set_shell_command_prefix | native:SettingsManager.set_shell_command_prefix | native:pig:settings-set-shell-command-prefix |
 | `SettingsManager.setShellPath` | 0 | served | native:SettingsManager.SetShellPath | native:SettingsManager::set_shell_path | native:SettingsManager.set_shell_path | native:pig:settings-set-shell-path |
-| `SettingsManager.setShowCacheMissNotices` | 0 | served | native:SettingsManager.SetShowCacheMissNotices | native:SettingsManager::set_show_cache_miss_notices | native:SettingsManager.set_show_cache_miss_notices | native:pig:settings-set-show-cache-miss-notices |
 | `SettingsManager.setShowHardwareCursor` | 0 | served | native:SettingsManager.SetShowHardwareCursor | native:SettingsManager::set_show_hardware_cursor | native:SettingsManager.set_show_hardware_cursor | native:pig:settings-set-show-hardware-cursor |
 | `SettingsManager.setShowImages` | 0 | served | native:SettingsManager.SetShowImages | native:SettingsManager::set_show_images | native:SettingsManager.set_show_images | native:pig:settings-set-show-images |
 | `SettingsManager.setShowTerminalProgress` | 0 | served | native:SettingsManager.SetShowTerminalProgress | native:SettingsManager::set_show_terminal_progress | native:SettingsManager.set_show_terminal_progress | native:pig:settings-set-show-terminal-progress |

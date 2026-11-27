@@ -272,8 +272,12 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
 (defun ctx-set-title (ctx title)
   (ctx-call-host ctx "ui.setTitle" (obj "title" title)) nil)
 
-(defun dialog-args (args timeout)
-  (when timeout (setf (gethash "opts" args) (obj "timeout" timeout)))
+(defun dialog-args (args timeout &optional blocked-kind)
+  (when (or timeout blocked-kind)
+    (let ((opts (obj)))
+      (when timeout (setf (gethash "timeout" opts) timeout))
+      (when blocked-kind (setf (gethash "blockedKind" opts) blocked-kind))
+      (setf (gethash "opts" args) opts)))
   args)
 
 (defun dialog-value (result member)
@@ -282,26 +286,26 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
       (values (jget result member) t)
       (values nil nil)))
 
-(defun ctx-select (ctx title options &key timeout)
+(defun ctx-select (ctx title options &key timeout blocked-kind)
   "Ask the user to pick one of OPTIONS (strings). (values choice answered-p)."
   (block-for-user ctx)
-  (dialog-value (ctx-call-host ctx "ui.select" (dialog-args (obj "title" title "options" (coerce options 'simple-vector)) timeout))
+  (dialog-value (ctx-call-host ctx "ui.select" (dialog-args (obj "title" title "options" (coerce options 'simple-vector)) timeout blocked-kind))
                 "selected"))
 
-(defun ctx-confirm (ctx title message &key timeout)
+(defun ctx-confirm (ctx title message &key timeout blocked-kind)
   "Ask the user to confirm. (values confirmed-p confirmed): CONFIRMED-P is true only when the user confirmed; CONFIRMED is the JSON
 value the client answered with (RPC clients may send any), :false when it sent none."
   (block-for-user ctx)
-  (let* ((result (ctx-call-host ctx "ui.confirm" (dialog-args (obj "title" title "message" message) timeout)))
+  (let* ((result (ctx-call-host ctx "ui.confirm" (dialog-args (obj "title" title "message" message) timeout blocked-kind)))
          (confirmed (if (hash-table-p result) (multiple-value-bind (v found) (gethash "confirmed" result) (if found v :false)) :false)))
     (values (eq confirmed t) confirmed)))
 
-(defun ctx-input (ctx title &key placeholder timeout)
+(defun ctx-input (ctx title &key placeholder timeout blocked-kind)
   "Ask the user for a line of text. (values text answered-p)."
   (block-for-user ctx)
   (let ((args (obj "title" title)))
     (when placeholder (setf (gethash "placeholder" args) placeholder))
-    (dialog-value (ctx-call-host ctx "ui.input" (dialog-args args timeout)) "text")))
+    (dialog-value (ctx-call-host ctx "ui.input" (dialog-args args timeout blocked-kind)) "text")))
 
 (defun ctx-editor (ctx title &key prefill)
   "Open the multi-line editor. (values text answered-p)."

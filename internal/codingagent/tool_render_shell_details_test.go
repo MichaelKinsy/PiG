@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
+	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
 // A resumed or extension-supplied shell result carries its details as decoded JSON. Reading the truncation fields from
@@ -75,5 +76,26 @@ func TestShellCardIgnoresACaseVariantTruncatedBy(t *testing.T) {
 	rendered := strings.Join(makeShellBodyRenderer("one\ntwo", details, false, nil)(80, true), "\n")
 	if strings.Contains(rendered, "Truncated: showing") || !strings.Contains(rendered, "Truncated: 2 lines shown (50.0KB limit)") {
 		t.Fatalf("card rendered\n%s\nwant the byte-limit warning", rendered)
+	}
+}
+
+// Port of Pi main 8209929fb553e7a8c91dc0894569f9ec43dd201f & 3511d455419e868faf76a71246add4f611d48c61:
+// bash tool UI strips the model's "Could not save" footer and renders the reason in the warning line.
+func TestShellRendererStripsFailedFullOutputFooterAndShowsError(t *testing.T) {
+	errMsg := "ENOENT: no such file or directory, open '/very/long/temp/dir/path/pi-bash-0123456789abcdef.log'"
+	content := "line 1\nline 2\n\n[Showing lines 2001-3000 of 3000. Could not save the full output: " + errMsg + "]"
+	details := &tools.BashDetails{
+		Truncation:      &tools.TruncationResult{Truncated: true, TruncatedBy: "lines", OutputLines: 1000, TotalLines: 3000},
+		FullOutputError: errMsg,
+	}
+	lines := shellResultLines(content, shellDetailsFrom(details), false, false, 200)
+	// Normalize whitespace so wrapping on long temp dir paths does not break the match (3511d4554).
+	rendered := strings.Join(strings.Fields(text.StripANSIString(strings.Join(lines, "\n"))), " ")
+	if strings.Contains(rendered, "[Showing lines") {
+		t.Fatalf("model footer was not stripped: %q", rendered)
+	}
+	want := "[Could not save the full output: " + errMsg + ". Truncated: showing 1000 of 3000 lines]"
+	if !strings.Contains(rendered, want) {
+		t.Fatalf("rendered = %q, want %q", rendered, want)
 	}
 }

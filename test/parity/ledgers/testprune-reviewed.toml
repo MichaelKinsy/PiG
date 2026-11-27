@@ -1535,3 +1535,170 @@ path = "automation/ci/cidag/cidag_test.go"
 commit = "644d3ee30b09ac45dae4b22e2cda5eda92e568cf"
 class = "NOBEHAVIOR"
 reason = "PiG-only CI DAG tier renderer hardening (PR #579 review): when lightMode is empty on a pull_request, Full=true now retains the full static platform matrices instead of pruning them, while lightMode=queue keeps the fail-closed unmapped-row + pruning assertions in sub-case 4."
+
+[[entry]]
+path = "ai/anthropic_stream_test.go"
+commit = "f0422a28663fe776e2e450f81579cedad684dbe2"
+class = "CITE"
+cite = "packages/ai/src/api/anthropic-messages.ts:1"
+reason = "Pi v1.6.1 SseDecoder migration in anthropic-messages.ts changes chunked SSE event reader suspend counts in TestAnthropicEventReaderSuspendCounts (4->5, 6->8, 2->4)."
+
+[[entry]]
+path = "ai/google_contract_0861_test.go"
+commit = "6ad80c9e989fcf7014bd33ad1a84b9805cbcdc2f"
+class = "CITE"
+cite = "packages/ai/src/api/google-shared.ts:1"
+reason = "Pi v1.6.1 google-shared.ts drops the unused API parameter from mapGoogleFinishReason and updates finish-reason mapping assertions."
+
+[[entry]]
+path = "internal/codingagent/settings_notices_test.go"
+commit = "673ec41d127750bed9f3de194e9ce72dc39fa74c"
+class = "CITE"
+cite = "packages/coding-agent/src/core/settings-manager.ts:1"
+reason = "Pi v1.6.1 settings-manager.ts replaces showCacheMissNotices with per-notice settings.notices.*; review cure aligns deprecated ShowCacheMissNotices field/wrapper sync assertions."
+
+[[entry]]
+path = "internal/codingagent/tools/output_file_failures_upstream_test.go"
+commit = "43deb1c38f301481162136599ddd9c9801765812"
+class = "CITE"
+cite = "packages/coding-agent/src/core/tools/output-accumulator.ts:1"
+reason = "Pi v1.6.1 output-accumulator.ts persists and propagates fullOutputError when saving truncated output fails; ports the full failure test matrix."
+
+[[entry]]
+path = "internal/outputfiles/outputfiles_test.go"
+commit = "43deb1c38f301481162136599ddd9c9801765812"
+class = "CITE"
+cite = "packages/coding-agent/src/utils/output-files.ts:1"
+reason = "Pi v1.6.1 output-files.ts replaces CreateStream with OpenStream returning a Close result with Saved(); updates test to match."
+
+[[entry]]
+path = "ai/openai_responses_namespace_upstream_test.go"
+commit = "c2fd88933ffab2a57afccc6e152ac56310447419"
+class = "CITE"
+cite = "packages/ai/src/api/openai-responses-shared.ts:1"
+reason = "Pi v1.6.1 openai-responses-shared.ts includes status:completed on replayed function_call and custom_tool_call items in canonical struct field order."
+
+[[entry]]
+path = "internal/codingagent/llama/client_test.go"
+commit = "b40374ffaa0669774dc345fab16a0a524d13e3ba"
+class = "CITE"
+cite = "packages/coding-agent/src/extensions/llama/client.ts:1"
+reason = "Pi v1.6.1 linear-time llama SSE parser replaces quadratic buffer rescanning; tightens split-frame and large-event assertions."
+
+[[entry]]
+path = "ai/pi_decision_test.go"
+commit = "10b48beb74e1dea59da89d47cfb505f939387796"
+class = "NOBEHAVIOR"
+reason = "Pi v1.6.1 adds new packages/ai/src/api/pi-decision.ts (not yet in main's v1.6.0 PORT_MAP); hardens pi-decision SessionID optional pointer and HTTP POST verification on this branch."
+
+[[entry]]
+path = "internal/codingagent/settings_accessors_roundtrip_test.go"
+commit = "65978f2a635e854b7e3d7526be4f09c66b1f1cf4"
+class = "CITE"
+cite = "packages/coding-agent/src/core/settings-manager.ts:1"
+reason = "Pi v1.6.1 settings-manager.ts replaces showCacheMissNotices with notices.cacheMisses/cacheWarming/compactionCosts/reasoningDrops."
+
+[[entry]]
+path = "internal/codingagent/tools/output_accumulator_async_tools_test.go"
+commit = "53d35397b60f28bd14eb46519443f69560600fe2"
+class = "CITE"
+cite = "packages/coding-agent/src/core/tools/output-accumulator.ts:1"
+reason = "Pi v1.6.1 output-accumulator.ts makes CloseTempFile non-erroring and reports failed writes as FullOutputError on subsequent snapshots."
+
+[[entry]]
+path = "ai/openai_codex_developer_item_and_effort_upstream_test.go"
+commit = "23c16fab6744799fc03ade9a66a688c9f967ad03"
+class = "CITE"
+cite = "packages/ai/src/api/openai-codex-responses.ts:1"
+reason = "Pi v1.6.1 openai-codex-responses.ts pins initial selected effort in reasoning.effort and emits configuration_update only on effort changes."
+
+[[entry]]
+path = "durable/core/driver/harness_lanec_core_test.go"
+commit = "81e00f5dee4afaf07b86390c49e8c662a00d1620"
+class = "CITE"
+cite = "packages/durable/src/harness/types.ts:1"
+reason = "Pi v1.6.1 durable harness renames transactional submission method SubmitIn to Admit."
+
+[[entry]]
+path = "durable/core/driver/suspendable_pin_core_test.go"
+commit = "81e00f5dee4afaf07b86390c49e8c662a00d1620"
+class = "CITE"
+cite = "packages/durable/src/harness/types.ts:1"
+reason = "Pi v1.6.1 durable harness converts ToolPark to a tagged union (Kind: ToolParkSleep / ToolParkWait)."
+
+[[entry]]
+path = "chord/next/store/store_test.go"
+commit = "d34c8359a4f5d86c95d4b63135672c89191194a0"
+class = "CITE"
+cite = "packages/chord/src/store/store.ts:1"
+reason = "Pi v1.6.1 chord store converts SeriesResult and Compiled to tagged unions (SeriesStored / SeriesRefused)."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_pluginfile_test.go"
+commit = "cf8724c12c99af291ae4a9aa54748810081b57a2"
+class = "CITE"
+cite = "packages/chord/src/node/plugins/plugins.ts:1"
+reason = "Pi v1.6.1 chord plugins converts RolloutHost to a tagged union with kind reloaded/stopped/failed."
+
+[[entry]]
+path = "chord/nextnode/workers/workers_main_test.go"
+commit = "cf8724c12c99af291ae4a9aa54748810081b57a2"
+class = "CITE"
+cite = "packages/chord/src/node/workers/main.ts:1"
+reason = "Pi v1.6.1 chord workers adds FromWorkerReloadFailed (reload_failed) instead of overloading reloaded."
+
+[[entry]]
+path = "internal/codingagent/first_time_setup_pig_login_test.go"
+commit = "2638f9b015a013a25b531eeca24ce957140db284"
+class = "DIVERGENCE"
+cite = "D88"
+reason = "Pi v1.6.1 simplifies first-time setup to omit the theme picker step (defaulting to system theme); PiG D88 follows with two steps (sprite, then analytics)."
+
+[[entry]]
+path = "internal/codingagent/select_page_keys_pr7680_test.go"
+commit = "2638f9b015a013a25b531eeca24ce957140db284"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/components/first-time-setup.ts:1"
+reason = "Pi v1.6.1 first-time-setup.ts removes the theme step and OnThemePreview; test now exercises analyticsIndex on the remaining step."
+
+[[entry]]
+path = "internal/codingagent/select_page_keys_test.go"
+commit = "2638f9b015a013a25b531eeca24ce957140db284"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/components/first-time-setup.ts:1"
+reason = "Pi v1.6.1 first-time-setup.ts removes the theme step; test now checks analyticsIndex ignores page keys."
+
+[[entry]]
+path = "internal/codingagent/bash_history_render_test.go"
+commit = "e59e98a41991e90f217925acba246253544ccc66"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/interactive-mode.ts:1"
+reason = "Pi v1.6.1 interactive-mode.ts makes rebuilt ! bash history output follow the active ctrl+o tool expansion state."
+
+[[entry]]
+path = "internal/truncate/tail_window_test.go"
+commit = "70905f5ee2f4f186f8274ce2a0fb04a77a1a9809"
+class = "CITE"
+cite = "packages/coding-agent/src/core/tools/truncate.ts:1"
+reason = "Pi v1.6.1 truncate.ts shows the end of an over-long line followed by blank lines in bash output, retaining up to maxBytes+2+utf8.UTFMax on a UTF-8 boundary."
+
+[[entry]]
+path = "internal/codingagent/mermaid_upstream_test.go"
+commit = "904cc8fad25ce532bf589e0df04e43f0658485b5"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/components/mermaid.ts:1"
+reason = "Pi v1.6.1 mermaid.ts appends a note explaining why oversized Mermaid diagrams render as source once streaming finishes."
+
+[[entry]]
+path = "ai/mistral_test.go"
+commit = "e1fdbe4a88d7829b54a4ad37f9b7f3fa68e3d847"
+class = "CITE"
+cite = "packages/ai/src/api/mistral-conversations.ts:1"
+reason = "Pi v1.6.1 moves finish_reason error classification into retry.ts instead of appending (server error) in mapMistralStopReason."
+
+[[entry]]
+path = "internal/codingagent/mermaid_fallback_upstream_test.go"
+commit = "904cc8fad25ce532bf589e0df04e43f0658485b5"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/components/mermaid.ts:1"
+reason = "Pi v1.6.1 mermaid.ts keeps oversized source unchanged while streaming and appends the column-width explanation once complete."

@@ -379,4 +379,42 @@ func TestUpstreamImageHyperlink(t *testing.T) {
 			t.Fatalf("link=%q", got)
 		}
 	})
+	// Port of Pi main 6ca01d1e93c316b2b9da34d68807293d6fbdb5dc (packages/tui/test/markdown.test.ts)
+	t.Run("does not hyperlink a bare URL that runs into a very long line", func(t *testing.T) {
+		prev := GetCapabilities()
+		t.Cleanup(func() { SetCapabilities(prev) })
+		SetCapabilities(TerminalCapabilities{Hyperlinks: true})
+		url := "https://example.com/path,data:" + strings.Repeat("x", 20_000)
+		output := strings.Join(NewMarkdown(url).Render(80), "")
+		if strings.Contains(output, "\x1b]8;") {
+			t.Fatalf("unexpected OSC 8 hyperlink in output for %d-byte URL", len(url))
+		}
+		if len(output) >= 3*len(url) {
+			t.Fatalf("output length %d >= 3*%d", len(output), len(url))
+		}
+		plain := strings.Join(strings.Fields(widthx.StripAnsi(output)), "")
+		if plain != url {
+			t.Fatalf("plain text mismatch: got len %d, want %d", len(plain), len(url))
+		}
+	})
+	t.Run("hyperlink URL length boundary at 8192", func(t *testing.T) {
+		atLimit := "https://example.com/" + strings.Repeat("a", maxHyperlinkURLLength-len("https://example.com/"))
+		if got := Hyperlink("ok", atLimit); !strings.Contains(got, "\x1b]8;;") {
+			t.Fatalf("URL of exact length %d should still be linked", len(atLimit))
+		}
+		overLimit := atLimit + "a"
+		if got := Hyperlink("ok", overLimit); got != "ok" {
+			t.Fatalf("URL of length %d should return plain text, got %q", len(overLimit), got)
+		}
+		// Non-ASCII BMP runes are 3 UTF-8 bytes but 1 UTF-16 code unit: 4000 CJK chars = 12000 bytes, 4000 UTF-16 units -> still linked.
+		bmpURL := "https://example.com/" + strings.Repeat("中", 4000)
+		if got := Hyperlink("ok", bmpURL); !strings.Contains(got, "\x1b]8;;") {
+			t.Fatalf("BMP URL of %d UTF-16 units (%d UTF-8 bytes) should still be linked", utf16Length(bmpURL), len(bmpURL))
+		}
+		// Astral runes are 4 UTF-8 bytes and 2 UTF-16 code units: 4100 emoji = 8200 UTF-16 units -> omitted.
+		astralURL := "https://example.com/" + strings.Repeat("😀", 4100)
+		if got := Hyperlink("ok", astralURL); got != "ok" {
+			t.Fatalf("astral URL of %d UTF-16 units should return plain text", utf16Length(astralURL))
+		}
+	})
 }

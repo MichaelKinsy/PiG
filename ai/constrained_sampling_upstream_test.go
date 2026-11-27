@@ -144,7 +144,7 @@ func TestConstrainedSamplingGrammarReplayUpstream(t *testing.T) {
 		if err := json.Unmarshal(raw, &got); err != nil {
 			t.Fatal(err)
 		}
-		want := []map[string]any{{"type": "custom_tool_call", "id": "ctc_1", "call_id": "call_1", "name": "sample_tool", "input": "abc"}, {"type": "custom_tool_call_output", "call_id": "call_1", "output": "done"}}
+		want := []map[string]any{{"type": "custom_tool_call", "status": "completed", "id": "ctc_1", "call_id": "call_1", "name": "sample_tool", "input": "abc"}, {"type": "custom_tool_call_output", "call_id": "call_1", "output": "done"}}
 		if !reflect.DeepEqual(got, want) {
 			t.Fatalf("replay=%s", raw)
 		}

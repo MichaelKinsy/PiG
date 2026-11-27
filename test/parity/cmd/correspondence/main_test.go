@@ -154,7 +154,7 @@ func TestWorkPacketCurrentPinKeepsAgentReadOnly(t *testing.T) {
 	// (current-state, dispatch, persistence, runtime-effects, value-domain).
 	// Reproduce with:
 	//   go run ./test/parity/cmd/correspondence work-packet -root . -upstream-version 0.99.2 -target-commit <commit> -role adversary -snapshot-id snapshot:test
-	if packet.Role != correspondence.AdversaryRole || packet.SnapshotID != "snapshot:test" || len(packet.Questions) != 44 || len(packet.ObligationIDs) != 213 || len(packet.UnresolvedEdges) != 11 || !slices.Equal(runtimeCandidates, wantRuntimeCandidates) || len(packet.WritePaths) != 0 {
+	if packet.Role != correspondence.AdversaryRole || packet.SnapshotID != "snapshot:test" || len(packet.Questions) != 44 || len(packet.ObligationIDs) != 214 || len(packet.UnresolvedEdges) != 11 || !slices.Equal(runtimeCandidates, wantRuntimeCandidates) || len(packet.WritePaths) != 0 {
 		t.Fatalf("work packet = role %s snapshot %s questions %d obligations %d unresolved %v writes %d", packet.Role, packet.SnapshotID, len(packet.Questions), len(packet.ObligationIDs), packet.UnresolvedEdges, len(packet.WritePaths))
 	}
 }

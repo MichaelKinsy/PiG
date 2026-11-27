@@ -165,6 +165,14 @@ func LoginGitHubCopilot(ctx context.Context, cb CopilotLoginCallbacks) (Credenti
 		}
 	}
 	cred.AvailableModelIDs, err = json.Marshal(availableModelIDs)
+	if err != nil {
+		return cred, err
+	}
+	classifierModelIDs := catalog.ClassifierModelIDs
+	if classifierModelIDs == nil {
+		classifierModelIDs = []string{}
+	}
+	cred.AvailableClassifierModelIDs, err = json.Marshal(classifierModelIDs) //portlint:allow nilslicenull non-nil empty slice guaranteed above so JSON always encodes []
 	return cred, err
 }
 
@@ -331,6 +339,14 @@ func refreshCopilotToken(ctx context.Context, githubToken, enterpriseDomain stri
 		return Credential{}, err
 	}
 	credential.AvailableModelIDs, err = json.Marshal(catalog.AvailableModelIDs)
+	if err != nil {
+		return credential, err
+	}
+	classifierModelIDs := catalog.ClassifierModelIDs
+	if classifierModelIDs == nil {
+		classifierModelIDs = []string{}
+	}
+	credential.AvailableClassifierModelIDs, err = json.Marshal(classifierModelIDs) //portlint:allow nilslicenull non-nil empty slice guaranteed above so JSON always encodes []
 	return credential, err
 }
 
@@ -384,14 +400,16 @@ func refreshCopilotAccessToken(ctx context.Context, githubToken, enterpriseDomai
 // whose account policy still needs a policy-enable POST. Mirrors upstream
 // parseGitHubCopilotModelCatalog's return shape (github-copilot.ts:93-133).
 type copilotModelCatalog struct {
-	AvailableModelIDs []string
-	PolicyModelIDs    []string
+	AvailableModelIDs  []string
+	ClassifierModelIDs []string
+	PolicyModelIDs     []string
 }
 
 // copilotAccountModel is one entry of the account's model catalog after
 // dropping models the account can never use (no tool-call support).
 type copilotAccountModel struct {
 	id            string
+	modelType     string
 	pickerEnabled bool
 	policyState   string // "" when the API omitted policy/state entirely
 }
@@ -428,11 +446,24 @@ func parseGitHubCopilotModelCatalog(body []byte, allowPolicyFallback bool) (copi
 			continue
 		}
 		pickerEnabled, _ := item["model_picker_enabled"].(bool)
+		var modelType string
+		if caps, ok := item["capabilities"].(map[string]any); ok {
+			modelType, _ = caps["type"].(string)
+		}
 		accountModels = append(accountModels, copilotAccountModel{
 			id:            id,
+			modelType:     modelType,
 			pickerEnabled: pickerEnabled,
 			policyState:   copilotPolicyState(item),
 		})
+	}
+
+	// Decision models are never picker-enabled; the catalog lists only those the account can call.
+	classifierModelIDs := make([]string, 0)
+	for _, m := range accountModels {
+		if m.modelType == "decisions" && m.policyState != "disabled" {
+			classifierModelIDs = append(classifierModelIDs, m.id)
+		}
 	}
 
 	pickerModelIDs := make([]string, 0, len(accountModels))
@@ -466,7 +497,7 @@ func parseGitHubCopilotModelCatalog(body []byte, allowPolicyFallback bool) (copi
 		}
 	}
 
-	return copilotModelCatalog{AvailableModelIDs: availableModelIDs, PolicyModelIDs: policyModelIDs}, nil
+	return copilotModelCatalog{AvailableModelIDs: availableModelIDs, ClassifierModelIDs: classifierModelIDs, PolicyModelIDs: policyModelIDs}, nil
 }
 
 // copilotToolCallsDisabled reports whether the catalog item explicitly

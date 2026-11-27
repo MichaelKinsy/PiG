@@ -40,14 +40,26 @@ func TestMermaidRenderingUpstream(t *testing.T) {
 		lacks(t, out, "```mermaid")
 	})
 	// .upstream/current/packages/coding-agent/test/mermaid.test.ts:43
-	t.Run("leaves unsupported and oversized diagrams unchanged", func(t *testing.T) {
+	// Port of Pi main 9034e8a890225a8c123a8d956e7f637402823fdc
+	t.Run("leaves unsupported diagrams unchanged and explains oversized ones", func(t *testing.T) {
 		unsupported := "```mermaid\ngantt\n  title Plan\n```"
 		if got := normal(unsupported); got != unsupported {
 			t.Errorf("unsupported=%q, want %q", got, unsupported)
 		}
 		oversized := "```mermaid\nflowchart LR\n  A[Start] --> B[Done]\n```"
-		if got := transform(oversized, "streaming", false, 10, extension.MarkdownMessageAssistant, nil); got != oversized {
-			t.Errorf("oversized=%q, want %q", got, oversized)
+		if got := transform(oversized, "streaming", true, 10, extension.MarkdownMessageAssistant, nil); got != oversized {
+			t.Errorf("streaming oversized=%q, want %q", got, oversized)
+		}
+		narrow := transform(oversized, "streaming", false, 10, extension.MarkdownMessageAssistant, nil)
+		assertToolContains(t, narrow, oversized, "```\n`Mermaid diagram not rendered: needs 21 columns, 10 available`")
+	})
+	t.Run("reports warnings instead of width when an oversized diagram also has warnings", func(t *testing.T) {
+		invalid := "```mermaid\nflowchart LR\n  A[Start] --> B[Done]\n  C-->\n```"
+		narrow := transform(invalid, "streaming", false, 10, extension.MarkdownMessageAssistant, nil)
+		assertToolContains(t, narrow, invalid, "Mermaid diagram not rendered: dropped, link has no target")
+		lacks(t, narrow, "columns")
+		if got := transform(invalid, "streaming", true, 10, extension.MarkdownMessageAssistant, nil); got != invalid {
+			t.Errorf("streaming invalid=%q, want %q", got, invalid)
 		}
 	})
 	// .upstream/current/packages/coding-agent/test/mermaid.test.ts:51

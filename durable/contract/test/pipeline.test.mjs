@@ -126,7 +126,7 @@ test("SC: the reference passes the storage conformance suite, and a provider tha
 		'	const real = await openNodeSqliteStorage(join(await mkdtemp(join(tmpdir(), "bad-sc-")), "s.sqlite"));',
 		"	// A write encoder that loses every commit but the first.",
 		"	let n = 0;",
-		'	await use(new Proxy(real, { get: (t, p) => (p === "commit" ? (b, r, c) => (n++ ? Promise.resolve({ stored: 0 }) : t.commit(b, r, c)) : typeof t[p] === "function" ? t[p].bind(t) : t[p]) }));',
+		'	await use(new Proxy(real, { get: (t, p) => (p === "commit" ? (b, r, c) => (n++ ? Promise.resolve({ kind: "stored", stored: 0 }) : t.commit(b, r, c)) : typeof t[p] === "function" ? t[p].bind(t) : t[p]) }));',
 		"}",
 	].join("\n") + "\n")
 	const bad = await runScRow({}, { name: "bad", vitest: true, candidateDir: dir }, ctx)

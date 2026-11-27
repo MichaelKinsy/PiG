@@ -6,7 +6,7 @@
 export type HostTool = { name: string; description?: string; parameters?: unknown; constrainedSampling?: unknown; replay?: "safe" | "unsafe"; executionMode?: string; outputLimits?: unknown; callers?: readonly ("model" | "tools")[]; deferred?: true; structuredOutputSchema?: unknown; prepareArguments?: (args: unknown) => unknown; execute: (...args: any[]) => unknown }
 export type HostSection = { key: string; tag?: boolean; render: (...args: any[]) => unknown }
 export type HostHook = { task: string; handlers: Record<string, ((...args: any[]) => unknown) | undefined> }
-export type HostWrap = { tool: string; wrap: (tool: any) => any } | { section: string; wrap: (section: any) => any }
+export type HostWrap = { kind: "tool"; tool: string; wrap: (tool: any) => any } | { kind: "section"; section: string; wrap: (section: any) => any }
 export type HostTask = { definition: { name: string; version?: number; phases?: Record<string, unknown>; abort?: unknown; [key: string]: unknown } }
 export type HostExtension = { name: string; tools?: readonly HostTool[]; sections?: readonly HostSection[]; hooks?: readonly HostHook[]; wraps?: readonly HostWrap[]; tasks?: readonly HostTask[] }
 
@@ -65,7 +65,7 @@ export class HostRegistry {
           task: hook.task,
           handlers: Object.fromEntries(Object.entries(hook.handlers).filter(([, fn]) => typeof fn === "function").map(([name, fn]) => [name, this.id(fn)])),
         })),
-        wraps: (extension.wraps ?? []).map(wrap => "tool" in wrap ? { tool: wrap.tool, handler: this.id(wrap.wrap) } : { section: wrap.section, handler: this.id(wrap.wrap) }),
+        wraps: (extension.wraps ?? []).map(wrap => wrap.kind === "tool" ? { tool: wrap.tool, handler: this.id(wrap.wrap) } : { section: wrap.section, handler: this.id(wrap.wrap) }),
         tasks: (extension.tasks ?? []).map(task => ({
           name: task.definition.name,
           version: task.definition.version ?? 1,

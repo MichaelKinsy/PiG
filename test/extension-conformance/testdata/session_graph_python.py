@@ -180,7 +180,7 @@ def read_all(s):
         "getCacheWarmingMode": s.get_cache_warming_mode(),
         "getWebSocketConnectTimeoutMs": s.get_web_socket_connect_timeout_ms(),
         "getHideThinkingBlock": s.get_hide_thinking_block(),
-        "getShowCacheMissNotices": s.get_show_cache_miss_notices(),
+        "getNotices": s.get_notices(),
         "getExternalEditorCommand": s.get_external_editor_command(),
         "getShellPath": s.get_shell_path(),
         "getQuietStartup": s.get_quiet_startup(),
@@ -339,7 +339,7 @@ def settings_script(ctx, args):
     s.set_show_terminal_progress(True)
     s.set_enable_skill_commands(False)
     s.set_enable_install_telemetry(False)
-    s.set_show_cache_miss_notices(False)
+    s.set_notice("cacheMisses", False)
     s.set_default_model_and_provider("anthropic", "opus")
     s.set_project_packages(["npm:proj"])
     s.set_project_extension_paths(["pe"])

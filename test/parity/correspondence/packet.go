@@ -306,7 +306,7 @@ var settingRuntimeEffectConcepts = map[string][]runtimeEffectConcept{
 		{sourceAny: []string{"this.chatContainer.invalidate"}, targetAny: []string{"m.chatContainer.Invalidate"}},
 		{sourceAny: []string{"this.ui.requestRender"}, targetAny: []string{"m.tuiInst.RequestRender"}},
 	},
-	"cache-miss-notices": {
+	"notices": {
 		{sourceAny: []string{"this.rebuildChatFromMessages"}, targetAny: []string{"m.rebuildChatFromSession"}},
 	},
 	"model-thinking": {

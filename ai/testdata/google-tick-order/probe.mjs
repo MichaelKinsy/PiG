@@ -1,7 +1,7 @@
 // Microtask tick-order probe for Pi 0.99.1's Google Generative AI provider (D82 W6/W5).
 //
 // Runs the REAL provider (`pi-ai/dist/api/google-generative-ai.js`, source
-// packages/ai/src/api/google-generative-ai.ts:59-330) over the REAL `@google/genai` 2.32.0 SDK
+// packages/ai/src/api/google-generative-ai.ts:59-330) over the REAL `@google/genai` 3.6.1 SDK
 // (dist/node/index.mjs: tslib __asyncGenerator `processStreamResponse` 13780-13830 and
 // `generateContentStreamInternal` 15768+), with only `globalThis.fetch` replaced. The replacement
 // returns a `Response` over a Web `ReadableStream` whose chunks are enqueued in a controlled
@@ -40,7 +40,7 @@ const root = process.env.PI_PACKAGE_ROOT;
 assert.ok(root, 'PI_PACKAGE_ROOT must name the installed @earendil-works/pi-coding-agent directory');
 const scope = root + '/node_modules/@earendil-works/';
 const genaiDir = root + '/node_modules/@google/genai';
-for (const [dir, version] of [[root, PI_PACKAGE_VERSION], [scope + 'pi-ai', PI_PACKAGE_VERSION], [genaiDir, '2.32.0']]) {
+for (const [dir, version] of [[root, PI_PACKAGE_VERSION], [scope + 'pi-ai', PI_PACKAGE_VERSION], [genaiDir, '3.6.1']]) {
   assert.equal(JSON.parse(await readFile(dir + '/package.json', 'utf8')).version, version, dir);
 }
 const load = path => import(pathToFileURL(path).href);
@@ -189,7 +189,7 @@ async function runProvider(c) {
 const scrub = value => JSON.parse(JSON.stringify(value).replace(/"timestamp":\d+/g, '"timestamp":0').replace(/"durationMs":\d+/g, '"durationMs":0'));
 
 const out = {
-  pi: PIG_UPSTREAM_VERSION, genai: '2.32.0', node: process.version,
+  pi: PIG_UPSTREAM_VERSION, genai: '3.6.1', node: process.version,
   cap: CAP,
   note: 'stamp = (seg, tick); see probe.mjs header. array order within a stamp is execution order.',
   cases: [],

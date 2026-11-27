@@ -391,3 +391,34 @@ func TestOverflowCrashLogEncodesUnpairedSurrogates(t *testing.T) {
 		t.Fatalf("crash log = %q, want valid UTF-8 with U+FFFD", data)
 	}
 }
+
+// Port of Pi main 943a99e3c2e1f119fcd633741363a200e0677999 & 8209929fb553e7a8c91dc0894569f9ec43dd201f:
+// an unwritable crash log directory must still restore the terminal and report the width error.
+func TestOverflowUnwritableCrashLogStillStopsTerminalAndReportsWidthError(t *testing.T) {
+	var out bytes.Buffer
+	lines := []string{"fits", "ok"}
+	ui, dir := newOverflowTUI(t, &out, 20, 10, &lines)
+	blockingFile := filepath.Join(dir, "not-a-dir")
+	if err := os.WriteFile(blockingFile, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ui.SetLogDirectory(blockingFile)
+	ui.Render()
+	out.Reset()
+	lines = []string{"fits", overflowRow}
+
+	value := renderRecover(ui)
+	overflow, ok := value.(*RenderOverflowError)
+	if !ok {
+		t.Fatalf("recovered %T (%v), want *RenderOverflowError", value, value)
+	}
+	if !strings.Contains(overflow.Error(), "Rendered line 1 exceeds terminal width (43 > 20).") {
+		t.Fatalf("message = %q", overflow.Error())
+	}
+	if !strings.Contains(overflow.Error(), "Could not write debug log to "+filepath.Join(blockingFile, TUICrashLogName)+":") {
+		t.Fatalf("message = %q, want crash log error status", overflow.Error())
+	}
+	if !ui.stopped.Load() {
+		t.Fatal("renderer did not stop before propagating width error")
+	}
+}

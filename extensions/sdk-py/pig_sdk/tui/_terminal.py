@@ -34,8 +34,20 @@ class CapabilityOverrides:
     hyperlinks: bool | None = None
 
 
+_MAX_HYPERLINK_URL_LENGTH = 8192
+
+
+def _utf16_len(text: str) -> int:
+    return len(text.encode("utf-16-le", "surrogatepass")) // 2
+
+
 def hyperlink(text: str, url: str) -> str:
-    """``text`` wrapped in an OSC 8 link to ``url`` (pi-tui's ``hyperlink``)."""
+    """``text`` wrapped in an OSC 8 link to ``url`` (pi-tui's ``hyperlink``).
+
+    URLs longer than 8192 UTF-16 code units return plain ``text``.
+    """
+    if _utf16_len(url) > _MAX_HYPERLINK_URL_LENGTH:
+        return text
     return f"\x1b]8;;{url}\x1b\\{text}\x1b]8;;\x1b\\"
 
 

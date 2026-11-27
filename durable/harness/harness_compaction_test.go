@@ -1028,10 +1028,10 @@ func TestCompactionOutcomes(t *testing.T) {
 		}))
 		addHooks(t, chat.setup.Registry, CompactionTask.Erased(), beforeCompact(func(compaction CompactionRequest) (*CompactionDecision, error) {
 			seen = append(seen, compaction)
-			return &CompactionDecision{Summary: new("FROM HOOK")}, nil
+			return &CompactionDecision{Kind: CompactionSummary, Summary: "FROM HOOK"}, nil
 		}))
 		addHooks(t, chat.setup.Registry, CompactionTask.Erased(), beforeCompact(func(CompactionRequest) (*CompactionDecision, error) {
-			return &CompactionDecision{Decline: true}, nil
+			return &CompactionDecision{Kind: CompactionDecline}, nil
 		}))
 		chat.history(t)
 		if outcome := chat.outcome(t, chat.compact(t, new("why"))); outcome.Status != durable.OutcomeCompleted {
@@ -1066,7 +1066,7 @@ func TestCompactionOutcomes(t *testing.T) {
 		// upstream: packages/durable/test/harness-compaction.test.ts:776
 		chat := openCompaction(t)
 		addHooks(t, chat.setup.Registry, CompactionTask.Erased(), beforeCompact(func(CompactionRequest) (*CompactionDecision, error) {
-			return &CompactionDecision{Decline: true}, nil
+			return &CompactionDecision{Kind: CompactionDecline}, nil
 		}))
 		chat.history(t)
 		expectEqualJSON(t, chat.outcome(t, chat.compact(t, nil)), `{"status":"completed","result":{}}`)
@@ -1143,7 +1143,7 @@ func TestCompactionOutcomes(t *testing.T) {
 
 	t.Run("adds no usage when a hook declines or supplies the summary", func(t *testing.T) {
 		// upstream: packages/durable/test/harness-compaction.test.ts:847
-		for _, decision := range []CompactionDecision{{Decline: true}, {Summary: new("HOOK")}} {
+		for _, decision := range []CompactionDecision{{Kind: CompactionDecline}, {Kind: CompactionSummary, Summary: "HOOK"}} {
 			chat := openCompaction(t)
 			addHooks(t, chat.setup.Registry, CompactionTask.Erased(), beforeCompact(func(CompactionRequest) (*CompactionDecision, error) {
 				return &decision, nil
@@ -1427,7 +1427,7 @@ func TestBlockingThresholdCompaction(t *testing.T) {
 		chat.history(t)
 		chat.setPolicy(blockingPolicy())
 		addHooks(t, chat.setup.Registry, CompactionTask.Erased(), beforeCompact(func(CompactionRequest) (*CompactionDecision, error) {
-			return &CompactionDecision{Decline: true}, nil
+			return &CompactionDecision{Kind: CompactionDecline}, nil
 		}))
 		chat.turn(t, sized("u4", 200), "a4")
 		if slices.Contains(chat.kinds(t), "pi.compaction") {
@@ -1659,7 +1659,7 @@ func TestOverflowCompaction(t *testing.T) {
 	}{
 		{"declines", func(t *testing.T, chat *compactionChat) {
 			addHooks(t, chat.setup.Registry, CompactionTask.Erased(), beforeCompact(func(CompactionRequest) (*CompactionDecision, error) {
-				return &CompactionDecision{Decline: true}, nil
+				return &CompactionDecision{Kind: CompactionDecline}, nil
 			}))
 		}, 0},
 		{"fails", func(_ *testing.T, chat *compactionChat) { chat.faux.pushSummary(scriptFailure("bad request")) }, 1},
@@ -1925,7 +1925,7 @@ func TestCompactionInteractions(t *testing.T) {
 			if err != nil {
 				return nil, err
 			}
-			return &CompactionDecision{Summary: new("HOOK")}, nil
+			return &CompactionDecision{Kind: CompactionSummary, Summary: "HOOK"}, nil
 		}})
 		chat.history(t)
 		id := chat.compact(t, nil)
@@ -2491,7 +2491,7 @@ func TestCompactionEdgeCases(t *testing.T) {
 			mu.Lock()
 			asked++
 			mu.Unlock()
-			return &CompactionDecision{Decline: true}, nil
+			return &CompactionDecision{Kind: CompactionDecline}, nil
 		}))
 		chat.faux.pushAgent(scriptFailure("overloaded"))
 		chat.turn(t, sized("u4", 200), "a4")

@@ -128,6 +128,11 @@ func normalizeOpenAIChunkMembers(chunk map[string]any, read *openAIChunkRead) bo
 	}
 	chunk["choices"] = []any{choice}
 	delete(choice, "index")
+	if native, present := choice["native_finish_reason"]; present {
+		if _, isString := native.(string); !isString {
+			delete(choice, "native_finish_reason")
+		}
+	}
 	if reason, present := choice["finish_reason"]; present {
 		if _, isString := reason.(string); !isString && reason != nil {
 			if jsTruthy(reason) {

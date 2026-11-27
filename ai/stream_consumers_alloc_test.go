@@ -86,10 +86,10 @@ func BenchmarkPiMessagesConverterLongStream(b *testing.B) {
 
 // BenchmarkParsePiMessagesFrame is the read of one pi-messages SSE record: the JSON check and the truthiness of its value.
 func BenchmarkParsePiMessagesFrame(b *testing.B) {
-	record := `data: {"type":"text_delta","contentIndex":1,"delta":"tok12 "}`
+	record := `{"type":"text_delta","contentIndex":1,"delta":"tok12 "}`
 	b.ReportAllocs()
 	for b.Loop() {
-		if _, ok, err := parsePiMessagesEvent(record); err != nil || !ok {
+		if _, ok, err := parsePiMessagesData(record); err != nil || !ok {
 			b.Fatal(ok, err)
 		}
 	}

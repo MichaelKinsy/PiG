@@ -90,7 +90,7 @@ func TestGenerateImagesOpenRouter_OnResponseRunsOnlyAfterSuccessfulResponse(t *t
 		wantReason ImagesStopReason
 		wantError  string
 	}{
-		{"http error", http.StatusBadRequest, `{"error":{"message":"bad"}}`, nil, ImagesStopReasonError, `400: {"message":"bad"}`},
+		{"http error", http.StatusBadRequest, `{"error":{"message":"bad"}}`, []int{http.StatusBadRequest}, ImagesStopReasonError, `400: {"message":"bad"}`},
 		{"unparseable 2xx body", http.StatusOK, `not json`, nil, ImagesStopReasonError, ""},
 		{"success", http.StatusOK, `{"id":"r1","choices":[]}`, []int{http.StatusOK}, ImagesStopReasonStop, ""},
 	} {

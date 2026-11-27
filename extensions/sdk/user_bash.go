@@ -92,6 +92,9 @@ func (e *Extension) userBashEventResult(value any) (any, error) {
 	if path, present := result["fullOutputPath"]; present && path == nil {
 		delete(result, "fullOutputPath")
 	}
+	if fullErr, present := result["fullOutputError"]; present && fullErr == nil {
+		delete(result, "fullOutputError")
+	}
 	object["result"] = result
 	return object, nil
 }

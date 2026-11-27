@@ -26,7 +26,7 @@ export async function withStorage(use: (storage: any) => Promise<void>): Promise
     commit: async (batches: unknown[][], receive: (index: number, seq: number) => void, _context?: unknown) => {
       const { seqs, refused } = (await call("commit", { batches })) as { seqs: number[]; refused?: { name: string; message: string } }
       seqs.forEach((seq, index) => receive(index, seq))
-      return refused === undefined ? { stored: seqs.length } : { stored: seqs.length, refused: reviveError(refused) }
+      return refused === undefined ? { kind: "stored", stored: seqs.length } : { kind: "refused", stored: seqs.length, refused: reviveError(refused) }
     },
     mintId: () => call("mintId"),
     conversation: (id: number) => call("conversation", { id }),

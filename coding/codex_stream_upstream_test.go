@@ -142,8 +142,8 @@ func TestModelRuntimeCodexStreamSimpleOffSendsConfigurationUpdateNone(t *testing
 	if err := json.Unmarshal(captured, &req); err != nil {
 		t.Fatalf("unmarshal request: %v (raw=%s)", err, captured)
 	}
-	if req.Reasoning == nil || req.Reasoning.Effort != "medium" || req.Reasoning.Summary != "auto" {
-		t.Errorf("reasoning = %+v, want {Effort:medium Summary:auto}", req.Reasoning)
+	if req.Reasoning == nil || req.Reasoning.Effort != "none" || req.Reasoning.Summary != "auto" {
+		t.Errorf("reasoning = %+v, want {Effort:none Summary:auto}", req.Reasoning)
 	}
 	var summary []string
 	for _, item := range req.Input {
@@ -155,7 +155,7 @@ func TestModelRuntimeCodexStreamSimpleOffSendsConfigurationUpdateNone(t *testing
 			summary = append(summary, item.Type)
 		}
 	}
-	wantSummary := []string{"user", "configuration_update:none"}
+	wantSummary := []string{"user"}
 	if fmt.Sprint(summary) != fmt.Sprint(wantSummary) {
 		t.Errorf("input = %v, want %v (raw=%s)", summary, wantSummary, captured)
 	}
@@ -241,8 +241,8 @@ func TestCodexSimpleStreamPreparationAcrossCallerBoundaries(t *testing.T) {
 		if err := json.Unmarshal(captured, &req); err != nil {
 			t.Fatalf("unmarshal request: %v (raw=%s)", err, captured)
 		}
-		if req.Reasoning == nil || req.Reasoning.Effort != "medium" || req.Reasoning.Summary != "auto" {
-			t.Errorf("reasoning = %+v, want {Effort:medium Summary:auto}", req.Reasoning)
+		if req.Reasoning == nil || req.Reasoning.Effort != "none" || req.Reasoning.Summary != "auto" {
+			t.Errorf("reasoning = %+v, want {Effort:none Summary:auto}", req.Reasoning)
 		}
 		var summary []string
 		for _, item := range req.Input {
@@ -254,7 +254,7 @@ func TestCodexSimpleStreamPreparationAcrossCallerBoundaries(t *testing.T) {
 				summary = append(summary, item.Type)
 			}
 		}
-		wantSummary := []string{"user", "configuration_update:none"}
+		wantSummary := []string{"user"}
 		if fmt.Sprint(summary) != fmt.Sprint(wantSummary) {
 			t.Errorf("input = %v, want %v (raw=%s)", summary, wantSummary, captured)
 		}

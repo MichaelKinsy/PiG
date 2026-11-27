@@ -17,7 +17,7 @@ const jsDotClass = `[^\n\r\x{2028}\x{2029}]`
 var overflowPatterns = []*lazyregexp.Regexp{
 	lazyregexp.NewJSIgnoreCase(`prompt (?:is )?too long`),                                                                                     // Anthropic and z.ai token overflow
 	lazyregexp.NewJSIgnoreCase(`prompt exceeds max length`),                                                                                   // z.ai CN endpoint token overflow
-	lazyregexp.NewJSIgnoreCase(`request_too_large`),                                                                                           // Anthropic request byte-size overflow (HTTP 413)
+	lazyregexp.NewJSIgnoreCase(`(?:^|[^a-z0-9_])request_too_large(?:[^a-z0-9_]|$)`),                                                           // Anthropic request byte-size error code, not a longer identifier
 	lazyregexp.NewJSIgnoreCase(`input is too long for requested model`),                                                                       // Amazon Bedrock
 	lazyregexp.NewJSIgnoreCase(`exceeds the context window`),                                                                                  // OpenAI (Completions & Responses API)
 	lazyregexp.NewJSIgnoreCase(`exceeds (?:the )?(?:model'?s )?maximum context length(?: of [\d,]+ tokens?|` + jsSpaceClass + `*\([\d,]+\))`), // OpenAI-compatible proxies (LiteLLM)

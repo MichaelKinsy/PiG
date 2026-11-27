@@ -36,7 +36,7 @@ for (const sequence of corpus.sequences) {
     const session = {
       thinkingLevel: 'off',
       isIdle: true,
-      settingsManager: { getShowTerminalProgress: () => showProgress, getShowCacheMissNotices: () => false, getShowImages: () => false, getImageWidthCells: () => 60 },
+      settingsManager: { getShowTerminalProgress: () => showProgress, getNotices: () => ({ cacheMisses: false, cacheWarming: false, compactionCosts: false, reasoningDrops: false }), getShowImages: () => false, getImageWidthCells: () => 60 },
       abortRetry() { calls.target = 'retry'; },
       abortCompaction() { calls.target = 'compaction'; },
       getSteeringMessages: () => queue.steering,

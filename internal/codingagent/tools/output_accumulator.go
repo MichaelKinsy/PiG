@@ -4,7 +4,6 @@
 package tools
 
 import (
-	"bufio"
 	"bytes"
 	"errors"
 	"io"
@@ -12,6 +11,7 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/outputfiles"
 	"github.com/MichaelKinsy/PiG/internal/truncate"
 	"github.com/MichaelKinsy/PiG/internal/utf8stream"
@@ -19,9 +19,10 @@ import (
 
 // OutputSnapshot mirrors upstream OutputSnapshot.
 type OutputSnapshot struct {
-	Content        string
-	Truncation     TruncationResult
-	FullOutputPath string
+	Content         string
+	Truncation      TruncationResult
+	FullOutputPath  string
+	FullOutputError string
 }
 
 // OutputAccumulator incrementally tracks streaming output with bounded
@@ -52,10 +53,7 @@ type OutputAccumulator struct {
 	hasOpenLine              bool
 	finished                 bool
 
-	tempFilePath string
-	tempFile     *os.File
-	// tempWriter coalesces the raw chunks written to tempFile: a syscall per chunk was most of the cost of a small chunk. It is flushed whenever the file is read or its path is handed out (Snapshot, ReadFullOutput) and before the file closes, so the file holds every appended byte whenever anything can see it.
-	tempWriter *bufio.Writer
+	tempFile *outputfiles.Stream
 
 	// snapshot is the last snapshot taken and snapshotBytes the decoded byte count it saw: a snapshot depends only on the decoded output and the file path,
 	// so the final update and the tool result share one.
@@ -100,10 +98,7 @@ func (a *OutputAccumulator) Append(data []byte) error {
 	a.totalRawBytes += len(data)
 	a.decodeOntoTail(data, true)
 	if a.tempFile != nil || a.shouldUseTempFile() {
-		a.ensureTempFile()
-		if a.tempWriter != nil {
-			_, _ = a.tempWriter.Write(data)
-		}
+		a.ensureTempFile().Write(data)
 	} else {
 		a.raw = append(a.raw, data...)
 	}
@@ -134,7 +129,12 @@ func (a *OutputAccumulator) Snapshot(persistIfTruncated bool) OutputSnapshot {
 		a.ensureTempFile()
 	}
 	a.flushTempFile()
-	if a.hasSnapshot && a.snapshotBytes == a.totalDecodedBytes && a.snapshot.FullOutputPath == a.tempFilePath {
+	var filePath, fileErr string
+	if a.tempFile != nil {
+		res := a.tempFile.Result()
+		filePath, fileErr = res.Path, res.Error
+	}
+	if a.hasSnapshot && a.snapshotBytes == a.totalDecodedBytes && a.snapshot.FullOutputPath == filePath && a.snapshot.FullOutputError == fileErr {
 		return a.snapshot
 	}
 	tr := truncationResult(truncate.TruncateTailBytes(a.snapshotText(), a.maxBytes, a.maxLines), a.maxBytes, a.maxLines)
@@ -152,25 +152,21 @@ func (a *OutputAccumulator) Snapshot(persistIfTruncated bool) OutputSnapshot {
 	tr.TruncatedBy = truncatedBy
 	tr.TotalLines = a.totalLines
 	tr.TotalBytes = a.totalDecodedBytes
-	a.snapshot = OutputSnapshot{Content: tr.Content, Truncation: tr, FullOutputPath: a.tempFilePath}
+	a.snapshot = OutputSnapshot{Content: tr.Content, Truncation: tr, FullOutputPath: filePath, FullOutputError: fileErr}
 	a.snapshotBytes, a.hasSnapshot = a.totalDecodedBytes, true
 	return a.snapshot
 }
 
-// CloseTempFile closes the full-output file, if one was opened.
+// CloseTempFile flushes and closes the full-output file, if one was opened.
+// Never returns an error: a failed file shows up as FullOutputError in later snapshots.
 func (a *OutputAccumulator) CloseTempFile() error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if a.tempFile == nil {
 		return nil
 	}
-	f := a.tempFile
-	flushErr := a.tempWriter.Flush()
-	a.tempFile, a.tempWriter = nil, nil
-	if err := f.Close(); err != nil {
-		return err
-	}
-	return flushErr
+	a.tempFile.Close()
+	return nil
 }
 
 // LastLineBytes mirrors upstream getLastLineBytes.
@@ -239,16 +235,20 @@ func (a *OutputAccumulator) trimTail() {
 }
 
 // snapshotText is the tail a snapshot truncates: it starts at a line boundary once the tail has been trimmed. The slice aliases the tail.
-// Clipping drops the partial first line of the retained tail. When the tail is only the end of one over-long line, that is everything, so the
-// unclipped tail is returned instead and the truncation shows the end of that line (Pi 935f0ac0ccfc, #12092).
+// Clipping drops the partial first line of the retained tail. When the tail is only the end of one over-long line (plus blank lines), nothing
+// non-blank is left, so the unclipped tail is returned instead and the truncation shows the end of that line (Pi 935f0ac0ccfc, #12092; Pi 9e9609216, #12355).
 func (a *OutputAccumulator) snapshotText() []byte {
 	tail := a.tail
 	if !a.tailStartsAtLineBoundary {
-		if i := bytes.IndexByte(tail, '\n'); i >= 0 && i+1 < len(tail) {
-			tail = tail[i+1:]
+		if _, clipped, ok := bytes.Cut(tail, newline); ok && !isBlankBytes(clipped) {
+			return clipped
 		}
 	}
 	return tail
+}
+
+func isBlankBytes(b []byte) bool {
+	return len(bytes.TrimFunc(b, jsstring.IsSpace)) == 0
 }
 
 func (a *OutputAccumulator) shouldUseTempFile() bool {
@@ -257,25 +257,43 @@ func (a *OutputAccumulator) shouldUseTempFile() bool {
 
 // flushTempFile writes the buffered raw chunks to the full-output file.
 func (a *OutputAccumulator) flushTempFile() {
-	if a.tempWriter != nil {
-		_ = a.tempWriter.Flush()
+	if a.tempFile != nil {
+		a.tempFile.Flush()
 	}
 }
 
-func (a *OutputAccumulator) ensureTempFile() {
-	if a.tempFilePath != "" {
-		return
+func (a *OutputAccumulator) ensureTempFile() *outputfiles.Stream {
+	if a.tempFile != nil {
+		return a.tempFile
 	}
-	// Upstream's write stream reports open failures asynchronously and keeps
-	// the path; a failed create likewise only loses the file contents.
-	path, f, err := outputfiles.CreateStream(a.tempFilePrefix, ".log")
-	a.tempFilePath = path
-	if err == nil {
-		a.tempFile = f
-		a.tempWriter = bufio.NewWriter(f)
-		_, _ = a.tempWriter.Write(a.raw)
+	s := outputfiles.OpenStream(a.tempFilePrefix, ".log")
+	a.tempFile = s
+	if len(a.raw) > 0 {
+		s.Write(a.raw)
 	}
 	a.raw = nil
+	return s
+}
+
+// readRetainedOutput returns the retained tail within maxBytes, marked as
+// truncated only when output bytes are actually omitted (8209929fb).
+func (a *OutputAccumulator) readRetainedOutput(maxBytes int) FullOutput {
+	retained := a.snapshotText()
+	if len(retained) > maxBytes {
+		start := len(retained) - maxBytes
+		for start < len(retained) && retained[start]&0xc0 == 0x80 {
+			start++
+		}
+		retained = retained[start:]
+	}
+	omitted := a.totalDecodedBytes - len(retained)
+	if omitted <= 0 {
+		return FullOutput{Content: string(retained), Truncated: false}
+	}
+	return FullOutput{
+		Content:   "[... " + strconv.Itoa(omitted) + " bytes omitted ...]\n\n" + string(retained),
+		Truncated: true,
+	}
 }
 
 // FullOutput mirrors upstream FullOutput (output-accumulator.ts): the complete
@@ -297,11 +315,15 @@ func (a *OutputAccumulator) ReadFullOutput(maxBytes int) (FullOutput, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.flushTempFile()
-	if a.tempFilePath == "" {
+	if a.tempFile == nil {
 		decoder := utf8stream.Decoder{StripBOM: true}
 		return FullOutput{Content: decoder.Decode(a.raw, false)}, nil
 	}
-	file, err := os.Open(a.tempFilePath)
+	fullOutputFile := a.tempFile.Result()
+	if fullOutputFile.Failed() {
+		return a.readRetainedOutput(maxBytes), nil
+	}
+	file, err := os.Open(fullOutputFile.Path)
 	if err != nil {
 		return FullOutput{}, err
 	}

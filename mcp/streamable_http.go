@@ -624,7 +624,7 @@ func (t *StreamableHTTPTransport) consumeResponseStream(body io.ReadCloser, requ
 	cursor := &streamCursor{}
 	answered := false
 	onMessage := func(message JSONRPCMessage) {
-		if message.IsResponse() && *message.ID == requestID {
+		if message.IsResponse() && normalizeOwnRequestID(*message.ID) == requestID {
 			answered = true
 		}
 	}

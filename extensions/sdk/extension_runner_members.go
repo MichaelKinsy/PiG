@@ -228,7 +228,8 @@ type ExtensionUIContext struct {
 
 // ExtensionUIDialogOptions is Pi's ExtensionUIDialogOptions.
 type ExtensionUIDialogOptions struct {
-	Timeout *float64 `json:"timeout,omitempty"`
+	Timeout     *float64 `json:"timeout,omitempty"`
+	BlockedKind string   `json:"blockedKind,omitempty"`
 }
 
 // ExtensionWidgetOptions is Pi's ExtensionWidgetOptions: Placement is "aboveEditor" or "belowEditor".

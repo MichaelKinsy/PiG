@@ -357,7 +357,6 @@ export const MistralConversationsCompatSchema = openObject(MistralConversationsC
     description: "Compatibility settings for the Mistral chat API.",
     additionalProperties: true,
 });
-// Pi fe8a6f5dc (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
 const GoogleCompatProperties = {
     supportsStrictMode: optionalCompatBoolean({
         description: "Whether the model enforces strict tools through Gemini's VALIDATED function-calling mode. Default: true for model IDs containing gemini-3 or a later version, such as gemini-3-pro or vendor-gemini-4-argon, false otherwise. Set true for Gemini 3+ models served under IDs without the version.",

@@ -476,9 +476,6 @@ func sameArguments(left, right map[string]any) bool {
 	return err == nil && jsonEqual(encodedLeft, encodedRight)
 }
 
-// isNestedSlot is whether a slot draft is a nested call's (it names its parent task).
-func isNestedSlot(slot *delta.Object) bool { return slot.Get("parentTaskId") != nil }
-
 // maxSummaryErrorChars is the error text a nested call's summary keeps.
 const maxSummaryErrorChars = 500
 

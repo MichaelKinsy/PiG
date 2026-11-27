@@ -5,7 +5,7 @@ function findText(value){
  return '';
 }
 const rows=[];
-for(const [api,provider,id] of [['openai-completions','openai','gpt-4o-mini'],['openai-responses','openai','gpt-5-mini'],['anthropic-messages','anthropic','claude-haiku-4-5'],['google-generative-ai','google','gemini-2.5-flash'],['mistral-conversations','mistral','devstral-medium-latest']]){
+for(const [api,provider,id] of [['openai-completions','openai','gpt-4o-mini'],['openai-responses','openai','gpt-5-mini'],['anthropic-messages','anthropic','claude-haiku-4-5'],['google-generative-ai','google','gemini-2.5-flash'],['mistral-conversations','mistral','mistral-medium-latest']]){
  let captured;
  const model={...getModel(provider,id),api};
  if(api==='openai-completions')delete model.compat;

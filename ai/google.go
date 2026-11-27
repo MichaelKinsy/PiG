@@ -370,9 +370,10 @@ const (
 	GoogleThinkingLevelLow         GoogleThinkingLevel = "LOW"
 	GoogleThinkingLevelMedium      GoogleThinkingLevel = "MEDIUM"
 	GoogleThinkingLevelHigh        GoogleThinkingLevel = "HIGH"
+	GoogleThinkingLevelXHigh       GoogleThinkingLevel = "XHIGH"
 )
 
-// ResolvedGoogleThinkingLevel is a ThinkingLevel without "xhigh" and "max" (google-shared.ts ResolvedGoogleThinkingLevel).
+// ResolvedGoogleThinkingLevel is a ThinkingLevel without "max" (google-shared.ts ResolvedGoogleThinkingLevel).
 type ResolvedGoogleThinkingLevel string
 
 const (
@@ -380,6 +381,7 @@ const (
 	ResolvedGoogleThinkingLevelLow     ResolvedGoogleThinkingLevel = "low"
 	ResolvedGoogleThinkingLevelMedium  ResolvedGoogleThinkingLevel = "medium"
 	ResolvedGoogleThinkingLevelHigh    ResolvedGoogleThinkingLevel = "high"
+	ResolvedGoogleThinkingLevelXHigh   ResolvedGoogleThinkingLevel = "xhigh"
 )
 
 // ToGoogleThinkingLevel maps a resolved level to Google's enum value (google-shared.ts:85 toGoogleThinkingLevel).
@@ -393,6 +395,8 @@ func ToGoogleThinkingLevel(level ResolvedGoogleThinkingLevel) GoogleThinkingLeve
 		return GoogleThinkingLevelMedium
 	case ResolvedGoogleThinkingLevelHigh:
 		return GoogleThinkingLevelHigh
+	case ResolvedGoogleThinkingLevelXHigh:
+		return GoogleThinkingLevelXHigh
 	}
 	return ""
 }
@@ -407,6 +411,7 @@ var googleSdkThinkingLevels = map[GoogleThinkingLevel]GoogleSdkThinkingLevel{
 	GoogleThinkingLevelLow:         "LOW",
 	GoogleThinkingLevelMedium:      "MEDIUM",
 	GoogleThinkingLevelHigh:        "HIGH",
+	GoogleThinkingLevelXHigh:       "XHIGH",
 }
 
 // ToGoogleSdkThinkingLevel selects the SDK enum value for a Google API level (google-shared.ts:98 toGoogleSdkThinkingLevel).
@@ -416,12 +421,24 @@ func ToGoogleSdkThinkingLevel(level GoogleThinkingLevel) GoogleSdkThinkingLevel 
 
 // ─── SSE response types ──────────────────────────────────────────────────────
 
+type geminiSafetyRating struct {
+	Category    string `json:"category,omitempty"`
+	Probability string `json:"probability,omitempty"`
+}
+
+type geminiPromptFeedback struct {
+	BlockReason        string               `json:"blockReason,omitempty"`
+	BlockReasonMessage string               `json:"blockReasonMessage,omitempty"`
+	SafetyRatings      []geminiSafetyRating `json:"safetyRatings,omitempty"` //portlint:allow emptydrop response-only decode struct, never serialized to provider
+}
+
 type geminiStreamChunk struct {
 	// raw is the chunk's JSON as received, for OnProviderStreamEvent.
-	raw           json.RawMessage
-	Candidates    []geminiCandidate    `json:"candidates"`
-	UsageMetadata *geminiUsageMetadata `json:"usageMetadata,omitempty"`
-	ResponseID    string               `json:"responseId,omitempty"`
+	raw            json.RawMessage
+	Candidates     []geminiCandidate     `json:"candidates"`
+	PromptFeedback *geminiPromptFeedback `json:"promptFeedback,omitempty"`
+	UsageMetadata  *geminiUsageMetadata  `json:"usageMetadata,omitempty"`
+	ResponseID     string                `json:"responseId,omitempty"`
 	// read is what the JS read of a mistyped chunk yields beyond the rewritten members (decodeGeminiChunk).
 	read geminiChunkRead
 }
@@ -891,10 +908,7 @@ func buildGeminiThinkingConfig(model *Model, level ModelThinkingLevel, isReasoni
 	if usesLevel {
 		config.ThinkingLevel = string(ToGoogleSdkThinkingLevel(ToGoogleThinkingLevel(resolved)))
 	} else {
-		budget := geminiThinkingBudget(ModelThinkingLevel(resolved), model.ID)
-		if custom, ok := customBudgets.configured(ModelThinkingLevel(resolved)); ok {
-			budget = custom
-		}
+		budget := getGoogleBudget(model, resolved, customBudgets)
 		config.ThinkingBudget = &budget
 	}
 	return config, nil
@@ -929,7 +943,7 @@ func resolveGoogleThinkingLevel(model *Model, level ModelThinkingLevel) (Resolve
 		resolved = ModelThinkingLevel(jsstring.ToLower(*mapped))
 	}
 	switch ResolvedGoogleThinkingLevel(resolved) {
-	case ResolvedGoogleThinkingLevelMinimal, ResolvedGoogleThinkingLevelLow, ResolvedGoogleThinkingLevelMedium, ResolvedGoogleThinkingLevelHigh:
+	case ResolvedGoogleThinkingLevelMinimal, ResolvedGoogleThinkingLevelLow, ResolvedGoogleThinkingLevelMedium, ResolvedGoogleThinkingLevelHigh, ResolvedGoogleThinkingLevelXHigh:
 		return ResolvedGoogleThinkingLevel(resolved), nil
 	default:
 		return "", fmt.Errorf("Unsupported Google thinking level mapping for %s/%s: %s -> %s", model.ProviderMeta.ProviderID, model.ID, level, mapping)
@@ -941,6 +955,25 @@ func supportsMultimodalFunctionResponse(modelID string) bool {
 		return major >= 3
 	}
 	return true
+}
+
+// getGoogleBudget returns the token budget for Gemini models using thinkingBudget:
+// custom budgets first, then per-model defaults, else -1 (dynamic).
+// upstream: packages/ai/src/api/google-shared.ts:getGoogleBudget
+func getGoogleBudget(model *Model, resolved ResolvedGoogleThinkingLevel, customBudgets *ThinkingBudgets) int {
+	// Budgets stop at high, so xhigh uses the high budget.
+	budgetLevel := ModelThinkingLevel(resolved)
+	if resolved == ResolvedGoogleThinkingLevelXHigh {
+		budgetLevel = ThinkingHigh
+	}
+	if custom, ok := customBudgets.configured(budgetLevel); ok {
+		return custom
+	}
+	id := ""
+	if model != nil {
+		id = model.ID
+	}
+	return geminiThinkingBudget(budgetLevel, id)
 }
 
 func geminiThinkingBudget(level ModelThinkingLevel, modelID string) int {
@@ -1131,8 +1164,12 @@ func (p *googleProvider) Stream(ctx context.Context, transcript TranscriptContex
 	// @google/genai does not retry, so retryGoogleRequest is the only retry layer: the transport retry is off for each attempt, and the
 	// request's retry budget (the per-request override, else retry.provider) moves to retryGoogleRequest.
 	retryOptions := providerRetryStreamOptions(requestContext, opts)
+	var googleModel *Model
+	if retryOptions.OnResponse != nil {
+		googleModel = providerEventModel(p.cfg.ModelMetadata, p.cfg.api, p.cfg.ProviderID, p.cfg.Model)
+	}
 	attemptContext := WithProviderMaxRetries(requestContext, 0)
-	resp, err := RetryGoogleRequest(requestContext, func() (*http.Response, error) { //nolint:bodyclose // the attempt returns the open response and the SSE goroutine below closes its body
+	resp, err := retryGoogleRequest(requestContext, func() (*http.Response, error) { //nolint:bodyclose // the attempt returns the open response and the SSE goroutine below closes its body
 		httpReq, err := newFetchRequest(attemptContext, http.MethodPost, endpoint, body.reader(), false)
 		if err != nil {
 			return nil, err
@@ -1172,7 +1209,7 @@ func (p *googleProvider) Stream(ctx context.Context, transcript TranscriptContex
 			return nil, googleHTTPError(resp, b)
 		}
 		return resp, nil
-	}, retryOptions)
+	}, googleModel, retryOptions)
 	if err != nil {
 		// retryProviderRequest throws createAbortError() once the signal is aborted (provider-retry.ts:68-72).
 		if ctx.Err() != nil && errors.Is(err, errProviderRequestAborted) {
@@ -1316,10 +1353,12 @@ func googleRawChunkError(chunk []byte) error {
 
 // googleStreamState is the per-response state of Pi's `for await (const chunk of googleStream)` loop body (google-generative-ai.ts:103-235).
 type googleStreamState struct {
-	builder      *assistantStreamBuilder
-	usage        Usage
-	finishReason string
-	sawToolCall  bool
+	builder            *assistantStreamBuilder
+	usage              Usage
+	finishReason       string
+	receivedChunkCount int
+	promptBlockError   string
+	sawToolCall        bool
 	// finishSawToolCall is sawToolCall when the latest finish reason arrived: Pi turns a "stop" into "toolUse" only if the message holds a tool call at that
 	// chunk (google-generative-ai.ts:214-220), and never again, so a tool call in a later chunk does not.
 	finishSawToolCall bool
@@ -1329,6 +1368,14 @@ type googleStreamState struct {
 
 func (state *googleStreamState) handle(chunk *geminiStreamChunk) error {
 	builder := state.builder
+	state.receivedChunkCount++
+	if chunk.PromptFeedback != nil && chunk.PromptFeedback.BlockReason != "" && state.promptBlockError == "" {
+		providerName := "Google"
+		if builder.partial.API == APIGoogleVertex {
+			providerName = "Google Vertex"
+		}
+		state.promptBlockError = formatGooglePromptBlockError(providerName, chunk.PromptFeedback)
+	}
 	if chunk.ResponseID != "" {
 		// `output.responseId ||= chunk.responseId` (google-generative-ai.ts:109). Pi's Google provider does not read modelVersion into responseModel.
 		builder.setResponseMetadata(chunk.ResponseID, "", "", "", nil)
@@ -1440,7 +1487,7 @@ func (state *googleStreamState) finish(ctx context.Context) {
 		builder.failUnfinished(StopReasonAborted, errors.New("Request was aborted"))
 		return
 	}
-	stopReason, errorMessage := mapGoogleFinishReason(state.builder.partial.API, state.finishReason)
+	stopReason, errorMessage := state.resolveFinishReason()
 	if stopReason == StopReasonStop && state.finishSawToolCall {
 		stopReason = StopReasonToolUse
 	}
@@ -1490,7 +1537,7 @@ func (p *googleProvider) parseGeminiSSE(ctx context.Context, r io.Reader, builde
 		builder.fail(StopReasonAborted, err)
 		return
 	}
-	stopReason, errorMessage := mapGoogleFinishReason(state.builder.partial.API, state.finishReason)
+	stopReason, errorMessage := state.resolveFinishReason()
 	if stopReason == StopReasonStop && state.finishSawToolCall {
 		stopReason = StopReasonToolUse
 	}
@@ -1521,23 +1568,67 @@ func mapStopReasonString(reason string) StopReason {
 func mapStopReason(reason string) (StopReason, error) {
 	switch reason {
 	case "STOP", "MAX_TOKENS", "CONTINUATION", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "SAFETY", "IMAGE_SAFETY", "IMAGE_PROHIBITED_CONTENT", "IMAGE_RECITATION", "IMAGE_OTHER", "RECITATION",
-		"FINISH_REASON_UNSPECIFIED", "OTHER", "LANGUAGE", "MALFORMED_FUNCTION_CALL", "UNEXPECTED_TOOL_CALL", "TOO_MANY_TOOL_CALLS", "NO_IMAGE":
+		"FINISH_REASON_UNSPECIFIED", "OTHER", "LANGUAGE", "MALFORMED_FUNCTION_CALL", "UNEXPECTED_TOOL_CALL", "TOO_MANY_TOOL_CALLS", "NO_IMAGE",
+		"MISSING_THOUGHT_SIGNATURE", "MALFORMED_RESPONSE", "ESCALATION", "PUP_LIMITED_DISABLED", "MODEL_ARMOR":
 		return mapStopReasonString(reason), nil
 	default:
 		return StopReasonError, fmt.Errorf("Unhandled stop reason: %s", reason)
 	}
 }
 
-// mapGoogleFinishReason applies mapStopReason to the stream's raw finish reason and derives the error message the stream end throws
-// (google-generative-ai.ts:276-283): a stream without a finish reason, an unhandled reason, or an error stop with its raw reason.
-func mapGoogleFinishReason(api API, reason string) (StopReason, string) {
+func formatGooglePromptBlockError(providerName string, feedback *geminiPromptFeedback) string {
+	reason := feedback.BlockReason
 	if reason == "" {
-		// google-vertex.ts:212 names the Vertex API in its own message.
-		if api == APIGoogleVertex {
-			return StopReasonError, "Google Vertex stream ended without a finish reason"
-		}
-		return StopReasonError, "Google stream ended without a finish reason"
+		reason = "unknown reason"
 	}
+	details := []string{providerName + " prompt blocked: " + reason}
+	if feedback.BlockReasonMessage != "" {
+		details = append(details, feedback.BlockReasonMessage)
+	}
+	if len(feedback.SafetyRatings) > 0 {
+		var ratings []string
+		for _, r := range feedback.SafetyRatings {
+			if r.Category == "" {
+				continue
+			}
+			if r.Probability != "" {
+				ratings = append(ratings, r.Category+" ("+r.Probability+")")
+			} else {
+				ratings = append(ratings, r.Category)
+			}
+		}
+		if len(ratings) > 0 {
+			label := "Safety ratings: "
+			if len(ratings) == 1 {
+				label = "Safety rating: "
+			}
+			details = append(details, label+strings.Join(ratings, ", "))
+		}
+	}
+	return strings.Join(details, ". ")
+}
+
+func (state *googleStreamState) resolveFinishReason() (StopReason, string) {
+	if state.finishReason == "" {
+		if state.promptBlockError != "" {
+			return StopReasonError, state.promptBlockError
+		}
+		chunkLabel := "chunks"
+		if state.receivedChunkCount == 1 {
+			chunkLabel = "chunk"
+		}
+		prefix := "Google"
+		if state.builder.partial.API == APIGoogleVertex {
+			prefix = "Google Vertex"
+		}
+		return StopReasonError, fmt.Sprintf("%s stream ended without a finish reason after receiving %d %s", prefix, state.receivedChunkCount, chunkLabel)
+	}
+	return mapGoogleFinishReason(state.finishReason)
+}
+
+// mapGoogleFinishReason applies mapStopReason to a non-empty finish reason and derives the error message the stream end throws
+// (google-generative-ai.ts:276-283): an unhandled reason, or an error stop with its raw reason.
+func mapGoogleFinishReason(reason string) (StopReason, string) {
 	stopReason, err := mapStopReason(reason)
 	if err != nil {
 		return StopReasonError, err.Error()
@@ -1601,6 +1692,11 @@ func (e googleHeaderlessError) Unwrap() error              { return e.googleStat
 // headers. A status-only error is given `headers: undefined`, so it is retried by status, and the caller still receives the error it threw.
 // Retries and the delay cap come from the stream options; the context is their AbortSignal.
 func RetryGoogleRequest[T any](ctx context.Context, request func() (T, error), options ...StreamOptions) (T, error) {
+	return retryGoogleRequest(ctx, request, nil, options...)
+}
+
+// retryGoogleRequest mirrors Pi 1.6.1 packages/ai/src/api/google-shared.ts retryGoogleRequest(request, model, options).
+func retryGoogleRequest[T any](ctx context.Context, request func() (T, error), model *Model, options ...StreamOptions) (T, error) {
 	var opts StreamOptions
 	if len(options) > 0 {
 		opts = options[0]
@@ -1615,11 +1711,24 @@ func RetryGoogleRequest[T any](ctx context.Context, request func() (T, error), o
 			}
 		}
 		return value, err
-	}, ProviderRetryOptions{MaxRetries: opts.MaxRetries, MaxRetryDelayMs: opts.MaxRetryDelayMs})
+	}, ProviderRetryOptions{
+		MaxRetries:      opts.MaxRetries,
+		MaxRetryDelayMs: opts.MaxRetryDelayMs,
+		OnErrorResponse: googleErrorResponseCallback(ctx, opts.OnResponse, model),
+	})
 	if wrapped := (googleHeaderlessError{}); errors.As(err, &wrapped) {
 		return value, wrapped.googleStatusError
 	}
 	return value, err
+}
+
+func googleErrorResponseCallback(ctx context.Context, onResp func(context.Context, ProviderResponse, *Model) error, model *Model) func(ProviderResponse) error {
+	if onResp == nil {
+		return nil
+	}
+	return func(r ProviderResponse) error {
+		return onResp(ctx, r, model)
+	}
 }
 
 // googleChunkJSONError is the rejection of the SDK's Response.json() for a chunk: JSON.parse's SyntaxError for text that is not JSON.

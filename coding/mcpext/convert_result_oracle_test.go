@@ -69,7 +69,7 @@ func TestConvertMcpResultMatchesPi(t *testing.T) {
 				b["mimeType"] = pick(mimes...)
 			}
 			if rng.Intn(2) == 0 {
-				b["size"] = []float64{0, 1, 1023, 1024, 1536, 10240, 5 * 1024 * 1024, 3.5e9, 1e15}[rng.Intn(9)]
+				b["size"] = []float64{0, 1, 512.5, 1023, 1024, 1280, 1536, 10240, 5 * 1024 * 1024, 3.5e9, 1e15, 1e19}[rng.Intn(12)]
 			}
 			return b
 		case 4:
@@ -140,9 +140,23 @@ func TestConvertMcpResultMatchesPi(t *testing.T) {
 		IsError    bool             `json:"isError"`
 		Err        string           `json:"err"`
 	}
+	schemaCases := []json.RawMessage{
+		json.RawMessage(`null`),
+		json.RawMessage(`false`),
+		json.RawMessage(`0`),
+		json.RawMessage(`-0`),
+		json.RawMessage(` 0.0 `),
+		json.RawMessage(`""`),
+		json.RawMessage(`true`),
+		json.RawMessage(`[]`),
+		json.RawMessage(`1`),
+		json.RawMessage(`"x"`),
+		json.RawMessage(`{"type":"object","properties":{"hits":{"type":"array","items":{"$ref":"#/$defs/Hit"}}},"$defs":{"Hit":{"type":"object"}}}`),
+	}
 	var want struct {
-		Results []packed `json:"results"`
-		Names   []string `json:"names"`
+		Results []packed          `json:"results"`
+		Names   []string          `json:"names"`
+		Schemas []json.RawMessage `json:"schemas"`
 	}
 	jsProbes := make([]map[string]any, len(probes))
 	for i, p := range probes {
@@ -152,7 +166,7 @@ func TestConvertMcpResultMatchesPi(t *testing.T) {
 	for i, n := range names {
 		jsNames[i] = map[string]any{"server": n.Server, "tool": n.Tool, "taken": n.Taken, "takeSuffix": n.TakeSuffix}
 	}
-	input := map[string]any{"probes": jsProbes, "names": jsNames}
+	input := map[string]any{"probes": jsProbes, "names": jsNames, "schemas": schemaCases}
 	pioracle.Run(t, `
 const m = await load("pi-coding-agent/extensions/mcp/tools.js");
 const mcp = await load("pi-mcp/index.js");
@@ -169,7 +183,9 @@ for (const p of input.probes) {
 	} catch (e) { results.push({ content: [], details: {}, structured: "", isError: false, err: String(e && e.message) }); }
 }
 const names = input.names.map((n) => mcp.createMcpToolName(n.server, n.tool, (name) => (n.taken !== "" && name === n.taken) || (n.takeSuffix && name.endsWith("_x"))));
-emit({ results, names });
+const createSchema = mcp.createMcpResultSchema;
+const schemas = input.schemas.map((s) => createSchema(s));
+emit({ results, names, schemas });
 `, input, &want)
 	bad := 0
 	report := func(format string, args ...any) {
@@ -220,6 +236,15 @@ emit({ results, names });
 		})
 		if got != want.Names[i] {
 			report("name %+v: got %q, Pi %q", n, got, want.Names[i])
+		}
+	}
+	for i, sc := range schemaCases {
+		got := mcp.CreateMcpResultSchema(sc)
+		var gotCompact, wantCompact bytes.Buffer
+		_ = json.Compact(&gotCompact, got)
+		_ = json.Compact(&wantCompact, want.Schemas[i])
+		if gotCompact.String() != wantCompact.String() {
+			report("schema %s: got %s, Pi %s", sc, gotCompact.String(), wantCompact.String())
 		}
 	}
 	if bad > 6 {

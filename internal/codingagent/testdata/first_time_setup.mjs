@@ -18,8 +18,7 @@ const results = JSON.parse(input).map((test) => {
   setKeybindings(new KeybindingsManager(test.bindings ?? {}));
   let events = [];
   const component = new FirstTimeSetupComponent({
-    onThemePreview: (name) => events.push(["preview", name]),
-    onSubmit: (result) => events.push(["submit", result.theme, result.shareAnalytics]),
+    onSubmit: (result) => events.push(["submit", result.shareAnalytics]),
     onCancel: () => events.push(["cancel"]),
   });
   const steps = [[]], frames = [component.render(test.width)];

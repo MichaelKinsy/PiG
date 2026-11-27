@@ -194,7 +194,11 @@ func reportOnce(report func(MessagesReport)) func(MessagesReport) {
 	var mu sync.Mutex
 	seen := map[string]struct{}{}
 	return func(each MessagesReport) {
-		id := fmt.Sprintf("%s|%s|%s|%s", each.Kind, each.Namespace, each.Locale, each.Key)
+		locale := each.Locale
+		if each.Kind == ReportUnknown {
+			locale = ""
+		}
+		id := fmt.Sprintf("%s|%s|%s|%s", each.Kind, each.Namespace, locale, each.Key)
 		mu.Lock()
 		_, dup := seen[id]
 		seen[id] = struct{}{}

@@ -193,11 +193,11 @@ func compactionSelectHandler(ctx context.Context, task compactionTask, runtime c
 	}); err != nil {
 		return err
 	}
-	if decision != nil && decision.Decline {
+	if decision != nil && decision.Kind == CompactionDecline {
 		return completeCompaction(ctx, runtime)
 	}
-	if decision != nil && decision.Summary != nil {
-		return placeHookSummary(ctx, runtime, firstKept, *decision.Summary)
+	if decision != nil && decision.Kind == CompactionSummary {
+		return placeHookSummary(ctx, runtime, firstKept, decision.Summary)
 	}
 	maxTokens := math.Floor(0.8 * float64(policy.ReserveTokens))
 	if model.Capabilities.MaxOutputTokens > 0 {

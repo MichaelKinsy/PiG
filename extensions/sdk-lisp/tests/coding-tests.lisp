@@ -132,6 +132,30 @@
   (check-equal "... [truncated]" (pig:truncate-line "abcdef" -2))
   (check-equal "... [truncated]" (pig:truncate-line "ab" -5)))
 
+(deftest truncate-tail-over-long-line-followed-by-blank-line
+  ;; Pi 9e9609216 (#12355): keeps the end of an over-long line followed by blank lines,
+  ;; rejects over-long blank lines (ASCII and multi-byte NBSP), and back-scans whitespace suffixes.
+  (let ((r (pig:truncate-tail (format nil "first~%~AEND~%~%" (make-string 20 :initial-element #\y)) :max-bytes 10)))
+    (check-equal (list (format nil "yyyyyyEND~%") 2 10 t "bytes")
+                 (list (pig:truncation-result-content r) (pig:truncation-result-output-lines r)
+                       (pig:truncation-result-output-bytes r) (pig:truncation-result-last-line-partial r)
+                       (pig:truncation-result-truncated-by r))))
+  (let ((r (pig:truncate-tail (format nil "~C~C~C~%~%" (code-char #x00A0) (code-char #x00A0) (code-char #x00A0)) :max-bytes 5)))
+    (check-equal (list "" 1 0 nil "bytes")
+                 (list (pig:truncation-result-content r) (pig:truncation-result-output-lines r)
+                       (pig:truncation-result-output-bytes r) (pig:truncation-result-last-line-partial r)
+                       (pig:truncation-result-truncated-by r))))
+  (let ((r (pig:truncate-tail (format nil "    ~%~%") :max-bytes 3)))
+    (check-equal (list "" 1 0 nil "bytes")
+                 (list (pig:truncation-result-content r) (pig:truncation-result-output-lines r)
+                       (pig:truncation-result-output-bytes r) (pig:truncation-result-last-line-partial r)
+                       (pig:truncation-result-truncated-by r))))
+  (let ((r (pig:truncate-tail (format nil "x    ~%~%") :max-bytes 3)))
+    (check-equal (list (format nil "  ~%") 2 3 t "bytes")
+                 (list (pig:truncation-result-content r) (pig:truncation-result-output-lines r)
+                       (pig:truncation-result-output-bytes r) (pig:truncation-result-last-line-partial r)
+                       (pig:truncation-result-truncated-by r)))))
+
 (deftest truncate-to-visual-lines-matches-pi
   (dolist (case (coerce (ct-cases "truncateToVisualLines") 'list))
     (let* ((padding (ct-arg case 3)) (keep (ct-arg case 4))
@@ -489,3 +513,24 @@ C
       (let ((ran nil))
         (check-error error (pig:with-file-mutation-queue "/x" (lambda () (setf ran t))))
         (check (not ran))))))
+
+(deftest bash-execution-convert-to-llm-and-full-output-error
+  (let* ((with-path (pig:obj "role" "bashExecution" "command" "ls" "output" "a" "truncated" t "fullOutputPath" "/tmp/out.log"))
+         (with-err  (pig:obj "role" "bashExecution" "command" "ls" "output" "a" "truncated" t "fullOutputError" "ENOSPC: write"))
+         (bare      (pig:obj "role" "bashExecution" "command" "ls" "output" "a" "truncated" t))
+         (text-of   (lambda (msg)
+                      (let ((converted (pig:convert-to-llm (vector msg))))
+                        (pig:jget (aref (pig:jget (aref converted 0) "content") 0) "text")))))
+    (check (search "[Output truncated. Full output: /tmp/out.log]" (funcall text-of with-path)))
+    (check (search "[Output truncated. Could not save the full output: ENOSPC: write]" (funcall text-of with-err)))
+    (check (search "[Output truncated]" (funcall text-of bare)))
+    ;; user-bash-event-result strips null fullOutputPath and fullOutputError
+    (let* ((raw (pig:obj "result" (pig:obj "output" "ok" "exitCode" 0 "cancelled" :false "truncated" t "fullOutputPath" :null "fullOutputError" :null)))
+           (norm (pig::user-bash-event-result raw))
+           (res (pig:jget norm "result")))
+      (check (not (nth-value 1 (gethash "fullOutputPath" res))))
+      (check (not (nth-value 1 (gethash "fullOutputError" res)))))
+    ;; kit-bash-execution-set-complete encodes fullOutputError
+    (let ((node (pig:kit-bash-execution "seq 3000")))
+      (pig:kit-bash-execution-set-complete node 0 nil t "" "ENOSPC")
+      (check-equal "ENOSPC" (pig:jget (pig::kit-get node :complete) "fullOutputError")))))

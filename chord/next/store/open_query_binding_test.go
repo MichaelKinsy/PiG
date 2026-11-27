@@ -49,3 +49,22 @@ func TestOpenQueryABindingChangingWhileTheQueryIsMadeLeavesItCompiledForTheBindi
 		query.Close()
 	}
 }
+
+// Follows Pi befc2d59b: OpenQuery.Compiled() is a tagged union ({ kind: "compiled", plan } | { kind: "failed", error }).
+func TestOpenQueryCompiledCarriesTaggedKind(t *testing.T) {
+	w := newReadsWorld(t)
+	batch := state.NewBatch(func(state.BatchError) {}, telemetry.NoopTelemetryMetrics)
+	spec := QuerySpec{Query: w.tagged, Table: w.notes.Sql.Table, Projection: Projection{}, Owner: w.notes}
+	query := NewOpenQuery(ReadSite{Store: w.store, Batch: batch}, spec, ReadRows, func() {}, background)
+	defer query.Close()
+
+	// Unbound set: compilation fails with Kind == CompiledFailed.
+	if got := query.Compiled(); got.Kind != CompiledFailed || got.Err == nil || got.Plan != nil {
+		t.Fatalf("unbound Compiled() = %+v, want Kind=%q with Err", got, CompiledFailed)
+	}
+	// Bind set: recompile produces Kind == CompiledPlan.
+	w.bind(t)
+	if got := query.Compiled(); got.Kind != CompiledPlan || got.Plan == nil || got.Err != nil {
+		t.Fatalf("bound Compiled() = %+v, want Kind=%q with Plan", got, CompiledPlan)
+	}
+}

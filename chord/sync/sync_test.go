@@ -350,36 +350,34 @@ func TestSyncingASessionBetweenDevices(t *testing.T) {
 		same(t, "replica copy", reads(t, replica.store()), reads(t, laptop.store()))
 	})
 
-	t.Run("passes the writer's epoch to the remote and reports a refused one as stale_epoch", func(t *testing.T) {
-		remote := newRemote(t)
-		laptop := newDevice(t, "laptop", remote)
-		laptop.commit(seedBatches()[:2])
-		shared := lastSeq(laptop.store())
-		current := int64(1)
-		var epochs []*int64
-		// A remote that issues epochs (Radius): refuses an upload whose epoch is not the current one.
-		issuing := overriding{SessionSyncMaintenance: remote, putBatch: func(ctx context.Context, sessionID string, after, to Seq, device string, body SyncBody, options PutBatchOptions) (PutBatchResult, error) {
-			epochs = append(epochs, options.Epoch)
-			if options.Epoch == nil || *options.Epoch != current {
-				return PutBatchResult{Type: PutStaleEpoch, Epoch: current}, nil
-			}
-			return remote.PutBatch(ctx, sessionID, after, to, device, body, options)
-		}}
-		source := laptop.store()
-		upload := func(epoch int64) UploadResult {
-			result, err := UploadSession(background, UploadOptions{SessionID: session, Device: "laptop", Source: source, Store: issuing, State: laptop.state, Epoch: &epoch})
+	t.Run("reports a remote that lost the session's history as remote_empty, and starts over from a full copy", func(t *testing.T) {
+		laptop := newDevice(t, "laptop", newRemote(t))
+		laptop.commit(seedBatches()[:4])
+		laptop.upload()
+		synced := lastSeq(laptop.store())
+		laptop.commit(seedBatches()[4:])
+		// The remote's copy was deleted while the bookmark still says `synced`.
+		emptied := newRemote(t)
+		upload := func() UploadResult {
+			result, err := UploadSession(background, UploadOptions{
+				SessionID: session,
+				Device:    "laptop",
+				Source:    laptop.store(),
+				Store:     emptied,
+				State:     laptop.state,
+			})
 			noError(t, err)
 			return result
 		}
-		if got := upload(1).Type; got != Uploaded {
-			t.Fatalf("upload = %s, want uploaded", got)
-		}
-		// The remote gave the session to another writer: this device's epoch is stale.
-		current = 2
-		laptop.commit([]rows{entry(100)})
-		same(t, "stale upload", upload(1), UploadResult{Type: StaleEpoch, At: shared, Epoch: 2})
-		one := int64(1)
-		same(t, "epochs", epochs, []*int64{&one, &one})
+		same(t, "remote_empty", upload(), UploadResult{Type: RemoteEmpty, At: synced})
+		// The host forgets the bookmark: the next upload is the whole store, as an archive (the outbox was trimmed).
+		noError(t, laptop.state.Set(background, session, SyncState{SyncedHead: nil}))
+		source := laptop.store()
+		same(t, "reupload", upload(), UploadResult{Type: Uploaded, Head: lastSeq(source)})
+		same(t, "slots", listing(t, emptied, session).Batches, []BatchInfo{{After: 0, To: lastSeq(source), Device: "laptop", Archive: true}})
+		replica := newDevice(t, "replica", emptied)
+		replica.pull()
+		same(t, "replica copy", reads(t, replica.store()), reads(t, source))
 	})
 
 	t.Run("refuses to upload a copy that lost uploaded commits, and pulls them back", func(t *testing.T) {

@@ -1,10 +1,10 @@
 {
   "defaultProvider": "openai",
-  "defaultModel": "gpt-4-turbo",
+  "defaultModel": "gpt-4.1",
   "quietStartup": true,
   "enabledModels": [
-    "openai/gpt-4",
+    "openai/gpt-4o",
     "custom/custom-model",
-    "openai/gpt-4-turbo"
+    "openai/gpt-4.1"
   ]
 }

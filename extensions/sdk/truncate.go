@@ -34,7 +34,7 @@ type TruncationResult struct {
 	TruncatedBy string
 	// TotalLines and TotalBytes describe the original content; OutputLines and OutputBytes the truncated output.
 	TotalLines, TotalBytes, OutputLines, OutputBytes int
-	// LastLinePartial reports that the last line was cut (the tail edge case where the final line alone exceeds the byte limit).
+	// LastLinePartial reports that the first output line was cut (the tail edge case where an over-long line at the end, possibly followed by blank lines, exceeds the byte limit).
 	LastLinePartial bool
 	// FirstLineExceedsLimit reports that the first line alone exceeded the byte limit (head truncation).
 	FirstLineExceedsLimit bool
@@ -146,8 +146,8 @@ func TruncateHead(content string, options TruncationOptions) TruncationResult {
 	return TruncationResult{Content: content[:end], Truncated: true, TruncatedBy: truncatedBy, TotalLines: totalLines, TotalBytes: totalBytes, OutputLines: count, OutputBytes: end, MaxLines: maxLines, MaxBytes: maxBytes}
 }
 
-// TruncateTail keeps the last lines and bytes of content, which suits command output where errors and final results come last. When the last line alone
-// exceeds the byte limit it keeps the end of that line and sets LastLinePartial.
+// TruncateTail keeps the last lines and bytes of content, which suits command output where errors and final results come last. When an over-long line
+// at the end (possibly followed by blank lines) exceeds the byte limit it keeps the end of that line and sets LastLinePartial.
 //
 // The kept lines are contiguous, so the result is a substring of content that ends before a trailing newline: the walk scans back from the end for its
 // start and nothing is split or joined.
@@ -161,7 +161,7 @@ func TruncateTail(content string, options TruncationOptions) TruncationResult {
 	if end > 0 && content[end-1] == '\n' {
 		end--
 	}
-	count, start, byBytes, partial := 0, end, false, false
+	count, start, byBytes, partial, allKeptBlank := 0, end, false, false, true
 	for count < maxLines && totalLines > 0 {
 		lineEnd, extra := end, 0
 		if count > 0 {
@@ -182,19 +182,45 @@ func TruncateTail(content string, options TruncationOptions) TruncationResult {
 		}
 		if lineEnd-lineStart > budget {
 			byBytes = true
-			if count == 0 {
-				// The last line alone is too long: keep its end, moved forward to the start of a UTF-8 character. A negative limit starts past the end, where
+			canPartial := count == 0
+			if !canPartial && allKeptBlank && budget > 0 {
+				// Check the scanned window from its first UTF-8 character boundary; scan back to the line start
+				// only when that suffix is blank so a non-blank over-long line avoids scanning its full length.
+				winStart := lineStart
+				for winStart < lineEnd && !utf8.RuneStart(content[winStart]) {
+					winStart++
+				}
+				canPartial = !isBlankLine(content[winStart:lineEnd])
+				if !canPartial && lineStart > 0 && content[lineStart-1] != '\n' {
+					fullStart := lineStart
+					for fullStart > 0 && content[fullStart-1] != '\n' {
+						fullStart--
+					}
+					if fullStart == 0 {
+						for fullStart < winStart && !utf8.RuneStart(content[fullStart]) {
+							fullStart++
+						}
+					}
+					canPartial = !isBlankLine(content[fullStart:winStart])
+				}
+			}
+			if canPartial {
+				// Keep the last budget bytes of this line, moved forward to the start of a UTF-8 character. A negative limit starts past the end, where
 				// Buffer.slice returns an empty buffer.
-				start = lineEnd - maxBytes
-				if maxBytes < 0 {
+				start = lineEnd - budget
+				if budget < 0 {
 					start = lineEnd
 				}
 				for start < lineEnd && !utf8.RuneStart(content[start]) {
 					start++
 				}
-				count, partial = 1, true
+				count++
+				partial = true
 			}
 			break
+		}
+		if allKeptBlank && !isBlankLine(content[lineStart:lineEnd]) {
+			allKeptBlank = false
 		}
 		start = lineStart
 		count++
@@ -229,4 +255,31 @@ func TruncateLine(line string, maxChars int) (text string, wasTruncated bool) {
 		used += n
 	}
 	return b.String() + "... [truncated]", true
+}
+
+func isJSSpace(r rune) bool {
+	switch r {
+	case '\t', '\n', '\v', '\f', '\r', ' ', 0xA0, 0x1680, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000, 0xFEFF:
+		return true
+	}
+	return r >= 0x2000 && r <= 0x200A
+}
+
+func isBlankLine(s string) bool {
+	for i := 0; i < len(s); {
+		c := s[i]
+		if c < utf8.RuneSelf {
+			if !isJSSpace(rune(c)) {
+				return false
+			}
+			i++
+			continue
+		}
+		r, size := utf8.DecodeRuneInString(s[i:])
+		if !isJSSpace(r) {
+			return false
+		}
+		i += size
+	}
+	return true
 }

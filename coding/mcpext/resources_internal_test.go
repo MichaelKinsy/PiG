@@ -5,6 +5,7 @@ package mcpext
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -199,5 +200,36 @@ func TestResourceToolDefinitionsCarryPisDescriptionsAndParameters(t *testing.T) 
 		if definition.Annotations == nil || definition.Annotations.ReadOnlyHint == nil || !*definition.Annotations.ReadOnlyHint {
 			t.Errorf("%s: not annotated read-only", name)
 		}
+	}
+}
+
+// resources.ts:326: read_mcp_resource passes SaveToTempFile to mcp.ToMcpModelContent so binary blobs are saved to a temp file rather than omitted.
+func TestReadMcpResourceSavesBinaryBlobToTempFile(t *testing.T) {
+	blob := "JVBERg=="
+	srv := &fakeResourceServer{
+		name: "docs",
+		contents: []mcp.ResourceContents{{
+			URI:      "file:///r/report.pdf",
+			MimeType: "application/pdf",
+			Blob:     &blob,
+		}},
+	}
+	result, err := runResourceTool(t, []McpResourceServer{srv}, ReadMcpResourceTool, `{"server":"docs","uri":"file:///r/report.pdf"}`)
+	if err != nil {
+		t.Fatalf("read_mcp_resource: %v", err)
+	}
+	gotText := contentText(result)
+	const prefix = "[Binary resource file:///r/report.pdf (application/pdf, 4B) saved to "
+	if !strings.HasPrefix(gotText, prefix) || !strings.HasSuffix(gotText, ".pdf]") {
+		t.Fatalf("read_mcp_resource binary blob text = %q, want prefix %q ending .pdf]", gotText, prefix)
+	}
+	savedPath := strings.TrimSuffix(strings.TrimPrefix(gotText, prefix), "]")
+	t.Cleanup(func() { _ = os.Remove(savedPath) })
+	data, err := os.ReadFile(savedPath)
+	if err != nil {
+		t.Fatalf("read saved temp file %q: %v", savedPath, err)
+	}
+	if string(data) != "%PDF" {
+		t.Fatalf("saved temp file bytes = %q, want %q", string(data), "%PDF")
 	}
 }

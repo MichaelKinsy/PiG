@@ -52,7 +52,7 @@ func readAll(s sdk.SettingsManager) map[string]any {
 		"getCacheWarmingMode":            ok(s.GetCacheWarmingMode()),
 		"getWebSocketConnectTimeoutMs":   orNilF(ok(s.GetWebSocketConnectTimeoutMs())),
 		"getHideThinkingBlock":           ok(s.GetHideThinkingBlock()),
-		"getShowCacheMissNotices":        ok(s.GetShowCacheMissNotices()),
+		"getNotices":                     ok(s.GetNotices()),
 		"getExternalEditorCommand":       ok(s.GetExternalEditorCommand()),
 		"getShellPath":                   orNil(ok(s.GetShellPath())),
 		"getQuietStartup":                ok(s.GetQuietStartup()),
@@ -166,7 +166,7 @@ func settingsScript(ctx sdk.Context, args map[string]any) map[string]any {
 	check(s.SetShowTerminalProgress(true))
 	check(s.SetEnableSkillCommands(false))
 	check(s.SetEnableInstallTelemetry(false))
-	check(s.SetShowCacheMissNotices(false))
+	check(s.SetNotice("cacheMisses", false))
 	check(s.SetDefaultModelAndProvider("anthropic", "opus"))
 	check(s.SetProjectPackages([]any{"npm:proj"}))
 	check(s.SetProjectExtensionPaths([]string{"pe"}))

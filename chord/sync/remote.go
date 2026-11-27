@@ -20,6 +20,13 @@ type Seq = int64
 // LogStart is the sequence before every commit: a store without commits is at it.
 const LogStart Seq = 0
 
+// SyncProtocol is the version of the sync rules this client follows: slots created once at the head, each recording its
+// device, and archive slots. A remote adapter sends it with every request (PiG has no HTTP sync remote, so nothing sends
+// the pi-sync-protocol header in this tree), so a remote that later changes the rules for a session (a handoff to
+// another device) can refuse writers that do not know them. Raised when the rules change, not when a body's encoding
+// does (LogVersion).
+const SyncProtocol = 1
+
 // BatchInfo is a slot of a session's remote history: the batch of outbox commits after After, up to To, uploaded by
 // Device. A store creates each slot once and never replaces it, so the device whose upload creates it continues the
 // session from After, and a device that finds it taken by another one holds a different history.
@@ -53,10 +60,6 @@ const (
 	// PutNotHead: no slot starts at After, and the history does not end there (Head): a slot there would branch the chain
 	// inside a batch or leave a gap. The uploader's history is not the remote's from After on.
 	PutNotHead PutBatchType = "not_head"
-	// PutStaleEpoch: the upload's epoch is not the session's current one (Epoch): another device was given the right to
-	// write the session since this one was. Who grants it, and when, is the remote's (RFC 0074's single writer); Chord only
-	// reports it.
-	PutStaleEpoch PutBatchType = "stale_epoch"
 )
 
 // PutBatchResult is the outcome of PutBatch; the members its Type names are set.
@@ -65,16 +68,12 @@ type PutBatchResult struct {
 	To     Seq
 	Device string
 	Head   Seq
-	Epoch  int64
 }
 
 // PutBatchOptions are what an upload tells the remote besides its slot.
 type PutBatchOptions struct {
 	// Archive: the body is a store archive instead of commits.
 	Archive bool
-	// Epoch is the writer's epoch: a remote that issues epochs refuses a stale one (PutStaleEpoch); others ignore it. Nil
-	// sends none.
-	Epoch *int64
 }
 
 // SessionSummary is a session as the remote's listing describes it.

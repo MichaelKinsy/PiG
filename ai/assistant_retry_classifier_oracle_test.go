@@ -11,7 +11,7 @@ func TestIsRetryableAssistantErrorMatchesPiOracle(t *testing.T) {
 	var messages []string
 	phrases := []string{"rate.limit", "timed out", "service unavailable", "provider returned error", "websocket closed", "internal error", "connection refused", "insufficient_quota", "ResourceExhausted", "billing", "quota exceeded", "ENOTFOUND", "retry delay", "ended without", "socket hang up", "connection closed", "Connection closed.", "CONNECTION CLOSED", "connection was closed", "socket connection was closed"}
 	separators := []string{" ", "_", "-", "", "\n", "\r", "\u2028", "\u2029", "\t", "\u0085", "\u00a0", "ab", "é", "\v", "\f"}
-	cases := []string{"rate%slimit", "service%sunavailable", "provider%sreturned%serror", "websocket%sclosed", "internal%serror", "connection%srefused", "connection%sclosed"}
+	cases := []string{"rate%slimit", "service%sunavailable", "provider%sreturned%serror", "websocket%sclosed", "internal%serror", "connection%srefused", "connection%sclosed", "provider%stemporarily%sunavailable", "provider%sis%stemporarily%sunavailable", "\"type\"%s:%s\"api_error\""}
 	for _, format := range cases {
 		for _, separator := range separators {
 			messages = append(messages, replaceAllSep(format, separator), "Error: "+replaceAllSep(format, separator)+" (retry later)")
@@ -35,6 +35,18 @@ func TestIsRetryableAssistantErrorMatchesPiOracle(t *testing.T) {
 		// The texts of a connection the server ends before a response, as they were and are reported: `connection.?error`, `fetch failed` and `other side closed` retry each.
 		"Connection error.", "Connection error.: read ECONNRESET", "Connection error.: write ECONNRESET", "Connection error.: write EPIPE", "Connection error.: other side closed (UND_ERR_SOCKET)", "fetch failed", "fetch failed: read ECONNRESET", "fetch failed: write EPIPE", "fetch failed: other side closed (UND_ERR_SOCKET)",
 		"\u212aECONNRESET", "EPIPE\u017f", "ECONNRESET\u212a", "\u017fEPIPE", "EPIPE billing", "ECONNRESET\n", "a\nETIMEDOUT", "éECONNRESET", "EPIPEé", "ECONNRESET ECONNRESETX", "ECONNRESETX ECONNRESET", "EPIPEEPIPE", "E PIPE",
+		// Pi fb62c069b, 25190b72c, a00a5048d: Cloudflare 525, gateway provider-unavailable/partial-response, and admission ceiling / temporary provider failures.
+		"525 <!DOCTYPE html><title>SSL handshake failed</title>", "400 payload 5250000 bytes exceeds limit",
+		"The provider is temporarily unavailable. Retry shortly.", "The upstream provider is temporarily unavailable. Try again shortly.",
+		"The provider ended the response before it was complete.", "The connection to the provider was reset. Retry shortly.",
+		"The provider reported a failure while generating the response.", "Provider unavailable for this model", "The provider is unavailable in your region",
+		"Unable to process request. Repeat the request later.", "waited 73.4s in queue, reaching this model's admission ceiling of 60s; retry after the hinted delay",
+		`{"type":"error","error":{"details":null,"type":"api_error","message":"Unable to complete this request right now. Please try again."},"request_id":"req_test_001"}`,
+		"Provider finish_reason: error", "Provider returned an empty response", "Upstream error from Relace: The model stopped before completing the response.",
+		"The operation was aborted", `{"type":"error","error":{"type":"invalid_request_error","message":"messages: at least one message is required"}}`,
+		"Provider finish_reason: content_filter", `{"type":"error","error":{"type":"api_error","message":"Monthly quota exceeded"}}`,
+		// Non-literal, case, and near-miss checks for Pi 25190b72c and a00a5048d.
+		`{"code":"api_error","message":"bad request"}`, "PROVIDER FINISH_REASON: ERROR",
 	)
 	type result struct {
 		Retryable bool `json:"retryable"`

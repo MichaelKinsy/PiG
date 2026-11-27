@@ -39,7 +39,11 @@ func TestExample06Natives(t *testing.T) {
 		reportedMu.Lock()
 		reportedErrors = append(reportedErrors, err)
 		reportedMu.Unlock()
-		reported.add(string(err.Kind) + " " + err.Object)
+		object := ""
+		if err.Kind == ErrCloseTimeout || err.Kind == ErrCloseFailed {
+			object = err.Object
+		}
+		reported.add(string(err.Kind) + " " + object)
 	}})
 	_ = errs
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@example/natives", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {

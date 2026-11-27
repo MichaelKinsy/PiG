@@ -609,7 +609,7 @@ func TestDurableTelemetryParentsBackgroundCompactionToThePreparePhaseThatCreates
 	})
 	recorder := telemetry.NewInMemoryTelemetryContext()
 	addHooks(t, setup.Registry, CompactionTask.Erased(), &CompactionHooks{BeforeCompact: func(context.Context, CompactionRequest, HookApi) (*CompactionDecision, error) {
-		return &CompactionDecision{Decline: true}, nil
+		return &CompactionDecision{Kind: CompactionDecline}, nil
 	}})
 	setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer("done")})
 	harness, root := openTracked(t, storage.NewMemoryStorage(), setup, recorder)

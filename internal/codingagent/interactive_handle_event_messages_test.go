@@ -78,7 +78,7 @@ func TestHandleEventMessageEndShowsTheNoticesOfAFinishedResponseOnly(t *testing.
 			}
 			sess.stats.cachePrev = &previousCacheRequest{promptTokens: 200000, modelKey: "p/m", reportedCache: true}
 			p.opts.SessionHandle = &recordingCompactHandle{inner: sess}
-			p.opts.Settings = Settings{ShowCacheMissNotices: true}
+			p.opts.Settings = Settings{Notices: &NoticeSettings{CacheMisses: true, cacheMissesSet: true, ReasoningDrops: true, reasoningDropsSet: true}}
 			p.handleAgentEvent(agent.MessageStartEvent{Message: assistantMsg("", ai.TextContent{Text: "reply"})})
 			p.handleAgentEvent(agent.MessageEndEvent{Message: missingCacheMessage(tc.stop, tc.message)})
 			got := p.chat()

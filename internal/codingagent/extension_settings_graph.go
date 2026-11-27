@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -477,14 +478,10 @@ func (g *GraphSettingsManager) Call(_ context.Context, method string, raw json.R
 		return sm.GetWebSocketConnectTimeoutMs()
 	case "getHideThinkingBlock":
 		return sm.GetHideThinkingBlock(), nil
-	case "getShowCacheMissNotices":
-		return sm.GetShowCacheMissNotices(), nil
 	case "getExternalEditorCommand":
 		return sm.GetExternalEditorCommand(), nil
 	case "setHideThinkingBlock":
 		return nil, setBool(args, 0, sm.SetHideThinkingBlock)
-	case "setShowCacheMissNotices":
-		return nil, setBool(args, 0, sm.SetShowCacheMissNotices)
 	case "getShellPath":
 		path, err := sm.GetShellPath()
 		return optStr(path), err
@@ -659,6 +656,26 @@ func (g *GraphSettingsManager) Call(_ context.Context, method string, raw json.R
 		}), nil
 	case "setWarnings":
 		return nil, setWarnings(args, 0, sm.SetWarnings)
+	case "getShowCacheMissNotices":
+		// Deprecated 0.8.x compatibility alias over notices.cacheMisses (removal in 0.9.0).
+		return sm.GetNotices().CacheMisses, nil
+	case "setShowCacheMissNotices":
+		// Deprecated 0.8.x compatibility alias over notices.* (removal in 0.9.0).
+		return nil, setBool(args, 0, sm.SetShowCacheMissNotices)
+	case "getNotices":
+		notices := sm.GetNotices()
+		out := map[string]bool{
+			"cacheMisses":     notices.CacheMisses,
+			"cacheWarming":    notices.CacheWarming,
+			"compactionCosts": notices.CompactionCosts,
+			"reasoningDrops":  notices.ReasoningDrops,
+		}
+		maps.Copy(out, notices.extra)
+		return out, nil
+	case "setNotice":
+		return nil, setString(args, 0, func(key NoticeKey) error {
+			return setBool(args, 1, func(shown bool) error { return sm.SetNotice(key, shown) })
+		})
 	}
 	return nil, errors.New("SettingsManager has no method " + method)
 }

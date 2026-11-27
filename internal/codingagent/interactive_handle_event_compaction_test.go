@@ -24,7 +24,7 @@ func TestHandleEventCompactionEndRedrawsTheTranscriptWithTheSummaryLast(t *testi
 		ids["compaction"] = id
 	})
 	_ = ids
-	p.opts.Settings = Settings{ShowCacheMissNotices: true}
+	p.opts.Settings = Settings{Notices: &NoticeSettings{CompactionCosts: true, compactionCostsSet: true}}
 	p.toolsExpanded = true
 	p.chatContainer.Add(tui.NewTruncatedText("STALE TRANSCRIPT", 0, 0))
 	p.handleAgentEvent(agent.CompactionEndEvent{Reason: "manual", HasResult: true, Summary: "NEW SUMMARY", TokensBefore: 4321, Usage: &ai.Usage{Input: 1000, Output: 200, Cost: ai.UsageCost{Total: 0.5}}})

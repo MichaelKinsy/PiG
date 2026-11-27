@@ -2,7 +2,7 @@
 
 # Message types
 
-PiG uses one message format in session files, in JSON and RPC events, and in the Go SDK. This page defines the messages and the content blocks inside them. The JSON field names match Pi 1.6.0 ([Pi's message types reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/message-types.md)).
+PiG uses one message format in session files, in JSON and RPC events, and in the Go SDK. This page defines the messages and the content blocks inside them. The JSON field names match Pi 1.6.1 ([Pi's message types reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/message-types.md)).
 
 Every message has a `role` field that names its type. A message `timestamp` is a Unix time in milliseconds. Session entries use ISO 8601 timestamps instead. See [session file format](session-format.md).
 
@@ -207,6 +207,7 @@ PiG records a shell command that you run with `!` or `!!`, or through the RPC `b
 | `cancelled` | boolean | Whether the command was stopped. |
 | `truncated` | boolean | Whether PiG shortened the output. |
 | `fullOutputPath` | string, optional | The file that holds the full output when PiG shortened it. |
+| `fullOutputError` | string, optional | Why the full output could not be saved when PiG shortened it and saving failed. |
 | `excludeFromContext` | boolean, optional | `true` for `!!` commands. PiG does not send them to the model. |
 
 ### Custom message

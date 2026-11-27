@@ -49,7 +49,7 @@ func TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory(t *testing.
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	root := tempRoot(t)
-	names, err := InstallPlugin(PluginSource{Npm: "@bob/clock", Version: "file:" + filepath.Join(source, packed)}, root, background, InstallPluginOptions{})
+	names, err := InstallPlugin(PluginSource{Kind: PluginSourceNpm, Npm: "@bob/clock", Version: "file:" + filepath.Join(source, packed)}, root, background, InstallPluginOptions{})
 	if err != nil || !reflect.DeepEqual(names, []string{"@bob/clock"}) {
 		t.Fatalf("names = %v, error = %v", names, err)
 	}

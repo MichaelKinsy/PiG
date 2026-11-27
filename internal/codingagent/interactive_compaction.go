@@ -15,7 +15,7 @@ import (
 
 // Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (addCompactionCostNotice and compaction_end rendering).
 func (m *InteractiveMode) addCompactionCostNotice(kind string, usage *ai.Usage) {
-	if usage == nil || !m.showCacheMissNotices() {
+	if usage == nil || !m.notices().CompactionCosts {
 		return
 	}
 	label := "Compaction"

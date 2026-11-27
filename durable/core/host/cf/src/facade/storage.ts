@@ -65,12 +65,12 @@ export abstract class SqlStorage implements Storage {
    * its receipt, so the batches are made durable there and this call receives the sequences they consume; the overriding subclasses call through `super.commit`. Called directly (a test
    * seeding a store before a Harness opens it) it applies the writes through the core in storage mode (storage-direct.ts).
    */
-  async commit(batches: readonly (readonly unknown[])[], receive: (index: number, seq: number) => void, _context?: unknown): Promise<{ stored: number; refused?: unknown }> {
+  async commit(batches: readonly (readonly unknown[])[], receive: (index: number, seq: number) => void, _context?: unknown): Promise<{ kind: "stored"; stored: number } | { kind: "refused"; stored: number; refused: unknown }> {
     const store = await this.open()
     if (this.gating === 0) {
       const { seqs, refused } = await (this.direct ??= new (await import("./storage-direct.ts")).DirectCommits(store)).commit(batches)
       seqs.forEach((seq, index) => receive(index, seq))
-      return refused === undefined ? { stored: seqs.length } : { stored: seqs.length, refused }
+      return refused === undefined ? { kind: "stored", stored: seqs.length } : { kind: "refused", stored: seqs.length, refused }
     }
     // The call being gated is made durable by the core's own commits, one per batch, each taking the store's next sequence number (CONTRACT
     // section 3.1: a commit's seq is the next_seq it consumes), so batch `index` has next_seq + index; a store the core has not initialized
@@ -78,7 +78,7 @@ export abstract class SqlStorage implements Storage {
     let next = 1
     try { next = Number(store.all("SELECT next_seq FROM durable_metadata", [])[0]?.[0] ?? 1) } catch { /* the core has not created the schema yet */ }
     batches.forEach((_, index) => receive(index, next + index))
-    return { stored: batches.length }
+    return { kind: "stored", stored: batches.length }
   }
   private minted = 0
   /** Pi's `Storage.mintId`: a fresh candidate from the Session-global ID namespace (above every ID the store has claimed). */

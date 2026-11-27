@@ -1,5 +1,5 @@
 {
-  "piVersion": "1.6.0",
+  "piVersion": "1.6.1",
   "node": "v24.19.0",
   "scenarios": [
     {
@@ -115,7 +115,7 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "durationMs": 26
+        "durationMs": 27
       }
     },
     {
@@ -1209,7 +1209,7 @@
         },
         "stopReason": "error",
         "errorMessage": "p stream ended without a terminal event",
-        "durationMs": 0
+        "durationMs": 1
       }
     },
     {
@@ -2119,24 +2119,16 @@
           0
         ],
         [
-          "push:start",
-          4
+          "push:error",
+          2
         ],
         [
-          "deliver:start",
-          7
-        ],
-        [
-          "push:done",
-          7
-        ],
-        [
-          "deliver:done",
-          10
+          "deliver:error",
+          5
         ]
       ],
-      "stopReason": "toolUse",
-      "errorMessage": null,
+      "stopReason": "error",
+      "errorMessage": "Unexpected non-whitespace character after JSON at position 17 (line 2 column 1)",
       "result": {
         "role": "assistant",
         "content": [],
@@ -2144,11 +2136,11 @@
         "provider": "p",
         "model": "strict",
         "usage": {
-          "input": 1,
-          "output": 2,
+          "input": 0,
+          "output": 0,
           "cacheRead": 0,
           "cacheWrite": 0,
-          "totalTokens": 3,
+          "totalTokens": 0,
           "cost": {
             "input": 0,
             "output": 0,
@@ -2157,8 +2149,8 @@
             "total": 0
           }
         },
-        "stopReason": "toolUse",
-        "responseId": "r1",
+        "stopReason": "error",
+        "errorMessage": "Unexpected non-whitespace character after JSON at position 17 (line 2 column 1)",
         "durationMs": 0
       }
     },

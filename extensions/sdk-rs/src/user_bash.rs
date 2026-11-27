@@ -12,6 +12,9 @@ pub(crate) fn user_bash_event_result(mut value: Option<Value>) -> Option<Value> 
         if result.get("fullOutputPath").is_some_and(Value::is_null) {
             result.remove("fullOutputPath");
         }
+        if result.get("fullOutputError").is_some_and(Value::is_null) {
+            result.remove("fullOutputError");
+        }
         object.insert("_pigUserBashExitCodeUndefined".into(), json!(undefined));
     }
     value

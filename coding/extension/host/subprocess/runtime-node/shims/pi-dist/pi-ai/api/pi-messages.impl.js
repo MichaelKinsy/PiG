@@ -13,6 +13,7 @@ import { AssistantMessageEventStream } from "../utils/event-stream.js";
 import { headersToRecord, providerHeadersToRecord } from "../utils/headers.js";
 import { getIdentityHeaders } from "../utils/identity.js";
 import { getProviderEnvValue } from "../utils/provider-env.js";
+import { SseDecoder } from "../utils/sse.js";
 import { ToolCallArgumentsStream } from "../utils/streaming-json.js";
 import { ownedSlice } from "../utils/text.js";
 export class PiMessagesResponseError extends Error {
@@ -189,45 +190,27 @@ function createEventConverter(model) {
     };
 }
 async function* readPiMessagesEvents(stream) {
-    const decoder = new TextDecoder();
     const reader = stream.getReader();
-    let buffer = "";
+    const sse = new SseDecoder();
     try {
         while (true) {
             const { done, value } = await reader.read();
-            buffer += done ? decoder.decode() : decoder.decode(value, { stream: true });
-            buffer = buffer.replace(/\r\n/g, "\n");
-            let split = buffer.indexOf("\n\n");
-            while (split !== -1) {
-                const event = parsePiMessagesEvent(buffer.slice(0, split));
+            const events = done ? sse.end() : sse.push(value);
+            for (const { data } of events) {
+                const text = data.trim();
+                const event = text && text !== "[DONE]" ? JSON.parse(text) : undefined;
                 if (event) {
                     yield event;
                 }
-                buffer = buffer.slice(split + 2);
-                split = buffer.indexOf("\n\n");
             }
             if (done) {
                 break;
-            }
-        }
-        if (buffer.trim()) {
-            const event = parsePiMessagesEvent(buffer);
-            if (event) {
-                yield event;
             }
         }
     }
     finally {
         reader.releaseLock();
     }
-}
-function parsePiMessagesEvent(raw) {
-    const data = raw
-        .split("\n")
-        .find((line) => line.startsWith("data:"))
-        ?.slice(5)
-        .trim();
-    return data && data !== "[DONE]" ? JSON.parse(data) : undefined;
 }
 function createErrorEvent(model, error, aborted) {
     const reason = aborted ? "aborted" : "error";

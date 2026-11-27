@@ -10,7 +10,7 @@ import { getAgentDir } from "../config.js";
 import { raceWithAbortSignal } from "../utils/abort.js";
 import { getFileRevision, normalizePath } from "../utils/paths.js";
 import { stripBom } from "../utils/text.js";
-import { isCommandConfigValue, resolveConfigValue } from "./resolve-config-value.js";
+import { clearConfigValueCacheEntry, isCommandConfigValue, resolveConfigValue } from "./resolve-config-value.js";
 // On Windows, a just-removed lock directory can stay "delete pending" while another process
 // (antivirus, indexer, another pi checking the lock) still has it open. mkdir then fails with
 // EPERM until that handle closes. Retry this briefly so real permission errors still fail fast.
@@ -386,6 +386,7 @@ export class AuthStorage {
     async modify(provider, fn, options) {
         let latestData = this.readState.data;
         let revision;
+        let written;
         const result = await this.storage.withLockAsync(async (content) => {
             const currentData = this.parseStorageData(content);
             const next = await fn(currentData[provider]);
@@ -396,9 +397,14 @@ export class AuthStorage {
             }
             const merged = { ...currentData, [provider]: next };
             latestData = merged;
+            written = next;
             return { result: next, next: JSON.stringify(merged, null, 2) };
         }, options);
         this.updateReadState(latestData, revision);
+        // Command results are cached for the process. Saving a `!command` key, even the same one, runs it
+        // again, so signing in to a secrets manager and saving the key again recovers from a failure.
+        if (written?.type === "api_key" && written.key)
+            clearConfigValueCacheEntry(written.key);
         return result;
     }
     async delete(provider, options) {

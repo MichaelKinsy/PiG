@@ -580,6 +580,11 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 		return "tool", "", []testFauxToolCall{{Name: "bash", ArgsJSON: `{"command":"echo short; head -c 219000 /dev/zero | tr '\\0' x; echo END"}`}}
 	}
 
+	// A short line, then one line over 50KB followed by a blank line (Pi 9e9609216, #12355).
+	if strings.Contains(lastText, "Run: bash long line blank line") {
+		return "tool", "", []testFauxToolCall{{Name: "bash", ArgsJSON: `{"command":"echo short; head -c 219000 /dev/zero | tr '\\0' y; printf 'END\\n\\n'"}`}}
+	}
+
 	// Long-output bash tool parity (exercises visual-truncate.ts via bash.ts collapse hint).
 	if strings.Contains(lastText, "Run: bash long output") {
 		return "tool", "", []testFauxToolCall{{Name: "bash", ArgsJSON: `{"command":"seq 1 30"}`}}
@@ -712,6 +717,9 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 		}
 		if strings.Contains(currentUserText, "Run: bash long last line") {
 			// The tool's result is the answer, so the kept end of the line and the notice under it are what the scenario compares.
+			return "text", lastText, nil
+		}
+		if strings.Contains(currentUserText, "Run: bash long line blank line") {
 			return "text", lastText, nil
 		}
 		if strings.Contains(currentUserText, "Run: bash long output") {

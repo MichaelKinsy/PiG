@@ -1,14 +1,14 @@
 {
-	"commit": "faac585884ae2c013a6b1400f3e9e77f10b34bac",
-	"pin": "faac585884ae2c013a6b1400f3e9e77f10b34bac",
+	"commit": "ef4a1cfcca62b77ad3558337ff3e1c7f6beeadfe",
+	"pin": "ef4a1cfcca62b77ad3558337ff3e1c7f6beeadfe",
 	"patches": [
 		{
 			"name": "D636-apply-acquired-pick.patch",
 			"sha256": "be36842369fd837b3330c094623486d1647267a7eae73906ecdf715797a19e7a"
 		}
 	],
-	"piSchema": "1.6.0",
-	"piTelemetry": "1.6.0",
+	"piSchema": "1.6.1",
+	"piTelemetry": "1.6.1",
 	"files": [
 		{
 			"path": "pi/chord/src/context/index.ts",
@@ -64,7 +64,7 @@
 		},
 		{
 			"path": "pi/chord/src/data/args.ts",
-			"sha256": "7828d90bbeca768761d62dcd20d4cc69857f0cf0399d1fa86738c11ea7ea5575"
+			"sha256": "c645d5b4722a5df663e55c6ed27ba3346efc05aef4b083b5827526a4779a14c9"
 		},
 		{
 			"path": "pi/chord/src/data/errors.ts",
@@ -396,7 +396,7 @@
 		},
 		{
 			"path": "pi/chord/src/link/binary.ts",
-			"sha256": "12ac9196a048fdfa2c7c3bd49d72115bf6e9c7ae7dcbef41efde79a8869484ff"
+			"sha256": "1e8b03bfd3cba804efef525ac69eef9a907926ee19627299fafc8cec4350c2d0"
 		},
 		{
 			"path": "pi/chord/src/link/channel.ts",
@@ -412,7 +412,7 @@
 		},
 		{
 			"path": "pi/chord/src/link/internal.ts",
-			"sha256": "858b164468fc14863a4e310e985478ad6442caf32b27593501b9cb55e4421325"
+			"sha256": "c1950e68f26998f228304ad198f9698d98bc8534d6d660fd2cac8a9b70b07f1d"
 		},
 		{
 			"path": "pi/chord/src/link/ipc.ts",
@@ -424,7 +424,7 @@
 		},
 		{
 			"path": "pi/chord/src/link/message.ts",
-			"sha256": "7847e929c66aa32a8ee30df1683aae6078bc56ad8346e280d582123bf36944a4"
+			"sha256": "4a8fcde9d1bc928b3bf265b346c18691f9e83e3363e5eaa0f3cce333ff4b2a19"
 		},
 		{
 			"path": "pi/chord/src/link/part.ts",
@@ -432,7 +432,7 @@
 		},
 		{
 			"path": "pi/chord/src/link/text.ts",
-			"sha256": "3da0084ae4c9f0967a2377a12b8bfa76cf3210c62ce6ce7e2694b1223d4a01ce"
+			"sha256": "671bd4cfc92c6f44bc88e014878e7028bd9f6354f1cc77242ab1a4ac98fb9156"
 		},
 		{
 			"path": "pi/chord/src/link/values.ts",
@@ -456,7 +456,7 @@
 		},
 		{
 			"path": "pi/chord/src/node/plugins/stack.ts",
-			"sha256": "52eb01ebb9f8a706401b387b65e6e98b542f830cc2f2dd16d3818cb1e1492c0d"
+			"sha256": "73d661213236ae688a36e8df86863e4694f09ec95030b80c8db63d5a61f20576"
 		},
 		{
 			"path": "pi/chord/src/registries/contribution.ts",
@@ -492,7 +492,7 @@
 		},
 		{
 			"path": "pi/chord/src/remote/consumer.ts",
-			"sha256": "4897d902bc923c29926c5bc54ba552418f351fbe79570afdff1dc8ab4608d4d0"
+			"sha256": "100f66b2923605592392861e7414b2f5b1570316a2f815786dc546294d26b381"
 		},
 		{
 			"path": "pi/chord/src/remote/hold.ts",
@@ -500,7 +500,7 @@
 		},
 		{
 			"path": "pi/chord/src/remote/host-link.ts",
-			"sha256": "f5d7c101a1b9be8edf2474aade3d170b8ebcccd9b67d6c0e53a7f69f4932b8a6"
+			"sha256": "04fdda47e4ab22869297229842807b5061555adfe01f583a0fe7e413058d82f9"
 		},
 		{
 			"path": "pi/chord/src/remote/internal.ts",
@@ -632,7 +632,7 @@
 		},
 		{
 			"path": "pi/chord/src/store/expression.ts",
-			"sha256": "37b956b6e00dfecc33836496f3de1a6795e7739913ac3bb8d2dc20dd64432e7b"
+			"sha256": "9a6aa3ac80109245c3470e5ed350fc5bfa53d29b2c207abbd8ae8326361ab1ab"
 		},
 		{
 			"path": "pi/chord/src/store/host-column.ts",
@@ -660,7 +660,7 @@
 		},
 		{
 			"path": "pi/chord/src/store/jsonl.ts",
-			"sha256": "c3d558f5e8360567012e72dc26fafab7f601c5b6dc9148eb83f67c7744375ced"
+			"sha256": "12ef626fe20eb7fa4412e3a931fb816ac3b98dbd143c7270f29db0f713c0f5c6"
 		},
 		{
 			"path": "pi/chord/src/store/live-query.ts",
@@ -668,7 +668,7 @@
 		},
 		{
 			"path": "pi/chord/src/store/open-query.ts",
-			"sha256": "eb41cb98cd1a274a08975057a697b0837ab7ba6ddba71f39fc6d3a82b26079bf"
+			"sha256": "368c1bd22d5c6423bd3dd2768f2a9e06a053f1fa2827cc79545a43277ef19d9f"
 		},
 		{
 			"path": "pi/chord/src/store/outbox.ts",
@@ -720,7 +720,7 @@
 		},
 		{
 			"path": "pi/chord/src/store/store.ts",
-			"sha256": "fe2501420ab2f00d5fcfe072727e5b1f487e1ee5356c677baf8aea79c68958ed"
+			"sha256": "3ec09beea86de2bf50085ffe5723c295ec0bf9e0c7eed9d2c021171a7d29e90b"
 		},
 		{
 			"path": "pi/chord/src/store/table-changes.ts",
@@ -756,7 +756,7 @@
 		},
 		{
 			"path": "pi/chord/src/surfaces/active-language.ts",
-			"sha256": "394bb8f04d41ebda7fd3219714ffbdb76eb2d9792d06cfeb832fa7db570b6a8c"
+			"sha256": "e6142226cfb9ae2cadf2331c12fac54702263bb559ff09cb753d3f506c8a7b1b"
 		},
 		{
 			"path": "pi/chord/src/surfaces/active-theme.ts",
@@ -852,7 +852,7 @@
 		},
 		{
 			"path": "pi/node_modules/@earendil-works/pi-telemetry/package.json",
-			"sha256": "491ec2a88fd55455b15cf7b5930ff04f4124a79fa85a6432b0b9d49b6f1006ca"
+			"sha256": "07e479ccf78852962816526bb0852f5a81ea68e990478dc34cee6fcadaa8779a"
 		},
 		{
 			"path": "pi/schema/THIRD_PARTY_NOTICES/typebox-LICENSE",
@@ -860,7 +860,7 @@
 		},
 		{
 			"path": "pi/schema/package.json",
-			"sha256": "177c64f16d671183f4493429754a56b998379205023f6820e057859ec90d64de"
+			"sha256": "34a38fd4fded2c54dba1e5f15dc5e7a938814a0349d94fdfa026143283d7db41"
 		},
 		{
 			"path": "pi/schema/src/annotations.ts",

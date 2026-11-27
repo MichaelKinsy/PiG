@@ -8,13 +8,14 @@ func groq() ProviderDefinition {
 	return ProviderDefinition{
 		ID: "groq",
 		Models: func(ctx *ProviderContext) ([]ChatModel, error) {
-			return ModelsDevModels(ctx, "groq", ModelsDevOptions{API: "openai-completions", BaseURL: "https://api.groq.com/openai/v1"})
+			return ModelsDevModels(ctx, "groq", ModelsDevOptions{
+				API:     "openai-completions",
+				BaseURL: "https://api.groq.com/openai/v1",
+				// models.dev has marked Groq models deprecated only after Groq shut them down, then deletes
+				// them weeks later, e.g. llama-3.3-70b-versatile: shut down 2026-08-16, marked 2026-10-21.
+				SkipDeprecated: true,
+			})
 		},
 		Compat: ApiCompatDefaults{"openai-completions": FixedCompat(O("supportsStrictMode", true))},
-		Finalize: func(model ChatModel, _ *ProviderContext) {
-			if model.Str("id") == "qwen/qwen3.6-27b" {
-				MergeThinking(model, O("minimal", nil, "low", nil, "medium", nil, "high", "default"))
-			}
-		},
 	}
 }

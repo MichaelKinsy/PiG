@@ -49,9 +49,9 @@ func TestUpstreamStringUnionsMatchTheGoConstants(t *testing.T) {
 		{"ModelsErrorCode", "utils/models-error.ts", []string{string(ModelsErrorModelSource), string(ModelsErrorModelValidation), string(ModelsErrorProvider), string(ModelsErrorStream), string(ModelsErrorAuth), string(ModelsErrorOAuth)}},
 		{"AuthType", "auth/types.ts", []string{string(CredentialAPIKey), string(CredentialOAuth)}},
 		{"KnownApi", "types.ts", []string{string(APIOpenAICompletions), string(APIMistralConversations), string(APIOpenAIResponses), string(APIAzureOpenAIResponses), string(APIOpenAICodexResponses), string(APIAnthropicMessages), string(APIBedrockConverseStream), string(APIGoogleGenerativeAI), string(APIGoogleVertex), string(APIPiMessages)}},
-		{"GoogleApiThinkingLevel", "api/google-shared.ts", []string{string(GoogleThinkingLevelUnspecified), string(GoogleThinkingLevelMinimal), string(GoogleThinkingLevelLow), string(GoogleThinkingLevelMedium), string(GoogleThinkingLevelHigh)}},
+		{"GoogleApiThinkingLevel", "api/google-shared.ts", []string{string(GoogleThinkingLevelUnspecified), string(GoogleThinkingLevelMinimal), string(GoogleThinkingLevelLow), string(GoogleThinkingLevelMedium), string(GoogleThinkingLevelHigh), string(GoogleThinkingLevelXHigh)}},
 		{"KnownImageApi", "types.ts", []string{string(APIImagesOpenRouter)}},
-		{"KnownClassifierApi", "types.ts", []string{string(ClassifierAPITypesafeSystemOne), string(ClassifierAPICloudflareWorkersAISystemOne), string(ClassifierAPILlamaCppClassify), string(ClassifierAPIOpenAIDecisions)}},
+		{"KnownClassifierApi", "types.ts", []string{string(ClassifierAPITypesafeSystemOne), string(ClassifierAPICloudflareWorkersAISystemOne), string(ClassifierAPILlamaCppClassify), string(ClassifierAPIOpenAIDecisions), string(ClassifierAPIPiDecision)}},
 	} {
 		if want := upstreamStringUnion(t, tc.file, tc.upstream); !slices.Equal(want, tc.goValues) {
 			t.Errorf("%s: Go constants %v, upstream %v", tc.upstream, tc.goValues, want)

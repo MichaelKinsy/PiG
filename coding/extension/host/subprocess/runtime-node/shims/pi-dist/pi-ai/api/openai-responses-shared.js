@@ -89,7 +89,16 @@ function renderIncrementalToolsNotice(unavailable) {
 function renderToolRemovalNotice(names) {
     return `The following tools are no longer available. Do not call them:\n${names.map((name) => `- ${name}`).join("\n")}`;
 }
+/** Render input items for replay, as used by Codex WebSocket continuation. Use `prepareResponsesPrompt` to build a request. */
 export function convertResponsesMessages(model, context, allowedToolCallProviders, options) {
+    return renderResponsesTranscript(model, context, allowedToolCallProviders, options).input;
+}
+/** Place transcript-derived declarations and effort changes consistently in input and top-level request fields. */
+export function prepareResponsesPrompt(model, context, allowedToolCallProviders, options) {
+    const { input, requestTools, requestEffortBaseline } = renderResponsesTranscript(model, context, allowedToolCallProviders, options);
+    return { input, requestTools: convertResponsesTools(requestTools, options?.toolOptions), requestEffortBaseline };
+}
+function renderResponsesTranscript(model, context, allowedToolCallProviders, options) {
     const normalizedContext = resolveTranscript(context, options?.supportsMidConvoSystemMessages);
     const messages = [];
     const normalizeIdPart = (part) => {
@@ -159,7 +168,18 @@ export function convertResponsesMessages(model, context, allowedToolCallProvider
             tools: convertResponsesTools(tools, { ...options?.toolOptions, toolSearchResult: true }),
         });
     };
+    let requestEffortBaseline;
+    let previousEffort;
     const pushConfigurationUpdate = (effort) => {
+        if (options?.effortBaseline === "initial") {
+            if (previousEffort === effort)
+                return;
+            previousEffort = effort;
+            if (requestEffortBaseline === undefined) {
+                requestEffortBaseline = effort;
+                return;
+            }
+        }
         messages.push({
             type: "configuration_update",
             reasoning: { effort: effort },
@@ -273,24 +293,32 @@ export function convertResponsesMessages(model, context, allowedToolCallProvider
                     if (isDifferentModel || !itemId?.startsWith(itemIdPrefix)) {
                         itemId = undefined;
                     }
+                    // OpenAI returns tool calls with status "completed", so replay them the same way. Over the Codex WebSocket,
+                    // OpenAI keeps the previous response's items itself, and later reasoning is generated after calls that have
+                    // the status. After 5 idle minutes the connection closes and pi sends the whole history again. If a call
+                    // lacks the status there, the history no longer matches, and from GPT-6.2 on OpenAI drops the reasoning
+                    // that follows it (`prefix_mismatch`, #12367).
+                    // Always "completed": a stream that ends with an unfinished tool call fails, and failed messages are not replayed.
+                    // `status` is spread in because the SDK declares it only on returned custom tool calls; the API accepts it on input too.
+                    const replayedCall = {
+                        id: itemId,
+                        call_id: callId,
+                        name: toolCall.name,
+                        status: "completed",
+                        ...(isSameModel && toolCall.namespace !== undefined ? { namespace: toolCall.namespace } : {}),
+                    };
                     if (customInputProperty !== undefined) {
                         output.push({
                             type: "custom_tool_call",
-                            id: itemId,
-                            call_id: callId,
-                            name: toolCall.name,
+                            ...replayedCall,
                             input: sanitizeSurrogates(getGrammarToolInput(toolCall.name, toolCall.arguments, customInputProperty)),
-                            ...(isSameModel && toolCall.namespace !== undefined ? { namespace: toolCall.namespace } : {}),
                         });
                     }
                     else {
                         output.push({
                             type: "function_call",
-                            id: itemId,
-                            call_id: callId,
-                            name: toolCall.name,
+                            ...replayedCall,
                             arguments: JSON.stringify(toolCall.arguments),
-                            ...(isSameModel && toolCall.namespace !== undefined ? { namespace: toolCall.namespace } : {}),
                         });
                     }
                 }
@@ -327,7 +355,7 @@ export function convertResponsesMessages(model, context, allowedToolCallProvider
     }
     if (options?.configurationUpdateEffort !== undefined)
         pushConfigurationUpdate(options.configurationUpdateEffort);
-    return messages;
+    return { input: messages, requestTools: transcriptTools.requestTools, requestEffortBaseline };
 }
 // =============================================================================
 // Tool conversion

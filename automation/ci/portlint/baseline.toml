@@ -840,12 +840,6 @@ snippet = "Env map[string]string `json:\"env,omitempty\"`"
 
 [[hit]]
 check = "emptydrop"
-file = "ai/auth.go"
-func = "(decl)"
-snippet = "Env               map[string]string          `json:\"env,omitempty\"`"
-
-[[hit]]
-check = "emptydrop"
 file = "ai/auth_interaction.go"
 func = "(decl)"
 snippet = "Links   []AuthInfoLink `json:\"links,omitempty\"`"
@@ -2050,12 +2044,6 @@ snippet = "go func() {"
 
 [[hit]]
 check = "golifetime"
-file = "internal/codingagent/startup_ui.go"
-func = "runStartupComponentWith"
-snippet = "select {"
-
-[[hit]]
-check = "golifetime"
 file = "internal/codingagent/tools/shell_updates.go"
 func = "newShellUpdateScheduler"
 snippet = "go u.run()"
@@ -2946,12 +2934,6 @@ snippet = "scopesJSON, _ := json.Marshal(scopes)"
 
 [[hit]]
 check = "nilslicenull"
-file = "ai/openai_responses.go"
-func = "responsesMessageConverter.convertAnchored"
-snippet = "content, _ := json.Marshal(parts)"
-
-[[hit]]
-check = "nilslicenull"
 file = "coding/extension/host/subprocess/packed_node.go"
 func = "buildNodePackedCell"
 snippet = "data, err := json.Marshal(manifest)"
@@ -3153,12 +3135,6 @@ check = "numbers"
 file = "coding/mcpext/runtime.go"
 func = "Connection.Timeout"
 snippet = "return time.Duration(seconds * float64(time.Second))"
-
-[[hit]]
-check = "numbers"
-file = "coding/mcpext/tools.go"
-func = "blockToContent"
-snippet = "details = append(details, tools.FormatSize(int(*block.Size)))"
 
 [[hit]]
 check = "numbers"
@@ -4550,12 +4526,6 @@ check = "utf16units"
 file = "ai/openai.go"
 func = "normalizeCompletionsToolCallID"
 snippet = "return id[:40]"
-
-[[hit]]
-check = "utf16units"
-file = "ai/openai_responses.go"
-func = "responsesMessageConverter.convertAnchored"
-snippet = "if len(id) > 64 {"
 
 [[hit]]
 check = "utf16units"

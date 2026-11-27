@@ -31,7 +31,7 @@ func TestBuildModelUsesGeneratedProviderAPI(t *testing.T) {
 		providerTy string
 		strip      string
 	}{
-		{"openai/gpt-4", "*ai.openAIResponsesProvider", ""},
+		{"openai/gpt-4.1", "*ai.openAIResponsesProvider", ""},
 		{"openai-codex/gpt-5.6-sol", "*ai.openAIResponsesProvider", ""},
 		{"anthropic/claude-haiku-4-5", "*ai.anthropicProvider", ""},
 		{"google/gemini-2.5-flash", "*ai.googleProvider", ""},

@@ -186,7 +186,10 @@ func TestGetOverflowPatternsMatchesUpstreamList(t *testing.T) {
 	var want []string
 	for line := range strings.SplitSeq(block[1], "\n") {
 		if match := regexp.MustCompile(`^\s*/(.+)/i,`).FindStringSubmatch(line); match != nil {
-			want = append(want, lazyregexp.NewJSIgnoreCase(strings.ReplaceAll(match[1], `\s`, jsSpaceClass)).Regexp().String())
+			pat := strings.ReplaceAll(match[1], `\s`, jsSpaceClass)
+			pat = strings.ReplaceAll(pat, `(?<![a-z0-9_])`, `(?:^|[^a-z0-9_])`)
+			pat = strings.ReplaceAll(pat, `(?![a-z0-9_])`, `(?:[^a-z0-9_]|$)`)
+			want = append(want, lazyregexp.NewJSIgnoreCase(pat).Regexp().String())
 		}
 	}
 	patterns := GetOverflowPatterns()

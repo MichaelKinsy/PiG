@@ -47,13 +47,13 @@ func TestOpencodeClaudeMidConvoEffort(t *testing.T) {
 				{"claude-haiku-5-5", "compat", effort(`{"forceAdaptiveThinking":true,"supportsTemperature":false`)},
 				{"claude-fable-5-1", "compat", effort(`{"forceAdaptiveThinking":true`)},
 				{"claude-mythos-5-1", "compat", effort(`{"forceAdaptiveThinking":true`)},
-				// Models that cannot disable thinking alongside per-message effort keep "off"; the rest lose it.
+				// Thinking off support now comes from Anthropic's models.dev entry (433c1fd94), not EnableClaudeMidConvoEffort.
 				{"claude-opus-5", "thinkingLevelMap", `{"xhigh":"xhigh","max":"max"}`},
 				{"claude-haiku-5-5", "thinkingLevelMap", `{"xhigh":"xhigh","max":"max"}`},
-				{"claude-opus-5-5", "thinkingLevelMap", `{"xhigh":"xhigh","max":"max","off":null}`},
-				{"claude-sonnet-5-5", "thinkingLevelMap", `{"xhigh":"xhigh","max":"max","off":null}`},
-				{"claude-fable-5-1", "thinkingLevelMap", `{"off":null,"xhigh":"xhigh","max":"max"}`},
-				{"claude-mythos-5-1", "thinkingLevelMap", `{"off":null}`},
+				{"claude-opus-5-5", "thinkingLevelMap", `{"xhigh":"xhigh","max":"max"}`},
+				{"claude-sonnet-5-5", "thinkingLevelMap", `{"xhigh":"xhigh","max":"max"}`},
+				{"claude-fable-5-1", "thinkingLevelMap", `{"xhigh":"xhigh","max":"max"}`},
+				{"claude-mythos-5-1", "thinkingLevelMap", "undefined"},
 				{"claude-sonnet-4-5", "thinkingLevelMap", "undefined"},
 				{"claude-opus-4-6", "thinkingLevelMap", `{"max":"max"}`},
 				{"claude-opus-4-6", "compat", `{"forceAdaptiveThinking":true}`},

@@ -9,6 +9,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 )
 
 // reloadStep is chapter IX: an edit applied in place. The lists plugin's worker facet trims a to-do's text, so a blank one is empty and
@@ -47,9 +48,11 @@ func (s *session) reloadStep() error {
 		}
 		for _, rolled := range step.Hosts {
 			var fates []string
-			for _, object := range rolled.Report.Objects {
-				if fate := object.Object + " " + string(object.Kind); !slices.Contains(fates, fate) {
-					fates = append(fates, fate)
+			if rolled.Kind == plugins.RolloutReloaded {
+				for _, object := range rolled.Report.Objects {
+					if fate := object.Object + " " + string(object.Kind); !slices.Contains(fates, fate) {
+						fates = append(fates, fate)
+					}
 				}
 			}
 			_, _ = fmt.Fprintf(s.out, "   on %s: %s\n", rolled.Host, strings.Join(fates, ", "))

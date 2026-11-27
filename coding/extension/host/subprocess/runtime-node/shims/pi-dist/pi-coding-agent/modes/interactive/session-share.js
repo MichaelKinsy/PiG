@@ -36,7 +36,15 @@ export function exportSessionForShare(filePath, session) {
 }
 /** Share the current session through Radius, falling back to a private gist. */
 export async function shareSession(context) {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-share-"));
+    let tempDir;
+    try {
+        tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-share-"));
+    }
+    catch (error) {
+        // /share runs from the editor's submit handler, where a thrown error would crash pi.
+        context.showError(`Failed to export session: ${error instanceof Error ? error.message : "Unknown error"}`);
+        return;
+    }
     const jsonlFile = path.join(tempDir, "session.jsonl");
     const htmlFile = path.join(tempDir, "session.html");
     try {

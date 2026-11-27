@@ -90,6 +90,7 @@ const shellOutputSchema = `{"type":"object","required":["output","truncated","ex
 	"output":{"type":"string","description":"Combined stdout and stderr, possibly truncated"},
 	"truncated":{"type":"boolean"},
 	"full_output_path":{"type":"string","description":"Full output, when truncated"},
+	"full_output_error":{"type":"string","description":"Why the full output could not be saved, when truncated and saving failed"},
 	"exit_code":{"type":"number"},
 	"wall_time_seconds":{"type":"number"}
 }}`
@@ -110,6 +111,7 @@ type shellStructuredContent struct {
 	Output          string  `json:"output"`
 	Truncated       bool    `json:"truncated"`
 	FullOutputPath  string  `json:"full_output_path,omitempty"`
+	FullOutputError string  `json:"full_output_error,omitempty"`
 	ExitCode        int     `json:"exit_code"`
 	WallTimeSeconds float64 `json:"wall_time_seconds"`
 }
@@ -184,9 +186,11 @@ func executeShellTool(ctx context.Context, cwd string, cfg shellToolConfig, rawP
 		if updates.started() {
 			updates.finish()
 		}
-		snapshot := output.Snapshot(true)
+		// Ensure the file exists if truncated, then close before taking the final snapshot:
+		// a write or close can still fail while flushing.
+		_ = output.Snapshot(true)
 		_ = output.CloseTempFile()
-		return snapshot
+		return output.Snapshot(true)
 	}
 
 	startedAt := time.Now()
@@ -244,6 +248,7 @@ func executeShellTool(ctx context.Context, cwd string, cfg shellToolConfig, rawP
 	}
 	if fullOutput.Truncated {
 		structured.FullOutputPath = snapshot.FullOutputPath
+		structured.FullOutputError = snapshot.FullOutputError
 	}
 	structuredContent, err := json.Marshal(structured)
 	if err != nil {
@@ -275,19 +280,23 @@ func formatShellOutput(snapshot OutputSnapshot, lastLineBytes int, emptyText str
 	if !tr.Truncated {
 		return sharedOutput(nil, text), nil
 	}
-	details := &BashDetails{Truncation: &tr, FullOutputPath: snapshot.FullOutputPath}
+	details := &BashDetails{Truncation: &tr, FullOutputPath: snapshot.FullOutputPath, FullOutputError: snapshot.FullOutputError}
+	fullOutput := "Full output: " + snapshot.FullOutputPath
+	if snapshot.FullOutputError != "" {
+		fullOutput = "Could not save the full output: " + snapshot.FullOutputError
+	}
 	startLine := tr.TotalLines - tr.OutputLines + 1
 	endLine := tr.TotalLines
 	switch {
 	case tr.LastLinePartial:
-		text += fmt.Sprintf("\n\n[Showing last %s of line %d (line is %s). Full output: %s]",
-			FormatSize(tr.OutputBytes), endLine, FormatSize(lastLineBytes), snapshot.FullOutputPath)
+		text += fmt.Sprintf("\n\n[Showing last %s of line %d (line is %s). %s]",
+			FormatSize(tr.OutputBytes), startLine, FormatSize(lastLineBytes), fullOutput)
 	case tr.TruncatedBy == "lines":
-		text += fmt.Sprintf("\n\n[Showing lines %d-%d of %d. Full output: %s]",
-			startLine, endLine, tr.TotalLines, snapshot.FullOutputPath)
+		text += fmt.Sprintf("\n\n[Showing lines %d-%d of %d. %s]",
+			startLine, endLine, tr.TotalLines, fullOutput)
 	default:
-		text += fmt.Sprintf("\n\n[Showing lines %d-%d of %d (%s limit). Full output: %s]",
-			startLine, endLine, tr.TotalLines, FormatSize(DefaultMaxBytesUpstream), snapshot.FullOutputPath)
+		text += fmt.Sprintf("\n\n[Showing lines %d-%d of %d (%s limit). %s]",
+			startLine, endLine, tr.TotalLines, FormatSize(DefaultMaxBytesUpstream), fullOutput)
 	}
 	shareTruncatedContent(details.Truncation, text)
 	return text, details

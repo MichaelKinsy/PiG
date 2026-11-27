@@ -69,6 +69,7 @@ func (state *anthropicSSEState) reserveLines(n int) {
 // flush is flushSseEvent.
 func (state *anthropicSSEState) flush() (serverSentEvent, bool) {
 	if state.event == "" && len(state.data) == 0 {
+		state.rawStart = len(state.arena)
 		return serverSentEvent{}, false
 	}
 	end := len(state.arena)
@@ -202,6 +203,11 @@ type anthropicSSEReader struct {
 	readErr error
 	ended   bool
 	closed  bool
+	// delegating is true while iterateSseMessages is suspended inside `yield* sse.push(value)`
+	// or `yield* sse.end()` (anthropic-messages.ts, Pi da7e26cc8). Resuming out of the sync
+	// iterator adds one AsyncGeneratorYield await per element and one final done-step await
+	// when the delegated array finishes.
+	delegating bool
 }
 
 // anthropicLineBufferReuse is the largest line buffer the reader keeps once its lines are consumed.
@@ -275,8 +281,19 @@ func (reader *anthropicSSEReader) next() (serverSentEvent, bool, error) {
 			event := reader.queue[0]
 			reader.queue[0] = serverSentEvent{}
 			reader.queue = reader.queue[1:]
-			reader.suspend() // `yield event` awaits its operand (anthropic-messages.ts:437,449,457,463).
+			// `yield* sse.push(value)` / `yield* sse.end()` wraps the sync array iterator via
+			// AsyncFromSyncIterator: one await for the delegated step's promise adoption, plus
+			// AsyncGeneratorYield's await of the yielded value (anthropic-messages.ts, Pi da7e26cc8).
+			reader.suspend()
+			reader.suspend()
+			reader.delegating = true
 			return event, true, nil
+		}
+		if reader.delegating {
+			// Exhausting the delegated sync array iterator performs one final async-from-sync step
+			// before iterateSseMessages resumes after `yield*`.
+			reader.delegating = false
+			reader.suspend()
 		}
 		if reader.ended || reader.closed {
 			reader.closed = true
@@ -301,10 +318,20 @@ func (reader *anthropicSSEReader) next() (serverSentEvent, bool, error) {
 		case err == nil:
 			reader.buffer = reader.decoder.decodeTo(reader.buffer, data, true)
 			reader.drainLines(false)
+			if len(reader.queue) == 0 {
+				// `yield* sse.push(value)` on an empty array still awaits the sync iterator's done step.
+				reader.suspend()
+			}
 		case errors.Is(err, io.EOF):
 			reader.buffer = reader.decoder.decodeTo(reader.buffer, nil, false)
 			reader.drainLines(true)
 			reader.ended = true
+			if len(reader.queue) == 0 {
+				// `yield* sse.end()` on an empty array creates the AsyncFromSyncIterator wrapper
+				// and awaits its done step (two promise reactions in Node 24 V8).
+				reader.suspend()
+				reader.suspend()
+			}
 		default:
 			reader.closed = true
 			return serverSentEvent{}, false, err
@@ -318,6 +345,12 @@ func (reader *anthropicSSEReader) close() {
 		return
 	}
 	reader.closed = true
+	if reader.delegating {
+		// AsyncIteratorClose on `yield*` forwards return() to the sync iterator wrapper before
+		// awaiting the outer generator's return value.
+		reader.delegating = false
+		reader.suspend()
+	}
 	reader.suspend()
 }
 

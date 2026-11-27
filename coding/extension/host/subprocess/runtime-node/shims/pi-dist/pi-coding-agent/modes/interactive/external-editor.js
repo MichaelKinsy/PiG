@@ -4,9 +4,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { stripBom } from "../../utils/text.js";
 export async function editInExternalEditor(options) {
-    const directory = mkdtempSync(join(tmpdir(), "pi-editor-"));
-    const filePath = join(directory, "prompt.md");
+    let directory;
     try {
+        directory = mkdtempSync(join(tmpdir(), "pi-editor-"));
+        const filePath = join(directory, "prompt.md");
         writeFileSync(filePath, options.content, "utf-8");
         const [editor, ...editorArgs] = options.command.split(" ");
         process.stdout.write(`Launching external editor: ${options.command}\nPi will resume when the editor exits.\n`);
@@ -38,9 +39,18 @@ export async function editInExternalEditor(options) {
         }
         return { status: "complete", content: stripBom(readFileSync(filePath, "utf-8")).replace(/\n$/, "") };
     }
+    catch (error) {
+        // Callers start the editor from key handlers, where a thrown error would crash pi. A full or
+        // unwritable temp dir lands here.
+        return {
+            status: "failed",
+            message: `External editor failed: ${error instanceof Error ? error.message : String(error)}; prompt unchanged`,
+        };
+    }
     finally {
         try {
-            rmSync(directory, { recursive: true, force: true });
+            if (directory)
+                rmSync(directory, { recursive: true, force: true });
         }
         catch {
             // Cleanup is best effort.

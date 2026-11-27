@@ -6,6 +6,7 @@ package durable
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"maps"
 	"strings"
@@ -68,16 +69,51 @@ func (token SignalToken[T]) Key(key string) SignalKey {
 	return SignalKey{Signal: token.Name, Key: key}
 }
 
-// SignalState is a key's state: the value delivered under it, or Expired because its sleep's deadline came first.
+// SignalStateKind is the tag of a SignalState: value or expired.
+type SignalStateKind string
+
+const (
+	// SignalStateValue indicates a value was delivered under the signal key.
+	SignalStateValue SignalStateKind = "value"
+	// SignalStateExpired indicates the signal key expired because its sleep's deadline came first.
+	SignalStateExpired SignalStateKind = "expired"
+)
+
+// SignalState is a key's state: Kind SignalStateValue with the value delivered under it, or SignalStateExpired
+// because its sleep's deadline came first.
 type SignalState[T any] struct {
-	Value   T
-	Expired bool
+	Kind  SignalStateKind `json:"kind"`
+	Value T               `json:"value,omitempty"`
+}
+
+// MarshalJSON encodes SignalState as {"kind":"value","value":...} or {"kind":"expired"}.
+func (state SignalState[T]) MarshalJSON() ([]byte, error) {
+	if state.Kind == SignalStateExpired {
+		return []byte(`{"kind":"expired"}`), nil
+	}
+	return marshalSignalValue(state.Kind, state.Value)
 }
 
 // ErasedSignalState is a key's state with its value as JSON.
 type ErasedSignalState struct {
-	Value   JsonValue
-	Expired bool
+	Kind  SignalStateKind `json:"kind"`
+	Value JsonValue       `json:"value,omitempty"`
+}
+
+// MarshalJSON encodes ErasedSignalState as {"kind":"value","value":...} or {"kind":"expired"}.
+func (state ErasedSignalState) MarshalJSON() ([]byte, error) {
+	if state.Kind == SignalStateExpired {
+		return []byte(`{"kind":"expired"}`), nil
+	}
+	return marshalSignalValue(state.Kind, state.Value)
+}
+
+func marshalSignalValue[T any](kind SignalStateKind, value T) ([]byte, error) {
+	//perf:ok SignalState is not on a hot path; encoding the tag and value once avoids custom JSON escaping.
+	return json.Marshal(struct {
+		Kind  SignalStateKind `json:"kind"`
+		Value T               `json:"value"`
+	}{Kind: kind, Value: value})
 }
 
 // SignalResult is what a delivery did: delivered (durably accepted, not necessarily consumed), duplicate (the key
@@ -325,10 +361,10 @@ func ReadSignalMemo(memos map[string]JsonValue, token AnySignalSource, key strin
 		return nil, nil
 	}
 	if stored.expired {
-		return &ErasedSignalState{Expired: true}, nil
+		return &ErasedSignalState{Kind: SignalStateExpired}, nil
 	}
 	if stored.version == signal.Version {
-		return &ErasedSignalState{Value: stored.value}, nil
+		return &ErasedSignalState{Kind: SignalStateValue, Value: stored.value}, nil
 	}
 	if stored.version > signal.Version {
 		return nil, fmt.Errorf("Signal %s value has version %d, newer than %d", signal.Name, stored.version, signal.Version)
@@ -343,7 +379,7 @@ func ReadSignalMemo(memos map[string]JsonValue, token AnySignalSource, key strin
 	if !signal.accepts(migrated) {
 		return nil, fmt.Errorf("Signal %s migration from version %d returned an invalid value", signal.Name, stored.version)
 	}
-	return &ErasedSignalState{Value: migrated}, nil
+	return &ErasedSignalState{Kind: SignalStateValue, Value: migrated}, nil
 }
 
 // SignalReader reads a signal key's committed state in the task it belongs to: a task runtime, a hook's api, a tool's
@@ -360,14 +396,14 @@ func ReadSignal[T any](ctx context.Context, reader SignalReader, token SignalTok
 	if err != nil || state == nil {
 		return nil, err
 	}
-	if state.Expired {
-		return &SignalState[T]{Expired: true}, nil
+	if state.Kind == SignalStateExpired {
+		return &SignalState[T]{Kind: SignalStateExpired}, nil
 	}
 	value, err := FromJsonValue[T](state.Value)
 	if err != nil {
 		return nil, err
 	}
-	return &SignalState[T]{Value: value}, nil
+	return &SignalState[T]{Kind: SignalStateValue, Value: value}, nil
 }
 
 // SignalTx is the part of Tx that delivers signals: Tx itself, whose SignalErased a Go method cannot type with T.

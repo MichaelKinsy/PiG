@@ -2,6 +2,7 @@ package ai
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -161,4 +162,53 @@ func TestAuthStorageFirstHalfUpstream(t *testing.T) {
 			t.Fatalf("list=%v,%v want=[]", got, err)
 		}
 	})
+}
+
+// Port of Pi main 71356387090d5f8060dc1837890d3d01b5b314ad (#12164): a failed command stays cached until the key is saved again.
+func TestAuthStorageCommandBackedKeyRunsAgainAfterSaveUpstream(t *testing.T) {
+	name := fmt.Sprintf("PI_TEST_AUTH_STORAGE_COMMAND_RERUN_%d", time.Now().UnixNano())
+	t.Setenv(name, "")
+	if err := os.Unsetenv(name); err != nil {
+		t.Fatal(err)
+	}
+	cred := Credential{Type: CredentialAPIKey, Key: "!printenv " + name}
+	store, _ := authReloadFile(t, `{"anthropic":{"type":"api_key","key":"!printenv `+name+`"}}`)
+	authReloadRead(t, store, "anthropic", &Credential{Type: CredentialAPIKey, Key: ""})
+	t.Setenv(name, "command-key")
+	// Still cached from the earlier failed run.
+	authReloadRead(t, store, "anthropic", &Credential{Type: CredentialAPIKey, Key: ""})
+	// Saving the same command-backed key clears its cache entry.
+	if _, err := store.Modify(t.Context(), "anthropic", func(*Credential) (*Credential, error) {
+		return &cred, nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	authReloadRead(t, store, "anthropic", &Credential{Type: CredentialAPIKey, Key: "command-key"})
+}
+
+// Regression test for L3: InMemoryAuthStorage.Modify must NOT clear the command cache on a no-op (fn returns nil).
+func TestInMemoryAuthStorageModifyNoOpPreservesCommandCache(t *testing.T) {
+	name := fmt.Sprintf("PI_TEST_INMEM_AUTH_NOOP_%d", time.Now().UnixNano())
+	t.Setenv(name, "")
+	if err := os.Unsetenv(name); err != nil {
+		t.Fatal(err)
+	}
+	cred := Credential{Type: CredentialAPIKey, Key: "!printenv " + name}
+	store := NewInMemoryAuthStorage(map[string]Credential{"anthropic": cred})
+	authReloadRead(t, store, "anthropic", &Credential{Type: CredentialAPIKey, Key: ""})
+	t.Setenv(name, "now-set")
+	// No-op Modify (returns nil) does not write and must preserve the cached failure.
+	if _, err := store.Modify(t.Context(), "anthropic", func(*Credential) (*Credential, error) {
+		return nil, nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	authReloadRead(t, store, "anthropic", &Credential{Type: CredentialAPIKey, Key: ""})
+	// Writing the credential clears the cache entry so the next Read re-runs the command.
+	if _, err := store.Modify(t.Context(), "anthropic", func(*Credential) (*Credential, error) {
+		return &cred, nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	authReloadRead(t, store, "anthropic", &Credential{Type: CredentialAPIKey, Key: "now-set"})
 }

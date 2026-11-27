@@ -51,7 +51,7 @@ export async function withStorage(use: (storage: any) => Promise<void>): Promise
 				// Storage.commit(batches, receive, context): the batches are durable when the provider answers; one receipt per durable batch, in order.
 				const { seqs, refused } = (await call("commit", { batches })) as { seqs: number[]; refused?: { name: string; message: string } }
 				seqs.forEach((seq, index) => receive(index, seq))
-				return refused === undefined ? { stored: seqs.length } : { stored: seqs.length, refused: Object.assign(new Error(refused.message), { name: refused.name }) }
+				return refused === undefined ? { kind: "stored", stored: seqs.length } : { kind: "refused", stored: seqs.length, refused: Object.assign(new Error(refused.message), { name: refused.name }) }
 			}
 			if (prop === "mintId") return async () => { guard(); return call("mint") }
 			if (prop === "close") return async (context: unknown) => {

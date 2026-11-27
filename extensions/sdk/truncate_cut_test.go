@@ -71,14 +71,25 @@ func splitJoinTail(content string, options TruncationOptions) TruncationResult {
 		}
 		if outputBytes+lineBytes > maxBytes {
 			truncatedBy = "bytes"
-			if len(kept) == 0 {
+			remainingBytes := maxBytes - outputBytes
+			if len(kept) > 0 {
+				remainingBytes--
+			}
+			allBlank := true
+			for _, prev := range kept {
+				if !isBlankLine(prev) {
+					allBlank = false
+					break
+				}
+			}
+			if len(kept) == 0 || (!isBlankLine(lines[i]) && allBlank && remainingBytes > 0) {
 				line := lines[i]
-				start := min(len(line)-maxBytes, len(line))
+				start := min(len(line)-remainingBytes, len(line))
 				for start < len(line) && !utf8.RuneStart(line[start]) {
 					start++
 				}
 				kept = append(kept, line[start:])
-				outputBytes = len(line) - start
+				outputBytes += lineBytes - len(line) + (len(line) - start)
 				lastLinePartial = true
 			}
 			break

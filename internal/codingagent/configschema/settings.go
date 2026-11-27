@@ -6,29 +6,30 @@ import "github.com/MichaelKinsy/PiG/ai"
 
 // settingsDefaults is SETTINGS_DEFAULTS, the defaults the published JSON Schema carries.
 var settingsDefaults = struct {
-	transport, sessionShareDestination, steeringMode, followUpMode                        string
-	compactionEnabled                                                                     bool
-	compactionReserveTokens, compactionKeepRecentTokens                                   int
-	branchSummaryReserveTokens                                                            int
-	branchSummarySkipPrompt                                                               bool
-	retryEnabled                                                                          bool
-	retryMaxRetries, retryBaseDelayMs, retryMaxAgentDelayMs, retryProviderMaxRetryDelayMs int
-	hideThinkingBlock, showCacheMissNotices, quietStartup                                 bool
-	defaultProjectTrust                                                                   string
-	collapseChangelog, enableInstallTelemetry, enableAnalytics, enableSkillCommands       bool
-	terminalShowImages                                                                    bool
-	terminalImageWidthCells                                                               int
-	terminalClearOnShrink, terminalShowTerminalProgress                                   bool
-	imagesAutoResize, imagesBlockImages                                                   bool
-	doubleEscapeAction, treeFilterMode                                                    string
-	editorPaddingX, outputPad, autocompleteMaxVisible                                     int
-	markdownCodeBlockIndent, markdownMermaid                                              string
-	warningsAnthropicExtraUsage                                                           bool
-	codemodeMode                                                                          string
-	codemodeInlineBudget                                                                  int
-	cacheWarming, tuiMode, fullscreenExitOutput, fullscreenScrollbar                      string
-	fullscreenCopyOnSelect                                                                bool
-	fullscreenWheelScrollLines                                                            string
+	transport, sessionShareDestination, steeringMode, followUpMode                         string
+	compactionEnabled                                                                      bool
+	compactionReserveTokens, compactionKeepRecentTokens                                    int
+	branchSummaryReserveTokens                                                             int
+	branchSummarySkipPrompt                                                                bool
+	retryEnabled                                                                           bool
+	retryMaxRetries, retryBaseDelayMs, retryMaxAgentDelayMs, retryProviderMaxRetryDelayMs  int
+	hideThinkingBlock, quietStartup                                                        bool
+	defaultProjectTrust                                                                    string
+	collapseChangelog, enableInstallTelemetry, enableAnalytics, enableSkillCommands        bool
+	terminalShowImages                                                                     bool
+	terminalImageWidthCells                                                                int
+	terminalClearOnShrink, terminalShowTerminalProgress                                    bool
+	imagesAutoResize, imagesBlockImages                                                    bool
+	doubleEscapeAction, treeFilterMode                                                     string
+	editorPaddingX, outputPad, autocompleteMaxVisible                                      int
+	markdownCodeBlockIndent, markdownMermaid                                               string
+	warningsAnthropicExtraUsage                                                            bool
+	noticesCacheMisses, noticesCacheWarming, noticesCompactionCosts, noticesReasoningDrops bool
+	codemodeMode                                                                           string
+	codemodeInlineBudget                                                                   int
+	cacheWarming, tuiMode, fullscreenExitOutput, fullscreenScrollbar                       string
+	fullscreenCopyOnSelect                                                                 bool
+	fullscreenWheelScrollLines                                                             string
 }{
 	transport: "auto", sessionShareDestination: "auto", steeringMode: "one-at-a-time", followUpMode: "one-at-a-time",
 	compactionEnabled: true, compactionReserveTokens: 16384, compactionKeepRecentTokens: 20000,
@@ -107,6 +108,12 @@ func settingsSchema() *Schema {
 		Optional("mermaid", Union(literals("off", "final", "streaming"), Default(d.markdownMermaid))),
 	})
 	warnings := Object([]Prop{Optional("anthropicExtraUsage", Boolean(Default(d.warningsAnthropicExtraUsage)))})
+	notices := Object([]Prop{
+		Optional("cacheMisses", Boolean(D("Show a notice when a response re-bills a significant part of the prompt cache."), Default(d.noticesCacheMisses))),
+		Optional("cacheWarming", Boolean(D("Show the cost of cache warming requests."), Default(d.noticesCacheWarming))),
+		Optional("compactionCosts", Boolean(D("Show the cost of compactions and branch summaries."), Default(d.noticesCompactionCosts))),
+		Optional("reasoningDrops", Boolean(D("Show a notice when a provider drops reasoning items from a request."), Default(d.noticesReasoningDrops))),
+	})
 	codemode := Object([]Prop{
 		Optional("mode", codemodeMode(D(`How codemode presents tools. "on" keeps direct tools declared and annotates tools callable from scripts; codemode lists only tools without direct exposure. "only" lists every script-callable tool in codemode and does not declare active direct tools.`), Default(d.codemodeMode))),
 		Optional("inlineBudget", Number(Opt{"minimum", 0}, D("Estimated tokens available for inline codemode tool declarations."), Default(d.codemodeInlineBudget))),
@@ -143,7 +150,6 @@ func settingsSchema() *Schema {
 		Optional("branchSummary", branchSummary),
 		Optional("retry", retry),
 		Optional("hideThinkingBlock", Boolean(Default(d.hideThinkingBlock))),
-		Optional("showCacheMissNotices", Boolean(D("Show cache cost and provider recovery notices."), Default(d.showCacheMissNotices))),
 		Optional("externalEditor", String(D("Command for Ctrl+G external editor; takes precedence over VISUAL and EDITOR."))),
 		Optional("shellPath", String(D("Custom shell path, for example for Cygwin on Windows, with support for leading ~ expansion."))),
 		Optional("quietStartup", Union([]*Schema{Boolean(), Literal("header")}, D(`When true, hide all startup output. When "header", keep only the startup header.`), Default(d.quietStartup))),
@@ -175,6 +181,7 @@ func settingsSchema() *Schema {
 		Optional("showHardwareCursor", Boolean(D("Show the terminal cursor while still positioning it for IME."))),
 		Optional("markdown", markdown),
 		Optional("warnings", warnings),
+		Optional("notices", notices),
 		Optional("codemode", codemode),
 		Optional("sessionDir", String(D("Custom session storage directory, in the same format as the --session-dir CLI flag."))),
 		Optional("httpProxy", String(D("Proxy URL applied as HTTP_PROXY and HTTPS_PROXY for Pi-managed HTTP clients."))),
@@ -188,6 +195,7 @@ func settingsSchema() *Schema {
 		Optional("fullscreenWheelScrollLines", Union([]*Schema{Number(), Literal("auto")}, D("Lines scrolled per wheel event in fullscreen mode; numeric values are clamped from 1 to 100."), Default(d.fullscreenWheelScrollLines))),
 		Optional("queueMode", Union(literals("all", "one-at-a-time"), D("Legacy setting migrated to steeringMode."), Opt{"deprecated", true})),
 		Optional("websockets", Boolean(D("Legacy setting migrated to transport."), Opt{"deprecated", true})),
+		Optional("showCacheMissNotices", Boolean(D("Legacy setting migrated to notices."), Opt{"deprecated", true})),
 	}, Opt{"additionalProperties", true})
 }
 

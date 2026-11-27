@@ -162,6 +162,7 @@ type ClassifierResult struct {
 	Model        string         `json:"model"`
 	Answers      *OrderedObject `json:"answers"`
 	Usage        map[string]any `json:"usage,omitempty"`
+	ResponseID   string         `json:"responseId,omitempty"`
 	StopReason   string         `json:"stopReason"`
 	ErrorMessage string         `json:"errorMessage,omitempty"`
 	Timestamp    int64          `json:"timestamp"`

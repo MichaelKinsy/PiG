@@ -29,6 +29,18 @@ def test_negative_limits_match_pi():
     assert pig_sdk.truncate_line("a😀b", 2) == ("a... [truncated]", True)
 
 
+def test_tail_over_long_line_followed_by_blank_line():
+    # Pi 9e9609216 (#12355): keeps the end of an over-long line followed by blank lines.
+    r = pig_sdk.truncate_tail("first\n" + "y" * 20 + "END\n\n", max_bytes=10)
+    assert (r.content, r.output_lines, r.output_bytes, r.last_line_partial, r.truncated_by) == ("yyyyyyEND\n", 2, 10, True, "bytes")
+    r_nbsp = pig_sdk.truncate_tail("\u00a0\u00a0\u00a0\n\n", max_bytes=5)
+    assert (r_nbsp.content, r_nbsp.output_lines, r_nbsp.output_bytes, r_nbsp.last_line_partial, r_nbsp.truncated_by) == ("", 1, 0, False, "bytes")
+    r_blank = pig_sdk.truncate_tail("    \n\n", max_bytes=3)
+    assert (r_blank.content, r_blank.output_lines, r_blank.output_bytes, r_blank.last_line_partial, r_blank.truncated_by) == ("", 1, 0, False, "bytes")
+    r_back = pig_sdk.truncate_tail("x    \n\n", max_bytes=3)
+    assert (r_back.content, r_back.output_lines, r_back.output_bytes, r_back.last_line_partial, r_back.truncated_by) == ("  \n", 2, 3, True, "bytes")
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

@@ -62,8 +62,8 @@ func TestIsRetryableAssistantErrorClassification(t *testing.T) {
 		{"matches Azure peak-load capacity errors", "The system is currently experiencing high demand and cannot process your request. Your request exceeds the maximum usage size allowed during peak load. For improved capacity reliability, consider switching to Provisioned Throughput."},
 		// .upstream/v1.0.1/packages/ai/src/utils/retry.ts:34 (#10278): "Selected model is at capacity" ends the turn without this pattern.
 		{"matches provider model capacity errors", "Selected model is at capacity. Please try a different model."},
-		// Pi 9b88b94e2 packages/ai/test/retry.test.ts:106 (#12064): a gateway ends the stream with an Anthropic-style api_error event.
-		{"matches gateway wording for a closed connection", `{"type":"error","error":{"type":"api_error","message":"Connection closed."}}`},
+		// Pi 9b88b94e2 packages/ai/test/retry.test.ts:106 (#12064): a gateway ends the stream with an Anthropic-style error event (type changed from api_error to gateway_notice so the row still isolates connection.?closed after Pi a00a5048d).
+		{"matches gateway wording for a closed connection", `{"type":"error","error":{"type":"gateway_notice","message":"Connection closed."}}`},
 		// Pi 9b88b94e2 (#12064): packages/agent/src/proxy.ts's own message for a proxy stream that hit EOF before a done or error event matches too.
 		{"matches the agent proxy closed-connection message", "Connection closed by proxy server before the response completed"},
 		// Pi 9b88b94e2 (#12064): the plain text of the same event, and the separators `.?` accepts.
@@ -450,6 +450,44 @@ func TestRetryDelayMsUsesSafeIntegerMagnitude(t *testing.T) {
 // Upstream RETRYABLE_PROVIDER_ERROR_PATTERN (packages/ai/src/utils/retry.ts) lists
 // "connection reset by peer" since Pi 4699b5b26 (#12128), so a message carrying only
 // Go's text of a reset is retried, as in pi-ai. Before that commit neither retried it.
+// Port of Pi main 51ba3ab5b98ec93b4cc8f97335a2fe38698e1ec7 (#12348) and 0888fd79a9dc3a064b164e95b1402119218948f0 (#12434).
+func TestRetryAssistantCallRequestRateIncreasedTooQuickly(t *testing.T) {
+	for _, msg := range []string{
+		"Your request rate increased too quickly",
+		"Request rate increased too quickly. To ensure system stability, please adjust your client logic to scale requests more smoothly over time.",
+	} {
+		if !IsRetryableAssistantError(errorFaux(msg)) {
+			t.Errorf("IsRetryableAssistantError(%q) = false, want true", msg)
+		}
+	}
+}
+
+func TestRetryAssistantCallSucceedsAfterThreeBackoffsWithCallerContext(t *testing.T) {
+	ctx := t.Context()
+	calls := 0
+	recorder := &retryRecorder{}
+	policy := &RetryPolicy{Enabled: true, MaxRetries: 4, BaseDelayMs: 1}
+	res, err := RetryAssistantCall(ctx, func() (AssistantMessage, error) {
+		calls++
+		if calls < 4 {
+			return errorFaux("terminated"), nil
+		}
+		return FauxAssistantMessage(FauxText("recovered"), FauxAssistantMessageOptions{}), nil
+	}, policy, recorder.callbacks())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if calls != 4 {
+		t.Fatalf("calls = %d, want 4", calls)
+	}
+	if res.StopReason != StopReasonStop {
+		t.Fatalf("stopReason = %q, want stop", res.StopReason)
+	}
+	if !reflect.DeepEqual(recorder.finished, [][3]any{{true, 3, ""}}) {
+		t.Fatalf("finished = %v, want [[true 3 empty]]", recorder.finished)
+	}
+}
+
 func TestConnectionResetTextIsRetryable(t *testing.T) {
 	message := "github-copilot: request: read tcp 100.64.0.1:50817->140.82.112.22:443: read: connection reset by peer"
 	if !IsRetryableAssistantError(errorFaux(message)) {

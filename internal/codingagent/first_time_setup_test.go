@@ -3,7 +3,6 @@ package codingagent
 // pi: packages/coding-agent/src/modes/interactive/components/first-time-setup.ts
 
 import (
-	"slices"
 	"strings"
 	"testing"
 
@@ -55,27 +54,20 @@ const (
 	setupEsc   = "\x1b"
 )
 
-// Theme step previews live and Esc skips setup without submitting.
-func TestFirstTimeSetupThemePreviewAndEscSkip(t *testing.T) {
+// Port of Pi main f8149d1abde50b31c8cb5aed09e89319b927f247 (packages/coding-agent/test/first-time-setup.test.ts):
+// first-time setup has no theme picker and cancels on Escape.
+func TestFirstTimeSetupOmitsThemePickerAndCancelsOnEsc(t *testing.T) {
 	t.Setenv("PIG_HOME", t.TempDir())
 	piglogin.Refresh()
-	var previews []string
 	cancelled, submitted := false, false
 	c := NewFirstTimeSetupComponent(FirstTimeSetupOptions{
-		OnThemePreview: func(name string) { previews = append(previews, name) },
-		OnSubmit:       func(FirstTimeSetupResult) { submitted = true },
-		OnCancel:       func() { cancelled = true },
+		OnSubmit: func(FirstTimeSetupResult) { submitted = true },
+		OnCancel: func() { cancelled = true },
 	})
-	if !strings.Contains(firstTimeSetupText(c), "Pick a theme.") {
-		t.Fatalf("first step is not the theme step:\n%s", firstTimeSetupText(c))
+	text := firstTimeSetupText(c)
+	if strings.Contains(text, "Pick a theme.") {
+		t.Fatalf("first-time setup should not show a theme picker:\n%s", text)
 	}
-	c.HandleInput(setupDown)
-	c.HandleInput(setupDown)
-	c.HandleInput(setupDown)
-	if !slices.Equal(previews, []string{"dark", "light"}) {
-		t.Fatalf("theme previews = %v", previews)
-	}
-	c.HandleInput(setupEnter)
 	c.HandleInput(setupEsc)
 	if !cancelled || submitted {
 		t.Fatalf("Esc: cancelled=%v submitted=%v", cancelled, submitted)

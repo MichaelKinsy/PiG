@@ -400,6 +400,9 @@ func (p *anthropicProvider) sendThreaded(ctx, requestContext context.Context, re
 	if !newThread && !unsupported {
 		return resp, rejected, nil
 	}
+	if obsErr := observeProviderResponse(ctx, opts, resp, providerEventModel(p.cfg.ModelMetadata, APIAnthropicMessages, p.cfg.ProviderID, p.cfg.Model)); obsErr != nil {
+		return nil, nil, obsErr
+	}
 	// Recorded before the resend, so a failed resend keeps it.
 	reason := code
 	if reason == "" {

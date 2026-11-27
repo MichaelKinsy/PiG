@@ -420,6 +420,7 @@ func TestSettingsItems_UpstreamCoreRosterPresentAndOrdered(t *testing.T) {
 		"double-escape-action",
 		"tree-filter-mode",
 		"warnings",
+		"notices",
 		"model-thinking",
 		"tui-mode",
 		"fullscreen-exit-output",
@@ -436,7 +437,7 @@ func TestSettingsItems_UpstreamCoreRosterPresentAndOrdered(t *testing.T) {
 		}
 	}
 
-	wantSuffix := []string{"warnings", "model-thinking", "tui-mode", "fullscreen-exit-output", "fullscreen-scrollbar", "fullscreen-copy-on-select", "fullscreen-wheel-scroll-lines", "theme"}
+	wantSuffix := []string{"warnings", "notices", "model-thinking", "tui-mode", "fullscreen-exit-output", "fullscreen-scrollbar", "fullscreen-copy-on-select", "fullscreen-wheel-scroll-lines", "theme"}
 	if len(ids) < len(wantSuffix) || !slices.Equal(ids[len(ids)-len(wantSuffix):], wantSuffix) {
 		t.Fatalf("settings rows suffix = %v, want %v", ids, wantSuffix)
 	}

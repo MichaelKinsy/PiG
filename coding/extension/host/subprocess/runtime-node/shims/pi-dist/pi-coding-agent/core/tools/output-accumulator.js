@@ -28,8 +28,7 @@ export class OutputAccumulator {
     currentLineBytes = 0;
     hasOpenLine = false;
     finished = false;
-    tempFilePath;
-    tempFileStream;
+    tempFile;
     constructor(options = {}) {
         this.maxLines = options.maxLines ?? DEFAULT_MAX_LINES;
         this.maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
@@ -42,9 +41,8 @@ export class OutputAccumulator {
         }
         this.totalRawBytes += data.length;
         this.appendDecodedText(this.decoder.decode(data, { stream: true }));
-        if (this.tempFileStream || this.shouldUseTempFile()) {
-            this.ensureTempFile();
-            this.tempFileStream?.write(data);
+        if (this.tempFile || this.shouldUseTempFile()) {
+            this.ensureTempFile().write(data);
         }
         else if (data.length > 0) {
             this.rawChunks.push(data);
@@ -61,10 +59,7 @@ export class OutputAccumulator {
         }
     }
     snapshot(options = {}) {
-        // Clipping drops the partial first line of the retained tail. When the tail is only the end of
-        // one over-long line, that is everything, so show the end of that line instead.
-        const snapshotText = this.getSnapshotText() || this.tailText;
-        const tailTruncation = truncateTail(snapshotText, {
+        const tailTruncation = truncateTail(this.getRetainedText(), {
             maxLines: this.maxLines,
             maxBytes: this.maxBytes,
         });
@@ -84,42 +79,28 @@ export class OutputAccumulator {
         if (options.persistIfTruncated && truncation.truncated) {
             this.ensureTempFile();
         }
-        return {
-            content: truncation.content,
-            truncation,
-            fullOutputPath: this.tempFilePath,
-        };
+        return { content: truncation.content, truncation, fullOutputFile: this.tempFile?.result };
     }
+    /** Flush and close the temp file. Never rejects: a failed file shows up as `failed` in later snapshots. */
     async closeTempFile() {
-        if (!this.tempFileStream) {
-            return;
-        }
-        const stream = this.tempFileStream;
-        this.tempFileStream = undefined;
-        await new Promise((resolve, reject) => {
-            const onError = (error) => {
-                stream.off("finish", onFinish);
-                reject(error);
-            };
-            const onFinish = () => {
-                stream.off("error", onError);
-                resolve();
-            };
-            stream.once("error", onError);
-            stream.once("finish", onFinish);
-            stream.end();
-        });
+        await this.tempFile?.close();
     }
     /**
      * The complete output, for callers that can take more than the display snapshot. Call after
      * `finish()` and `closeTempFile()`. Output longer than `maxBytes` raw bytes keeps its first and
-     * last `maxBytes / 2` bytes around an omission marker.
+     * last `maxBytes / 2` bytes around an omission marker. When the temp file could not be saved, only
+     * the retained tail is left: up to its last `maxBytes` bytes, behind the same marker when output is
+     * missing.
      */
     async readFullOutput(maxBytes) {
-        if (!this.tempFilePath) {
+        const fullOutputFile = this.tempFile?.result;
+        if (!fullOutputFile) {
             return { content: new TextDecoder().decode(Buffer.concat(this.rawChunks)), truncated: false };
         }
-        const file = await open(this.tempFilePath, "r");
+        if (fullOutputFile.kind === "failed") {
+            return this.readRetainedOutput(maxBytes);
+        }
+        const file = await open(fullOutputFile.path, "r");
         try {
             const size = (await file.stat()).size;
             if (size <= maxBytes) {
@@ -191,6 +172,31 @@ export class OutputAccumulator {
         this.tailText = buffer.subarray(start).toString("utf-8");
         this.tailBytes = byteLength(this.tailText);
     }
+    /**
+     * The retained tail, for display and as the fallback of `readFullOutput()`. Clipping drops the partial
+     * first line of the tail. When the tail is only the end of one over-long line (plus blank lines),
+     * nothing is left, so it keeps the end of that line instead.
+     */
+    getRetainedText() {
+        const clippedText = this.getSnapshotText();
+        return clippedText.trim().length === 0 ? this.tailText : clippedText;
+    }
+    /** The retained tail within `maxBytes`, marked as truncated only when output is missing. */
+    readRetainedOutput(maxBytes) {
+        let bytes = Buffer.from(this.getRetainedText(), "utf-8");
+        if (bytes.length > maxBytes) {
+            let start = bytes.length - maxBytes;
+            while (start < bytes.length && (bytes[start] & 0xc0) === 0x80)
+                start++;
+            bytes = bytes.subarray(start);
+        }
+        const tail = bytes.toString("utf-8");
+        const omitted = this.totalDecodedBytes - bytes.length;
+        if (omitted === 0) {
+            return { content: tail, truncated: false };
+        }
+        return { content: `[... ${omitted} bytes omitted ...]\n\n${tail}`, truncated: true };
+    }
     getSnapshotText() {
         if (this.tailStartsAtLineBoundary) {
             return this.tailText;
@@ -202,16 +208,16 @@ export class OutputAccumulator {
         return (this.totalRawBytes > this.maxBytes || this.totalDecodedBytes > this.maxBytes || this.totalLines > this.maxLines);
     }
     ensureTempFile() {
-        if (this.tempFilePath) {
-            return;
+        if (this.tempFile) {
+            return this.tempFile;
         }
-        const { path, stream } = createOutputFileStream(this.tempFilePrefix, ".log");
-        this.tempFilePath = path;
-        this.tempFileStream = stream;
+        const tempFile = createOutputFileStream(this.tempFilePrefix, ".log");
+        this.tempFile = tempFile;
         for (const chunk of this.rawChunks) {
-            this.tempFileStream.write(chunk);
+            tempFile.write(chunk);
         }
         this.rawChunks = [];
+        return tempFile;
     }
 }
 //# sourceMappingURL=output-accumulator.js.map

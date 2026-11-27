@@ -176,6 +176,8 @@ type workerBehaviour struct {
 	// GoReload: no plugin runtime is loaded; the Go core facet is loaded on the host and the worker's Reload hook answers each
 	// reload (appending `reload <script keys>` to Log).
 	GoReload bool
+	// ReloadError: with GoReload, makes the Reload hook fail with this error message (tests the `reload_failed` reply end to end).
+	ReloadError string
 	// ProgramOnClose is a file the last closer writes after looking for the program the worker runs from (`present`, or the error):
 	// Pi's `lazyOnClose` (a closer's first import of a lazy chunk of the worker base at close).
 	ProgramOnClose string
@@ -246,6 +248,9 @@ func (b workerBehaviour) json() *delta.JsonObject {
 	if b.GoReload {
 		object.Set("goReload", true)
 	}
+	if b.ReloadError != "" {
+		object.Set("reloadError", b.ReloadError)
+	}
 	return object
 }
 
@@ -265,6 +270,7 @@ func behaviourOf(value delta.JsonValue) workerBehaviour {
 	}
 	b.CloserPanics, _ = object.Value("closerPanics").(bool)
 	b.GoReload, _ = object.Value("goReload").(bool)
+	b.ReloadError, _ = object.Value("reloadError").(string)
 	b.ProgramOnClose, _ = object.Value("programOnClose").(string)
 	b.ReportAtStart, _ = object.Value("reportAtStart").(string)
 	b.HoldsChannel, _ = object.Value("holdsChannel").(bool)
@@ -400,6 +406,9 @@ func holdNodeStart(ctx context.Context, name string, args ...string) *exec.Cmd {
 // goReloadLog is the file the GoReload behaviour's Reload hook appends to.
 var goReloadLog atomic.Pointer[string]
 
+// goReloadError is the error message the GoReload behaviour's Reload hook returns, when non-empty.
+var goReloadError atomic.Pointer[string]
+
 // onErrorThrew is whether the fixture's OnError threw already.
 var onErrorThrew atomic.Bool
 
@@ -495,6 +504,9 @@ func runWorkerFixture() {
 		}
 		if behaviour.GoReload {
 			goReloadLog.Store(&behaviour.Log)
+			if behaviour.ReloadError != "" {
+				goReloadError.Store(&behaviour.ReloadError)
+			}
 			if _, err := worker.Load([]host.HostFacet{{Name: fixtureGoCoreName, Facet: fixtureGoCore()}}, ctx); err != nil {
 				return nil, err
 			}
@@ -595,8 +607,11 @@ func runWorkerFixture() {
 			for index, script := range scripts {
 				keys[index] = scriptKey(script)
 			}
-			if log := goReloadLog.Load(); log != nil {
+			if log := goReloadLog.Load(); log != nil && *log != "" {
 				appendLog(*log, "reload "+strings.Join(keys, ",")+"\n")
+			}
+			if msg := goReloadError.Load(); msg != nil && *msg != "" {
+				return host.ReloadReport{}, errors.New(*msg)
 			}
 			return host.ReloadReport{Plugins: host.PluginChanges{Changed: []string{scripts[0].Plugin.Name}}}, nil
 		},

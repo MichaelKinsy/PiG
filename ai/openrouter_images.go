@@ -111,8 +111,18 @@ func generateOpenRouterImages(ctx context.Context, model ImageModel, imagesCtx I
 	}
 	req.Header = openRouterImagesHeaders(apiKey, ClientIdentityTarget{Provider: model.Provider, BaseURL: model.BaseURL}, options.Identity, model.Headers, options.Headers)
 
+	if options.OnResponse != nil {
+		req = req.WithContext(withRetryErrorResponse(req.Context(), func(r *http.Response) error {
+			return options.OnResponse(ProviderResponse{Status: r.StatusCode, Headers: headersToRecord(r.Header)}, model)
+		}))
+	}
 	resp, err := providerHTTPClient(streamingHTTPClient(), options.Fetch).Do(req)
 	if err != nil {
+		if cbErr, ok := errors.AsType[*retryCallbackError](err); ok {
+			out.StopReason = ImagesStopReasonError
+			out.ErrorMessage = cbErr.err.Error()
+			return out
+		}
 		out.StopReason = imagesStopReasonForContext(ctx)
 		if sdkErr := openAISDKTransportError(ctx, err); sdkErr != nil {
 			out.ErrorMessage = sdkErr.Error()
@@ -134,6 +144,13 @@ func generateOpenRouterImages(ctx context.Context, model ImageModel, imagesCtx I
 		return out
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		if options.OnResponse != nil {
+			if obsErr := options.OnResponse(ProviderResponse{Status: resp.StatusCode, Headers: headersToRecord(resp.Header)}, model); obsErr != nil {
+				out.StopReason = ImagesStopReasonError
+				out.ErrorMessage = obsErr.Error()
+				return out
+			}
+		}
 		// pig divergence (D128): Pi stops at the chat/completions 404 for an image generation model that OpenRouter serves only through /images (pi-mono #10652).
 		if !dedicated && isOpenRouterImagesAPIOnlyError(resp.StatusCode, data) {
 			return generateOpenRouterImages(ctx, model, imagesCtx, options, out, apiKey, true)

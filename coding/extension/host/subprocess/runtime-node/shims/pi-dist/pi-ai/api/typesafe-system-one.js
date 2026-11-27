@@ -1,3 +1,4 @@
+import { isOpenRouterModel } from "../utils/openrouter-cost.js";
 import { isRecord } from "./classifier-shared.js";
 import { classifySystemOne } from "./system-one-shared.js";
 /**
@@ -13,8 +14,7 @@ import { classifySystemOne } from "./system-one-shared.js";
 const transport = {
     api: "typesafe-system-one",
     label: "System One API",
-    // OpenRouter by provider ID, which survives baseUrl overrides, or by host, which covers regional endpoints.
-    detectCompat: (model) => model.provider === "openrouter" || model.baseUrl.includes("openrouter.ai")
+    detectCompat: (model) => isOpenRouterModel(model)
         ? { imageInput: "state-image-urls", sendImageOptInHeader: false }
         : { imageInput: "assets", sendImageOptInHeader: true },
     url: (model) => new URL("systemone", `${model.baseUrl.replace(/\/+$/u, "")}/`),

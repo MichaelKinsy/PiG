@@ -72,10 +72,6 @@ func TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream(t *testing.T) {
 		name, provider, id, thinking string
 		level                        ModelThinkingLevel
 	}{
-		// .upstream/v0.99.1/packages/ai/test/openai-completions-tool-choice.test.ts:1428 (0.99.1 moved the case from opencode-go to opencode)
-		{"sends thinking disabled for OpenCode Kimi K2.6 when thinking is off", "opencode", "kimi-k2.6", `{"type":"disabled"}`, ""},
-		// .upstream/v0.99.1/packages/ai/test/openai-completions-tool-choice.test.ts:1450
-		{"sends thinking enabled for OpenCode Kimi K2.6 when thinking is enabled", "opencode", "kimi-k2.6", `{"type":"enabled"}`, ThinkingHigh},
 		// .upstream/v0.87.1/packages/ai/test/openai-completions-tool-choice.test.ts:1473
 		{"omits disabled thinking for Moonshot Kimi K2.7 Code models/moonshotai", "moonshotai", "kimi-k2.7-code", "", ""},
 		{"omits disabled thinking for Moonshot Kimi K2.7 Code models/moonshotai-cn", "moonshotai-cn", "kimi-k2.7-code", "", ""},
@@ -199,7 +195,7 @@ func TestOpenAICompletionsToolChoiceMaxTokensUpstream(t *testing.T) {
 		models []*Model
 	}{
 		// .upstream/v0.99.1/packages/ai/test/openai-completions-tool-choice.test.ts:1521 (0.99.1 replaced opencode-go/kimi-k2.6 with opencode-go/kimi-k3)
-		{"sends max_tokens for OpenCode completions models", []*Model{toolChoiceModel(t, "opencode-go", "kimi-k3", false), toolChoiceModel(t, "opencode", "kimi-k2.6", false)}},
+		{"sends max_tokens for OpenCode completions models", []*Model{toolChoiceModel(t, "opencode-go", "kimi-k3", false), toolChoiceModel(t, "opencode", "kimi-k3", false)}},
 		// .upstream/v0.87.1/packages/ai/test/openai-completions-tool-choice.test.ts:1548
 		{"sends max_tokens for built-in and custom DeepSeek API models", []*Model{toolChoiceModel(t, "deepseek", "deepseek-flash", false), toolChoiceModel(t, "deepseek", "deepseek-v4-pro", false)}},
 		// .upstream/v0.87.1/packages/ai/test/openai-completions-tool-choice.test.ts:1592

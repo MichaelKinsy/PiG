@@ -130,7 +130,7 @@ A model whose chat template reads `enable_thinking` is a reasoning model. PiG of
 
 ## Classification
 
-Classifier models answer typed `choice`, `bool`, and `score` questions about JSON state, like TypeSafe's Jev models. The model reaches them from [`codemode`](codemode.md) scripts, and extensions through `ctx.modelRegistry.classify()`; see [Use classifier models](models.md#use-classifier-models). PiG lists llama.cpp models as classifiers in two ways:
+Classifier models answer typed `choice`, `bool`, and `score` questions about JSON state, like TypeSafe's Jev models. The model reaches them from [`codemode`](codemode.md) scripts, and extensions through `ctx.modelRegistry.classify()`; see [Use classifier models](models.md#use-decision-models). PiG lists llama.cpp models as classifiers in two ways:
 
 - **Decision models** such as [Julia-1, Laya, Kev, lev, and OpenJev](https://huggingface.co/collections/ggml-org/decision-models-6abf80cca3c83f127060a769) answer natively through llama.cpp's `/v1/systemone` endpoint. They appear only as classifiers, with the `typesafe-system-one` API, and not in `/model`.
 - **Chat models** are also listed as classifiers with the same ID and the `llama-cpp-classify` API, which reads answers from next-token probabilities as described below.

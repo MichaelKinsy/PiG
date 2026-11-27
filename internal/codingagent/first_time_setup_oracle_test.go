@@ -26,10 +26,10 @@ type firstSetupOracleResult struct {
 	Frames [][]string `json:"frames"`
 }
 
-// first-time-setup.ts handleInput against pinned Pi: k/up and j/down clamp over the options and preview the theme only on a change,
-// confirm (or LF) continues then submits, the cancel binding skips. pig divergence (D88): Pig inserts a sprite step after the theme
-// step and draws its own logo and "PiG" name (Pi: APP_NAME "pi"), so the harness presses the key that entered the sprite step once more (Pi has no such
-// step) and the frames compare from the "Welcome" line down with the app name read as Pi's; events, results and every option line must agree.
+// first-time-setup.ts handleInput against pinned Pi: confirm (or LF) continues then submits, the cancel binding skips.
+// pig divergence (D88): PiG inserts a sprite step before the analytics step and draws its own logo and "PiG" name (Pi: APP_NAME "pi"),
+// so the harness presses LF once on the sprite step (Pi has no such step) and the frames compare from the "Welcome" line down
+// with the app name read as Pi's; events, results and every option line must agree.
 func TestFirstTimeSetupMatchesPi(t *testing.T) {
 	restoreStartupTheme(t)
 	bindings := []map[string][]string{
@@ -85,7 +85,7 @@ func TestFirstTimeSetupMatchesPi(t *testing.T) {
 		}
 		return out
 	}
-	failures, submitted, cancelled, previewed := 0, 0, 0, 0
+	failures, submitted, cancelled := 0, 0, 0
 	for i, probe := range probes {
 		tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
 		tui.SetTheme("dark")
@@ -98,19 +98,19 @@ func TestFirstTimeSetupMatchesPi(t *testing.T) {
 		tui.SetKeybindings(tui.NewKeybindingsManager(tui.TUIKeybindingDefinitionsFor(tui.HostKeybindingPlatform()), user))
 		var events [][]any
 		component := NewFirstTimeSetupComponent(FirstTimeSetupOptions{
-			OnThemePreview: func(name string) { events = append(events, []any{"preview", name}) },
 			OnSubmit: func(r FirstTimeSetupResult) {
-				events = append(events, []any{"submit", r.Theme, r.ShareAnalytics})
+				events = append(events, []any{"submit", r.ShareAnalytics})
 			},
 			OnCancel: func() { events = append(events, []any{"cancel"}) },
 		})
+		if component.step == firstTimeSetupStepSprite {
+			component.step = firstTimeSetupStepAnalytics
+			component.update()
+		}
 		got := firstSetupOracleResult{Steps: [][][]any{{}}, Frames: [][]string{body(component.Render(probe.Width))}}
 		for _, key := range probe.Keys {
 			events = [][]any{}
 			component.HandleInput(key)
-			if component.step == firstTimeSetupStepSprite {
-				component.HandleInput(key)
-			}
 			got.Steps = append(got.Steps, events)
 			got.Frames = append(got.Frames, body(component.Render(probe.Width)))
 		}
@@ -122,8 +122,6 @@ func TestFirstTimeSetupMatchesPi(t *testing.T) {
 					submitted++
 				case "cancel":
 					cancelled++
-				case "preview":
-					previewed++
 				}
 			}
 			if len(step) == 0 {
@@ -140,8 +138,8 @@ func TestFirstTimeSetupMatchesPi(t *testing.T) {
 			}
 		}
 	}
-	if submitted == 0 || cancelled == 0 || previewed == 0 {
-		t.Errorf("probes never reached submit/cancel/preview: %d %d %d", submitted, cancelled, previewed)
+	if submitted == 0 || cancelled == 0 {
+		t.Errorf("probes never reached submit/cancel: %d %d", submitted, cancelled)
 	}
-	t.Logf("%d probes, %d failures; Pi submits %d, cancels %d, previews %d", len(probes), failures, submitted, cancelled, previewed)
+	t.Logf("%d probes, %d failures; Pi submits %d, cancels %d", len(probes), failures, submitted, cancelled)
 }

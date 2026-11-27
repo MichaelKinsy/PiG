@@ -1,3 +1,10 @@
+/**
+ * The client's request IDs and progress tokens are integers. Some servers echo them back as strings
+ * ("1" for 1); map those to the integer so they match, like other MCP clients do.
+ */
+export function normalizeOwnRequestId(id) {
+    return typeof id === "string" && /^(0|[1-9]\d*)$/.test(id) ? Number(id) : id;
+}
 export const JSON_RPC_ERROR_CODES = {
     parseError: -32700,
     invalidRequest: -32600,

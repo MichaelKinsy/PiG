@@ -220,7 +220,7 @@ func (b *surfaceBuild) step(name string) plugins.RolloutStep {
 				return plugins.StepResult{}, err
 			}
 			if outcome.err != nil {
-				return plugins.StepResult{Hosts: []plugins.RolloutHost{{Kind: plugins.RolloutErrored, Host: name, Error: outcome.err}}}, nil
+				return plugins.StepResult{Hosts: []plugins.RolloutHost{{Kind: plugins.RolloutFailed, Host: name, Error: outcome.err}}}, nil
 			}
 			return outcome.published.Step(name).Reload(built, applied, ctx)
 		},

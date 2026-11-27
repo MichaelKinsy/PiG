@@ -61,17 +61,14 @@ func baseParksOf(ctx context.Context, api durable.ToolExecutionApi) *baseParks {
 	return set
 }
 
-// parkError is why a park breaks its shape (spec suspendable §4.1), or "": exactly one of Sleep and Wait, no result
-// field, and, when tool is a wrapper's composite (§9), one its base returned in this run, whose parks are set. Rules on
-// what it waits for are the commit's.
+// parkError is why a park breaks its shape (spec suspendable §4.1), or "": kind sleep or wait, no result field, and,
+// when tool is a wrapper's composite (§9), one its base returned in this run, whose parks are set. Rules on what it
+// waits for are the commit's.
 func parkError(tool *durable.ToolRegistration, result durable.ToolExecutionResult, set *baseParks) string {
 	park := result.Park
 	// Tool code is a trust boundary for the mixed objects its types forbid; Go's one struct holds a park beside a result.
-	if park.Sleep != nil && park.Wait != nil {
-		return "a park has either sleep or wait, not both"
-	}
-	if park.Sleep == nil && park.Wait == nil {
-		return "a park has either sleep or wait, but this one has neither"
+	if park.Kind != durable.ToolParkSleep && park.Kind != durable.ToolParkWait {
+		return "a park's kind is sleep or wait, not " + string(park.Kind)
 	}
 	if field := resultField(result); field != "" {
 		return "a park has no result field, but this one has " + field

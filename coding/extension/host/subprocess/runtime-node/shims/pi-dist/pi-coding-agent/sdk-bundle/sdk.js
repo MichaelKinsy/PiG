@@ -21,11 +21,11 @@ import {
   isToolModifier,
   markRuntimeStreamFunction,
   time
-} from "./chunk-OSE7DX4D.js";
+} from "./chunk-P2EKETZU.js";
 import {
   ModelRuntime,
   getBranchSelection
-} from "./chunk-LWMW44S6.js";
+} from "./chunk-GGFXZTDN.js";
 import {
   createBashTool,
   createCodingTools,
@@ -38,15 +38,15 @@ import {
   createReadTool,
   createWriteTool,
   withFileMutationQueue
-} from "./chunk-W25FOIG4.js";
+} from "./chunk-7PPV3CBH.js";
 import "./chunk-PNTN457B.js";
-import "./chunk-2VCX4NLH.js";
-import "./chunk-QSKV7LUU.js";
+import "./chunk-V4RD65TK.js";
+import "./chunk-TZ35YCTP.js";
 import "./chunk-F4Z3QMHU.js";
 import {
   createToolNameMatcher
-} from "./chunk-4Q37KZ2Z.js";
-import "./chunk-RWSVZTAH.js";
+} from "./chunk-5VMS2WUR.js";
+import "./chunk-T3RX74C7.js";
 import {
   VERSION,
   getAgentDir,

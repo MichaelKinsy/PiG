@@ -15,6 +15,9 @@ import (
 
 // openAIRequestError preserves the OpenAI SDK's setup timeout message and provider-retry.ts's caller-abort message while retaining the Go cause. retryProviderRequest replaces whatever the SDK threw with createAbortError() once the signal is aborted (provider-retry.ts:68-72,124-125), so an abort before headers reads "Request aborted", not the SDK's "Request was aborted.". A fetch rejection that is neither is classified as the SDK does (openAISDKTransportError); any other failure keeps the provider prefix.
 func openAIRequestError(ctx context.Context, err error, prefix string) error {
+	if cbErr, ok := errors.AsType[*retryCallbackError](err); ok {
+		return cbErr.err
+	}
 	wrapped := fmt.Errorf("%s: %w", prefix, err)
 	if ctx.Err() != nil {
 		return &nodeTransportError{message: "Request aborted", cause: wrapped}

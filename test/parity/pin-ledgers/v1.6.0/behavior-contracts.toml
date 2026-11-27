@@ -150,7 +150,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
 start = "\tasync init(): Promise<void> {\n\t\tif (this.isInitialized) return;\n"
 end = "\t\t// Add header with keybindings from config (unless silenced)\n"
-sha256 = "768314ab8c6e10fae0fb498eb63dc81fd39b3901146deb0d3fbf9cadbb844d49"
+sha256 = "af43dca1c731a93b1db2fd5f953be4273a85ac7232bdc59d33344347936bac34"
 keybindings = ["app.clear"]
 
 [[contract]]
@@ -291,7 +291,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/components/model-selector.ts"
 start = "\thandleInput(keyData: string): void {"
 end = "\tgetSearchInput(): Input {"
-sha256 = "e70f42228e9b7c6fe6965df4a6f1c66988d462ca17a28cc3abde4088b4c929f6"
+sha256 = "630bcc9a6c96cd1a024b19d70f7290acd79bd8125de23ea2effe8d1e10848a7a"
 keybindings = [
   "tui.input.tab",
   "tui.select.up",
@@ -332,7 +332,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/components/model-selector.ts"
 start = "\thandleInput(keyData: string): void {"
 end = "\tgetSearchInput(): Input {"
-sha256 = "e70f42228e9b7c6fe6965df4a6f1c66988d462ca17a28cc3abde4088b4c929f6"
+sha256 = "630bcc9a6c96cd1a024b19d70f7290acd79bd8125de23ea2effe8d1e10848a7a"
 keybindings = [
   "tui.input.tab",
   "tui.select.up",
@@ -787,13 +787,15 @@ evidence = [
   "tui/select_page_keys_test.go#TestSelectorComponentsMoveByTheirPage",
   "internal/codingagent/scoped_models_contract_test.go#TestScopedModelsOverlappingBindingsMatchPi",
   "internal/codingagent/scoped_models_contract_test.go#TestScopedModelsIgnoreKeysAfterTheyCancel",
+  "tui/selector_search_selection_upstream_test.go#TestScopedModelsSelectsTheBestMatchAfterTypingAQueryEvenAfterScrolling",
+  "tui/selector_search_selection_upstream_test.go#TestScopedModelsKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged",
 ]
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts"
 start = "\thandleInput(data: string): void {"
 end = "\n\tgetSearchInput(): Input {"
-sha256 = "d09c79298d8e26276278af5359c29636eafeade65e26e7b11dd47b5aa6efd59e"
+sha256 = "d54cfa81e4f5435043483d4928edd03644486b627f5b5a19b3f80d10f4075779"
 keybindings = [
   "app.models.clearAll",
   "app.models.enableAll",
@@ -836,7 +838,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/components/model-selector.ts"
 start = "\thandleInput(keyData: string): void {"
 end = "\tgetSearchInput(): Input {"
-sha256 = "e70f42228e9b7c6fe6965df4a6f1c66988d462ca17a28cc3abde4088b4c929f6"
+sha256 = "630bcc9a6c96cd1a024b19d70f7290acd79bd8125de23ea2effe8d1e10848a7a"
 keybindings = [
   "tui.input.tab",
   "tui.select.up",
@@ -1610,7 +1612,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/components/thinking-selector.ts"
 start = "\thandleInput(keyData: string): void {"
 end = "\tgetSelectList(): SelectList {"
-sha256 = "d3891fe9f432870543ede5439ca65b1afd2eafb14e29f1e560257e5ff504ccf8"
+sha256 = "a10b875f203f51e9a6bca8086c59f223f3bea4509a7d9d525354c217d5da5f1d"
 keybindings = ["app.thinking.save", "tui.select.up", "tui.select.down", "tui.select.confirm", "tui.select.cancel"]
 
 [[contract]]
@@ -1618,12 +1620,14 @@ id = "tui/settings-list/search-input-delegation"
 upstream_id = "input:packages/tui/src/components/settings-list.ts#SettingsList.handleInput"
 family = "settings"
 kind = "boundary-transition"
-claim = "an open submenu receives every key; otherwise up and down wrap, empty lists ignore them, up, down, confirm or space (when search is off or empty) and cancel are tested in that order, with the selection page keys moving by one visible page between down and confirm, and every other key goes to the search Input and refilters, returning the selection to the first match; the selection page keys rank between down and confirm, clamp at both ends and ignore an empty list; up, down, the page keys, confirm and cancel are read through the keybinding manager, so a remapped cancel stops the default Escape from cancelling; navigation acts on the filtered rows (a single match does not wrap, an empty filter ignores every key); an open submenu, including one without an input handler, owns every key and the search text and selection survive its closing"
+claim = "an open submenu receives every key; otherwise up and down wrap, empty lists ignore them, up, down, confirm or space (when search is off or empty) and cancel are tested in that order, with the selection page keys moving by one visible page between down and confirm, and every other key goes to the search Input and refilters only when the query text changed (Pi 5bcf370a5, so cursor keys Left/Right/Home/End keep the selection while a changed query returns to the first match); the selection page keys rank between down and confirm, clamp at both ends and ignore an empty list; up, down, the page keys, confirm and cancel are read through the keybinding manager, so a remapped cancel stops the default Escape from cancelling; navigation acts on the filtered rows (a single match does not wrap, an empty filter ignores every key); an open submenu, including one without an input handler, owns every key and the search text and selection survive its closing"
 status = "ported"
 pig_targets = ["tui/settings_list.go#HandleInput", "tui/settings_list.go#applyFilter"]
 evidence = [
   "tui/settings_list_input_test.go#TestSettingsListSearchDelegatesEditingKeysToTheInput",
-  "tui/settings_list_input_test.go#TestSettingsListAnyDelegatedKeyResetsTheSelectionToTheFirstMatch",
+  "tui/settings_list_input_test.go#TestSettingsListADelegatedKeyThatLeavesTheQueryUnchangedKeepsTheSelection",
+  "tui/selector_search_selection_upstream_test.go#TestSettingsListKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged",
+  "tui/selector_search_selection_upstream_test.go#TestSelectorSearchBoundaryTransitions",
   "tui/settings_list_input_test.go#TestSettingsListBoundActionsRunInUpstreamOrder",
   "tui/settings_list_input_test.go#TestSettingsListEmptyAndSingletonNavigationBoundaries",
   "tui/settings_list_input_test.go#TestSettingsListSubmenuReceivesEveryKeyIncludingCancel",
@@ -1641,7 +1645,7 @@ evidence = [
 path = "packages/tui/src/components/settings-list.ts"
 start = "\thandleInput(data: string): void {"
 end = "\tprivate getDisplayItems(): SettingItem[] {"
-sha256 = "6774050cffaa75b63afbe38699061d9956e42422461eabd721bba2bf9e73872d"
+sha256 = "dc57d064b6435c647d447f1bcb26eab82169a563192e5d6493d07b7b304fc16f"
 keybindings = ["tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up"]
 
 [[contract]]
@@ -1649,7 +1653,7 @@ id = "coding-agent/oauth-selector/input-state-machine"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/oauth-selector.ts#OAuthSelectorComponent.handleInput"
 family = "oauth"
 kind = "selector-input-state-machine"
-claim = "OAuthSelectorComponent.handleInput in upstream order: tui.select.up and tui.select.down clamp (no wraparound) and are ignored on an empty filtered list, tui.select.pageUp and tui.select.pageDown move by the eight visible rows clamped to the list bounds and are ignored on an empty list, tui.select.confirm and the search Input's submit (tui.input.submit or LF) call onSelect once for the highlighted provider and nothing when the filtered list is empty, tui.select.cancel calls onCancel once, and every other key edits the fuzzy search and clamps (does not reset) the selection; each earlier branch wins when two actions share a key"
+claim = "OAuthSelectorComponent.handleInput in upstream order: tui.select.up and tui.select.down clamp (no wraparound) and are ignored on an empty filtered list, tui.select.pageUp and tui.select.pageDown move by the eight visible rows clamped to the list bounds and are ignored on an empty list, tui.select.confirm and the search Input's submit (tui.input.submit or LF) call onSelect once for the highlighted provider and nothing when the filtered list is empty, tui.select.cancel calls onCancel once, and every other key delegates to the search Input; when the query text changed it re-filters and selects row 0 for a non-empty query or clamps when cleared, and when the query is unchanged it keeps the selection; each earlier branch wins when two actions share a key"
 status = "ported"
 pig_targets = [
   "tui/oauth_selector.go#HandleInput",
@@ -1662,13 +1666,17 @@ evidence = [
   "tui/select_page_keys_test.go#TestSelectorComponentsMoveByTheirPage",
   "test/parity/scenarios/oauth/17-login-method-search.toml",
   "test/parity/scenarios/oauth/26-login-cancel-returns-to-provider-list.toml",
+  "test/parity/scenarios/selectors/19-login-search-selects-best-match.toml",
+  "tui/selector_search_selection_upstream_test.go#TestOAuthSelectorSelectsTheBestMatchAfterTypingAQueryEvenAfterScrolling",
+  "tui/selector_search_selection_upstream_test.go#TestOAuthSelectorKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged",
+  "tui/selector_search_selection_upstream_test.go#TestSelectorSearchBoundaryTransitions",
 ]
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts"
 start = "\thandleInput(keyData: string): void {"
 end = "\t\t}\n\t}\n}\n"
-sha256 = "b52bcc452ac2149631047cf64b901be57894b59690f173bac47ca3b011d2648c"
+sha256 = "43423f3708fe6df6925af7df5e0912f21ba121d6c3b74526567c58f4a3023d4e"
 keybindings = ["tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up"]
 
 [[contract]]
@@ -1694,7 +1702,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/components/thinking-selector.ts"
 start = "\thandleInput(keyData: string): void {"
 end = "\tgetSelectList(): SelectList {"
-sha256 = "d3891fe9f432870543ede5439ca65b1afd2eafb14e29f1e560257e5ff504ccf8"
+sha256 = "a10b875f203f51e9a6bca8086c59f223f3bea4509a7d9d525354c217d5da5f1d"
 keybindings = ["app.thinking.save", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up"]
 
 [[contract]]
@@ -1766,13 +1774,17 @@ evidence = [
   "internal/codingagent/session_selector_oracle_test.go#TestSessionSelectorInputMatchesPi",
   "test/parity/scenarios/session/20-session-selector-search.toml",
   "test/parity/scenarios/session/37-session-selector-sort-named-delete.toml",
+  "internal/codingagent/session_selector_search_selection_upstream_test.go#TestSessionSelectorSelectsTheBestMatchAfterTypingAQueryEvenAfterScrolling",
+  "internal/codingagent/session_selector_search_selection_upstream_test.go#TestSessionSelectorKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged",
+  "internal/codingagent/session_selector_search_selection_upstream_test.go#TestSessionSelectorKeepsTheTopRowSelectedWhenSessionsArriveAfterTypingAQuery",
+  "internal/codingagent/session_selector_search_selection_upstream_test.go#TestSessionSelectorSearchBoundaryTransitions",
 ]
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/session-selector.ts"
 start = "\thandleInput(keyData: string): void {"
 end = "}\n\ntype SessionsLoader"
-sha256 = "89815070a78a87e85565931cdcff60bda1908a3330e79acf0f2667b718c2387d"
+sha256 = "d4a77cf642d7efddf996e116ecf7806b2336038f89aa5b4f71fbdac7f0567154"
 keybindings = ["app.session.delete", "app.session.deleteNoninvasive", "app.session.rename", "app.session.toggleNamedFilter", "app.session.togglePath", "app.session.toggleSort", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.pageDown", "tui.select.pageUp", "tui.select.up"]
 
 [[contract]]
@@ -1801,7 +1813,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/components/session-selector.ts"
 start = "\thandleInput(keyData: string): void {"
 end = "}\n\ntype SessionsLoader"
-sha256 = "89815070a78a87e85565931cdcff60bda1908a3330e79acf0f2667b718c2387d"
+sha256 = "d4a77cf642d7efddf996e116ecf7806b2336038f89aa5b4f71fbdac7f0567154"
 keybindings = ["app.session.delete", "app.session.deleteNoninvasive", "app.session.rename", "app.session.toggleNamedFilter", "app.session.togglePath", "app.session.toggleSort", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.pageDown", "tui.select.pageUp", "tui.select.up"]
 
 [[contract]]
@@ -1825,7 +1837,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/components/session-selector.ts"
 start = "\thandleInput(keyData: string): void {"
 end = "}\n\ntype SessionsLoader"
-sha256 = "89815070a78a87e85565931cdcff60bda1908a3330e79acf0f2667b718c2387d"
+sha256 = "d4a77cf642d7efddf996e116ecf7806b2336038f89aa5b4f71fbdac7f0567154"
 keybindings = ["app.session.delete", "app.session.deleteNoninvasive", "app.session.rename", "app.session.toggleNamedFilter", "app.session.togglePath", "app.session.toggleSort", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.pageDown", "tui.select.pageUp", "tui.select.up"]
 [[contract]]
 id = "coding-agent/session-selector/rename-mode-input"
@@ -2026,7 +2038,7 @@ evidence = [
 path = "packages/tui/src/components/editor.ts"
 start = "\thandleInput(data: string): void {\n\t\tconst kb = getKeybindings();"
 end = "\n\tprivate layoutText("
-sha256 = "a5578ee4fc84e81d540e7fd79621095567c944ce4b1f1d76e05614e7f39a25ba"
+sha256 = "d95a7e584d8eb9c208048392a7b324925ab540e51c600855bbe257b06b071c29"
 keybindings = ['matchesKey:"shift+backspace"', 'matchesKey:"shift+delete"', 'matchesKey:"shift+space"', "tui.editor.cursorDown", "tui.editor.cursorLeft", "tui.editor.cursorLineEnd", "tui.editor.cursorLineStart", "tui.editor.cursorRight", "tui.editor.cursorUp", "tui.editor.cursorWordLeft", "tui.editor.cursorWordRight", "tui.editor.deleteCharBackward", "tui.editor.deleteCharForward", "tui.editor.deleteToLineEnd", "tui.editor.deleteToLineStart", "tui.editor.deleteWordBackward", "tui.editor.deleteWordForward", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.editor.jumpBackward", "tui.editor.jumpForward", "tui.editor.pageDown", "tui.editor.pageUp", "tui.editor.undo", "tui.editor.yank", "tui.editor.yankPop", "tui.input.copy", "tui.input.newLine", "tui.input.submit", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up", "tui.select.pageDown", "tui.select.pageUp"]
 
 [[contract]]
@@ -2104,7 +2116,7 @@ id = "coding-agent/oauth-selector/boundary-transitions"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/oauth-selector.ts#OAuthSelectorComponent.handleInput"
 family = "selectors"
 kind = "boundary-transition"
-claim = "first row, last row, a single provider, no provider, a list shorter and longer than one page, and a search that matches nothing: up and down clamp at the ends, page keys move by one visible page clamped to the bounds, confirm and the Input's submit select nothing on an empty list, cancel is checked before the search input (a cancel key bound to a letter is not typed), and typing narrows the list while the highlighted index is clamped to the filtered length"
+claim = "first row, last row, a single provider, no provider, a list shorter and longer than one page, and a search that matches nothing: up and down clamp at the ends, page keys move by one visible page clamped to the bounds, confirm and the Input's submit select nothing on an empty list, cancel is checked before the search input (a cancel key bound to a letter is not typed), and typing a non-empty query narrows the list and selects row 0 (best match) while clearing the query clamps the index and keys that leave the query unchanged keep the selection"
 status = "ported"
 pig_targets = [
   "tui/oauth_selector.go#HandleInput",
@@ -2121,8 +2133,8 @@ evidence = [
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts"
 start = "\thandleInput(keyData: string): void {"
-end = "\t\t\tthis.filterProviders(this.searchInput.getValue());\n"
-sha256 = "0028cc5970c905c84d59ea9e40c494c421b69e764593916d0cc29b0714446c19"
+end = "\t\t\tif (query !== previousQuery) this.filterProviders(query);\n"
+sha256 = "cf1f26a63a2f8524d39ffaadb760df06d2bcf49d784fe82f497427cbdb04e8c1"
 keybindings = ["tui.select.up", "tui.select.down", "tui.select.confirm", "tui.select.cancel"]
 
 [[contract]]
@@ -2169,13 +2181,14 @@ evidence = [
   "test/parity/scenarios/settings/08-settings-model-thinking-empty-search.toml",
   "tui/select_page_keys_upstream_test.go#TestUpstreamSelectSubmenuPagesWithSelectionPageKeys",
   "tui/select_submenu_contract_test.go#TestSelectSubmenuPageKeysFollowTheKeybindingManager",
+  "tui/selector_search_selection_upstream_test.go#TestSelectSubmenuKeepsTheSelectionWhenACursorKeyLeavesTheQueryUnchanged",
 ]
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/settings-submenu.ts"
 start = "\thandleInput(data: string): void {\n\t\tif (this.searchInput) {"
 end = "\n}\n\n// ===="
-sha256 = "21eca9b4bb621508ec0c79a37f6d4757073c868c49b5e28f5fe6618c2f3ea37a"
+sha256 = "bc99737d95c64b3f0dba8a209f8b92de7b38ba80c8fe73f6dda52798132e4066"
 keybindings = ["tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up", "tui.select.pageDown", "tui.select.pageUp"]
 
 [[contract]]
@@ -2243,7 +2256,7 @@ id = "coding-agent/config-selector/input-state-machine"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ResourceList.handleInput"
 family = "selectors"
 kind = "selector-input-state-machine"
-claim = "ResourceList.handleInput in upstream order: tui.select.up and tui.select.down move to the neighbouring item row (group and subgroup headers are skipped, no wraparound, no move when no item row lies that way), tui.select.pageUp and tui.select.pageDown jump by the visible row count and settle on the nearest item row (pageUp scans forward, pageDown backward, staying put when none), tui.select.cancel calls onCancel before the raw Ctrl+C key calls onExit (so Ctrl+C exits only when cancel is rebound), tui.input.tab switches the write scope only when project mode is available and never reaches the search Input (the selection returns to the first item and the query is re-applied), Space or tui.select.confirm toggle only an item row, and every other key edits the search Input and re-filters (resetting the selection to the first item even when the query is unchanged, and treating a whitespace-only query as empty); empty, single-item and filtered-to-nothing lists ignore every movement and toggle key"
+claim = "ResourceList.handleInput in upstream order: tui.select.up and tui.select.down move to the neighbouring item row (group and subgroup headers are skipped, no wraparound, no move when no item row lies that way), tui.select.pageUp and tui.select.pageDown jump by the visible row count and settle on the nearest item row (pageUp scans forward, pageDown backward, staying put when none), tui.select.cancel calls onCancel before the raw Ctrl+C key calls onExit (so Ctrl+C exits only when cancel is rebound), tui.input.tab switches the write scope only when project mode is available and never reaches the search Input (the selection returns to the first item and the query is re-applied), Space or tui.select.confirm toggle only an item row, and every other key edits the search Input and re-filters (resetting the selection to the first item only when the query text changed, and treating a whitespace-only query as empty); empty, single-item and filtered-to-nothing lists ignore every movement and toggle key"
 status = "ported"
 pig_targets = [
   "tui/config_selector.go#HandleInput",
@@ -2261,8 +2274,8 @@ evidence = [
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/config-selector.ts"
 start = "\thandleInput(data: string): void {\n\t\tconst kb = getKeybindings();\n\n\t\tif (kb.matches(data, \"tui.select.up\")) {\n\t\t\tthis.selectedIndex = this.findNextItem"
-end = "\t\tthis.filterItems(this.searchInput.getValue());\n\t}\n\n\tprivate toggleResource"
-sha256 = "cb51db9951240d706d20bda6c145fb9c060e01b5204d8aabc1d9c6fc2719b2ba"
+end = "\t\tif (query !== previousQuery) this.filterItems(query);\n\t}\n\n\tprivate toggleResource"
+sha256 = "cedb6aaae469cc6f4c22289460a4790acdeadc006630ef34a218e697bfa8b998"
 keybindings = ['matchesKey:"ctrl+c"', "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.pageDown", "tui.select.pageUp", "tui.select.up"]
 
 [[contract]]
@@ -2287,8 +2300,8 @@ evidence = [
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/config-selector.ts"
 start = "\thandleInput(data: string): void {\n\t\tconst kb = getKeybindings();\n\n\t\tif (kb.matches(data, \"tui.select.up\")) {\n\t\t\tthis.selectedIndex = this.findNextItem"
-end = "\t\tthis.filterItems(this.searchInput.getValue());\n\t}\n\n\tprivate toggleResource"
-sha256 = "cb51db9951240d706d20bda6c145fb9c060e01b5204d8aabc1d9c6fc2719b2ba"
+end = "\t\tif (query !== previousQuery) this.filterItems(query);\n\t}\n\n\tprivate toggleResource"
+sha256 = "cedb6aaae469cc6f4c22289460a4790acdeadc006630ef34a218e697bfa8b998"
 keybindings = ['matchesKey:"ctrl+c"', "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.pageDown", "tui.select.pageUp", "tui.select.up"]
 
 [[contract]]
@@ -2507,7 +2520,7 @@ evidence = [
 path = "packages/coding-agent/src/extensions/mcp/index.ts"
 start = "export function renderServersSection(servers: readonly McpServerListing[]): string | undefined {"
 end = "\n}\n\n/**\n * Whether a call that reaches"
-sha256 = "54668e047eb4a3d5b74f7edfea350c5d3eb18d31e3af4df8412438ea443d2b44"
+sha256 = "59ea7ffa5a39bbc00f0b842a781dfab09b1943a3ebabd66c220899d28d06b348"
 keybindings = []
 
 [[contract]]
@@ -2667,9 +2680,9 @@ evidence = [
 
 [contract.upstream]
 path = "packages/tui/src/components/text.ts"
-start = "\trender(width: number): string[] {"
+start = "\trender(width: number): readonly string[] {"
 end = "\n}"
-sha256 = "9ad3b3b1dd9492c3aad9dd0fc697df9ae7ca24c21645389725b434faadd59269"
+sha256 = "f8c658b99af2e84fa411d7140f87da335c13939222673cdf4af4076a42eb5199"
 keybindings = []
 
 [[contract]]
@@ -2711,9 +2724,9 @@ evidence = [
 
 [contract.upstream]
 path = "packages/tui/src/components/box.ts"
-start = "\trender(width: number): string[] {"
+start = "\trender(width: number): readonly string[] {"
 end = "\n}\n"
-sha256 = "53a80d8c41ad09da37d7908430334369d5ad1319b89d3ca2427f3ffbbda4eddb"
+sha256 = "ce800cc7d3788a90da87571656c034a73aa750a49586d8800567b45890885074"
 keybindings = []
 
 [[contract]]
@@ -2915,9 +2928,9 @@ evidence = [
 
 [contract.upstream]
 path = "packages/tui/src/tui.ts"
-start = "\trender(width: number): string[] {\n\t\tconst lines: string[] = [];"
-end = "\n\t\tthis.mouseLayout = { width, children: mouseChildren };"
-sha256 = "6b7394bcb1d74b8529c76cbeb1288067d864bbaa7e06036cb785a8a4bacceecc"
+start = "\trender(width: number): readonly string[] {\n\t\tthis.childLines = renderChildLines"
+end = "\n/**\n * TUI - Main class for managing terminal UI with differential rendering"
+sha256 = "e39a6d821cc1354e1dfdec3214d254872bac4abbbcc277e7c980defbaa01d674"
 keybindings = []
 
 [[contract]]
@@ -2938,9 +2951,9 @@ evidence = [
 
 [contract.upstream]
 path = "packages/tui/src/components/mouse-region.ts"
-start = "\trender(width: number): string[] {"
+start = "\trender(width: number): readonly string[] {"
 end = "\n\thandleMouse("
-sha256 = "3e0720e65d6473836442bfc06a3b8e4b5737c0c14be84f59457ecf135f8a3200"
+sha256 = "5f8d3966979115172a1694e924b52c0467550b7f633fb4298a26f2b56e4668c7"
 keybindings = []
 
 [[contract]]
@@ -3005,9 +3018,9 @@ evidence = [
 
 [contract.upstream]
 path = "packages/tui/src/components/markdown.ts"
-start = "\trender(width: number): string[] {"
+start = "\trender(width: number): readonly string[] {"
 end = "\n\t/** Render one top-level block to output lines"
-sha256 = "ca7334eaf43d2e2ae5a939318d0ad887e1bd2c520c7ebd52a6717ccd5859bb77"
+sha256 = "6d7e26014e5c96cd5039acd77a757ccf6aad80ba884cadbf0d84b20395430297"
 keybindings = []
 
 [[contract]]
@@ -3063,7 +3076,7 @@ evidence = [
 path = "packages/tui/src/components/markdown.ts"
 start = "\tprivate renderBlock("
 end = "\n\t/**\n\t * Apply default text style to a string."
-sha256 = "25f22ec339b88cf45a3379d352740f058109575a71d5579dcb7b4314a9cb5d57"
+sha256 = "ad83cecc0b5f8469fdfbdb0f437b56e0a7ea42b294b1eb5f8b8b8555bd108882"
 keybindings = []
 
 [[contract]]
@@ -3314,9 +3327,9 @@ evidence = [
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/visual-truncate.ts"
-start = "\trender(width: number): string[] {"
+start = "\trender(width: number): readonly string[] {"
 end = "\n\tinvalidate(): void {"
-sha256 = "5de3fc1afd2167833825dc9c948b747e02176ba8bfbba25bfa1296c21da76922"
+sha256 = "6d0dd589ad98a7e6f9e392b3bd52dd7ae237147b633a7488ece489b302c0388d"
 keybindings = []
 
 [[contract]]
@@ -3424,9 +3437,9 @@ evidence = [
 
 [contract.upstream]
 path = "packages/tui/src/components/scroll-view.ts"
-start = "\toverride render(width: number): string[] {"
+start = "\toverride render(width: number): readonly string[] {"
 end = "\n\t[LAYOUT_NODE]()"
-sha256 = "60755df4feb43af7d6271a1679897372c4b61f2e956b3be268988ad8516c7f6c"
+sha256 = "5e62a1dd78ddf86c61f1c72686093f4219cd556f11e13acf6f62f1687315394f"
 keybindings = []
 
 [[contract]]
@@ -3538,7 +3551,7 @@ evidence = [
 path = "packages/tui/src/components/editor.ts"
 start = "\thandleInput(data: string): void {"
 end = "\tprivate layoutText(contentWidth: number): LayoutLine[] {"
-sha256 = "df53623d419acf4f578aae05f1aa56af95395ed2aa7b59d44815c2ab5cf70698"
+sha256 = "30a948186dcf98fbcc4373c0d57c223ff1d9f9914f17625baf7835591543c0f3"
 keybindings = ['matchesKey:"shift+backspace"', 'matchesKey:"shift+delete"', 'matchesKey:"shift+space"', "tui.editor.cursorDown", "tui.editor.cursorLeft", "tui.editor.cursorLineEnd", "tui.editor.cursorLineStart", "tui.editor.cursorRight", "tui.editor.cursorUp", "tui.editor.cursorWordLeft", "tui.editor.cursorWordRight", "tui.editor.deleteCharBackward", "tui.editor.deleteCharForward", "tui.editor.deleteToLineEnd", "tui.editor.deleteToLineStart", "tui.editor.deleteWordBackward", "tui.editor.deleteWordForward", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.editor.jumpBackward", "tui.editor.jumpForward", "tui.editor.pageDown", "tui.editor.pageUp", "tui.editor.undo", "tui.editor.yank", "tui.editor.yankPop", "tui.input.copy", "tui.input.newLine", "tui.input.submit", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up", "tui.select.pageDown", "tui.select.pageUp"]
 
 [[contract]]
@@ -3558,9 +3571,9 @@ evidence = [
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/themed-text.ts"
-start = "\toverride render(width: number): string[] {"
+start = "\toverride render(width: number): readonly string[] {"
 end = "\t\treturn super.render(width);\n\t}\n}"
-sha256 = "cb10e061b5324e131196bf5eeb56a9f5b18ff515b95f63fe85705597d67cf072"
+sha256 = "7cdf1c418b8a07d5c12ab9c27924e9bfd3de5b16e9c4c8069db03d2554f79cab"
 keybindings = []
 
 [[contract]]
@@ -3690,9 +3703,9 @@ evidence = [
 
 [contract.upstream]
 path = "packages/tui/src/components/settings-list.ts"
-start = "\trender(width: number): string[] {"
+start = "\trender(width: number): readonly string[] {"
 end = "\n\tprivate renderMainList("
-sha256 = "9faa98a4b63e428cac48af05343036929bd7a9177bfdbcc91d328521a56bb9eb"
+sha256 = "5956fe3549e63fbcc7825d52f745b1e68e0fa7358e254899defb30dbb7205a89"
 keybindings = []
 
 [[contract]]
@@ -3848,7 +3861,7 @@ evidence = [
 path = "packages/tui/src/layout.ts"
 start = "export function renderLayoutFrame("
 end = "\nfunction containsPoint("
-sha256 = "78e009ec05062666bfdf20d044e10e9f6d7872e24e75b35200ed6b4af86e6b1b"
+sha256 = "9bfcfbf110205681fa42987277c96fd4fac7a5b7bf8d8af45da07a573eb4cbc5"
 keybindings = []
 
 [[contract]]
@@ -3871,7 +3884,7 @@ evidence = [
 path = "packages/tui/src/layout.ts"
 start = "function renderCached("
 end = "\nfunction measureHeight("
-sha256 = "3c9c6286ad8de660ec120b795080229745b5884e5e5aaed2de288a806ac6473f"
+sha256 = "3e320bdf55796ce1d41d9d7f32361ecbd661d91ce41b3355e2ec9cd188e1294e"
 keybindings = []
 
 [[contract]]
@@ -3892,9 +3905,9 @@ evidence = [
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/user-message.ts"
-start = "\toverride render(width: number): string[] {"
-end = "\t\treturn lines;\n\t}\n}"
-sha256 = "56d100bf405607ab16be0dad2f33d40568e173cbee9703553edca09268bbdd13"
+start = "\toverride render(width: number): readonly string[] {"
+end = "\t\treturn this.zoneLines.lines;\n\t}\n}"
+sha256 = "010399b9b7b6fae53c865eca8f7ada76cadec62964381fd53d1943ea1433835c"
 keybindings = []
 
 [[contract]]
@@ -3916,7 +3929,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/components/bash-execution.ts"
 start = "\tprivate updateDisplay(): void {"
 end = "\n\t/**\n\t * Get the raw output"
-sha256 = "6125bc97f51b96b1350c64a8ac00a0c83d91bbf31c65c52b93643476697eafc5"
+sha256 = "5679c8cd4fcecd43605b06888ac58611c86effe5149c5a8881bb03759615aeeb"
 keybindings = []
 
 [[contract]]
@@ -3939,9 +3952,9 @@ evidence = [
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/assistant-message.ts"
-start = "\toverride render(width: number): string[] {"
+start = "\toverride render(width: number): readonly string[] {"
 end = "\n\tupdateContent("
-sha256 = "f5293bfe3559338da94f6b3cd283791ad7195f5d313a226dfc85938e58a4bb55"
+sha256 = "67cf72c816064384eb871d610374fa38bb0613c3d2758dbd46d91ba94c69aadf"
 keybindings = []
 
 [[contract]]
@@ -4035,9 +4048,9 @@ evidence = [
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/settings-submenu.ts"
-start = "\trender(width: number): string[] {"
+start = "\trender(width: number): readonly string[] {"
 end = "\t\treturn this.activeComponent.render(width);\n\t}"
-sha256 = "87fbb3b31fa9e644147515c61b8c78f5836f8352ac75427546699f96a2686f39"
+sha256 = "7f4d1c3b416416931c1fb4a53f4d40e24033aa9eb1932be24e537d7d896281b4"
 keybindings = []
 
 [[contract]]
@@ -4306,7 +4319,7 @@ evidence = [
 path = "packages/ai/src/api/openai-responses-shared.ts"
 start = "\t/** Tools announced as removed and not declared again since. */"
 end = "\t\t} else if (msg.role === \"user\") {\n\t\t\tif (typeof msg.content === \"string\") {"
-sha256 = "282caa016bf343e71ce1ea29e887b3f35a374c8039dc08d66f09743bda38d798"
+sha256 = "8862fafde93226c6a6543fb12f6eda962115f7e34319a4be736a3024d84c40da"
 keybindings = []
 
 [[contract]]
@@ -4857,7 +4870,7 @@ evidence = [
 path = "packages/coding-agent/src/core/tools/renderers/read.ts"
 start = "function formatReadResult("
 end = "export const readRenderers:"
-sha256 = "76929a71125a05b085c8164d1f895a2c2cce579b067692f36eb5c868abf46547"
+sha256 = "275d6ea43b9404538ec9470f2d7df8ad38210d1c853f33429678cb0e7f289868"
 keybindings = []
 
 [[contract]]
@@ -5203,9 +5216,9 @@ evidence = [
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/radius-login-selector.ts"
-start = "\toverride render(width: number): string[] {\n\t\tconst lines = super.render(width);"
+start = "\toverride render(width: number): string[] {\n\t\t// Container output is shared across frames; copy before replacing the animated line.\n\t\tconst lines = [...super.render(width)];"
 end = "\t\treturn lines;\n\t}\n\n\tprivate stopAnimation"
-sha256 = "4504d04e2a6dda9f9610553a26af8185358c58be6de5561206dcc5e735d5c6b9"
+sha256 = "85086e1bbb3e0740f19f360db011531abaf68d1f0328df4106fe15cbe31ca655"
 keybindings = []
 
 [[contract]]
@@ -5229,9 +5242,9 @@ evidence = [
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts"
-start = "\toverride render(width: number): string[] {\n\t\t// The list is built from styled text"
+start = "\toverride render(width: number): readonly string[] {\n\t\t// The list is built from styled text"
 end = "\t/** Stops the brand animation. */"
-sha256 = "2ce3030c01c53e36405fc761bcb8dff18c611ff82c9663105c04a8360856bc1a"
+sha256 = "aed220ec441f7eb5290629b86efa265f005f0524694354fb6b9dd00a685047a8"
 keybindings = []
 
 [[contract]]
@@ -5295,9 +5308,9 @@ evidence = [
 
 [contract.upstream]
 path = "packages/tui/src/components/image.ts"
-start = "\trender(width: number): string[] {\n\t\tif (this.cachedLines && this.cachedWidth === width) {"
+start = "\trender(width: number): readonly string[] {\n\t\tif (this.cachedLines && this.cachedWidth === width) {"
 end = "\t\tthis.cachedLines = lines;"
-sha256 = "02256075d6590e4a0cd1a06eb0b16e7145fc84a5258818588e55f1da3d2e7269"
+sha256 = "299c5e2a8eed892425134b4bb2a2e394b3cdc4d5c320e875a0dc5e293f368433"
 keybindings = []
 
 [[contract]]
@@ -5475,9 +5488,9 @@ evidence = [
 
 [contract.upstream]
 path = "packages/tui/src/tui-alt-screen.ts"
-start = "override render(width: number): string[] {"
+start = "override render(width: number): readonly string[] {"
 end = "super.render(width);\n\t}"
-sha256 = "f5ff2e077a8fa39b584839b4c1c26ac8dd03ffc38a39ca5fe1b4267be1526ee7"
+sha256 = "7ed4e552886facb034197c15da8f97604eefb5477e9fcdcd67135dd28ca40e21"
 keybindings = []
 
 [[contract]]
@@ -5533,7 +5546,7 @@ evidence = [
 path = "packages/tui/src/tui-alt-screen.ts"
 start = "protected override doRender(): void {"
 end = "this.currentLayout = nextLayout;\n\t}"
-sha256 = "0407a20896b5757a9e85671306cbc42acdb40eccadaabe398c9296d64a6af9e3"
+sha256 = "1a9320e6ec65e4574438298eb27d5af1d96e40c32519d60b0a8414d6ab8d6d2f"
 keybindings = []
 
 [[contract]]
@@ -5733,7 +5746,7 @@ evidence = [
 path = "packages/tui/src/tui.ts"
 start = "\trenderNow(force = false): void {"
 end = "\n\n\trequestRender(force = false): void {"
-sha256 = "a41d73a127962410af68ce65abee17a1c1530e3b348359d240dbb9179ca569d2"
+sha256 = "23457a605b1ef1eeddd730db53bd4ef99901e072d7abaac0d4698bbb63c0b0a3"
 keybindings = []
 
 [[contract]]
@@ -6001,9 +6014,9 @@ evidence = [
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/tool-execution.ts"
-start = "\toverride render(width: number): string[] {\n\t\tif (this.argsPending) this.updateDisplay();\n\t\tif (this.hideComponent)"
+start = "\toverride render(width: number): readonly string[] {\n\t\tif (this.argsPending) this.updateDisplay();\n\t\tif (this.hideComponent)"
 end = "\toverride handleMouse(event: TuiMouseEvent)"
-sha256 = "e3930d4b11d5a99a498b9893a2eb1f7f12cba5ad03f9b4a147f2f45c889fe9b8"
+sha256 = "d839ad01cad2f26a13d0d1a1c4f48b9c520d5ef9814f5b32882bce6aa52b311a"
 keybindings = []
 
 [[contract]]
@@ -6402,7 +6415,7 @@ evidence = [
 path = "packages/tui/src/components/editor.ts"
 start = "\t\t// Handle autocomplete mode"
 end = "\t\t// Tab - trigger completion"
-sha256 = "e4688cbff568592b3683b78e3e09d41af8a826aabee742c8c7deab6cb6fb39f7"
+sha256 = "2e6d8b44832e998c0df3b7c2ee6129df7ecaab8198165f51b90e5d37d2b645d8"
 keybindings = [
   "matchesKey:\"shift+backspace\"",
   "matchesKey:\"shift+delete\"",
@@ -7120,7 +7133,7 @@ evidence = [
 path = "packages/tui/src/components/editor.ts"
 start = "\thandleInput(data: string): void {\n\t\tconst kb = getKeybindings();"
 end = "\n\tprivate layoutText("
-sha256 = "a5578ee4fc84e81d540e7fd79621095567c944ce4b1f1d76e05614e7f39a25ba"
+sha256 = "d95a7e584d8eb9c208048392a7b324925ab540e51c600855bbe257b06b071c29"
 keybindings = [
   "matchesKey:\"shift+backspace\"",
   "matchesKey:\"shift+delete\"",
@@ -7323,7 +7336,7 @@ evidence = [
 path = "packages/tui/src/tui.ts"
 start = "\trenderNow(force = false): void {"
 end = "\n\n\trequestRender(force = false): void {"
-sha256 = "a41d73a127962410af68ce65abee17a1c1530e3b348359d240dbb9179ca569d2"
+sha256 = "23457a605b1ef1eeddd730db53bd4ef99901e072d7abaac0d4698bbb63c0b0a3"
 keybindings = [
 ]
 
@@ -7351,7 +7364,7 @@ evidence = [
 path = "packages/tui/src/tui.ts"
 start = "\trequestRender(force = false): void {"
 end = "\n\n\tprivate handleTerminalInput(data: string): void {"
-sha256 = "7a1d4eeae07b1697b0b0052af3199853a3db677e046133e051f008fb4f568951"
+sha256 = "7b79ee023debf490cd7dfbd08493452bc79642745ff4970187bdd25b19be2da3"
 keybindings = [
 ]
 
@@ -7375,7 +7388,7 @@ evidence = [
 path = "packages/tui/src/tui.ts"
 start = "\tprivate renderRequested = false;"
 end = "\n\tprivate showHardwareCursor = false;"
-sha256 = "ee38b030fdb9aa8f829f137707ec88351ed0ce8d7ba3cd114a07db516944c20a"
+sha256 = "790745ab68be2c49ee25edf6b52e1cb6a4aed71fa7f30fb42690c2315c7c13a2"
 keybindings = [
 ]
 
@@ -7400,7 +7413,7 @@ evidence = [
 path = "packages/tui/src/tui-alt-screen.ts"
 start = "protected override doRender(): void {"
 end = "this.currentLayout = nextLayout;\n\t}"
-sha256 = "0407a20896b5757a9e85671306cbc42acdb40eccadaabe398c9296d64a6af9e3"
+sha256 = "1a9320e6ec65e4574438298eb27d5af1d96e40c32519d60b0a8414d6ab8d6d2f"
 keybindings = []
 
 [[contract]]

@@ -361,7 +361,10 @@ func (storage *MemoryStorage) Commit(
 		prepared.applyLocked()
 		seqs = append(seqs, prepared.seq)
 	}
-	return durable.CommitResult{Stored: len(seqs), Refused: refused}, nil
+	if refused != nil {
+		return durable.RefusedCommit(len(seqs), refused), nil
+	}
+	return durable.StoredCommit(len(seqs)), nil
 }
 
 // PrepareCommit validates and detaches one commit at the next sequence without changing observable state.

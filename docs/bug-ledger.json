@@ -266,6 +266,29 @@
       "tests": []
     },
     {
+      "id": "BF-0197913",
+      "title": "OpenAI Responses tool-call replay now includes `status: \"completed\"` on replayed `function_call` and…",
+      "symptom": "OpenAI Responses tool-call replay now includes `status: \"completed\"` on replayed `function_call` and `custom_tool_call` items so full-history resends match stored server items (Pi 1.6.1).",
+      "rootCause": "replayed Responses tool call items omitted status completed",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "OpenAI Responses tool-call replay now includes `status: \"completed\"` on replayed `function_call` and `custom_tool_call` items so full-history resends match stored server items (Pi 1.6.1).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "01979138bc",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "ai/constrained_sampling_upstream_test.go::TestConstrainedSamplingGrammarReplayUpstream",
+        "ai/openai_responses_tool_call_replay_test.go::TestOpenAIResponsesReplaysToolCallsWithStatusCompleted"
+      ]
+    },
+    {
       "id": "BF-01a63b9",
       "title": "The `/tree` search line now shows a cursor while the selector is focused (Pi #9157, D248)",
       "symptom": "The `/tree` search line now shows a cursor while the selector is focused (Pi #9157, D248).",
@@ -2132,6 +2155,54 @@
       ]
     },
     {
+      "id": "BF-099134d",
+      "title": "GitHub Copilot OAuth logins and token refreshes now record non-disabled `capabilities.type == \"decisions\"`…",
+      "symptom": "GitHub Copilot OAuth logins and token refreshes now record non-disabled `capabilities.type == \"decisions\"` models in `AvailableClassifierModelIDs` and filter classifiers per account in `filterGitHubCopilotAllModels` and the coding agent's `ModelRegistry` instead of exposing plan-restricted classifiers to every seat.",
+      "rootCause": "GitHub Copilot OAuth only recorded picker-enabled chat models in availableModelIds and coding-agent ModelRegistry never applied provider FilterAllModels to classifiers",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "GitHub Copilot OAuth logins and token refreshes now record non-disabled `capabilities.type == \"decisions\"` models in `AvailableClassifierModelIDs` and filter classifiers per account in `filterGitHubCopilotAllModels` and the coding agent's `ModelRegistry` instead of exposing plan-restricted classifiers to every seat.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "099134d958",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "ai/radius_classifier_test.go::TestRadiusClassifierSupport",
+        "coding/model_runtime_copilot_radius_classifiers_test.go::TestModelRuntimeCopilotClassifierFiltering",
+        "coding/model_runtime_copilot_radius_classifiers_test.go::TestModelRuntimeRadiusClassifierListingAndClassify"
+      ]
+    },
+    {
+      "id": "BF-099134d-2",
+      "title": "Radius classifier models refreshed from a Radius gateway are now exposed through…",
+      "symptom": "Radius classifier models refreshed from a Radius gateway are now exposed through `RadiusProvider.GetAllModels`/`Classify` and the coding agent's `ModelRuntime.Classify` with `Headers`, `InputLimits`, and `Compat` preserved, while legacy `gatewayConfig` import remains chat-only.",
+      "rootCause": "RadiusProvider handle and internal/codingagent builtinBase only wired GetModels and omitted classifier listing and Classify",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Radius classifier models refreshed from a Radius gateway are now exposed through `RadiusProvider.GetAllModels`/`Classify` and the coding agent's `ModelRuntime.Classify` with `Headers`, `InputLimits`, and `Compat` preserved, while legacy `gatewayConfig` import remains chat-only.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "099134d958",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "ai/radius_classifier_test.go::TestRadiusClassifierSupport",
+        "coding/model_runtime_copilot_radius_classifiers_test.go::TestModelRuntimeCopilotClassifierFiltering",
+        "coding/model_runtime_copilot_radius_classifiers_test.go::TestModelRuntimeRadiusClassifierListingAndClassify"
+      ]
+    },
+    {
       "id": "BF-0a0d27d",
       "title": "The training run's socket was in the build's work directory, whose path under a deep agent directory can…",
       "symptom": "The training run's socket was in the build's work directory, whose path under a deep agent directory can exceed what a Unix socket address holds (108 bytes); every training run of such a build failed to listen, was logged and skipped, and the build's function order lacked each extension's startup.",
@@ -3723,6 +3794,29 @@
       ]
     },
     {
+      "id": "BF-10b48be",
+      "title": "`pi-decision` response parsing now rejects JSON `null` values for numeric/string/boolean fields, clamps token…",
+      "symptom": "`pi-decision` response parsing now rejects JSON `null` values for numeric/string/boolean fields, clamps token counts via `classifierTokenCount`, preserves JS key order for integer-like question and probability keys, and distinguishes omitted vs explicit `SessionID`.",
+      "rootCause": "raw json.Unmarshal coerced null to zero/false and skipped JS object key ordering",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pi-decision` response parsing now rejects JSON `null` values for numeric/string/boolean fields, clamps token counts via `classifierTokenCount`, preserves JS key order for integer-like question and probability keys, and distinguishes omitted vs explicit `SessionID`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "10b48beb74",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "ai/pi_decision_test.go::TestClassifyPiDecisionAndOpenRouterClassifier",
+        "extensions/sdk/model_types_test.go::TestProviderConfigImplementationsAreDeclaredAndRunInTheExtension"
+      ]
+    },
+    {
       "id": "BF-1136763",
       "title": "A lone UTF-16 surrogate is kept, as Pi keeps it, in what an extension is given and in what it hands back: the…",
       "symptom": "A lone UTF-16 surrogate is kept, as Pi keeps it, in what an extension is given and in what it hands back: the prompt, the system prompt and every system prompt option of `before_agent_start` and the system prompt a handler returns, the tool names, ids and results of the `tool_execution_start`, `tool_execution_update` and `tool_execution_end` events, the entries of `turn_end` and `agent_before_settle`, the model of `model_select`, the servers of `mcp_servers_change`, and the model name of a provider an extension registers.",
@@ -4427,6 +4521,62 @@
       ]
     },
     {
+      "id": "BF-15768bb",
+      "title": "MCP `CreateMcpResultSchema` treats any JSON-falsy `outputSchema` (`null`, `false`, `0`, `\"\"`) as absent…",
+      "symptom": "MCP `CreateMcpResultSchema` treats any JSON-falsy `outputSchema` (`null`, `false`, `0`, `\"\"`) as absent (`structuredContent: {}`), and MCP `resource_link` byte sizes format fractional and large `float64` values with JavaScript `toFixed(1)` semantics instead of truncating or overflowing `int`.",
+      "rootCause": "CreateMcpResultSchema checked only byte length rather than JS truthiness and blockToContent converted float64 sizes to int before formatting.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "MCP `CreateMcpResultSchema` treats any JSON-falsy `outputSchema` (`null`, `false`, `0`, `\"\"`) as absent (`structuredContent: {}`), and MCP `resource_link` byte sizes format fractional and large `float64` values with JavaScript `toFixed(1)` semantics instead of truncating or overflowing `int`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "15768bbd67",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "coding/mcpext/convert_result_oracle_test.go::TestConvertMcpResultMatchesPi",
+        "coding/mcpext/model_content_result_test.go::TestMCPResultSchemaAndModelContentObservables",
+        "coding/mcpext/resources_internal_test.go::TestReadMcpResourceSavesBinaryBlobToTempFile",
+        "coding/mcpext/tools_test.go::TestMCPToolsKeepAnExplicitEmptyTitle",
+        "coding/mcpext/tools_test.go::TestMCPToolsShowsBlobsOfTextTypesWithBOMPaddedMimeTypesAsText",
+        "mcp/extension_of_oracle_test.go::TestExtensionOfMatchesNodeURL",
+        "mcp/model_content_pi_test.go::TestToMcpModelContentLeavesBinaryResourcesOutWithoutASaverAndSaysWhyWhenSavingFails",
+        "mcp/model_content_pi_test.go::TestToMcpModelContentNamesTheReadToolInResourceLinksWhenThereIsOne",
+        "mcp/model_content_pi_test.go::TestToMcpModelContentSavesBinaryResourcesShowsTextBlobsAsTextAndKeepsImages",
+        "mcp/model_content_pi_test.go::TestToMcpModelContentShowsStructuredContentAsJSONWhenThereAreNoContentBlocks",
+        "mcp/result_schema_pi_test.go::TestCreateMcpResultSchemaDeclaresTheCallToolResultWithAnyStructuredContentWithoutAnOutputSchema",
+        "mcp/result_schema_pi_test.go::TestCreateMcpResultSchemaMovesLocalReferencesBelowStructuredContentKeepingDataAndRemoteReferences",
+        "mcp/result_schema_pi_test.go::TestCreateMcpResultSchemaTreatsFalsyOutputSchemasAsAbsent"
+      ]
+    },
+    {
+      "id": "BF-157db55",
+      "title": "Sessions with very many entries (200k+) after the last compaction are verified to build context entries…",
+      "symptom": "Sessions with very many entries (200k+) after the last compaction are verified to build context entries without stack overflow.",
+      "rootCause": "upstream spread push(...path.slice(...)) overflowed JS call stack; regression test ported",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Sessions with very many entries (200k+) after the last compaction are verified to build context entries without stack overflow.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "157db55c3f",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/session_context_upstream_test.go::TestBuildSessionContextUpstream"
+      ]
+    },
+    {
       "id": "BF-1584ac1",
       "title": "Fix in shipped code",
       "symptom": "Fix in shipped code",
@@ -4523,6 +4673,28 @@
         "coding/session_summary_auth_refresh_test.go::TestCompactionResolvesCredentialWhenItStartsFreshAndExpired",
         "coding/session_summary_auth_refresh_test.go::TestSummarizationRequestResolvesNoCredentialForARuntimeSession",
         "coding/session_summary_auth_refresh_test.go::TestSummaryAttemptsEachSendAFreshCredentialAfterExpiry"
+      ]
+    },
+    {
+      "id": "BF-15c70b7",
+      "title": "fix(sdk): keep 0.8.x compatibility wrappers, UTF-16 hyperlink cap, and blockedKind wire tests",
+      "symptom": "fix(sdk): keep 0.8.x compatibility wrappers, UTF-16 hyperlink cap, and blockedKind wire tests",
+      "rootCause": "- Retain deprecated showCacheMissNotices wrappers across Go, Python, Rust, and Common Lisp SDKs delegating to notices.cacheMisses. - Wire RuleSettingsNotices classifier branches in sdk/upgrade diagnostics with unit test and re-export. - Restore Rust DialogOptions to its exact 0.8.0 Copy 1-field shape and add Copy DialogPromptOptions + DialogBlockedKind (with From\u003cDialogOptions\u003e and From\u003c\u0026DialogOptions\u003e) accepted via impl Into\u003cDialogPromptOptions\u003e. - Enforce the 8192 UTF-16 code-unit hyperlink cap across all 4 SDKs with unit tests, and add blockedKind wire encoding tests across all 4 SDKs.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "15c70b73b7",
+          "date": "2026-11-26"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/tui/terminal_hyperlink_test.go::TestHyperlinkURLLengthCapUTF16",
+        "extensions/sdk/ui_empty_members_test.go::TestDialogBlockedKindWireEncoding"
       ]
     },
     {
@@ -5611,6 +5783,29 @@
       "tests": []
     },
     {
+      "id": "BF-19519cc",
+      "title": "OpenAI Decisions (`gpt-6-luna` classifier) usage now reports `input_tokens_details.cached_tokens` and…",
+      "symptom": "OpenAI Decisions (`gpt-6-luna` classifier) usage now reports `input_tokens_details.cached_tokens` and `cache_write_tokens` as `CacheRead` and `CacheWrite` excluded from `Input`, and prices them at the input rate in the catalog entry so cost totals remain unchanged.",
+      "rootCause": "ParseClassifierUsage ignored usage.input_tokens_details.cached_tokens and cache_write_tokens and the gpt-6-luna catalog entry priced cacheRead and cacheWrite at 0 instead of the input rate.",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "OpenAI Decisions (`gpt-6-luna` classifier) usage now reports `input_tokens_details.cached_tokens` and `cache_write_tokens` as `CacheRead` and `CacheWrite` excluded from `Input`, and prices them at the input rate in the catalog entry so cost totals remain unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "19519cce7c",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "ai/openai_decisions_oracle_test.go::TestOpenAIDecisionsMatchesPi",
+        "ai/openai_decisions_upstream_test.go::TestOpenAIDecisionsUpstream"
+      ]
+    },
+    {
       "id": "BF-1971aae",
       "title": "A `bash` shell that starts at the moment `pig` handles an emergency exit, a crash or a signal is now killed…",
       "symptom": "A `bash` shell that starts at the moment `pig` handles an emergency exit, a crash or a signal is now killed with the others.",
@@ -6472,6 +6667,26 @@
       ]
     },
     {
+      "id": "BF-1e8d260",
+      "title": "Replaced retired Mistral models `devstral-medium-latest` (default Mistral model in…",
+      "symptom": "Replaced retired Mistral models `devstral-medium-latest` (default Mistral model in `DefaultModelPerProviderOrder`) and `pixtral-12b` in upstream tests with `mistral-medium-latest` and `ministral-14b-latest`.",
+      "rootCause": "upstream catalog retired devstral-medium-latest and pixtral-12b",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Replaced retired Mistral models `devstral-medium-latest` (default Mistral model in `DefaultModelPerProviderOrder`) and `pixtral-12b` in upstream tests with `mistral-medium-latest` and `ministral-14b-latest`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1e8d260e95",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-1ea5c18",
       "title": "A `usage` object that an extension supplies is written to the session file as the extension wrote it, as in…",
       "symptom": "A `usage` object that an extension supplies is written to the session file as the extension wrote it, as in Pi: its member order and any extra member.",
@@ -6607,6 +6822,27 @@
         "coding/cli/rpc_ui_view_answer_test.go::TestRPCUIViewAbilitiesEventMountsForAClientThatAttachesToAnIdleSession",
         "coding/cli/rpc_ui_view_answer_test.go::TestRPCUIViewBlockedAbilitiesHandlerDelaysNothing",
         "coding/cli/rpc_ui_view_answer_test.go::TestRPCUIViewHandlersRedrawIsWrittenBeforeTheIntentReply"
+      ]
+    },
+    {
+      "id": "BF-1f03884",
+      "title": "fix(chord): start a backup over when its remote copy was deleted",
+      "symptom": "fix(chord): start a backup over when its remote copy was deleted",
+      "rootCause": "Add RemoteEmpty UploadType and return it from UploadSession when PutBatch returns PutNotHead with Head == LogStart, allowing the host to clear its sync state and re-upload a full archive.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "1f03884f63",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "chord/sync/sync_test.go::TestSyncingASessionBetweenDevices"
       ]
     },
     {
@@ -7817,6 +8053,29 @@
       ]
     },
     {
+      "id": "BF-23c16fa",
+      "title": "Codex Responses requests with `supportsMidConvoEffort` now pin the initial selected effort directly to…",
+      "symptom": "Codex Responses requests with `supportsMidConvoEffort` now pin the initial selected effort directly to `reasoning.effort` (reconstructed from retained same-model replies) and emit `configuration_update` items only on effort changes (Pi 1.6.1).",
+      "rootCause": "Codex always sent medium as reasoning.effort and emitted a configuration_update on every turn",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Codex Responses requests with `supportsMidConvoEffort` now pin the initial selected effort directly to `reasoning.effort` (reconstructed from retained same-model replies) and emit `configuration_update` items only on effort changes (Pi 1.6.1).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "23c16fab67",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "ai/max_thinking_upstream_test.go::TestMaxThinkingUpstream",
+        "ai/openai_codex_developer_item_and_effort_upstream_test.go::TestCodexConfigurationUpdateEffortUpstream"
+      ]
+    },
+    {
       "id": "BF-23dfe7d",
       "title": "An extension that is restarted automatically after a crash could keep a stale list of the host's commands…",
       "symptom": "An extension that is restarted automatically after a crash could keep a stale list of the host's commands until its next call.",
@@ -7911,6 +8170,30 @@
         "coding/extension/model_object_test.go::TestModelObjectKeepsARecordsEmptyTiers",
         "coding/extension/model_object_test.go::TestModelObjectOfAComposedModelHasPisMembersInPisOrder",
         "coding/extension/model_object_test.go::TestModelObjectOfImageAndClassifierModels"
+      ]
+    },
+    {
+      "id": "BF-2490522",
+      "title": "Streamed line and SSE readers in `llama.cpp` `/models/sse`, Codex SSE, `pi-messages`, `chord/next/store`…",
+      "symptom": "Streamed line and SSE readers in `llama.cpp` `/models/sse`, Codex SSE, `pi-messages`, `chord/next/store`, `durable/env/node`, and `env` now scan in linear time with shared LF, CRLF (including split across chunks), and lone CR SSE framing (and Anthropic empty-block comments no longer leak into subsequent `Raw` diagnostics), matching Pi 1.6.1 linear-time stream decoding (Pi 1.6.1).",
+      "rootCause": "llama Watch concatenated growing strings and rescanned from offset 0 per chunk",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Streamed line and SSE readers in `llama.cpp` `/models/sse`, Codex SSE, `pi-messages`, `chord/next/store`, `durable/env/node`, and `env` now scan in linear time with shared LF, CRLF (including split across chunks), and lone CR SSE framing (and Anthropic empty-block comments no longer leak into subsequent `Raw` diagnostics), matching Pi 1.6.1 linear-time stream decoding (Pi 1.6.1).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "24905227a5",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "ai/sse_linear_test.go::TestSSEDecoderChunkBoundariesAndLargeEvents",
+        "internal/codingagent/llama/client_test.go::TestWatchHandlesSplitCRLFAndLoneCRAndLargeEvents",
+        "mcp/sse_linear_test.go::TestConsumeSSEStreamLargeEventAndLineLimit"
       ]
     },
     {
@@ -8548,6 +8831,28 @@
       "tests": []
     },
     {
+      "id": "BF-2747581",
+      "title": "`Hyperlink()` (in `tui` and all extension SDKs) no longer emits OSC 8 sequences for URLs longer than 8192…",
+      "symptom": "`Hyperlink()` (in `tui` and all extension SDKs) no longer emits OSC 8 sequences for URLs longer than 8192 UTF-16 code units, preventing quadratic memory growth when wrapping bare URLs that run into multi-megabyte lines.",
+      "rootCause": "wrapTextWithAnsi reopened the full OSC 8 URL on every wrapped line without a URL length cap",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`Hyperlink()` (in `tui` and all extension SDKs) no longer emits OSC 8 sequences for URLs longer than 8192 UTF-16 code units, preventing quadratic memory growth when wrapping bare URLs that run into multi-megabyte lines.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "274758129b",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "tui/terminal_image_upstream_test.go::TestUpstreamImageHyperlink"
+      ]
+    },
+    {
       "id": "BF-274fef9",
       "title": "ai: an images API provider now refuses a model of another api with `Mismatched api: \u003cmodel api\u003e expected…",
       "symptom": "ai: an images API provider now refuses a model of another api with `Mismatched api: \u003cmodel api\u003e expected \u003capi\u003e` before it runs, as Pi's images registry does; GitHub Copilot and OpenAI Codex logins report `Login cancelled` when the login is cancelled while a prompt or request is in flight, and GitHub Copilot login errors are no longer prefixed.",
@@ -8922,6 +9227,28 @@
         "ai/error_body_oracle_test.go::TestErrorBodyHelpersMatchPiOnSeededProbes",
         "ai/trim_sites_oracle_test.go::TestJSTrimSitesMatchPi",
         "internal/evals/plan_oracle_test.go::TestPlanMatchesPiOnSeededProbes"
+      ]
+    },
+    {
+      "id": "BF-28d4c06",
+      "title": "Gemini 4 models requesting `xhigh` thinking no longer fail thinking-level resolution, and Gemini 2.5…",
+      "symptom": "Gemini 4 models requesting `xhigh` thinking no longer fail thinking-level resolution, and Gemini 2.5 token-budget models now use the `high` budget instead of failing when `xhigh` is mapped.",
+      "rootCause": "resolveGoogleThinkingLevel and ToGoogleThinkingLevel rejected xhigh and lacked the 3.x Gemini finish reasons",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Gemini 4 models requesting `xhigh` thinking no longer fail thinking-level resolution, and Gemini 2.5 token-budget models now use the `high` budget instead of failing when `xhigh` is mapped.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "28d4c0620a",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "ai/google_thinking_level_map_upstream_test.go::TestGoogleThinkingLevelXHighUpstream"
       ]
     },
     {
@@ -9445,6 +9772,25 @@
       ]
     },
     {
+      "id": "BF-2c18673",
+      "title": "fix(sdk): sync notices settings and DialogOptions across all SDKs and conformance fixtures",
+      "symptom": "fix(sdk): sync notices settings and DialogOptions across all SDKs and conformance fixtures",
+      "rootCause": "Update Python and Common Lisp SDK SettingsManager wrappers from showCacheMissNotices to getNotices/setNotice, fix Rust DialogOptions Copy derive and fixture initializer for blocked_kind, and update all five session-graph SettingsManager conformance fixtures and golden JSON.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "2c18673c78",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-2c1959c",
       "title": "A Mistral stream is no longer aborted mid-generation by the request timeout: the timeout now covers only the…",
       "symptom": "A Mistral stream is no longer aborted mid-generation by the request timeout: the timeout now covers only the wait for response headers (D127, pi-mono #10609, ported from Pi commit 6b07b4e5).",
@@ -9929,6 +10275,31 @@
       "tests": [
         "internal/codingagent/pending_display_test.go::TestPendingDisplayLinesUseTheDimForeground",
         "internal/codingagent/startup_hints_test.go::TestStartupKeybindHintsSeparatorIsTheMutedForeground"
+      ]
+    },
+    {
+      "id": "BF-2d85ad8",
+      "title": "fix(sdk): sync bashExecution truncation notes and fullOutputError across all 4 SDKs",
+      "symptom": "fix(sdk): sync bashExecution truncation notes and fullOutputError across all 4 SDKs",
+      "rootCause": "Full output: ...], [Output truncated. Could not save the full output: ...], or bare [Output truncated] when truncated. - Add FullOutputError to Go SDK BashResult, kit.BashComplete (SetCompleteWithError), kitwire, subprocess protocol/view-walk, Rust kit (set_complete_with_error), Python kit.BashExecution.set_complete, and Lisp kit-bash-execution-set-complete. - Strip null fullOutputError alongside fullOutputPath in user_bash event result normalization across all 4 SDKs and validate fullOutputError as optional string in coding/extension/host/inproc/runner.go.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "2d85ad8ce6",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "extensions/sdk-py/tests/test_bash_output_error.py",
+        "extensions/sdk/bash_output_error_test.go::TestBashResultJSONRoundTripFullOutputError",
+        "extensions/sdk/bash_output_error_test.go::TestConvertToLLMBashExecutionTruncationNotes",
+        "extensions/sdk/bash_output_error_test.go::TestKitBashExecutionSetCompleteFullOutputError",
+        "extensions/sdk/bash_output_error_test.go::TestUserBashEventResultDropsNullFullOutputError"
       ]
     },
     {
@@ -13479,6 +13850,32 @@
       "tests": []
     },
     {
+      "id": "BF-3bfed27",
+      "title": "`StreamOptions.OnResponse` (and `after_provider_response`) now receives HTTP error responses (4xx/5xx) and…",
+      "symptom": "`StreamOptions.OnResponse` (and `after_provider_response`) now receives HTTP error responses (4xx/5xx) and retried attempts across `openai-completions`, `openai-responses`, `azure-openai-responses`, `anthropic-messages`, `google-generative-ai`/`google-vertex`, `openrouter-images`, and classifier requests (reported before reading the body) (Pi 1.6.1).",
+      "rootCause": "non-2xx responses and retry attempts bypassed OnResponse callbacks",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`StreamOptions.OnResponse` (and `after_provider_response`) now receives HTTP error responses (4xx/5xx) and retried attempts across `openai-completions`, `openai-responses`, `azure-openai-responses`, `anthropic-messages`, `google-generative-ai`/`google-vertex`, `openrouter-images`, and classifier requests (reported before reading the body) (Pi 1.6.1).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3bfed27f85",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "ai/anthropic_strict_tool_fallback_upstream_test.go::TestAnthropicPreferredStrictToolFallbackUpstream",
+        "ai/provider_error_response_test.go::TestPostClassifierRequestReportsErrorResponseBeforeBodyFails",
+        "ai/provider_error_response_test.go::TestProviderErrorResponsesReportedToOnResponse",
+        "ai/provider_error_response_test.go::TestRetryGoogleRequestReportsErrorResponseWithEmptyHeaders",
+        "ai/provider_error_response_test.go::TestRetryProviderRequestErrorResponses"
+      ]
+    },
+    {
       "id": "BF-3c2dde4",
       "title": "A terminal read that ends inside a UTF-8 character and holds every byte of it no longer restarts the ESC…",
       "symptom": "A terminal read that ends inside a UTF-8 character and holds every byte of it no longer restarts the ESC timer, as in Pi, where Node emits no data event for it.",
@@ -13654,6 +14051,26 @@
       "tests": [
         "internal/codingagent/tree_branching_oracle_test.go::TestTreeListBranchingRenderMatchesPiOracle"
       ]
+    },
+    {
+      "id": "BF-3d28b48",
+      "title": "Extension SDKs (Go, Python, Rust, Lisp) now mirror the updated `request_too_large` boundary check and…",
+      "symptom": "Extension SDKs (Go, Python, Rust, Lisp) now mirror the updated `request_too_large` boundary check and retryable provider error patterns (Pi 1.6.1).",
+      "rootCause": "SDK pattern tables mirrored pre-1.6.1 overflow and retry regexes",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Extension SDKs (Go, Python, Rust, Lisp) now mirror the updated `request_too_large` boundary check and retryable provider error patterns (Pi 1.6.1).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3d28b4886e",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-3d3f421",
@@ -15037,6 +15454,28 @@
       ]
     },
     {
+      "id": "BF-4218936",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "- Keep deprecated ShowCacheMissNotices compatibility wrappers on Settings, SettingsManager, and GraphSettingsManager delegating to notices.cacheMisses, and re-export NoticeKey/NoticeSettings/NoticeKey* in coding/services.go. - Preserve unknown notice keys in NoticeSettings/SetNotice and test explicit false persistence. - Restore deprecated showCacheMissNotices in configschema/settings.go. - Sanitize OSC 7501 ProgramStatus.Kind in FormatProgramStatus to known kinds. - Use utf16Length in tui.Hyperlink for JS string.length parity. - Add injectable StartupTerminal seam and startupTrustUI forwarding tests.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "4218936d33",
+          "date": "2026-11-26"
+        }
+      ],
+      "tests": [
+        "coding/cli/project_trust_test.go::TestStartupTrustUIProgramStatusForwarding",
+        "tui/terminal_program_status_upstream_test.go::TestFormatProgramStatusOmitsMalformedKind"
+      ]
+    },
+    {
       "id": "BF-4219d7a",
       "title": "`docs/project/PROVENANCE.md` named an earlier release of Pi, not the pin, as the upstream pin",
       "symptom": "`docs/project/PROVENANCE.md` named an earlier release of Pi, not the pin, as the upstream pin.",
@@ -15649,6 +16088,36 @@
         "test/extension-conformance/resume_tools_test.go::TestResumeActivatesExtensionToolsTheBranchNeverMentionedAcrossSDKs",
         "tui/autocomplete_upstream_test.go::TestUpstreamAutocompleteFD",
         "tui/file_autocomplete_test.go::TestBuildFdPathQuery"
+      ]
+    },
+    {
+      "id": "BF-43deb1c",
+      "title": "fix(coding-agent,tui): persist and propagate fullOutputError, avoid cold-cache /login commands, and port full…",
+      "symptom": "fix(coding-agent,tui): persist and propagate fullOutputError, avoid cold-cache /login commands, and port full failure test matrix",
+      "rootCause": "- H2: decode fullOutputError in userBashResultOverride so interactive user_bash overrides pass it to both SetCompleteWithOutputAndError and RecordUserBashResult. - H3: copy FullOutputError onto extension.BashToolDetails in BashDetails.ToolResultDetails. - M1: add outputfiles.SetStreamOpenerForTest fault-injection seam and port full Pi failure test matrix (write/close partial-file cleanup, EEXIST untouched, open+write bash tool and user bash executor cases, abort/late output during close, external editor missing temp dir, host-level messages/compaction/TUI/Lisp). - M2: restore exact 0.8.0 signatures on tui.BashExecutionComponent.SetComplete and SetCompleteWithOutput; add SetCompleteWithError…",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "43deb1c38f",
+          "date": "2026-11-26"
+        }
+      ],
+      "tests": [
+        "agent/messages_bash_error_test.go::TestBashExecutionToTextTruncationNotesAndMemberOrder",
+        "ai/auth_storage_first_half_upstream_test.go::TestInMemoryAuthStorageModifyNoOpPreservesCommandCache",
+        "coding/bash_execution_llm_text_upstream_test.go::TestRecordedBashResultFullOutputErrorPersistsAcrossResume",
+        "coding/bash_execution_llm_text_upstream_test.go::TestRecordedBashResultReachesModelContextUpstream",
+        "coding/cli/port_wave_10_self_update_test.go::TestPortWave10NativeSelfUpdate",
+        "internal/codingagent/compaction/bash_discarded_output_test.go::TestBashExecutionToTextFullOutputErrorAndBareTruncated",
+        "internal/codingagent/resilience_review_test.go::TestLoginProviderOptionsShowsUnresolvedStoredKeyWithoutRunningUncachedCommand",
+        "internal/codingagent/resilience_review_test.go::TestOpenExternalEditorReportsMissingTempDirUpstream",
+        "internal/codingagent/resilience_review_test.go::TestUserBashResultOverridePreservesFullOutputError",
+        "tui/bash_execution_set_complete_test.go::TestBashExecutionSetCompleteWithErrorRendersReason"
       ]
     },
     {
@@ -16563,6 +17032,29 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-475aba0",
+      "title": "MCP client responses and progress notifications that echo PiG's numeric JSON-RPC request IDs as canonical…",
+      "symptom": "MCP client responses and progress notifications that echo PiG's numeric JSON-RPC request IDs as canonical decimal strings (for example `\"1\"` for request `1`) now match their pending requests instead of timing out, while rejecting non-canonical forms (`\"01\"`, `\"1.0\"`, `\"1e0\"`, whitespace, negative).",
+      "rootCause": "mcp/client.go and mcp/streamable_http.go matched pending request IDs strictly by JSON type without normalizing canonical non-negative integer string IDs",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "MCP client responses and progress notifications that echo PiG's numeric JSON-RPC request IDs as canonical decimal strings (for example `\"1\"` for request `1`) now match their pending requests instead of timing out, while rejecting non-canonical forms (`\"01\"`, `\"1.0\"`, `\"1e0\"`, whitespace, negative).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "475aba0dc5",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "mcp/progress_token_test.go::TestProgressTokenRoutesNotificationsToTheRequestThatCarriesIt",
+        "mcp/streamable_http_test.go::TestStreamableHTTPTransportMatchesStreamedResponseWithStringID"
+      ]
     },
     {
       "id": "BF-4789fa5",
@@ -18134,6 +18626,28 @@
       ]
     },
     {
+      "id": "BF-4dcc3d7",
+      "title": "Synthetic right-click paste on Windows is now skipped in Tabby (`TERM_PROGRAM=Tabby`) in addition to VS Code…",
+      "symptom": "Synthetic right-click paste on Windows is now skipped in Tabby (`TERM_PROGRAM=Tabby`) in addition to VS Code to prevent double paste.",
+      "rootCause": "handleRightClickPaste only excluded TERM_PROGRAM=vscode",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Synthetic right-click paste on Windows is now skipped in Tabby (`TERM_PROGRAM=Tabby`) in addition to VS Code to prevent double paste.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4dcc3d7a2f",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "tui/tui_alt_screen_v087_test.go::TestAltScreenRightClickPasteOnlyOnWindowsOutsideVSCode"
+      ]
+    },
+    {
       "id": "BF-4de6fba",
       "title": "A Mistral request that names a function as its tool choice writes the object `type, function`, as Pi does…",
       "symptom": "A Mistral request that names a function as its tool choice writes the object `type, function`, as Pi does; PiG wrote `function, type`.",
@@ -19443,6 +19957,30 @@
       ]
     },
     {
+      "id": "BF-52c5bdd",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "- Frame Codex SSE and pi-messages SSE by line (LF, CRLF including split across chunks, lone CR), strip at most one space after \"data:\", and join all data lines with \"\\n\" before trimming. - Reset anthropicSSEState.rawStart on empty-block flushes so comment or empty-event lines from earlier blocks do not leak into the next event's Raw diagnostics. - Port Pi's sse.test.ts and pi-messages.test.ts cases and update the Codex and pi-messages randomized equivalence references.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "52c5bdd703",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "ai/openai_codex_sse_stream_equivalence_test.go::TestCodexSSEFramesMatchReference",
+        "ai/sse_shared_behavior_test.go::TestAnthropicSSEStateDropsEmptyBlockCommentsAndEmptyEvent",
+        "ai/sse_shared_behavior_test.go::TestCodexSSEFramesHandlesCRLFAndLoneCRAndMultiData",
+        "ai/sse_shared_behavior_test.go::TestPiMessagesSSEHandlesMultiDataAndLoneCRAndNullEvent"
+      ]
+    },
+    {
       "id": "BF-52f2927",
       "title": "When `/new`, `/fork`, `/resume` or `/reload` ends in a fatal error (\"Failed to create session\" and its kin…",
       "symptom": "They used to be left to end on their own for a moment after `pig` had gone (since v0.5.0), so a script or a test that removed `pig`'s home directory right after the exit could fail with \"directory not empty\": a Node extension writes its compile cache when its process ends.",
@@ -19684,6 +20222,32 @@
       ],
       "tests": [
         "coding/extension/host/subprocess/load_error_cause_test.go::TestStderrCausePicksTheRuntimeErrorLine"
+      ]
+    },
+    {
+      "id": "BF-53d3539",
+      "title": "Temp file write/open/close failures in bash tool output, user `!` bash execution, external editor launch, and…",
+      "symptom": "Temp file write/open/close failures in bash tool output, user `!` bash execution, external editor launch, and TUI width-overflow crash logging no longer crash or drop output; unsaved bash output keeps the retained tail, persists and propagates `FullOutputError` / `full_output_error` across sessions, `tool_result` events, interactive `user_bash` overrides, and all 4 SDKs, strips the model footer in the bash renderer, and avoids false omission markers or non-truncated error reports.",
+      "rootCause": "unhandled output file errors and missing FullOutputError fallback paths",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Temp file write/open/close failures in bash tool output, user `!` bash execution, external editor launch, and TUI width-overflow crash logging no longer crash or drop output; unsaved bash output keeps the retained tail, persists and propagates `FullOutputError` / `full_output_error` across sessions, `tool_result` events, interactive `user_bash` overrides, and all 4 SDKs, strips the model footer in the bash renderer, and avoids false omission markers or non-truncated error reports.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "53d35397b6",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tool_render_shell_details_test.go::TestShellRendererStripsFailedFullOutputFooterAndShowsError",
+        "internal/codingagent/tools/output_file_failures_upstream_test.go::TestBashToolOutputFileFailuresUpstream",
+        "internal/codingagent/tools/output_file_failures_upstream_test.go::TestOutputFileStreamFailuresUpstream",
+        "internal/codingagent/tools/output_file_failures_upstream_test.go::TestUserBashExecutorOutputFileFailuresUpstream",
+        "tui/render_overflow_test.go::TestOverflowUnwritableCrashLogStillStopsTerminalAndReportsWidthError"
       ]
     },
     {
@@ -28703,6 +29267,30 @@
       ]
     },
     {
+      "id": "BF-6ad80c9",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "- Run gofmt on ai/llama_cpp_classify_upstream_test.go and ai/anthropic_strict_tool_fallback_upstream_test.go. - Regenerate embedded SDK bundles (Go, Python, Rust, Lisp) to match updated pattern tables. - Split renderResponsesTranscript from PrepareResponsesPrompt so ConvertResponsesMessages does not convert or fail on tools; fix doc comments and add separation/effort/tool tests. - Remove dead empty-reason branch from mapGoogleFinishReason and update tests. - Delete dead parsePiMessagesEvent helper and migrate tests/benchmark to parsePiMessagesData. - Fix changelog formatting, remove duplicate resets in durable/env/node/line_reader.go, preserve truthy non-string promptFeedback.blockReason in…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "6ad80c9e98",
+          "date": "2026-11-26"
+        }
+      ],
+      "tests": [
+        "ai/rereview_cure_test.go::TestClassifierPostOnResponseTimeoutReturnsTimeoutError",
+        "ai/rereview_cure_test.go::TestGoogleStreamTruthyNonStringBlockReasonBlocksPrompt",
+        "ai/rereview_cure_test.go::TestOpenRouterImagesOnResponseCallbackErrorIsUnwrapped",
+        "ai/rereview_cure_test.go::TestPrepareResponsesPromptAndConvertResponsesMessagesSeparation"
+      ]
+    },
+    {
       "id": "BF-6b584ff",
       "title": "The `--help` text and the `/resume` and `/import` descriptions now say which working directory a resumed…",
       "symptom": "The `--help` text and the `/resume` and `/import` descriptions now say which working directory a resumed session runs in (`--continue` the current directory, `--resume` and `--session` the session's own, `--fork` the current directory), and `/import` says it preserves the session ID and working directory.",
@@ -29853,6 +30441,39 @@
         "coding/cli/rpc_settle_wait_test.go::TestRPCCommandDuringInputHandlerNetworkWaitAnswersAcrossSDKs",
         "coding/cli/rpc_settle_wait_test.go::TestRPCCommandDuringSettleHandlerNetworkWaitAnswersAcrossSDKs",
         "coding/extension/host/subprocess/handler_quantum_test.go::TestRequestWithoutTheQuantumSetsNoTimer"
+      ]
+    },
+    {
+      "id": "BF-70905f5",
+      "title": "Bash tool output and extension SDK `TruncateTail` helpers now show the end of an over-long line followed by…",
+      "symptom": "Bash tool output and extension SDK `TruncateTail` helpers now show the end of an over-long line followed by blank lines instead of returning `(no output)`, naming the partial line in the truncation notice.",
+      "rootCause": "truncateTail only fell back to a partial line when zero lines were collected and OutputAccumulator only fell back when clipped text was empty rather than blank, hiding an over-long line behind trailing blank lines.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Bash tool output and extension SDK `TruncateTail` helpers now show the end of an over-long line followed by blank lines instead of returning `(no output)`, naming the partial line in the truncation notice.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "70905f5ee2",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/truncate_test.go::TestTruncateTailOverLongBlankAndWhitespaceLineEdgeCases",
+        "extensions/sdk/truncate_test.go::TestTruncateTailOverLongLineFollowedByBlankLines",
+        "internal/codingagent/tools/bash_long_line_blank_line_port_test.go::TestBashToolOverLongLineFollowedByBlankLineBoundariesAndStreaming",
+        "internal/codingagent/tools/bash_long_line_blank_line_port_test.go::TestBashToolShowsTheEndOfAnOverLongLineFollowedByABlankLine",
+        "internal/truncate/cut_perf_test.go::TestCutTailNonBlankOverLongLineDoesNotScanFullLine",
+        "internal/truncate/cut_test.go::TestTruncateTailOverLongBlankAndWhitespaceLineEdgeCases",
+        "internal/truncate/tail_oracle_test.go::TestTruncateTailMatchesPi",
+        "internal/truncate/tail_window_test.go::TestTailWindowKeepsABoundedSuffix",
+        "internal/truncate/tail_window_test.go::TestTailWindowMatchesTruncateTailOnMultiByteAlphabetSweep",
+        "internal/truncate/tail_window_test.go::TestTailWindowMidCharacterEquivalence",
+        "internal/truncate/tail_window_test.go::TestTailWindowTrailingWhitespaceExceptionBoundary",
+        "test/parity/scenarios/tools/36-print-bash-long-line-blank-line.toml"
       ]
     },
     {
@@ -31998,6 +32619,29 @@
       ]
     },
     {
+      "id": "BF-78f11f3",
+      "title": "Restored OAuth `Login` on `ai.NewRadiusProvider` so Radius typed providers support OAuth login, wired…",
+      "symptom": "Restored OAuth `Login` on `ai.NewRadiusProvider` so Radius typed providers support OAuth login, wired `BuiltinFilterModels` on `builtinTypedBase`, and guarded `BuiltinFilterAllModels` in `availableProviderAllModels` so extension-registered providers keep their own availability snapshots.",
+      "rootCause": "NewRadiusProvider omitted Login in OAuthAuth and availableProviderAllModels applied builtinFilterAllModels even when a NativeProvider was registered",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Restored OAuth `Login` on `ai.NewRadiusProvider` so Radius typed providers support OAuth login, wired `BuiltinFilterModels` on `builtinTypedBase`, and guarded `BuiltinFilterAllModels` in `availableProviderAllModels` so extension-registered providers keep their own availability snapshots.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "78f11f3d59",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "coding/model_runtime_copilot_radius_classifiers_test.go::TestModelRuntimeCopilotFilterModelsAndExtensionPrecedence",
+        "coding/model_runtime_copilot_radius_classifiers_test.go::TestModelRuntimeRadiusOAuthLoginPresent"
+      ]
+    },
+    {
       "id": "BF-78f2d55",
       "title": "`pig mcp login --help` described `--timeout` as only the wait for the browser; it limits the whole sign-in…",
       "symptom": "`pig mcp login --help` described `--timeout` as only the wait for the browser; it limits the whole sign-in, as Pi 148622bc now says.",
@@ -33155,6 +33799,29 @@
       ]
     },
     {
+      "id": "BF-7f37c7d",
+      "title": "fix(ai): report thread fallback errors to OnResponse and unwrap retry callback errors",
+      "symptom": "fix(ai): report thread fallback errors to OnResponse and unwrap retry callback errors",
+      "rootCause": "- Report rejected Anthropic thread responses to OnResponse before recording the fallback diagnostic and resending (M5). - Port Pi's llama-cpp-classify failed-completion OnResponse test (M6). - Wrap OnResponse callback failures inside retryTransport with retryCallbackError and unwrap in openAIRequestError, anthropicProvider.do, and openrouter_images so retried callback errors keep their bare message (L7). - Route classifierPost OnResponse error through fail(obsErr) so a callback error after the per-attempt timeout maps to timeoutError (L14).",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "7f37c7def4",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "ai/anthropic_message_threads_test.go::TestAnthropicThreadFallbackReportsRejectedStatusToOnResponse",
+        "ai/llama_cpp_classify_upstream_test.go::TestLlamaCppClassifyReportsEachFailedCompletionAttemptToOnResponse",
+        "ai/provider_error_response_test.go::TestOnResponseCallbackErrorOnRetriedAttemptIsUnwrapped"
+      ]
+    },
+    {
       "id": "BF-7f3a71c",
       "title": "fix(durable): the reference Harness wraps a plain Models once too",
       "symptom": "fix(durable): the reference Harness wraps a plain Models once too",
@@ -33318,6 +33985,29 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-7fc7ced",
+      "title": "Retry classifier now retries `\"rate increased too quickly\"` throttle errors (OpenAI 429 `slow_down` on Codex…",
+      "symptom": "Retry classifier now retries `\"rate increased too quickly\"` throttle errors (OpenAI 429 `slow_down` on Codex and Alibaba Qwen) and explicitly classifies `\"provider finish_reason: error\"`, `\"provider stopped with: error\"`, and `\"returned an empty response\"` instead of injecting retry wording into Mistral error messages (Pi 1.6.1).",
+      "rootCause": "retryableProviderErrorPattern lacked request-rate throttle and finish_reason error patterns; mapMistralStopReason appended server error text",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Retry classifier now retries `\"rate increased too quickly\"` throttle errors (OpenAI 429 `slow_down` on Codex and Alibaba Qwen) and explicitly classifies `\"provider finish_reason: error\"`, `\"provider stopped with: error\"`, and `\"returned an empty response\"` instead of injecting retry wording into Mistral error messages (Pi 1.6.1).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7fc7ced374",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "ai/assistant_retry_test.go::TestRetryAssistantCallRequestRateIncreasedTooQuickly",
+        "ai/assistant_retry_test.go::TestRetryAssistantCallSucceedsAfterThreeBackoffsWithCallerContext"
+      ]
     },
     {
       "id": "BF-7fc9ec3",
@@ -35595,6 +36285,28 @@
       ]
     },
     {
+      "id": "BF-88f9c12",
+      "title": "Self-updating a Windows managed installation (`PI_MANAGED_INSTALL_ROOT` with a Windows entrypoint path in…",
+      "symptom": "Self-updating a Windows managed installation (`PI_MANAGED_INSTALL_ROOT` with a Windows entrypoint path in `managed-install.json`) when run from WSL is now refused before any network fetch or package-manager rebuild.",
+      "rootCause": "managed install check did not reject Windows entrypoints on non-Windows platforms",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows, WSL",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Self-updating a Windows managed installation (`PI_MANAGED_INSTALL_ROOT` with a Windows entrypoint path in `managed-install.json`) when run from WSL is now refused before any network fetch or package-manager rebuild. Note: a native Windows `pig.exe` invoked from WSL runs as a Windows process (`runtime.GOOS == \"windows\"`), and PiG uses its own D39 standalone/package-manager tiers rather than Pi's npm managed-install layout, so this guard fires only when a non-Windows `pig` binary is executed inside a Pi `PI_MANAGED_INSTALL_ROOT` tree whose `managed-install.json` records a Windows entrypoint.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "88f9c1280c",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "coding/cli/port_wave_10_self_update_test.go::TestPortWave10NativeSelfUpdate"
+      ]
+    },
+    {
       "id": "BF-892827f",
       "title": "`coding`: while the run of a session-graph client (an ExtensionRunner an extension constructed) was aborted…",
       "symptom": "`coding`: while the run of a session-graph client (an ExtensionRunner an extension constructed) was aborted, the Host read the client's `getSignal` function again and again without end, one call to the client each, and sent every runtime a new `run_signal` frame each time.",
@@ -36423,6 +37135,28 @@
       "tests": []
     },
     {
+      "id": "BF-8c6c864",
+      "title": "Markdown after an unclosed currency `$` before a digit (such as `+$50`) or across a line break now renders…",
+      "symptom": "Markdown after an unclosed currency `$` before a digit (such as `+$50`) or across a line break now renders normally instead of being swallowed as pending inline LaTeX.",
+      "rootCause": "tokenizeInlineLatex treated any unclosed $ matching looksLikePendingDollarMath as pending math even before a digit or across newlines",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Markdown after an unclosed currency `$` before a digit (such as `+$50`) or across a line break now renders normally instead of being swallowed as pending inline LaTeX.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8c6c8644da",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "tui/markdown_latex_upstream_test.go::TestMarkdownLatexUpstreamLayoutRegressions"
+      ]
+    },
+    {
       "id": "BF-8c7bacf",
       "title": "`delta.AssertValidOp` checks path safety as Pi's `assertValidOp` does: it rejects a negative, fractional…",
       "symptom": "It accepted them, and only `ApplyImmutable` rejected them while applying.",
@@ -36778,6 +37512,27 @@
       "tests": [
         "internal/codingagent/settings_key_order_test.go::TestSaveSettingsPatchKeepsTheFileKeyOrder",
         "internal/codingagent/settings_key_order_test.go::TestSaveSettingsPatchReplacesInPlace"
+      ]
+    },
+    {
+      "id": "BF-8d315aa",
+      "title": "fix(sdk): move rate-throttle pattern to retryable lists and add SDK drift test",
+      "symptom": "fix(sdk): move rate-throttle pattern to retryable lists and add SDK drift test",
+      "rootCause": "Move \"rate increased too quickly\" out of nonOverflowPatterns / *ai-non-overflow-patterns* into retryableProviderErrorPattern / *ai-retryable-provider-error* in the Go and Lisp SDKs, add missing \"cut short after the reply had begun\" to all four SDKs, regenerate extensions/sdk/.gz/pi_ai_models.go.gz, extend sdk-vectors for isRetryableAssistantError and isContextOverflow, and add TestSDKRetryAndOverflowPatternsMatchAI to guard against drift between package ai and the Go, Python, Rust, and Lisp SDKs.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "8d315aa59f",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "ai/sdk_patterns_drift_test.go::TestSDKRetryAndOverflowPatternsMatchAI"
       ]
     },
     {
@@ -37424,6 +38179,31 @@
         "chord/nextnode/plugins/plugins_watcher_test.go::TestTheWatcherAfterCloseOnlyAPluginLinkedFromOutsideGetsItsWatchAgain",
         "chord/nextnode/plugins/plugins_watcher_unix_test.go::TestTheWatcherReportsAFailureToWatchOnceAndStopsWatching",
         "chord/nextnode/workers/workers_main_test.go::TestTheWorkersIdleStateReadsTheNodeHostsActivityThroughItsReports"
+      ]
+    },
+    {
+      "id": "BF-904cc8f",
+      "title": "Completed Mermaid diagrams wider than the available terminal width now display a `Mermaid diagram not…",
+      "symptom": "Completed Mermaid diagrams wider than the available terminal width now display a `Mermaid diagram not rendered: needs N columns, M available` note below their source (while staying silent during streaming and prioritizing parse warnings over width warnings).",
+      "rootCause": "renderMermaidToken returned raw source silently when art.Width \u003e context.AvailableWidth",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Completed Mermaid diagrams wider than the available terminal width now display a `Mermaid diagram not rendered: needs N columns, M available` note below their source (while staying silent during streaming and prioritizing parse warnings over width warnings).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "904cc8fad2",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/mermaid_fallback_upstream_test.go::TestMermaidFallbackAssistantBlockMatchesDisabledTransform",
+        "internal/codingagent/mermaid_fallback_upstream_test.go::TestMermaidUnsupportedAndOversizedRemainSource",
+        "internal/codingagent/mermaid_hint_test.go::TestMermaidRejectedInputRemainsUnchanged",
+        "internal/codingagent/mermaid_upstream_test.go::TestMermaidRenderingUpstream"
       ]
     },
     {
@@ -44741,6 +45521,28 @@
       "tests": []
     },
     {
+      "id": "BF-a1e8423",
+      "title": "OpenAI-completions streams on OpenRouter now record `choice.native_finish_reason` into `RawStopReason`…",
+      "symptom": "OpenAI-completions streams on OpenRouter now record `choice.native_finish_reason` into `RawStopReason` (`\u003cfinish_reason\u003e.\u003cnative_finish_reason\u003e`) and error messages, and convert empty stops with non-clean native finish reasons into retryable empty-response errors (Pi 1.6.1).",
+      "rootCause": "openai-completions ignored choice.native_finish_reason on OpenRouter streams",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "OpenAI-completions streams on OpenRouter now record `choice.native_finish_reason` into `RawStopReason` (`\u003cfinish_reason\u003e.\u003cnative_finish_reason\u003e`) and error messages, and convert empty stops with non-clean native finish reasons into retryable empty-response errors (Pi 1.6.1).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a1e8423fd6",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "ai/openrouter_finish_reason_test.go::TestOpenRouterNativeFinishReason"
+      ]
+    },
+    {
       "id": "BF-a1ec891",
       "title": "fix(schema): no panic leaves the API, strings keep lone surrogates, references resolve as new URL does",
       "symptom": "fix(schema): no panic leaves the API, strings keep lone surrogates, references resolve as new URL does",
@@ -45591,6 +46393,41 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-a58db60",
+      "title": "Retry classification in `ai`, `durable/core/turn`, and all four extension SDKs (Go, Python, Rust, Common…",
+      "symptom": "Retry classification in `ai`, `durable/core/turn`, and all four extension SDKs (Go, Python, Rust, Common Lisp) now retries Cloudflare HTTP 525, gateway mid-stream provider-unavailable and partial-response errors, Anthropic streaming `api_error` events without an HTTP status, OpenRouter `finish_reason: \"error\"`, empty-response and stopped-before-completing errors, \"cut short after the reply had begun\", \"Repeat the request later\", and queue admission ceiling errors, while non-temporary \"provider unavailable\" errors remain non-retryable.",
+      "rootCause": "retryable error patterns omitted Cloudflare 525, temporary gateway/provider-unavailable phrasing, and temporary admission/stream-error messages added in Pi v1.6.1.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Retry classification in `ai`, `durable/core/turn`, and all four extension SDKs (Go, Python, Rust, Common Lisp) now retries Cloudflare HTTP 525, gateway mid-stream provider-unavailable and partial-response errors, Anthropic streaming `api_error` events without an HTTP status, OpenRouter `finish_reason: \"error\"`, empty-response and stopped-before-completing errors, \"cut short after the reply had begun\", \"Repeat the request later\", and queue admission ceiling errors, while non-temporary \"provider unavailable\" errors remain non-retryable.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a58db60a0b",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "ai/assistant_retry_classifier_oracle_test.go::TestIsRetryableAssistantErrorMatchesPiOracle",
+        "ai/assistant_retry_patterns_upstream_test.go::TestIsRetryableAssistantErrorCloudflare525",
+        "ai/assistant_retry_patterns_upstream_test.go::TestIsRetryableAssistantErrorGatewayProviderUnavailableAndPartialResponse",
+        "ai/assistant_retry_patterns_upstream_test.go::TestIsRetryableAssistantErrorMoreTemporaryProviderFailures",
+        "ai/assistant_retry_patterns_upstream_test.go::TestRetryAssistantCallRetriesNewPatterns",
+        "ai/assistant_retry_test.go::TestIsRetryableAssistantErrorClassification",
+        "coding/session_retry_patterns_upstream_test.go::TestApiErrorOverlapContextOverflowAnd413NotRetryableByPredicate",
+        "coding/session_retry_patterns_upstream_test.go::TestSessionRetriesAnthropicStreamingAPIErrorThroughRealProvider",
+        "coding/session_retry_patterns_upstream_test.go::TestSessionRetriesPiMainRetryPatterns",
+        "coding/session_socket_code_retry_test.go::TestSessionDoesNotRetryASocketCodeInsideAnIdentifier",
+        "durable/core/turn/classify_carried_test.go::TestConnectionClosedIsRetryable",
+        "durable/core/turn/classify_carried_test.go::TestPiMainRetryPatternsAreRetryable",
+        "extensions/sdk/pi_ai_helpers_test.go::TestConnectionClosedIsRetryable",
+        "extensions/sdk/pi_ai_helpers_test.go::TestPiMainRetryPatternsAreRetryable"
+      ]
     },
     {
       "id": "BF-a690122",
@@ -48443,6 +49280,32 @@
       ]
     },
     {
+      "id": "BF-b40374f",
+      "title": "fix(chord,durable,env,llama): eliminate quadratic line scanning and tighten scaling tests",
+      "symptom": "fix(chord,durable,env,llama): eliminate quadratic line scanning and tighten scaling tests",
+      "rootCause": "- Convert chord/next/store/jsonl.go, durable/env/node/line_reader.go, and env/remote_env.go to scan only newly appended bytes using a tracked scan cursor and byte-slice buffer (fixing O(n^2) rescan/copy). - Add ratio-bounded linear-time scaling tests (matching TestSSELineSplitterDoesNotRescanALongLineAfterEveryRead) across chord, durable, env, ai (newSSEDecoder and codexSSEFrames), mcp, and llama. - Remove dead dispatchFrames from internal/codingagent/llama/client.go and migrate its test to llamaSSEParser.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "b40374ffaa",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "ai/sse_linear_test.go::TestSSEDecoderChunkBoundariesAndLargeEvents",
+        "chord/next/store/jsonl_linear_test.go::TestDecodeJsonlLongLineScalesLinearly",
+        "durable/env/node/line_reader_linear_test.go::TestNodeTextLineReaderLongLineScalesLinearly",
+        "env/remote_line_reader_linear_test.go::TestRemoteTextLineReaderLongLineScalesLinearly",
+        "internal/codingagent/llama/client_test.go::TestWatchHandlesSplitCRLFAndLoneCRAndLargeEvents",
+        "mcp/sse_linear_test.go::TestConsumeSSEStreamLargeEventAndLineLimit"
+      ]
+    },
+    {
       "id": "BF-b430c7a",
       "title": "Extension widgets now appear in the order they were set when Node or other extension-process widgets and Go…",
       "symptom": "Extension widgets now appear in the order they were set when Node or other extension-process widgets and Go in-process widgets share a side of the editor, as in Pi.",
@@ -48929,7 +49792,6 @@
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestRemoveTreeContextReportsADirectoryHeldByAnNFSSillyRenameAsBusy",
         "internal/codingagent/exit_record_shell_unix_test.go::TestExitWithoutShutdownKillsTheRunningShellCommand",
         "internal/codingagent/interactive_resume_bash_test.go::TestAgentMessageFallbackRendersBashExecutionBlock",
-        "internal/codingagent/interactive_resume_bash_test.go::TestResumedBashExecutionBlockStartsCollapsed",
         "internal/codingagent/interactive_resume_bash_test.go::TestResumedPoisonedBashExecutionMessages",
         "internal/codingagent/interactive_resume_bash_test.go::TestResumedSessionRendersPersistedBashExecutionBlocks",
         "internal/codingagent/tools/detached_children_test.go::TestDetachedChildSleepHelper",
@@ -51501,6 +52363,29 @@
       ]
     },
     {
+      "id": "BF-c2fd889",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "- Drop non-string choice.native_finish_reason in normalizeOpenAIChunkMembers and malformed promptFeedback in normalizeGeminiChunkJS (L8). - Assert inside both wire=false and wire=true subtests in TestOpenRouterNativeFinishReason (L9). - Use jsstring.ToLower and trimJSWhitespace in openrouter_finish_reason.go and stop re-applying native_finish_reason at end of stream (L10). - Match Pi's exact JSON member order (type, id, call_id, name, status, namespace, arguments/input) in ResponsesInputItem.wire() and jsonv2 MarshalJSONTo, with exact-JSON regression assertions (L11). - Export PrepareResponsesPrompt / PreparedResponsesPrompt matching Pi (L12).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "c2fd88933f",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "ai/google_stream_errors_test.go::TestGoogleStreamHandlesMalformedPromptFeedbackGracefully",
+        "ai/openai_responses_namespace_upstream_test.go::TestOpenAIResponsesNamespaceUpstream",
+        "ai/openrouter_finish_reason_test.go::TestOpenRouterNativeFinishReason"
+      ]
+    },
+    {
       "id": "BF-c30a73a",
       "title": "fix(durable/core): revert the settings notice (ABI 12); the core resolves the settings from the snapshot the…",
       "symptom": "fix(durable/core): revert the settings notice (ABI 12); the core resolves the settings from the snapshot the host sends (D206)",
@@ -51660,6 +52545,30 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-c44cf25",
+      "title": "Extension `ctx.ui.pasteToEditor()` and `ctx.ui.setEditorText()` calls now marshal onto the interactive owner…",
+      "symptom": "Extension `ctx.ui.pasteToEditor()` and `ctx.ui.setEditorText()` calls now marshal onto the interactive owner loop and request a coalesced render instead of mutating `tui.Editor` and painting synchronously from the subprocess host-call goroutine, eliminating a data race and ensuring edits repaint immediately.",
+      "rootCause": "ExtUIContext.PasteToEditor and ExtUIContext.SetEditorText mutated tui.Editor and called synchronous tuiInst.Render() on the caller goroutine instead of marshalling onto the owner loop and calling requestRender().",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Extension `ctx.ui.pasteToEditor()` and `ctx.ui.setEditorText()` calls now marshal onto the interactive owner loop and request a coalesced render instead of mutating `tui.Editor` and painting synchronously from the subprocess host-call goroutine, eliminating a data race and ensuring edits repaint immediately.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c44cf255bb",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/ext_ui_editor_race_test.go::TestExtUIEditorCallsFromHostCallGoroutine_NoRace",
+        "internal/codingagent/ext_ui_editor_render_test.go::TestExtUIEditorCallsRepaintCustomEditorWhileIdle",
+        "internal/codingagent/ext_ui_editor_render_test.go::TestExtUIEditorCallsRepaintWhileIdle"
+      ]
     },
     {
       "id": "BF-c462888",
@@ -52640,6 +53549,28 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-c70fbb9",
+      "title": "Non-strict Anthropic tool schemas now preserve root `$schema` in `input_schema` so nested dialect keywords…",
+      "symptom": "Non-strict Anthropic tool schemas now preserve root `$schema` in `input_schema` so nested dialect keywords such as Draft 7 tuple `items` are interpreted accurately (Pi 1.6.1).",
+      "rootCause": "anthLegacyOptionalRootKeys omitted $schema",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Non-strict Anthropic tool schemas now preserve root `$schema` in `input_schema` so nested dialect keywords such as Draft 7 tuple `items` are interpreted accurately (Pi 1.6.1).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c70fbb99be",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "ai/anthropic_strict_tool_schema_upstream_test.go::TestAnthropicNonStrictToolPreservesDeclaredDialect"
+      ]
     },
     {
       "id": "BF-c723782",
@@ -53698,6 +54629,28 @@
       ]
     },
     {
+      "id": "BF-cb3d1e7",
+      "title": "Windows bash discovery in `internal/shellconfig` and `durable/env/node` now queries `git var GIT_SHELL_PATH`…",
+      "symptom": "Windows bash discovery in `internal/shellconfig` and `durable/env/node` now queries `git var GIT_SHELL_PATH` (Git 2.47+) for Git for Windows installed outside Program Files before falling back to `bash.exe` on `PATH` (which usually finds the WSL launcher in System32).",
+      "rootCause": "Windows shell discovery only checked ProgramFiles before falling back to where bash.exe",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows, WSL",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Windows bash discovery in `internal/shellconfig` and `durable/env/node` now queries `git var GIT_SHELL_PATH` (Git 2.47+) for Git for Windows installed outside Program Files before falling back to `bash.exe` on `PATH` (which usually finds the WSL launcher in System32).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "cb3d1e7d3c",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "internal/shellconfig/shellconfig_test.go::TestUpstreamGitBashDiscoveryThroughGitOnPath"
+      ]
+    },
+    {
       "id": "BF-cb3eb3b",
       "title": "fix(durable/core): memory-held commits record no telemetry events",
       "symptom": "fix(durable/core): memory-held commits record no telemetry events",
@@ -54673,6 +55626,33 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-cf8724c",
+      "title": "fix(chord): tag RolloutHost union and worker reload_failed reply",
+      "symptom": "fix(chord): tag RolloutHost union and worker reload_failed reply",
+      "rootCause": "Port of Pi main Port of Pi main",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "cf8724c12c",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_examples_test.go::TestExample35PluginsLoadEditMarkBuildRollOut",
+        "chord/nextnode/plugins/plugins_pluginfile_test.go::TestRolloutHostKindValuesMatchPi",
+        "chord/nextnode/plugins/plugins_plugins_test.go::TestPluginsRolloutHandsTheStepTheSetsItsRolloutLeftForItsKinds",
+        "chord/nextnode/surfaces/surfaces_build_test.go::TestAFailedBuildAnswers503ForTheSurfacesFilesAndFailsItsStepsHost",
+        "chord/nextnode/workers/workers_control_test.go::TestFromWorkerReloadedAndReloadFailedWireRoundTrip",
+        "chord/nextnode/workers/workers_rollout_test.go::TestAReloadFailureInAWorkerRepliesReloadFailedAndSettlesHostAsRolloutFailed",
+        "chord/nextnode/workers/workers_rollout_test.go::TestFixRound1KeepsNoReloadReportOnceConsumedTheReloadQueueSettlesToNothing"
+      ]
     },
     {
       "id": "BF-cfe05f8",
@@ -56315,6 +57295,30 @@
       ]
     },
     {
+      "id": "BF-d58069b",
+      "title": "Startup dialogs (project trust prompt, missing session folder prompt, and first-time setup) now report OSC…",
+      "symptom": "Startup dialogs (project trust prompt, missing session folder prompt, and first-time setup) now report OSC 7501 `blocked` program status, multi-line dialog titles report only their first line as the blocked message, project trust and first-time setup report `kind=permission`, and `FormatProgramStatus` omits unknown or malformed `kind` values.",
+      "rootCause": "startup dialogs ran on a temporary TUI before ProgramStatusReporter existed and in-session dialogs passed multi-line titles unsplit",
+      "rootCauseSource": "release note",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Startup dialogs (project trust prompt, missing session folder prompt, and first-time setup) now report OSC 7501 `blocked` program status, multi-line dialog titles report only their first line as the blocked message, project trust and first-time setup report `kind=permission`, and `FormatProgramStatus` omits unknown or malformed `kind` values.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d58069bb30",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "coding/cli/project_trust_test.go::TestResolveProjectTrustedPassesPermissionBlockedKind",
+        "internal/codingagent/startup_ui_program_status_test.go::TestExtensionDialogBlockedStatusFirstLineAndKind",
+        "internal/codingagent/startup_ui_program_status_test.go::TestStartupDialogProgramStatus"
+      ]
+    },
+    {
       "id": "BF-d5bf039",
       "title": "Text of a pull request shown in the pre-flight's comment table (the reason of a verdict, a file of a warning)…",
       "symptom": "Text of a pull request shown in the pre-flight's comment table (the reason of a verdict, a file of a warning) and in its alert comment can no longer break out of its cell: a fence, a mention, an HTML tag, a link or a pipe in it stays text, and a backtick in it cannot close the code span.",
@@ -57656,6 +58660,29 @@
         "coding/cli/introspection_truth_test.go::TestStatusReportsASkillWithoutDescriptionAsNotLoaded",
         "coding/cli/introspection_truth_test.go::TestStatusReportsAThemeWithAnUnknownColorRoleAsInvalid",
         "coding/piglet/active_source_test.go::TestActiveSourceValue"
+      ]
+    },
+    {
+      "id": "BF-d9edfc9",
+      "title": "`wl-copy` now receives explicit `-t text/plain` on Wayland so clipboard managers such as Klipper do not drop…",
+      "symptom": "`wl-copy` now receives explicit `-t text/plain` on Wayland so clipboard managers such as Klipper do not drop text whose inferred MIME type is non-text.",
+      "rootCause": "wl-copy was invoked without -t text/plain and guessed non-text MIME types for inputs starting with keywords like def",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`wl-copy` now receives explicit `-t text/plain` on Wayland so clipboard managers such as Klipper do not drop text whose inferred MIME type is non-text.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d9edfc9742",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/clipboard_copy_test.go::TestCopyToClipboardWSLWithADisplayPrefersLinuxTools",
+        "internal/codingagent/clipboard_copy_test.go::TestCopyToClipboardWlCopyUsesTextPlainMIME"
       ]
     },
     {
@@ -60932,6 +61959,28 @@
       "tests": []
     },
     {
+      "id": "BF-df8ff62",
+      "title": "Google Generative AI and Google Vertex streams now parse `promptFeedback` (`blockReason`…",
+      "symptom": "Google Generative AI and Google Vertex streams now parse `promptFeedback` (`blockReason`, `blockReasonMessage`, `safetyRatings`) to report non-retryable prompt block errors separately from incomplete streams, and include the received chunk count when a stream ends without a finish reason (Pi 1.6.1).",
+      "rootCause": "Google stream decoder discarded promptFeedback and reported all finish-less streams identically",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Google Generative AI and Google Vertex streams now parse `promptFeedback` (`blockReason`, `blockReasonMessage`, `safetyRatings`) to report non-retryable prompt block errors separately from incomplete streams, and include the received chunk count when a stream ends without a finish reason (Pi 1.6.1).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "df8ff62b1d",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "ai/google_stream_errors_test.go::TestGoogleStreamPromptBlockVsIncompleteStream"
+      ]
+    },
+    {
       "id": "BF-df96b6a",
       "title": "Fix in shipped code",
       "symptom": "Fix in shipped code",
@@ -61300,6 +62349,31 @@
         "ai/oauth_credential_members_test.go::TestOAuthBuildersWriteCredentialMembersInPiOrder",
         "ai/oauth_form_order_openai_test.go::TestOpenAIAndCopilotOAuthFormBodiesKeepPiFieldOrderAndEncoding",
         "ai/oauth_form_order_test.go::TestOAuthFormBodiesKeepPiFieldOrderAndEncoding"
+      ]
+    },
+    {
+      "id": "BF-e1fdbe4",
+      "title": "fix(ai): classify finish_reason error in retry classifier, not provider messages",
+      "symptom": "fix(ai): classify finish_reason error in retry classifier, not provider messages",
+      "rootCause": "Remove the special \" (server error)\" suffix from mapMistralStopReason for finish_reason \"error\" so Mistral reports \"Provider stopped with: error\" like other unmapped stop reasons, and classify both \"provider finish_reason: error\" and \"provider stopped with: error\" explicitly in retryableProviderErrorPattern.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "e1fdbe4a88",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "ai/mistral_contract_0861_test.go::TestMistralRawStopReasonsUpstream",
+        "ai/mistral_retry_finish_reason_test.go::TestMistralFinishReasonErrorIsRetryable",
+        "ai/mistral_test.go::TestMapMistralStopReason",
+        "ai/mistral_test.go::TestMistralErrorRetainsUsage",
+        "ai/openai_completions_metadata_upstream_test.go::TestOpenAICompletionsRawStopReasonUpstream"
       ]
     },
     {
@@ -61897,6 +62971,26 @@
       ]
     },
     {
+      "id": "BF-e51a15a",
+      "title": "Updated `internal/modelgen` catalog rules to derive thinking-off support from models.dev `canonical_id`…",
+      "symptom": "Updated `internal/modelgen` catalog rules to derive thinking-off support from models.dev `canonical_id` entries, enable `requiresNonNullAssistantContent` for affected Cloudflare Workers AI models, drop shut-down OpenAI `gpt-5-chat-latest` and Groq deprecated models plus undocumented `mistral-medium-3.5`, and remove dead `opencode`/`github-copilot` overrides for deleted models.",
+      "rootCause": "catalog builder relied on hardcoded per-provider thinking-off lists and retained removed or undocumented model overrides",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Updated `internal/modelgen` catalog rules to derive thinking-off support from models.dev `canonical_id` entries, enable `requiresNonNullAssistantContent` for affected Cloudflare Workers AI models, drop shut-down OpenAI `gpt-5-chat-latest` and Groq deprecated models plus undocumented `mistral-medium-3.5`, and remove dead `opencode`/`github-copilot` overrides for deleted models.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e51a15a770",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-e51bb37",
       "title": "OpenAI Responses streams follow Pi's `processResponsesStream` on malformed and edge events, checked against…",
       "symptom": "OpenAI Responses streams follow Pi's `processResponsesStream` on malformed and edge events, checked against the pinned Pi in a new oracle test: a failed response records only its status (no usage or response id), `end_turn` is recorded only for Codex, an `error` event without a code or message reads `Error Code undefined: undefined`, a `response.created` or terminal event without a response reports Pi's TypeError text, and a reasoning signature backfilled with `encrypted_content` keeps its original key order.",
@@ -62038,6 +63132,30 @@
       ],
       "tests": [
         "coding/extension/host/subprocess/runtime_node_run_beginning_test.go::TestNodeRunBeginningRunsTheInputsImmediateBeforeTheFramesReadWithIt"
+      ]
+    },
+    {
+      "id": "BF-e59e98a",
+      "title": "Rebuilt `!` bash execution blocks now follow the current `ctrl+o` (`toolsExpanded`) state on `/reload`…",
+      "symptom": "Rebuilt `!` bash execution blocks now follow the current `ctrl+o` (`toolsExpanded`) state on `/reload`, `/resume`, `/tree`, and compaction rebuilds.",
+      "rootCause": "renderSessionEntries constructed BashExecutionComponent without calling SetExpanded(m.toolsExpanded)",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Rebuilt `!` bash execution blocks now follow the current `ctrl+o` (`toolsExpanded`) state on `/reload`, `/resume`, `/tree`, and compaction rebuilds.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e59e98a419",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/bash_history_render_test.go::TestResumedBashExecutionEntryRendersLikePi",
+        "internal/codingagent/bash_history_render_test.go::TestResumedBashExecutionFollowsToolsExpanded",
+        "internal/codingagent/interactive_resume_bash_test.go::TestResumedBashExecutionBlockFollowsToolsExpanded"
       ]
     },
     {
@@ -64834,6 +65952,28 @@
       ]
     },
     {
+      "id": "BF-f0d4e43",
+      "title": "Context-overflow detection now matches `request_too_large` only as a complete ASCII identifier so longer…",
+      "symptom": "Context-overflow detection now matches `request_too_large` only as a complete ASCII identifier so longer error codes such as `plugin_request_too_large` or `request_too_large_flag` are not misclassified as context overflow (Pi 1.6.1).",
+      "rootCause": "overflow pattern matched request_too_large as an unbounded substring",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Context-overflow detection now matches `request_too_large` only as a complete ASCII identifier so longer error codes such as `plugin_request_too_large` or `request_too_large_flag` are not misclassified as context overflow (Pi 1.6.1).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f0d4e43ea6",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "ai/overflow_test.go::TestOverflowRequestTooLargeIdentifierBoundaries"
+      ]
+    },
+    {
       "id": "BF-f0eace4",
       "title": "LaTeX math renders two surrogate halves that end up side by side in one argument (`\\vec{\\ud83d{}\\ude00}`…",
       "symptom": "LaTeX math renders two surrogate halves that end up side by side in one argument (`\\vec{\\ud83d{}\\ude00}`, `x^{\\ud83d{}\\ude00}`, `\\not{...}`, `\\frac{x}{...}`) as the one character they spell, so the script, fraction, accent and `\\not` layout matches Pi instead of treating them as two.",
@@ -65052,6 +66192,27 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-f209d6c",
+      "title": "fix(ai): filter Copilot classifiers by account and wire openai-decisions",
+      "symptom": "fix(ai): filter Copilot classifiers by account and wire openai-decisions",
+      "rootCause": "Record non-disabled decision models from Copilot /models in AvailableClassifierModelIDs during login and token refresh, filter Copilot classifiers in filterGitHubCopilotAllModels, and register openai-decisions alongside typesafe-system-one under the /v1 wrapper.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "f209d6c961",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "ai/github_copilot_classifier_test.go::TestGitHubCopilotClassifierFiltering"
+      ]
     },
     {
       "id": "BF-f20cc08",
@@ -69762,6 +70923,31 @@
       ]
     },
     {
+      "id": "BF-fd64f62",
+      "title": "Stored `auth.json` credentials whose `!command` fails now report `AuthStatus{Configured: false, Source…",
+      "symptom": "Stored `auth.json` credentials whose `!command` fails now report `AuthStatus{Configured: false, Source: AuthSourceStored}`, render as `stored key did not resolve` in `/login` without synchronously executing uncached `!command` lookups, and clear their cached command result in `AuthStorage.Modify` when written again.",
+      "rootCause": "ModelRuntime.GetProviderAuthStatus returned Configured: true for any stored provider and AuthStorage.Modify did not evict the command cache",
+      "rootCauseSource": "release note",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Stored `auth.json` credentials whose `!command` fails now report `AuthStatus{Configured: false, Source: AuthSourceStored}`, render as `stored key did not resolve` in `/login` without synchronously executing uncached `!command` lookups, and clear their cached command result in `AuthStorage.Modify` when written again.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "fd64f62259",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "ai/auth_storage_first_half_upstream_test.go::TestAuthStorageCommandBackedKeyRunsAgainAfterSaveUpstream",
+        "coding/model_availability_upstream_test.go::TestStalledAvailabilityRefreshUpstream",
+        "coding/model_availability_upstream_test.go::TestStoredCommandKeyAuthStatusUpstream",
+        "tui/oauth_selector_upstream_test.go::TestOAuthSelectorUnresolvedStoredKeyUpstream"
+      ]
+    },
+    {
       "id": "BF-fd7f660",
       "title": "A resumed session keeps the tools that were active when it was saved (an optional or deferred tool a command…",
       "symptom": "A resumed session keeps the tools that were active when it was saved (an optional or deferred tool a command or extension had enabled no longer drops out and gets recorded as removed on the next turn); an explicit `--tools` list, `--no-tools` or `--no-builtin-tools` still wins (pi-mono #10785).",
@@ -70813,7 +71999,7 @@
   "exemptCommits": {
     "Failure found by the integration build of unreleased work": 2,
     "Fix reverted before release": 2,
-    "Follow-up to unreleased work": 47,
+    "Follow-up to unreleased work": 53,
     "Repair of a merge between development branches": 9,
     "Review follow-up to unreleased work": 4,
     "test-only": 1

@@ -1385,9 +1385,11 @@ Ada typed "  tea  " with spaces, and a blank todo should be refused like an empt
 		}
 		for _, rolled := range step.Hosts {
 			var fates []string
-			for _, object := range rolled.Report.Objects {
-				if fate := object.Object + " " + string(object.Kind); !slices.Contains(fates, fate) {
-					fates = append(fates, fate)
+			if rolled.Kind == plugins.RolloutReloaded {
+				for _, object := range rolled.Report.Objects {
+					if fate := object.Object + " " + string(object.Kind); !slices.Contains(fates, fate) {
+						fates = append(fates, fate)
+					}
 				}
 			}
 			_, _ = fmt.Fprintf(s.out, "   on %s: %s\n", rolled.Host, strings.Join(fates, ", "))

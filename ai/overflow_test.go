@@ -75,3 +75,28 @@ func TestIsContextOverflowSilentUsage(t *testing.T) {
 		t.Error("without a context window the usage cases are disabled")
 	}
 }
+
+// Port of Pi main 32c7f6d7b23926155429426d31e987e40a3785d0 (#12438, #12343).
+func TestOverflowRequestTooLargeIdentifierBoundaries(t *testing.T) {
+	for _, msg := range []string{
+		"request_too_large",
+		`400 {"error":{"type":"request_too_large","message":"Request exceeds the maximum size"}}`,
+		"Anthropic error: REQUEST_TOO_LARGE",
+		`413: {"code":"plugin_request_too_large","message":"request too large"}`,
+	} {
+		if !IsContextOverflow(AssistantMessage{Provider: "test", StopReason: StopReasonError, ErrorMessage: msg}, 0) {
+			t.Errorf("IsContextOverflow(%q) = false, want true", msg)
+		}
+	}
+	for _, msg := range []string{
+		`400 {"code":"plugin_request_too_large","message":"plugin input rejected"}`,
+		"400 invalid_request_error: my_plugin_request_too_large_flag was set",
+		"Unknown error code xrequest_too_large",
+		"Unknown error code request_too_large2",
+		"Unknown error code request_too_large_flag",
+	} {
+		if IsContextOverflow(AssistantMessage{Provider: "test", StopReason: StopReasonError, ErrorMessage: msg}, 200000) {
+			t.Errorf("IsContextOverflow(%q) = true, want false", msg)
+		}
+	}
+}

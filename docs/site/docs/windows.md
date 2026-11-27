@@ -1,6 +1,6 @@
 # Windows setup
 
-PiG supports source builds on Windows. Do not treat Windows as release-supported until native release verification passes for the published artifact. The command environment follows Pi 1.6.0 ([Pi's Windows guide](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/windows.md)).
+PiG supports source builds on Windows. Do not treat Windows as release-supported until native release verification passes for the published artifact. The command environment follows Pi 1.6.1 ([Pi's Windows guide](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/windows.md)).
 
 ## Build from source
 
@@ -70,7 +70,8 @@ PiG resolves Bash in this order:
 1. `shellPath` from `~/.pig/agent/settings.json`.
 2. Git Bash at `%ProgramFiles%\Git\bin\bash.exe`.
 3. Git Bash at `%ProgramFiles(x86)%\Git\bin\bash.exe`.
-4. `bash.exe` on `PATH`, including Cygwin, MSYS2, or legacy WSL Bash.
+4. Git Bash of the Git for Windows installation whose `git.exe` is on `PATH`, wherever it is installed (Git 2.47 or later).
+5. `bash.exe` on `PATH`, including Cygwin, MSYS2, or legacy WSL Bash.
 
 Type this command in PiG to check the shell:
 

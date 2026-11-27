@@ -490,7 +490,7 @@ func pcStep(name string, order *[]string, outcome pcOutcome, kinds ...string) Ro
 			if outcome.hosts != nil {
 				return StepResult{Hosts: outcome.hosts}, nil
 			}
-			return StepResult{Hosts: []RolloutHost{{Kind: RolloutReported, Host: name, Report: *outcome.report}}}, nil
+			return StepResult{Hosts: []RolloutHost{{Kind: RolloutReloaded, Host: name, Report: *outcome.report}}}, nil
 		},
 	}
 }
@@ -560,8 +560,8 @@ func TestPluginsRolloutCountsAHostsErrorAsTheStepsBuiltPluginsFailingThereAHostS
 	pcWrite(t, root, "a", "worker.ts", "// a again\n")
 	c.waitMarks(t, "dirty a again", pcDirty("@test/a"))
 	crashed := []RolloutHost{
-		{Kind: RolloutReported, Host: "session|S1", Report: *pcReport()},
-		{Kind: RolloutErrored, Host: "session|S2", Error: errors.New("crashed")},
+		{Kind: RolloutReloaded, Host: "session|S1", Report: *pcReport()},
+		{Kind: RolloutFailed, Host: "session|S2", Error: errors.New("crashed")},
 	}
 	result := c.rollout(t, []RolloutStep{pcStep("workers", &none, pcOutcome{hosts: crashed})}, c.build(t, "@test/a"))
 	if want := []RolloutStepResult{{Name: "workers", Hosts: crashed}}; !reflect.DeepEqual(result.Steps, want) {
@@ -607,7 +607,7 @@ func TestPluginsRolloutHandsTheStepTheSetsItsRolloutLeftForItsKinds(t *testing.T
 		return RolloutStep{Name: name, Kinds: kinds, Reload: func(_ *Built, applied map[string][]PluginScript, _ context.Context) (StepResult, error) {
 			got[name] = applied
 			report := pcReport()
-			return StepResult{Hosts: []RolloutHost{{Kind: RolloutReported, Host: name, Report: *report}}}, nil
+			return StepResult{Hosts: []RolloutHost{{Kind: RolloutReloaded, Host: name, Report: *report}}}, nil
 		}}
 	}
 	c.rollout(t, []RolloutStep{record("worker", "worker"), record("both", "worker", "server")}, built)
@@ -825,7 +825,7 @@ func TestPluginsTheAppsAPIRequiredRootsAndInstallsInstallsAPluginIntoOneOfItsRoo
 	writeFiles(t, tools, map[string]string{"npm.mjs": "process.exit(0);"})
 	c := pcNew(t, root, pcOptions{install: InstallOptions{NpmCommand: []string{pcNode(t), filepath.Join(tools, "npm.mjs")}}})
 	c.build(t)
-	names, err := c.InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, root, background)
+	names, err := c.InstallPlugin(PluginSource{Kind: PluginSourceGit, Git: repository.url, Ref: "v1"}, root, background)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -839,7 +839,7 @@ func TestPluginsTheAppsAPIRequiredRootsAndInstallsInstallsAPluginIntoOneOfItsRoo
 	if len(built.Plugins) != 1 || built.Plugins["@bob/hello"].Name != "@bob/hello" {
 		t.Fatalf("built plugins = %+v", built.Plugins)
 	}
-	_, err = c.InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, tools, background)
+	_, err = c.InstallPlugin(PluginSource{Kind: PluginSourceGit, Git: repository.url, Ref: "v1"}, tools, background)
 	if want := "plugins.installPlugin: " + tools + " is not one of the roots"; err == nil || err.Error() != want {
 		t.Fatalf("error = %v, want %q", err, want)
 	}

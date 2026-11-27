@@ -155,8 +155,8 @@ func (h handle) Id() durable.ConversationId { return h.c.id }
 func (h handle) Submit(ctx context.Context, draft durable.SubmissionDraft) (durable.Submission, error) {
 	return h.c.Submit(ctx, draft)
 }
-func (h handle) SubmitIn(tx durable.Tx, draft durable.SubmissionDraft) (durable.SubmissionId, error) {
-	return h.c.SubmitIn(tx, draft)
+func (h handle) Admit(tx durable.Tx, draft durable.SubmissionDraft) (durable.SubmissionId, error) {
+	return h.c.Admit(tx, draft)
 }
 func (h handle) Abort(ctx context.Context, options *durable.ConversationAbortOptions) error {
 	return h.c.Abort(ctx, options)
@@ -800,8 +800,8 @@ func (c *conversation) Submit(ctx context.Context, draft durable.SubmissionDraft
 	return c.s.submit(ctx, c.id, draft)
 }
 
-// SubmitIn is Conversation.submit(tx, draft): the admission inside the caller's commit.
-func (c *conversation) SubmitIn(tx durable.Tx, draft durable.SubmissionDraft) (durable.SubmissionId, error) {
+// Admit is Conversation.submit(tx, draft): the admission inside the caller's commit.
+func (c *conversation) Admit(tx durable.Tx, draft durable.SubmissionDraft) (durable.SubmissionId, error) {
 	return c.s.submitIn(tx, c.id, draft)
 }
 

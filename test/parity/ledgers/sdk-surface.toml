@@ -799,6 +799,15 @@ wire = "literal:timeout"
 partial = "RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions)"
 
 [[row]]
+key = "ctx.ui.select(opts.blockedKind)"
+node = "RuntimeUI.select"
+go = "DialogOptions.BlockedKind"
+rust = "DialogPromptOptions.blocked_kind"
+python = "Context.select(blocked_kind)"
+lisp = "pig:ctx-select(blocked-kind)|pig:ctx-select-p(blocked-kind)"
+wire = "literal:blockedKind"
+
+[[row]]
 key = "ctx.ui.confirm(opts.signal)"
 node = "RuntimeUI.confirm"
 go = "Context.Done"
@@ -821,6 +830,15 @@ wire = "literal:timeout"
 partial = "RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions)"
 
 [[row]]
+key = "ctx.ui.confirm(opts.blockedKind)"
+node = "RuntimeUI.confirm"
+go = "DialogOptions.BlockedKind"
+rust = "DialogPromptOptions.blocked_kind"
+python = "Context.confirm(blocked_kind)"
+lisp = "pig:ctx-confirm(blocked-kind)|pig:ctx-confirm-p(blocked-kind)"
+wire = "literal:blockedKind"
+
+[[row]]
 key = "ctx.ui.input(opts.signal)"
 node = "RuntimeUI.input"
 go = "Context.Done"
@@ -841,6 +859,15 @@ python = "Context.input(timeout)"
 lisp = "pig:ctx-input(timeout)|pig:ctx-input-p(timeout)"
 wire = "literal:timeout"
 partial = "RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions)"
+
+[[row]]
+key = "ctx.ui.input(opts.blockedKind)"
+node = "RuntimeUI.input"
+go = "DialogOptions.BlockedKind"
+rust = "DialogPromptOptions.blocked_kind"
+python = "Context.input(blocked_kind)"
+lisp = "pig:ctx-input(blocked-kind)|pig:ctx-input-p(blocked-kind)"
+wire = "literal:blockedKind"
 
 [[row]]
 key = "ctx.ui.setWorkingIndicator(options.frames)"

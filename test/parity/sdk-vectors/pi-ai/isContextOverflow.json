@@ -1,6 +1,6 @@
 {
- "pin": "1.6.0",
- "package": "pi-ai@1.6.0",
+ "pin": "1.6.1",
+ "package": "pi-ai@1.6.1",
  "module": "pi-ai",
  "export": "isContextOverflow",
  "cases": [
@@ -10991,6 +10991,285 @@
     }
    ],
    "result": true
+  },
+  {
+   "name": "case 0367",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "request_too_large",
+     "timestamp": 1
+    },
+    200000
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0368",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "400 {\"error\":{\"type\":\"request_too_large\",\"message\":\"Request exceeds the maximum size\"}}",
+     "timestamp": 1
+    },
+    200000
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0369",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Anthropic error: REQUEST_TOO_LARGE",
+     "timestamp": 1
+    },
+    200000
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0370",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "413: {\"code\":\"plugin_request_too_large\",\"message\":\"request too large\"}",
+     "timestamp": 1
+    },
+    200000
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0371",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "400 {\"code\":\"plugin_request_too_large\",\"message\":\"plugin input rejected\"}",
+     "timestamp": 1
+    },
+    200000
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0372",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "400 invalid_request_error: my_plugin_request_too_large_flag was set",
+     "timestamp": 1
+    },
+    200000
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0373",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Unknown error code xrequest_too_large",
+     "timestamp": 1
+    },
+    200000
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0374",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Unknown error code request_too_large2",
+     "timestamp": 1
+    },
+    200000
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0375",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Unknown error code request_too_large_flag",
+     "timestamp": 1
+    },
+    200000
+   ],
+   "result": false
   }
  ]
 }

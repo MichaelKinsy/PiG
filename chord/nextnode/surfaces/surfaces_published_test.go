@@ -318,7 +318,7 @@ func TestPublishedScriptsTheRolloutStepReportsAddedChangedAndRemovedInPisOrderAn
 		t.Fatalf("hosts = %+v, want one", result.Hosts)
 	}
 	got := result.Hosts[0]
-	if got.Kind != plugins.RolloutReported || got.Host != "web" || got.Error != nil {
+	if got.Kind != plugins.RolloutReloaded || got.Host != "web" || got.Error != nil {
 		t.Fatalf("host = %+v", got)
 	}
 	// added in the set's name order, changed those whose digest moved, removed in the order of the set they leave

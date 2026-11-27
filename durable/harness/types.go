@@ -62,21 +62,35 @@ type ProviderPayload struct {
 	Payload any
 }
 
-// YieldResult is the onYield result: a YieldContinue or a YieldTasks (upstream's union `{ continue } | { tasks }`).
-type YieldResult interface{ isYieldResult() }
+// YieldResultKind is the tag of an onYield hook result: continue or tasks.
+type YieldResultKind string
 
-// YieldContinue is the onYield result that appends a user message and continues the run.
+const (
+	YieldResultContinue YieldResultKind = "continue"
+	YieldResultTasks    YieldResultKind = "tasks"
+)
+
+// YieldResult is the onYield result: a YieldContinue or a YieldTasks (upstream's tagged union
+// `{ kind: "continue"; continue } | { kind: "tasks"; tasks }`).
+type YieldResult interface {
+	YieldKind() YieldResultKind
+	isYieldResult()
+}
+
+// YieldContinue is the `{ kind: "continue"; continue }` onYield result that appends a user message and continues the run.
 type YieldContinue struct {
 	Continue durable.UserInput
 }
 
-// YieldTasks is the onYield result whose tasks decide whether the answer stands.
+// YieldTasks is the `{ kind: "tasks"; tasks }` onYield result whose tasks decide whether the answer stands.
 type YieldTasks struct {
 	Tasks []HookTask
 }
 
-func (*YieldContinue) isYieldResult() {}
-func (*YieldTasks) isYieldResult()    {}
+func (*YieldContinue) YieldKind() YieldResultKind { return YieldResultContinue }
+func (*YieldTasks) YieldKind() YieldResultKind    { return YieldResultTasks }
+func (*YieldContinue) isYieldResult()             {}
+func (*YieldTasks) isYieldResult()                {}
 
 // GenerationHooks are the hooks of the built-in generation task. A nil member does not run. Register them as *GenerationHooks.
 type GenerationHooks struct {
@@ -216,10 +230,21 @@ type CompactionRequest struct {
 	Instructions *string
 }
 
-// CompactionDecision is a beforeCompact decision: Decline, or a Summary to use instead of summarizing.
+// CompactionDecisionKind is the tag of a beforeCompact decision: decline or summary.
+type CompactionDecisionKind string
+
+const (
+	// CompactionDecline declines compaction.
+	CompactionDecline CompactionDecisionKind = "decline"
+	// CompactionSummary supplies a summary instead of running the summarizer.
+	CompactionSummary CompactionDecisionKind = "summary"
+)
+
+// CompactionDecision is a beforeCompact decision: Kind CompactionDecline, or CompactionSummary with Summary to use
+// instead of summarizing.
 type CompactionDecision struct {
-	Decline bool
-	Summary *string
+	Kind    CompactionDecisionKind
+	Summary string
 }
 
 // CompactionHooks are the hooks of the built-in compaction task. A nil member does not run. Register them as *CompactionHooks.
@@ -372,8 +397,8 @@ type Conversation interface {
 	Configure(ctx context.Context, change AgentChange) error
 	// Submit durably admits user input, a passive entry write, or a continue. A busy conversation, or one with queued items, queues input and writes that affect model context in pi.inbox; WhenBusy reject rejects input with ConversationBusy instead and writes nothing. An idle conversation rejects WhenIdle reject input with ConversationIdle and writes nothing. A write of only Kind and Data (no Model, Head, or Edits) is appended at once, even mid-run, as it changes nothing the model sees. A continue starts a run on the context as it is, after placing queued items; a busy conversation rejects it with ConversationBusy, as it never queues.
 	Submit(ctx context.Context, submission durable.SubmissionDraft) (durable.Submission, error)
-	// SubmitIn admits a submission inside the caller's commit tx (Harness.Commit, Conversation.Commit, a task's runtime Commit), with the same rules, and returns its ID: the admission is stored with that commit, or not at all when the callback fails later or the commit fails. Call it before the commit's first table write (AppendEntry, CreateTask, CreateSubmission, another admission): otherwise it fails with ReadAfterWrite, on every path. Documents may be read and written before and after it. A rejection (ConversationBusy, ConversationIdle) fails before any write, so the callback may handle it. Do not call Submission or other Harness reads inside the callback: they wait for the commit holding the line. Its pi.durable.submit span covers the admission only, so its result is provisional. Fails for a transaction of another Session.
-	SubmitIn(tx durable.Tx, submission durable.SubmissionDraft) (durable.SubmissionId, error)
+	// Admit admits a submission inside the caller's commit tx (Harness.Commit, Conversation.Commit, a task's runtime Commit), with the same rules, and returns its ID: the admission is stored with that commit, or not at all when the callback fails later or the commit fails. Call it before the commit's first table write (AppendEntry, CreateTask, CreateSubmission, another admission): otherwise it fails with ReadAfterWrite, on every path. Documents may be read and written before and after it. A rejection (ConversationBusy, ConversationIdle) fails before any write, so the callback may handle it. Do not call Submission or other Harness reads inside the callback: they wait for the commit holding the line. Its pi.durable.submit span covers the admission only, so its result is provisional. Fails for a transaction of another Session.
+	Admit(tx durable.Tx, submission durable.SubmissionDraft) (durable.SubmissionId, error)
 	// Reset admits a write of a pi.reset entry that starts a new context, carrying handoff as a user message when non-nil. It returns after admission; while busy, it is placed at the next boundary.
 	Reset(ctx context.Context, handoff *string) error
 	// Compact admits a manual compaction task and returns its ID (spec §8.7).

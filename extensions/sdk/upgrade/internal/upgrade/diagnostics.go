@@ -187,26 +187,35 @@ func ClassifyDiagnostic(diagnostic Diagnostic, source FileSource, files map[stri
 		if match := usageDiagnostic().FindStringSubmatch(message); importsSDK(diagnostic, source, files) {
 			return RuleContextUsage, "ContextUsage." + match[1], true
 		}
-	case strings.Contains(message, "SetEditorComponent") && strings.Contains(message, "EditorFactory"):
-		return RuleEditorComponent, "Context.SetEditorComponent", true
-	case strings.Contains(message, "ToolWithConstrainedSampling") && strings.Contains(message, "ToolConstrainedSampling"):
-		return RuleConstrainedSampling, "(*Extension).ToolWithConstrainedSampling", true
 	case strings.Contains(message, "AddAutocompleteProvider") || strings.Contains(message, "AutocompleteProviderFactory"):
 		return RuleAutocompleteFactory, "AutocompleteProviderFactory", true
-	case (strings.Contains(message, "cannot be compared") || strings.Contains(message, "invalid map key")) && strings.Contains(message, "ToolInfo"):
-		return RuleNotComparable, "ToolInfo", true
-	case (strings.Contains(message, "cannot be compared") || strings.Contains(message, "invalid map key")) && strings.Contains(message, "OAuthCredentials"):
-		return RuleNotComparable, "OAuthCredentials", true
+	case strings.Contains(message, "cannot be compared") || strings.Contains(message, "invalid map key"):
+		for _, typ := range [...]string{"ToolInfo", "OAuthCredentials"} {
+			if strings.Contains(message, typ) {
+				return RuleNotComparable, typ, true
+			}
+		}
 	case highlightCodeTarget().MatchString(message) && importsSDK(diagnostic, source, files):
 		return RuleHostHighlightCode, "HostHelpers.HighlightCode", true
 	case strings.Contains(message, "MarkdownTransformer") && strings.Contains(message, "MarkdownTransformerOptions") && importsSDK(diagnostic, source, files):
 		return RuleMarkdownTransformer, markdownTransformerSymbol, true
 	case setModelNameArgument().MatchString(message) && importsSDK(diagnostic, source, files):
 		return RuleSetModelObject, SetModelSymbol, true
-	case strings.Contains(message, "TransformHeaders") && strings.Contains(message, "ProviderStreamOptions"):
-		return RuleTransformHeaders, "ProviderStreamOptions.TransformHeaders", true
-	case credentialType().MatchString(message) && importsSDK(diagnostic, source, files):
-		return credentialChange(diagnostic, source, files)
+	default:
+		for _, r := range [...]struct{ a, b, rule, sym string }{
+			{"SetEditorComponent", "EditorFactory", RuleEditorComponent, "Context.SetEditorComponent"},
+			{"ToolWithConstrainedSampling", "ToolConstrainedSampling", RuleConstrainedSampling, "(*Extension).ToolWithConstrainedSampling"},
+			{"TransformHeaders", "ProviderStreamOptions", RuleTransformHeaders, "ProviderStreamOptions.TransformHeaders"},
+			{"GetShowCacheMissNotices", "SettingsManager", RuleSettingsNotices, "SettingsManager.GetShowCacheMissNotices"},
+			{"SetShowCacheMissNotices", "SettingsManager", RuleSettingsNotices, "SettingsManager.SetShowCacheMissNotices"},
+		} {
+			if strings.Contains(message, r.a) && strings.Contains(message, r.b) {
+				return r.rule, r.sym, true
+			}
+		}
+		if credentialType().MatchString(message) && importsSDK(diagnostic, source, files) {
+			return credentialChange(diagnostic, source, files)
+		}
 	}
 	if method, found := dialogResultMethod(diagnostic, source, files); found {
 		return RuleDialogResults, "Context." + method, true

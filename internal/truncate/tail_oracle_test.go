@@ -30,6 +30,7 @@ func TestTruncateTailMatchesPi(t *testing.T) {
 		"line one\nline two\nline three\nline four", "line one\nline two\nline three\nline four\n",
 		"é", "éé\nèè", "日本語\n日本語\n日本語", "😀😀😀", "a😀b\n😀😀\nc", "x\u0301y\u0301", "\u2028\u2029", "a\rb\r\nc\r\n", "\r\n\r\n", "tab\tx\n\ty",
 		"long line without breaks, long enough to be cut: 0123456789abcdefghij", "日本語日本語日本語日本語", "😀a😀b😀c😀d😀e",
+		"first\n" + "yyyyyyyyyyyyyyyyyyyyEND\n\n", "\u00a0\u00a0\u00a0\n\n", "    \n\n", "x    \n\n",
 	}
 	limits := []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 13, 20, 40, 100}
 	var cases []tailCase

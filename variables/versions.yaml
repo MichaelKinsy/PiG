@@ -6,9 +6,9 @@ node-extension-floor: 22.13.0
 rust: 1.97.1
 npm: 12.2.1
 pi:
-  ref: v1.6.0
-  commit: faac585884ae2c013a6b1400f3e9e77f10b34bac
-  package: 1.6.0
-  version: 1.6.0
+  ref: v1.6.1
+  commit: ef4a1cfcca62b77ad3558337ff3e1c7f6beeadfe
+  package: 1.6.1
+  version: 1.6.1
 sbcl: 2.6.9
 tinygo: 0.44.0

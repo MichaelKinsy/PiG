@@ -176,6 +176,8 @@ node_modules
 # (automation/gen/vendor-chord-plugins-node.sh): a package resolves from a directory named node_modules.
 !chord/nextnode/plugins/node/pi/node_modules
 !chord/nextnode/surfaces/client/pi/node_modules
+!coding/extension/host/subprocess/runtime-node/shims/**/node_modules/
+!coding/extension/host/subprocess/runtime-node/shims/**/node_modules/**
 internal/evals/.eval/
 
 # built tool binary of test/parity/interface-closure/autobind
@@ -192,6 +194,6 @@ internal/evals/.eval/
 # pin.py sync keeps only the active pin and reviewed baseline eligible for tracking.
 # BEGIN PINNED INTERFACE SNAPSHOTS
 /test/parity/interfaces/*-v*.json
-!/test/parity/interfaces/*-v1.6.0.json
+!/test/parity/interfaces/*-v1.6.1.json
 !/test/parity/interfaces/*-v0.84.0.json
 # END PINNED INTERFACE SNAPSHOTS

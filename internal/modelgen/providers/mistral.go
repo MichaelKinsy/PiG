@@ -7,8 +7,10 @@ import . "github.com/MichaelKinsy/PiG/internal/modelgen" //nolint:staticcheck //
 func mistral() ProviderDefinition {
 	return ProviderDefinition{
 		ID: "mistral",
+		// No SkipDeprecated: models.dev marks Mistral models deprecated as soon as Mistral announces their
+		// retirement, while they keep working, e.g. devstral-2512: marked 2026-06-02, retired 2026-07-31.
 		Models: func(ctx *ProviderContext) ([]ChatModel, error) {
-			models, err := ModelsDevModels(ctx, "mistral", ModelsDevOptions{
+			return ModelsDevModels(ctx, "mistral", ModelsDevOptions{
 				API:               "mistral-conversations",
 				BaseURL:           "https://api.mistral.ai",
 				NoRecordReasoning: true,
@@ -36,26 +38,6 @@ func mistral() ProviderDefinition {
 					return result, nil
 				},
 			})
-			if err != nil {
-				return nil, err
-			}
-			medium := O(
-				"id", "mistral-medium-3.5",
-				"name", "Mistral Medium 3.5",
-				"api", "mistral-conversations",
-				"provider", "mistral",
-				"baseUrl", "https://api.mistral.ai",
-				"reasoning", true,
-			)
-			none, high := "none", "high"
-			if levels := GetEffortThinkingLevelMap([]ModelsDevReasoningOption{{Type: "effort", Values: []*string{&none, &high}}}); levels != nil {
-				medium.Set("thinkingLevelMap", levels)
-			}
-			medium.Set("input", Strings("text", "image"))
-			medium.Set("cost", O("input", 1.5, "output", 7.5, "cacheRead", 0, "cacheWrite", 0))
-			medium.Set("contextWindow", 262144)
-			medium.Set("maxTokens", 262144)
-			return AddMissing(models, []ChatModel{medium}), nil
 		},
 	}
 }

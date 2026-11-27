@@ -412,7 +412,7 @@ func CreateMcpResourceToolDefinitions(options ResourceToolsOptions) []extension.
 				resource := contents
 				blocks = append(blocks, mcp.ContentBlock{Type: mcp.ContentResource, Resource: &resource})
 			}
-			converted := ToModelContent(server.Name(), blocks, ConvertMcpResultOptions{})
+			converted := mcpToLLM(mcp.ToMcpModelContent(server.Name(), mcp.CallToolResult{Content: blocks}, mcp.McpModelContentOptions{SaveOutput: SaveToTempFile}))
 			if len(converted) == 0 {
 				converted = []ai.ToolResultMessageContent{ai.TextContent{Text: fmt.Sprintf("Resource %s is empty.", uri)}}
 			}

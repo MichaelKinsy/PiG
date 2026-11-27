@@ -16,10 +16,7 @@ var opencodeLongCacheRetentionUnsupportedModels = map[string]bool{
 	"opencode:deepseek-v4-flash":   true,
 	"opencode:deepseek-v4.1-flash": true,
 	"opencode:deepseek-v4-pro":     true,
-	"opencode:kimi-k2.5":           true,
-	"opencode:kimi-k2.6":           true,
 	"opencode:minimax-m2.7":        true,
-	"opencode-go:kimi-k2.6":        true,
 }
 
 // OpenCode serves each model on one protocol-specific endpoint. Native protocols
@@ -108,11 +105,6 @@ func opencodeModels(ctx *ProviderContext) ([]ChatModel, error) {
 			if provider == "opencode" && id == "grok-build-0.1" {
 				compat = Spread(compat, O("supportsReasoningEffort", false))
 			}
-			if id == "kimi-k2.6" {
-				// OpenCode Kimi K2.6 accepts Anthropic-style thinking objects
-				// and rejects string thinking values or combined reasoning_effort.
-				compat = Spread(compat, O("thinkingFormat", "deepseek", "supportsReasoningEffort", false))
-			}
 			// models.dev reports these as @ai-sdk/anthropic, but OpenCode Go serves
 			// them through the OpenAI-compatible /openai/v1/chat/completions path.
 			if provider == "opencode-go" && api == "anthropic-messages" && (id == "qwen3.5-plus" || id == "qwen3.6-plus") {
@@ -167,10 +159,6 @@ func finalizeOpencodeModel(model ChatModel) {
 	provider, id, api := model.Str("provider"), model.Str("id"), model.Str("api")
 	if provider == "opencode-go" && id == "glm-5.2" {
 		MergeThinking(model, O("off", nil, "minimal", nil, "low", nil, "medium", nil, "high", "high", "max", "max"))
-	}
-	if provider == "opencode-go" && id == "kimi-k2.6" {
-		// OpenCode Go exposes Kimi K2.6 thinking as on/off, not distinct effort tiers.
-		MergeThinking(model, O("minimal", nil, "low", nil, "medium", nil))
 	}
 	if provider == "opencode" && id == "grok-build-0.1" {
 		// OpenCode Zen Grok Build reasons by default but rejects explicit reasoningEffort.

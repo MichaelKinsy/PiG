@@ -384,7 +384,7 @@
     "package": "./internal/codingagent",
     "tests": [
       "TestFirstTimeSetupLogoIsThePigHeadAndPreviewsTheSprite",
-      "TestFirstTimeSetupThemePreviewAndEscSkip",
+      "TestFirstTimeSetupOmitsThemePickerAndCancelsOnEsc",
       "TestFirstTimeSetupSpriteStepListsExtensionSpritesAndSubmits",
       "TestShowFirstTimeSetupSavesTheChoiceBeforeTheTUI",
       "TestShowFirstTimeSetupSkipSavesNothing",

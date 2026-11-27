@@ -1,54 +1,54 @@
 {
-	"commit": "faac585884ae2c013a6b1400f3e9e77f10b34bac",
-	"version": "1.6.0",
-	"package_version": "1.6.0",
+	"commit": "ef4a1cfcca62b77ad3558337ff3e1c7f6beeadfe",
+	"version": "1.6.1",
+	"package_version": "1.6.1",
 	"license": {
 		"file": "LICENSE",
 		"sha256": "0457f5bcec3b3b211605dfb5d1a49042fd638f3686a410fe099c24a25af13c48",
 		"text": "Pi's LICENSE at the pinned commit"
 	},
 	"packs": {
-		"earendil-works-chord-1.6.0.tgz": {
+		"earendil-works-chord-1.6.1.tgz": {
 			"name": "@earendil-works/chord",
-			"version": "1.6.0",
+			"version": "1.6.1",
 			"license": "MIT",
-			"bytes": 3525187,
-			"integrity": "sha512-8dQXEKUR6qQPc4zNEblmv6hEfr2JAAU+nUprt+mhtdfRRZzl1At5ZhnJqTqesElAdR7RpAyaRIAilyteNHzyWA=="
+			"bytes": 3528302,
+			"integrity": "sha512-uoMFLrKMAOnfHhGdOuJgKyYsfn160djhs+sYJbW5zQ0qgVbkFQXaUEs8YdFcaTpYsASoL5AvIGvRVC2TUD7gXw=="
 		},
-		"earendil-works-pi-ai-1.6.0.tgz": {
+		"earendil-works-pi-ai-1.6.1.tgz": {
 			"name": "@earendil-works/pi-ai",
-			"version": "1.6.0",
+			"version": "1.6.1",
 			"license": "MIT",
-			"bytes": 894422,
-			"integrity": "sha512-9hL+eygFDEiFp//cydeUfmFsKmEqpmvsNPb10Y1W8+m5K9O+sx1hMStfu6nukrBD5sl6mP4RykCYBBNEgsVLfw=="
+			"bytes": 915201,
+			"integrity": "sha512-EyorgVyA2s4MxNl7YOapzOpdxrc8HUgxHEIOo8QRMK35P7PCOsSiWzMLf6ixKl3/obkg7I3wGJWHq+FdbUz43g=="
 		},
-		"earendil-works-pi-codemode-1.6.0.tgz": {
+		"earendil-works-pi-codemode-1.6.1.tgz": {
 			"name": "@earendil-works/pi-codemode",
-			"version": "1.6.0",
+			"version": "1.6.1",
 			"license": "MIT",
 			"bytes": 106951,
-			"integrity": "sha512-GAgAy7iJCVbeiuqq2dTIuNj3aXTMUeTF8Nu8LZs72e8ueGGDU5L3/D8VxzTHALIpQ1/q8u1tfmB3iYS2Nopchw=="
+			"integrity": "sha512-xogcFe38Ek/9cabCz6sP52FjUKtuNDwLmqeM1aQiwOF5rg7jZ//FRpnMeYyhvRyod2UYhhf/ojfg6rRdXi0peQ=="
 		},
-		"earendil-works-pi-durable-1.6.0.tgz": {
+		"earendil-works-pi-durable-1.6.1.tgz": {
 			"name": "@earendil-works/pi-durable",
-			"version": "1.6.0",
+			"version": "1.6.1",
 			"license": "MIT",
-			"bytes": 1103963,
-			"integrity": "sha512-nyPjInj/7ZjLEUCDMS7oNGRj1ynftOCVqXilWRBhIuT/xoRHrPy5yFNle/64hvs3F1rukMZ7Ar/4reA7auvUWQ=="
+			"bytes": 1107506,
+			"integrity": "sha512-hhKQg7FDsp25+pvIodqYZEEYTqKA/lBvHYJqHwwqb/zIc0hHq45HK6hQ7BnMHIyjsI7ev9P8qLCQlwxiFblm8A=="
 		},
-		"earendil-works-pi-schema-1.6.0.tgz": {
+		"earendil-works-pi-schema-1.6.1.tgz": {
 			"name": "@earendil-works/pi-schema",
-			"version": "1.6.0",
+			"version": "1.6.1",
 			"license": "MIT",
-			"bytes": 145243,
-			"integrity": "sha512-jD0VRCUcFzWQ5zN82pOuoHNN42/3pu4E5krtpiKknvPq4g2m+fuO38lj+xnZhuVpYcd2G0qlmr8lE6ZMzkad7Q=="
+			"bytes": 145246,
+			"integrity": "sha512-Q/6W4IiDdIQUochCuvXFpglTByNTFTuMYvMqXjcRiOnxOl/3mQYLAZpZTpBSRWiS4WgeV7NyH/8dQp6ipYZeNg=="
 		},
-		"earendil-works-pi-telemetry-1.6.0.tgz": {
+		"earendil-works-pi-telemetry-1.6.1.tgz": {
 			"name": "@earendil-works/pi-telemetry",
-			"version": "1.6.0",
+			"version": "1.6.1",
 			"license": "MIT",
 			"bytes": 51971,
-			"integrity": "sha512-MNL0TvtpgoSfX7mBLSVgzxTW6yvT8VLEpHvbWnZsIp92FtqVvx+4q9DxWZdX8KvcQqBs0GseAgVnLdVFinjN9Q=="
+			"integrity": "sha512-3gyjVQlVrPwEq7ZCea8++prMwUkuNXM3v/mzTJ9knJAhqrYLxSVAjYzA1iC3KLq8ismmSQIcnFp++qTwQwNToA=="
 		}
 	}
 }

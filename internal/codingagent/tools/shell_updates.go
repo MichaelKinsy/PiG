@@ -114,7 +114,7 @@ func (u *shellUpdateScheduler) emit() {
 	u.mu.Unlock()
 	u.lastUpdateAt = u.clock.now()
 	snapshot := u.output.Snapshot(true)
-	details := &BashDetails{FullOutputPath: snapshot.FullOutputPath}
+	details := &BashDetails{FullOutputPath: snapshot.FullOutputPath, FullOutputError: snapshot.FullOutputError}
 	if snapshot.Truncation.Truncated {
 		tr := snapshot.Truncation
 		details.Truncation = &tr

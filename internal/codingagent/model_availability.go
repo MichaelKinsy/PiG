@@ -19,6 +19,15 @@ func (r *ModelRegistry) SetAvailabilitySnapshot(configured func(providerID strin
 	r.availabilityAuth, r.registrationSync = configured, sync
 }
 
+// SetProviderAuthStatusSnapshot binds the Services-owned published auth-status
+// lookup so ModelRegistry.GetProviderAuthStatus reads the runtime availability
+// snapshot instead of re-running !command credentials on cold caches (Pi #12164).
+func (r *ModelRegistry) SetProviderAuthStatusSnapshot(fn func(providerID string) ai.AuthStatus) {
+	r.mu.Lock()
+	r.providerAuthStatus = fn
+	r.mu.Unlock()
+}
+
 // AvailabilityReadContext gives a full availability pass one view of auth.json: one revision check at the start of the pass serves all of its
 // reads. Pi's runAvailabilityRefresh makes every credential read before any I/O of the pass completes, so a pass without extension providers
 // publishes what Pi's does and may run its providers on the caller (readSnapshotContext).

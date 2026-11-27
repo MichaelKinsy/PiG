@@ -252,7 +252,7 @@ var (
 	overflowPatterns = lazyEach(
 		`prompt (?:is )?too long`,
 		`prompt exceeds max length`,
-		`request_too_large`,
+		`(?:^|[^a-z0-9_])request_too_large(?:[^a-z0-9_]|$)`,
 		`input is too long for requested model`,
 		`exceeds the context window`,
 		`exceeds (?:the )?(?:model'?s )?maximum context length(?: of [\d,]+ tokens?|\s*\([\d,]+\))`,
@@ -306,15 +306,27 @@ var (
 		`servers are currently busy`,
 		`currently experiencing high demand`,
 		`model is at capacity`,
+		// Pi a00a5048d: queue admission ceiling.
+		// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+		`admission ceiling`,
 		`rate.?limit`,
 		`too many requests`,
-		// Status codes must not be part of a longer word or number, e.g. a request id or byte count (#11057). Pi spells it (?<![a-z0-9])(?:429|500|502|503|504|520|524)(?![a-z0-9]);
+		`rate increased too quickly`,
+		// Status codes must not be part of a longer word or number, e.g. a request id or byte count (#11057). Pi spells it (?<![a-z0-9])(?:429|500|502|503|504|520|524|525)(?![a-z0-9]);
 		// RE2 has no lookaround, so the neighbours are matched, which a boolean test cannot tell apart.
-		`(?:^|[^a-z0-9])(?:429|500|502|503|504|520|524)(?:[^a-z0-9]|$)`,
+		// Pi fb62c069b: Cloudflare HTTP 525 (SSL handshake failed).
+		// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+		`(?:^|[^a-z0-9])(?:429|500|502|503|504|520|524|525)(?:[^a-z0-9]|$)`,
 		`service.?(?:is.?)?(?:temporarily.?)?unavailable`,
+		// Pi 25190b72c (#12227): gateway temporary provider unavailability.
+		// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+		`provider.?(?:is.?)?temporarily.?unavailable`,
 		`server.?error`,
 		`internal.?error`,
 		`provider.?returned.?(?:an.?)?error`,
+		// Pi a00a5048d: Anthropic streaming api_error event without HTTP status.
+		// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+		`"type"\s*:\s*"api_error"`,
 		`exceeded request buffer limit while retrying upstream`,
 		`unable to forward upstream`,
 		`upstream.?request.?failed`,
@@ -325,7 +337,7 @@ var (
 		`connection.?error`,
 		`connection.?refused`,
 		`connection.?lost`,
-		// Pi 9b88b94e2 (#12064): a gateway's mid-stream drop relayed as an Anthropic-style api_error event reading "Connection closed.".
+		// Pi 9b88b94e2 (#12064), a00a5048d: a gateway's mid-stream drop, e.g. "Connection closed.".
 		`connection.?closed`,
 		`other side closed`,
 		`fetch failed`,
@@ -355,16 +367,36 @@ var (
 		`stream ended before message_stop`,
 		`stream ended before a terminal response event`,
 		`http2 request did not get a response`,
+		// Pi a00a5048d: OpenAI-compatible finish_reason: error and OpenRouter empty/incomplete responses.
+		// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+		`provider finish_reason: error`,
+		// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+		`returned an empty response`,
+		// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+		`stopped before completing the response`,
 		// Codex CLI mid-stream disconnect, relayed by proxies that wrap the Codex CLI, e.g. "stream disconnected before completion: stream closed before response.completed" (#11057).
 		`stream disconnected before completion`,
+		// Magpie gateway relaying a dropped upstream Anthropic stream (#11879, Pi 566344046).
+		`cut short after the reply had begun`,
+		// Pi 25190b72c (#12227): gateway mid-stream SSE error frames without a status code.
+		// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+		`ended the response before it was complete`,
+		// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+		`connection to the provider was reset`,
+		// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+		`reported a failure while generating the response`,
 		`pending stream has been canceled`,
 		`retry delay`,
 		`you can retry your request`,
 		`try your request again`,
 		`please retry your request`,
+		// Pi a00a5048d: recursive "Repeat the request later".
+		// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+		`repeat the request later`,
 		`ResourceExhausted`,
 		`subscription_sharing_usage_unavailable`,
 		`subscription_sharing_user_unavailable`,
+		`provider stopped with: error`,
 	)
 )
 

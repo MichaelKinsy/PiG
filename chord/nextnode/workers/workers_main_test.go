@@ -186,8 +186,9 @@ func TestTheWorkersSideClosesItsLinkToTheServerBeforeItsNodeHostFailsAReloadInFl
 	events := worker.seen()
 	closed := slices.Index(events, linkClosed)
 	reloaded := slices.Index(events, string(FromWorkerReloaded))
-	if closed < 0 || (reloaded >= 0 && reloaded < closed) {
-		t.Fatalf("the server saw %v, want its link closed before any `reloaded`", events)
+	reloadFailed := slices.Index(events, string(FromWorkerReloadFailed))
+	if closed < 0 || (reloaded >= 0 && reloaded < closed) || (reloadFailed >= 0 && reloadFailed < closed) {
+		t.Fatalf("the server saw %v, want its link closed before any `reloaded` or `reload_failed`", events)
 	}
 	text, err := os.ReadFile(log)
 	if err != nil {

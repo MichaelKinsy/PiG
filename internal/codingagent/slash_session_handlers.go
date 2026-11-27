@@ -679,7 +679,6 @@ func settingsConfig(sc *SlashContext) (SettingsConfig, error) {
 		AvailableThemes:            tui.ActiveThemeRegistry().Names(),
 		HideThinkingBlock:          sm.GetHideThinkingBlock(),
 		MermaidRenderingMode:       sm.GetMermaidRenderingMode(),
-		ShowCacheMissNotices:       sm.GetShowCacheMissNotices(),
 		CollapseChangelog:          sm.GetCollapseChangelog(),
 		EnableInstallTelemetry:     sm.GetEnableInstallTelemetry(),
 		DoubleEscapeAction:         sm.GetDoubleEscapeAction(),
@@ -698,6 +697,7 @@ func settingsConfig(sc *SlashContext) (SettingsConfig, error) {
 		FullscreenCopyOnSelect:     sm.GetFullscreenCopyOnSelect(),
 		FullscreenWheelScrollLines: sm.GetFullscreenWheelScrollLines(),
 		Warnings:                   sm.GetWarnings(),
+		Notices:                    sm.GetNotices(),
 		MaskSecretInput:            settings.GetMaskSecretInput(),
 	}, nil
 }
@@ -811,9 +811,6 @@ func settingsHandlerTUI(sc *SlashContext, config SettingsConfig) error {
 			OnMermaidRenderingModeChange: func(mode MermaidRenderingMode) {
 				applied("mermaid-rendering", string(mode), sm.SetMermaidRenderingMode(mode))
 			},
-			OnShowCacheMissNoticesChange: func(shown bool) {
-				applied("cache-miss-notices", boolSettingValue(shown), sm.SetShowCacheMissNotices(shown))
-			},
 			OnCollapseChangelogChange: func(collapsed bool) {
 				applied("collapse-changelog", boolSettingValue(collapsed), sm.SetCollapseChangelog(collapsed))
 			},
@@ -879,6 +876,9 @@ func settingsHandlerTUI(sc *SlashContext, config SettingsConfig) error {
 			},
 			OnWarningsChange: func(warnings WarningSettings) {
 				applied("warnings", "configure", sm.SetWarnings(warnings))
+			},
+			OnNoticeChange: func(key NoticeKey, shown bool) {
+				applied("notices", string(key)+"="+boolSettingValue(shown), sm.SetNotice(key, shown))
 			},
 			OnCancel: done,
 		})

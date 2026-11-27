@@ -43,7 +43,7 @@ export async function postClassifierRequest(label, url, model, body, options, no
     if (transformed !== undefined)
         payload = transformed;
     const requestFetch = options.fetch ?? globalThis.fetch;
-    const { response, json } = await retryProviderRequest(async () => {
+    return retryProviderRequest(async () => {
         const timeoutSignal = options.timeoutMs !== undefined ? AbortSignal.timeout(options.timeoutMs) : undefined;
         const signal = options.signal && timeoutSignal
             ? AbortSignal.any([options.signal, timeoutSignal])
@@ -55,9 +55,11 @@ export async function postClassifierRequest(label, url, model, body, options, no
                 body: JSON.stringify(payload),
                 signal,
             });
+            // Reported before the body is read, so a body that fails to arrive still reports its status.
+            await options.onResponse?.({ status: next.status, headers: headersToRecord(next.headers) }, model);
             if (!next.ok)
                 throw httpError(label, next, await next.text());
-            return { response: next, json: (await next.json()) };
+            return (await next.json());
         }
         catch (error) {
             if (timeoutSignal?.aborted && !options.signal?.aborted)
@@ -70,8 +72,6 @@ export async function postClassifierRequest(label, url, model, body, options, no
         signal: options.signal,
         noRetryStatuses,
     });
-    await options.onResponse?.({ status: response.status, headers: headersToRecord(response.headers) }, model);
-    return json;
 }
 function tokenCount(value) {
     return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : 0;
@@ -79,18 +79,23 @@ function tokenCount(value) {
 /**
  * Usage from a `{ input_tokens, output_tokens }` object, priced from the model catalog like chat
  * usage. A missing or malformed usage object leaves the result without usage instead of failing it.
+ * `input_tokens_details.cached_tokens` and `cache_write_tokens` are included in `input_tokens`, as
+ * in the Responses API, so they are split out of `input`.
  */
 export function parseClassifierUsage(value, model) {
     if (!isRecord(value) || (value.input_tokens === undefined && value.output_tokens === undefined))
         return undefined;
-    const input = tokenCount(value.input_tokens);
+    const totalInput = tokenCount(value.input_tokens);
     const output = tokenCount(value.output_tokens);
+    const details = isRecord(value.input_tokens_details) ? value.input_tokens_details : undefined;
+    const cacheRead = Math.min(tokenCount(details?.cached_tokens), totalInput);
+    const cacheWrite = Math.min(tokenCount(details?.cache_write_tokens), totalInput - cacheRead);
     const usage = {
-        input,
+        input: totalInput - cacheRead - cacheWrite,
         output,
-        cacheRead: 0,
-        cacheWrite: 0,
-        totalTokens: input + output,
+        cacheRead,
+        cacheWrite,
+        totalTokens: totalInput + output,
         cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
     };
     calculateCost(model, usage);

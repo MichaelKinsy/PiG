@@ -63,7 +63,7 @@ func TestExample46AfterToolsTerminate(t *testing.T) {
 					return err
 				}
 				choice := "stop"
-				if state != nil && !state.Expired {
+				if state != nil && state.Kind == durable.SignalStateValue {
 					choice = state.Value.Choice
 				}
 				// The handle is fetched before the commit: inside it, runtime reads would wait for the commit itself.
@@ -77,7 +77,7 @@ func TestExample46AfterToolsTerminate(t *testing.T) {
 						return &goOnNext{Status: durable.TaskTerminal, Outcome: &durable.TaskOutcome[*harness.AfterToolsDecision]{Status: durable.OutcomeCompleted, Result: &terminate}}, nil
 					}
 					// A steer in the task's terminal commit: the round's boundary places it before the next request.
-					if _, err := handle.SubmitIn(tx, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("The person says: go on."), WhenBusy: durable.WhenBusySteer}); err != nil {
+					if _, err := handle.Admit(tx, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("The person says: go on."), WhenBusy: durable.WhenBusySteer}); err != nil {
 						return nil, err
 					}
 					var none *harness.AfterToolsDecision

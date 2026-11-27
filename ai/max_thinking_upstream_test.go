@@ -65,23 +65,19 @@ func TestMaxThinkingUpstream(t *testing.T) {
 			t.Fatal(got)
 		}
 	})
-	// packages/ai/test/max-thinking.test.ts:88 (Pi fcc33744b)
-	t.Run("sends max as reasoning.effort to the Codex Responses API for gpt-5.6-sol", func(t *testing.T) {
-		m := mustGeneratedModel(t, "openai-codex", "gpt-5.6-sol")
-		p := NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{APIKey: codexTestToken(t, "acc_test"), Model: m.ID, ProviderID: m.Provider, BaseURL: m.BaseURL, Compat: m.Compat})
-		payload := captureCatalogPayload(t, p, StreamOptions{Thinking: ThinkingLevelMax, IsReasoning: m.Reasoning, Transport: TransportSSE})
-		assertCatalogJSON(t, payload["reasoning"], `{"effort":"max","summary":"auto"}`)
-	})
-	for _, id := range []string{"gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6.2-astra", "gpt-6.2-sol"} {
-		t.Run("sends max as a configuration_update item to the Codex Responses API for "+id, func(t *testing.T) {
+	// packages/ai/test/max-thinking.test.ts:88 (Port of Pi main a588a7bc4d1bc16554ed2a8044fd4be72ce26ec9)
+	for _, id := range []string{"gpt-5.6-sol", "gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6.2-astra", "gpt-6.2-sol"} {
+		t.Run("sends max as the initial reasoning.effort for openai-codex/"+id, func(t *testing.T) {
 			m := mustGeneratedModel(t, "openai-codex", id)
 			p := NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{APIKey: codexTestToken(t, "acc_test"), Model: m.ID, ProviderID: m.Provider, BaseURL: m.BaseURL, Compat: m.Compat})
 			payload := captureCatalogPayload(t, p, StreamOptions{Thinking: ThinkingLevelMax, IsReasoning: m.Reasoning, Transport: TransportSSE})
+			assertCatalogJSON(t, payload["reasoning"], `{"effort":"max","summary":"auto"}`)
 			input, _ := payload["input"].([]any)
-			if len(input) == 0 {
-				t.Fatalf("empty input in payload: %#v", payload)
+			for _, item := range input {
+				if obj, ok := item.(map[string]any); ok && obj["type"] == "configuration_update" {
+					t.Fatalf("unexpected configuration_update in initial request input: %#v", input)
+				}
 			}
-			assertCatalogJSON(t, input[len(input)-1], `{"type":"configuration_update","reasoning":{"effort":"max"}}`)
 		})
 	}
 }

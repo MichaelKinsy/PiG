@@ -10,7 +10,7 @@ import (
 // addCacheWarmingUsage renders one persisted cache-warming refresh when cache
 // notices are on. Mirrors upstream interactive-mode.ts addCacheWarmingUsage.
 func (m *InteractiveMode) addCacheWarmingUsage(entry UsageEntry) {
-	if !m.showCacheMissNotices() {
+	if !m.notices().CacheWarming {
 		return
 	}
 	// Back-to-back warms collapse into one line with the cumulative cost.

@@ -1151,7 +1151,7 @@ func (c *Workers) control(record *routed, child *child, message FromWorker) {
 		}
 		child.started.reject(uncrossed(*message.Error))
 		child.process.Kill()
-	case FromWorkerReloaded:
+	case FromWorkerReloaded, FromWorkerReloadFailed:
 		if child.reloaded != nil {
 			child.reloaded(message)
 		}
@@ -1289,7 +1289,7 @@ func (c *Workers) ended(child *child) {
 		child.ended = &ended{err: data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "worker: its link is gone"}, nil)}
 	}
 	if child.reloaded != nil {
-		child.reloaded(FromWorker{Kind: FromWorkerReloaded, Error: &CrossedError{Message: "worker: its link is gone"}})
+		child.reloaded(FromWorker{Kind: FromWorkerReloadFailed, Error: &CrossedError{Message: "worker: its link is gone"}})
 	}
 }
 
@@ -1471,7 +1471,7 @@ func (c *Workers) retried(record *routed, started *outcome[host.ResolvedLink]) *
 	hostName := record.address.Key
 	c.task(func() {
 		if _, err := started.wait(); err != nil {
-			entry.resolve(plugins.RolloutHost{Kind: plugins.RolloutErrored, Host: hostName, Error: unrejected(err)})
+			entry.resolve(plugins.RolloutHost{Kind: plugins.RolloutFailed, Host: hostName, Error: unrejected(err)})
 			return
 		}
 		var ready *outcome[CrossedReport]
@@ -1481,20 +1481,20 @@ func (c *Workers) retried(record *routed, started *outcome[host.ResolvedLink]) *
 			}
 		})
 		if ready == nil {
-			entry.resolve(plugins.RolloutHost{Kind: plugins.RolloutErrored, Host: hostName, Error: errors.New("worker: exited")})
+			entry.resolve(plugins.RolloutHost{Kind: plugins.RolloutFailed, Host: hostName, Error: errors.New("worker: exited")})
 			return
 		}
 		report, err := ready.wait()
 		if err != nil {
-			entry.resolve(plugins.RolloutHost{Kind: plugins.RolloutErrored, Host: hostName, Error: err})
+			entry.resolve(plugins.RolloutHost{Kind: plugins.RolloutFailed, Host: hostName, Error: err})
 			return
 		}
-		entry.resolve(plugins.RolloutHost{Kind: plugins.RolloutReported, Host: hostName, Report: uncrossedReport(report)})
+		entry.resolve(plugins.RolloutHost{Kind: plugins.RolloutReloaded, Host: hostName, Report: uncrossedReport(report)})
 	})
 	return entry
 }
 
-// reload ships scripts to child after its outstanding reload; it settles on `reloaded`, its link's loss or its exit. Only a
+// reload ships scripts to child after its outstanding reload; it settles on `reloaded` or `reload_failed`, its link's loss or its exit. Only a
 // reload that applied without failures marks the set shipped (a failed plugin is shipped again next time). It runs in a
 // section.
 func (c *Workers) reload(hostName string, child *child, scripts []plugins.PluginScript, key string) *outcome[plugins.RolloutHost] {
@@ -1509,7 +1509,7 @@ func (c *Workers) reload(hostName string, child *child, scripts []plugins.Plugin
 				if ended.stopped {
 					reload.resolve(plugins.RolloutHost{Kind: plugins.RolloutStopped, Host: hostName})
 				} else {
-					reload.resolve(plugins.RolloutHost{Kind: plugins.RolloutErrored, Host: hostName, Error: ended.err})
+					reload.resolve(plugins.RolloutHost{Kind: plugins.RolloutFailed, Host: hostName, Error: ended.err})
 				}
 			}
 			if child.ended != nil {
@@ -1519,15 +1519,15 @@ func (c *Workers) reload(hostName string, child *child, scripts []plugins.Plugin
 			child.reloaded = func(reply FromWorker) {
 				child.reloaded = nil
 				switch {
-				case reply.Report != nil:
+				case reply.Kind == FromWorkerReloaded:
 					if len(reply.Report.Failed) == 0 {
 						child.shipped = key
 					}
-					reload.resolve(plugins.RolloutHost{Kind: plugins.RolloutReported, Host: hostName, Report: uncrossedReport(*reply.Report)})
+					reload.resolve(plugins.RolloutHost{Kind: plugins.RolloutReloaded, Host: hostName, Report: uncrossedReport(*reply.Report)})
 				case child.ended != nil:
 					settle(child.ended)
 				default:
-					reload.resolve(plugins.RolloutHost{Kind: plugins.RolloutErrored, Host: hostName, Error: uncrossed(*reply.Error)})
+					reload.resolve(plugins.RolloutHost{Kind: plugins.RolloutFailed, Host: hostName, Error: uncrossed(*reply.Error)})
 				}
 			}
 			child.process.Send(ToWorker{Kind: ToWorkerReload, Scripts: scripts})
@@ -1604,7 +1604,7 @@ func keyOf(scripts []plugins.PluginScript) string {
 func bounded(hostName string, entry *outcome[plugins.RolloutHost], ctx context.Context) plugins.RolloutHost {
 	result, err := entry.await(ctx)
 	if err != nil {
-		return plugins.RolloutHost{Kind: plugins.RolloutErrored, Host: hostName, Error: err}
+		return plugins.RolloutHost{Kind: plugins.RolloutFailed, Host: hostName, Error: err}
 	}
 	return result
 }

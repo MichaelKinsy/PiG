@@ -1,4 +1,4 @@
-upstream_version = "1.6.0"
+upstream_version = "1.6.1"
 
 [[contract]]
 id = "coding-agent/extension-input/remapped-confirm"
@@ -412,7 +412,7 @@ pig_targets = [
   "internal/codingagent/ext_ui_dialog_stack.go#showTopExtensionDialog",
   "internal/codingagent/ext_ui_dialog_stack.go#finishExtensionDialog",
   "coding/extension/host/subprocess/ui_bridge.go#handleCall",
-  "internal/codingagent/ext_ui_context.go#selectWithStatus",
+  "internal/codingagent/ext_ui_context.go#Select",
   "internal/codingagent/custom_overlay_control.go#SetFocused",
 ]
 evidence = [
@@ -445,7 +445,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
 start = "\tprivate showExtensionSelector("
 end = "\t/**\n\t * Show a confirmation dialog for extensions."
-sha256 = "a21b4d72f2e9bd53a902d6e9d418f96dd247d68c5439af25aabef16fdd596262"
+sha256 = "7bdbc61f1ef57e84f05c3b42ce7e74b0ab1631a85a6f6e844c8461c39ab83207"
 keybindings = []
 
 [[contract]]
@@ -494,7 +494,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
 start = "\tprivate showExtensionInput("
 end = "\t/**\n\t * Show a multi-line editor for extensions (with Ctrl+G support)."
-sha256 = "82867f580d91e258aeacdc2de0db11ec368c88e56aa101cbd0f10dbab68d9b59"
+sha256 = "bea1c74fdb21efda6517039530e14e51d018b08b4ed9a710857009f309751163"
 keybindings = []
 
 [[contract]]
@@ -541,7 +541,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
 start = "\tprivate showExtensionEditor("
 end = "\t/**\n\t * Set a custom editor component from an extension."
-sha256 = "f581246fbf6d8b7144ccd69b69f1e9e011075234385cea93af879c11ea8203ab"
+sha256 = "5f6cad6ffc7674075eacf033f424377d5bf01c32b2f5f7141b4f7757909ee0c8"
 keybindings = []
 
 [[contract]]
@@ -1385,7 +1385,7 @@ evidence = [
 path = "packages/tui/src/tui-main-screen.ts"
 start = "\tprotected doRender(): void {"
 end = "\n\tprivate positionHardwareCursor"
-sha256 = "bba5085c1cd3147cc2eba52ee920093af2b6ccb03d7c95bfc96f2772f415d2d2"
+sha256 = "b3ace205f3aeeb20847bbaecc17d6eb13c11692f54751b41b5549130590da3bb"
 keybindings = []
 
 [[contract]]
@@ -1419,7 +1419,7 @@ evidence = ["tui/editor_literal_input_upstream_test.go#TestEditorHistoryAndSubmi
 path = "packages/tui/src/components/editor.ts"
 start = "\taddToHistory(text: string): void {"
 end = "\n\tprivate isEditorEmpty()"
-sha256 = "c7193b420e4f69ef8d06d2552824fc97bcee2c87e32ea2067566b58d81b7fec5"
+sha256 = "31065ffce409d79169f09fa5fe377748dca677f9b1a30b845f1dd7a04bb965fd"
 keybindings = ['matchesKey:"shift+backspace"', 'matchesKey:"shift+delete"', 'matchesKey:"shift+space"', "tui.editor.cursorDown", "tui.editor.cursorLeft", "tui.editor.cursorLineEnd", "tui.editor.cursorLineStart", "tui.editor.cursorRight", "tui.editor.cursorUp", "tui.editor.cursorWordLeft", "tui.editor.cursorWordRight", "tui.editor.deleteCharBackward", "tui.editor.deleteCharForward", "tui.editor.deleteToLineEnd", "tui.editor.deleteToLineStart", "tui.editor.deleteWordBackward", "tui.editor.deleteWordForward", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.editor.jumpBackward", "tui.editor.jumpForward", "tui.editor.pageDown", "tui.editor.pageUp", "tui.editor.undo", "tui.editor.yank", "tui.editor.yankPop", "tui.input.copy", "tui.input.newLine", "tui.input.submit", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up", "tui.select.pageDown", "tui.select.pageUp"]
 
 [[contract]]
@@ -2233,7 +2233,7 @@ keybindings = []
 
 [[contract]]
 id = "coding-agent/warning-settings-submenu/input-state-machine"
-upstream_id = "input:packages/coding-agent/src/modes/interactive/components/settings-selector.ts#WarningSettingsSubmenu.handleInput"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/settings-selector.ts#ToggleSettingsSubmenu.handleInput"
 family = "settings"
 kind = "selector-input-state-machine"
 claim = "the single warnings row takes every key (toggle, cancel); a warning the settings never set shows as on, and each toggle reports the whole state with that warning set"
@@ -2322,7 +2322,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/components/first-time-setup.ts"
 start = "\thandleInput(keyData: string): void {"
 end = "\t\t\tthis.options.onCancel();\n\t\t}\n\t}\n}"
-sha256 = "3fec5855cba41756c0aa58010f757dc7542faefb65bb0f94be32939adabc6a60"
+sha256 = "d210cf8c79a10f42a347a6d91d26ae8888d766e4617d2f49440501fe9bcb1788"
 keybindings = ["tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up"]
 
 [[contract]]
@@ -3929,7 +3929,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/components/bash-execution.ts"
 start = "\tprivate updateDisplay(): void {"
 end = "\n\t/**\n\t * Get the raw output"
-sha256 = "5679c8cd4fcecd43605b06888ac58611c86effe5149c5a8881bb03759615aeeb"
+sha256 = "d95dfda3fa9c6f2b434a3863e33079e7e44b7bc31b6a305606ef0b90d921d16b"
 keybindings = []
 
 [[contract]]
@@ -4294,12 +4294,12 @@ evidence = [
 path = "packages/ai/src/api/openai-responses-shared.ts"
 start = "function renderToolRemovalNotice(names: readonly string[]): string {"
 end = "export function convertResponsesMessages<TApi extends Api>("
-sha256 = "6a77f05c05b75d877465adedd9a09785a127f6fe514a5473e330b31a7f64d91b"
+sha256 = "f4efffcb4f732dc58f4e3d15ecca116170a08ccd6075933f1050c68d47e782bd"
 keybindings = []
 
 [[contract]]
 id = "ai/openai-responses/tool-change-announcements"
-upstream_id = "render:packages/ai/src/api/openai-responses-shared.ts#<module>.renderToolRemovalNotice"
+upstream_id = "render:packages/ai/src/api/openai-responses-shared.ts#<module>.renderResponsesTranscript"
 family = "providers-faux-streaming"
 kind = "render-layout"
 claim = "the state the two notices read: the unavailable list is cleared of every tool a system message adds before that message is handled, a message that anchors tool changes (its position is at or past the folded count) declares its additions as an additional_tools item, preceded by the incremental notice from the second declaration on, or as a client tool_search_call and tool_search_output pair under tool search, then writes its update text and removal notice as one instruction message with empty parts dropped, and records its true removals only then, so the notice before its own additions never lists them; byte for byte over the same 21 hand-written and 400 seeded transcripts and the scenario's 68 request probes"
@@ -4319,7 +4319,7 @@ evidence = [
 path = "packages/ai/src/api/openai-responses-shared.ts"
 start = "\t/** Tools announced as removed and not declared again since. */"
 end = "\t\t} else if (msg.role === \"user\") {\n\t\t\tif (typeof msg.content === \"string\") {"
-sha256 = "8862fafde93226c6a6543fb12f6eda962115f7e34319a4be736a3024d84c40da"
+sha256 = "9a998c49b72fd3a3e6b34a2a4b093b5825b9dc8b28cbb8923a8c5d648b65ec03"
 keybindings = []
 
 [[contract]]
@@ -5933,7 +5933,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
 start = "\tprivate renderSessionItems("
 end = "\t/**\n\t * Render session entries to chat."
-sha256 = "b62249f9dc4f10d262e5000b814d99da8b60dcfef920348da0513a80a5c86df6"
+sha256 = "b9889cff27a6957d226cc9e21f464105f0c05da73b4bd37513983a8e33bff851"
 keybindings = []
 
 [[contract]]

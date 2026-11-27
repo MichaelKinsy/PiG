@@ -63,7 +63,7 @@ func builtinTypedBase(id string, fallback ai.ModelsStreamFunction) *ai.ModelsPro
 		}
 		return []*ai.Model{}
 	}
-	base := &ai.ModelsProvider{ID: id, Name: ai.ProviderDisplayName(id), BaseURL: ai.ProviderBaseURL(id), Auth: auth, GetModels: func() ([]*ai.Model, error) { return chatModels(), nil }, Stream: fallback, StreamSimple: fallback}
+	base := &ai.ModelsProvider{ID: id, Name: ai.ProviderDisplayName(id), BaseURL: ai.ProviderBaseURL(id), Auth: auth, GetModels: func() ([]*ai.Model, error) { return chatModels(), nil }, FilterModels: ai.BuiltinFilterModels(id), FilterAllModels: ai.BuiltinFilterAllModels(id), Stream: fallback, StreamSimple: fallback}
 	base.GetAllModels = func() ([]ai.AnyModel, error) {
 		all := ai.AnyModels(chatModels())
 		for _, image := range images {
@@ -165,7 +165,7 @@ func (r *ModelRegistry) typedModelProviderIDs() []string {
 	r.mu.RUnlock()
 	var ids []string
 	for _, id := range r.modelProviderIDs() {
-		if registered[id] || len(builtinImageModelsOf(id)) > 0 || len(builtinClassifierModelsOf(id)) > 0 || r.GetProvider(id) != nil {
+		if registered[id] || len(builtinImageModelsOf(id)) > 0 || len(builtinClassifierModelsOf(id)) > 0 || r.isRadiusProvider(id) || r.GetProvider(id) != nil {
 			ids = append(ids, id)
 		}
 	}
@@ -230,8 +230,28 @@ func (r *ModelRegistry) availableProviderAllModels(ctx context.Context, id strin
 	if err != nil || check == nil {
 		return nil, err
 	}
+	models := r.GetProviderAllModelData(id)
+	if filterAll := ai.BuiltinFilterAllModels(id); filterAll != nil && r.NativeProvider(id) == nil {
+		var credential *ai.Credential
+		r.mu.RLock()
+		store := r.credentialStore
+		runtime := r.runtimeCredentials.Load()
+		r.mu.RUnlock()
+		hasRuntimeKey := false
+		if runtime != nil {
+			if key, ok := runtime.RuntimeAPIKey(id); ok && key != "" {
+				hasRuntimeKey = true
+			}
+		}
+		if !hasRuntimeKey && store != nil {
+			if stored, found, readErr := ai.ReadRawCredential(context.WithoutCancel(ctx), store, id); readErr == nil && found {
+				credential = &stored
+			}
+		}
+		return filterAll(models, credential), nil
+	}
 	filter := r.accountModelFilter(context.WithoutCancel(ctx), id)
-	return slices.DeleteFunc(r.GetProviderAllModelData(id), func(model ai.AnyModel) bool {
+	return slices.DeleteFunc(models, func(model ai.AnyModel) bool {
 		return ai.IsModelType(model, ai.ModelTypeChat) && !filter(model.ModelID())
 	}), nil
 }

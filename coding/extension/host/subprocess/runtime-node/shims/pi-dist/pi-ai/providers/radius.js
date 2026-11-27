@@ -1,8 +1,10 @@
+import { piDecisionApi } from "../api/pi-decision.lazy.js";
 import { piMessagesApi } from "../api/pi-messages.lazy.js";
 import { envApiKeyAuth, lazyOAuth } from "../auth/helpers.js";
 import { loadRadiusOAuth } from "../auth/oauth/load.js";
+import { isModelType } from "../utils/model-operations.js";
 import { RADIUS_MODELS } from "./radius.models.js";
-import { DEFAULT_RADIUS_GATEWAY, getRadiusModels, getRadiusModelsFromConfig, loadRadiusGatewayConfig, normalizeRadiusGatewayUrl, } from "./radius-config.js";
+import { DEFAULT_RADIUS_GATEWAY, getRadiusAllModelsFromConfig, getRadiusModels, loadRadiusGatewayConfig, normalizeRadiusGatewayUrl, } from "./radius-config.js";
 /** Radius gateway provider with a persisted, dynamically refreshed catalog. */
 export function radiusProvider(options = {}) {
     const id = options.id ?? "radius";
@@ -15,6 +17,7 @@ export function radiusProvider(options = {}) {
     // the shipped baseline instead of overlaying it. The baseline only covers the time before any catalog exists.
     let dynamicModels;
     const streams = piMessagesApi();
+    const classifiers = piDecisionApi();
     return {
         id,
         name,
@@ -22,11 +25,12 @@ export function radiusProvider(options = {}) {
             apiKey: envApiKeyAuth("Radius API key", ["RADIUS_API_KEY"]),
             oauth: lazyOAuth({ name, load: () => loadRadiusOAuth({ name, gateway }) }),
         },
-        getModels: () => dynamicModels ?? baselineModels,
+        getModels: () => (dynamicModels ?? baselineModels).filter((model) => isModelType(model, "chat")),
+        getAllModels: () => dynamicModels ?? baselineModels,
         refreshModels: async (context) => {
             const stored = context.stored;
             if (stored) {
-                const restored = stored.models.filter((model) => model.provider === id);
+                const restored = stored.models.filter((model) => model.provider === id && (isModelType(model, "chat") || isModelType(model, "classifier")));
                 if (!(await context.publish({
                     update: () => {
                         dynamicModels = restored;
@@ -55,7 +59,7 @@ export function radiusProvider(options = {}) {
             const config = await loadRadiusGatewayConfig(gateway, apiKey, context.signal);
             if (context.signal.aborted)
                 return;
-            const refreshed = getRadiusModelsFromConfig(id, config);
+            const refreshed = getRadiusAllModelsFromConfig(id, config);
             await context.publish({
                 persist: { models: refreshed, checkedAt: Date.now() },
                 update: () => {
@@ -65,6 +69,7 @@ export function radiusProvider(options = {}) {
         },
         stream: (model, context, streamOptions) => streams.stream(model, context, streamOptions),
         streamSimple: (model, context, streamOptions) => streams.streamSimple(model, context, streamOptions),
+        classify: (model, context, classifyOptions) => classifiers.classify(model, context, classifyOptions),
     };
 }
 //# sourceMappingURL=radius.js.map

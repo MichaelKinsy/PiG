@@ -476,14 +476,6 @@ count = 2
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
-file = "ai/openai_responses.go"
-func = "responsesMessageConverter.convertAnchored"
-pattern = "loop-format"
-detail = "fmt.Sprintf"
-count = 3
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
 file = "ai/provider_env.go"
 func = "getProviderEnvValue"
 pattern = "env-stat"
@@ -3818,14 +3810,6 @@ pattern = "nested-marshal"
 detail = "json.Marshal"
 count = 2
 class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
-
-[[hit]]
-file = "internal/codingagent/llama/client.go"
-func = "LlamaClient.watch"
-pattern = "loop-format"
-detail = "string+="
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
 file = "internal/codingagent/llama/native_provider.go"

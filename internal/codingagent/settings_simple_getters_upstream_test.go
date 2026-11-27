@@ -21,12 +21,12 @@ func TestSettingsManagerSimpleGettersMatchUpstreamDefaultsAndStoredValues(t *tes
 		return NewSettingsManager(cwd, agentDir)
 	}
 	defaults := load("")
-	if defaults.GetSteeringMode() != "one-at-a-time" || defaults.GetFollowUpMode() != "one-at-a-time" || !defaults.GetEnableSkillCommands() || defaults.GetShowCacheMissNotices() || defaults.GetThinkingBudgets() != nil {
-		t.Fatalf("defaults: steering=%q followUp=%q skills=%v cacheMiss=%v budgets=%v", defaults.GetSteeringMode(), defaults.GetFollowUpMode(), defaults.GetEnableSkillCommands(), defaults.GetShowCacheMissNotices(), defaults.GetThinkingBudgets())
+	if defaults.GetSteeringMode() != "one-at-a-time" || defaults.GetFollowUpMode() != "one-at-a-time" || !defaults.GetEnableSkillCommands() || defaults.GetNotices().CacheMisses || defaults.GetThinkingBudgets() != nil {
+		t.Fatalf("defaults: steering=%q followUp=%q skills=%v cacheMiss=%v budgets=%v", defaults.GetSteeringMode(), defaults.GetFollowUpMode(), defaults.GetEnableSkillCommands(), defaults.GetNotices().CacheMisses, defaults.GetThinkingBudgets())
 	}
 	set := load(`{"steeringMode":"all","followUpMode":"all","enableSkillCommands":false,"showCacheMissNotices":true,"thinkingBudgets":{"low":1234,"high":0}}`)
-	if set.GetSteeringMode() != "all" || set.GetFollowUpMode() != "all" || set.GetEnableSkillCommands() || !set.GetShowCacheMissNotices() {
-		t.Fatalf("stored: steering=%q followUp=%q skills=%v cacheMiss=%v", set.GetSteeringMode(), set.GetFollowUpMode(), set.GetEnableSkillCommands(), set.GetShowCacheMissNotices())
+	if set.GetSteeringMode() != "all" || set.GetFollowUpMode() != "all" || set.GetEnableSkillCommands() || !set.GetNotices().CacheMisses {
+		t.Fatalf("stored: steering=%q followUp=%q skills=%v cacheMiss=%v", set.GetSteeringMode(), set.GetFollowUpMode(), set.GetEnableSkillCommands(), set.GetNotices().CacheMisses)
 	}
 	budgets := set.GetThinkingBudgets()
 	if budgets == nil || budgets.Low == nil || *budgets.Low != 1234 || budgets.High == nil || *budgets.High != 0 || budgets.Minimal != nil || budgets.Medium != nil {

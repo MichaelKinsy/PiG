@@ -39,7 +39,7 @@ func TestResumedCompactedTranscriptFollowsPiContextEntryOrder(t *testing.T) {
 						must(sess.AppendMessage(mkUserMsg("THIRD q")))
 						must(sess.AppendMessage(mkAssistantMsg("THIRD a")))
 					})
-					m.opts.SettingsManager = NewInMemorySettingsManager(Settings{ShowCacheMissNotices: notices})
+					m.opts.SettingsManager = NewInMemorySettingsManager(Settings{Notices: &NoticeSettings{CacheMisses: notices, cacheMissesSet: true, CacheWarming: notices, cacheWarmingSet: true, CompactionCosts: notices, compactionCostsSet: true, ReasoningDrops: notices, reasoningDropsSet: true}})
 					if path == "startup" {
 						m.opts.ResumePath = m.currentSession().Path()
 						m.renderInitialMessages()

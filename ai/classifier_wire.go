@@ -110,6 +110,7 @@ type classifierResultWire struct {
 	Model        string               `json:"model"`
 	Answers      ClassifierAnswers    `json:"answers"`
 	Usage        *Usage               `json:"usage,omitempty"`
+	ResponseID   string               `json:"responseId,omitempty"`
 	StopReason   ClassifierStopReason `json:"stopReason"`
 	ErrorMessage string               `json:"errorMessage,omitempty"`
 	Timestamp    int64                `json:"timestamp"`

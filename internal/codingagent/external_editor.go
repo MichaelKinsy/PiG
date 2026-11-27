@@ -35,6 +35,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 	"github.com/MichaelKinsy/PiG/internal/text"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -82,13 +83,19 @@ func OpenExternalEditor(ctx context.Context, initial string, configuredEditor st
 	// (mode 0700) and writes prompt.md in it; cleanup is best effort.
 	directory, err := os.MkdirTemp("", "pi-editor-")
 	if err != nil {
-		return initial, fmt.Errorf("external editor: tempdir: %w", err)
+		return initial, &ExternalEditorFailure{
+			Message: fmt.Sprintf("External editor failed: %s; prompt unchanged", nodeerrno.FromPathError(err).Error()),
+			Err:     fmt.Errorf("external editor: tempdir: %w", err),
+		}
 	}
 	defer func() { _ = os.RemoveAll(directory) }()
 	tmpPath := filepath.Join(directory, "prompt.md")
 
 	if err := os.WriteFile(tmpPath, []byte(initial), 0o666); err != nil {
-		return initial, fmt.Errorf("external editor: write initial: %w", err)
+		return initial, &ExternalEditorFailure{
+			Message: fmt.Sprintf("External editor failed: %s; prompt unchanged", nodeerrno.FromPathError(err).Error()),
+			Err:     fmt.Errorf("external editor: write initial: %w", err),
+		}
 	}
 
 	// Pi splits on literal spaces, preserving empty arguments. Quoting and tab expansion are left to cmd.exe only on Windows.
@@ -120,7 +127,10 @@ func OpenExternalEditor(ctx context.Context, initial string, configuredEditor st
 
 	data, err := os.ReadFile(tmpPath)
 	if err != nil {
-		return initial, fmt.Errorf("external editor: read result: %w", err)
+		return initial, &ExternalEditorFailure{
+			Message: fmt.Sprintf("External editor failed: %s; prompt unchanged", nodeerrno.FromPathError(err).Error()),
+			Err:     fmt.Errorf("external editor: read result: %w", err),
+		}
 	}
 	// readFileSync(path, "utf-8"): each ill-formed byte sequence becomes U+FFFD. Then one trailing newline goes (most editors append one).
 	out := strings.TrimSuffix(text.StripBom(jsstring.FromUTF8(data)), "\n")

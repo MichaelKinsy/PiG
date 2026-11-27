@@ -151,7 +151,7 @@ func BuildCatalog(definitions []ProviderDefinition, sources *CatalogSources, str
 			applyDeepSeekCompatRules(model)
 			applyModelsDevEffort(model, ctx.ModelsDevSource(model))
 			applyOpenAIFamilyRules(model)
-			applyClaudeFamilyRules(model)
+			applyClaudeFamilyRules(model, ctx)
 			applyDeepSeekFamilyRules(model)
 		}
 		if definition.Finalize != nil {

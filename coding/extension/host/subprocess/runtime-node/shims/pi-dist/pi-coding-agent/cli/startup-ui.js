@@ -7,7 +7,8 @@ import { DefaultPackageManager } from "../core/package-manager.js";
 import { SettingsManager } from "../core/settings-manager.js";
 import { ExtensionInputComponent } from "../modes/interactive/components/extension-input.js";
 import { ExtensionSelectorComponent } from "../modes/interactive/components/extension-selector.js";
-import { FirstTimeSetupComponent, } from "../modes/interactive/components/first-time-setup.js";
+import { FIRST_TIME_SETUP_QUESTION, FirstTimeSetupComponent, } from "../modes/interactive/components/first-time-setup.js";
+import { dialogBlockedStatus } from "../modes/interactive/program-status-reporter.js";
 import { SYSTEM_THEME_NAME } from "../modes/interactive/theme/system-theme.js";
 import { getTerminalTheme, initTheme, loadThemeFromPath, markTerminalColorsPending, resolveThemeSetting, setRegisteredThemes, setTerminalColors, setTheme, } from "../modes/interactive/theme/theme.js";
 import { requestTerminalColors } from "../modes/interactive/theme/theme-controller.js";
@@ -84,6 +85,16 @@ function queryStartupTerminalColors(ui, onColors) {
         ui.requestRender();
     });
 }
+/**
+ * Show a startup dialog and report pi as blocked on it (OSC 7501). Interactive mode is not running yet, so its
+ * status reporter cannot do this; stopping the startup TUI clears the report.
+ */
+function showStartupDialog(ui, component, blocked, settingsManager) {
+    ui.addChild(component);
+    ui.setFocus(component);
+    ui.terminal.setProgramStatus({ state: "blocked", app: APP_NAME, ...blocked });
+    startStartupTui(ui, settingsManager);
+}
 async function clearStartupTui(ui) {
     ui.clear();
     ui.requestRender();
@@ -112,7 +123,7 @@ export function shouldRunFirstTimeSetup(settingsPath = getSettingsPath()) {
     }
     return !existsSync(settingsPath);
 }
-export async function showStartupSelector(settingsManager, title, options) {
+export async function showStartupSelector(settingsManager, title, options, blockedKind = "question") {
     const ui = await createStartupTui(settingsManager);
     return new Promise((resolve) => {
         let settled = false;
@@ -127,9 +138,7 @@ export async function showStartupSelector(settingsManager, title, options) {
             resolve(result);
         };
         const selector = new ExtensionSelectorComponent(title, options.map((option) => option.label), (option) => void finish(options.find((entry) => entry.label === option)?.value), () => void finish(undefined), { tui: ui });
-        ui.addChild(selector);
-        ui.setFocus(selector);
-        startStartupTui(ui, settingsManager);
+        showStartupDialog(ui, selector, dialogBlockedStatus(blockedKind, title), settingsManager);
     });
 }
 /** Show the first-time setup dialog and persist the result */
@@ -143,7 +152,6 @@ export async function showFirstTimeSetup(settingsManager) {
             }
             settled = true;
             if (result) {
-                settingsManager.setTheme(result.theme);
                 settingsManager.setEnableAnalytics(result.shareAnalytics);
                 await settingsManager.flush();
             }
@@ -152,26 +160,14 @@ export async function showFirstTimeSetup(settingsManager) {
             await flushStdout();
             resolve();
         };
-        ui.start();
-        let previewTheme = SYSTEM_THEME_NAME;
-        setTheme(previewTheme);
         const component = new FirstTimeSetupComponent({
-            onThemePreview: (themeName) => {
-                previewTheme = themeName;
-                setTheme(themeName);
-                ui.requestRender();
-            },
             onSubmit: (result) => void finish(result),
             onCancel: () => void finish(undefined),
         });
-        ui.addChild(component);
-        ui.setFocus(component);
-        ui.requestRender();
-        // The terminal's colors regenerate the system theme; re-rendering rebuilds the dialog with it.
-        queryStartupTerminalColors(ui, () => setTheme(previewTheme));
+        showStartupDialog(ui, component, dialogBlockedStatus("permission", FIRST_TIME_SETUP_QUESTION), settingsManager);
     });
 }
-export async function showStartupInput(settingsManager, title, placeholder) {
+export async function showStartupInput(settingsManager, title, placeholder, blockedKind = "question") {
     const ui = await createStartupTui(settingsManager);
     return new Promise((resolve) => {
         let settled = false;
@@ -189,9 +185,7 @@ export async function showStartupInput(settingsManager, title, placeholder) {
         const input = new ExtensionInputComponent(title, placeholder, (value) => void finish(value), () => void finish(undefined), {
             tui: ui,
         });
-        ui.addChild(input);
-        ui.setFocus(input);
-        startStartupTui(ui, settingsManager);
+        showStartupDialog(ui, input, dialogBlockedStatus(blockedKind, title), settingsManager);
     });
 }
 //# sourceMappingURL=startup-ui.js.map

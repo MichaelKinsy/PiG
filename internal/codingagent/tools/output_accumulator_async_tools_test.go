@@ -2,37 +2,35 @@ package tools
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
-// output-accumulator.ts closeTempFile (:121) awaits the full-output stream's finish and rejects when the stream failed, so bash.ts never reads a file
-// whose tail was lost without being told. CloseTempFile is the awaited step: it returns the flush or close failure of the file, and it releases the file so
-// a repeated call (bash.ts closes once per run) has nothing left to fail on.
+// Port of Pi main 943a99e3c2e1f119fcd633741363a200e0677999 & 8209929fb553e7a8c91dc0894569f9ec43dd201f:
+// CloseTempFile never errors; a failed file is dropped and reported as FullOutputError on later snapshots.
 func TestOutputAccumulatorCloseTempFileReportsAFailedFile(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "missing")
+	t.Setenv("TMPDIR", missing)
+	t.Setenv("TMP", missing)
+	t.Setenv("TEMP", missing)
 	accumulator := newOutputAccumulator(1<<30, 1<<10, "pi-async-test")
 	if err := accumulator.Append([]byte(strings.Repeat("z", 2<<10))); err != nil {
 		t.Fatal(err)
 	}
-	path := accumulator.Snapshot(true).FullOutputPath
-	if path == "" {
-		t.Fatal("truncated output has no full-output path")
+	accumulator.Finish()
+	if err := accumulator.CloseTempFile(); err != nil {
+		t.Fatalf("CloseTempFile returned error %v, want nil (failure reported via snapshot)", err)
 	}
-	t.Cleanup(func() { _ = os.Remove(path) })
-	if err := accumulator.Append([]byte("buffered tail\n")); err != nil {
-		t.Fatal(err)
+	snap := accumulator.Snapshot(true)
+	if snap.FullOutputPath != "" {
+		t.Fatalf("FullOutputPath = %q, want empty on failure", snap.FullOutputPath)
 	}
-	if accumulator.tempWriter.Buffered() == 0 {
-		t.Fatal("the tail was written through; the test needs bytes still buffered when the file fails")
-	}
-	// The stream fails under the accumulator: the descriptor is closed before the buffered tail is flushed.
-	if err := accumulator.tempFile.Close(); err != nil {
-		t.Fatal(err)
-	}
-	if err := accumulator.CloseTempFile(); err == nil {
-		t.Fatal("CloseTempFile resolved although the buffered tail could not be written")
+	if !strings.Contains(snap.FullOutputError, "ENOENT") {
+		t.Fatalf("FullOutputError = %q, want ENOENT", snap.FullOutputError)
 	}
 	if err := accumulator.CloseTempFile(); err != nil {
-		t.Fatalf("a second CloseTempFile has no file left to fail on, got %v", err)
+		t.Fatalf("a second CloseTempFile returned %v, want nil", err)
 	}
+	_ = os.Remove(snap.FullOutputPath)
 }

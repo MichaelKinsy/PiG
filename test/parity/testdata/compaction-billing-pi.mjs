@@ -7,7 +7,7 @@ const { initTheme } = await import(pathToFileURL(root + "/dist/modes/interactive
 const { Container } = await import(import.meta.resolve("@earendil-works/pi-tui", pathToFileURL(root + "/package.json").href));
 initTheme("dark");
 const usage = { input: 10, output: 20, cacheRead: 30, cacheWrite: 40, totalTokens: 100, cost: { input: .01, output: .02, cacheRead: .03, cacheWrite: .065, total: .125 } };
-const state = { chatContainer: new Container(), settingsManager: { getShowCacheMissNotices: () => true } };
+const state = { chatContainer: new Container(), settingsManager: { getNotices: () => ({ cacheMisses: true, cacheWarming: true, compactionCosts: true, reasoningDrops: true }) } };
 for (const kind of ["compaction", "branch_summary"]) InteractiveMode.prototype.addCompactionCostNotice.call(state, { type: "compaction_cost", kind, usage });
 const rows = state.chatContainer.render(120);
 assert(rows.some(row => row.includes("Compaction: 100 tokens billed (~$0.13)")));

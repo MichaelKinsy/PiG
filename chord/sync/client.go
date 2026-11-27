@@ -104,13 +104,14 @@ const (
 	// the host renames the copy to a new session (forked from this one at At) and uploads it there, and the session itself
 	// restores into a fresh store.
 	Diverged UploadType = "diverged"
+	// RemoteEmpty: the remote holds no history for the session, though this copy shared it up to At: the remote's copy was
+	// deleted (or the remote was reset) since. The host decides whether to start over: forget the sync state, and the next
+	// upload sends the whole store from the start.
+	RemoteEmpty UploadType = "remote_empty"
 	// Behind: the copy lost commits it had uploaded, for example to a power loss: its Head is below SyncedHead. Its next
 	// commits would reuse their sequences, so nothing is uploaded. Pull what it lost before the copy commits again; a pull
 	// applies from the local head.
 	Behind UploadType = "behind"
-	// StaleEpoch: the remote refused this device's Epoch: another device holds the right to write the session now. Like
-	// Diverged, the copy's commits after At are a different history, so the host forks the copy (S7).
-	StaleEpoch UploadType = "stale_epoch"
 )
 
 // UploadResult is how an upload ended; the members its Type names are set.
@@ -119,7 +120,6 @@ type UploadResult struct {
 	Head       Seq
 	At         Seq
 	SyncedHead Seq
-	Epoch      int64
 }
 
 // UploadOptions are what UploadSession takes.
@@ -130,8 +130,6 @@ type UploadOptions struct {
 	Source store.Store
 	Store  SessionSyncStore
 	State  SyncStateStore
-	// Epoch is the writer's epoch, from whatever grants it (the remote, Radius); sent with every slot. Nil sends none.
-	Epoch *int64
 }
 
 // UploadSession uploads what this copy committed since it last shared the remote's history, from the store's outbox, and
@@ -186,17 +184,18 @@ func UploadSession(ctx context.Context, options UploadOptions) (UploadResult, er
 			body = EncodeBatch(newOutboxCommits(options.Source, synced, to))
 		}
 		after := synced
-		result, err := options.Store.PutBatch(ctx, options.SessionID, after, to, options.Device, body, PutBatchOptions{Archive: archive, Epoch: options.Epoch})
+		result, err := options.Store.PutBatch(ctx, options.SessionID, after, to, options.Device, body, PutBatchOptions{Archive: archive})
 		// A remote that answered without reading the body leaves an archive export holding the commit queue.
 		err = errors.Join(err, body.Close())
 		if err != nil {
 			return UploadResult{}, err
 		}
 		switch {
-		case result.Type == PutStaleEpoch:
-			return UploadResult{Type: StaleEpoch, At: after, Epoch: result.Epoch}, nil
 		case result.Type == PutNotHead:
 			// A history that does not end at `after` is another one too: the remote never held this copy's past `after`.
+			if result.Head == LogStart {
+				return UploadResult{Type: RemoteEmpty, At: after}, nil
+			}
 			return UploadResult{Type: Diverged, At: after}, nil
 		case result.Type == PutExists && result.Device != options.Device:
 			return UploadResult{Type: Diverged, At: after}, nil

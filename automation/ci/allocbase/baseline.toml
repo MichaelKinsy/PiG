@@ -1451,7 +1451,7 @@ allocs = 21
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkCatalogModelAuth/per-1000-entries"
-allocs = 10720
+allocs = 11994
 
 [[benchmark]]
 package = "./coding"
@@ -3291,7 +3291,7 @@ allocs = 807051
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkModelPickerSnapshotAndRender/per-1000-entries"
-allocs = 21291
+allocs = 23088
 
 [[benchmark]]
 package = "./internal/codingagent"

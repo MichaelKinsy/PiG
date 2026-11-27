@@ -56,12 +56,12 @@ func TestOutputAccumulatorCoalescesSmallChunkWrites(t *testing.T) {
 	for range 100 {
 		_ = accumulator.Append(chunk)
 	}
-	if accumulator.tempWriter == nil || accumulator.tempWriter.Buffered() == 0 {
+	if accumulator.tempFile == nil || accumulator.tempFile.Buffered() == 0 {
 		t.Fatal("chunks appended past the limit were written through one by one")
 	}
 	path := accumulator.Snapshot(true).FullOutputPath
-	if accumulator.tempWriter.Buffered() != 0 {
-		t.Fatalf("%d bytes stay buffered after the path was handed out", accumulator.tempWriter.Buffered())
+	if accumulator.tempFile.Buffered() != 0 {
+		t.Fatalf("%d bytes stay buffered after the path was handed out", accumulator.tempFile.Buffered())
 	}
 	_ = accumulator.CloseTempFile()
 	_ = os.Remove(path)
@@ -78,7 +78,7 @@ func TestOutputAccumulatorCloseWritesTheBufferedTail(t *testing.T) {
 		_ = accumulator.Append(piece)
 	}
 	accumulator.Finish()
-	path := accumulator.tempFilePath
+	path := accumulator.tempFile.Result().Path
 	if path == "" {
 		t.Fatal("output past the limit has no file")
 	}

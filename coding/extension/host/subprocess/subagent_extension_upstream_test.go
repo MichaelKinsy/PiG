@@ -41,8 +41,8 @@ import (
 //   - Pi's two "runtime integration" cases read the tool result an AgentSession records; these tests read the result the tool returns,
 //     whose IsError is what the session records.
 
-// subagentExampleSHA256 is the sha256 of the example's index.ts at Pi c23b9ec1.
-const subagentExampleSHA256 = "3b738fd10c1aaadfb5f96d0c683481faad916cd88544677efd7280eb38f425fe"
+// subagentExampleSHA256 is the sha256 of the example's index.ts at Pi v1.6.1 (ef4a1cfc).
+const subagentExampleSHA256 = "530aeb84f0d5de60716c50b267bbe53a3b28824fab9534964f339b19b74ecfa0"
 
 const (
 	subagentMaxBytes = 50 * 1024 // DEFAULT_MAX_BYTES

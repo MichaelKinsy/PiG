@@ -45,7 +45,7 @@ func TestSettingsLiveEffectsClosureTrace(t *testing.T) {
 	t.Run("hide thinking", TestOnSettingAppliedTogglesThinkingVisibility)
 	writeSettingsClosureTrace(t,
 		settingsClosureTraceEvent{kind: "update", subject: "autocomplete-max-visible", value: "15"},
-		settingsClosureTraceEvent{kind: "update", subject: "cache-miss-notices", value: "visible"},
+		settingsClosureTraceEvent{kind: "update", subject: "notices", value: "visible"},
 		settingsClosureTraceEvent{kind: "update", subject: "clear-on-shrink", value: "idle-cleared"},
 		settingsClosureTraceEvent{kind: "update", subject: "editor-padding", value: "2"},
 		settingsClosureTraceEvent{kind: "update", subject: "hide-thinking", value: "true"},
@@ -109,7 +109,7 @@ func TestOnSettingAppliedUpdatesAgentTransport(t *testing.T) {
 func TestOnSettingAppliedRebuildsCacheMissNotices(t *testing.T) {
 	dir := t.TempDir()
 	sm := NewSettingsManager(dir, dir)
-	if err := sm.SetShowCacheMissNotices(false); err != nil {
+	if err := sm.SetNotice(NoticeCacheMisses, false); err != nil {
 		t.Fatal(err)
 	}
 	session := NewSession("cache-miss", dir)
@@ -138,10 +138,10 @@ func TestOnSettingAppliedRebuildsCacheMissNotices(t *testing.T) {
 		t.Fatalf("cache miss notice rendered while disabled:\n%s", got)
 	}
 
-	if err := sm.SetShowCacheMissNotices(true); err != nil {
+	if err := sm.SetNotice(NoticeCacheMisses, true); err != nil {
 		t.Fatal(err)
 	}
-	mode.buildSlashContext(t.Context()).OnSettingApplied("cache-miss-notices", "true")
+	mode.buildSlashContext(t.Context()).OnSettingApplied("notices", "cacheMisses=true")
 	if got := strings.Join(mode.chatContainer.Render(100), "\n"); !strings.Contains(got, "Cache miss: 50k tokens re-billed") {
 		t.Fatalf("cache miss notice missing after live enable:\n%s", got)
 	}

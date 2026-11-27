@@ -60,10 +60,22 @@ func takeStartupInput() []string {
 	return chunks
 }
 
+// StartupTerminal is the terminal surface a startup prompt drives.
+type StartupTerminal interface {
+	StartWithReadError(onInput func([]byte), onResize func(), onReadError func(error)) error
+	Stop()
+	Write(data string)
+}
+
 type StartupUIOptions struct {
-	AgentDir   string
-	Settings   Settings
-	ThemePaths []string
+	AgentDir    string
+	Settings    Settings
+	ThemePaths  []string
+	BlockedKind tui.ProgramStatusKind
+	// Terminal overrides the stdio terminal when non-nil (for tests).
+	Terminal StartupTerminal
+	// Output overrides stdout rendering target when non-nil (for tests).
+	Output io.Writer
 }
 
 // SelectStartupSession is Pi's selectSession(currentSessionsLoader, allSessionsLoader, settingsManager) (cli/session-picker.ts:15-54), the --resume picker. Ports packages/coding-agent/src/cli/session-picker.ts.
@@ -84,7 +96,7 @@ func selectStartupSession(
 	allLoader func(SessionListOptions) ([]SessionInfo, error),
 	opts StartupUIOptions,
 	ui *tui.TuiMainScreen,
-	terminal startupTerminal,
+	terminal StartupTerminal,
 ) (path string, selected bool, err error) {
 	keybindings := configureStartupTui(opts)
 	selector, outcome := newStartupSessionSelector(currentLoader, allLoader, keybindings)
@@ -115,7 +127,8 @@ func newStartupSessionSelector(currentLoader, allLoader func(SessionListOptions)
 // selected=false when the user cancels.
 func ShowStartupSelector(title string, options []string, opts StartupUIOptions) (index int, selected bool, err error) {
 	selector := newStartupSelector(title, options, opts)
-	completed, err := runStartupComponent(selector, opts, true)
+	blocked := DialogBlockedStatus(dialogBlockedKind(opts.BlockedKind, tui.ProgramStatusKindQuestion), title)
+	completed, err := runStartupComponentBlocked(selector, opts, true, &blocked)
 	if err != nil {
 		return -1, false, err
 	}
@@ -130,7 +143,8 @@ func ShowStartupSelector(title string, options []string, opts StartupUIOptions) 
 // services exist. It returns selected=false when the user cancels.
 func ShowStartupInput(title, placeholder string, opts StartupUIOptions) (value string, selected bool, err error) {
 	input := newStartupInput(title, placeholder, opts)
-	completed, err := runStartupComponent(input, opts, true)
+	blocked := DialogBlockedStatus(dialogBlockedKind(opts.BlockedKind, tui.ProgramStatusKindQuestion), title)
+	completed, err := runStartupComponentBlocked(input, opts, true, &blocked)
 	if err != nil {
 		return "", false, err
 	}
@@ -155,26 +169,31 @@ func newStartupInput(title, placeholder string, opts StartupUIOptions) *tui.Exte
 	return tui.NewExtensionInputComponent(title, placeholder, nil, nil)
 }
 
-// startupTerminal is the terminal surface a startup prompt drives.
-type startupTerminal interface {
-	StartWithReadError(onInput func([]byte), onResize func(), onReadError func(error)) error
-	Stop()
-	Write(data string)
-}
-
-// runStartupComponent runs a component built after configureStartupTui.
-func runStartupComponent(component startupComponent, opts StartupUIOptions, clear bool) (bool, error) {
-	ui := tui.New()
+func runStartupComponentBlocked(component startupComponent, opts StartupUIOptions, clear bool, blocked *BlockedStatus) (bool, error) {
+	var ui *tui.TuiMainScreen
+	if opts.Output != nil {
+		ui = tui.NewWithOutput(opts.Output, 80, 24)
+	} else {
+		ui = tui.New()
+	}
 	ui.SetLogDirectory(opts.AgentDir)
-	return runStartupComponentWith(component, opts, clear, ui, tui.NewStdioProcessTerminal())
+	term := opts.Terminal
+	if term == nil {
+		term = tui.NewStdioProcessTerminal()
+	}
+	return runStartupComponentWithBlocked(component, opts, clear, ui, term, blocked)
 }
 
-// runStartupComponentWith runs a startup prompt on ui and terminal. Mirrors
-// upstream startStartupTui: the prompt renders at once while the terminal's
-// colors are queried; replies, including those after the timeout, retheme the
-// prompt and are never delivered as input.
+// runStartupComponentWith runs a startup prompt on ui and terminal without a blocked program status report.
+func runStartupComponentWith(component startupComponent, opts StartupUIOptions, clear bool, ui *tui.TuiMainScreen, terminal StartupTerminal) (bool, error) {
+	return runStartupComponentWithBlocked(component, opts, clear, ui, terminal, nil)
+}
+
+// runStartupComponentWithBlocked runs a startup prompt on ui and terminal and, when blocked is non-nil,
+// reports blocked program status (OSC 7501) on terminal before starting it. Mirrors upstream showStartupDialog
+// + startStartupTui.
 // Ports packages/tui/src/tui.ts (terminal color reply consumption).
-func runStartupComponentWith(component startupComponent, opts StartupUIOptions, clear bool, ui *tui.TuiMainScreen, terminal startupTerminal) (bool, error) {
+func runStartupComponentWithBlocked(component startupComponent, opts StartupUIOptions, clear bool, ui *tui.TuiMainScreen, terminal StartupTerminal, blocked *BlockedStatus) (bool, error) {
 	asyncSelector, _ := component.(*SessionSelectorComponent)
 	var updates <-chan func()
 	var ready <-chan struct{}
@@ -190,6 +209,16 @@ func runStartupComponentWith(component startupComponent, opts StartupUIOptions, 
 	ui.SetShowHardwareCursor(opts.Settings.GetShowHardwareCursor())
 	ui.SetClearOnShrink(opts.Settings.GetClearOnShrink())
 	ui.Add(component)
+	if blocked != nil {
+		if statusTerm, ok := terminal.(interface{ SetProgramStatus(tui.ProgramStatus) }); ok {
+			statusTerm.SetProgramStatus(tui.ProgramStatus{
+				App:     AppName,
+				State:   tui.ProgramStateBlocked,
+				Kind:    blocked.Kind,
+				Message: blocked.Message,
+			})
+		}
+	}
 
 	inputCh := make(chan []byte, 32)
 	inputErrCh := make(chan error, 1)
@@ -213,15 +242,11 @@ func runStartupComponentWith(component startupComponent, opts StartupUIOptions, 
 
 	// The terminal's colors regenerate the system theme and resolve "" tokens; re-rendering rebuilds the prompt with them.
 	themeSetting := opts.Settings.themeSetting()
-	themed, _ := component.(interface{ startupTheme() string })
 	applyColors := func(colors tui.TerminalColors) {
 		tui.SetTerminalColors(colors)
 		name, ok := tui.ResolveThemeSettingPresence(themeSetting, tui.GetTerminalTheme())
 		if !ok {
 			name = tui.SystemThemeName
-		}
-		if themed != nil {
-			name = themed.startupTheme()
 		}
 		tui.SetThemeByName(name)
 		ui.Invalidate()
@@ -292,6 +317,7 @@ func runStartupComponentWith(component startupComponent, opts StartupUIOptions, 
 	dispatch(takeStartupInput())
 
 	for !component.Done() {
+		//portlint:allow golifetime startup dialog loop exits via component.Done() driven by terminal input, Esc/Ctrl+C, or closed terminal channel
 		select {
 		case <-ready:
 			asyncSelector.drainLoadUpdates()

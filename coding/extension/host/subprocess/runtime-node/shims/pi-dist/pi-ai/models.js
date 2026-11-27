@@ -561,7 +561,6 @@ export function createProvider(input) {
     }
     const baselineModels = input.models;
     const fetchModels = input.fetchModels;
-    // Pi 073b0bae8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
     const chatModelsOf = (models) => models.filter((model) => isModelType(model, "chat"));
     // Merged once per publish, not per read: getModels() is on hot paths such as Models.getModel() (#12311).
     let allModels = baselineModels;

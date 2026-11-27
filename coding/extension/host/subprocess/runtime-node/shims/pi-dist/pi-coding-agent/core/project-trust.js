@@ -7,7 +7,7 @@ function formatProjectTrustPrompt(cwd) {
 }
 async function selectProjectTrustOption(cwd, ctx) {
     const options = getProjectTrustOptions(cwd, { includeSessionOnly: true });
-    const selected = await ctx.ui.select(formatProjectTrustPrompt(cwd), options.map((option) => option.label));
+    const selected = await ctx.ui.select(formatProjectTrustPrompt(cwd), options.map((option) => option.label), { blockedKind: "permission" });
     return options.find((option) => option.label === selected);
 }
 function saveProjectTrustPromptResult(trustStore, result) {

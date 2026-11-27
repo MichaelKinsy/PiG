@@ -232,17 +232,11 @@ class SettingsManager(_GraphObject):
     def get_hide_thinking_block(self) -> bool:
         return self._invoke("getHideThinkingBlock")
 
-    def get_show_cache_miss_notices(self) -> bool:
-        return self._invoke("getShowCacheMissNotices")
-
     def get_external_editor_command(self) -> str:
         return self._invoke("getExternalEditorCommand")
 
     def set_hide_thinking_block(self, hide: bool) -> None:
         self._invoke("setHideThinkingBlock", hide)
-
-    def set_show_cache_miss_notices(self, show: bool) -> None:
-        self._invoke("setShowCacheMissNotices", show)
 
     def get_shell_path(self) -> str | None:
         return self._invoke("getShellPath")
@@ -480,3 +474,17 @@ class SettingsManager(_GraphObject):
 
     def set_warnings(self, warnings: dict[str, Any]) -> None:
         self._invoke("setWarnings", warnings)
+
+    def get_notices(self) -> dict[str, bool]:
+        return self._invoke("getNotices")
+
+    def set_notice(self, key: str, shown: bool) -> None:
+        self._invoke("setNotice", key, shown)
+
+    def get_show_cache_miss_notices(self) -> bool:
+        """Deprecated: use ``get_notices()["cacheMisses"]`` instead; scheduled for removal in 0.9.0."""
+        return bool(self.get_notices().get("cacheMisses", False))
+
+    def set_show_cache_miss_notices(self, show: bool) -> None:
+        """Deprecated: use ``set_notice(key, show)`` instead; scheduled for removal in 0.9.0."""
+        self._invoke("setShowCacheMissNotices", show)

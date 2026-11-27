@@ -1164,6 +1164,7 @@ struct BashComplete {
     cancelled: bool,
     truncated: bool,
     full_output_path: String,
+    full_output_error: String,
 }
 
 /// Upstream `BashExecutionComponent(command, ui, excludeFromContext,
@@ -1221,6 +1222,25 @@ impl BashExecution {
             cancelled,
             truncated,
             full_output_path: full_output_path.into(),
+            full_output_error: String::new(),
+        });
+    }
+
+    /// Upstream `setComplete(exitCode, cancelled, truncationResult, fullOutputPath, fullOutputError)`.
+    pub fn set_complete_with_error(
+        &mut self,
+        exit_code: Option<i64>,
+        cancelled: bool,
+        truncated: bool,
+        full_output_path: impl Into<String>,
+        full_output_error: impl Into<String>,
+    ) {
+        self.complete = Some(BashComplete {
+            exit_code,
+            cancelled,
+            truncated,
+            full_output_path: full_output_path.into(),
+            full_output_error: full_output_error.into(),
         });
     }
 
@@ -1754,6 +1774,7 @@ impl Encoder {
                         put(&mut m, "truncated", true);
                     }
                     put_nonempty(&mut m, "fullOutputPath", &c.full_output_path);
+                    put_nonempty(&mut m, "fullOutputError", &c.full_output_error);
                     put(&mut map, "complete", Value::Object(m));
                 }
             }

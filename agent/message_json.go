@@ -297,7 +297,7 @@ func (m AgentMessage) wire(clone bool) (any, error) {
 // upstream: coding-agent/src/core/messages.ts:29-67 (shapes), 100-137 (createBranchSummaryMessage, createCompactionSummaryMessage, createCustomMessage), agent-session.ts:3781-3792 (recordBashResult)
 var customMessageMemberOrder = map[string][]string{
 	RoleCustom:            {"role", "customType", "content", "display", "details", "timestamp"},
-	"bashExecution":       {"role", "command", "output", "exitCode", "cancelled", "truncated", "fullOutputPath", "timestamp", "excludeFromContext"},
+	"bashExecution":       {"role", "command", "output", "exitCode", "cancelled", "truncated", "fullOutputPath", "fullOutputError", "timestamp", "excludeFromContext"},
 	RoleBranchSummary:     {"role", "summary", "fromId", "timestamp"},
 	RoleCompactionSummary: {"role", "summary", "tokensBefore", "timestamp"},
 }

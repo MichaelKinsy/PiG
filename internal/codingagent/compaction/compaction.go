@@ -604,6 +604,10 @@ func bashExecutionToText(custom map[string]any) string {
 	if truncated, _ := custom["truncated"].(bool); truncated {
 		if path, _ := custom["fullOutputPath"].(string); path != "" {
 			fmt.Fprintf(&text, "\n\n[Output truncated. Full output: %s]", path)
+		} else if fullErr, _ := custom["fullOutputError"].(string); fullErr != "" {
+			fmt.Fprintf(&text, "\n\n[Output truncated. Could not save the full output: %s]", fullErr)
+		} else {
+			text.WriteString("\n\n[Output truncated]")
 		}
 	}
 	return text.String()

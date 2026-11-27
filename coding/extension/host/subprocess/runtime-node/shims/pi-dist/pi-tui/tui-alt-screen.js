@@ -34,6 +34,13 @@ const COPY_ERROR_FLASH_DURATION_MS = 5000;
 // https://github.com/gnachman/iTerm2/blob/7f4ff739721f95d0b93003d8701c4523a7edf261/sources/Settings/iTermPreferences.m#L743
 const TERMINAL_WORD_SELECTION_JOINERS = new Set(["/", "-", "+", "\\", "~", "_", "."]);
 import { wordSegmenter } from "../../pi-tui-segmenters.mjs";
+// Terminals that forward the right-click to mouse-tracking apps and also paste
+// the clipboard themselves. pi's synthetic paste would duplicate their paste.
+const RIGHT_CLICK_PASTING_TERMINALS = new Set(["vscode", "tabby"]);
+function terminalPastesOnRightClick() {
+    const termProgram = process.env.TERM_PROGRAM?.toLowerCase();
+    return termProgram !== undefined && RIGHT_CLICK_PASTING_TERMINALS.has(termProgram);
+}
 /** Alternate-screen TUI with a scrollable, application-owned viewport. */
 export class TuiAltScreen extends TuiBase {
     mode = "fullscreen";
@@ -838,7 +845,7 @@ export class TuiAltScreen extends TuiBase {
     handleRightClickPaste(event) {
         if (!this.onRightClickPaste ||
             process.platform !== "win32" ||
-            process.env.TERM_PROGRAM?.toLowerCase() === "vscode" ||
+            terminalPastesOnRightClick() ||
             event.release ||
             event.button !== 2) {
             return false;

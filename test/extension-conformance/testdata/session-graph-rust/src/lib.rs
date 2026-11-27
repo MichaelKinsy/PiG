@@ -317,7 +317,7 @@ fn read_all(s: &SettingsManager) -> io::Result<Value> {
         "getCacheWarmingMode" => get_cache_warming_mode,
         "getWebSocketConnectTimeoutMs" => get_web_socket_connect_timeout_ms,
         "getHideThinkingBlock" => get_hide_thinking_block,
-        "getShowCacheMissNotices" => get_show_cache_miss_notices,
+        "getNotices" => get_notices,
         "getExternalEditorCommand" => get_external_editor_command,
         "getShellPath" => get_shell_path,
         "getQuietStartup" => get_quiet_startup,
@@ -543,7 +543,7 @@ fn settings_script(ctx: &Context, args: &Value) -> io::Result<Value> {
     s.set_show_terminal_progress(true)?;
     s.set_enable_skill_commands(false)?;
     s.set_enable_install_telemetry(false)?;
-    s.set_show_cache_miss_notices(false)?;
+    s.set_notice("cacheMisses", false)?;
     s.set_default_model_and_provider("anthropic", "opus")?;
     s.set_project_packages(json!(["npm:proj"]))?;
     s.set_project_extension_paths(&["pe"])?;

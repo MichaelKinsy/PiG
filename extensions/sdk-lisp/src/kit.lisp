@@ -427,13 +427,14 @@
   (kit-new "bash-execution" :id id :command command :exclude (and exclude-from-context t) :output-pad output-pad :output "" :expanded nil :complete nil))
 (defun kit-bash-execution-append-output (node chunk)
   (kit-put node :output (concatenate 'string (kit-get node :output) chunk)))
-(defun kit-bash-execution-set-complete (node exit-code &optional cancelled truncated (full-output-path ""))
-  "setComplete: EXIT-CODE NIL when unknown, whether it was CANCELLED, whether its output was TRUNCATED, where the full output is (\"\" for nowhere)."
+(defun kit-bash-execution-set-complete (node exit-code &optional cancelled truncated (full-output-path "") (full-output-error ""))
+  "setComplete: EXIT-CODE NIL when unknown, whether it was CANCELLED, whether its output was TRUNCATED, where the full output is (\"\" for nowhere), and any FULL-OUTPUT-ERROR."
   (let ((complete (obj)))
     (when exit-code (setf (gethash "exitCode" complete) exit-code))
     (when cancelled (setf (gethash "cancelled" complete) t))
     (when truncated (setf (gethash "truncated" complete) t))
     (when (plusp (length full-output-path)) (setf (gethash "fullOutputPath" complete) full-output-path))
+    (when (plusp (length full-output-error)) (setf (gethash "fullOutputError" complete) full-output-error))
     (kit-put node :complete complete)))
 (defun kit-bash-execution-set-expanded (node expanded) (kit-put node :expanded (and expanded t)))
 (defun kit-bash-execution-set-output-pad (node padding) (kit-put node :output-pad padding))

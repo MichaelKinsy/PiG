@@ -7,7 +7,7 @@ const ai = join(root, 'node_modules/@earendil-works/pi-ai/dist');
 const { getModel, normalizeContext } = await import(pathToFileURL(join(ai, 'compat.js')));
 const image = readFileSync('ai/testdata/upstream-red-circle.png').toString('base64');
 const results = {};
-for (const [api, provider, id] of [['google-generative-ai','google','gemini-2.5-flash'],['openai-completions','openrouter','z-ai/glm-4.5v'],['mistral-conversations','mistral','pixtral-12b'],['openai-completions','openai','gpt-4o-mini'],['openai-responses','openai','gpt-5-mini']]) {
+for (const [api, provider, id] of [['google-generative-ai','google','gemini-2.5-flash'],['openai-completions','openrouter','z-ai/glm-4.5v'],['mistral-conversations','mistral','mistral-medium-latest'],['openai-completions','openai','gpt-4o-mini'],['openai-responses','openai','gpt-5-mini']]) {
  for (const mixed of [false, true]) {
   let request;
   const server = createServer((req,res) => { let body='';req.on('data',chunk=>body+=chunk);req.on('end',()=>{request=JSON.parse(body);res.statusCode=400;res.end('{"error":{"message":"fixture rejection"}}');}); });

@@ -32,7 +32,7 @@ func TestOutputAccumulatorAppendAllocsPerChunk(t *testing.T) {
 			_ = accumulator.Append(chunk)
 		}
 		_ = accumulator.CloseTempFile()
-		paths = append(paths, accumulator.tempFilePath)
+		paths = append(paths, accumulator.tempFile.Result().Path)
 	})
 	for _, path := range paths {
 		_ = os.Remove(path)
@@ -50,7 +50,7 @@ func TestOutputAccumulatorSnapshotCopiesOnlyTheCut(t *testing.T) {
 	}
 	defer func() {
 		_ = accumulator.CloseTempFile()
-		_ = os.Remove(accumulator.tempFilePath)
+		_ = os.Remove(accumulator.tempFile.Result().Path)
 	}()
 	_ = accumulator.Snapshot(true)
 	chunk := []byte("one more line\n")

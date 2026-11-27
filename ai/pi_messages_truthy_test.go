@@ -29,8 +29,7 @@ func TestParsePiMessagesEventTruthinessMatchesTheDecodeIntoAny(t *testing.T) {
 	values := []string{`null`, `true`, `false`, `0`, `-0`, `0.0`, `0e5`, `-0e-3`, `1`, `-1`, `0.5`, `1e400`, `-1e400`, `1e-400`, `123456789012345678901234567890`,
 		`""`, `"a"`, `"0"`, `"false"`, `"\u0000"`, `"\ud83d"`, `{}`, `{"type":"start"}`, `[]`, `[0]`, `[[],{}]`, "\"\xff\"", `"é"`}
 	for _, value := range values {
-		line := "data: " + value
-		gotRaw, gotOK, gotErr := parsePiMessagesEvent(line)
+		gotRaw, gotOK, gotErr := parsePiMessagesData(value)
 		wantRaw, wantOK, wantErr := legacyParsePiMessagesEvent(value)
 		if (gotErr != nil) != (wantErr != nil) || (gotErr != nil && gotErr.Error() != wantErr.Error()) {
 			t.Errorf("%s: error %v, want %v", value, gotErr, wantErr)
@@ -45,7 +44,7 @@ func TestParsePiMessagesEventTruthinessMatchesTheDecodeIntoAny(t *testing.T) {
 // pi-messages.ts:313-320 parsePiMessagesEvent is JSON.parse(data), which reads an out-of-range number inside an object or array as Infinity, so the event line is an event. jsonTruthy reads only the top-level token and accepts it too; the decode into any that it replaced rejected it, so this is the one answer the replacement changes.
 func TestParsePiMessagesEventAcceptsNestedOutOfRangeNumberAsJSONParseDoes(t *testing.T) {
 	for _, value := range []string{`{"type":"start","x":1e400}`, `{"type":"start","extra":{"n":-1e999}}`, `[1e400]`} {
-		raw, ok, err := parsePiMessagesEvent("data: " + value)
+		raw, ok, err := parsePiMessagesData(value)
 		if err != nil || !ok || string(raw) != value {
 			t.Errorf("%s: (%q, %v, %v), want the event", value, raw, ok, err)
 		}
@@ -110,7 +109,7 @@ func TestPiMessagesEndEventsForwardOnlyPresentMembers(t *testing.T) {
 func TestParsePiMessagesEventAcceptsANestedNumberJSONParseAccepts(t *testing.T) {
 	converter := newPiMessagesEventConverter("test", "model")
 	for _, event := range []string{`{"type":"start","extra":1e400}`, `{"type":"text_start","contentIndex":0,"extra":[-1e999]}`, `{"type":"text_delta","contentIndex":0,"delta":"x","extra":{"n":1e400}}`} {
-		raw, ok, err := parsePiMessagesEvent("data: " + event)
+		raw, ok, err := parsePiMessagesData(event)
 		if err != nil || !ok || string(raw) != event {
 			t.Fatalf("%s: (%q, %v, %v), want the event", event, raw, ok, err)
 		}

@@ -253,6 +253,8 @@ export class StdinBuffer extends EventEmitter {
     escapeTimeoutMs;
     pasteMode = false;
     pasteBuffer = "";
+    /** The last characters of the paste so far, which may start an end marker split across chunks. */
+    pasteTail = "";
     pendingKittyPrintableCodepoint;
     constructor(options = {}) {
         super();
@@ -286,14 +288,19 @@ export class StdinBuffer extends EventEmitter {
         }
         this.buffer += str;
         if (this.pasteMode) {
+            // Only the new text is searched, so a large paste arriving in many chunks is not rescanned per chunk.
+            const searched = this.pasteTail + this.buffer;
+            const found = searched.indexOf(BRACKETED_PASTE_END);
+            const endIndex = found === -1 ? -1 : this.pasteBuffer.length - this.pasteTail.length + found;
             this.pasteBuffer += this.buffer;
+            this.pasteTail = searched.slice(1 - BRACKETED_PASTE_END.length);
             this.buffer = "";
-            const endIndex = this.pasteBuffer.indexOf(BRACKETED_PASTE_END);
             if (endIndex !== -1) {
                 const pastedContent = this.pasteBuffer.slice(0, endIndex);
                 const remaining = this.pasteBuffer.slice(endIndex + BRACKETED_PASTE_END.length);
                 this.pasteMode = false;
                 this.pasteBuffer = "";
+                this.pasteTail = "";
                 this.pendingKittyPrintableCodepoint = undefined;
                 this.emit("paste", pastedContent);
                 if (remaining.length > 0) {
@@ -315,6 +322,7 @@ export class StdinBuffer extends EventEmitter {
             this.buffer = this.buffer.slice(startIndex + BRACKETED_PASTE_START.length);
             this.pasteMode = true;
             this.pasteBuffer = this.buffer;
+            this.pasteTail = this.buffer.slice(1 - BRACKETED_PASTE_END.length);
             this.buffer = "";
             const endIndex = this.pasteBuffer.indexOf(BRACKETED_PASTE_END);
             if (endIndex !== -1) {
@@ -322,6 +330,7 @@ export class StdinBuffer extends EventEmitter {
                 const remaining = this.pasteBuffer.slice(endIndex + BRACKETED_PASTE_END.length);
                 this.pasteMode = false;
                 this.pasteBuffer = "";
+                this.pasteTail = "";
                 this.pendingKittyPrintableCodepoint = undefined;
                 this.emit("paste", pastedContent);
                 if (remaining.length > 0) {
@@ -389,6 +398,7 @@ export class StdinBuffer extends EventEmitter {
         this.buffer = "";
         this.pasteMode = false;
         this.pasteBuffer = "";
+        this.pasteTail = "";
         this.pendingKittyPrintableCodepoint = undefined;
     }
     getBuffer() {

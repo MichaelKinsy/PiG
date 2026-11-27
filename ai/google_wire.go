@@ -17,7 +17,7 @@ import (
 // TestGoogleWireMirrorsTheInstalledSDK fail when it is not the version the parity oracle installs.
 
 // geminiMirroredSDKVersion is the @google/genai version whose converters the tables mirror.
-const geminiMirroredSDKVersion = "2.32.0"
+const geminiMirroredSDKVersion = "3.6.1"
 
 // geminiWireMember is one member of a rebuilt object; value is JSON.
 type geminiWireMember struct {
@@ -58,7 +58,7 @@ type geminiWireDialect struct {
 var geminiAPIWire = geminiWireDialect{
 	topLevel:         []string{"contents", "serviceTier", "systemInstruction", "safetySettings", "tools", "toolConfig", "labels", "cachedContent", "continuationToken", "store", "generationConfig", "modelArmorConfig"},
 	generationConfig: []string{"temperature", "topP", "topK", "candidateCount", "maxOutputTokens", "stopSequences", "responseLogprobs", "logprobs", "presencePenalty", "frequencyPenalty", "seed", "responseMimeType", "responseSchema", "responseJsonSchema", "responseModalities", "mediaResolution", "speechConfig", "thinkingConfig", "audioTranscriptionConfig", "imageConfig", "enableEnhancedCivicAnswers"},
-	part:             []string{"mediaResolution", "toolCall", "toolResponse", "audioTranscription", "codeExecutionResult", "executableCode", "fileData", "functionCall", "functionResponse", "inlineData", "text", "thought", "thoughtSignature", "videoMetadata", "partMetadata", "mediaProcessing", "speechMetadata"},
+	part:             []string{"mediaResolution", "toolCall", "toolResponse", "audioTranscription", "codeExecutionResult", "executableCode", "fileData", "functionCall", "functionResponse", "inlineData", "text", "thought", "thoughtSignature", "videoMetadata", "partMetadata", "mediaProcessing", "speechMetadata", "documentMetadata", "spreadsheetMetadata", "audioMetadata"},
 	partMembers: map[string][]string{
 		"functionCall": {"args", "id", "name"},
 	},
@@ -67,11 +67,11 @@ var geminiAPIWire = geminiWireDialect{
 var geminiVertexWire = geminiWireDialect{
 	topLevel:         []string{"contents", "serviceTier", "systemInstruction", "safetySettings", "tools", "toolConfig", "labels", "cachedContent", "modelArmorConfig", "continuationToken", "outputConfig", "generationConfig"},
 	generationConfig: []string{"temperature", "topP", "topK", "candidateCount", "maxOutputTokens", "stopSequences", "responseLogprobs", "logprobs", "presencePenalty", "frequencyPenalty", "seed", "responseMimeType", "responseSchema", "responseJsonSchema", "routingConfig", "modelConfig", "responseModalities", "mediaResolution", "speechConfig", "audioTimestamp", "thinkingConfig", "audioTranscriptionConfig", "imageConfig"},
-	part:             []string{"mediaResolution", "audioTranscription", "codeExecutionResult", "executableCode", "fileData", "functionCall", "functionResponse", "inlineData", "text", "thought", "thoughtSignature", "videoMetadata", "mediaProcessing", "speechMetadata"},
+	part:             []string{"mediaResolution", "audioTranscription", "codeExecutionResult", "executableCode", "fileData", "functionCall", "functionResponse", "inlineData", "text", "thought", "thoughtSignature", "videoMetadata", "mediaProcessing", "speechMetadata", "documentMetadata", "spreadsheetMetadata", "audioMetadata"},
 	partMembers: map[string][]string{
 		"functionResponse": {"id", "name", "parts", "response", "scheduling"},
 	},
-	functionResponsePart: []string{"fileData", "inlineData"},
+	functionResponsePart: []string{"fileData", "inlineData", "mediaResolution", "videoMetadata", "documentMetadata", "spreadsheetMetadata", "audioMetadata"},
 }
 
 func geminiWireFor(api API) *geminiWireDialect {

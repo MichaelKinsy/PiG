@@ -1,0 +1,44 @@
+# Behavior family: tools
+# Surface: the bash tool shows the end of an over-long (>50KB) line followed by a blank line instead of "(no output)".
+#
+# Upstream evidence (Pi 9e9609216, #12355, fixes #12350; packages/coding-agent/src/core/tools/{bash,output-accumulator,truncate}.ts):
+# when command output ends with a line over 50KB followed by a blank line, both OutputAccumulator.snapshot (after rolling tail trim)
+# and truncateTail (which only took a partial tail when zero lines were collected) hid the over-long line behind "(no output)" or
+# only newlines, and bash.ts named endLine instead of startLine. The oracle is pinned Pi 1.5.2 plus post-release backports
+# (automation/gen/pi-post-release-backports.mjs), 9e9609216 among them.
+#
+# Print mode, not JSON mode: streaming update chunk boundaries follow pipe read sizes; the final tool result text is the contract.
+name = "36-print-bash-long-line-blank-line"
+description = "Print mode returns the end of an over-long line followed by a blank line in bash output, as pi does"
+covers = [
+  "packages/coding-agent/src/core/tools/bash.ts",
+  "packages/coding-agent/src/core/tools/output-accumulator.ts",
+  "packages/coding-agent/src/core/tools/truncate.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--no-extensions", "--tools", "bash"]
+pi_args = ["--tools", "bash"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "Run: bash long line blank line"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ["yyyyEND\n\n\n[Showing last 50.0KB of line 2 (line is 0B). Full output: "]
+both_not_contain = ["(no output)", "short"]
+output_equal = true
+runs = 3
+
+# normalize-rationale: the bash tool names its full-output file with 16 random hex digits; only those digits are replaced, the directory and
+# the rest of the notice stay compared.
+[[assert.normalize_replace]]
+pattern = 'pi-bash-[0-9a-f]{16}\.log'
+with = 'pi-bash-ID.log'
+reason = "The full-output file name carries 16 random hex digits (bash.ts); the directory, prefix and extension stay compared."

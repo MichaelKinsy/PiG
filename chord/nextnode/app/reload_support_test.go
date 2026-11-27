@@ -243,11 +243,11 @@ func rolloutFailures(result plugins.RolloutResult) []string {
 	for _, step := range result.Steps {
 		for _, entry := range step.Hosts {
 			switch entry.Kind {
-			case plugins.RolloutReported:
+			case plugins.RolloutReloaded:
 				for _, failed := range entry.Report.Failed {
 					failures = append(failures, fmt.Sprintf("%s/%s: %s", step.Name, entry.Host, failed.Plugin))
 				}
-			case plugins.RolloutErrored:
+			case plugins.RolloutFailed:
 				failures = append(failures, fmt.Sprintf("%s/%s: error %v", step.Name, entry.Host, entry.Error))
 			}
 		}
@@ -260,7 +260,7 @@ func rolloutFates(result plugins.RolloutResult) []string {
 	fates := []string{}
 	for _, step := range result.Steps {
 		for _, entry := range step.Hosts {
-			if entry.Kind != plugins.RolloutReported {
+			if entry.Kind != plugins.RolloutReloaded {
 				continue
 			}
 			for _, each := range entry.Report.Objects {

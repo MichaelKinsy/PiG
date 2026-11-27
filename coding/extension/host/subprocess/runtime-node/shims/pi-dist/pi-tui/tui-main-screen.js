@@ -481,8 +481,15 @@ export class TuiMainScreen extends TuiBase {
                     ...newLines.map((l, idx) => `[${idx}] (w=${visibleWidth(l)}) ${l}`),
                     "",
                 ].join("\n");
-                fs.mkdirSync(path.dirname(crashLogPath), { recursive: true });
-                fs.writeFileSync(crashLogPath, crashData);
+                // A failed write (full or unwritable temp dir) must not hide the width error or skip `stop()`.
+                let crashLogStatus = `Debug log written to: ${crashLogPath}`;
+                try {
+                    fs.mkdirSync(path.dirname(crashLogPath), { recursive: true });
+                    fs.writeFileSync(crashLogPath, crashData);
+                }
+                catch (error) {
+                    crashLogStatus = `Could not write debug log to ${crashLogPath}: ${error instanceof Error ? error.message : String(error)}`;
+                }
                 // Clean up terminal state before throwing
                 this.stop();
                 const errorMsg = [
@@ -491,7 +498,7 @@ export class TuiMainScreen extends TuiBase {
                     "This is likely caused by a custom TUI component not truncating its output.",
                     "Use visibleWidth() to measure and truncateToWidth() to truncate lines.",
                     "",
-                    `Debug log written to: ${crashLogPath}`,
+                    crashLogStatus,
                 ].join("\n");
                 throw new Error(errorMsg);
             }
