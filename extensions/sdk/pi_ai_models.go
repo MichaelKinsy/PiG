@@ -252,7 +252,7 @@ var (
 	overflowPatterns = lazyEach(
 		`prompt (?:is )?too long`,
 		`prompt exceeds max length`,
-		`request_too_large`,
+		`(?:^|[^a-z0-9_])request_too_large(?:[^a-z0-9_]|$)`,
 		`input is too long for requested model`,
 		`exceeds the context window`,
 		`exceeds (?:the )?(?:model'?s )?maximum context length(?: of [\d,]+ tokens?|\s*\([\d,]+\))`,
@@ -311,6 +311,7 @@ var (
 		`admission ceiling`,
 		`rate.?limit`,
 		`too many requests`,
+		`rate increased too quickly`,
 		// Status codes must not be part of a longer word or number, e.g. a request id or byte count (#11057). Pi spells it (?<![a-z0-9])(?:429|500|502|503|504|520|524|525)(?![a-z0-9]);
 		// RE2 has no lookaround, so the neighbours are matched, which a boolean test cannot tell apart.
 		// Pi fb62c069b: Cloudflare HTTP 525 (SSL handshake failed).
@@ -395,6 +396,9 @@ var (
 		`ResourceExhausted`,
 		`subscription_sharing_usage_unavailable`,
 		`subscription_sharing_user_unavailable`,
+		`provider finish_reason: error`,
+		`provider stopped with: error`,
+		`returned an empty response`,
 	)
 )
 

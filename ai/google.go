@@ -421,12 +421,24 @@ func ToGoogleSdkThinkingLevel(level GoogleThinkingLevel) GoogleSdkThinkingLevel 
 
 // ─── SSE response types ──────────────────────────────────────────────────────
 
+type geminiSafetyRating struct {
+	Category    string `json:"category,omitempty"`
+	Probability string `json:"probability,omitempty"`
+}
+
+type geminiPromptFeedback struct {
+	BlockReason        string               `json:"blockReason,omitempty"`
+	BlockReasonMessage string               `json:"blockReasonMessage,omitempty"`
+	SafetyRatings      []geminiSafetyRating `json:"safetyRatings,omitempty"`
+}
+
 type geminiStreamChunk struct {
 	// raw is the chunk's JSON as received, for OnProviderStreamEvent.
-	raw           json.RawMessage
-	Candidates    []geminiCandidate    `json:"candidates"`
-	UsageMetadata *geminiUsageMetadata `json:"usageMetadata,omitempty"`
-	ResponseID    string               `json:"responseId,omitempty"`
+	raw            json.RawMessage
+	Candidates     []geminiCandidate     `json:"candidates"`
+	PromptFeedback *geminiPromptFeedback `json:"promptFeedback,omitempty"`
+	UsageMetadata  *geminiUsageMetadata  `json:"usageMetadata,omitempty"`
+	ResponseID     string                `json:"responseId,omitempty"`
 	// read is what the JS read of a mistyped chunk yields beyond the rewritten members (decodeGeminiChunk).
 	read geminiChunkRead
 }
@@ -1141,6 +1153,13 @@ func (p *googleProvider) Stream(ctx context.Context, transcript TranscriptContex
 	// @google/genai does not retry, so retryGoogleRequest is the only retry layer: the transport retry is off for each attempt, and the
 	// request's retry budget (the per-request override, else retry.provider) moves to retryGoogleRequest.
 	retryOptions := providerRetryStreamOptions(requestContext, opts)
+	if retryOptions.OnResponse != nil {
+		googleModel := providerEventModel(p.cfg.ModelMetadata, p.cfg.api, p.cfg.ProviderID, p.cfg.Model)
+		userOnResp := retryOptions.OnResponse
+		retryOptions.OnResponse = func(cbCtx context.Context, r ProviderResponse, _ *Model) error {
+			return userOnResp(cbCtx, r, googleModel)
+		}
+	}
 	attemptContext := WithProviderMaxRetries(requestContext, 0)
 	resp, err := RetryGoogleRequest(requestContext, func() (*http.Response, error) { //nolint:bodyclose // the attempt returns the open response and the SSE goroutine below closes its body
 		httpReq, err := newFetchRequest(attemptContext, http.MethodPost, endpoint, body.reader(), false)
@@ -1326,10 +1345,12 @@ func googleRawChunkError(chunk []byte) error {
 
 // googleStreamState is the per-response state of Pi's `for await (const chunk of googleStream)` loop body (google-generative-ai.ts:103-235).
 type googleStreamState struct {
-	builder      *assistantStreamBuilder
-	usage        Usage
-	finishReason string
-	sawToolCall  bool
+	builder            *assistantStreamBuilder
+	usage              Usage
+	finishReason       string
+	receivedChunkCount int
+	promptBlockError   string
+	sawToolCall        bool
 	// finishSawToolCall is sawToolCall when the latest finish reason arrived: Pi turns a "stop" into "toolUse" only if the message holds a tool call at that
 	// chunk (google-generative-ai.ts:214-220), and never again, so a tool call in a later chunk does not.
 	finishSawToolCall bool
@@ -1339,6 +1360,14 @@ type googleStreamState struct {
 
 func (state *googleStreamState) handle(chunk *geminiStreamChunk) error {
 	builder := state.builder
+	state.receivedChunkCount++
+	if chunk.PromptFeedback != nil && chunk.PromptFeedback.BlockReason != "" && state.promptBlockError == "" {
+		providerName := "Google"
+		if builder.partial.API == APIGoogleVertex {
+			providerName = "Google Vertex"
+		}
+		state.promptBlockError = formatGooglePromptBlockError(providerName, chunk.PromptFeedback)
+	}
 	if chunk.ResponseID != "" {
 		// `output.responseId ||= chunk.responseId` (google-generative-ai.ts:109). Pi's Google provider does not read modelVersion into responseModel.
 		builder.setResponseMetadata(chunk.ResponseID, "", "", "", nil)
@@ -1450,7 +1479,7 @@ func (state *googleStreamState) finish(ctx context.Context) {
 		builder.failUnfinished(StopReasonAborted, errors.New("Request was aborted"))
 		return
 	}
-	stopReason, errorMessage := mapGoogleFinishReason(state.builder.partial.API, state.finishReason)
+	stopReason, errorMessage := state.resolveFinishReason()
 	if stopReason == StopReasonStop && state.finishSawToolCall {
 		stopReason = StopReasonToolUse
 	}
@@ -1500,7 +1529,7 @@ func (p *googleProvider) parseGeminiSSE(ctx context.Context, r io.Reader, builde
 		builder.fail(StopReasonAborted, err)
 		return
 	}
-	stopReason, errorMessage := mapGoogleFinishReason(state.builder.partial.API, state.finishReason)
+	stopReason, errorMessage := state.resolveFinishReason()
 	if stopReason == StopReasonStop && state.finishSawToolCall {
 		stopReason = StopReasonToolUse
 	}
@@ -1539,16 +1568,59 @@ func mapStopReason(reason string) (StopReason, error) {
 	}
 }
 
-// mapGoogleFinishReason applies mapStopReason to the stream's raw finish reason and derives the error message the stream end throws
-// (google-generative-ai.ts:276-283): a stream without a finish reason, an unhandled reason, or an error stop with its raw reason.
-func mapGoogleFinishReason(api API, reason string) (StopReason, string) {
+func formatGooglePromptBlockError(providerName string, feedback *geminiPromptFeedback) string {
+	reason := feedback.BlockReason
 	if reason == "" {
-		// google-vertex.ts:212 names the Vertex API in its own message.
-		if api == APIGoogleVertex {
-			return StopReasonError, "Google Vertex stream ended without a finish reason"
-		}
-		return StopReasonError, "Google stream ended without a finish reason"
+		reason = "unknown reason"
 	}
+	details := []string{providerName + " prompt blocked: " + reason}
+	if feedback.BlockReasonMessage != "" {
+		details = append(details, feedback.BlockReasonMessage)
+	}
+	if len(feedback.SafetyRatings) > 0 {
+		var ratings []string
+		for _, r := range feedback.SafetyRatings {
+			if r.Category == "" {
+				continue
+			}
+			if r.Probability != "" {
+				ratings = append(ratings, r.Category+" ("+r.Probability+")")
+			} else {
+				ratings = append(ratings, r.Category)
+			}
+		}
+		if len(ratings) > 0 {
+			label := "Safety ratings: "
+			if len(ratings) == 1 {
+				label = "Safety rating: "
+			}
+			details = append(details, label+strings.Join(ratings, ", "))
+		}
+	}
+	return strings.Join(details, ". ")
+}
+
+func (state *googleStreamState) resolveFinishReason() (StopReason, string) {
+	if state.finishReason == "" {
+		if state.promptBlockError != "" {
+			return StopReasonError, state.promptBlockError
+		}
+		chunkLabel := "chunks"
+		if state.receivedChunkCount == 1 {
+			chunkLabel = "chunk"
+		}
+		prefix := "Google"
+		if state.builder.partial.API == APIGoogleVertex {
+			prefix = "Google Vertex"
+		}
+		return StopReasonError, fmt.Sprintf("%s stream ended without a finish reason after receiving %d %s", prefix, state.receivedChunkCount, chunkLabel)
+	}
+	return mapGoogleFinishReason(state.finishReason)
+}
+
+// mapGoogleFinishReason applies mapStopReason to a non-empty finish reason and derives the error message the stream end throws
+// (google-generative-ai.ts:276-283): an unhandled reason, or an error stop with its raw reason.
+func mapGoogleFinishReason(reason string) (StopReason, string) {
 	stopReason, err := mapStopReason(reason)
 	if err != nil {
 		return StopReasonError, err.Error()
@@ -1626,7 +1698,16 @@ func RetryGoogleRequest[T any](ctx context.Context, request func() (T, error), o
 			}
 		}
 		return value, err
-	}, ProviderRetryOptions{MaxRetries: opts.MaxRetries, MaxRetryDelayMs: opts.MaxRetryDelayMs})
+	}, ProviderRetryOptions{
+		MaxRetries:      opts.MaxRetries,
+		MaxRetryDelayMs: opts.MaxRetryDelayMs,
+		OnErrorResponse: func(r ProviderResponse) error {
+			if opts.OnResponse == nil {
+				return nil
+			}
+			return opts.OnResponse(ctx, r, nil)
+		},
+	})
 	if wrapped := (googleHeaderlessError{}); errors.As(err, &wrapped) {
 		return value, wrapped.googleStatusError
 	}

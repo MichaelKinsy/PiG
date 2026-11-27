@@ -69,6 +69,7 @@ func (state *anthropicSSEState) reserveLines(n int) {
 // flush is flushSseEvent.
 func (state *anthropicSSEState) flush() (serverSentEvent, bool) {
 	if state.event == "" && len(state.data) == 0 {
+		state.rawStart = len(state.arena)
 		return serverSentEvent{}, false
 	}
 	end := len(state.arena)

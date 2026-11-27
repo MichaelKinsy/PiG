@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"maps"
 	"math"
 	"net/http"
@@ -509,4 +510,37 @@ func TestLlamaCppClassifyUnderflowBoundary(t *testing.T) {
 			t.Fatalf("result=%+v", result)
 		}
 	})
+}
+
+// Port of Pi main 8a57d42a5de8f3f87ebd0cb40c8ece4aed0fc336 (#12502, #12376):
+// packages/ai/test/llama-cpp-classify.test.ts "reports each failed completion attempt to onResponse"
+func TestLlamaCppClassifyReportsEachFailedCompletionAttemptToOnResponse(t *testing.T) {
+	server := newLlamaFakeServer(t, llamaFakeServerOptions{next: answerByPrompt, tokenize: wordTokens})
+	var statuses []int
+	fetch := clsClient(func(r *http.Request) (*http.Response, error) {
+		if strings.HasSuffix(r.URL.Path, "/completion") {
+			return &http.Response{
+				StatusCode: http.StatusServiceUnavailable,
+				Status:     "503 Service Unavailable",
+				Header:     http.Header{"Retry-After-Ms": {"0"}},
+				Body:       io.NopCloser(strings.NewReader("busy")),
+			}, nil
+		}
+		return server.fetch.Transport.RoundTrip(r)
+	})
+	result := ClassifyLlamaCpp(t.Context(), llamaTestModel(), llamaTestContext(), ClassifierOptions{
+		MaxRetries: new(1),
+		Fetch:      fetch,
+		OnResponse: func(r ProviderResponse, _ ClassifierModel) error {
+			statuses = append(statuses, r.Status)
+			return nil
+		},
+	})
+	if result.StopReason != "error" {
+		t.Fatalf("stopReason = %q, want error", result.StopReason)
+	}
+	// Tokenize and template requests stay unobserved, like their payloads.
+	if !reflect.DeepEqual(statuses, []int{503, 503}) {
+		t.Fatalf("statuses = %v, want [503 503]", statuses)
+	}
 }

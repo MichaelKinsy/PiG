@@ -4,11 +4,11 @@ package ai
 
 import "testing"
 
-// packages/ai/src/api/mistral-conversations.ts:933-934 (Pi 1.1.0, #10487): a Mistral response that ends with finish_reason "error" is retryable, because its message carries "server error"; any other unknown finish reason stays terminal.
+// packages/ai/src/api/mistral-conversations.ts:933-934 (Pi 1.1.0, #10487): a Mistral response that ends with finish_reason "error" is retryable, via retryableProviderErrorPattern (Port of Pi main 4f3d2be9a75dfc0441f84f67bb4ec21fd35865c5); any other unknown finish reason stays terminal.
 func TestMistralFinishReasonErrorIsRetryable(t *testing.T) {
 	reason, message := mapMistralStopReason("error")
-	if reason != StopReasonError || !IsRetryableAssistantError(AssistantMessage{StopReason: reason, ErrorMessage: message}) {
-		t.Fatalf("finish_reason error = %s %q, want a retryable error", reason, message)
+	if reason != StopReasonError || message != "Provider stopped with: error" || !IsRetryableAssistantError(AssistantMessage{StopReason: reason, ErrorMessage: message}) {
+		t.Fatalf("finish_reason error = %s %q, want a retryable Provider stopped with: error", reason, message)
 	}
 	reason, message = mapMistralStopReason("content_filter")
 	if reason != StopReasonError || message != "Provider stopped with: content_filter" || IsRetryableAssistantError(AssistantMessage{StopReason: reason, ErrorMessage: message}) {

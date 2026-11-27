@@ -50,6 +50,8 @@ var retryableProviderErrorPattern = buildProviderErrorPattern([]string{
 	"admission ceiling",
 	"rate.?limit",
 	"too many requests",
+	// OpenAI 429 `slow_down` (Codex) and Alibaba Qwen throttle wording (#12240, #2952).
+	"rate increased too quickly",
 	// Status codes must not be part of a longer word or number, e.g. a request id or byte count (#11057, Pi 6e491cfa).
 	// 520, 524 and 525 are Cloudflare's: an unknown error, a timeout, and a failed TLS
 	// handshake between Cloudflare and the provider's origin, usually while it restarts (Pi fb62c069b).
@@ -159,6 +161,12 @@ var retryableProviderErrorPattern = buildProviderErrorPattern([]string{
 	// Sign in with ChatGPT: usage or user data temporarily unavailable. Usage failures can arrive mid-stream without an HTTP 503 in the message (utils/retry.ts).
 	"subscription_sharing_usage_unavailable",
 	"subscription_sharing_user_unavailable",
+	// An OpenAI-compatible stream that ended with `finish_reason: "error"`.
+	"provider finish_reason: error",
+	// Mistral's `finish_reason: "error"` for a transient server failure; see `mapMistralStopReason` in mistral.go (#10487, #12455).
+	"provider stopped with: error",
+	// OpenRouter: "Provider returned an empty response" and empty-stop native_finish_reason errors.
+	"returned an empty response",
 })
 
 // RetryDecision is what a custom RetryDecider chooses for one failed assistant call.

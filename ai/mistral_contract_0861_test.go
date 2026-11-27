@@ -21,7 +21,7 @@ func TestMistralRawStopReasonsUpstream(t *testing.T) {
 		message string
 	}{
 		{"stop", StopReasonStop, ""},
-		{"error", StopReasonError, "Provider stopped with: error (server error)"},
+		{"error", StopReasonError, "Provider stopped with: error"},
 		{"unmapped_error", StopReasonError, "Provider stopped with: unmapped_error"},
 	} {
 		t.Run(tc.raw, func(t *testing.T) {

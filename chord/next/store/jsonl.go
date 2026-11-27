@@ -1,6 +1,7 @@
 package store
 
 import (
+	"bytes"
 	"context"
 	"slices"
 	"strconv"
@@ -92,9 +93,11 @@ type jsonlDecoder struct {
 	bytes ByteSource
 	// pending is the incomplete UTF-8 sequence the last chunk ended with.
 	pending []byte
-	// rest is the decoded text not yet split into lines; start is where the next line begins.
-	rest  string
-	start int
+	// rest is the decoded UTF-8 bytes not yet split into lines; start is where the next line begins,
+	// and bytes in rest[start:scanned] contain no '\n' (linear-time scanning, Pi da7e26cc8).
+	rest    []byte
+	start   int
+	scanned int
 	// line counts the lines taken so far.
 	line     int
 	started  bool
@@ -116,17 +119,23 @@ func (decoder *jsonlDecoder) parse(text string) (any, error) {
 
 func (decoder *jsonlDecoder) Next(ctx context.Context) (any, bool, error) {
 	for !decoder.finished.Load() {
-		if end := strings.IndexByte(decoder.rest[decoder.start:], '\n'); end >= 0 {
-			text := decoder.rest[decoder.start : decoder.start+end]
-			decoder.start += end + 1
+		if end := bytes.IndexByte(decoder.rest[decoder.scanned:], '\n'); end >= 0 {
+			nl := decoder.scanned + end
+			text := string(decoder.rest[decoder.start:nl])
+			decoder.start = nl + 1
+			decoder.scanned = decoder.start
 			decoder.line++
 			if len(jsstring.Trim(text)) > 0 {
 				return decoder.emit(text)
 			}
 			continue
 		}
-		decoder.rest = decoder.rest[decoder.start:]
-		decoder.start = 0
+		if decoder.start > 0 {
+			n := copy(decoder.rest, decoder.rest[decoder.start:])
+			decoder.rest = decoder.rest[:n]
+			decoder.start = 0
+		}
+		decoder.scanned = len(decoder.rest)
 		chunk, ok, err := decoder.bytes.Next(ctx)
 		if err != nil {
 			decoder.finished.Store(true)
@@ -137,18 +146,21 @@ func (decoder *jsonlDecoder) Next(ctx context.Context) (any, bool, error) {
 			if err != nil {
 				return nil, false, err
 			}
-			decoder.rest += text
+			decoder.rest = append(decoder.rest, text...)
 			continue
 		}
 		text, err := decoder.decode(nil, true)
 		if err != nil {
 			return nil, false, err
 		}
-		decoder.rest += text
+		decoder.rest = append(decoder.rest, text...)
 		decoder.finished.Store(true)
 		decoder.line++
-		if len(jsstring.Trim(decoder.rest)) > 0 {
-			return decoder.emit(decoder.rest)
+		remainder := string(decoder.rest)
+		decoder.rest = nil
+		decoder.start, decoder.scanned = 0, 0
+		if len(jsstring.Trim(remainder)) > 0 {
+			return decoder.emit(remainder)
 		}
 	}
 	return nil, false, nil

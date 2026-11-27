@@ -83,9 +83,12 @@ func TestAnthropicSetupFailuresRetainResult(t *testing.T) {
 					}
 					return nil, nil
 				}
-				opts.OnResponse = func(context.Context, ProviderResponse, *Model) error {
+				opts.OnResponse = func(_ context.Context, r ProviderResponse, _ *Model) error {
 					order = append(order, "response")
-					return sentinel
+					if phase == "response" {
+						return sentinel
+					}
+					return nil
 				}
 				stream, err := provider.Stream(t.Context(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("hello")}}}), opts)
 				result := requireAnthropicSetupError(t, stream, err)
@@ -106,7 +109,7 @@ func TestAnthropicSetupFailuresRetainResult(t *testing.T) {
 						t.Fatalf("callback error=%q", result.ErrorMessage)
 					}
 				}
-				wantOrder := map[string][]string{"endpoint": nil, "payload": {"payload"}, "response": {"payload", "fetch", "response"}, "http": {"payload", "fetch"}, "retry-payload": {"payload", "fetch", "payload"}, "retry-http": {"payload", "fetch", "payload", "fetch"}}[phase]
+				wantOrder := map[string][]string{"endpoint": nil, "payload": {"payload"}, "response": {"payload", "fetch", "response"}, "http": {"payload", "fetch", "response"}, "retry-payload": {"payload", "fetch", "response", "payload"}, "retry-http": {"payload", "fetch", "response", "payload", "fetch", "response"}}[phase]
 				if !reflect.DeepEqual(order, wantOrder) {
 					t.Fatalf("order=%v, want %v", order, wantOrder)
 				}

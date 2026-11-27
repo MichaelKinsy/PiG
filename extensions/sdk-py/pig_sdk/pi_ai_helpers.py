@@ -435,7 +435,7 @@ def _compile_each(*patterns: str) -> list[re.Pattern]:
 _OVERFLOW_PATTERNS = _compile_each(
     r"prompt (?:is )?too long",
     r"prompt exceeds max length",
-    r"request_too_large",
+    r"(?<![a-z0-9_])request_too_large(?![a-z0-9_])",
     r"input is too long for requested model",
     r"exceeds the context window",
     r"exceeds (?:the )?(?:model'?s )?maximum context length(?: of [\d,]+ tokens?|\s*\([\d,]+\))",
@@ -472,7 +472,7 @@ _NON_RETRYABLE_PROVIDER_LIMIT_ERROR_PATTERN = _js_regexp("|".join([
     r'"code"\s*:\s*"?1308(?![0-9])',
 ]))
 _RETRYABLE_PROVIDER_ERROR_PATTERN = _js_regexp("|".join([
-    "overloaded", "server_busy", "servers are currently busy", "currently experiencing high demand", "model is at capacity", "admission ceiling", "rate.?limit", "too many requests",
+    "overloaded", "server_busy", "servers are currently busy", "currently experiencing high demand", "model is at capacity", "admission ceiling", "rate.?limit", "too many requests", "rate increased too quickly",
     # Status codes must not be part of a longer word or number, e.g. a request id or byte count (#11057).
     "(?<![a-z0-9])(?:429|500|502|503|504|520|524|525)(?![a-z0-9])",
     "service.?(?:is.?)?(?:temporarily.?)?unavailable", "provider.?(?:is.?)?temporarily.?unavailable", "server.?error", "internal.?error", "provider.?returned.?(?:an.?)?error", r'"type"\s*:\s*"api_error"',
@@ -489,7 +489,7 @@ _RETRYABLE_PROVIDER_ERROR_PATTERN = _js_regexp("|".join([
     # Pi bb1a2b3542b5 (#12124): the Codex 60-minute WebSocket lifetime limit, as code websocket_connection_limit_reached or as text "Responses websocket connection limit reached".
     "websocket.?connection.?limit.?reached",
     "ended without", "stream ended before message_stop",
-    "stream ended before a terminal response event", "http2 request did not get a response", "provider finish_reason: error", "returned an empty response", "stopped before completing the response",
+    "stream ended before a terminal response event", "http2 request did not get a response", "provider finish_reason: error", "provider stopped with: error", "returned an empty response", "stopped before completing the response",
     # Codex CLI mid-stream disconnect, relayed by proxies that wrap the Codex CLI, e.g. "stream disconnected before completion: stream closed before response.completed" (#11057).
     "stream disconnected before completion", "cut short after the reply had begun", "ended the response before it was complete", "connection to the provider was reset", "reported a failure while generating the response",
     "pending stream has been canceled", "retry delay", "you can retry your request",

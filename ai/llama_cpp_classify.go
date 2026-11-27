@@ -367,8 +367,12 @@ func (r llamaRequestContext) post(ctx context.Context, path string, body map[str
 		return nil, err
 	}
 	headers := r.headers()
+	var observeModel *ClassifierModel
+	if observe {
+		observeModel = &r.model
+	}
 	response, err := retryClassifierRequest(ctx, r.options, func() (classifierResponse, error) {
-		response, err := classifierPost(ctx, r.options, llamaCppLabel, r.root+path, headers, encoded)
+		response, err := classifierPost(ctx, r.options, llamaCppLabel, r.root+path, headers, encoded, observeModel)
 		if err == nil {
 			response.body, err = classifierJSONBody(response.body)
 		}
@@ -376,11 +380,6 @@ func (r llamaRequestContext) post(ctx context.Context, path string, body map[str
 	})
 	if err != nil {
 		return nil, err
-	}
-	if observe && r.options.OnResponse != nil {
-		if err := r.options.OnResponse(ProviderResponse{Status: response.status, Headers: headersToRecord(response.headers)}, r.model); err != nil {
-			return nil, err
-		}
 	}
 	return response.body, nil
 }

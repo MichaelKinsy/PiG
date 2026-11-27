@@ -620,8 +620,9 @@ type oaiDelta struct {
 }
 
 type oaiChunkChoice struct {
-	Delta        oaiDelta `json:"delta"`
-	FinishReason string   `json:"finish_reason"`
+	Delta              oaiDelta `json:"delta"`
+	FinishReason       string   `json:"finish_reason"`
+	NativeFinishReason string   `json:"native_finish_reason"`
 	// finishReasonNotString marks a FinishReason that is the String() form of a finish_reason that was not a string.
 	finishReasonNotString bool
 	Index                 int `json:"index"`
@@ -1918,6 +1919,12 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 }
 
 func (p *openAIProvider) streamResponse(ctx context.Context, request *http.Request, opts StreamOptions, builder *assistantStreamBuilder, grammarProps map[string]string) error {
+	responseModel := &Model{ID: p.cfg.Model, ProviderMeta: ProviderMetadata{ProviderID: p.cfg.ProviderID, API: APIOpenAICompletions}}
+	if opts.OnResponse != nil {
+		request = request.WithContext(withRetryErrorResponse(request.Context(), func(r *http.Response) error {
+			return observeProviderResponse(ctx, opts, r, responseModel)
+		}))
+	}
 	resp, err := providerHTTPClient(p.client, opts.Fetch).Do(request)
 	if err != nil {
 		return openAIRequestError(ctx, err, "openai: request")
@@ -1926,11 +1933,14 @@ func (p *openAIProvider) streamResponse(ctx context.Context, request *http.Reque
 	_, builder.managed = resp.Body.(*observedResponseBody)
 	return builder.responseTurn(func() error {
 		if resp.StatusCode != http.StatusOK {
+			if obsErr := observeProviderResponse(ctx, opts, resp, responseModel); obsErr != nil {
+				return obsErr
+			}
 			body, _ := readWebText(resp.Body)
 			noteFailureResponse(ctx, resp)
 			return openAIHTTPError(resp.StatusCode, body)
 		}
-		if err := observeProviderResponse(ctx, opts, resp, &Model{ID: p.cfg.Model, ProviderMeta: ProviderMetadata{ProviderID: p.cfg.ProviderID, API: APIOpenAICompletions}}); err != nil {
+		if err := observeProviderResponse(ctx, opts, resp, responseModel); err != nil {
 			return err
 		}
 		body := io.Reader(resp.Body)
@@ -2080,6 +2090,7 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 	finishReasonNotString := false
 	supportsFinishReason := p.compatBool(func(c *OpenAICompat) *bool { return c.SupportsFinishReason }, true)
 	openRouter := isOpenRouterModel(p.cfg.ProviderID, p.cfg.BaseURL)
+	var nativeFinishReason string
 	inferredStopReason := func() StopReason {
 		if nextStreamIndex > 0 {
 			return StopReasonToolUse
@@ -2169,6 +2180,13 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 		}
 
 		for _, choice := range chunk.Choices[:min(1, len(chunk.Choices))] {
+			if openRouter && choice.NativeFinishReason != "" {
+				if decodedFast {
+					nativeFinishReason = strings.Clone(choice.NativeFinishReason)
+				} else {
+					nativeFinishReason = choice.NativeFinishReason
+				}
+			}
 			if choice.FinishReason != "" || choice.finishReasonNotString {
 				hasFinishReason = true
 				finishReason, finishReasonNotString = choice.FinishReason, choice.finishReasonNotString
@@ -2181,6 +2199,9 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 				builder.partial.StopReason = stopReason
 				if errorMessage != "" {
 					builder.partial.ErrorMessage = errorMessage
+				}
+				if nativeFinishReason != "" {
+					applyOpenRouterNativeFinishReason(builder.partial, finishReason, nativeFinishReason)
 				}
 				builder.touch()
 			}
@@ -2310,14 +2331,28 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 	finishStreamedBlocks()
 	switch {
 	case hasFinishReason:
-		stopReason, errorMessage := mapChunkFinishReason(finishReason, finishReasonNotString)
-		if stopReason == StopReasonError {
-			fail(StopReasonError, errors.New(errorMessage))
+		if nativeFinishReason != "" {
+			flagOpenRouterEmptyStop(builder.partial, nativeFinishReason)
+		}
+		if builder.partial.StopReason == StopReasonError {
+			msg := builder.partial.ErrorMessage
+			if msg == "" {
+				msg = "Provider returned an error stop reason"
+			}
+			fail(StopReasonError, errors.New(msg))
 			return
 		}
-		done(stopReason)
+		done(builder.partial.StopReason)
 	case !supportsFinishReason:
-		done(inferredStopReason())
+		builder.partial.StopReason = inferredStopReason()
+		if nativeFinishReason != "" {
+			flagOpenRouterEmptyStop(builder.partial, nativeFinishReason)
+		}
+		if builder.partial.StopReason == StopReasonError {
+			fail(StopReasonError, errors.New(builder.partial.ErrorMessage))
+			return
+		}
+		done(builder.partial.StopReason)
 	default:
 		fail(StopReasonError, errors.New("Stream ended without finish_reason"))
 	}

@@ -1093,10 +1093,6 @@ func mapMistralStopReason(reason string) (StopReason, string) {
 		return StopReasonLength, ""
 	case "tool_calls":
 		return StopReasonToolUse, ""
-	case "error":
-		// Mistral reports transient server failures this way; "server error" makes the message retryable (#10487).
-		// upstream: mistral-conversations.ts:932-934 mapChatStopReason
-		return StopReasonError, "Provider stopped with: error (server error)"
 	default:
 		return StopReasonError, "Provider stopped with: " + reason
 	}

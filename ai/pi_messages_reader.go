@@ -8,7 +8,6 @@ package ai
 // defines; each await is cited at its source line. Nothing else in the loop depends on timing.
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -41,13 +40,7 @@ var errPiMessagesEventsEnded = errors.New("stream ended without a terminal event
 func (loop *piMessagesEventLoop) events() *jsAsyncGenerator[json.RawMessage] {
 	return newJSAsyncGenerator(loop.turn.executor, func(body *jsGeneratorBody[json.RawMessage]) (json.RawMessage, error) {
 		var decoder piMessagesTextDecoder // pi-messages.ts:280 new TextDecoder()
-		// buffer is Pi's `buffer` (pi-messages.ts:282) after its CRLF replace. No "\n\n" starts before scanned. crlf is whether buffer
-		// holds a "\r\n": the replace leaves one where a line feed follows two carriage returns, and Pi's next replace over the whole
-		// buffer folds it. Without one, the replace changes only the new text and a carriage return that ends the buffer, so a record
-		// that spans many reads is appended to and searched once.
-		var buffer []byte
-		scanned := 0
-		crlf := false
+		var frames codexSSEFrames         // shared linear SseDecoder framing (Pi da7e26cc8)
 		// pi-messages.ts:283 stream.getReader(); the finally at :309 only releases the lock, which needs no action.
 		for { // pi-messages.ts:285 while (true)
 			chunk, err := loop.reader.ReadChunk() // pi-messages.ts:286 await reader.read(); ReadChunk models its microtasks.
@@ -61,62 +54,26 @@ func (loop *piMessagesEventLoop) events() *jsAsyncGenerator[json.RawMessage] {
 			} else {
 				text = decoder.decode(chunk) // pi-messages.ts:287 decoder.decode(value, { stream: true })
 			}
-			// pi-messages.ts:288 buffer = buffer.replace(/\r\n/g, "\n")
-			if crlf {
-				buffer = bytes.ReplaceAll(append(buffer, text...), piMessagesCRLF, piMessagesLF)
-				scanned = 0
-				crlf = bytes.Contains(buffer, piMessagesCRLF)
-			} else {
-				if text != "" && text[0] == '\n' && len(buffer) > 0 && buffer[len(buffer)-1] == '\r' {
-					buffer = buffer[:len(buffer)-1]
-				}
-				joined := max(0, len(buffer)-1)
-				scanned = min(scanned, joined)
-				buffer = append(buffer, strings.ReplaceAll(text, "\r\n", "\n")...)
-				crlf = bytes.Contains(buffer[joined:], piMessagesCRLF)
-			}
-
-			start := 0
-			for { // pi-messages.ts:290-298
-				split := bytes.Index(buffer[scanned:], piMessagesLFLF)
-				if split == -1 {
+			frames.feedText([]byte(text), done)
+			for {
+				data, ok := frames.next()
+				if !ok {
 					break
 				}
-				split += scanned
-				if err := emitPiMessagesEvent(body, string(buffer[start:split])); err != nil {
+				if err := emitPiMessagesEventData(body, data); err != nil {
 					return nil, err
 				}
-				start = split + 2
-				scanned = start
 			}
-			if start > 0 {
-				buffer = append(buffer[:0], buffer[start:]...)
-				crlf = crlf && bytes.Contains(buffer, piMessagesCRLF)
-			}
-			scanned = max(0, len(buffer)-1)
 			if done { // pi-messages.ts:300
 				break
-			}
-		}
-		if rest := string(buffer); trimJSWhitespace(rest) != "" { // pi-messages.ts:305
-			if err := emitPiMessagesEvent(body, rest); err != nil {
-				return nil, err
 			}
 		}
 		return nil, nil
 	})
 }
 
-var (
-	piMessagesCRLF = []byte("\r\n")
-	piMessagesLF   = []byte("\n")
-	piMessagesLFLF = []byte("\n\n")
-)
-
-// emitPiMessagesEvent is `const event = parsePiMessagesEvent(raw); if (event) { yield event; }` (pi-messages.ts:292-296, 305-309). A parse error throws out of
-// the generator. A return() at the yield arrives as the jsGeneratorReturnCompletion the caller propagates.
-func emitPiMessagesEvent(body *jsGeneratorBody[json.RawMessage], raw string) error {
-	event, ok, err := parsePiMessagesEvent(raw)
+func emitPiMessagesEventData(body *jsGeneratorBody[json.RawMessage], data string) error {
+	event, ok, err := parsePiMessagesData(data)
 	if err != nil || !ok {
 		return err
 	}
@@ -150,20 +107,9 @@ func (loop *piMessagesEventLoop) run(consume func(raw json.RawMessage) (terminal
 	}
 }
 
-// upstream: ai/src/api/pi-messages.ts:parsePiMessagesEvent
-//
-// parsePiMessagesEvent mirrors pi-messages.ts:314-323: the first line starting with "data:", trimmed, is JSON unless it is empty
-// or [DONE]. A parsed value that is falsy is no event.
-func parsePiMessagesEvent(raw string) (json.RawMessage, bool, error) {
-	var data string
-	found := false
-	for line := range strings.SplitSeq(raw, "\n") {
-		if rest, ok := strings.CutPrefix(line, "data:"); ok {
-			data, found = trimJSWhitespace(rest), true
-			break
-		}
-	}
-	if !found || data == "" || data == "[DONE]" {
+func parsePiMessagesData(rawData string) (json.RawMessage, bool, error) {
+	data := trimJSWhitespace(rawData)
+	if data == "" || data == "[DONE]" {
 		return nil, false, nil
 	}
 	if !jsonwire.Valid(data) {

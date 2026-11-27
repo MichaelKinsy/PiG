@@ -205,7 +205,7 @@ for (const errorMessage of [
 ]) cases.push({ name: `case ${String(cases.length + 1).padStart(4, "0")}`, args: [failed(errorMessage)] });
 
 
-// Pi fb62c069b, 25190b72c, a00a5048d (packages/ai/src/utils/retry.ts): Cloudflare HTTP 525, gateway provider-unavailable/partial-response, and admission ceiling / temporary provider failures.
+// Pi fb62c069b, 25190b72c, a00a5048d, 0888fd79a, 4f3d2be9a, 9b911b409 (packages/ai/src/utils/retry.ts): Cloudflare HTTP 525, gateway provider-unavailable/partial-response, admission ceiling, request-rate throttle, finish_reason "error", and OpenRouter empty stops.
 for (const errorMessage of [
   "525 <!DOCTYPE html><title>SSL handshake failed</title>", "400 payload 5250000 bytes exceeds limit",
   "The provider is temporarily unavailable. Retry shortly.", "The upstream provider is temporarily unavailable. Try again shortly.",
@@ -218,4 +218,11 @@ for (const errorMessage of [
   "Provider finish_reason: content_filter", '{"type":"error","error":{"type":"api_error","message":"Monthly quota exceeded"}}',
   "provider_temporarily_unavailable", "provider-is-temporarily-unavailable", "provider\ntemporarily unavailable",
   '"type"\u00a0:\t"api_error"', '{"code":"api_error","message":"bad request"}', "PROVIDER FINISH_REASON: ERROR",
+  "Your request rate increased too quickly",
+  "Request rate increased too quickly. To ensure system stability, please adjust your client logic to scale requests more smoothly over time.",
+  "Provider finish_reason: error (native_finish_reason: MALFORMED_FUNCTION_CALL)",
+  "Provider stopped with: error",
+  "Provider stopped with: content_filter",
+  "OpenRouter returned an empty response (native_finish_reason: MALFORMED_RESPONSE)",
+  "Your request rate increased too quickly: insufficient_quota",
 ]) cases.push({ name: `case ${String(cases.length + 1).padStart(4, "0")}`, args: [failed(errorMessage)] });

@@ -31,6 +31,8 @@ type nodeTextLineReader struct {
 	chunk      []byte
 	byteOffset int64
 	buffered   []byte
+	start      int
+	scanned    int
 	ended      bool
 	closed     bool
 }
@@ -60,14 +62,24 @@ func (reader *nodeTextLineReader) ReadLine(ctx context.Context) (*durableenv.Tex
 // bufferedLine returns the next complete line, or the unterminated remainder
 // at end of file.
 func (reader *nodeTextLineReader) bufferedLine() (*durableenv.TextLine, bool) {
-	if newline := bytes.IndexByte(reader.buffered, '\n'); newline != -1 {
-		text := jsstring.FromUTF8(reader.buffered[:newline])
-		reader.buffered = reader.buffered[newline+1:]
+	if idx := bytes.IndexByte(reader.buffered[reader.scanned:], '\n'); idx != -1 {
+		newline := reader.scanned + idx
+		text := jsstring.FromUTF8(reader.buffered[reader.start:newline])
+		reader.start = newline + 1
+		reader.scanned = reader.start
+		if reader.start == len(reader.buffered) {
+			reader.buffered = reader.buffered[:0]
+			reader.start = 0
+			reader.scanned = 0
+		}
 		return &durableenv.TextLine{Text: text, Terminated: true}, true
 	}
-	if reader.ended && len(reader.buffered) > 0 {
-		text := jsstring.FromUTF8(reader.buffered)
+	reader.scanned = len(reader.buffered)
+	if reader.ended && reader.start < len(reader.buffered) {
+		text := jsstring.FromUTF8(reader.buffered[reader.start:])
 		reader.buffered = nil
+		reader.start = 0
+		reader.scanned = 0
 		return &durableenv.TextLine{Text: text}, true
 	}
 	return nil, false
@@ -93,6 +105,12 @@ func (reader *nodeTextLineReader) fill(ctx context.Context) error {
 	if atStart {
 		// A TextDecoder drops a byte order mark at the start of its stream.
 		chunk = bytes.TrimPrefix(chunk, utf8ByteOrderMark)
+	}
+	if reader.start > 0 {
+		n := copy(reader.buffered, reader.buffered[reader.start:])
+		reader.buffered = reader.buffered[:n]
+		reader.scanned -= reader.start
+		reader.start = 0
 	}
 	reader.buffered = append(reader.buffered, chunk...)
 	return nil

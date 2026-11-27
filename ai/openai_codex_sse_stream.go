@@ -199,50 +199,131 @@ func (decoder *codexTextDecoder) decodeTo(dst, data []byte, stream bool) []byte 
 	return append(dst, decoder.decode(data, stream)...)
 }
 
-// codexRecordSeparator ends an SSE frame in parseSSE.
-var codexRecordSeparator = []byte("\n\n")
-
-// codexSSEFrames is parseSSE's buffer and its `buffer.indexOf("\n\n")` loop. The decoded text is appended to one buffer, and the separator is searched for only in the bytes after the last search, so a frame that spans many reads costs its own length.
-type codexSSEFrames struct {
-	// text[head:] is the decoded text not yet split into frames; no separator starts in text[head:scanFrom].
-	text     []byte
-	head     int
-	scanFrom int
-}
-
-// codexFrameBufferReuse is the largest frame buffer kept once its frames are taken.
+// codexFrameBufferReuse is the largest pending-line buffer kept once its line is consumed.
 const codexFrameBufferReuse = 64 << 10
 
-// add appends the decoded text of one read; at the end of the body, a residual frame that is not blank gets its separator.
-func (frames *codexSSEFrames) add(decoder *codexTextDecoder, data []byte, done bool) {
-	if frames.head > 0 {
-		// The frames before head are taken: move the rest to the front so the buffer is reused.
-		n := copy(frames.text, frames.text[frames.head:])
-		frames.text, frames.scanFrom, frames.head = frames.text[:n], frames.scanFrom-frames.head, 0
-		if n == 0 && cap(frames.text) > codexFrameBufferReuse {
-			frames.text = nil
-		}
+// codexSSEFrames mirrors Pi's shared SseDecoder (packages/ai/src/utils/sse.ts, Pi da7e26cc8):
+// lines end with LF, CRLF (including split across chunks), or lone CR; a blank line flushes
+// the event; data lines strip at most one leading space after "data:" and join with "\n".
+// Only newly appended bytes are scanned, so large events cost linear time.
+type codexSSEFrames struct {
+	pendingLine   []byte
+	skipLeadingLF bool
+	hasEvent      bool
+	data          []string
+	events        []string
+	eventHead     int
+}
+
+func (frames *codexSSEFrames) processLine(line string) {
+	if line == "" {
+		frames.flush()
+		return
 	}
-	frames.text = decoder.decodeTo(frames.text, data, !done)
-	if done && trimJSWhitespace(string(frames.text)) != "" {
-		// Treat EOF as terminating the residual SSE frame.
-		frames.text = append(frames.text, codexRecordSeparator...)
+	if strings.HasPrefix(line, ":") {
+		return
+	}
+	field, value, found := strings.Cut(line, ":")
+	if !found {
+		value = ""
+	}
+	value = strings.TrimPrefix(value, " ")
+	switch field {
+	case "event":
+		frames.hasEvent = value != ""
+	case "data":
+		frames.data = append(frames.data, value)
 	}
 }
 
-// next takes the next frame that ends in a separator.
+func (frames *codexSSEFrames) flush() {
+	if !frames.hasEvent && len(frames.data) == 0 {
+		return
+	}
+	if len(frames.data) > 0 {
+		frames.events = append(frames.events, strings.Join(frames.data, "\n"))
+	}
+	frames.hasEvent = false
+	clear(frames.data)
+	frames.data = frames.data[:0]
+}
+
+func (frames *codexSSEFrames) feedText(chunk []byte, done bool) {
+	if frames.eventHead > 0 && frames.eventHead == len(frames.events) {
+		clear(frames.events)
+		frames.events = frames.events[:0]
+		frames.eventHead = 0
+	}
+	i := 0
+	if frames.skipLeadingLF && len(chunk) > 0 {
+		frames.skipLeadingLF = false
+		if chunk[0] == '\n' {
+			i = 1
+		}
+	}
+	start := i
+	for ; i < len(chunk); i++ {
+		ch := chunk[i]
+		if ch != '\r' && ch != '\n' {
+			continue
+		}
+		var line string
+		if len(frames.pendingLine) > 0 {
+			frames.pendingLine = append(frames.pendingLine, chunk[start:i]...)
+			line = string(frames.pendingLine)
+			if cap(frames.pendingLine) > codexFrameBufferReuse {
+				frames.pendingLine = nil
+			} else {
+				frames.pendingLine = frames.pendingLine[:0]
+			}
+		} else {
+			line = string(chunk[start:i])
+		}
+		frames.processLine(line)
+		if ch == '\r' {
+			if i+1 < len(chunk) {
+				if chunk[i+1] == '\n' {
+					i++
+				}
+			} else {
+				frames.skipLeadingLF = true
+			}
+		}
+		start = i + 1
+	}
+	if start < len(chunk) {
+		frames.pendingLine = append(frames.pendingLine, chunk[start:]...)
+	}
+	if done {
+		frames.skipLeadingLF = false
+		if len(frames.pendingLine) > 0 {
+			line := string(frames.pendingLine)
+			frames.pendingLine = frames.pendingLine[:0]
+			frames.processLine(line)
+		}
+		frames.flush()
+	}
+}
+
+// add appends the decoded text of one read and extracts every completed event's joined data payload.
+func (frames *codexSSEFrames) add(decoder *codexTextDecoder, data []byte, done bool) {
+	decoded := decoder.decodeTo(nil, data, !done)
+	frames.feedText(decoded, done)
+}
+
+// next takes the next completed event's data payload.
 func (frames *codexSSEFrames) next() (string, bool) {
-	index := bytes.Index(frames.text[frames.scanFrom:], codexRecordSeparator)
-	if index < 0 {
-		// A separator may straddle the next read by one byte.
-		frames.scanFrom = max(frames.head, len(frames.text)-1)
+	if frames.eventHead >= len(frames.events) {
 		return "", false
 	}
-	index += frames.scanFrom
-	frame := string(frames.text[frames.head:index])
-	frames.head = index + len(codexRecordSeparator)
-	frames.scanFrom = frames.head
-	return frame, true
+	ev := frames.events[frames.eventHead]
+	frames.events[frames.eventHead] = ""
+	frames.eventHead++
+	if frames.eventHead == len(frames.events) {
+		frames.events = frames.events[:0]
+		frames.eventHead = 0
+	}
+	return ev, true
 }
 
 // codexSSEDecoder is processResponsesStream's `for await (const event of mapCodexEvents(parseSSE(...)))`.
@@ -384,17 +465,7 @@ func (decoder *codexSSEDecoder) parseNext() (codexRecord, bool, error) {
 			if !ok {
 				break
 			}
-			var dataLines []string
-			for line := range strings.SplitSeq(chunk, "\n") {
-				// upstream: packages/ai/src/api/openai-codex-responses.ts:parseSSE filters "data:" lines itself rather than using a shared SSE decoder.
-				if value, ok := strings.CutPrefix(line, "data:"); ok {
-					dataLines = append(dataLines, trimJSWhitespace(value))
-				}
-			}
-			if len(dataLines) == 0 {
-				continue
-			}
-			data := trimJSWhitespace(strings.Join(dataLines, "\n"))
+			data := trimJSWhitespace(chunk)
 			if data == "" || data == "[DONE]" {
 				continue
 			}

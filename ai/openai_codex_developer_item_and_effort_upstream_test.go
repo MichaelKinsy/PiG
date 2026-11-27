@@ -134,46 +134,77 @@ func TestCodexConfigurationUpdateEffortUpstream(t *testing.T) {
 	// Regression tests for https://github.com/earendil-works/pi/issues/12269 (Pi fcc33744b)
 	token := codexTestToken(t, "acc_test")
 
-	t.Run("sends thinking level changes as configuration_update items with fixed request effort", func(t *testing.T) {
+	// Regressions for #12269 (cache preservation) and #12361 (request-level starting effort, Pi a588a7bc4).
+	t.Run("reconstructs the initial request effort and emits only level changes", func(t *testing.T) {
 		model := codexTestModel("gpt-6.2-sol", &OpenAIResponsesCompat{SupportsMidConvoEffort: new(true)}, nil)
-		firstMessages := []Message{UserMessage{Content: UserText("Say hello"), Timestamp: 1}}
-
-		bodies1, first := captureCodexSSE(t, model, func(fetch *http.Client) (*AssistantMessageEventStream, error) {
-			return StreamOpenAICodexResponses(t.Context(), model, NormalizeContext(Context{Messages: firstMessages}), StreamOptions{
-				APIKey:          token,
-				Transport:       TransportSSE,
-				ReasoningEffort: "low",
-				Fetch:           fetch,
+		var messages []Message
+		var bodies []map[string]json.RawMessage
+		for i, effort := range []string{"high", "high", "low", "low"} {
+			messages = append(messages, UserMessage{Content: UserText("Again"), Timestamp: int64(i + 1)})
+			captured, reply := captureCodexSSE(t, model, func(fetch *http.Client) (*AssistantMessageEventStream, error) {
+				return StreamOpenAICodexResponses(t.Context(), model, NormalizeContext(Context{Messages: messages}), StreamOptions{
+					APIKey:          token,
+					Transport:       TransportSSE,
+					ReasoningEffort: effort,
+					Fetch:           fetch,
+				})
 			})
-		})
-		secondMessages := append(append([]Message{}, firstMessages...), *first, UserMessage{Content: UserText("Again"), Timestamp: 2})
-		bodies2, second := captureCodexSSE(t, model, func(fetch *http.Client) (*AssistantMessageEventStream, error) {
-			return StreamOpenAICodexResponses(t.Context(), model, NormalizeContext(Context{Messages: secondMessages}), StreamOptions{
-				APIKey:          token,
-				Transport:       TransportSSE,
-				ReasoningEffort: "high",
-				Fetch:           fetch,
-			})
-		})
-
-		if first.ProviderThinkingLevel != "low" {
-			t.Errorf("first.ProviderThinkingLevel = %q, want low", first.ProviderThinkingLevel)
+			if reply.ProviderThinkingLevel != effort {
+				t.Errorf("turn %d ProviderThinkingLevel = %q, want %q", i+1, reply.ProviderThinkingLevel, effort)
+			}
+			bodies = append(bodies, captured[0])
+			messages = append(messages, *reply)
 		}
-		if second.ProviderThinkingLevel != "high" {
-			t.Errorf("second.ProviderThinkingLevel = %q, want high", second.ProviderThinkingLevel)
+		wantInputs := [][]string{
+			{"user"},
+			{"user", "assistant", "user"},
+			{"user", "assistant", "user", "assistant", "user", "configuration_update:low"},
+			{"user", "assistant", "user", "assistant", "user", "configuration_update:low", "assistant", "user"},
 		}
-		for i, body := range []map[string]json.RawMessage{bodies1[0], bodies2[0]} {
+		for i, body := range bodies {
 			var reasoning any
 			if err := json.Unmarshal(body["reasoning"], &reasoning); err != nil {
 				t.Fatalf("turn %d reasoning unmarshal: %v", i+1, err)
 			}
-			assertCatalogJSON(t, reasoning, `{"effort":"medium","summary":"auto"}`)
+			assertCatalogJSON(t, reasoning, `{"effort":"high","summary":"auto"}`)
+			if got := summarizeCodexInput(t, body); !reflect.DeepEqual(got, wantInputs[i]) {
+				t.Errorf("turn %d input = %v, want %v", i+1, got, wantInputs[i])
+			}
 		}
-		if got, want := summarizeCodexInput(t, bodies1[0]), []string{"user", "configuration_update:low"}; !reflect.DeepEqual(got, want) {
-			t.Errorf("turn 1 input = %v, want %v", got, want)
-		}
-		if got, want := summarizeCodexInput(t, bodies2[0]), []string{"user", "configuration_update:low", "assistant", "user", "configuration_update:high"}; !reflect.DeepEqual(got, want) {
-			t.Errorf("turn 2 input = %v, want %v", got, want)
+	})
+
+	t.Run("uses only retained replies from the requested model to establish the baseline", func(t *testing.T) {
+		model := codexTestModel("gpt-6-sol", &OpenAIResponsesCompat{SupportsMidConvoEffort: new(true)}, nil)
+		other := codexTestModel("gpt-6-luna", &OpenAIResponsesCompat{SupportsMidConvoEffort: new(true)}, nil)
+		user := UserMessage{Content: UserText("Again"), Timestamp: 1}
+		b1, first := captureCodexSSE(t, other, func(fetch *http.Client) (*AssistantMessageEventStream, error) {
+			return StreamOpenAICodexResponses(t.Context(), other, NormalizeContext(Context{Messages: []Message{user}}), StreamOptions{
+				APIKey: token, Transport: TransportSSE, ReasoningEffort: "low", Fetch: fetch,
+			})
+		})
+		history := []Message{user, *first, user}
+		b2, second := captureCodexSSE(t, model, func(fetch *http.Client) (*AssistantMessageEventStream, error) {
+			return StreamOpenAICodexResponses(t.Context(), model, NormalizeContext(Context{Messages: history}), StreamOptions{
+				APIKey: token, Transport: TransportSSE, ReasoningEffort: "high", Fetch: fetch,
+			})
+		})
+		b3, _ := captureCodexSSE(t, model, func(fetch *http.Client) (*AssistantMessageEventStream, error) {
+			return StreamOpenAICodexResponses(t.Context(), model, NormalizeContext(Context{Messages: append(append([]Message{}, history...), *second, user)}), StreamOptions{
+				APIKey: token, Transport: TransportSSE, ReasoningEffort: "low", Fetch: fetch,
+			})
+		})
+		b4, _ := captureCodexSSE(t, model, func(fetch *http.Client) (*AssistantMessageEventStream, error) {
+			return StreamOpenAICodexResponses(t.Context(), model, NormalizeContext(Context{Messages: []Message{user}}), StreamOptions{
+				APIKey: token, Transport: TransportSSE, ReasoningEffort: "low", Fetch: fetch,
+			})
+		})
+		wantEfforts := []string{"low", "high", "high", "low"}
+		for i, body := range []map[string]json.RawMessage{b1[0], b2[0], b3[0], b4[0]} {
+			var reasoning any
+			if err := json.Unmarshal(body["reasoning"], &reasoning); err != nil {
+				t.Fatalf("req %d reasoning unmarshal: %v", i+1, err)
+			}
+			assertCatalogJSON(t, reasoning, fmt.Sprintf(`{"effort":%q,"summary":"auto"}`, wantEfforts[i]))
 		}
 	})
 
@@ -195,8 +226,8 @@ func TestCodexConfigurationUpdateEffortUpstream(t *testing.T) {
 		if err := json.Unmarshal(bodies[0]["reasoning"], &reasoning); err != nil {
 			t.Fatalf("reasoning unmarshal: %v", err)
 		}
-		assertCatalogJSON(t, reasoning, `{"effort":"medium","summary":"auto"}`)
-		if got, want := summarizeCodexInput(t, bodies[0]), []string{"user", "configuration_update:none"}; !reflect.DeepEqual(got, want) {
+		assertCatalogJSON(t, reasoning, `{"effort":"none","summary":"auto"}`)
+		if got, want := summarizeCodexInput(t, bodies[0]), []string{"user"}; !reflect.DeepEqual(got, want) {
 			t.Errorf("input = %v, want %v", got, want)
 		}
 	})
@@ -216,7 +247,7 @@ func TestCodexConfigurationUpdateEffortUpstream(t *testing.T) {
 		if result.ProviderThinkingLevel != "none" {
 			t.Errorf("result.ProviderThinkingLevel = %q, want none (raw ReasoningEffort must not leak)", result.ProviderThinkingLevel)
 		}
-		if got, want := summarizeCodexInput(t, bodies[0]), []string{"user", "configuration_update:none"}; !reflect.DeepEqual(got, want) {
+		if got, want := summarizeCodexInput(t, bodies[0]), []string{"user"}; !reflect.DeepEqual(got, want) {
 			t.Errorf("input = %v, want %v", got, want)
 		}
 	})
@@ -313,7 +344,7 @@ func TestCodexConfigurationUpdateEffortUpstream(t *testing.T) {
 		if result.ProviderThinkingLevel != "high" {
 			t.Errorf("ProviderThinkingLevel = %q, want high", result.ProviderThinkingLevel)
 		}
-		want := []string{"user", "assistant", "user", "configuration_update:low", "assistant", "user", "configuration_update:high"}
+		want := []string{"user", "assistant", "user", "assistant", "user", "configuration_update:high"}
 		if got := summarizeCodexInput(t, bodies[0]); !reflect.DeepEqual(got, want) {
 			t.Errorf("input = %v, want %v", got, want)
 		}
@@ -355,12 +386,12 @@ func TestCodexConfigurationUpdateEffortUpstream(t *testing.T) {
 		}
 		wantPrev := []any{nil, "resp_1", "resp_2"}
 		wantInputs := [][]string{
-			{"user", "configuration_update:low"},
+			{"user"},
 			{"user", "configuration_update:high"},
-			{"user", "configuration_update:high"},
+			{"user"},
 		}
 		for i, req := range bodies {
-			assertCatalogJSON(t, req.Body["reasoning"], `{"effort":"medium","summary":"auto"}`)
+			assertCatalogJSON(t, req.Body["reasoning"], `{"effort":"low","summary":"auto"}`)
 			if req.Body["previous_response_id"] != wantPrev[i] {
 				t.Errorf("turn %d previous_response_id = %v, want %v", i+1, req.Body["previous_response_id"], wantPrev[i])
 			}

@@ -349,3 +349,16 @@ for (const errorMessage of [
 ]) for (const window of [undefined, 1000000]) cases.push({ name: next(), args: window === undefined ? [failed(errorMessage)] : [failed(errorMessage), window] });
 for (const stopReason of ["aborted", "stop", "length", "toolUse"]) cases.push({ name: next(), args: [failed('OpenAI API error (413): {"message":"failed to parse request"}', { stopReason })] });
 cases.push({ name: next(), args: [failed("413 Request Entity Too Large", { provider: "cerebras" })] });
+
+// Pi 1.6.1 (32c7f6d7b, #12438): match request_too_large only as a complete ASCII identifier.
+for (const errorMessage of [
+  "request_too_large",
+  '400 {"error":{"type":"request_too_large","message":"Request exceeds the maximum size"}}',
+  "Anthropic error: REQUEST_TOO_LARGE",
+  '413: {"code":"plugin_request_too_large","message":"request too large"}',
+  '400 {"code":"plugin_request_too_large","message":"plugin input rejected"}',
+  "400 invalid_request_error: my_plugin_request_too_large_flag was set",
+  "Unknown error code xrequest_too_large",
+  "Unknown error code request_too_large2",
+  "Unknown error code request_too_large_flag",
+]) cases.push({ name: next(), args: [failed(errorMessage), 200000] });

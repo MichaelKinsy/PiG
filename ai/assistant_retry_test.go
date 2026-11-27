@@ -450,6 +450,45 @@ func TestRetryDelayMsUsesSafeIntegerMagnitude(t *testing.T) {
 // Upstream RETRYABLE_PROVIDER_ERROR_PATTERN (packages/ai/src/utils/retry.ts) lists
 // "connection reset by peer" since Pi 4699b5b26 (#12128), so a message carrying only
 // Go's text of a reset is retried, as in pi-ai. Before that commit neither retried it.
+// Port of Pi main 51ba3ab5b98ec93b4cc8f97335a2fe38698e1ec7 (#12348) and 0888fd79a9dc3a064b164e95b1402119218948f0 (#12434).
+func TestRetryAssistantCallRequestRateIncreasedTooQuickly(t *testing.T) {
+	for _, msg := range []string{
+		"Your request rate increased too quickly",
+		"Request rate increased too quickly. To ensure system stability, please adjust your client logic to scale requests more smoothly over time.",
+	} {
+		if !IsRetryableAssistantError(errorFaux(msg)) {
+			t.Errorf("IsRetryableAssistantError(%q) = false, want true", msg)
+		}
+	}
+}
+
+func TestRetryAssistantCallSucceedsAfterThreeBackoffsWithCallerContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	calls := 0
+	recorder := &retryRecorder{}
+	policy := &RetryPolicy{Enabled: true, MaxRetries: 4, BaseDelayMs: 1}
+	res, err := RetryAssistantCall(ctx, func() (AssistantMessage, error) {
+		calls++
+		if calls < 4 {
+			return errorFaux("terminated"), nil
+		}
+		return FauxAssistantMessage(FauxText("recovered"), FauxAssistantMessageOptions{}), nil
+	}, policy, recorder.callbacks())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if calls != 4 {
+		t.Fatalf("calls = %d, want 4", calls)
+	}
+	if res.StopReason != StopReasonStop {
+		t.Fatalf("stopReason = %q, want stop", res.StopReason)
+	}
+	if !reflect.DeepEqual(recorder.finished, [][3]any{{true, 3, ""}}) {
+		t.Fatalf("finished = %v, want [[true 3 empty]]", recorder.finished)
+	}
+}
+
 func TestConnectionResetTextIsRetryable(t *testing.T) {
 	message := "github-copilot: request: read tcp 100.64.0.1:50817->140.82.112.22:443: read: connection reset by peer"
 	if !IsRetryableAssistantError(errorFaux(message)) {

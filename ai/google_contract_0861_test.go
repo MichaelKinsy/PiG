@@ -88,8 +88,8 @@ func TestMapGoogleFinishReasonFollowsMapStopReason(t *testing.T) {
 		if got, err := mapStopReason(reason); err != nil || got != want {
 			t.Errorf("mapStopReason(%q) = (%q, %v), want %q", reason, got, err, want)
 		}
-		if got, message := mapGoogleFinishReason(APIGoogleGenerativeAI, reason); got != want || message != "" {
-			t.Errorf("mapGoogleFinishReason(APIGoogleGenerativeAI, %q) = (%q, %q)", reason, got, message)
+		if got, message := mapGoogleFinishReason(reason); got != want || message != "" {
+			t.Errorf("mapGoogleFinishReason(%q) = (%q, %q)", reason, got, message)
 		}
 	}
 	for _, reason := range []string{"BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "SAFETY", "IMAGE_SAFETY", "IMAGE_PROHIBITED_CONTENT", "IMAGE_RECITATION", "IMAGE_OTHER",
@@ -97,18 +97,15 @@ func TestMapGoogleFinishReasonFollowsMapStopReason(t *testing.T) {
 		if got, err := mapStopReason(reason); err != nil || got != StopReasonError {
 			t.Errorf("mapStopReason(%q) = (%q, %v), want an error stop without a throw", reason, got, err)
 		}
-		if got, message := mapGoogleFinishReason(APIGoogleGenerativeAI, reason); got != StopReasonError || message != "Provider stopped with: "+reason {
-			t.Errorf("mapGoogleFinishReason(APIGoogleGenerativeAI, %q) = (%q, %q)", reason, got, message)
+		if got, message := mapGoogleFinishReason(reason); got != StopReasonError || message != "Provider stopped with: "+reason {
+			t.Errorf("mapGoogleFinishReason(%q) = (%q, %q)", reason, got, message)
 		}
 	}
 	if got, err := mapStopReason("future_reason"); err == nil || err.Error() != "Unhandled stop reason: future_reason" || got != StopReasonError {
 		t.Errorf("mapStopReason(future_reason) = (%q, %v)", got, err)
 	}
-	if got, message := mapGoogleFinishReason(APIGoogleGenerativeAI, "future_reason"); got != StopReasonError || message != "Unhandled stop reason: future_reason" {
-		t.Errorf("mapGoogleFinishReason(APIGoogleGenerativeAI, future_reason) = (%q, %q)", got, message)
-	}
-	if got, message := mapGoogleFinishReason(APIGoogleGenerativeAI, ""); got != StopReasonError || message != "Google stream ended without a finish reason" {
-		t.Errorf("mapGoogleFinishReason(APIGoogleGenerativeAI, \"\") = (%q, %q)", got, message)
+	if got, message := mapGoogleFinishReason("future_reason"); got != StopReasonError || message != "Unhandled stop reason: future_reason" {
+		t.Errorf("mapGoogleFinishReason(future_reason) = (%q, %q)", got, message)
 	}
 }
 
