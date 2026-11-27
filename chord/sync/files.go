@@ -56,6 +56,8 @@ type SyncFileSystem interface {
 	WriteFile(ctx context.Context, path string, content []byte) error
 	// AppendFile appends to a file, creating it: a body is written chunk by chunk as it streams.
 	AppendFile(ctx context.Context, path string, content []byte) error
+	// FlushFile flushes a file's content to disk (fsync): a file renamed into place after it survives a power loss.
+	FlushFile(ctx context.Context, path string) error
 	RenameFile(ctx context.Context, sourcePath, destinationPath string) error
 	ListDir(ctx context.Context, path string) ([]SyncFileInfo, error)
 	CreateDir(ctx context.Context, path string, recursive bool) error

@@ -97,18 +97,26 @@ const (
 
 var unbounded = Range{}
 
+// EqualityTerm is one own column fixed by an `eq` or `inArray` term in the condition's top-level `and`.
+type EqualityTerm struct {
+	Column string
+	Values []sqlite.SqliteValue
+}
+
 // ReadPlan is a query compiled against the store's bindings. Its statements select the columns the mapping gets, the
 // own key, the matched own columns and the order columns, so a run can keep the keys the skip test needs.
 type ReadPlan struct {
 	Query *Query
 	// Table is the own table's SQL name.
-	Table    string
-	Order    Order
-	Uses     []Use
-	bindings Bindings
-	sides    sides
-	selected string
-	from     string
+	Table string
+	Order Order
+	Uses  []Use
+	// Equalities are the own columns fixed in the condition's top-level `and` terms, in order, as SQLite binds them.
+	Equalities []EqualityTerm
+	bindings   Bindings
+	sides      sides
+	selected   string
+	from       string
 	// where is the condition rendered once, with its parameters; no text without a condition.
 	where struct {
 		sql    string
@@ -158,7 +166,10 @@ func NewReadPlan(query *Query, table string, projection Projection, shape ReadSh
 	fixed := map[string]bool{}
 	var tested []Use
 	if query.Condition != nil {
-		fixed = fixedBy(*query.Condition)
+		plan.Equalities = equalitiesOf(*query.Condition, plan.sides)
+		for _, term := range plan.Equalities {
+			fixed[term.Column] = true
+		}
 		what := query.Table.Name + ": exists"
 		var err error
 		tested, err = existsUses(*query.Condition, query.Column, bindings, what)
@@ -677,21 +688,38 @@ func checkSameColumn(expected, found *Column, set, name string) error {
 	return invalidArgs("column %q of column set %q is not what this read was written for", name, set)
 }
 
-// fixedBy is the own columns a condition fixes with `eq` or `inArray` in its top-level `and` terms.
-func fixedBy(node WhereNode) map[string]bool {
-	switch node.Op {
-	case WhereAnd:
-		fixed := map[string]bool{}
-		for _, each := range node.Nodes {
-			for name := range fixedBy(each) {
-				fixed[name] = true
+// equalitiesOf is the own `eq` and `inArray` terms of condition's top-level `and`, in their order (the first term of a
+// column counts), with values converted as SQLite binds them.
+func equalitiesOf(node WhereNode, s sides) []EqualityTerm {
+	seen := map[string]bool{}
+	var out []EqualityTerm
+	var collect func(n WhereNode)
+	collect = func(n WhereNode) {
+		switch n.Op {
+		case WhereAnd:
+			for _, each := range n.Nodes {
+				collect(each)
 			}
+		case WhereEq:
+			if s.isPartner(n.Column) || seen[n.Column] {
+				return
+			}
+			seen[n.Column] = true
+			out = append(out, EqualityTerm{Column: n.Column, Values: []sqlite.SqliteValue{ToSqlite(n.Value)}})
+		case WhereInArray:
+			if s.isPartner(n.Column) || seen[n.Column] {
+				return
+			}
+			seen[n.Column] = true
+			vals := make([]sqlite.SqliteValue, len(n.Values))
+			for i, v := range n.Values {
+				vals[i] = ToSqlite(v)
+			}
+			out = append(out, EqualityTerm{Column: n.Column, Values: vals})
 		}
-		return fixed
-	case WhereEq, WhereInArray:
-		return map[string]bool{node.Column: true}
 	}
-	return map[string]bool{}
+	collect(node)
+	return out
 }
 
 // keyedBy is whether an equality on columns is keyed in table: together with the fixed columns before them they are

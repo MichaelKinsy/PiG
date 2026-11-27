@@ -677,6 +677,15 @@ func (r *recordingSelf) Follow(FollowAttach[delta.JsonValue]) chord.Watchable[de
 	return state.ConstantOf[delta.JsonValue](nil)
 }
 
+// FollowOver implements Self.
+func (r *recordingSelf) FollowOver(over any, _ FollowOverAttach[any, delta.JsonValue]) chord.Watchable[delta.JsonValue] {
+	r.assertDeclaring("follow")
+	if _, err := followedOver(over, r.object.text); err != nil {
+		panic(err)
+	}
+	return state.ConstantOf[delta.JsonValue](nil)
+}
+
 // On implements Self.
 func (r *recordingSelf) On(JSONSource, OnHandler[delta.JsonValue]) { r.assertDeclaring("on") }
 

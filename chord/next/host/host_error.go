@@ -63,6 +63,10 @@ const (
 	// run ends it): the query is a failed member until then (Object, Query, Error; `self.query`, and the named queries of
 	// slice 14).
 	ErrQueryFailed HostErrorKind = "query_failed"
+	// ErrFollowFailed: a source followed over a changing source (`self.follow(over, attach)`) failed while live: the
+	// attach to the value given rejected, or its runtime failed its observer. Once per failure episode (its next
+	// attachment ends it): the member is failed until then, the object stays live. Also a runtime's detach that threw.
+	ErrFollowFailed HostErrorKind = "follow_failed"
 	// ErrRoutineFailed: a routine's call threw, or its source failed for good (Object, Routine, Error).
 	ErrRoutineFailed HostErrorKind = "routine_failed"
 	// ErrJobFailed: a job's `run` threw, not after an abort (Object, Job, ID, Error): its outcome is `failed { threw }`.

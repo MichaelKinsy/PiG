@@ -278,7 +278,7 @@ func exFileStore(t testing.TB, path string) *store.ChordStore {
 	must(t, err)
 	opened, err := store.OpenStore(store.SqliteBackend(database), background, store.StoreOptions{})
 	must(t, err)
-	return opened.(*store.ChordStore)
+	return opened
 }
 
 // exCloseStore is `await store.close(context)`.

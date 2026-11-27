@@ -68,8 +68,9 @@ func (r *Reference) Member(name string) *ReferenceMember { return r.binding.memb
 func (r *Reference) Keyed(name string) *ReferenceKeyed { return r.binding.keyed[name] }
 
 // Queries is the named queries of the queries member `member` by name, nil when the contract has no such member.
+// Built lazily on first use of the member so a reference pays nothing for queries it never reads (slice 15 §5).
 func (r *Reference) Queries(member string) map[string]*ReferenceQuery {
-	return r.binding.queries[member]
+	return r.binding.queriesOf(member)
 }
 
 // Events is the event member `name`, nil when the contract has none.
@@ -170,7 +171,7 @@ type target interface {
 	keyedMember(member string) (*documents.KeyedSlot, error)
 	// queryMember is the named query `name` of queries member `member` of the live object (slice 14 §3.1; only local
 	// objects have any).
-	queryMember(member, name string) (*OwnQuery, error)
+	queryMember(member, name string, contract *contracts.Contract) (*OwnQuery, error)
 	// keyedMapping is how a consumer of version reads keyed member's documents: mapped back to its version when older
 	// (slice 7b §7), nil when as they are; `contract_mismatch` when the provider refuses it.
 	keyedMapping(member string, version int) (contracts.Mapping, error)
@@ -362,7 +363,9 @@ type binding struct {
 	members map[string]*ReferenceMember
 	keyed   map[string]*ReferenceKeyed
 	methods map[string]struct{}
-	// queries are its queries members' named queries, by member and name; made by the first variant with one.
+	// querySpecs are the queries members' declared query names (lazy materialization on first Queries(member) call).
+	querySpecs map[string]*contracts.QueriesData
+	// queries are its queries members' named queries, by member and name; made lazily on first use (slice 15 §5).
 	queries map[string]map[string]*ReferenceQuery
 }
 
@@ -409,14 +412,10 @@ func newBinding(
 			b.keyed[member] = &ReferenceKeyed{binding: b, member: member, kind: declared.Key}
 		}
 		for member, listed := range variant.Queries.All() {
-			if b.queries == nil {
-				b.queries = map[string]map[string]*ReferenceQuery{}
+			if b.querySpecs == nil {
+				b.querySpecs = map[string]*contracts.QueriesData{}
 			}
-			named := make(map[string]*ReferenceQuery, listed.Args.Len())
-			for _, name := range listed.Args.Keys() {
-				named[name] = &ReferenceQuery{binding: b, member: member, name: name}
-			}
-			b.queries[member] = named
+			b.querySpecs[member] = listed
 		}
 		for _, member := range variant.Methods.Keys() {
 			b.methods[member] = struct{}{}
@@ -958,13 +957,35 @@ func (b *binding) keyedSlot(member string) (*documents.KeyedSlot, error) {
 	return goal.keyedMember(member)
 }
 
+// queriesOf lazily creates and caches the ReferenceQuery handles for queries member `member`.
+func (b *binding) queriesOf(member string) map[string]*ReferenceQuery {
+	if b.queries != nil {
+		if existing, ok := b.queries[member]; ok {
+			return existing
+		}
+	}
+	listed := b.querySpecs[member]
+	if listed == nil {
+		return nil
+	}
+	if b.queries == nil {
+		b.queries = map[string]map[string]*ReferenceQuery{}
+	}
+	named := make(map[string]*ReferenceQuery, listed.Args.Len())
+	for _, name := range listed.Args.Keys() {
+		named[name] = &ReferenceQuery{binding: b, member: member, name: name}
+	}
+	b.queries[member] = named
+	return named
+}
+
 // queryMember is the named query of the live object, as keyedSlot resolves a keyed member's slot.
 func (b *binding) queryMember(member, name string) (*OwnQuery, error) {
 	goal, err := b.boundTarget()
 	if err != nil {
 		return nil, err
 	}
-	return goal.queryMember(member, name)
+	return goal.queryMember(member, name, b.consumer)
 }
 
 // keyedMapping is how this reference reads keyed member's documents (`target.keyedMapping`), as keyedSlot resolves.

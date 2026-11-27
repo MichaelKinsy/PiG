@@ -834,7 +834,11 @@ func (o *chordObject) listMemory(name string) *ListMemory {
 }
 
 // queryMember is the named query `name` of queries member `member` of the live object (slice 14 §3.1).
-func (o *chordObject) queryMember(member, name string) (*OwnQuery, error) {
+func (o *chordObject) queryMember(member, name string, contract *contracts.Contract) (*OwnQuery, error) {
+	// A restart's old attempt serves no query to a version it does not serve (stateFor): it waits for the successor.
+	if o.phase.kind == objectActivating && contract != nil && !o.oldServes(contract.Version, contract.Fingerprint) {
+		return nil, data.NewChordError(data.ChordErrorInit{Code: data.CodeNotReady, Message: o.text + ": not live yet"}, nil)
+	}
 	live, err := o.live()
 	if err != nil {
 		return nil, err

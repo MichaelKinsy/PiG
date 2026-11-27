@@ -280,7 +280,11 @@ func (handle *job) seal(err *data.ChordError, reason cutReason) {
 	handle.sealed = &sealedWith{err: err, reason: reason}
 	handle.records.detach(handle, handle.finishing.snapshot())
 	handle.finishing.clear()
+	// Their contexts are remembered by the attempt's token first: a transaction a cut run had open is not reported.
 	for _, run := range handle.invocations.snapshot() {
+		if run.invocation != nil {
+			handle.owner.token.EndsWith(run.invocation.signal)
+		}
 		handle.records.cut(run, err, reason)
 	}
 	handle.invocations.clear()

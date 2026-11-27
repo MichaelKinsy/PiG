@@ -98,28 +98,7 @@ type Documents struct {
 
 // NewDocuments is the documents of owner's object.
 func NewDocuments(owner DocumentsOwner) *Documents {
-	d := &Documents{owner: owner, line: NewLine(), own: NewSealToken(), slots: map[string]DeclaredSlot{}}
-	// A sweep's only failure is OnLine's `released` once the object ended (a sweep itself drops trackers in memory and
-	// does not fail): nothing to report.
-	d.residency = NewResidency(owner, func(sweep func()) {
-		// Pi's `onLine` refuses `released` before it queues, and takes its place on the line at the call.
-		if d.refusedOnLine(nil) != nil {
-			return
-		}
-		place := d.line.reserve()
-		// Pi fires the sweep unawaited (`void this.onLine(async () => sweep()).catch(() => {})`, documents.ts:48) and onLine's
-		// `this.line.acquire()` (documents.ts:137) takes its place at the call: the place is reserved above, so the order of the
-		// line is the order of the calls. The sweep is a floating promise: it ends once its place on the line is handed over and
-		// the job ran or was refused `released`.
-		d.owner.Task(func() {
-			//portlint:allow ctxbackground Pi's `onLine` takes no signal (documents.ts:135) and `line.acquire()` none (line.ts `acquire()`): a line job has no caller to cancel it
-			_ = d.runOnLine(place, context.Background(), func() error {
-				d.Do(sweep)
-				return nil
-			}, nil)
-		})
-	})
-	return d
+	return &Documents{owner: owner, line: NewLine(), own: NewSealToken()}
 }
 
 // Label is the owner's name in errors.
@@ -134,8 +113,32 @@ func (d *Documents) Context() context.Context { return d.owner.Context() }
 // Line is the object's line.
 func (d *Documents) Line() *Line { return d.line }
 
-// Residency is the idle persisted keyed documents and their eviction.
-func (d *Documents) Residency() *Residency { return d.residency }
+// Residency is the idle persisted keyed documents and their eviction, made by the first keyed slot that asks (most
+// objects have no keyed document). One made after the object ended (a slot dropped at its end) evicts nothing.
+func (d *Documents) Residency() *Residency {
+	if d.residency == nil {
+		// A sweep's only failure is OnLine's `released` once the object ended (a sweep itself drops trackers in memory and
+		// does not fail): nothing to report.
+		d.residency = NewResidency(d.owner, func(sweep func()) {
+			// Pi's `onLine` refuses `released` before it queues, and takes its place on the line at the call.
+			if d.refusedOnLine(nil) != nil {
+				return
+			}
+			place := d.line.reserve()
+			d.owner.Task(func() {
+				//portlint:allow ctxbackground Pi's `onLine` takes no signal (documents.ts:135) and `line.acquire()` none (line.ts `acquire()`): a line job has no caller to cancel it
+				_ = d.runOnLine(place, context.Background(), func() error {
+					d.Do(sweep)
+					return nil
+				}, nil)
+			})
+		})
+		if d.state == documentsEnded {
+			d.residency.End()
+		}
+	}
+	return d.residency
+}
 
 // Own is the token of the object's own transactions: sealed with the object.
 func (d *Documents) Own() *SealToken { return d.own }
@@ -307,6 +310,7 @@ func (d *Documents) Tx(fn func(tx *Transaction) (any, error), token *SealToken, 
 	}
 	release := d.line.Acquire(ctx)
 	var tx *Transaction
+	admitted := false
 	defer func() {
 		// Pi's `finally { holder = undefined; release(); tx.settle(); }` is one synchronous section: no other transaction
 		// takes the line, and nothing else of the object runs, between the line's release and the staged changes hearing
@@ -326,6 +330,7 @@ func (d *Documents) Tx(fn func(tx *Transaction) (any, error), token *SealToken, 
 	d.Do(func() {
 		tx = NewTransaction(d, token, release, ctx, commitPersistence)
 		if err = d.AssertAdmitted(token); err == nil {
+			admitted = true
 			d.holder = tx
 		}
 	})
@@ -349,7 +354,7 @@ func (d *Documents) Tx(fn func(tx *Transaction) (any, error), token *SealToken, 
 	if err != nil {
 		d.Do(tx.Discard)
 		// Only a transaction that did not commit reads this; Chord's own run under contexts that never abort.
-		if ctx.Err() != nil {
+		if ctx.Err() != nil && !d.ownEnd(err, tx, admitted, token, ctx) {
 			if reporter, ok := d.owner.(CancelReporter); ok {
 				cause := context.Cause(ctx)
 				d.Do(func() { reporter.TransactionCancelled(cause) })
@@ -358,6 +363,17 @@ func (d *Documents) Tx(fn func(tx *Transaction) (any, error), token *SealToken, 
 		return nil, err
 	}
 	return result, nil
+}
+
+// ownEnd reports whether tx, failed with err under the aborted ctx, was cancelled by its own object's end (ERNDL-1190):
+// the abort came from a context the token's owner aborted to end its work (not a caller's cancel or a caller object's
+// end), and the failure is that cancellation (refused at the seal, cut at it, or the abort's cause itself), not an
+// exception of its own.
+func (d *Documents) ownEnd(err error, tx *Transaction, admitted bool, token *SealToken, ctx context.Context) bool {
+	if !token.EndedBy(ctx) {
+		return false
+	}
+	return !admitted || tx.CutWith(err) || err == context.Cause(ctx)
 }
 
 // callTx runs fn on tx. A transaction cut at its token's seal (or discarded) aborts its drafts, and Pi's overlay proxy then
@@ -467,11 +483,13 @@ func (d *Documents) HostSlots(kind string) []*KeyedSlot {
 // End drops every document and pin; watches end `ended`, and every later use returns `released`. A section.
 func (d *Documents) End() {
 	d.state = documentsEnded
-	d.residency.End()
+	if d.residency != nil {
+		d.residency.End()
+	}
 	for _, name := range d.order {
 		d.slots[name].Drop()
 	}
-	clear(d.slots)
+	d.slots = nil
 	d.order = nil
 	d.pins = nil
 }
@@ -492,6 +510,9 @@ func (d *Documents) cut() {
 
 func (d *Documents) add(slot DeclaredSlot) DeclaredSlot {
 	name := slot.Definition().Current().Name
+	if d.slots == nil {
+		d.slots = map[string]DeclaredSlot{}
+	}
 	d.slots[name] = slot
 	d.order = append(d.order, name)
 	return slot

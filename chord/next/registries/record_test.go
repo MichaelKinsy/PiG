@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -733,6 +734,146 @@ func TestProviderCheck(t *testing.T) {
 		e.change(func() { record.Serve(Names.Version, namesProvider().Erase()) })
 		if got, want := composed(t, record), []string{"@app/a:=a"}; !reflect.DeepEqual(got, want) {
 			t.Fatalf("composition after serving again = %v", got)
+		}
+	})
+}
+
+type markDependent struct {
+	marks int
+}
+
+func (d *markDependent) Invalidate()                                { d.marks++ }
+func (d *markDependent) SourceRetired(map[state.Dependent]struct{}) {}
+
+func readSourceValue(source *registries.RegistryValueSource) (val any, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			if e, ok := r.(error); ok {
+				err = e
+			} else {
+				panic(r)
+			}
+		}
+	}()
+	return source.Value(), nil
+}
+
+func TestAProviderServedAgainAndVersionSwitch(t *testing.T) {
+	Sum := mustDefine[int, int](t, "app.sum", 1)
+	Sum2 := mustDefine[int, string](t, "app.sum", 2)
+	sumProvider := func(bonus int) registries.RegistryProvider[int, int] {
+		return registries.RegistryProvider[int, int]{
+			Compose: func(table registries.RegistryTable[int], _ registries.ComposeContext) (int, error) {
+				total := bonus
+				for _, entry := range table {
+					total += entry.Value
+				}
+				return total, nil
+			},
+		}
+	}
+
+	t.Run("a provider leaving and served again marks the value's dependents each time, read meanwhile or not", func(t *testing.T) {
+		e := newEnv(t)
+		record := serve(e, Sum, sumProvider(7))
+		source := record.Value(Sum.Version)
+		dep := &markDependent{}
+		source.DependentSet().Add(dep)
+		defer source.DependentSet().Delete(dep)
+		if got, err := readSourceValue(source); err != nil || got != 7 {
+			t.Fatalf("value = %v, %v; want 7", got, err)
+		}
+		e.change(func() { record.Unserve() })
+		if dep.marks != 1 {
+			t.Fatalf("marks after unserve = %d, want 1", dep.marks)
+		}
+		if _, err := readSourceValue(source); err == nil || !strings.Contains(err.Error(), "no plugin serves") {
+			t.Fatalf("value while unserved = %v, want no plugin serves", err)
+		}
+		e.change(func() { record.Serve(Sum.Version, sumProvider(100).Erase()) })
+		if dep.marks != 2 {
+			t.Fatalf("marks after re-serve = %d, want 2", dep.marks)
+		}
+		if got, err := readSourceValue(source); err != nil || got != 100 {
+			t.Fatalf("value after re-serve = %v, %v; want 100", got, err)
+		}
+	})
+
+	t.Run("a reader of a version that comes back is marked even when its table changed while unserved", func(t *testing.T) {
+		e := newEnv(t)
+		record := serve(e, Sum, sumProvider(0))
+		contribute(e, Sum, "@test/giver1", "", plain(1))
+		source := record.Value(Sum.Version)
+		dep := &markDependent{}
+		source.DependentSet().Add(dep)
+		defer source.DependentSet().Delete(dep)
+		if got, err := readSourceValue(source); err != nil || got != 1 {
+			t.Fatalf("initial value = %v, %v; want 1", got, err)
+		}
+		// Switch to v2 (no adapter for v1), then add contribution, then switch back to v1.
+		v2Provider := registries.RegistryProvider[int, string]{
+			Compose: func(registries.RegistryTable[int], registries.ComposeContext) (string, error) { return "v2", nil },
+		}
+		e.change(func() { record.Serve(Sum2.Version, v2Provider.Erase()) })
+		contribute(e, Sum, "@test/giver5", "", plain(5))
+		e.change(func() { record.Serve(Sum.Version, sumProvider(0).Erase()) })
+		if got, err := readSourceValue(source); err != nil || got != 6 {
+			t.Fatalf("value after returning to v1 = %v, %v; want 6", got, err)
+		}
+		if dep.marks < 2 {
+			t.Fatalf("marks = %d, want >= 2", dep.marks)
+		}
+	})
+
+	t.Run("a version-2 reader cannot be handed a last good v1 composition that has the wrong shape", func(t *testing.T) {
+		v1 := mustDefine[int, int](t, "app.switch", 1)
+		v2 := mustDefine[int, string](t, "app.switch", 2)
+		e := newEnv(t)
+		record := serve(e, v1, registries.RegistryProvider[int, int]{
+			Compose: func(registries.RegistryTable[int], registries.ComposeContext) (int, error) { return 42, nil },
+		})
+		if got, err := readSourceValue(record.Value(v1.Version)); err != nil || got != 42 {
+			t.Fatalf("v1 value = %v, %v; want 42", got, err)
+		}
+		e.change(func() {
+			record.Serve(v2.Version, registries.RegistryProvider[int, string]{
+				Compose: func(registries.RegistryTable[int], registries.ComposeContext) (string, error) {
+					return "", errors.New("no version-2 value yet")
+				},
+			}.Erase())
+		})
+		if _, err := readSourceValue(record.Value(v2.Version)); err == nil || !strings.Contains(err.Error(), "no version-2 value yet") {
+			t.Fatalf("v2 value after failed compose = %v, want no version-2 value yet", err)
+		}
+		e.change(func() {
+			record.Serve(v2.Version, registries.RegistryProvider[int, string]{
+				Compose: func(registries.RegistryTable[int], registries.ComposeContext) (string, error) { return "ready", nil },
+			}.Erase())
+		})
+		if got, err := readSourceValue(record.Value(v2.Version)); err != nil || got != "ready" {
+			t.Fatalf("v2 value after healthy compose = %v, %v; want ready", got, err)
+		}
+	})
+
+	t.Run("retains the previous value when the same version is served by new code and its first compose fails", func(t *testing.T) {
+		R := mustDefine[int, string](t, "app.keep", 1)
+		e := newEnv(t)
+		record := serve(e, R, registries.RegistryProvider[int, string]{
+			Compose: func(registries.RegistryTable[int], registries.ComposeContext) (string, error) { return "first", nil },
+		})
+		source := record.Value(R.Version)
+		if got, err := readSourceValue(source); err != nil || got != "first" {
+			t.Fatalf("initial value = %v, %v; want first", got, err)
+		}
+		e.change(func() {
+			record.Serve(R.Version, registries.RegistryProvider[int, string]{
+				Compose: func(registries.RegistryTable[int], registries.ComposeContext) (string, error) {
+					return "", errors.New("failed on same version")
+				},
+			}.Erase())
+		})
+		if got, err := readSourceValue(source); err != nil || got != "first" {
+			t.Fatalf("value after same-version failed compose = %v, %v; want first", got, err)
 		}
 	})
 }

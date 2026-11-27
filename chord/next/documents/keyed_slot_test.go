@@ -167,7 +167,7 @@ func ksFreshStore(t *testing.T) (*store.ChordStore, *ksDB) {
 	if err != nil {
 		t.Fatalf("OpenStore: %v", err)
 	}
-	chordStore := opened.(*store.ChordStore)
+	chordStore := opened
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()

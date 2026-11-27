@@ -46,7 +46,7 @@ func onFile(t *testing.T) (path string, open func(outbox *bool) *ChordStore) {
 		noError(t, err)
 		opened, err := OpenStore(SqliteBackend(db), background, StoreOptions{Outbox: outbox})
 		noError(t, err)
-		return opened.(*ChordStore)
+		return opened
 	}
 }
 
@@ -87,7 +87,7 @@ func hookedStore(t *testing.T) (*ChordStore, *hookedDatabase) {
 	db := &hookedDatabase{SqliteDatabase: inner}
 	opened, err := OpenStore(SqliteBackend(db), background, StoreOptions{Outbox: new(true)})
 	noError(t, err)
-	store := opened.(*ChordStore)
+	store := opened
 	t.Cleanup(func() { _ = store.Close(background) })
 	return store, db
 }

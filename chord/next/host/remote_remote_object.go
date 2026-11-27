@@ -524,7 +524,7 @@ func (r *remoteObject) keyedMember(member string) (*documents.KeyedSlot, error) 
 }
 
 // queryMember: `queries` members are only in local contracts, as keyed ones (slice 14 §3.1).
-func (r *remoteObject) queryMember(member, _ string) (*OwnQuery, error) {
+func (r *remoteObject) queryMember(member, _ string, _ *contracts.Contract) (*OwnQuery, error) {
 	return nil, memberInvalid(fmt.Sprintf("%s has no queries member %q: named queries are local", r.name, member))
 }
 

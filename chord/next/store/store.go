@@ -49,6 +49,9 @@ type Store interface {
 	LastSeq() int64
 	// Outbox is the outbox the sync layer reads; nil without one.
 	Outbox() *Outbox
+	// SetOutbox turns the outbox on (it records every commit after the current LastSeq) or off (its recorded commits
+	// dropped), persisted as OpenStore's Outbox option is. Runs in the commit queue.
+	SetOutbox(on bool, ctx context.Context) error
 	// Export is the store's state after its LastSeq as archive parts (slice 6a §13), holding the commit queue from the
 	// first Next until the iteration ends, fails, is closed or its context aborts.
 	Export(ctx context.Context) (*StoreExport, error)
@@ -76,7 +79,7 @@ type StoreOptions struct {
 
 // OpenStore opens a store over backend: the store's schema migrations, the UTF-8 check, the metadata read once, the
 // outbox switched when asked. A failure closes the backend and returns its error (rule 12).
-func OpenStore(backend *Backend, ctx context.Context, options StoreOptions) (Store, error) {
+func OpenStore(backend *Backend, ctx context.Context, options StoreOptions) (*ChordStore, error) {
 	db := backend.DB
 	meta, catalog, err := openState(db, ctx, options)
 	if err != nil {
@@ -107,6 +110,21 @@ func openState(db sqlite.SqliteDatabase, ctx context.Context, options StoreOptio
 	return meta, catalog, nil
 }
 
+// writeOutboxSetting writes the outbox setting in metadata: on from floor, or off with its recorded commits dropped.
+func writeOutboxSetting(executor sqlite.SqliteExecutor, on bool, floor int64) error {
+	flag := int64(0)
+	if on {
+		flag = 1
+	}
+	if err := executor.Run("UPDATE "+TableMeta+" SET outbox = ?, outbox_floor = ? WHERE singleton = 1", flag, floor); err != nil {
+		return err
+	}
+	if !on {
+		return executor.Run("DELETE FROM " + TableOutbox)
+	}
+	return nil
+}
+
 // switchOutbox turns the outbox on (from the current `lastSeq`) or off (its commits dropped) when outbox asks for the
 // other.
 func switchOutbox(db sqlite.SqliteDatabase, meta MetaRow, outbox *bool) (MetaRow, error) {
@@ -121,13 +139,7 @@ func switchOutbox(db sqlite.SqliteDatabase, meta MetaRow, outbox *bool) (MetaRow
 		flag = 1
 	}
 	err := db.Transaction(func(executor sqlite.SqliteExecutor) error {
-		if err := executor.Run("UPDATE "+TableMeta+" SET outbox = ?, outbox_floor = ? WHERE singleton = 1", flag, floor); err != nil {
-			return err
-		}
-		if !on {
-			return executor.Run("DELETE FROM " + TableOutbox)
-		}
-		return nil
+		return writeOutboxSetting(executor, on, floor)
 	})
 	if err != nil {
 		return MetaRow{}, err
@@ -462,7 +474,67 @@ func (store *ChordStore) LastSeq() int64 {
 }
 
 // Outbox is the outbox the sync layer reads; nil without one.
-func (store *ChordStore) Outbox() *Outbox { return store.outbox }
+func (store *ChordStore) Outbox() *Outbox {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	return store.outbox
+}
+
+// SetOutbox turns the outbox on (recording commits after the current LastSeq) or off (dropping recorded commits),
+// serialized in the commit queue.
+func (store *ChordStore) SetOutbox(on bool, ctx context.Context) error {
+	if err := store.AssertUsable(); err != nil {
+		return err
+	}
+	done := make(chan struct{})
+	store.mu.Lock()
+	previous := store.tail
+	store.tail = done
+	store.open = nil
+	store.mu.Unlock()
+	result := make(chan error, 1)
+	go func() {
+		defer close(done)
+		<-previous
+		result <- store.switchOutbox(on)
+	}()
+	select {
+	case err := <-result:
+		return err
+	case <-ctx.Done():
+		return context.Cause(ctx)
+	}
+}
+
+func (store *ChordStore) switchOutbox(on bool) error {
+	if err := store.AssertUsable(); err != nil {
+		return err
+	}
+	store.mu.Lock()
+	current := store.outbox != nil
+	lastSeq := store.lastSeq
+	store.mu.Unlock()
+	if on == current {
+		return nil
+	}
+	floor := int64(0)
+	if on {
+		floor = lastSeq
+	}
+	if err := store.db.Transaction(func(executor sqlite.SqliteExecutor) error {
+		return writeOutboxSetting(executor, on, floor)
+	}); err != nil {
+		return store.fail(err)
+	}
+	store.mu.Lock()
+	if on {
+		store.outbox = NewOutbox(store, floor)
+	} else {
+		store.outbox = nil
+	}
+	store.mu.Unlock()
+	return nil
+}
 
 // NextID is the allocator's value as the last commit persisted it.
 func (store *ChordStore) NextID() int64 {
@@ -540,7 +612,7 @@ func (store *ChordStore) AnnounceTable(name string, version int) (withdraw func(
 }
 
 // RecordsOutbox reports whether the store has an outbox, which a replayed batch writes too.
-func (store *ChordStore) RecordsOutbox() bool { return store.outbox != nil }
+func (store *ChordStore) RecordsOutbox() bool { return store.Outbox() != nil }
 
 // Export is the store's state after its LastSeq as archive parts (slice 6a §13).
 func (store *ChordStore) Export(ctx context.Context) (*StoreExport, error) {

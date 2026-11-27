@@ -30,6 +30,8 @@ type ReadResult struct {
 	Paired map[*Use]map[any]bool
 	// Past is the position of the row past Limit, when there is one (nil otherwise): the read's range ends there.
 	Past Position
+	// IDs is the key identity of each fetched row, in order, for multi-column keys; nil for single-column keys.
+	IDs []any
 }
 
 // ReadRun is one run of a read: its result (Kind "rows"), the number of a count (Kind "count"), or why it could not
@@ -49,6 +51,9 @@ type ReadExecutor interface {
 
 // ReadSink is who takes a read's runs: called inside the batch of the commit that ran it.
 type ReadSink interface{ Adopt(run ReadRun) }
+
+// KeptKeysWatcher is told when the keys a read keeps change: the commit index it is filed in (slice 15 §3).
+type KeptKeysWatcher interface{ Kept(read *RegisteredRead) }
 
 // ReadKind is what a read is: the rows of a range (Kind "rows"), or the number of rows of its condition ("count").
 type ReadKind struct {
@@ -70,6 +75,8 @@ type RegisteredRead struct {
 		transaction sqlite.SqliteExecutor
 		run         *ReadRun
 	}
+	// watcher is the commit index that files this read by its kept keys, if one does.
+	watcher KeptKeysWatcher
 }
 
 // NewRegisteredRead is a read of plan, of what, whose runs go to sink.
@@ -86,14 +93,46 @@ func (read *RegisteredRead) Know(rows []StoredRead) {
 	run := &ReadRun{Kind: "rows", Result: read.result(rows, rng)}
 	read.mu.Lock()
 	read.adopted = run
+	watcher := read.watcher
 	read.mu.Unlock()
+	if watcher != nil {
+		watcher.Kept(read)
+	}
 }
 
 // Forget drops its adopted result: without one it is never skipped, so the next commit over its tables runs it.
 func (read *RegisteredRead) Forget() {
 	read.mu.Lock()
 	read.adopted = nil
+	watcher := read.watcher
 	read.mu.Unlock()
+	if watcher != nil {
+		watcher.Kept(read)
+	}
+}
+
+// WatchKept sets the watcher told whenever kept keys change.
+func (read *RegisteredRead) WatchKept(watcher KeptKeysWatcher) {
+	read.mu.Lock()
+	read.watcher = watcher
+	read.mu.Unlock()
+}
+
+// KeptSets returns the key sets a skip test of this read may compare against: its adopted run's, and a group's run not
+// adopted yet; nil while some such run has no rows (loading, failed, a count).
+func (read *RegisteredRead) KeptSets() []map[any]bool {
+	read.mu.Lock()
+	defer read.mu.Unlock()
+	if read.adopted == nil || read.adopted.Kind != "rows" {
+		return nil
+	}
+	if read.tentative != nil && read.tentative.run != nil {
+		if read.tentative.run.Kind != "rows" {
+			return nil
+		}
+		return []map[any]bool{read.adopted.Result.Keys, read.tentative.run.Result.Keys}
+	}
+	return []map[any]bool{read.adopted.Result.Keys}
 }
 
 // Latest is the run the skip test of a step in transaction compares against: the group's latest, else the adopted one.
@@ -153,11 +192,15 @@ func (read *RegisteredRead) Fetch(reader ReadExecutor, ctx context.Context) (Rea
 // Ran keeps a step's run for the later steps of its group until it is adopted.
 func (read *RegisteredRead) Ran(transaction sqlite.SqliteExecutor, run ReadRun) {
 	read.mu.Lock()
-	defer read.mu.Unlock()
 	read.tentative = &struct {
 		transaction sqlite.SqliteExecutor
 		run         *ReadRun
 	}{transaction, &run}
+	watcher := read.watcher
+	read.mu.Unlock()
+	if watcher != nil {
+		watcher.Kept(read)
+	}
 }
 
 // Adopt takes run as its state and hands it to the sink.
@@ -171,7 +214,11 @@ func (read *RegisteredRead) Adopt(run ReadRun) {
 	} else {
 		read.adopted = &run
 	}
+	watcher := read.watcher
 	read.mu.Unlock()
+	if watcher != nil {
+		watcher.Kept(read)
+	}
 	read.Sink.Adopt(run)
 }
 
@@ -201,14 +248,22 @@ func (read *RegisteredRead) result(stored []StoredRead, rng Range) *ReadResult {
 			paired[use] = map[any]bool{}
 		}
 	}
-	for _, row := range stored {
-		keys[Identity(keyColumns, row)] = true
+	var ids []any
+	if len(keyColumns) > 1 {
+		ids = make([]any, len(stored))
+	}
+	for at, row := range stored {
+		id := Identity(keyColumns, row)
+		keys[id] = true
+		if ids != nil {
+			ids[at] = id
+		}
 		for use, values := range paired {
 			values[Identity(use.Pairs, row)] = true
 		}
 	}
 	more := len(stored) > rng.Limit
-	result := &ReadResult{Rows: stored, More: more, Keys: keys, Paired: paired}
+	result := &ReadResult{Rows: stored, More: more, Keys: keys, Paired: paired, IDs: ids}
 	if more {
 		result.Rows = stored[:rng.Limit]
 		result.Past = make(Position, len(plan.Order.Columns))

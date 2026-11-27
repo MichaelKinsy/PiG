@@ -575,7 +575,7 @@ func TestNamedQueryAnUnknownQueryOfAMemberIsInvalidAndARemoteObjectHasNone(t *te
 	host, _ := nqHosted(t, memoryStore(t), &nqProbe{})
 	_, err := mustGet(t, host, nqClub, jsonObject()).binding.queryMember("teams", "nope")
 	wantChordError(t, err, data.CodeInvalid, data.ReasonMember, `app.club has no query "teams.nope"`)
-	_, err = (&remoteObject{name: "app.far"}).queryMember("teams", "ofTeam")
+	_, err = (&remoteObject{name: "app.far"}).queryMember("teams", "ofTeam", nil)
 	wantChordError(t, err, data.CodeInvalid, data.ReasonMember, `app.far has no queries member "teams": named queries are local`)
 }
 

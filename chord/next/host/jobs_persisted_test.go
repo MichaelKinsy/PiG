@@ -103,7 +103,7 @@ func storeFileWrapped(t *testing.T, wrap func(sqlite.SqliteDatabase) sqlite.Sqli
 		}
 		opened, err := store.OpenStore(store.SqliteBackend(backend), background, store.StoreOptions{})
 		must(t, err)
-		return opened.(*store.ChordStore)
+		return opened
 	}
 }
 

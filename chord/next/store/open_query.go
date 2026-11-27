@@ -64,6 +64,7 @@ type OpenQuery struct {
 	Ctx     context.Context
 	shape   ReadShape
 	rebound func()
+	onClose func()
 
 	mu       sync.Mutex
 	reads    []*OpenRead
@@ -103,6 +104,13 @@ func (query *OpenQuery) compileInto() {
 
 // Owner is who offers the query.
 func (query *OpenQuery) Owner() any { return query.Spec.Owner }
+
+// SetOnClose registers a callback invoked once when the query closes.
+func (query *OpenQuery) SetOnClose(fn func()) {
+	query.mu.Lock()
+	query.onClose = fn
+	query.mu.Unlock()
+}
 
 // Compiled is the plan while the query compiles, else why it does not.
 func (query *OpenQuery) Compiled() Compiled {
@@ -162,6 +170,13 @@ func (query *OpenQuery) Close() {
 	query.Site.Store.Reads.Closed(query)
 	for _, read := range reads {
 		read.Close()
+	}
+	query.mu.Lock()
+	onClose := query.onClose
+	query.onClose = nil
+	query.mu.Unlock()
+	if onClose != nil {
+		onClose()
 	}
 }
 

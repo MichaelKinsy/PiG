@@ -75,7 +75,7 @@ func servedWorker(b *testing.B, persisted bool) *benchWorker {
 		must(b, err)
 		opened, err := store.OpenStore(store.SqliteBackend(database), background, store.StoreOptions{})
 		must(b, err)
-		st = opened.(*store.ChordStore)
+		st = opened
 	}
 	worker := &benchWorker{parked: make(chan parkedRun)}
 	options := HostOptions{OnError: func(HostError) {}}

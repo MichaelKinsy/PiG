@@ -198,11 +198,16 @@ func CheckProvider(name string, provider RegistryProvider[any, any]) error {
 }
 
 // Serve serves the registry with provider at version (the defining plugin's facet, checked by CheckProvider when its
-// setup ran), replacing the provider a reload changed, inside a batch: the table composes again (lazily).
+// setup ran), replacing the provider a reload changed, inside a batch: the table composes again (lazily). A provider of
+// another version keeps no last good composition of the one before: its value has the other version's type, which no
+// reader of this version may get when this version's first compose throws.
 func (r *RegistryRecord) Serve(version int, provider RegistryProvider[any, any]) {
+	if r.provider == nil || r.provider.version != version {
+		r.composition = nil
+	}
 	r.provider = &provided{version: version, provider: provider}
 	r.table = nil
-	r.invalidate()
+	r.availabilityChanged()
 }
 
 // Unserve is a reload removing the defining plugin, inside a batch: no provider serves it; its readers' values fail
@@ -211,7 +216,7 @@ func (r *RegistryRecord) Unserve() {
 	r.provider = nil
 	r.table = nil
 	r.composition = nil
-	r.invalidate()
+	r.availabilityChanged()
 }
 
 // ComposeServed is the first composition of a served registry, at `load`'s publication or a reload's commit, inside
@@ -360,6 +365,16 @@ func (r *RegistryRecord) Close() {
 	}
 	r.values = map[int]*RegistryValueSource{}
 	r.valueVersions = nil
+}
+
+// availabilityChanged is a provider coming, going or changing its version: every version's value is marked, whether or
+// not its dependents read it since the last change. A read that found no provider, or one of another version, composed
+// nothing, so the table may still be dirty, and a dirty table only lists (invalidate): its readers would never learn of it.
+func (r *RegistryRecord) availabilityChanged() {
+	r.dirty = true
+	for _, version := range r.valueVersions {
+		r.values[version].Recomposed()
+	}
 }
 
 // invalidate is the table changing: every version's value is marked and listed (each lists itself once per batch); while

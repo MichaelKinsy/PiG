@@ -120,6 +120,9 @@ type Self interface {
 	// the source keeping its last value. A state member, a derive source, an `On` source. A method handler that waits for the
 	// followed runtime calls chordctx.Suspend first (see FollowObserver).
 	Follow(attach FollowAttach[delta.JsonValue]) chord.Watchable[delta.JsonValue]
+	// FollowOver is a followed source over a changing source (ERNDL-1191): attach runs for each non-nil value of over
+	// (a registry value or a writable).
+	FollowOver(over any, attach FollowOverAttach[any, delta.JsonValue]) chord.Watchable[delta.JsonValue]
 	// LiveQuery is a named query read live (slice 14 §3): the first `first` rows of query for args, and whether a further row
 	// exists, as a JSON watchable `{ rows, more }`. args is a JSON value or a watchable of it: the member shows the previous
 	// rows until the read for the new arguments has run. Opened once this object's dependencies are live; a commit that can
@@ -337,10 +340,11 @@ type attempt struct {
 	variant *string
 	derives []*state.Derive
 	// follows are its followed sources, attached in declaration order after the natives.
-	follows  []*followSource
-	routines routines
-	jobs     []*job
-	jobNames map[string]struct{}
+	follows          []*followSource
+	followWaitingFor string
+	routines         routines
+	jobs             []*job
+	jobNames         map[string]struct{}
 	// tables are the tables it declared, by name.
 	tables     []declaredTable
 	tableNames map[string]struct{}
@@ -805,6 +809,32 @@ func (a *attempt) Follow(attach FollowAttach[delta.JsonValue]) chord.Watchable[d
 	return Expose(source)
 }
 
+// FollowOver implements Self (ERNDL-1191): follows a changing registry value or writable.
+func (a *attempt) FollowOver(over any, attach FollowOverAttach[any, delta.JsonValue]) chord.Watchable[delta.JsonValue] {
+	a.assertDeclaring("follow")
+	object := a.object
+	label := object.text
+	host := object.host
+	src, err := followedOver(over, label)
+	if err != nil {
+		panic(err)
+	}
+	liveCtx := chordctx.WithAbortSignal(a.ctx, a.opening)
+	attached := followOver(src, attach, followOverOwner{
+		label:   label,
+		ctx:     liveCtx,
+		loop:    host.loop(),
+		metrics: host.telemetry.Metrics(),
+		live:    func() bool { return a.isLive },
+		report:  func(err error) { host.report(HostError{Kind: ErrFollowFailed, Object: label, Error: err}) },
+		waiting: func(what string) { a.followWaitingFor = what },
+	})
+	owner := followOwner{label: label, ctx: a.ctx, ended: a.followEnded}
+	source := newFollowSource(attached, owner, host.batch, host.loop())
+	a.follows = append(a.follows, source)
+	return Expose(source)
+}
+
 // On implements Self.
 func (a *attempt) On(source JSONSource, fn OnHandler[delta.JsonValue]) {
 	a.assertDeclaring("on")
@@ -861,8 +891,15 @@ func (a *attempt) activate(ending *keyedPromise[struct{}]) *keyedPromise[activat
 	ready := host.timeouts.ready
 	result := newKeyedPromise[activation](a.loop())
 	dl := newDeadline(host.loop(), ready, func() {
+		err := notLive(a.object.text, ready)
+		if a.followWaitingFor != "" {
+			err = data.NewChordError(data.ChordErrorInit{
+				Code:    data.CodeUnavailable,
+				Message: err.Message + " (waiting for " + a.followWaitingFor + ")",
+			}, nil)
+		}
 		a.abandon(activation{kind: activationFailed, cause: data.FailureCause{
-			Kind: data.FailureTransient, Error: notLive(a.object.text, ready),
+			Kind: data.FailureTransient, Error: err,
 		}})
 	})
 	finish := func(outcome activation) {
@@ -914,6 +951,7 @@ func (a *attempt) abandon(outcome activation) {
 	} else {
 		reason = outcome.cause.Error
 	}
+	a.token.EndsWith(a.opening)
 	a.abort(reason)
 	a.stopRoutinesWith(reason)
 }
@@ -945,6 +983,9 @@ func (a *attempt) followEnded(end chord.WatchEnd) {
 // live: the object went live: its jobs take starts and its routines start, in this turn; both stop when it is sealed.
 func (a *attempt) live() {
 	a.isLive = true
+	for _, follow := range a.follows {
+		follow.live()
+	}
 	if early := a.endedEarly; early != nil {
 		a.object.failLive(a, liveFailure{kind: data.FailureTransient, err: early})
 		return
@@ -975,6 +1016,7 @@ func (a *attempt) startRoutines() {
 // stopRoutinesWith stops its routines with reason (or they may not start any more: startRoutines asks the abandonment too).
 func (a *attempt) stopRoutinesWith(reason error) {
 	if a.routineRun != nil {
+		a.token.EndsWith(a.routineRun.ctx)
 		a.routineRun.abort(reason)
 	}
 }

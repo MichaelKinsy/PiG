@@ -2,6 +2,7 @@ package documents
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
@@ -133,6 +134,8 @@ type Transaction struct {
 	// persistence is when its commit reaches the store (a run state's deferred change, D8).
 	persistence CommitPersistence
 	state       txState
+	// cut is the error its cut returns, once cut (one instance: CutWith tells it from other failures).
+	cut *data.ChordError
 	// adoptions are what its commit adopts (set at its preparation, counted when Committed asks); rows the table rows its
 	// commit's step changed.
 	adoptions []*adoption
@@ -751,10 +754,19 @@ func (tx *Transaction) assertOpen() error {
 }
 
 func (tx *Transaction) cutError() error {
-	return data.NewChordError(data.ChordErrorInit{
-		Code: data.CodeReleased, Reason: data.ReasonDiscarded,
-		Message: tx.documents.Label() + ": the transaction was discarded at the seal",
-	}, nil)
+	if tx.cut == nil {
+		tx.cut = data.NewChordError(data.ChordErrorInit{
+			Code: data.CodeReleased, Reason: data.ReasonDiscarded,
+			Message: tx.documents.Label() + ": the transaction was discarded at the seal",
+		}, nil)
+	}
+	return tx.cut
+}
+
+// CutWith reports whether err is its cut's error (or a revoked draft panic from the cut): the seal discarded it, nothing
+// else failed it.
+func (tx *Transaction) CutWith(err error) bool {
+	return tx.cut != nil && (err == tx.cut || errors.Is(err, delta.ErrRevoked))
 }
 
 // refreshQueries stages the refresh of the store's reads over the tables this transaction wrote (slice 14 §3.2; Pi

@@ -80,6 +80,11 @@ func (files recordingFiles) AppendFile(ctx context.Context, path string, content
 	return files.osFiles.AppendFile(ctx, path, content)
 }
 
+func (files recordingFiles) FlushFile(ctx context.Context, path string) error {
+	files.note("FlushFile", path, "")
+	return files.osFiles.FlushFile(ctx, path)
+}
+
 func (files recordingFiles) RenameFile(ctx context.Context, source, destination string) error {
 	files.note("RenameFile", source, "-> "+strings.TrimPrefix(destination, files.root))
 	return files.osFiles.RenameFile(ctx, source, destination)
@@ -126,6 +131,7 @@ func TestFileSystemSyncRemoteCallsTheFileSystemOperationsInPisOrderWithPisArgume
 		"AppendFile " + s + "/snapshots/0000000000000007.batch.tmp bytes=3",
 		"AppendFile " + s + "/snapshots/0000000000000007.batch.tmp bytes=3",
 		"AppendFile " + s + "/snapshots/0000000000000007.batch.tmp bytes=2",
+		"FlushFile " + s + "/snapshots/0000000000000007.batch.tmp",
 		"RenameFile " + s + "/snapshots/0000000000000007.batch.tmp -> " + s + "/snapshots/0000000000000007.batch",
 	}
 	if got := operations(&log); !slices.Equal(got, want) {
@@ -205,7 +211,7 @@ func TestFileSystemSyncRemoteCallsTheFileSystemOperationsInPisOrderWithPisArgume
 	if _, err := NewFileSyncStateStore(files, filepath.Join(root, "state")).Get(ctx, "s1"); err != nil {
 		t.Fatal(err)
 	}
-	for _, operation := range []string{"JoinPath", "ReadTextFile", "ReadBinaryFile", "OpenBinaryReader", "Read", "WriteFile", "AppendFile", "RenameFile", "ListDir", "CreateDir", "Remove"} {
+	for _, operation := range []string{"JoinPath", "ReadTextFile", "ReadBinaryFile", "OpenBinaryReader", "Read", "WriteFile", "AppendFile", "FlushFile", "RenameFile", "ListDir", "CreateDir", "Remove"} {
 		if !files.seen[operation] {
 			t.Errorf("no production path called %s", operation)
 		}

@@ -369,7 +369,7 @@ func openMemoryStore(t testing.TB, wrap func(sqlite.SqliteDatabase) sqlite.Sqlit
 	if err != nil {
 		t.Fatalf("OpenStore: %v", err)
 	}
-	opened2 := opened.(*store.ChordStore)
+	opened2 := opened
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()

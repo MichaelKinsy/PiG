@@ -2,12 +2,14 @@ package sync
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"slices"
 	"strings"
 	stdsync "sync"
 	"testing"
@@ -113,7 +115,7 @@ func (d *device) pull(sessionID ...string) Seq {
 func (d *device) forget() {
 	s := d.copies[session]
 	delete(d.copies, session)
-	noError(d.t, d.state.Set(background, session, SyncState{}))
+	noError(d.t, d.state.Delete(background, session))
 	if s != nil {
 		noError(d.t, s.Close(background))
 	}
@@ -371,13 +373,47 @@ func TestSyncingASessionBetweenDevices(t *testing.T) {
 		}
 		same(t, "remote_empty", upload(), UploadResult{Type: RemoteEmpty, At: synced})
 		// The host forgets the bookmark: the next upload is the whole store, as an archive (the outbox was trimmed).
-		noError(t, laptop.state.Set(background, session, SyncState{SyncedHead: nil}))
+		noError(t, laptop.state.Delete(background, session))
 		source := laptop.store()
 		same(t, "reupload", upload(), UploadResult{Type: Uploaded, Head: lastSeq(source)})
 		same(t, "slots", listing(t, emptied, session).Batches, []BatchInfo{{After: 0, To: lastSeq(source), Device: "laptop", Archive: true}})
 		replica := newDevice(t, "replica", emptied)
 		replica.pull()
 		same(t, "replica copy", reads(t, replica.store()), reads(t, source))
+	})
+
+	t.Run("reports a slot the remote refuses for good, keeping its bookmark and outbox", func(t *testing.T) {
+		remote := newRemote(t)
+		laptop := newDevice(t, "laptop", remote)
+		laptop.commit(seedBatches()[:3])
+		refusing := overriding{
+			SessionSyncMaintenance: remote,
+			putBatch: func(context.Context, string, Seq, Seq, string, SyncBody, PutBatchOptions) (PutBatchResult, error) {
+				return PutBatchResult{Type: PutRefused, Reason: RefusalNextIDRegression}, nil
+			},
+		}
+		source := laptop.store()
+		result, err := UploadSession(background, UploadOptions{
+			SessionID: session,
+			Device:    "laptop",
+			Source:    source,
+			Store:     refusing,
+			State:     laptop.state,
+		})
+		noError(t, err)
+		same(t, "refused", result, UploadResult{Type: Refused, Reason: RefusalNextIDRegression})
+		gotState, err := laptop.state.Get(background, session)
+		noError(t, err)
+		if gotState != nil {
+			t.Fatalf("state = %+v, want nil", gotState)
+		}
+		if floor := source.Outbox().Floor(); floor != 0 {
+			t.Fatalf("outbox floor = %d, want 0", floor)
+		}
+		// Nothing was written: the remote that accepts takes the same slot.
+		if got := laptop.upload().Type; got != Uploaded {
+			t.Fatalf("upload = %s, want uploaded", got)
+		}
 	})
 
 	t.Run("refuses to upload a copy that lost uploaded commits, and pulls them back", func(t *testing.T) {
@@ -755,6 +791,8 @@ func (s *cancelOnSetState) Set(context.Context, string, SyncState) error {
 	return nil
 }
 
+func (*cancelOnSetState) Delete(context.Context, string) error { return nil }
+
 func TestBoundedMemory(t *testing.T) {
 	// bigBatches is rows of size characters each, one per commit: about count * size bytes of history.
 	bigBatches := func(count, size int) []rows {
@@ -895,6 +933,124 @@ func TestHostPieces(t *testing.T) {
 		for _, entry := range entries {
 			if strings.HasSuffix(entry.Name(), ".tmp") {
 				t.Fatalf("temporary file %s left behind", entry.Name())
+			}
+		}
+	})
+}
+
+type recordingFlushFiles struct {
+	osFiles
+	mu         *stdsync.Mutex
+	operations *[]string
+}
+
+func (f recordingFlushFiles) FlushFile(ctx context.Context, path string) error {
+	f.mu.Lock()
+	*f.operations = append(*f.operations, "flush "+path)
+	f.mu.Unlock()
+	return f.osFiles.FlushFile(ctx, path)
+}
+
+func (f recordingFlushFiles) RenameFile(ctx context.Context, source, destination string) error {
+	f.mu.Lock()
+	*f.operations = append(*f.operations, "rename "+source)
+	f.mu.Unlock()
+	return f.osFiles.RenameFile(ctx, source, destination)
+}
+
+func TestTheDirectoryRemote(t *testing.T) {
+	bytes := func() SyncBody { return once([]byte{1, 2, 3}) }
+
+	t.Run("creates a slot once when two uploads of a session race for it", func(t *testing.T) {
+		remote := newRemote(t)
+		var wg stdsync.WaitGroup
+		var laptop, desktop PutBatchResult
+		var laptopErr, desktopErr error
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			laptop, laptopErr = remote.PutBatch(background, session, 0, 5, "laptop", bytes(), PutBatchOptions{})
+		}()
+		go func() {
+			defer wg.Done()
+			desktop, desktopErr = remote.PutBatch(background, session, 0, 7, "desktop", bytes(), PutBatchOptions{})
+		}()
+		wg.Wait()
+		noError(t, laptopErr)
+		noError(t, desktopErr)
+		// Either goroutine may acquire the per-session queue first in Go.
+		if laptop.Type == PutCreated {
+			same(t, "desktop", desktop, PutBatchResult{Type: PutExists, To: 5, Device: "laptop"})
+			same(t, "slots", listing(t, remote, session).Batches, []BatchInfo{slot(0, 5, "laptop")})
+		} else {
+			same(t, "desktop", desktop, PutBatchResult{Type: PutCreated})
+			same(t, "laptop", laptop, PutBatchResult{Type: PutExists, To: 7, Device: "desktop"})
+			same(t, "slots", listing(t, remote, session).Batches, []BatchInfo{slot(0, 7, "desktop")})
+		}
+	})
+
+	t.Run("finds the head from its file, also when the file is behind or missing", func(t *testing.T) {
+		root := t.TempDir()
+		remote := NewFileSystemSyncRemote(osFiles{}, root)
+		_, err := remote.PutBatch(background, session, 0, 5, "laptop", bytes(), PutBatchOptions{})
+		noError(t, err)
+		_, err = remote.PutBatch(background, session, 5, 9, "laptop", bytes(), PutBatchOptions{})
+		noError(t, err)
+		got, err := remote.PutBatch(background, session, 3, 12, "laptop", bytes(), PutBatchOptions{})
+		noError(t, err)
+		same(t, "not_head", got, PutBatchResult{Type: PutNotHead, Head: 9})
+
+		headPath := filepath.Join(root, session, "head.json")
+		// Written after each slot: where the history ends.
+		raw, err := os.ReadFile(headPath)
+		noError(t, err)
+		var parsed headFile
+		noError(t, json.Unmarshal(raw, &parsed))
+		if parsed.Head != 9 {
+			t.Fatalf("head.json = %d, want 9", parsed.Head)
+		}
+		// A crash between a slot and the head file: the file names the slot before.
+		noError(t, os.WriteFile(headPath, []byte(`{"head":5}`), 0o644))
+		got, err = remote.PutBatch(background, session, 3, 12, "laptop", bytes(), PutBatchOptions{})
+		noError(t, err)
+		same(t, "not_head after stale head.json", got, PutBatchResult{Type: PutNotHead, Head: 9})
+		// A directory written before head files.
+		noError(t, os.Remove(headPath))
+		changes, err := remote.Sessions(background, nil)
+		noError(t, err)
+		heads := make([]Seq, len(changes.Sessions))
+		for i, s := range changes.Sessions {
+			heads[i] = s.Head
+		}
+		same(t, "session heads", heads, []Seq{9})
+		got, err = remote.PutBatch(background, session, 9, 12, "laptop", bytes(), PutBatchOptions{})
+		noError(t, err)
+		same(t, "created", got, PutBatchResult{Type: PutCreated})
+	})
+
+	t.Run("flushes every file to disk before renaming it into place", func(t *testing.T) {
+		var mu stdsync.Mutex
+		var ops []string
+		files := recordingFlushFiles{mu: &mu, operations: &ops}
+		remote := NewFileSystemSyncRemote(files, t.TempDir())
+		_, err := remote.PutBatch(background, session, 0, 5, "laptop", bytes(), PutBatchOptions{})
+		noError(t, err)
+		var renamed []string
+		for _, op := range ops {
+			if strings.HasPrefix(op, "rename ") {
+				renamed = append(renamed, op)
+			}
+		}
+		// The body, the slot, the head file.
+		if len(renamed) != 3 {
+			t.Fatalf("renamed = %v (len %d), want 3", renamed, len(renamed))
+		}
+		for _, rename := range renamed {
+			path := strings.TrimPrefix(rename, "rename ")
+			flushIdx := slices.Index(ops, "flush "+path)
+			renameIdx := slices.Index(ops, rename)
+			if flushIdx < 0 || flushIdx >= renameIdx {
+				t.Fatalf("flush index %d, rename index %d for %s in %v", flushIdx, renameIdx, path, ops)
 			}
 		}
 	})
