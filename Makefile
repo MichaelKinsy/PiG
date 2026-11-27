@@ -369,6 +369,9 @@ journeys-changed: parity-deps ## Run only the PTY journeys whose Touches prefixe
 # each one and go-fix-clean runs go fix in each one, always with GOWORK=off.
 GO_NESTED_MODULES := \
 	extensions/sdk \
+	automation/ci/cidag \
+	automation/ci/gocacheprog \
+	automation/ci/hermeticcheck \
 	coding/cli/testdata/login-preview \
 	coding/extension/host/subprocess/testdata/sdk-fixture \
 	examples/extensions/go-factory \
