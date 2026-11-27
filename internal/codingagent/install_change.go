@@ -3,6 +3,7 @@ package codingagent
 import (
 	"github.com/MichaelKinsy/PiG/internal/installchange"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // installChangeCause states what changed. A replaced or removed executable uses Pi's sentence for a removed install
@@ -18,20 +19,43 @@ func installChangeCause(change *installchange.Change) string {
 
 // resumeHintCommand returns the command that resumes the current session, or "" when the session does not persist or stdout is not a terminal.
 // Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts formatResumeCommand(this.sessionManager).
-func (m *InteractiveMode) resumeHintCommand() string {
+func (m *InteractiveMode) resumeCommandSessionState() (resumeCommandSession, string, bool) {
 	session := m.currentSession()
 	if session == nil {
-		return ""
+		return resumeCommandSession{}, "", false
 	}
 	resolvedDir, _ := nodepath.Resolve(m.opts.SessionDir)
 	defaultDir, _ := nodepath.Resolve(defaultSessionDir(session.CWD()))
-	return formatResumeCommand(resumeCommandSession{
+	return resumeCommandSession{
+		programName:           m.opts.ResumeProgramName,
 		persisted:             session.Path() != "",
 		sessionFile:           session.Path(),
 		sessionID:             session.ID(),
 		sessionDir:            m.opts.SessionDir,
 		usesDefaultSessionDir: m.opts.SessionDir == "" || resolvedDir == defaultDir,
-	}, stdoutIsTTY())
+	}, session.CWD(), true
+}
+
+func (m *InteractiveMode) resumeHintCommand() string {
+	state, _, ok := m.resumeCommandSessionState()
+	if !ok {
+		return ""
+	}
+	return formatResumeCommand(state, stdoutIsTTY())
+}
+
+// programResumeCommand returns the OSC 7577 resume command for the active session, or nil while the session has no file.
+// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts getProgramResumeCommand (Pi cf419553da).
+func (m *InteractiveMode) programResumeCommand() *tui.ProgramResumeCommand {
+	state, cwd, ok := m.resumeCommandSessionState()
+	if !ok {
+		return nil
+	}
+	argv := getResumeArgs(state)
+	if len(argv) == 0 {
+		return nil
+	}
+	return &tui.ProgramResumeCommand{Argv: argv, Cwd: cwd}
 }
 
 // maybeShowInstallChangeWarning checks, after an error, whether an update or a cache prune replaced or removed files this

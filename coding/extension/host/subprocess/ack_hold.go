@@ -26,19 +26,31 @@ import (
 // synchronous call blocks its caller in Pi. An announced call that never comes (the handler ended or went on) is released at the request's next progress or completed
 // report, and the request's end releases all of it, so a request that ends, is cancelled or whose session closes does not leave its waiter held.
 type ackHold struct {
-	mu        sync.Mutex
-	ctx       context.Context
-	announced int
-	unapplied int
-	held      bool
-	sealed    bool
+	mu              sync.Mutex
+	ctx             context.Context
+	announced       int
+	unapplied       int
+	held            bool
+	sealed          bool
+	afterAck        <-chan struct{}
+	postAckCancel   chan struct{}
+	postAckReleased bool
 }
 
 type ackHoldKey struct{}
 
 // withAckHold binds a hold to the request's context.
 func withAckHold(ctx context.Context) context.Context {
-	hold := &ackHold{}
+	return withAckHoldGate(ctx, nil, false)
+}
+
+// withAckHoldGate binds a hold with an optional post-acknowledgment gate channel and initial sealed state (true when an earlier handler on the same emission already acknowledged).
+func withAckHoldGate(ctx context.Context, afterAck <-chan struct{}, sealed bool) context.Context {
+	var cancel chan struct{}
+	if afterAck != nil {
+		cancel = make(chan struct{})
+	}
+	hold := &ackHold{afterAck: afterAck, postAckCancel: cancel, sealed: sealed}
 	ctx = context.WithValue(ctx, ackHoldKey{}, hold)
 	hold.ctx = ctx
 	return ctx
@@ -68,16 +80,39 @@ func (h *ackHold) seal() {
 	h.mu.Unlock()
 }
 
-// sent records a call frame of the request read before the hold was sealed, returning whether it was counted.
-func (h *ackHold) sent() bool {
+// releasePostAckLocked closes postAckCancel once so held post-acknowledgment calls on this request's lane proceed immediately.
+func (h *ackHold) releasePostAckLocked() {
+	if h.postAckReleased {
+		return
+	}
+	h.postAckReleased = true
+	if h.postAckCancel != nil {
+		//portlint:allow doubleclose releasePostAckLocked returns early once postAckReleased is set, and every caller holds h.mu
+		close(h.postAckCancel)
+	}
+}
+
+// sent records a call frame of the request read before the hold was sealed. It returns whether the call was counted, and for a post-seal fire-and-forget output call returns the hold's afterAck gate and per-request cancel channel.
+// When a post-seal call is not in postAckOrderedCalls (the handler awaits or waits synchronously for the host's answer), releasing postAckCancel immediately unblocks any earlier held fire-and-forget call on the same request lane so the handler cannot deadlock waiting behind it.
+func (h *ackHold) sent(method string) (bool, <-chan struct{}, <-chan struct{}) {
 	h.mu.Lock()
 	if h.sealed {
+		if !postAckOrderedCalls[method] {
+			h.releasePostAckLocked()
+			h.mu.Unlock()
+			return false, nil, nil
+		}
+		if h.postAckReleased {
+			h.mu.Unlock()
+			return false, nil, nil
+		}
+		afterAck, cancel := h.afterAck, h.postAckCancel
 		h.mu.Unlock()
-		return false
+		return false, afterAck, cancel
 	}
 	h.unapplied++
 	h.mu.Unlock()
-	return true
+	return true, nil, nil
 }
 
 // applied records that the host applied a call of the request: the call a report announced, or one of the request that no report announced. effect is true for a call
@@ -98,7 +133,7 @@ func (h *ackHold) applied(effect bool) {
 	}
 	h.mu.Unlock()
 	if release {
-		invocation.Acknowledge(h.ctx)
+		invocation.AcknowledgeSuspension(h.ctx)
 	}
 }
 
@@ -113,7 +148,7 @@ func (h *ackHold) wentOn() {
 	}
 	h.mu.Unlock()
 	if release {
-		invocation.Acknowledge(h.ctx)
+		invocation.AcknowledgeSuspension(h.ctx)
 	}
 }
 
@@ -124,9 +159,10 @@ func (h *ackHold) release() {
 	h.unapplied = 0
 	release := h.held
 	h.held = false
+	h.releasePostAckLocked()
 	h.mu.Unlock()
 	if release {
-		invocation.Acknowledge(h.ctx)
+		invocation.AcknowledgeSuspension(h.ctx)
 	}
 }
 
@@ -136,7 +172,7 @@ func (h *ackHold) release() {
 func acknowledgeBlocked(ctx context.Context) {
 	hold := ackHoldOf(ctx)
 	if hold == nil {
-		invocation.Acknowledge(ctx)
+		invocation.AcknowledgeSuspension(ctx)
 		return
 	}
 	hold.mu.Lock()
@@ -146,7 +182,7 @@ func acknowledgeBlocked(ctx context.Context) {
 		return
 	}
 	hold.mu.Unlock()
-	invocation.Acknowledge(ctx)
+	invocation.AcknowledgeSuspension(ctx)
 }
 
 // requestAckHold is the hold of an in-flight request, nil for a request that is not (or no longer) waiting for a response.
@@ -160,14 +196,14 @@ func (c *Conn) requestAckHold(requestID string) *ackHold {
 	return ackHoldOf(sink.ctx)
 }
 
-// holdAckForCall counts a call frame the read loop read before its request's blocked report, until the host applies the call (hostCallApplied). A connection with no
+// holdAckForCall counts a call frame the read loop read before its request's blocked report, until the host applies the call (hostCallApplied), and tags post-seal frames with the request's post-acknowledgment gate. A connection with no
 // request that holds an acknowledgment, the common case, skips the lookup.
 func (c *Conn) holdAckForCall(env *Envelope) {
 	if env == nil || env.Call == nil || env.Call.ParentRequestID == "" || c.ackHolds.Load() == 0 {
 		return
 	}
 	if hold := c.requestAckHold(env.Call.ParentRequestID); hold != nil {
-		env.ackCounted = hold.sent()
+		env.ackCounted, env.afterAck, env.afterAckCancel = hold.sent(env.Call.Method)
 	}
 }
 

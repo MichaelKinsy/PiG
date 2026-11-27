@@ -41,8 +41,8 @@ import (
 const (
 	portMapFile  = "docs/parity/PORT_MAP.md"
 	baselineFile = "test/parity/portmap-unproven-baseline.txt"
-	reviewedFile = "test/parity/portmap-reviewed.json"
-	mutantsFile  = "test/parity/portmap-mutants.json"
+	reviewedFile = "test/parity/ledgers/portmap-reviewed.json"
+	mutantsFile  = "test/parity/ledgers/portmap-mutants.json"
 	inventoryGlb = "test/parity/interfaces/upstream-v*.json"
 )
 

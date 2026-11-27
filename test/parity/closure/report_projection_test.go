@@ -359,7 +359,7 @@ func TestRenderBehaviorContractsPreservesNestedSource(t *testing.T) {
 	hash := HashBytes([]byte("denominator-behavior-contract"))
 	graph, err := Build([]Record{
 		&Snapshot{Kind: KindSnapshot, ID: "snapshot:behavior-contract", UpstreamCommit: strings.Repeat("a", 40), TargetCommit: strings.Repeat("b", 40), ToolchainHash: hash, EnvironmentHash: hash},
-		&Pin{Kind: KindPin, ID: "pin:behavior-contract", SnapshotID: "snapshot:behavior-contract", Repository: "pig", Commit: strings.Repeat("b", 40), Path: "test/parity/behavior-contracts.toml", SemanticID: "denominator:behavior-contract", StartLine: 1, EndLine: 20, QuoteHash: hash},
+		&Pin{Kind: KindPin, ID: "pin:behavior-contract", SnapshotID: "snapshot:behavior-contract", Repository: "pig", Commit: strings.Repeat("b", 40), Path: "test/parity/ledgers/behavior-contracts.toml", SemanticID: "denominator:behavior-contract", StartLine: 1, EndLine: 20, QuoteHash: hash},
 		&Fact{Kind: KindFact, ID: "fact:denominator:behavior-contract:metadata", SnapshotID: "snapshot:behavior-contract", FactType: "denominator:behavior-contract", SubjectID: "<metadata>", Resolution: "resolved", PinIDs: []string{"pin:behavior-contract"}, Value: json.RawMessage(`{"upstream_version":"0.84.0"}`)},
 		rowOrderFact(t, "snapshot:behavior-contract", "pin:behavior-contract", BehaviorContractDataset, "contract", []string{"example/wrap"}),
 		&Fact{Kind: KindFact, ID: "fact:denominator:behavior-contract:row", SnapshotID: "snapshot:behavior-contract", FactType: "denominator:behavior-contract", SubjectID: "example/wrap", Resolution: "observed", PinIDs: []string{"pin:behavior-contract"}, Value: json.RawMessage(`{"claim":"wraps at both boundaries","evidence":["example_test.go"],"family":"selectors","id":"example/wrap","kind":"boundary-transition","pig_targets":["tui/example.go"],"status":"ported","upstream":{"end":"end marker","keybindings":["tui.select.up"],"path":"packages/example.ts","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","start":"\tstart marker"},"upstream_id":"input:example"}`)},
@@ -399,7 +399,7 @@ func TestRenderFormatVersionsPreservesRows(t *testing.T) {
 	hash := HashBytes([]byte("denominator-format-version"))
 	graph, err := Build([]Record{
 		&Snapshot{Kind: KindSnapshot, ID: "snapshot:format-version", UpstreamCommit: strings.Repeat("a", 40), TargetCommit: strings.Repeat("b", 40), ToolchainHash: hash, EnvironmentHash: hash},
-		&Pin{Kind: KindPin, ID: "pin:format-version", SnapshotID: "snapshot:format-version", Repository: "pig", Commit: strings.Repeat("b", 40), Path: "test/parity/format-versions.toml", SemanticID: "denominator:format-version", StartLine: 1, EndLine: 10, QuoteHash: hash},
+		&Pin{Kind: KindPin, ID: "pin:format-version", SnapshotID: "snapshot:format-version", Repository: "pig", Commit: strings.Repeat("b", 40), Path: "test/parity/ledgers/format-versions.toml", SemanticID: "denominator:format-version", StartLine: 1, EndLine: 10, QuoteHash: hash},
 		rowOrderFact(t, "snapshot:format-version", "pin:format-version", FormatOwnershipDataset, "fields", []string{"example.go#Config.Version:json:version"}),
 		&Fact{Kind: KindFact, ID: "fact:denominator:format-version:row", SnapshotID: "snapshot:format-version", FactType: "denominator:format-version", SubjectID: "example.go#Config.Version:json:version", Resolution: "resolved", PinIDs: []string{"pin:format-version"}, Value: json.RawMessage(`{"classification":"external","field":"Version","id":"example.go#Config.Version:json:version","owner":"Config","path":"example.go","rationale":"external protocol","wire_name":"version"}`)},
 	})
@@ -653,8 +653,8 @@ func TestStructuredReportsPreserveCurrentAuthorityRows(t *testing.T) {
 		{name: "input and render mapping", dataset: InputRenderMappingDataset, path: "test/parity/interfaces/behavior-input-mapping-v" + coding.UpstreamVersion + ".json", sections: []string{"mappings", "renderMappings"}},
 		{name: "async", dataset: AsyncContractDataset, path: "test/parity/ledgers/async-contracts.toml", sections: []string{"files"}, toml: true},
 		{name: "changed source", dataset: ChangedSourceDataset, path: "test/parity/upstream-sync/v" + coding.UpstreamVersion + ".toml", sections: []string{"files"}, toml: true},
-		{name: "behavior", dataset: BehaviorContractDataset, path: "test/parity/behavior-contracts.toml", sections: []string{"contract"}, toml: true},
-		{name: "format ownership", dataset: FormatOwnershipDataset, path: "test/parity/format-versions.toml", sections: []string{"fields"}, toml: true},
+		{name: "behavior", dataset: BehaviorContractDataset, path: "test/parity/ledgers/behavior-contracts.toml", sections: []string{"contract"}, toml: true},
+		{name: "format ownership", dataset: FormatOwnershipDataset, path: "test/parity/ledgers/format-versions.toml", sections: []string{"fields"}, toml: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			source, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(test.path)))

@@ -15,7 +15,7 @@ The coverage report counts observable assertions from paired scenarios and revie
 
 ```text
 test/parity/
-├── behavior-contracts.toml
+├── ledgers/                 curated parity ledgers (nested data-only module)
 ├── closure/                 deterministic evidence graph and reports
 ├── correspondence/          source-to-target correspondence compiler
 ├── interfaces/              generated inventories and reviewed mappings

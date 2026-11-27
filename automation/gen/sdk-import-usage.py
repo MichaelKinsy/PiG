@@ -2,7 +2,7 @@
 """Count which Pi modules the npm `pi-package` extensions import.
 
 Writes test/parity/extension-import-usage.json, the usage counts the SDK
-export ledger (test/parity/sdk-exports.toml) uses to decide which gaps block a
+export ledger (test/parity/ledgers/sdk-exports.toml) uses to decide which gaps block a
 release. Refresh it per upstream leap:
 
     automation/gen/sdk-import-usage.py --fetch --work /tmp/sdkusage

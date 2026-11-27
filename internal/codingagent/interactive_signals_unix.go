@@ -171,6 +171,7 @@ func (m *InteractiveMode) suspendOperations() suspendOperations {
 			} else {
 				m.tuiInst.Start()
 			}
+			m.programResume.ReportAgain()
 			return nil
 		},
 		requestRender: func() {
@@ -218,6 +219,7 @@ func (m *InteractiveMode) rearmOperations() suspendOperations {
 			} else {
 				m.tuiInst.Start()
 			}
+			m.programResume.ReportAgain()
 			return nil
 		},
 		requestRender: func() {

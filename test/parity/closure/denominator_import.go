@@ -93,8 +93,8 @@ func currentDenominatorSources() ([]jsonDenominatorSource, []tomlDenominatorSour
 	tomlSources := []tomlDenominatorSource{
 		{dataset: "async-contract", path: "test/parity/ledgers/async-contracts.toml", listKey: "files", subjectField: "path", statusField: "disposition", metadata: []string{"version"}, resolution: "observed"},
 		{dataset: "upstream-sync", path: "test/parity/upstream-sync/v" + version + ".toml", listKey: "files", subjectField: "path", statusField: "disposition", metadata: []string{"from", "to"}, resolution: "observed"},
-		{dataset: "behavior-contract", path: "test/parity/behavior-contracts.toml", listKey: "contract", subjectField: "id", statusField: "status", metadata: []string{"upstream_version"}, resolution: "observed"},
-		{dataset: "format-version", path: "test/parity/format-versions.toml", listKey: "fields", subjectField: "id", resolution: "resolved"},
+		{dataset: "behavior-contract", path: "test/parity/ledgers/behavior-contracts.toml", listKey: "contract", subjectField: "id", statusField: "status", metadata: []string{"upstream_version"}, resolution: "observed"},
+		{dataset: "format-version", path: "test/parity/ledgers/format-versions.toml", listKey: "fields", subjectField: "id", resolution: "resolved"},
 	}
 	return jsonSources, tomlSources
 }

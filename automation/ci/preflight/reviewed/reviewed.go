@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-// Package reviewed holds the reviewed ledger of expected-value changes, test/parity/testprune-reviewed.toml, and the one
+// Package reviewed holds the reviewed ledger of expected-value changes, test/parity/ledgers/testprune-reviewed.toml, and the one
 // definition of when one of its entries is valid. The line lint (test/parity/cmd/testprune) and the pre-flight's
 // test-expectation rule both admit a test's expected-value change by an entry of this ledger, so both call this package.
 package reviewed
@@ -16,7 +16,7 @@ import (
 
 const (
 	// File is the ledger's path in the repository.
-	File = "test/parity/testprune-reviewed.toml"
+	File = "test/parity/ledgers/testprune-reviewed.toml"
 	// DivergenceDir is where the records of the divergences a DIVERGENCE entry cites live.
 	DivergenceDir = "docs/parity/divergences"
 	// MinCommitLen is the shortest commit prefix an entry may name; a shorter one matches nothing.

@@ -3,6 +3,7 @@ package invocation
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 )
 
 type ackKey struct{}
@@ -11,6 +12,8 @@ type acknowledgment struct {
 	once           sync.Once
 	fn             func()
 	suspensionOnly bool
+	acked          atomic.Bool
+	suspendedAcked atomic.Bool
 }
 
 // WithAcknowledgment binds a one-shot handler-invocation acknowledgment to ctx. The handler's first suspension or its completion releases it.
@@ -29,6 +32,27 @@ func Bound(ctx context.Context) bool {
 	return ack != nil
 }
 
+// Acknowledged reports whether ctx's bound acknowledgment has already been released.
+func Acknowledged(ctx context.Context) bool {
+	ack, _ := ctx.Value(ackKey{}).(*acknowledgment)
+	return ack != nil && ack.acked.Load()
+}
+
+// AcknowledgedBySuspension reports whether ctx's bound acknowledgment was released by a handler suspension (AcknowledgeSuspension) rather than plain handler completion.
+func AcknowledgedBySuspension(ctx context.Context) bool {
+	ack, _ := ctx.Value(ackKey{}).(*acknowledgment)
+	return ack != nil && ack.suspendedAcked.Load()
+}
+
+// AcknowledgeSuspension reports that a handler suspended on an external wait (such as I/O or a timer), releasing the invocation acknowledgment and recording that the emission crossed an async suspension boundary.
+func AcknowledgeSuspension(ctx context.Context) {
+	ack, _ := ctx.Value(ackKey{}).(*acknowledgment)
+	if ack == nil {
+		return
+	}
+	ack.release(true)
+}
+
 // Acknowledge reports that a handler has entered the runtime boundary. Calls
 // after the first are no-ops.
 func Acknowledge(ctx context.Context) {
@@ -36,7 +60,7 @@ func Acknowledge(ctx context.Context) {
 	if ack == nil {
 		return
 	}
-	ack.release()
+	ack.release(false)
 }
 
 // Complete reports that a transport observed the handler finish. It releases an acknowledgment bound by WithAcknowledgment and leaves one bound by WithSuspensionAcknowledgment to its binder.
@@ -45,11 +69,15 @@ func Complete(ctx context.Context) {
 	if ack == nil || ack.suspensionOnly {
 		return
 	}
-	ack.release()
+	ack.release(false)
 }
 
-func (ack *acknowledgment) release() {
+func (ack *acknowledgment) release(bySuspension bool) {
 	ack.once.Do(func() {
+		if bySuspension {
+			ack.suspendedAcked.Store(true)
+		}
+		ack.acked.Store(true)
 		if ack.fn != nil {
 			ack.fn()
 		}

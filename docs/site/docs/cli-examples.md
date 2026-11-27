@@ -2,7 +2,7 @@
 
 [Command line](/docs/latest/cli) lists every verb and option. This page runs the common ones and shows what they print. Each block is a command, its output and its exit status (`exit N` after the output; 0 means success). The outputs were captured from one PiG binary under a scratch home directory, so paths read `/home/you/...` here and your own paths differ. Commands that need a network or a model say so.
 
-Version: `0.5.0` in the captures below. Yours prints your own release.
+Version: `0.8.0` in the captures below. Yours prints your own release.
 
 ## Is it installed, and what is it?
 
@@ -11,7 +11,7 @@ pig --version
 ```
 
 ```text
-1.2.0
+1.6.0
 ```
 
 The number is the Pi version PiG follows, what `pi --version` prints, so a launcher that checks Pi's version reads it. `pig version` names the PiG release too:
@@ -21,11 +21,11 @@ pig version
 ```
 
 ```text
-pig: 0.5.0
-upstream pi: 1.2.0
-go: go1.27.2
+pig: 0.8.0
+upstream pi: 1.6.0
+go: go1.27.4
 platform: linux/amd64
-build: dev
+build: 73585394f40cde45fd40889db265179ac3c2af99
 ```
 
 `pig diagnose` prints where PiG keeps things. Start here when a path is not what you expected. It is not in `pig --help`. The top of its output:
@@ -33,10 +33,10 @@ build: dev
 ```text
 pig diagnostics
 ────────────────────────────────────────────────────────────
-pig-version:       0.5.0
-upstream-pin:      1.2.0
-build:             dev
-go runtime:        go1.27.2
+pig-version:       0.8.0
+upstream-pin:      1.6.0
+build:             73585394f40cde45fd40889db265179ac3c2af99
+go runtime:        go1.27.4
 platform:          linux/amd64
 binary:            /usr/local/bin/pig
 ...
@@ -55,27 +55,30 @@ exit log:          /home/you/.pig/agent/exit.log
 ```text
 PiG toolchains (linux/amd64)
 
-  go         /usr/lib/go-1.22/bin/go                      Go extension cells and native Piglet builds
+  go         /usr/lib/go-1.22/bin/go (too old)            Go extension cells and native Piglet builds
   container  docker (/usr/bin/docker)                     container Piglet builds
   cargo      missing                                      Rust extension cells
   node       missing                                      Node and TypeScript extensions
   python3    /usr/bin/python3                             Python extensions
+  sbcl       missing                                      Lisp extensions (SBCL 2.6.9)
   git        /usr/bin/git                                 git: Package sources
 
 Next steps:
+  go         go1.22.2 at /usr/lib/go-1.22/bin/go is older than Go 1.26, the minimum the extension SDK needs; run `pig setup go` (PiG then uses that toolchain in place of the older go on PATH) or install Go 1.26 or newer from https://go.dev/dl/
   cargo      install Rust from https://rustup.rs
   node       install Node.js 22.13 or newer from https://nodejs.org
+  sbcl       install SBCL 2.6.9 from https://www.sbcl.org/platform-table.html, or set PIG_SBCL
 
 PiG runs without these tools. They are needed only for the extension languages and Piglet builds listed above.
 ```
 
-`pig verify` checks the binary you are running and prints its SHA-256 digest. A development build is unsigned, and a released one shows its signature state:
+`pig verify` checks the binary you are running and prints its SHA-256 digest and Piglet signature state:
 
 ```text
-pig 0.5.0+1.2.0 go1.27.2 linux/amd64 , build dev
+pig 0.8.0+1.6.0 go1.27.4 linux/amd64 , build 73585394f40cde45fd40889db265179ac3c2af99
 
 /usr/local/bin/pig (binary)
-  sha256:d105f57d45d384422fbc3f7632dbf2aeb11f6e8c73dc3b65ba73cf5068e7648c
+  sha256:107179c71474929b251f8fd46e7231988b2652d520c5614eeb798d8688637178
   n/a  piglet signature: unsigned (no signature: anyone who can rewrite this file can rewrite its build record)
 ```
 

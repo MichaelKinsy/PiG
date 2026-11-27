@@ -14,7 +14,7 @@ Set `extensionsTypescriptRuntime` in the global `settings.json`:
 { "extensionsTypescriptRuntime": "bun" }
 ```
 
-The value is `node` (the default) or the name of an installed runtime. A project `settings.json` cannot set it. The environment variable `PIG_TS_RUNTIME` overrides the setting for one process, for example in an evaluation arm:
+The value is `node` (the default) or the name of an installed runtime. A project `settings.json` cannot set it. The environment variable `PIG_TS_RUNTIME` overrides the setting for one process, for example when comparing runtimes:
 
 ```bash
 PIG_TS_RUNTIME=bun pig
@@ -24,7 +24,7 @@ PIG_TS_RUNTIME=bun pig
 
 Node is the default in Stock PiG and in PiG Standard. Stock PiG keeps Pi's runtime: Pi runs extensions on Node, so this needs no numbered divergence. PiG Standard selects the same default because the measurements do not favor another runtime, and Node needs no download.
 
-The ext10 overhead workload (ten TypeScript extensions, RPC chat, openai-completions, 12 interleaved rounds after one warm-up, an A/A copy of each arm, a quiet check before each sample, dedicated bench slot, run `mA-rpc2`, provisional hardware: shared host, clock policy not exposed) measured these medians:
+Measuring ten TypeScript extensions over RPC chat (`openai-completions`, 12 interleaved rounds after one warm-up on a shared Linux host) gave these medians:
 
 | Runtime | Per-turn CPU | Total CPU | Ready | Peak RSS |
 |---|---:|---:|---:|---:|
@@ -32,7 +32,7 @@ The ext10 overhead workload (ten TypeScript extensions, RPC chat, openai-complet
 | Bun 1.4.2 (`bun`) | 382 ms | 8101 ms | 500 ms | 221 MiB |
 | Pi-Bolt compiled host (`aot`) | 373 ms | 7907 ms | 501 ms | 200 MiB |
 
-The three runtimes differ by less than 3% in per-turn CPU, which is inside the A/A floor: the extension host, not the runtime, sets the per-turn cost. Node starts the extensions about 65 ms sooner; Bun and the compiled host use 90 to 110 MiB less memory. Bun also needs a 3 to 4 s download, and the compiled host needs a first-run compile of about 30 s. Select `bun` when memory matters more than start time.
+The three runtimes differ by less than 3% in per-turn CPU, which is within run-to-run noise: the extension host, not the runtime, sets the per-turn cost. Node starts the extensions about 65 ms sooner; Bun and the compiled host use 90 to 110 MiB less memory. Bun also needs a 3 to 4 s download, and the compiled host needs a first-run compile of about 30 s. Select `bun` when memory matters more than start time.
 
 The `aot` runtime is provided by the experimental `pig-bolt` Piglet (`piglets/pig-bolt`, formerly `pig-aot`), which compiles your extensions with the [Pi-Bolt](https://github.com/opensec-git/Pi-Bolt) compiler on your machine. It is not an official Pi-Bolt project. Its README lists what it compiles, what it verifies and its measured costs.
 

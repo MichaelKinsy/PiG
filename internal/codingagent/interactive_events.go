@@ -314,6 +314,12 @@ func (m *InteractiveMode) applyEventRegion() {
 func (m *InteractiveMode) applyAgentEvent(ev agent.AgentEvent) {
 	// Each assistant message owns one block updated from authoritative event snapshots.
 	m.programStatusReporter().HandleEvent(ev)
+	// The session file, and with it the resume command, appears when the first prompt is written, which
+	// happens after its message_end reaches listeners. The reply's message_start or the run's end sees it.
+	switch ev.(type) {
+	case agent.MessageStartEvent, agent.AgentSettledEvent:
+		m.programResume.ReportIfNone()
+	}
 	switch e := ev.(type) {
 	case agent.SessionInfoChangedEvent:
 		m.setTerminalTitle(tui.BuildTerminalTitle(e.Name, m.opts.CWD))

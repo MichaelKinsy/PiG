@@ -16,7 +16,7 @@ from .child_session import AgentSession, SessionStartEvent
 from .session_manager import SessionManager
 
 _WITH_SESSION = (
-    "the with_session option is not supported yet: it takes the ReplacedSessionContext of AgentSession.createReplacedSessionContext, which is a C2Sessions gap in test/parity/sdk-exports.toml; "
+    "the with_session option is not supported yet: it takes the ReplacedSessionContext of AgentSession.createReplacedSessionContext, which is a C2Sessions gap in test/parity/ledgers/sdk-exports.toml; "
     "use the setup option, or read AgentSessionRuntime.session once the call returned"
 )
 _TRUST_FACTORY = "the project_trust_context_factory option is not supported: it builds a record of the host's UI functions, which cannot cross the process boundary"

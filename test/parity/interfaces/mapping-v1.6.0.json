@@ -145566,7 +145566,9 @@
         "public-api:codemode/types.go#CodemodeJsonSchema"
       ],
       "evidence": [
-        "test:bench/k8s/cmd/k8sbench/analyze_test.go#TestTrackLineMatchesTrackRow"
+        "test:bench/k8s/cmd/k8sbench/analyze_test.go#TestTrackLineMatchesTrackRow",
+        "test:coding/cli/rpc_post_ack_deadlock_trigger_test.go#TestRPCPostAckReleasePathsWithActuallyHeldCall",
+        "test:coding/cli/rpc_post_ack_deadlock_trigger_test.go#TestRPCPostAckSecondHandlerAfterSynchronousFirstHandlerRunsAheadOfReply"
       ]
     },
     {
@@ -149961,7 +149963,9 @@
         "public-api:codemode/types.go#CodemodeJsonSchema"
       ],
       "evidence": [
-        "test:bench/k8s/cmd/k8sbench/analyze_test.go#TestTrackLineMatchesTrackRow"
+        "test:bench/k8s/cmd/k8sbench/analyze_test.go#TestTrackLineMatchesTrackRow",
+        "test:coding/cli/rpc_post_ack_deadlock_trigger_test.go#TestRPCPostAckReleasePathsWithActuallyHeldCall",
+        "test:coding/cli/rpc_post_ack_deadlock_trigger_test.go#TestRPCPostAckSecondHandlerAfterSynchronousFirstHandlerRunsAheadOfReply"
       ]
     },
     {
@@ -153948,7 +153952,9 @@
         "public-api:codemode/types.go#CodemodeJsonSchema"
       ],
       "evidence": [
-        "test:bench/k8s/cmd/k8sbench/analyze_test.go#TestTrackLineMatchesTrackRow"
+        "test:bench/k8s/cmd/k8sbench/analyze_test.go#TestTrackLineMatchesTrackRow",
+        "test:coding/cli/rpc_post_ack_deadlock_trigger_test.go#TestRPCPostAckReleasePathsWithActuallyHeldCall",
+        "test:coding/cli/rpc_post_ack_deadlock_trigger_test.go#TestRPCPostAckSecondHandlerAfterSynchronousFirstHandlerRunsAheadOfReply"
       ]
     },
     {
@@ -169507,7 +169513,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/session_context_upstream_test.go#TestContextEditableContentIsNormalizedForAssistantTargets",
-        "test:bench/k8s/cmd/k8sbench/analyze_test.go#TestTrackLineMatchesTrackRow"
+        "test:bench/k8s/cmd/k8sbench/analyze_test.go#TestTrackLineMatchesTrackRow",
+        "test:coding/cli/rpc_post_ack_deadlock_trigger_test.go#TestRPCPostAckReleasePathsWithActuallyHeldCall"
       ]
     },
     {
@@ -171057,8 +171064,8 @@
       ],
       "evidence": [
         "test:coding/session_fork_active_upstream_test.go#TestAgentSessionRuntimeKeepsTheSessionStartEventUpstream",
-        "test:coding/session_owned_loader_close_unix_test.go#TestSessionCloseShutsDownOwnedResourceLoader",
-        "test:coding/session_runtime_diagnostics_test.go#TestRuntimeKeepsDiagnosticsAndModelFallbackOfTheCurrentConstruction"
+        "test:coding/cli/rpc_unawaited_short_wait_order_deterministic_test.go#TestRPCUnawaitedShortWaitPromptInputHolderOrderDeterministic",
+        "test:coding/session_owned_loader_close_unix_test.go#TestSessionCloseShutsDownOwnedResourceLoader"
       ]
     },
     {
@@ -171079,8 +171086,8 @@
       ],
       "evidence": [
         "test:coding/session_fork_active_upstream_test.go#TestAgentSessionRuntimeKeepsTheSessionStartEventUpstream",
-        "test:coding/session_owned_loader_close_unix_test.go#TestSessionCloseShutsDownOwnedResourceLoader",
-        "test:coding/session_runtime_diagnostics_test.go#TestRuntimeKeepsDiagnosticsAndModelFallbackOfTheCurrentConstruction"
+        "test:coding/cli/rpc_unawaited_short_wait_order_deterministic_test.go#TestRPCUnawaitedShortWaitPromptInputHolderOrderDeterministic",
+        "test:coding/session_owned_loader_close_unix_test.go#TestSessionCloseShutsDownOwnedResourceLoader"
       ]
     },
     {
@@ -171871,7 +171878,7 @@
       "evidence": [
         "test:internal/codingagent/tools/bash_operations_oracle_test.go#TestLocalBashOperationsMatchPi",
         "test:internal/codingagent/tools/bash_tool_oracle_test.go#TestBashToolMatchesPi",
-        "test:coding/session_tool_registry_port_test.go#TestAgentSessionDynamicToolsPort"
+        "test:coding/cli/program_resume_token_test.go#TestMainStripsOSC7577TokenFromChildren"
       ]
     },
     {
@@ -171893,7 +171900,7 @@
       "evidence": [
         "test:internal/codingagent/tools/bash_operations_oracle_test.go#TestLocalBashOperationsMatchPi",
         "test:internal/codingagent/tools/bash_tool_oracle_test.go#TestBashToolMatchesPi",
-        "test:coding/session_tool_registry_port_test.go#TestAgentSessionDynamicToolsPort"
+        "test:coding/cli/program_resume_token_test.go#TestMainStripsOSC7577TokenFromChildren"
       ]
     },
     {
@@ -280514,8 +280521,8 @@
       ],
       "evidence": [
         "test:mcp/transport_behavior_test.go#TestTransportEventsEmitCloseOnceAndHonorDisposal",
-        "test:coding/mcpext/connection_test.go#TestMCPConnectionsClosesAConnectionThatIsStillInitializingBeforeCloseReturns",
-        "test:mcp/mcptest/inmemory_test.go#TestInMemoryTransportPairDeliversInOrderAndCloseNotifiesBothEnds"
+        "test:coding/cli/program_resume_token_test.go#TestMainStripsOSC7577TokenFromChildren",
+        "test:coding/mcpext/connection_test.go#TestMCPConnectionsClosesAConnectionThatIsStillInitializingBeforeCloseReturns"
       ]
     },
     {
@@ -280536,8 +280543,8 @@
       ],
       "evidence": [
         "test:mcp/transport_behavior_test.go#TestTransportEventsEmitCloseOnceAndHonorDisposal",
-        "test:coding/mcpext/connection_test.go#TestMCPConnectionsClosesAConnectionThatIsStillInitializingBeforeCloseReturns",
-        "test:mcp/mcptest/inmemory_test.go#TestInMemoryTransportPairDeliversInOrderAndCloseNotifiesBothEnds"
+        "test:coding/cli/program_resume_token_test.go#TestMainStripsOSC7577TokenFromChildren",
+        "test:coding/mcpext/connection_test.go#TestMCPConnectionsClosesAConnectionThatIsStillInitializingBeforeCloseReturns"
       ]
     },
     {
@@ -281834,9 +281841,9 @@
         "call:mcp/lines.go#lineReader.end"
       ],
       "evidence": [
+        "test:coding/cli/program_resume_token_test.go#TestMainStripsOSC7577TokenFromChildren",
         "test:coding/mcpext/exit_cleanup_test.go#TestKillTrackedDetachedChildrenEndsRunningMCPStdioServers",
-        "test:coding/mcpext/regression_unix_test.go#TestConnectionNeverReusesAStdioServerThatDied",
-        "test:internal/codingagent/tools/shell_tracked_test.go#TestKillTrackedDetachedChildrenEndsRunningMCPStdioServers"
+        "test:coding/mcpext/regression_unix_test.go#TestConnectionNeverReusesAStdioServerThatDied"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -282191,9 +282198,9 @@
         "call:mcp/stdio.go#NewStdioTransport"
       ],
       "evidence": [
+        "test:coding/cli/program_resume_token_test.go#TestMainStripsOSC7577TokenFromChildren",
         "test:coding/mcpext/exit_cleanup_test.go#TestKillTrackedDetachedChildrenEndsRunningMCPStdioServers",
-        "test:internal/codingagent/tools/shell_tracked_test.go#TestKillTrackedDetachedChildrenEndsRunningMCPStdioServers",
-        "test:mcp/client_methods_test.go#TestTransportsExposeTheirConstructionOptions"
+        "test:internal/codingagent/tools/shell_tracked_test.go#TestKillTrackedDetachedChildrenEndsRunningMCPStdioServers"
       ]
     },
     {

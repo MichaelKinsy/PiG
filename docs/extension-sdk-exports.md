@@ -2,7 +2,7 @@
 
 # Extension SDK export ledger
 
-The disposition of every runtime export and public class member of the modules Pi serves to extensions, in each PiG runtime. The input is [`test/parity/sdk-exports.toml`](../test/parity/sdk-exports.toml); the rules (what a cell may say, the reach check, the gap policy) are in its header. `make sdk-surface-drift` fails on an unlisted or unclassified row, a gap without a lane, and a realized cell no conformance fixture or vector test reaches; `make sdk-exports-release` also fails on a gap on a high-use export or a lane past its train limit.
+The disposition of every runtime export and public class member of the modules Pi serves to extensions, in each PiG runtime. The input is [`test/parity/ledgers/sdk-exports.toml`](../test/parity/ledgers/sdk-exports.toml); the rules (what a cell may say, the reach check, the gap policy) are in its header. `make sdk-surface-drift` fails on an unlisted or unclassified row, a gap without a lane, and a realized cell no conformance fixture or vector test reaches; `make sdk-exports-release` also fails on a gap on a high-use export or a lane past its train limit.
 
 Use counts (`uses`) are the number of the 255 scanned npm packages that import the export ([`test/parity/extension-import-usage.json`](../test/parity/extension-import-usage.json)); a class member has none of its own.
 

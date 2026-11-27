@@ -124,7 +124,7 @@ type upstreamRange struct {
 }
 
 func main() {
-	path := flag.String("ledger", "test/parity/behavior-contracts.toml", "behavior contract ledger")
+	path := flag.String("ledger", "test/parity/ledgers/behavior-contracts.toml", "behavior contract ledger")
 	upstream := flag.String("upstream", ".upstream/current", "pinned upstream root")
 	inventoryPath := flag.String("input-inventory", "test/parity/interfaces/behavior-inputs-v"+coding.UpstreamVersion+".json", "generated upstream input-handler inventory")
 	mappingPath := flag.String("input-mapping", "test/parity/interfaces/behavior-input-mapping-v"+coding.UpstreamVersion+".json", "reviewed input-handler mapping")

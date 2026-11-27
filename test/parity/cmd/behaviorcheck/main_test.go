@@ -15,7 +15,7 @@ import (
 func TestBehaviorContractsCurrentLedgerPasses(t *testing.T) {
 	inventory := fmt.Sprintf("../../interfaces/behavior-inputs-v%s.json", coding.UpstreamVersion)
 	mapping := fmt.Sprintf("../../interfaces/behavior-input-mapping-v%s.json", coding.UpstreamVersion)
-	if err := check("../../behavior-contracts.toml", "../../../../.upstream/current", inventory, mapping, "../../families.toml", "", false); err != nil {
+	if err := check("../../ledgers/behavior-contracts.toml", "../../../../.upstream/current", inventory, mapping, "../../families.toml", "", false); err != nil {
 		t.Fatal(err)
 	}
 }

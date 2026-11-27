@@ -48,7 +48,7 @@ class: `session-` / `sm-` SessionManager, `settings-` SettingsManager, `registry
 | pure helpers: Type engine (`value-check` and `value-errors` are pi-ai's `Value.Check` and `Value.Errors` and run `type-refine` refinements), pi-ai, pi-tui (width, keys, fuzzy, colors, keybindings incl. `tui-get-select-page-index`, theme), compaction, truncation, conversation, frontmatter/diff/image/clipboard host calls | `type-engine`, `type-schema`, `pi-ai`, `tui-*`, `compaction`, `truncate`, `conversation`, `coding-helpers`, `host-helper` |
 
 `ctx-call-host` stays the escape hatch for any wire method. A member the SDK does not serve signals `pig:unsupported-capability` naming the lane that owns
-it (the few that remain are the `gap:` cells shared with the other SDKs in `test/parity/sdk-exports.toml`).
+it (the few that remain are the `gap:` cells shared with the other SDKs in `test/parity/ledgers/sdk-exports.toml`).
 
 The feature files plug into the connection loop through `src/hooks.lisp` (`def-register-contributor`, `def-ready-hook`, `def-state-hook`,
 `def-stop-hook`, `def-notify`, `def-request`, `extension-extra`), so `dispatch.lisp` knows no feature.

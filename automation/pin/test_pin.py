@@ -114,7 +114,7 @@ class RepositoryTests(unittest.TestCase):
             "README.md",
             "docs/site/docs/index.md",
             "test/parity/known-gaps.toml",
-            "test/parity/behavior-contracts.toml",
+            "test/parity/ledgers/behavior-contracts.toml",
             "test/parity/ledgers/async-contracts.toml",
             "automation/images/ci-parity/Dockerfile",
             "automation/images/ci-parity/metadata.env",

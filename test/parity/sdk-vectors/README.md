@@ -2,7 +2,7 @@
 
 A pure helper that Pi exports (`truncateToWidth`, `matchesKey`, `fuzzyFilter`, `calculateCost`, ...) is ported once per SDK (Go, Rust, Python). Each port is tested against vectors produced by Pi's own implementation at the pin, so a port that returns a constant, or a plausible but different answer, fails. Node serves Pi's own code, so it needs no vectors.
 
-The vectors are the evidence `test/parity/sdk-exports.toml` counts as reaching a `native:` cell: an SDK test file that contains the path `test/parity/sdk-vectors/` and calls the symbol.
+The vectors are the evidence `test/parity/ledgers/sdk-exports.toml` counts as reaching a `native:` cell: an SDK test file that contains the path `test/parity/sdk-vectors/` and calls the symbol.
 
 ## Layout
 

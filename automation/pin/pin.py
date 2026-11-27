@@ -196,7 +196,7 @@ RULES: list[tuple[str, object, str | None]] = [
     ("extensions/sdk-ts/package.json", package_deps(["@earendil-works/pi-coding-agent"]), "extensions/sdk-ts"),
     ("extensions/sdk-ts/README.md", lambda p, t: sub(r"(pi-coding-agent@)\S+", rf"\g<1>{p.package_version}", sub(r"(API from Pi )\S+?(?=\. It contains)", rf"\g<1>{p.package_version}", t, "README"), "README"), None),
     ("test/parity/known-gaps.toml", regex_rule(r'^(pi_version = ")[^"]+(")', r'\g<1>{v}\g<2>'), None),
-    ("test/parity/behavior-contracts.toml", regex_rule(r'^(upstream_version = ")[^"]+(")', r'\g<1>{v}\g<2>'), None),
+    ("test/parity/ledgers/behavior-contracts.toml", regex_rule(r'^(upstream_version = ")[^"]+(")', r'\g<1>{v}\g<2>'), None),
     ("test/parity/ledgers/async-contracts.toml", regex_rule(r'\A(version = ")[^"]+(")', r'\g<1>{v}\g<2>'), None),
     ("automation/images/ci-parity/Dockerfile", lambda p, t: ci_commit(p, regex_rule(r"^(ARG PI_VERSION=)\S+", r"\g<1>{v}", "package_version")(p, t)), None),
     ("automation/images/ci-parity/metadata.env", lambda p, t: ci_tag(p, t), None),
@@ -269,7 +269,7 @@ def cmd_sync(args: argparse.Namespace) -> None:
 
 # Ledgers that one file holds for the committed pin only. A bump archives the outgoing pin's copy and restores
 # the incoming pin's archived copy when it has one, so moving the pin back reproduces the earlier pin's ledgers.
-PIN_LEDGERS = ["test/parity/known-gaps.toml", "test/parity/behavior-contracts.toml", "test/parity/ledgers/async-contracts.toml"]
+PIN_LEDGERS = ["test/parity/known-gaps.toml", "test/parity/ledgers/behavior-contracts.toml", "test/parity/ledgers/async-contracts.toml"]
 ARCHIVE = "test/parity/pin-ledgers"
 
 
@@ -302,7 +302,7 @@ def cmd_bump(args: argparse.Namespace) -> None:
 
 VERSION_FIELDS = {
     "test/parity/known-gaps.toml": "pi_version",
-    "test/parity/behavior-contracts.toml": "upstream_version",
+    "test/parity/ledgers/behavior-contracts.toml": "upstream_version",
     "test/parity/ledgers/async-contracts.toml": "version",
 }
 

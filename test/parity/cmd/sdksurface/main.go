@@ -7,7 +7,7 @@
 // A cell's status comes from symbol detection in that runtime's source: the
 // Go SDK's exported identifiers (go/ast), the Rust SDK's pub items, the
 // Python SDK's classes and members, and the Node runtime's classes, `pi`
-// object keys and property reads. test/parity/sdk-surface.toml names which symbol
+// object keys and property reads. test/parity/ledgers/sdk-surface.toml names which symbol
 // realizes a surface where the language's naming differs from the default
 // rule, and why a realization is a stand-in; it never decides a status on its
 // own. Fields that cross the subprocess wire are also checked against the

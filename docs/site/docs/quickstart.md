@@ -78,7 +78,7 @@ go install github.com/MichaelKinsy/PiG/cmd/pig@latest
 Use an exact version for a reproducible installation:
 
 ```bash
-go install github.com/MichaelKinsy/PiG/cmd/pig@v0.5.0
+go install github.com/MichaelKinsy/PiG/cmd/pig@v0.8.0
 ```
 
 Go writes the `pig` executable to `GOBIN`. When `GOBIN` is empty, Go uses the
@@ -100,7 +100,7 @@ matching installation receipt.
 
 Explicit `pig update` version checks retry transient transport failures and transient HTTP statuses at most twice within one ten-second budget. Startup checks do not retry. Signature and manifest errors stop the update. Native standalone updates reject concurrent replacement of the same executable and hold the installation lock until receipt commit or rollback completes (D39). The `<executable>.update.lock` sidecar exists only while an update runs; the update removes it when it ends.
 
-Each release tags the root module (`v0.5.0`) and the nested Go extension SDK module (`extensions/sdk/v0.5.0`) on the same commit; `go install` needs both.
+Each release tags the root module (`v0.8.0`) and the nested Go extension SDK module (`extensions/sdk/v0.8.0`) on the same commit; `go install` needs both.
 
 ## Install with Nix
 

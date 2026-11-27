@@ -2561,7 +2561,7 @@ allocs = 2
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeAcknowledgedEventNotify"
-allocs = 41
+allocs = 38
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"

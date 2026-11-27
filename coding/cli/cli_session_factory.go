@@ -209,6 +209,12 @@ func (h *cliExtensionHost[S]) SetBackgroundCallGate(gate func() <-chan struct{})
 	}
 }
 
+func (h *cliExtensionHost[S]) setPostAckGate(gate func(event string) <-chan struct{}) {
+	if h.host != nil {
+		h.host.SetPostAckGate(gate)
+	}
+}
+
 func (h *cliExtensionHost[S]) SetTimerTurns(turns *jsloop.Turns) {
 	if h.host != nil {
 		h.host.SetTimerTurns(turns)

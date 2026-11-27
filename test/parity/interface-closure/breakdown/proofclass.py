@@ -56,7 +56,7 @@ for f in glob.glob('test/parity/unit-evidence/*.json'):
             mutation_tests.update(e.get('tests') or [])
 mutant_files = set()
 try:
-    for entries in json.load(open('test/parity/portmap-mutants.json')).values():
+    for entries in json.load(open('test/parity/ledgers/portmap-mutants.json')).values():
         mutant_files.update(m['file'] for m in entries)
 except (OSError, ValueError):
     pass

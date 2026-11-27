@@ -237,7 +237,16 @@ func TestCuratedParityLedgersLiveOutsideTheRootModule(t *testing.T) {
 		{
 			dir:    "test/parity/ledgers",
 			oldDir: "test/parity",
-			names:  []string{"async-contracts.toml"},
+			names: []string{
+				"async-contracts.toml",
+				"behavior-contracts.toml",
+				"format-versions.toml",
+				"portmap-mutants.json",
+				"portmap-reviewed.json",
+				"sdk-exports.toml",
+				"sdk-surface.toml",
+				"testprune-reviewed.toml",
+			},
 		},
 		{
 			dir:    "test/parity/interface-closure/autobind/reviewed",

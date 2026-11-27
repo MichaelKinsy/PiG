@@ -34,9 +34,10 @@ npx @pi-in-go/pig --version
 Termux) as
 an optional dependency, and Node.js runs only a small launcher. Do not install
 with `--omit=optional` or `--no-optional`, which leaves the binary out. Update
-with `npm update -g @pi-in-go/pig` and uninstall with
-`npm uninstall -g @pi-in-go/pig`. `pig update` does not replace an
-npm-installed binary; update through npm.
+with `npm update -g @pi-in-go/pig` or `pig update` (which runs
+`npm install -g --ignore-scripts --min-release-age=0 @pi-in-go/pig@<version>`
+when the global install is writable), and uninstall with
+`npm uninstall -g @pi-in-go/pig`.
 
 Install the command with Go 1.27 or newer, without a source checkout (an older Go, 1.21 or newer, downloads the toolchain `go.mod` names unless `GOTOOLCHAIN=local`):
 
@@ -47,7 +48,7 @@ go install github.com/MichaelKinsy/PiG/cmd/pig@latest
 Use an exact version for a reproducible installation:
 
 ```bash
-go install github.com/MichaelKinsy/PiG/cmd/pig@v0.2.0
+go install github.com/MichaelKinsy/PiG/cmd/pig@v0.8.0
 ```
 
 Go writes the `pig` executable to `GOBIN`, or to the `bin` directory below the
@@ -59,8 +60,8 @@ running `go install` again. PiG does not treat a Go-installed executable as a
 standalone release download, so `pig update` refuses to replace it without a
 matching installation receipt.
 
-Each release tags the root module (`v0.2.0`) and the nested Go extension SDK
-module (`extensions/sdk/v0.2.0`) on the same commit; `go install` needs both.
+Each release tags the root module (`v0.8.0`) and the nested Go extension SDK
+module (`extensions/sdk/v0.8.0`) on the same commit; `go install` needs both.
 
 Install or run the command with Nix:
 
@@ -84,11 +85,11 @@ root, tests, or CI.
 
 ### Change what the install script does
 
-`install.sh` reads these environment variables. Set them on the `sh` side of the pipe, for example `curl -fsSL https://pi-in-go.dev/install.sh | PIG_VERSION=0.5.0 sh`.
+`install.sh` reads these environment variables. Set them on the `sh` side of the pipe, for example `curl -fsSL https://pi-in-go.dev/install.sh | PIG_VERSION=0.8.0 sh`.
 
 | Variable | Meaning |
 |---|---|
-| `PIG_VERSION` | Install this release (for example `0.5.0`) instead of the latest. |
+| `PIG_VERSION` | Install this release (for example `0.8.0`) instead of the latest. |
 | `PIG_INSTALL_DIR` | Directory that receives `pig`. The default is `$HOME/.local/bin`, or `$PREFIX/bin` in Termux. |
 | `PIG_HOME` | PiG's settings directory, where the install receipt goes. The default is `$XDG_CONFIG_HOME/pig` when `XDG_CONFIG_HOME` is set, else `~/.pig`. |
 | `PIG_API_BASE` | The API that names the latest release. The default is `https://pi-in-go.dev/api`. |

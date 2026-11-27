@@ -425,7 +425,7 @@ A surface is done only when:
 11. `make async-contracts` proves every current upstream Promise/async source has an explicit ordering/cancellation/error contract and durable evidence.
 
 12. interaction and state-machine behavior found during probing is closed in
-    `test/parity/behavior-contracts.toml` when declaration shape cannot express it.
+    `test/parity/ledgers/behavior-contracts.toml` when declaration shape cannot express it.
     Contracts bind a hashed current-upstream source range and its complete
     keybinding/event inventory to Pig targets, a failing unit regression, and a
     behavioral parity scenario. Boundary transitions such as first/last
