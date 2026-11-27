@@ -104,7 +104,7 @@ func TestDefineWithInputLimitsAndAddMissingMatchPi(t *testing.T) {
 func TestFamilyAnthropicSonnet46HasMaxEffortOnlyAndAdaptiveThinking(t *testing.T) {
 	for _, id := range []string{"claude-sonnet-4-6", "claude-sonnet-4.6"} {
 		model := fakeModel("anthropic", id, "anthropic-messages")
-		applyClaudeFamilyRules(model)
+		applyClaudeFamilyRules(model, nil)
 		requireJSON(t, model.Object("thinkingLevelMap"), `{"max":"max"}`)
 		requireJSON(t, model.Object("compat"), `{"forceAdaptiveThinking":true}`)
 	}

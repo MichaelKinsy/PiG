@@ -51,7 +51,7 @@ func captureMistralToolPayload(t *testing.T, modelID string, compat *ModelCompat
 func TestMistralToolSchemaSerialization(t *testing.T) {
 	// upstream: mistral-tool-schema.test.ts:18 "strips TypeBox symbol keys before the SDK validates tool schemas"
 	strictMode := true
-	captured, failure := captureMistralToolPayload(t, "devstral-medium-latest", &ModelCompat{SupportsStrictMode: &strictMode}, ToolSchema{
+	captured, failure := captureMistralToolPayload(t, "mistral-medium-latest", &ModelCompat{SupportsStrictMode: &strictMode}, ToolSchema{
 		Name:        "inspect_schema",
 		Description: "Inspect the schema",
 		Parameters: map[string]any{

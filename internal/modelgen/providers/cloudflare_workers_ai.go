@@ -47,6 +47,14 @@ func cloudflareWorkersAiClassifierModels() []*Obj {
 	}
 }
 
+// These models reject null content when an assistant message contains only tool calls.
+var cloudflareWorkersAiNonNullAssistantContentModels = map[string]bool{
+	"@cf/ibm-granite/granite-4.0-h-micro":      true,
+	"@cf/meta/llama-3.3-70b-instruct-fp8-fast": true,
+	"@cf/openai/gpt-oss-120b":                  true,
+	"@cf/openai/gpt-oss-20b":                   true,
+}
+
 func cloudflareWorkersAi() ProviderDefinition {
 	return ProviderDefinition{
 		ID: "cloudflare-workers-ai",
@@ -55,6 +63,12 @@ func cloudflareWorkersAi() ProviderDefinition {
 				API:     "openai-completions",
 				BaseURL: cloudflareWorkersAiBaseURL,
 				Compat:  O("sendSessionAffinityHeaders", true),
+				Map: func(model ChatModel, _ *ModelsDevModel) (ChatModel, error) {
+					if cloudflareWorkersAiNonNullAssistantContentModels[model.Str("id")] {
+						MergeCompat(model, O("requiresNonNullAssistantContent", true))
+					}
+					return model, nil
+				},
 			})
 		},
 		Classifiers: func(*ProviderContext) ([]*Obj, error) { return cloudflareWorkersAiClassifierModels(), nil },

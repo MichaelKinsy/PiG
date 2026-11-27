@@ -72,8 +72,11 @@ func builtinClassifiers(provider string) ProviderClassifierMap {
 	switch provider {
 	case "typesafe", "opencode", "openrouter", "vercel-ai-gateway":
 		return ProviderClassifierMap{ClassifierAPITypesafeSystemOne: TypesafeSystemOneAPI()}
-	case "github-copilot": //portlint:allow providerliteral the built-in registry entry for providers/github-copilot.ts:48 `classifiers: { "typesafe-system-one": copilotSystemOne(...) }`
-		return ProviderClassifierMap{ClassifierAPITypesafeSystemOne: githubCopilotSystemOne(TypesafeSystemOneAPI())}
+	case "github-copilot": //portlint:allow providerliteral the built-in registry entry for providers/github-copilot.ts:70 `classifiers: { "openai-decisions": copilotV1(...), "typesafe-system-one": copilotV1(...) }`
+		return ProviderClassifierMap{
+			ClassifierAPIOpenAIDecisions:   githubCopilotV1(OpenAIDecisionsAPI()),
+			ClassifierAPITypesafeSystemOne: githubCopilotV1(TypesafeSystemOneAPI()),
+		}
 	case "cloudflare-workers-ai":
 		return ProviderClassifierMap{ClassifierAPICloudflareWorkersAISystemOne: CloudflareClassifier(CloudflareWorkersAISystemOneAPI())}
 	case "openai": //portlint:allow providerliteral the built-in registry entry for providers/openai.ts:31 `classifiers: { "openai-decisions": ... }`
@@ -85,6 +88,7 @@ func builtinClassifiers(provider string) ProviderClassifierMap {
 // builtinFilterAllModels are the availability policies of the providers that hide models for some credentials
 // (providers/openai.ts filterAllModels).
 var builtinFilterAllModels = map[string]func([]AnyModel, *Credential) []AnyModel{
+	"github-copilot": filterGitHubCopilotAllModels,
 	// Sign in with ChatGPT tokens only reach the Responses API; the Decisions API rejects them.
 	"openai": func(models []AnyModel, credential *Credential) []AnyModel {
 		if credential == nil || credential.Type != CredentialOAuth {

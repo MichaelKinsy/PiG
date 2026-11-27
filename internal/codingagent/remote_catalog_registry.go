@@ -63,6 +63,22 @@ func (r *ModelRegistry) simpleFallback(id string, fallback ai.ModelsStreamFuncti
 }
 
 func (r *ModelRegistry) builtinBase(id string, fallback ai.ModelsStreamFunction) *ai.ModelsProvider {
+	r.mu.RLock()
+	radius := r.radiusProviderLocked(id)
+	r.mu.RUnlock()
+	if radius != nil {
+		base := &ai.ModelsProvider{
+			ID:           radius.ID(),
+			Name:         radius.Name(),
+			Auth:         radius.Auth(),
+			GetModels:    func() ([]*ai.Model, error) { return radius.GetModels(), nil },
+			GetAllModels: func() ([]ai.AnyModel, error) { return radius.GetAllModels(), nil },
+			Classify:     radius.Classify,
+			Stream:       fallback,
+			StreamSimple: r.simpleFallback(id, fallback),
+		}
+		return base
+	}
 	base := builtinTypedBase(id, fallback)
 	if base != nil && fallback != nil {
 		base.StreamSimple = r.simpleFallback(id, fallback)

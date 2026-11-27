@@ -43,6 +43,11 @@ func OpenAIStandardCosts() map[string]*Obj {
 	}
 }
 
+// OpenAIDecisionsCost is GPT-6 Luna's price on the Decisions API (input tokens only, with OpenAI long-context pricing).
+func OpenAIDecisionsCost() *Obj {
+	return WithOpenAILongContextPricing(rates(0.1, 0, 0.1, 0.1))
+}
+
 // OpenAIStandardCost is the standard price of an OpenAI model with long-context pricing.
 func OpenAIStandardCost(id string) *Obj {
 	return WithOpenAILongContextPricing(OpenAIStandardCosts()[id])

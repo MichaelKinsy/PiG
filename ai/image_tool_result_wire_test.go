@@ -32,7 +32,7 @@ func TestMistralImageToolResultWireKeys(t *testing.T) {
 		_, _ = io.WriteString(w, "data: {\"choices\":[{\"delta\":{\"content\":\"ok\"},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n")
 	}))
 	t.Cleanup(server.Close)
-	provider := NewMistralProvider(MistralConfig{APIKey: "test", Model: "pixtral-12b", ProviderID: "mistral", BaseURL: server.URL})
+	provider := NewMistralProvider(MistralConfig{APIKey: "test", Model: "mistral-medium-latest", ProviderID: "mistral", BaseURL: server.URL})
 	stream, err := provider.Stream(invalidRequest(t), NormalizeContext(Context{Messages: []Message{ToolResultMessage{ToolCallID: "imagecall", ToolName: "get_circle", Content: []ToolResultMessageContent{ImageContent{Data: "YWJj", MimeType: "image/png"}}}}}), StreamOptions{})
 	if err != nil {
 		t.Fatal(err)

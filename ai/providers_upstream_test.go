@@ -148,7 +148,7 @@ func TestBuiltinProvidersUpstream(t *testing.T) {
 	})
 	// .upstream/v0.99.1/packages/ai/test/providers.test.ts:162 (0.99.1 moved the Fireworks unsupported row from kimi-k2p6 to nemotron-3-ultra-nvfp4; Pi c8d1a826a moved it on to deepseek-v4p1-flash after the model was removed)
 	t.Run("enables mid-conversation system messages only for verified models", func(t *testing.T) {
-		supported := [][2]string{{"moonshotai", "kimi-k2.6"}, {"moonshotai", "kimi-k2.7-code"}, {"moonshotai", "kimi-k2.7-code-highspeed"}, {"moonshotai", "kimi-k3"}, {"moonshotai-cn", "kimi-k2.6"}, {"moonshotai-cn", "kimi-k2.7-code"}, {"moonshotai-cn", "kimi-k2.7-code-highspeed"}, {"moonshotai-cn", "kimi-k3"}, {"fireworks", "accounts/fireworks/models/kimi-k3"}, {"fireworks", "accounts/fireworks/routers/kimi-k3-fast"}, {"openai", "gpt-5.4"}, {"openai", "gpt-5.5"}, {"openai", "gpt-6-astra"}, {"openai-codex", "gpt-5.6-sol"}, {"anthropic", "claude-opus-5"}, {"opencode", "gpt-5.4"}, {"opencode", "gpt-5.6-terra"}, {"opencode-go", "gpt-5.6-luna"}, {"opencode", "claude-opus-4-8"}, {"opencode", "claude-opus-5"}, {"opencode", "kimi-k3"}, {"opencode-go", "kimi-k3"}, {"github-copilot", "gpt-5.6-terra"}, {"github-copilot", "claude-opus-5"}, {"github-copilot", "claude-opus-4.8"}, {"github-copilot", "kimi-k3"}, {"deepseek", "deepseek-v4-pro"}, {"openrouter", "openai/gpt-5.6-terra"}}
+		supported := [][2]string{{"moonshotai", "kimi-k2.6"}, {"moonshotai", "kimi-k2.7-code"}, {"moonshotai", "kimi-k2.7-code-highspeed"}, {"moonshotai", "kimi-k3"}, {"moonshotai-cn", "kimi-k2.6"}, {"moonshotai-cn", "kimi-k2.7-code"}, {"moonshotai-cn", "kimi-k2.7-code-highspeed"}, {"moonshotai-cn", "kimi-k3"}, {"fireworks", "accounts/fireworks/models/kimi-k3"}, {"fireworks", "accounts/fireworks/routers/kimi-k3-fast"}, {"openai", "gpt-5.4"}, {"openai", "gpt-5.5"}, {"openai", "gpt-6-astra"}, {"openai-codex", "gpt-5.6-sol"}, {"anthropic", "claude-opus-5"}, {"opencode", "gpt-5.4"}, {"opencode", "gpt-5.6-terra"}, {"opencode-go", "gpt-5.6-luna"}, {"opencode", "claude-opus-4-8"}, {"opencode", "claude-opus-5"}, {"opencode", "kimi-k3"}, {"opencode-go", "kimi-k3"}, {"github-copilot", "gpt-6.1-terra"}, {"github-copilot", "claude-opus-5.5"}, {"github-copilot", "claude-opus-4.8"}, {"github-copilot", "kimi-k3"}, {"deepseek", "deepseek-v4-pro"}, {"openrouter", "openai/gpt-5.6-terra"}}
 		unsupported := [][2]string{{"fireworks", "accounts/fireworks/models/deepseek-v4p1-flash"}, {"openai", "gpt-4.1"}, {"openai", "gpt-5.2"}, {"anthropic", "claude-sonnet-4-5"}, {"google", "gemini-2.5-pro"}, {"opencode", "gpt-5.2"}, {"opencode", "claude-sonnet-4-5"}, {"github-copilot", "claude-sonnet-4.6"}, {"deepseek", "deepseek-flash"}, {"openrouter", "anthropic/claude-opus-5"}, {"openrouter", "moonshotai/kimi-k3"}, {"openrouter", "openai/gpt-5.6-terra:batch"}}
 		for _, row := range supported {
 			model := providerModelUpstream(t, row[0], row[1])
@@ -165,12 +165,16 @@ func TestBuiltinProvidersUpstream(t *testing.T) {
 	})
 	// .upstream/v0.87.1/packages/ai/test/providers.test.ts:200
 	t.Run("routes proxied tool changes through verified transports only", func(t *testing.T) {
-		for _, provider := range []string{"opencode", "github-copilot"} {
-			compat := providerModelUpstream(t, provider, "gpt-5.6-terra").Compat
+		for _, row := range [][3]string{
+			{"opencode", "gpt-5.6-terra", "claude-opus-5"},
+			{"github-copilot", "gpt-6.1-terra", "claude-opus-5.5"},
+		} {
+			provider, gptID, claudeID := row[0], row[1], row[2]
+			compat := providerModelUpstream(t, provider, gptID).Compat
 			if compat == nil || compat.SupportsAdditionalTools == nil || !*compat.SupportsAdditionalTools || compat.SupportsToolSearch != nil {
 				t.Fatal(provider, compat)
 			}
-			if value := providerModelUpstream(t, provider, "claude-opus-5").Compat; value != nil && value.SupportsMidConvoToolChanges != nil {
+			if value := providerModelUpstream(t, provider, claudeID).Compat; value != nil && value.SupportsMidConvoToolChanges != nil {
 				t.Fatal(provider)
 			}
 		}

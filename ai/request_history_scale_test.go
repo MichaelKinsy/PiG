@@ -8,7 +8,7 @@ import (
 
 // The request build must be linear in the history: every API converts a tool-using history of 100 and of 800 turns, and the allocations and allocated bytes per turn must stay flat. A pass that allocates per message in proportion to the history (a copy of the history, an index rebuilt per tool call) makes the per-turn cost grow with the history and fails the bound; a constant factor does not. A rescan that allocates nothing is not measured here.
 func TestRequestBuildAllocationsAreLinearInTheHistory(t *testing.T) {
-	for _, spec := range []string{"anthropic/claude-sonnet-4-5", "openai/gpt-5", "groq/llama-3.1-8b-instant", "google/gemini-2.5-flash", "mistral/devstral-medium-latest"} {
+	for _, spec := range []string{"anthropic/claude-sonnet-4-5", "openai/gpt-5", "groq/openai/gpt-oss-120b", "google/gemini-2.5-flash", "mistral/mistral-medium-latest"} {
 		if !BuiltCatalogModel(spec) {
 			// A build with this API's pig_strip tag has no provider for the row.
 			continue

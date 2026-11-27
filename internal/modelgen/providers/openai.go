@@ -49,22 +49,6 @@ var openaiNoneReasoningModelIDs = map[string]bool{
 	"gpt-6-luna":    true,
 }
 
-// Not listed by models.dev.
-func openaiGPT5ChatLatest() ChatModel {
-	return O(
-		"id", "gpt-5-chat-latest",
-		"name", "GPT-5 Chat Latest",
-		"api", "openai-responses",
-		"baseUrl", openaiBaseURL,
-		"provider", "openai",
-		"reasoning", false,
-		"input", Strings("text", "image"),
-		"cost", O("input", 1.25, "output", 10, "cacheRead", 0.125, "cacheWrite", 0),
-		"contextWindow", 128000,
-		"maxTokens", 16384,
-	)
-}
-
 // OpenAI Decisions API (public beta): gpt-6-luna is its only model. It bills input tokens only,
 // with the same long-context multiplier as chat requests. Only API keys work: Sign in with ChatGPT
 // tokens are rejected on /v1/decisions, and the Codex backend has no Decisions route.
@@ -82,7 +66,7 @@ func openaiClassifierModels() []*Obj {
 			"provider", "openai",
 			"baseUrl", openaiBaseURL,
 			"input", Strings("text", "image"),
-			"cost", WithOpenAILongContextPricing(O("input", 0.1, "output", 0, "cacheRead", 0, "cacheWrite", 0)),
+			"cost", OpenAIDecisionsCost(),
 			"contextWindow", 922000,
 		),
 	}
@@ -112,8 +96,10 @@ func openaiCorrectUpstream(model ChatModel) ChatModel {
 func openai() ProviderDefinition {
 	return ProviderDefinition{
 		ID: "openai",
+		// No SkipDeprecated: models.dev marks models deprecated once OpenAI announces their shutdown,
+		// and they keep working until then. Shut down models leave models.dev's list.
 		Models: func(ctx *ProviderContext) ([]ChatModel, error) {
-			models, err := ModelsDevModels(ctx, "openai", ModelsDevOptions{
+			return ModelsDevModels(ctx, "openai", ModelsDevOptions{
 				API:     "openai-responses",
 				BaseURL: openaiBaseURL,
 				// Audio models are only served on Chat Completions.
@@ -123,10 +109,6 @@ func openai() ProviderDefinition {
 					return openaiCorrectUpstream(model), nil
 				},
 			})
-			if err != nil {
-				return nil, err
-			}
-			return AddMissing(models, []ChatModel{openaiGPT5ChatLatest()}), nil
 		},
 		Classifiers: func(*ProviderContext) ([]*Obj, error) { return openaiClassifierModels(), nil },
 		Finalize: func(model ChatModel, _ *ProviderContext) {

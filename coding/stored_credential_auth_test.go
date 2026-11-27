@@ -57,7 +57,7 @@ func TestBuildModelStoredCredentialOwnsProvider(t *testing.T) {
 		},
 		{
 			name:     "stored api key for an OpenAI-compatible built-in",
-			provider: "groq", model: "llama-3.3-70b-versatile",
+			provider: "groq", model: "openai/gpt-oss-120b",
 			env:        map[string]string{"GROQ_API_KEY": "env-key"},
 			stored:     &ai.Credential{Type: ai.CredentialAPIKey, Key: "stored-groq"},
 			wantHeader: "Bearer stored-groq",

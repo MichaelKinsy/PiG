@@ -102,6 +102,8 @@ type Credential struct {
 	Scope string `json:"scope,omitempty"`
 	// AvailableModelIDs retains the account's optional picker filter, including an explicit empty list or malformed external value.
 	AvailableModelIDs json.RawMessage `json:"availableModelIds,omitempty"`
+	// AvailableClassifierModelIDs retains the account's optional classifier filter from the Copilot /models catalog.
+	AvailableClassifierModelIDs json.RawMessage `json:"availableClassifierModelIds,omitempty"`
 	// GatewayConfig is the Radius gateway catalog that pre-ModelsStore Radius
 	// builds cached on the credential. It is read once to import that catalog.
 	GatewayConfig json.RawMessage `json:"gatewayConfig,omitempty"`
@@ -115,20 +117,21 @@ type Credential struct {
 // rawCredential mirrors Credential but also accepts the legacy `apiKey`
 // JSON field. Used only during Load() to migrate old files in place.
 type rawCredential struct {
-	Extra             map[string]json.RawMessage `json:"-"`
-	Type              CredentialType             `json:"type"`
-	Key               string                     `json:"key,omitempty"`
-	LegacyAPIKey      string                     `json:"apiKey,omitempty"`
-	Env               map[string]string          `json:"env,omitempty"`
-	Refresh           string                     `json:"refresh,omitempty"`
-	Access            string                     `json:"access,omitempty"`
-	Expires           int64                      `json:"expires,omitempty"`
-	ProjectID         string                     `json:"projectId,omitempty"`
-	AccountID         string                     `json:"accountId,omitempty"`
-	EnterpriseDomain  string                     `json:"enterpriseUrl,omitempty"`
-	Scope             string                     `json:"scope,omitempty"`
-	GatewayConfig     json.RawMessage            `json:"gatewayConfig,omitempty"`
-	AvailableModelIDs json.RawMessage            `json:"availableModelIds,omitempty"`
+	Extra                       map[string]json.RawMessage `json:"-"`
+	Type                        CredentialType             `json:"type"`
+	Key                         string                     `json:"key,omitempty"`
+	LegacyAPIKey                string                     `json:"apiKey,omitempty"`
+	Env                         map[string]string          `json:"env,omitempty"`
+	Refresh                     string                     `json:"refresh,omitempty"`
+	Access                      string                     `json:"access,omitempty"`
+	Expires                     int64                      `json:"expires,omitempty"`
+	ProjectID                   string                     `json:"projectId,omitempty"`
+	AccountID                   string                     `json:"accountId,omitempty"`
+	EnterpriseDomain            string                     `json:"enterpriseUrl,omitempty"`
+	Scope                       string                     `json:"scope,omitempty"`
+	GatewayConfig               json.RawMessage            `json:"gatewayConfig,omitempty"`
+	AvailableModelIDs           json.RawMessage            `json:"availableModelIds,omitempty"`
+	AvailableClassifierModelIDs json.RawMessage            `json:"availableClassifierModelIds,omitempty"`
 
 	expiry credentialExpiry
 	order  credentialKeyOrder
@@ -136,20 +139,21 @@ type rawCredential struct {
 
 func (r rawCredential) normalize() Credential {
 	c := Credential{
-		Extra:             cloneCredentialExtra(r.Extra),
-		Type:              r.Type,
-		Key:               r.Key,
-		Env:               r.Env,
-		Refresh:           r.Refresh,
-		Access:            r.Access,
-		Expires:           r.Expires,
-		ProjectID:         r.ProjectID,
-		AccountID:         r.AccountID,
-		EnterpriseDomain:  r.EnterpriseDomain,
-		Scope:             r.Scope,
-		GatewayConfig:     r.GatewayConfig,
-		AvailableModelIDs: r.AvailableModelIDs,
-		expiry:            r.expiry,
+		Extra:                       cloneCredentialExtra(r.Extra),
+		Type:                        r.Type,
+		Key:                         r.Key,
+		Env:                         r.Env,
+		Refresh:                     r.Refresh,
+		Access:                      r.Access,
+		Expires:                     r.Expires,
+		ProjectID:                   r.ProjectID,
+		AccountID:                   r.AccountID,
+		EnterpriseDomain:            r.EnterpriseDomain,
+		Scope:                       r.Scope,
+		GatewayConfig:               r.GatewayConfig,
+		AvailableModelIDs:           r.AvailableModelIDs,
+		AvailableClassifierModelIDs: r.AvailableClassifierModelIDs,
+		expiry:                      r.expiry,
 	}
 	if c.Type == legacyCredentialAPIKey {
 		c.Type = CredentialAPIKey

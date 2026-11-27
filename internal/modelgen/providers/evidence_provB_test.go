@@ -316,14 +316,6 @@ func TestProvBOpenAI(t *testing.T) {
 	}
 	provBCheck(t, models, []provBWant{
 		// authored model: not listed by models.dev
-		{"gpt-5-chat-latest", "name", `"GPT-5 Chat Latest"`},
-		{"gpt-5-chat-latest", "api", `"openai-responses"`},
-		{"gpt-5-chat-latest", "baseUrl", `"https://api.openai.com/v1"`},
-		{"gpt-5-chat-latest", "reasoning", "false"},
-		{"gpt-5-chat-latest", "input", `["text","image"]`},
-		{"gpt-5-chat-latest", "cost", `{"input":1.25,"output":10,"cacheRead":0.125,"cacheWrite":0}`},
-		{"gpt-5-chat-latest", "contextWindow", "128000"},
-		{"gpt-5-chat-latest", "maxTokens", "16384"},
 		{"gpt-5-pro", "maxTokens", "128000"},
 		{"gpt-5.5", "contextWindow", "272000"},
 		{"gpt-5.5", "maxTokens", "128000"},
@@ -340,7 +332,7 @@ func TestProvBOpenAI(t *testing.T) {
 		{"gpt-6-sol", "thinkingLevelMap", `{"off":"none","minimal":null,"low":"low","medium":"medium","high":"high","xhigh":"xhigh","max":"max"}`},
 		{"gpt-6-sol", "inputLimits", `{"maxRequestBytes":536870912,"images":{"maxPerRequest":1500,"resize":{"maxWidth":2000,"maxHeight":2000,"maxBytes":4718592,"jpegQuality":80}}}`},
 	})
-	for _, id := range []string{"gpt-5.1", "gpt-5.5", "gpt-6-sol", "gpt-5-chat-latest"} {
+	for _, id := range []string{"gpt-5.1", "gpt-5.5", "gpt-6-sol"} {
 		if compat := provBField(models[id], "compat"); !strings.Contains(compat, `"supportsStrictMode":true`) {
 			t.Errorf("%s compat = %s", id, compat)
 		}

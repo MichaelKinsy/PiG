@@ -239,7 +239,7 @@ func authPassChanges() []authPassChange {
 			before: `{"openai":{"type":"api_key","key":"old-key"}}`, after: `{"openai":{"type":"api_key","key":"rotated-key"}}`, want: "Bearer rotated-key"},
 		{name: "OAuth token refreshed by another process", provider: "openai-codex", model: "gpt-5.6-sol",
 			before: oauth(codexTestAccessToken, "refresh", time.Now().Add(time.Hour)), after: oauth(refreshed, "refresh-rotated", time.Now().Add(2*time.Hour)), want: "Bearer " + refreshed},
-		{name: "OpenAI-compatible provider with a custom base URL", provider: "groq", model: "llama-3.3-70b-versatile",
+		{name: "OpenAI-compatible provider with a custom base URL", provider: "groq", model: "openai/gpt-oss-120b",
 			before: `{"groq":{"type":"api_key","key":"old-groq"}}`, after: `{"groq":{"type":"api_key","key":"rotated-groq-key"}}`, want: "Bearer rotated-groq-key"},
 		{name: "credential removed by a logout elsewhere", provider: "openai", model: "gpt-4o-mini",
 			before: `{"openai":{"type":"api_key","key":"old-key"}}`, after: `{}`},

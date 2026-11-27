@@ -321,7 +321,7 @@ func TestProviderConfigImplementationsAreDeclaredAndRunInTheExtension(t *testing
 			if request.State["text"] == "fail" {
 				return ClassifierResult{}, context.DeadlineExceeded
 			}
-			return ClassifierResult{API: "test-classifier", Provider: "ops", Model: "cls", Answers: NewOrderedObject("approved", map[string]any{"type": "bool", "probability": 0.25}, "again", map[string]any{"type": "bool", "probability": 0.5}), StopReason: "stop", Timestamp: 2}, nil
+			return ClassifierResult{API: "test-classifier", Provider: "ops", Model: "cls", Answers: NewOrderedObject("approved", map[string]any{"type": "bool", "probability": 0.25}, "again", map[string]any{"type": "bool", "probability": 0.5}), ResponseID: "resp-cls-1", StopReason: "stop", Timestamp: 2}, nil
 		}},
 	})
 	host, reg, done := surfaceHost(t, ext, nil)
@@ -355,10 +355,11 @@ func TestProviderConfigImplementationsAreDeclaredAndRunInTheExtension(t *testing
 		t.Fatalf("the callback lost the question order: %v", request.Questions.Keys())
 	}
 	var classified struct {
-		Answers json.RawMessage `json:"answers"`
-		Stop    string          `json:"stopReason"`
+		Answers    json.RawMessage `json:"answers"`
+		ResponseID string          `json:"responseId"`
+		Stop       string          `json:"stopReason"`
 	}
-	if err := json.Unmarshal(resp.Result, &classified); err != nil || classified.Stop != "stop" || string(classified.Answers) != `{"approved":{"probability":0.25,"type":"bool"},"again":{"probability":0.5,"type":"bool"}}` {
+	if err := json.Unmarshal(resp.Result, &classified); err != nil || classified.Stop != "stop" || classified.ResponseID != "resp-cls-1" || string(classified.Answers) != `{"approved":{"probability":0.25,"type":"bool"},"again":{"probability":0.5,"type":"bool"}}` {
 		t.Fatalf("classify result = %s, %v", resp.Result, err)
 	}
 

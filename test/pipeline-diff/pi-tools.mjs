@@ -30,9 +30,9 @@ const targets = {
 	anthropic: ["anthropic", "claude-sonnet-4-5"],
 	"openai-responses": ["openai", "gpt-5"],
 	"azure-responses": ["azure", "gpt-4.1"],
-	"completions-groq": ["groq", "llama-3.1-8b-instant"],
+	"completions-groq": ["groq", "openai/gpt-oss-120b"],
 	google: ["google", "gemini-2.5-flash"],
-	mistral: ["mistral", "devstral-medium-latest"],
+	mistral: ["mistral", "mistral-medium-latest"],
 	bedrock: ["amazon-bedrock", "anthropic.claude-sonnet-4-5-20250929-v1:0"],
 };
 

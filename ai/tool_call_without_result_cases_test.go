@@ -31,7 +31,7 @@ func toolWithoutResultUpstreamCases() []toolWithoutResultCase {
 		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:212
 		{"should filter out tool calls without corresponding tool results", "zai", "glm-5.2", "", false, ""},
 		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:220
-		{"should filter out tool calls without corresponding tool results", "mistral", "devstral-medium-latest", "", false, ""},
+		{"should filter out tool calls without corresponding tool results", "mistral", "mistral-medium-latest", "", false, ""},
 		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:228
 		{"should filter out tool calls without corresponding tool results", "minimax", "MiniMax-M2.7", "", false, ""},
 		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:236

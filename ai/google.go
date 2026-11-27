@@ -370,9 +370,10 @@ const (
 	GoogleThinkingLevelLow         GoogleThinkingLevel = "LOW"
 	GoogleThinkingLevelMedium      GoogleThinkingLevel = "MEDIUM"
 	GoogleThinkingLevelHigh        GoogleThinkingLevel = "HIGH"
+	GoogleThinkingLevelXHigh       GoogleThinkingLevel = "XHIGH"
 )
 
-// ResolvedGoogleThinkingLevel is a ThinkingLevel without "xhigh" and "max" (google-shared.ts ResolvedGoogleThinkingLevel).
+// ResolvedGoogleThinkingLevel is a ThinkingLevel without "max" (google-shared.ts ResolvedGoogleThinkingLevel).
 type ResolvedGoogleThinkingLevel string
 
 const (
@@ -380,6 +381,7 @@ const (
 	ResolvedGoogleThinkingLevelLow     ResolvedGoogleThinkingLevel = "low"
 	ResolvedGoogleThinkingLevelMedium  ResolvedGoogleThinkingLevel = "medium"
 	ResolvedGoogleThinkingLevelHigh    ResolvedGoogleThinkingLevel = "high"
+	ResolvedGoogleThinkingLevelXHigh   ResolvedGoogleThinkingLevel = "xhigh"
 )
 
 // ToGoogleThinkingLevel maps a resolved level to Google's enum value (google-shared.ts:85 toGoogleThinkingLevel).
@@ -393,6 +395,8 @@ func ToGoogleThinkingLevel(level ResolvedGoogleThinkingLevel) GoogleThinkingLeve
 		return GoogleThinkingLevelMedium
 	case ResolvedGoogleThinkingLevelHigh:
 		return GoogleThinkingLevelHigh
+	case ResolvedGoogleThinkingLevelXHigh:
+		return GoogleThinkingLevelXHigh
 	}
 	return ""
 }
@@ -407,6 +411,7 @@ var googleSdkThinkingLevels = map[GoogleThinkingLevel]GoogleSdkThinkingLevel{
 	GoogleThinkingLevelLow:         "LOW",
 	GoogleThinkingLevelMedium:      "MEDIUM",
 	GoogleThinkingLevelHigh:        "HIGH",
+	GoogleThinkingLevelXHigh:       "XHIGH",
 }
 
 // ToGoogleSdkThinkingLevel selects the SDK enum value for a Google API level (google-shared.ts:98 toGoogleSdkThinkingLevel).
@@ -891,8 +896,13 @@ func buildGeminiThinkingConfig(model *Model, level ModelThinkingLevel, isReasoni
 	if usesLevel {
 		config.ThinkingLevel = string(ToGoogleSdkThinkingLevel(ToGoogleThinkingLevel(resolved)))
 	} else {
-		budget := geminiThinkingBudget(ModelThinkingLevel(resolved), model.ID)
-		if custom, ok := customBudgets.configured(ModelThinkingLevel(resolved)); ok {
+		// Budgets stop at high, so xhigh uses the high budget.
+		budgetLevel := ModelThinkingLevel(resolved)
+		if resolved == ResolvedGoogleThinkingLevelXHigh {
+			budgetLevel = ThinkingHigh
+		}
+		budget := geminiThinkingBudget(budgetLevel, model.ID)
+		if custom, ok := customBudgets.configured(budgetLevel); ok {
 			budget = custom
 		}
 		config.ThinkingBudget = &budget
@@ -929,7 +939,7 @@ func resolveGoogleThinkingLevel(model *Model, level ModelThinkingLevel) (Resolve
 		resolved = ModelThinkingLevel(jsstring.ToLower(*mapped))
 	}
 	switch ResolvedGoogleThinkingLevel(resolved) {
-	case ResolvedGoogleThinkingLevelMinimal, ResolvedGoogleThinkingLevelLow, ResolvedGoogleThinkingLevelMedium, ResolvedGoogleThinkingLevelHigh:
+	case ResolvedGoogleThinkingLevelMinimal, ResolvedGoogleThinkingLevelLow, ResolvedGoogleThinkingLevelMedium, ResolvedGoogleThinkingLevelHigh, ResolvedGoogleThinkingLevelXHigh:
 		return ResolvedGoogleThinkingLevel(resolved), nil
 	default:
 		return "", fmt.Errorf("Unsupported Google thinking level mapping for %s/%s: %s -> %s", model.ProviderMeta.ProviderID, model.ID, level, mapping)
@@ -1521,7 +1531,8 @@ func mapStopReasonString(reason string) StopReason {
 func mapStopReason(reason string) (StopReason, error) {
 	switch reason {
 	case "STOP", "MAX_TOKENS", "CONTINUATION", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "SAFETY", "IMAGE_SAFETY", "IMAGE_PROHIBITED_CONTENT", "IMAGE_RECITATION", "IMAGE_OTHER", "RECITATION",
-		"FINISH_REASON_UNSPECIFIED", "OTHER", "LANGUAGE", "MALFORMED_FUNCTION_CALL", "UNEXPECTED_TOOL_CALL", "TOO_MANY_TOOL_CALLS", "NO_IMAGE":
+		"FINISH_REASON_UNSPECIFIED", "OTHER", "LANGUAGE", "MALFORMED_FUNCTION_CALL", "UNEXPECTED_TOOL_CALL", "TOO_MANY_TOOL_CALLS", "NO_IMAGE",
+		"MISSING_THOUGHT_SIGNATURE", "MALFORMED_RESPONSE", "ESCALATION", "PUP_LIMITED_DISABLED", "MODEL_ARMOR":
 		return mapStopReasonString(reason), nil
 	default:
 		return StopReasonError, fmt.Errorf("Unhandled stop reason: %s", reason)

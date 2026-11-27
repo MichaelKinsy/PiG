@@ -222,9 +222,9 @@ func TestClassifierModelsUpstream(t *testing.T) {
 		if _, err := credentials.Modify(t.Context(), "github-copilot", func(*Credential) (*Credential, error) {
 			return &Credential{
 				Type: CredentialOAuth, Access: "tid=test;exp=9999999999;proxy-ep=proxy.enterprise.githubcopilot.com;", Refresh: "refresh",
-				Expires: time.Now().UnixMilli() + 3_600_000,
-				// The login records only picker models; classifiers stay listed.
-				AvailableModelIDs: []byte(`["gpt-6-luna"]`),
+				Expires:                     time.Now().UnixMilli() + 3_600_000,
+				AvailableModelIDs:           []byte(`["gpt-6-luna"]`),
+				AvailableClassifierModelIDs: []byte(`["microsoft-decision-1"]`),
 			}, nil
 		}); err != nil {
 			t.Fatal(err)

@@ -31,7 +31,7 @@ func run() error {
 	for _, spec := range []struct {
 		api             ai.API
 		provider, model string
-	}{{ai.APIGoogleGenerativeAI, "google", "gemini-2.5-flash"}, {ai.APIOpenAICompletions, "openrouter", "z-ai/glm-4.5v"}, {ai.APIMistralConversations, "mistral", "pixtral-12b"}, {ai.APIOpenAICompletions, "openai", "gpt-4o-mini"}, {ai.APIOpenAIResponses, "openai", "gpt-5-mini"}} {
+	}{{ai.APIGoogleGenerativeAI, "google", "gemini-2.5-flash"}, {ai.APIOpenAICompletions, "openrouter", "z-ai/glm-4.5v"}, {ai.APIMistralConversations, "mistral", "mistral-medium-latest"}, {ai.APIOpenAICompletions, "openai", "gpt-4o-mini"}, {ai.APIOpenAIResponses, "openai", "gpt-5-mini"}} {
 		for _, mixed := range []bool{false, true} {
 			requests := make(chan map[string]any, 1)
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

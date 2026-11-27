@@ -24,7 +24,7 @@ func TestImageToolResultMatrixUpstream(t *testing.T) {
 	cases := upstreamCaseSites(t, "packages/ai/test/image-tool-result.test.ts")
 	specs := []struct{ provider, model string }{
 		{"google", "gemini-2.5-flash"}, {"openai", "gpt-4o-mini"}, {"openai", "gpt-5-mini"}, {"azure", "gpt-4o-mini"},
-		{"anthropic", "claude-haiku-4-5"}, {"openrouter", "z-ai/glm-4.5v"}, {"mistral", "pixtral-12b"}, {"together", "moonshotai/Kimi-K3"},
+		{"anthropic", "claude-haiku-4-5"}, {"openrouter", "z-ai/glm-4.5v"}, {"mistral", "ministral-14b-latest"}, {"together", "moonshotai/Kimi-K3"},
 		{"xiaomi", "mimo-v2.6-pro"}, {"xiaomi-token-plan-cn", "mimo-v2.6-pro"},
 		{"xiaomi-token-plan-ams", "mimo-v2.6-pro"}, {"xiaomi-token-plan-sgp", "mimo-v2.6-pro"}, {"qwen-token-plan", "qwen3.7-max"},
 		{"qwen-token-plan-individual", "qwen3.8-max"}, {"qwen-token-plan-individual-cn", "qwen3.8-max"}, {"qwen-token-plan-cn", "qwen3.7-max"}, {"kimi-coding", "kimi-for-coding"},

@@ -373,7 +373,7 @@ func oauthToAuth(providerID string, provider OAuthProviderInterface) func(Creden
 
 func credentialToOAuth(credential Credential) OAuthCredentials {
 	extra := cloneCredentialExtra(credential.Extra)
-	for key, value := range map[string]json.RawMessage{"availableModelIds": credential.AvailableModelIDs, "gatewayConfig": credential.GatewayConfig} {
+	for key, value := range map[string]json.RawMessage{"availableModelIds": credential.AvailableModelIDs, "availableClassifierModelIds": credential.AvailableClassifierModelIDs, "gatewayConfig": credential.GatewayConfig} {
 		if len(value) > 0 {
 			if extra == nil {
 				extra = map[string]json.RawMessage{}

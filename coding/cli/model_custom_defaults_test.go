@@ -261,7 +261,7 @@ func TestPrintModeEndToEndCustomModelWithoutAPIUsesInheritedDefaults(t *testing.
 	}
 
 	// Control: bundled model on the same provider keeps its own catalog values with the provider baseUrl override.
-	bundled, err := selectStartupModel(context.Background(), startupModelOptions{CLIModel: "groq/llama-3.1-8b-instant"}, codingagent.Settings{}, svcs)
+	bundled, err := selectStartupModel(context.Background(), startupModelOptions{CLIModel: "groq/openai/gpt-oss-120b"}, codingagent.Settings{}, svcs)
 	if err != nil {
 		t.Fatalf("selectStartupModel(bundled): %v", err)
 	}
