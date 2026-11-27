@@ -12,9 +12,9 @@ import (
 )
 
 // client.ts:403-407 sends progressToken (the request id) in params._meta only when the call has onProgress, keeping the caller's own _meta members;
-// client.ts:531-542 routes a notifications/progress to the request whose id the token names (a string "N" is not the number N: isJsonRpcId and a
-// Map keyed by the value), ignores a notification whose progress is not a number, and passes the notification's params to onProgress; client.ts:575
-// forgets the token when the request ends.
+// client.ts:535-545 routes a notifications/progress to the request whose id the token names (matching canonical decimal string tokens like "N" to N,
+// while ignoring non-canonical strings like "01"), ignores a notification whose progress is not a number, and passes the notification's params to
+// onProgress; client.ts:575 forgets the token when the request ends.
 func TestProgressTokenRoutesNotificationsToTheRequestThatCarriesIt(t *testing.T) {
 	clientTransport, server := createServer(t)
 	client := mcp.NewClient(mcp.ClientOptions{Name: "test-client", Version: "2.0.0"})
@@ -40,10 +40,11 @@ func TestProgressTokenRoutesNotificationsToTheRequestThatCarriesIt(t *testing.T)
 			raw, _ := json.Marshal(body)
 			_ = server.transport.Send(context.Background(), mcp.NewNotification("notifications/progress", raw))
 		}
-		send(map[string]any{"progressToken": strconv.Itoa(int(token.(float64))), "progress": 1}) // a string token: not this request's number
-		send(map[string]any{"progressToken": token, "progress": "1"})                            // progress must be a number
-		send(map[string]any{"progressToken": 12345, "progress": 1})                              // a token no request carries
-		send(map[string]any{"progressToken": token, "progress": 3, "total": 4, "message": "m"})  // delivered
+		send(map[string]any{"progressToken": "0" + strconv.Itoa(int(token.(float64))), "progress": 1}) // non-canonical string token: not normalized
+		send(map[string]any{"progressToken": token, "progress": "1"})                                  // progress must be a number
+		send(map[string]any{"progressToken": 12345, "progress": 1})                                    // a token no request carries
+		send(map[string]any{"progressToken": strconv.Itoa(int(token.(float64))), "progress": 2})       // canonical string token: matches numeric request id
+		send(map[string]any{"progressToken": token, "progress": 3, "total": 4, "message": "m"})        // delivered
 		return map[string]any{"content": []any{}}, nil
 	})
 
@@ -51,14 +52,16 @@ func TestProgressTokenRoutesNotificationsToTheRequestThatCarriesIt(t *testing.T)
 	if _, err := client.CallTool(t.Context(), "tool", map[string]any{"x": 1}, mcp.RequestOptions{OnProgress: func(p mcp.ProgressNotification) { delivered <- p }}); err != nil {
 		t.Fatal(err)
 	}
-	select {
-	case p := <-delivered:
-		wantToken, _ := lateToken.(float64)
-		if p.Progress != 3 || p.ProgressToken.String() != mcp.NumberID(wantToken).String() {
-			t.Errorf("delivered %+v, want progress 3 for token %v", p, lateToken)
+	for _, wantProgress := range []float64{2, 3} {
+		select {
+		case p := <-delivered:
+			wantToken, _ := lateToken.(float64)
+			if p.Progress != wantProgress || p.ProgressToken.String() != mcp.NumberID(wantToken).String() {
+				t.Errorf("delivered %+v, want progress %v for token %v", p, wantProgress, lateToken)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatalf("the matching progress notification (progress=%v) was not delivered", wantProgress)
 		}
-	case <-time.After(5 * time.Second):
-		t.Fatal("the matching progress notification was not delivered")
 	}
 	select {
 	case extra := <-delivered:
