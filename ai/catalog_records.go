@@ -77,15 +77,32 @@ func ResolveCatalogRecord(record string) string {
 	return rewriteRecordIdentity(base, id, name)
 }
 
+// catalogGzipPool reuses gzip.Reader (and its 40 KB flate reader) across chunk inflations so expanding multiple
+// catalog chunks does not allocate a fresh flate decoder per chunk.
+var catalogGzipPool sync.Pool
+
 // inflateCatalogChunk reads the gzip stream of a chunk into one buffer sized from the stream's trailer and verifies the checksum at its end. The records are gzip, not zstd, so a build that strips every zstd frame (D92) still links no zstd decoder, and a chunk needs no decoder buffers beyond the 40 KB flate reader.
 func inflateCatalogChunk(data []byte) ([]byte, error) {
 	if len(data) < 4 {
 		return nil, io.ErrUnexpectedEOF
 	}
-	reader, err := gzip.NewReader(bytes.NewReader(data))
+	var src bytes.Reader
+	src.Reset(data)
+	reader, _ := catalogGzipPool.Get().(*gzip.Reader)
+	var err error
+	if reader == nil {
+		reader, err = gzip.NewReader(&src)
+	} else {
+		err = reader.Reset(&src)
+	}
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if reader.Close() == nil {
+			catalogGzipPool.Put(reader)
+		}
+	}()
 	raw := make([]byte, binary.LittleEndian.Uint32(data[len(data)-4:]))
 	if _, err := io.ReadFull(reader, raw); err != nil {
 		return nil, err
