@@ -140,7 +140,7 @@
     #:settings-get-compaction-settings #:settings-get-default-model #:settings-get-default-project-trust
     #:settings-get-default-provider #:settings-get-default-thinking-level #:settings-get-default-tools
     #:settings-get-double-escape-action #:settings-get-editor-padding-x #:settings-get-enable-analytics
-    #:settings-get-enable-install-telemetry #:settings-get-enable-skill-commands #:settings-get-enabled-models
+    #:settings-get-enable-skill-commands #:settings-get-enabled-models
     #:settings-get-extension-paths #:settings-get-external-editor-command #:settings-get-follow-up-mode
     #:settings-get-fullscreen-copy-on-select #:settings-get-fullscreen-exit-output #:settings-get-fullscreen-scrollbar
     #:settings-get-fullscreen-wheel-scroll-lines #:settings-get-global-settings #:settings-get-hide-thinking-block
@@ -160,7 +160,7 @@
     #:settings-set-clear-on-shrink #:settings-set-collapse-changelog #:settings-set-compaction-enabled #:settings-set-default-model
     #:settings-set-default-model-and-provider #:settings-set-default-project-trust #:settings-set-default-provider
     #:settings-set-default-thinking-level #:settings-set-double-escape-action #:settings-set-editor-padding-x
-    #:settings-set-enable-analytics #:settings-set-enable-install-telemetry #:settings-set-enable-skill-commands
+    #:settings-set-enable-analytics #:settings-set-enable-skill-commands
     #:settings-set-enabled-models #:settings-set-extension-paths #:settings-set-follow-up-mode
     #:settings-set-fullscreen-copy-on-select #:settings-set-fullscreen-exit-output #:settings-set-fullscreen-scrollbar
     #:settings-set-fullscreen-wheel-scroll-lines #:settings-set-hide-thinking-block #:settings-set-http-idle-timeout-ms

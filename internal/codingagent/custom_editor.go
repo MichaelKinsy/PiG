@@ -138,8 +138,17 @@ func (e *CustomEditor) HandleInput(data string) {
 		return
 	}
 
+	// Follow-up submit (Alt+Enter) - apply the selected autocomplete suggestion just like Enter does
+	if followUpHandler, ok := e.ActionHandler(AppMessageFollowUp); ok && followUpHandler != nil && e.keybindings.Matches(data, string(AppMessageFollowUp)) {
+		if e.ConfirmAutocomplete() == "applied" {
+			return
+		}
+		followUpHandler()
+		return
+	}
+
 	for _, entry := range e.actionHandlers {
-		if entry.action != AppInterrupt && entry.action != AppExit && e.keybindings.Matches(data, string(entry.action)) {
+		if entry.action != AppInterrupt && entry.action != AppExit && entry.action != AppMessageFollowUp && e.keybindings.Matches(data, string(entry.action)) {
 			entry.handler()
 			return
 		}

@@ -160,7 +160,7 @@ func (s *SessionSelectorComponent) buildBaseLayout() {
 		panel.Add(tui.NewSpacer(1))
 		panel.Add(s.renameInput)
 		panel.Add(tui.NewSpacer(1))
-		hint := sessionFg(tui.ActiveTheme().Muted, sessionKeyText(tui.KBSelectConfirm)+" to save · "+sessionKeyText(tui.KBSelectCancel)+" to cancel")
+		hint := sessionFg(tui.ActiveTheme().Muted, sessionKeyText(tui.KBInputSubmit)+" to save · "+sessionKeyText(tui.KBSelectCancel)+" to cancel")
 		panel.Add(tui.NewPaddedText(hint, 1, 0, nil))
 		s.Add(panel)
 	} else {
@@ -187,11 +187,11 @@ func (s *SessionSelectorComponent) renderList(width int) []string {
 		case s.nameFilter == sessionNameNamed && s.scope == sessionScopeAll:
 			msg = "  No named sessions found. Press " + sessionKeyText("app.session.toggleNamedFilter") + " to show all."
 		case s.nameFilter == sessionNameNamed:
-			msg = "  No named sessions in current folder. Press " + sessionKeyText("app.session.toggleNamedFilter") + " to show all, or Tab to view all."
+			msg = "  No named sessions in current folder. Press " + sessionKeyText("app.session.toggleNamedFilter") + " to show all, or " + sessionKeyText(tui.KBInputTab) + " to view all."
 		case s.scope == sessionScopeAll:
 			msg = "  No sessions found"
 		default:
-			msg = "  No sessions in current folder. Press Tab to view all."
+			msg = "  No sessions in current folder. Press " + sessionKeyText(tui.KBInputTab) + " to view all."
 		}
 		return append(lines, sessionFg(tui.ActiveTheme().Muted, widthx.TruncateToWidth(msg, width, "…", false)))
 	}

@@ -160,6 +160,9 @@ type Args struct {
 	TuiMode  string
 	// Diagnostics mirrors Pi parseArgs diagnostics. Any error exits before
 	// version or mode handling.
+	// ResumeFlags holds restriction and resource flags with their values, as typed and in order (OSC 7577).
+	// Ports packages/coding-agent/src/cli/args.ts Args.resumeFlags (Pi 145785f0d).
+	ResumeFlags []string
 	Diagnostics []argDiagnostic
 }
 
@@ -227,6 +230,7 @@ func parseArgs(args []string) Args {
 	i := 0
 	for i < len(args) {
 		arg := args[i]
+		flagStart := i
 		switch {
 		case arg == "--":
 			for _, positionalArg := range args[i+1:] {
@@ -432,6 +436,9 @@ func parseArgs(args []string) Args {
 		default:
 			flags.Messages = append(flags.Messages, arg)
 		}
+		if resumeFlagsSet[arg] {
+			flags.ResumeFlags = append(flags.ResumeFlags, args[flagStart:i+1]...)
+		}
 		i++
 	}
 	if flags.Listen != "" {
@@ -602,4 +609,39 @@ func validateForkFlags(flags Args) []argDiagnostic {
 		return nil
 	}
 	return []argDiagnostic{{Type: "error", Message: "--fork cannot be combined with " + strings.Join(conflicts, ", ")}}
+}
+
+// resumeFlagsSet lists the restriction and resource flags repeated in the OSC 7577 resume command.
+// Ports packages/coding-agent/src/cli/args.ts RESUME_FLAGS (Pi 145785f0d).
+var resumeFlagsSet = map[string]bool{
+	"--tools":                true,
+	"-t":                     true,
+	"--exclude-tools":        true,
+	"-xt":                    true,
+	"--no-tools":             true,
+	"-nt":                    true,
+	"--no-builtin-tools":     true,
+	"-nbt":                   true,
+	"--extension":            true,
+	"-e":                     true,
+	"--no-extensions":        true,
+	"-ne":                    true,
+	"--no-mcp":               true,
+	"--skill":                true,
+	"--no-skills":            true,
+	"-ns":                    true,
+	"--prompt-template":      true,
+	"--no-prompt-templates":  true,
+	"-np":                    true,
+	"--theme":                true,
+	"--no-themes":            true,
+	"--no-context-files":     true,
+	"-nc":                    true,
+	"--system-prompt":        true,
+	"--append-system-prompt": true,
+	"--approve":              true,
+	"-a":                     true,
+	"--no-approve":           true,
+	"-na":                    true,
+	"--models":               true,
 }

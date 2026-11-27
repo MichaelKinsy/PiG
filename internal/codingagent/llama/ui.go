@@ -436,7 +436,8 @@ func (s *HuggingFaceSearch) HandleInput(data string) {
 		}
 	case keys.Matches(data, tui.KBSelectConfirm):
 		selected := ""
-		if exactModelPattern.MatchString(s.query) {
+		// A typed owner/repository wins only until the user moves the selection to a result.
+		if !s.selectionTouched && exactModelPattern.MatchString(s.query) {
 			selected = s.query
 		} else if s.selectedIndex < len(s.filteredResults) {
 			selected = s.filteredResults[s.selectedIndex].ID

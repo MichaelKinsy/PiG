@@ -15,7 +15,7 @@ var settingsDefaults = struct {
 	retryMaxRetries, retryBaseDelayMs, retryMaxAgentDelayMs, retryProviderMaxRetryDelayMs  int
 	hideThinkingBlock, quietStartup                                                        bool
 	defaultProjectTrust                                                                    string
-	collapseChangelog, enableInstallTelemetry, enableAnalytics, enableSkillCommands        bool
+	collapseChangelog, enableAnalytics, enableSkillCommands                                bool
 	terminalShowImages                                                                     bool
 	terminalImageWidthCells                                                                int
 	terminalClearOnShrink, terminalShowTerminalProgress                                    bool
@@ -35,7 +35,7 @@ var settingsDefaults = struct {
 	compactionEnabled: true, compactionReserveTokens: 16384, compactionKeepRecentTokens: 20000,
 	branchSummaryReserveTokens: 16384,
 	retryEnabled:               true, retryMaxRetries: 3, retryBaseDelayMs: 2000, retryMaxAgentDelayMs: ai.DefaultMaxAgentRetryDelayMs, retryProviderMaxRetryDelayMs: 60000,
-	defaultProjectTrust: "ask", enableInstallTelemetry: true, enableSkillCommands: true,
+	defaultProjectTrust: "ask", enableSkillCommands: true,
 	terminalShowImages: true, terminalImageWidthCells: 60,
 	imagesAutoResize:   true,
 	doubleEscapeAction: "tree", treeFilterMode: "default",
@@ -158,7 +158,6 @@ func settingsSchema() *Schema {
 		Optional("npmCommand", stringArray(D(`Command used for npm package lookup and installation, in argv form such as ["mise", "exec", "node@20", "--", "npm"].`))),
 		Optional("selfUpdateCommand", Array(String(), Opt{"minItems", 1}, D("Command `pi update` runs to update Pi itself, in argv form such as [\"mise\", \"use\", \"-g\", \"npm:{packageName}@{version}\"]. Placeholders: {packageName}, {version}, {installSpec}. PI_SELF_UPDATE_COMMAND takes precedence. Global setting only."))),
 		Optional("collapseChangelog", Boolean(D("Show the condensed changelog after update; use /changelog for the full changelog."), Default(d.collapseChangelog))),
-		Optional("enableInstallTelemetry", Boolean(D("Send an anonymous version and update ping after changelog-detected updates."), Default(d.enableInstallTelemetry))),
 		Optional("enableAnalytics", Boolean(D("Opt in to analytics data sharing."), Default(d.enableAnalytics))),
 		Optional("trackingId", String(D("Analytics tracking identifier, generated when analytics is enabled."))),
 		Optional("packages", Array(packageSource, D("npm or git package sources, as strings or objects with resource filtering."))),

@@ -360,39 +360,6 @@ func TestSettingsManager_GetProviderRetrySettings_MaxRetryDelayMs(t *testing.T) 
 	}
 }
 
-func TestSettingsManager_IsInstallTelemetryEnabled(t *testing.T) {
-	enabled := true
-	disabled := false
-
-	// Env unset: the setting decides (default true when absent).
-	if orig, ok := os.LookupEnv("PI_TELEMETRY"); ok {
-		_ = os.Unsetenv("PI_TELEMETRY")
-		t.Cleanup(func() { _ = os.Setenv("PI_TELEMETRY", orig) })
-	}
-	if !(&SettingsManager{}).IsInstallTelemetryEnabled() {
-		t.Error("default (no setting, env unset) should be enabled")
-	}
-	if (&SettingsManager{merged: Settings{EnableInstallTelemetry: &disabled}}).IsInstallTelemetryEnabled() {
-		t.Error("setting=false, env unset should be disabled")
-	}
-
-	// Env override wins over the setting in both directions.
-	off := &SettingsManager{merged: Settings{EnableInstallTelemetry: &disabled}}
-	on := &SettingsManager{merged: Settings{EnableInstallTelemetry: &enabled}}
-	t.Setenv("PI_TELEMETRY", "1")
-	if !off.IsInstallTelemetryEnabled() {
-		t.Error("env=1 should override setting=false")
-	}
-	t.Setenv("PI_TELEMETRY", "false")
-	if on.IsInstallTelemetryEnabled() {
-		t.Error("env=false should override setting=true")
-	}
-	t.Setenv("PI_TELEMETRY", "maybe")
-	if on.IsInstallTelemetryEnabled() {
-		t.Error("non-truthy env value should be falsy")
-	}
-}
-
 // TestSettingsManager_GetHttpIdleTimeoutMs_InvalidIsAnError mirrors upstream
 // parseTimeoutSetting, which throws an Error (not a crash) for an invalid
 // value (CFG-10).
@@ -546,22 +513,17 @@ func TestMergeSettings_ProjectCanOverrideWithEmptySlices(t *testing.T) {
 }
 
 func TestMergeSettings_MergesMissingScalarAndPointerOverrides(t *testing.T) {
-	telemetry := false
 	hardwareCursor := true
 	padding := 2
 	maxVisible := 9
 	merged := mergeSettings(Settings{}, Settings{
 		Transport:              "websocket",
-		EnableInstallTelemetry: &telemetry,
 		ShowHardwareCursor:     &hardwareCursor,
 		EditorPaddingX:         &padding,
 		AutocompleteMaxVisible: &maxVisible,
 	})
 	if merged.Transport != "websocket" {
 		t.Fatalf("Transport = %q, want websocket", merged.Transport)
-	}
-	if merged.EnableInstallTelemetry == nil || *merged.EnableInstallTelemetry != false {
-		t.Fatalf("EnableInstallTelemetry = %#v, want false", merged.EnableInstallTelemetry)
 	}
 	if merged.ShowHardwareCursor == nil || *merged.ShowHardwareCursor != true {
 		t.Fatalf("ShowHardwareCursor = %#v, want true", merged.ShowHardwareCursor)
@@ -1468,7 +1430,6 @@ func TestSettingsManager_Setters(t *testing.T) {
 	check("ShellCommandPrefix", sm.SetShellCommandPrefix("set -e; "))
 	check("NpmCommand", sm.SetNpmCommand([]string{"pnpm"}))
 	check("CollapseChangelog", sm.SetCollapseChangelog(true))
-	check("EnableInstallTelemetry", sm.SetEnableInstallTelemetry(false))
 	check("EnableSkillCommands", sm.SetEnableSkillCommands(false))
 	check("ShowImages", sm.SetShowImages(false))
 	check("ImageWidthCells", sm.SetImageWidthCells(80))
@@ -1501,9 +1462,6 @@ func TestSettingsManager_Setters(t *testing.T) {
 	}
 	if sm2.GetHideThinkingBlock() != true {
 		t.Error("HideThinkingBlock should be true")
-	}
-	if sm2.GetEnableInstallTelemetry() != false {
-		t.Error("EnableInstallTelemetry should be false")
 	}
 	if sm2.GetQuietStartup() != QuietStartupTrue {
 		t.Error("QuietStartup should be true")

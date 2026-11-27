@@ -1,7 +1,6 @@
 package codingagent
 
 import (
-	"os"
 	"strings"
 	"testing"
 )
@@ -51,28 +50,6 @@ func TestShowHardwareCursorDescriptionNamesPiG(t *testing.T) {
 }
 
 // PIG_TELEMETRY is PiG's name beside Pi's PI_TELEMETRY: it decides alone, with the same truthy spellings, and wins when both are set
-// (owner decision 2026-11-17; the full table is TestInstallTelemetryPigBeatsPiWhenBothAreSet).
-func TestInstallTelemetryReadsPigTelemetryBesidePis(t *testing.T) {
-	if value, ok := os.LookupEnv("PI_TELEMETRY"); ok {
-		_ = os.Unsetenv("PI_TELEMETRY")
-		t.Cleanup(func() { _ = os.Setenv("PI_TELEMETRY", value) })
-	}
-	enabled, disabled := true, false
-	on := &SettingsManager{merged: Settings{EnableInstallTelemetry: &enabled}}
-	off := &SettingsManager{merged: Settings{EnableInstallTelemetry: &disabled}}
-	t.Setenv("PIG_TELEMETRY", "0")
-	if on.IsInstallTelemetryEnabled() {
-		t.Error("PIG_TELEMETRY=0 with the setting enabled: telemetry is enabled")
-	}
-	t.Setenv("PIG_TELEMETRY", "yes")
-	if !off.IsInstallTelemetryEnabled() {
-		t.Error("PIG_TELEMETRY=yes with the setting disabled: telemetry is disabled")
-	}
-	t.Setenv("PI_TELEMETRY", "0")
-	if !off.IsInstallTelemetryEnabled() {
-		t.Error("PI_TELEMETRY=0 beside PIG_TELEMETRY=yes: Pi's name wins, PIG_TELEMETRY must")
-	}
-}
 
 // The remediation of an installation that cannot update itself names PiG's variable.
 func TestUnsupportedRemediationNamesPigSelfUpdateCommand(t *testing.T) {

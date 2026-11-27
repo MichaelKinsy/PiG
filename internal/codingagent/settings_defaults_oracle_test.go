@@ -79,7 +79,6 @@ func TestSettingsDefaultsMatchPiOnAnEmptySettingsManager(t *testing.T) {
 		}},
 		{"defaultProjectTrust", `s.getDefaultProjectTrust()`, func(sm *SettingsManager) any { return sm.GetDefaultProjectTrust() }},
 		{"collapseChangelog", `s.getCollapseChangelog()`, func(sm *SettingsManager) any { return sm.GetCollapseChangelog() }},
-		{"enableInstallTelemetry", `s.getEnableInstallTelemetry()`, func(sm *SettingsManager) any { return sm.GetEnableInstallTelemetry() }},
 		{"enableAnalytics", `s.getEnableAnalytics()`, func(sm *SettingsManager) any { return sm.GetEnableAnalytics() }},
 		{"enableSkillCommands", `s.getEnableSkillCommands()`, func(sm *SettingsManager) any { return sm.GetEnableSkillCommands() }},
 		{"terminal.showImages", `s.getShowImages()`, func(sm *SettingsManager) any { return sm.GetShowImages() }},

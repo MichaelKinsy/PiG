@@ -518,7 +518,9 @@ func stripITerm2ImageSequences(line string) string {
 }
 
 func AllocateImageID() int {
-	return int(rand.Uint32()%0xfffffffe) + 1
+	// Konsole parses Kitty graphics keys as signed 32-bit integers. Larger IDs read as 0, so the image
+	// is never stored and `d=I` deletes every such placement (#12548).
+	return int(rand.Uint32()%0x7fffffff) + 1
 }
 
 func EncodeKitty(base64Data string, columns, rows, imageID int, moveCursor ...bool) string {

@@ -274,12 +274,6 @@ class SettingsManager(_GraphObject):
     def set_collapse_changelog(self, collapse: bool) -> None:
         self._invoke("setCollapseChangelog", collapse)
 
-    def get_enable_install_telemetry(self) -> bool:
-        return self._invoke("getEnableInstallTelemetry")
-
-    def set_enable_install_telemetry(self, enabled: bool) -> None:
-        self._invoke("setEnableInstallTelemetry", enabled)
-
     def get_enable_analytics(self) -> bool:
         return self._invoke("getEnableAnalytics")
 

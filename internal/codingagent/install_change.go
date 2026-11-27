@@ -4,6 +4,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/installchange"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/tui"
+	"os"
 )
 
 // installChangeCause states what changed. A replaced or removed executable uses Pi's sentence for a removed install
@@ -51,9 +52,24 @@ func (m *InteractiveMode) programResumeCommand() *tui.ProgramResumeCommand {
 	if !ok {
 		return nil
 	}
+	return getProgramResumeCommand(state, cwd, m.opts.ProgramResumeFlags)
+}
+
+// getProgramResumeCommand returns the OSC 7577 resume command: the exit resume args plus the restriction and
+// resource flags pi was started with, run in the session's directory. Returns nil when there is no session file,
+// or when flags were typed in another directory than the session's.
+// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts getProgramResumeCommand (Pi 145785f0d).
+func getProgramResumeCommand(state resumeCommandSession, cwd string, resumeFlags []string) *tui.ProgramResumeCommand {
 	argv := getResumeArgs(state)
 	if len(argv) == 0 {
 		return nil
+	}
+	if len(resumeFlags) > 0 {
+		procCwd, err := os.Getwd()
+		if err != nil || !pathsEqual(cwd, procCwd) {
+			return nil
+		}
+		argv = append(argv, resumeFlags...)
 	}
 	return &tui.ProgramResumeCommand{Argv: argv, Cwd: cwd}
 }

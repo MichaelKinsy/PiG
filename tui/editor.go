@@ -1318,6 +1318,19 @@ func (e *Editor) AutocompleteAccept() (submit bool) {
 	return submitsCommand
 }
 
+// ConfirmAutocomplete applies the currently selected autocomplete suggestion.
+// Returns "none" if no completion was applied, "applied" if inserted without submitting,
+// or "submit" if a slash command name was completed and should be submitted.
+func (e *Editor) ConfirmAutocomplete() string {
+	if !e.AutocompleteOpen() {
+		return "none"
+	}
+	if e.AutocompleteAccept() {
+		return "submit"
+	}
+	return "applied"
+}
+
 // inSlashCommandNameContext reports that a slash command name is being typed, "/mo", not "/model cla" or "/open /tm"
 // (Ports editor.ts isInSlashCommandNameContext, Pi 9a7cfba47).
 func (e *Editor) inSlashCommandNameContext() bool {

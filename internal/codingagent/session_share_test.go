@@ -611,3 +611,7 @@ func TestNewShareStateKeepsToolParameterOrder(t *testing.T) {
 		t.Fatalf("share tool = %s, want %s", line, want)
 	}
 }
+
+type fakeRoundTripper func(*http.Request) (*http.Response, error)
+
+func (f fakeRoundTripper) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }

@@ -695,10 +695,13 @@ type MainOptions struct {
 var processCwd = nodepath.Cwd
 
 // Main runs the pig command line for args, the arguments after the program name, as Pi's main(args, options) does (main.ts:573). The default and experimental executables call it with args and no options.
-func Main(args []string, options *MainOptions) {
-	// The first thing of every mode and command: the Node extension runtime and every child process (bash tool, package commands, subagents)
-	// read only PI_TELEMETRY, so it holds PiG's resolved choice before anything can start one (TestMainExportsTheResolvedTelemetryBeforeAnyCommand).
-	exportTelemetryOverride()
+func Main(cliArgs []string, options *MainOptions) {
+	// First, before anything reads the agent dir, and before subcommands are recognized so the flag works with them.
+	args, _, agentDirErr := ApplyAgentDirArg(cliArgs)
+	if agentDirErr != "" {
+		fmt.Fprintln(os.Stderr, chalkRed("Error: "+agentDirErr))
+		os.Exit(1)
+	}
 	// Taken in every mode, before anything starts a child process: pig reports its own resume command, and
 	// shells, editors, MCP servers and extension processes it starts must not replace it or register commands
 	// that later run with the user's rights (OSC 7577, Pi cf419553da).
@@ -1701,6 +1704,7 @@ func Main(args []string, options *MainOptions) {
 	iopts.TuiMode = flags.TuiMode
 	iopts.InitialThemeSetting = flags.UseTheme
 	iopts.ProgramResumeToken = programResumeToken
+	iopts.ProgramResumeFlags = flags.ResumeFlags
 	if name := currentPigletBinary().Name(); name != "" {
 		iopts.ResumeProgramName = name
 	}
@@ -1883,16 +1887,6 @@ func exportOfflineMode(flagOffline bool) {
 	if flagOffline || truthyEnvFlag(os.Getenv("PI_OFFLINE")) || truthyEnvFlag(strings.TrimSpace(os.Getenv("PIG_OFFLINE"))) {
 		_ = os.Setenv("PI_OFFLINE", "1")
 		_ = os.Setenv("PI_SKIP_VERSION_CHECK", "1")
-	}
-}
-
-// exportTelemetryOverride gives the resolved telemetry override to the processes that read Pi's name: the Node extension runtime runs Pi's
-// own isInstallTelemetryEnabled, which reads only PI_TELEMETRY, so PI_TELEMETRY becomes what PiG decided (PIG_TELEMETRY when it is set,
-// even beside a PI_TELEMETRY of the opposite value). PIG_TELEMETRY itself stays in the environment as it was.
-// pig divergence (D2): PIG_TELEMETRY is PiG's name beside Pi's PI_TELEMETRY and wins when both are set ("Product name in messages").
-func exportTelemetryOverride() {
-	if value, ok := codingagent.InstallTelemetryEnvOverride(); ok { //perf:ok cold: read once per process start (Main)
-		_ = os.Setenv("PI_TELEMETRY", value)
 	}
 }
 

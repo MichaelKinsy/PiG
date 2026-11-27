@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"runtime/debug"
 	"strings"
@@ -1212,6 +1213,8 @@ type InteractiveModeOptions struct {
 	// ProgramResumeToken is the token the terminal set in OSC7577_TOKEN, taken out of the environment before any child process starts.
 	// When set, interactive mode reports how to resume the session after the terminal restarts (OSC 7577).
 	ProgramResumeToken string
+	// ProgramResumeFlags holds restriction and resource flags as typed (Args.ResumeFlags), repeated in the OSC 7577 resume command.
+	ProgramResumeFlags []string
 	// ResumeProgramName is the program name used in the exit resume hint and OSC 7577 argv[0]. Empty defaults to AppName ("pig"); a Piglet Binary passes its own name.
 	ResumeProgramName string
 	// KernelFrameDeadline lets the owner loop keep a frame's deadline on a kernel timer where the runtime's timer is coarser than a frame needs
@@ -1713,6 +1716,13 @@ func getResumeArgs(sessionManager resumeCommandSession) []string {
 		program = AppName
 	}
 	args := []string{program}
+	if !UsesDefaultAgentDir() {
+		agentDir := AgentDir()
+		if abs, err := filepath.Abs(agentDir); err == nil {
+			agentDir = abs
+		}
+		args = append(args, "--agent-dir", agentDir)
+	}
 	if !sessionManager.usesDefaultSessionDir {
 		args = append(args, "--session-dir", sessionManager.sessionDir)
 	}
@@ -2189,7 +2199,7 @@ func startupChangelog(sm *SettingsManager, appVersion string) []ChangelogEntry {
 			}
 		}
 	}
-	return recordChangelogVersionAndMaybeReportInstall(sm, appVersion, newer)
+	return recordChangelogVersion(sm, appVersion, newer)
 }
 
 // startInitialMessages is run()'s processing of the initial message and initialMessages once the TUI is up: the message is fed through the same handleSubmit

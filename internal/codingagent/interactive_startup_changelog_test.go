@@ -33,7 +33,7 @@ func TestStartupChangelogMatchesTheEagerParse(t *testing.T) {
 		lazy := NewInMemorySettingsManager(Settings{LastChangelogVersion: tc.lastSeen})
 		eager := NewInMemorySettingsManager(Settings{LastChangelogVersion: tc.lastSeen})
 		got := startupChangelog(lazy, tc.appVersion)
-		want := recordChangelogVersionAndMaybeReportInstall(eager, tc.appVersion, ParseChangelog(bundledChangelog()))
+		want := recordChangelogVersion(eager, tc.appVersion, ParseChangelog(bundledChangelog()))
 		if !reflect.DeepEqual(got, want) {
 			t.Fatalf("%+v: startupChangelog = %d entries, eager parse %d", tc, len(got), len(want))
 		}

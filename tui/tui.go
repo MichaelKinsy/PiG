@@ -2861,8 +2861,9 @@ func (t *TuiMainScreen) drawFrame(gate frameGate) (began bool) {
 		if widthx.IsImageLine(line) {
 			reservedRows := t.kittyImageReservedRows(newLines, i, renderEnd)
 			if reservedRows > 1 {
-				imageStartScreenRow := i - prevViewportTop
-				if imageStartScreenRow < 0 || imageStartScreenRow+reservedRows > height {
+				// Pre-clearing may scroll the screen when the image is appended at the bottom, like any appended line.
+				// Moving back up to the image's first row only fails when the image is taller than the screen.
+				if reservedRows > height {
 					t.fullRender(newLines, width, height, true)
 					t.positionHardwareCursor(cursorPos, hasCursorPos, len(newLines))
 					return

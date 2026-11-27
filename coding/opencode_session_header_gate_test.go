@@ -77,7 +77,7 @@ func TestOpenCodeSessionHeaderIsNotAttributionAndIgnoresTheTelemetryGate(t *test
 				if err != nil {
 					t.Fatal(err)
 				}
-				identity := getClientIdentity(services.SettingsManager())
+				identity := getClientIdentity()
 				if (identity.Attribution != nil) != gate.on {
 					t.Fatalf("the gate is %v, want %v for %s", identity.Attribution != nil, gate.on, gate.name)
 				}

@@ -561,7 +561,7 @@ func settingStripped(id string) bool {
 		return pigstrip.Has(pigstrip.ListFeatures, pigstrip.Skills)
 	case "mermaid-rendering":
 		return pigstrip.Has(pigstrip.ListFeatures, pigstrip.Mermaid)
-	case "collapse-changelog", "install-telemetry":
+	case "collapse-changelog":
 		return pigstrip.Has(pigstrip.ListFeatures, pigstrip.Changelog)
 	case "double-escape-action":
 		return len(doubleEscapeActions()) <= 1
@@ -680,7 +680,6 @@ func settingsConfig(sc *SlashContext) (SettingsConfig, error) {
 		HideThinkingBlock:          sm.GetHideThinkingBlock(),
 		MermaidRenderingMode:       sm.GetMermaidRenderingMode(),
 		CollapseChangelog:          sm.GetCollapseChangelog(),
-		EnableInstallTelemetry:     sm.GetEnableInstallTelemetry(),
 		DoubleEscapeAction:         sm.GetDoubleEscapeAction(),
 		TreeFilterMode:             sm.GetTreeFilterMode(),
 		ShowHardwareCursor:         sm.GetShowHardwareCursor(),
@@ -813,9 +812,6 @@ func settingsHandlerTUI(sc *SlashContext, config SettingsConfig) error {
 			},
 			OnCollapseChangelogChange: func(collapsed bool) {
 				applied("collapse-changelog", boolSettingValue(collapsed), sm.SetCollapseChangelog(collapsed))
-			},
-			OnEnableInstallTelemetryChange: func(enabled bool) {
-				applied("install-telemetry", boolSettingValue(enabled), sm.SetEnableInstallTelemetry(enabled))
 			},
 			OnQuietStartupChange: func(quiet QuietStartup) {
 				applied("quiet-startup", quiet.String(), sm.SetQuietStartup(quiet))

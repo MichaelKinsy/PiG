@@ -66,11 +66,22 @@ func ResolveAgentDir() (string, error) {
 // AgentDirConfigured reports whether the agent directory comes from its environment variable rather than the default.
 func AgentDirConfigured() bool { return os.Getenv(agentDirEnvName()) != "" }
 
+// AgentDirEnvName returns the active agent-directory environment variable name.
+func AgentDirEnvName() string {
+	return agentDirEnvName()
+}
+
 func agentDirEnvName() string {
 	if UsePiDirs() {
 		return "PI_CODING_AGENT_DIR"
 	}
 	return ENV_AGENT_DIR
+}
+
+// UsesDefaultAgentDir reports whether the active agent directory is the default ~/.pig/agent (or ~/.pi/agent).
+// Ports packages/coding-agent/src/config.ts usesDefaultAgentDir (Pi dd71a6fc7).
+func UsesDefaultAgentDir() bool {
+	return pathsEqual(AgentDir(), filepath.Join(ConfigRoot(), "agent"))
 }
 
 // ProjectConfigDir returns the selected workspace-local configuration root.
@@ -388,4 +399,15 @@ func MarkPathIgnoredByCloudSync(path string) {
 		cmd.Stderr = io.Discard
 		_ = cmd.Run()
 	}
+}
+
+// pathsEqual compares two filesystem paths after cleaning and resolving to absolute paths.
+func pathsEqual(a, b string) bool {
+	if absA, err := filepath.Abs(a); err == nil {
+		a = absA
+	}
+	if absB, err := filepath.Abs(b); err == nil {
+		b = absB
+	}
+	return filepath.Clean(a) == filepath.Clean(b)
 }

@@ -73,7 +73,7 @@ func TestModelRuntimeRequestsCarryPiGAttributionNeverPis(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			options := ai.StreamOptions{SessionID: "session-1", Identity: getClientIdentity(services.SettingsManager())}
+			options := ai.StreamOptions{SessionID: "session-1", Identity: getClientIdentity()}
 			stream := services.ModelRuntime().Stream(t.Context(), model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hello")}}}, options)
 			if result := stream.Result(); result == nil || result.StopReason != ai.StopReasonStop {
 				t.Fatalf("result = %#v", result)

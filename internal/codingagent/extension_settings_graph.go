@@ -517,10 +517,6 @@ func (g *GraphSettingsManager) Call(_ context.Context, method string, raw json.R
 		return sm.GetCollapseChangelog(), nil
 	case "setCollapseChangelog":
 		return nil, setBool(args, 0, sm.SetCollapseChangelog)
-	case "getEnableInstallTelemetry":
-		return sm.GetEnableInstallTelemetry(), nil
-	case "setEnableInstallTelemetry":
-		return nil, setBool(args, 0, sm.SetEnableInstallTelemetry)
 	case "getEnableAnalytics":
 		return sm.GetEnableAnalytics(), nil
 	case "getTrackingId":

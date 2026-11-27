@@ -69,7 +69,7 @@ func (m *InteractiveMode) handleSubmitWithImages(ctx context.Context, prompt str
 		// Upstream keeps the text and warns instead of starting a second
 		// command, whose completion would mark the UI idle under the first.
 		if m.bashCancel != nil {
-			m.showWarning("A bash command is already running. Press Esc to cancel it first.")
+			m.showWarning("A bash command is already running. Press " + tui.ActionKeyText("app.interrupt") + " to cancel it first.")
 			m.editor.SetText(prompt)
 			return
 		}

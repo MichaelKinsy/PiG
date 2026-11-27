@@ -164,6 +164,10 @@ func EstimateTokens(message agent.AgentMessage) int {
 		case agent.RoleCustom:
 			return ceilQuarter(customContentChars(message.Custom["content"]))
 		case agent.RoleBashExecution:
+			// !! output is excluded from the LLM context (see convertToLlm)
+			if excluded, _ := message.Custom["excludeFromContext"].(bool); excluded {
+				return 0
+			}
 			command, _ := message.Custom["command"].(string)
 			output, _ := message.Custom["output"].(string)
 			return ceilQuarter(jsLength(command) + jsLength(output))
