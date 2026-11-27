@@ -12,10 +12,9 @@
 package tools
 
 import (
-	"bufio"
 	"context"
-	"os"
 	"strings"
+	"sync/atomic"
 	"unicode/utf16"
 
 	"github.com/MichaelKinsy/PiG/internal/outputfiles"
@@ -36,6 +35,8 @@ type BashResult struct {
 	// FullOutputPath, when non-empty, is a temp-file path holding the
 	// untruncated output. Caller is responsible for deletion.
 	FullOutputPath string
+	// FullOutputError explains why the full output could not be saved when truncated.
+	FullOutputError string
 }
 
 // BashExecOptions mirrors upstream BashExecutorOptions; cancellation comes
@@ -67,39 +68,33 @@ func ExecuteBash(ctx context.Context, command, cwd string, shell ShellConfig, op
 func ExecuteBashWithOperations(ctx context.Context, command, cwd string, operations BashOperations, opts BashExecOptions) (BashResult, error) {
 	const maxOutputBytes = DefaultMaxBytesUpstream * 2
 	var (
-		outputChunks   []string
-		outputBytes    int
-		totalBytes     int
-		tempFilePath   string
-		tempFile       *os.File
-		tempWriter     *bufio.Writer
-		tempFileOpened bool
+		outputChunks []string
+		outputBytes  int
+		totalBytes   int
+		tempFile     *outputfiles.Stream
 		// discardedOutput is set once the rolling window dropped a chunk, so the
 		// result is truncated even if the retained tail fits the limits.
 		discardedOutput bool
 		// TextDecoder, like upstream's: a leading BOM is dropped.
 		decoder = utf8stream.Decoder{StripBOM: true}
+		// Output after the command ended (from processes it left running) is not part of its result.
+		acceptingOutput atomic.Bool
 	)
+	acceptingOutput.Store(true)
 	ensureTempFile := func() {
-		if tempFileOpened {
+		if tempFile != nil {
 			return
 		}
-		tempFileOpened = true
-		path, f, err := outputfiles.CreateStream("pi-bash", ".log")
-		tempFilePath = path
-		if err == nil {
-			tempFile = f
-			tempWriter = bufio.NewWriter(f)
-			for _, chunk := range outputChunks {
-				_, _ = tempWriter.WriteString(chunk)
-			}
+		tempFile = outputfiles.OpenStream("pi-bash", ".log")
+		for _, chunk := range outputChunks {
+			tempFile.WriteString(chunk)
 		}
 	}
-	closeTempFile := func() {
-		if tempFile != nil {
-			_ = tempWriter.Flush()
-			_ = tempFile.Close()
+	closeTempFile := func() outputfiles.StreamResult {
+		if tempFile == nil {
+			return outputfiles.StreamResult{}
 		}
+		return tempFile.Close()
 	}
 	// Unfinished escape sequence at the end of the previous chunk, completed by the next chunk (bash-executor.ts pendingAnsi).
 	pendingAnsi := ""
@@ -111,8 +106,8 @@ func ExecuteBashWithOperations(ctx context.Context, command, cwd string, operati
 		if totalBytes > DefaultMaxBytesUpstream {
 			ensureTempFile()
 		}
-		if tempWriter != nil {
-			_, _ = tempWriter.WriteString(chunk)
+		if tempFile != nil {
+			tempFile.WriteString(chunk)
 		}
 		outputChunks = append(outputChunks, chunk)
 		outputBytes += jsLength(chunk)
@@ -126,6 +121,9 @@ func ExecuteBashWithOperations(ctx context.Context, command, cwd string, operati
 		}
 	}
 	onData := func(data []byte) {
+		if !acceptingOutput.Load() {
+			return
+		}
 		totalBytes += len(data)
 		decoded := decoder.Decode(data, true)
 		if pendingAnsi != "" {
@@ -146,16 +144,34 @@ func ExecuteBashWithOperations(ctx context.Context, command, cwd string, operati
 		if tr.Truncated {
 			ensureTempFile()
 		}
-		closeTempFile()
+		// A failed file is dropped: the result keeps the in-memory tail without a path.
+		saved := closeTempFile()
+		truncated := discardedOutput || tr.Truncated
 		output := fullOutput
 		if tr.Truncated {
 			// The kept tail is a substring of the joined window; copy it so the result does not hold the whole window.
 			output = strings.Clone(tr.Content)
 		}
-		return BashResult{Output: output, ExitCode: exitCode, Cancelled: cancelled, Truncated: discardedOutput || tr.Truncated, FullOutputPath: tempFilePath}
+		var fullOutputError string
+		// The file opens on raw bytes, before ANSI codes and carriage returns are stripped, so it can fail
+		// for output that turns out not to be truncated; nothing is missing then.
+		if truncated && saved.Failed() {
+			fullOutputError = saved.Error
+		}
+		return BashResult{
+			Output:          output,
+			ExitCode:        exitCode,
+			Cancelled:       cancelled,
+			Truncated:       truncated,
+			FullOutputPath:  saved.Path,
+			FullOutputError: fullOutputError,
+		}
 	}
 
 	result, err := operations.Exec(ctx, command, cwd, BashOperationsExecOptions{OnData: onData})
+	// The result is decided when the command ends: closing the file below takes time, and an abort or
+	// output during it must not change the result.
+	acceptingOutput.Store(false)
 	cancelled := ctx.Err() != nil
 	if err != nil && !cancelled {
 		closeTempFile()

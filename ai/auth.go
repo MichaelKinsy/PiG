@@ -40,7 +40,8 @@ const (
 )
 
 // AuthStatus reports whether auth is configured and where pig would source
-// it from, without exposing secret values.
+// it from, without exposing secret values. Configured: false with Source:
+// AuthSourceStored indicates a stored credential that does not resolve.
 type AuthStatus struct {
 	Configured bool
 	Source     AuthSource

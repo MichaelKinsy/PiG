@@ -173,11 +173,12 @@ type RpcSlashCommand struct {
 // BashResult mirrors upstream BashResult. ExitCode is nil when the command
 // was killed or cancelled.
 type BashResult struct {
-	Output         string `json:"output"`
-	ExitCode       *int   `json:"exitCode,omitempty"`
-	Cancelled      bool   `json:"cancelled"`
-	Truncated      bool   `json:"truncated"`
-	FullOutputPath string `json:"fullOutputPath,omitempty"`
+	Output          string `json:"output"`
+	ExitCode        *int   `json:"exitCode,omitempty"`
+	Cancelled       bool   `json:"cancelled"`
+	Truncated       bool   `json:"truncated"`
+	FullOutputPath  string `json:"fullOutputPath,omitempty"`
+	FullOutputError string `json:"fullOutputError,omitempty"`
 }
 
 // CompactionResult mirrors upstream CompactionResult; Usage and Details stay

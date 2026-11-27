@@ -26,23 +26,25 @@ const bashPreviewLines = 5
 
 // shellResultDetails is the part of BashToolDetails the renderer reads.
 type shellResultDetails struct {
-	Truncation     *tools.TruncationResult
-	FullOutputPath string
+	Truncation      *tools.TruncationResult
+	FullOutputPath  string
+	FullOutputError string
 }
 
 // shellDetailsFrom reads BashToolDetails from a live result (*tools.BashDetails)
 // or from a persisted or extension-supplied result, whose details arrive as the
-// decoded upstream JSON shape ({truncation, fullOutputPath}).
+// decoded upstream JSON shape ({truncation, fullOutputPath, fullOutputError}).
 func shellDetailsFrom(details any) shellResultDetails {
 	switch d := detailsObject(details).(type) {
 	case *tools.BashDetails:
 		if d == nil {
 			return shellResultDetails{}
 		}
-		return shellResultDetails{Truncation: d.Truncation, FullOutputPath: d.FullOutputPath}
+		return shellResultDetails{Truncation: d.Truncation, FullOutputPath: d.FullOutputPath, FullOutputError: d.FullOutputError}
 	case map[string]any:
 		out := shellResultDetails{}
 		out.FullOutputPath, _ = d["fullOutputPath"].(string)
+		out.FullOutputError, _ = d["fullOutputError"].(string)
 		if raw, ok := d["truncation"].(map[string]any); ok {
 			out.Truncation = truncationFromMap(raw)
 		}
@@ -174,8 +176,12 @@ func newShellResultView(content string, d shellResultDetails, isPartial, expande
 	theme := tui.ActiveTheme()
 	output := jsTrim(shellTextOutput(content))
 	truncated := d.Truncation != nil && d.Truncation.Truncated
-	if !isPartial && truncated && d.FullOutputPath != "" && strings.HasSuffix(output, "]") {
-		if footerStart := strings.LastIndex(output, "\n\n["); footerStart != -1 && strings.Contains(output[footerStart:], d.FullOutputPath) {
+	footerMarker := d.FullOutputPath
+	if footerMarker == "" {
+		footerMarker = d.FullOutputError
+	}
+	if !isPartial && truncated && footerMarker != "" && strings.HasSuffix(output, "]") {
+		if footerStart := strings.LastIndex(output, "\n\n["); footerStart != -1 && strings.Contains(output[footerStart:], footerMarker) {
 			output = jsTrimEnd(output[:footerStart])
 		}
 	}
@@ -202,10 +208,12 @@ func newShellResultView(content string, d shellResultDetails, isPartial, expande
 		}
 	}
 
-	if truncated || d.FullOutputPath != "" {
+	if truncated || d.FullOutputPath != "" || d.FullOutputError != "" {
 		var warnings []string
 		if d.FullOutputPath != "" {
 			warnings = append(warnings, "Full output: "+d.FullOutputPath)
+		} else if d.FullOutputError != "" {
+			warnings = append(warnings, "Could not save the full output: "+d.FullOutputError)
 		}
 		if truncated {
 			tr := d.Truncation

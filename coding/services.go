@@ -273,6 +273,7 @@ func newConfiguredServices(cwd, agentDir string, auth *ai.AuthStorage, credentia
 		return modelRuntime.refreshAvailability(ctx, ai.ModelsRefreshOptions{Providers: providers}, ai.ModelsRefreshResult{})
 	})
 	reg.SetAvailabilitySnapshot(modelRuntime.configuredInSnapshot, modelRuntime.syncRegistration)
+	reg.SetProviderAuthStatusSnapshot(modelRuntime.GetProviderAuthStatus)
 	return services, nil
 }
 

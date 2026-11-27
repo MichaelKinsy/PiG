@@ -256,10 +256,14 @@ func (runtime *ModelRuntime) GetProviderAuthStatus(providerID string) ai.AuthSta
 	state := &runtime.availability
 	state.mu.RLock()
 	stored := state.snapshot.storedProviders[providerID]
+	configured := state.snapshot.configured[providerID]
 	auth := state.snapshot.auth[providerID]
 	state.mu.RUnlock()
+	// A stored credential owns the provider, so it is configured only when it resolves. A failing
+	// `!command` key leaves it unresolved, and requests fail with it (#12164). The source still says
+	// that a stored credential exists, so the UI can tell this apart from no credential at all.
 	if stored {
-		return ai.AuthStatus{Configured: true, Source: ai.AuthSourceStored}
+		return ai.AuthStatus{Configured: configured, Source: ai.AuthSourceStored}
 	}
 	if configured, ok := runtime.services.Registry().ConfiguredRequestAuthStatus(providerID); ok {
 		return configured

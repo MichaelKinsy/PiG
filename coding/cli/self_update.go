@@ -43,6 +43,10 @@ func runSelfUpdate(force bool) int {
 	if argv := codingagent.ConfiguredSelfUpdateArgv(settings.GetGlobalSettings().SelfUpdateCommand); argv != nil {
 		return runConfiguredSelfUpdate(argv, force)
 	}
+	if err := codingagent.CheckWindowsManagedInstallFromWSL(""); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 	if code, done := checkSelfUpdateVersion(force); done {
 		return code
 	}

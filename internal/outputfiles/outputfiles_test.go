@@ -50,20 +50,16 @@ func TestWriteFileIsUserOnlyInTheTempDirectory(t *testing.T) {
 
 func TestCreateStreamIsUserOnlyAndWritable(t *testing.T) {
 	useTempDir(t)
-	path, f, err := CreateStream("pi-test", ".txt")
-	if err != nil {
-		t.Fatal(err)
+	stream := OpenStream("pi-test", ".txt")
+	stream.WriteString("streamed")
+	res := stream.Close()
+	if !res.Saved() {
+		t.Fatalf("Close() = %+v, want saved", res)
 	}
-	if _, err := f.WriteString("streamed"); err != nil {
-		t.Fatal(err)
-	}
-	if err := f.Close(); err != nil {
-		t.Fatal(err)
-	}
-	if data, err := os.ReadFile(path); err != nil || string(data) != "streamed" {
+	if data, err := os.ReadFile(res.Path); err != nil || string(data) != "streamed" {
 		t.Errorf("content = %q, %v", data, err)
 	}
-	requireUserOnly(t, path)
+	requireUserOnly(t, res.Path)
 }
 
 // `wx` never opens a file that exists, such as a link someone placed at a guessed path.
@@ -94,16 +90,17 @@ func TestPathsAreUnique(t *testing.T) {
 	}
 }
 
-// Like Node's write stream, a failed open keeps the path and reports the error with the Node code.
+// OpenStream captures open failures without panicking and drops the path on failure (Pi 943a99e3c).
 func TestCreateStreamKeepsThePathWhenTheDirectoryIsMissing(t *testing.T) {
 	dir := useTempDir(t)
 	missing := filepath.Join(dir, "missing")
 	t.Setenv("TMPDIR", missing)
 	t.Setenv("TMP", missing)
 	t.Setenv("TEMP", missing)
-	path, f, err := CreateStream("pi-test", ".txt")
-	if f != nil || err == nil || path == "" {
-		t.Fatalf("path=%q file=%v err=%v, want a path, no file and an error", path, f, err)
+	stream := OpenStream("pi-test", ".txt")
+	res := stream.Close()
+	if res.Path != "" || !res.Failed() {
+		t.Fatalf("Close() = %+v, want empty path and error", res)
 	}
 	if _, writeErr := WriteFile("pi-test", ".txt", nil); writeErr == nil {
 		t.Fatal("WriteFile reported no error")

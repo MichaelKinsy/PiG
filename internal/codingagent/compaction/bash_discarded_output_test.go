@@ -30,3 +30,25 @@ func TestBashExecutionToTextNamesTheLogOfDiscardedOutput(t *testing.T) {
 		t.Fatalf("model-facing text lacks %q: %.200q", want, text[max(0, len(text)-200):])
 	}
 }
+
+func TestBashExecutionToTextFullOutputErrorAndBareTruncated(t *testing.T) {
+	withErr := bashExecutionToText(map[string]any{
+		"command":         "seq 3000",
+		"output":          "tail",
+		"exitCode":        float64(0),
+		"truncated":       true,
+		"fullOutputError": "ENOSPC: write",
+	})
+	if !strings.HasSuffix(withErr, "\n\n[Output truncated. Could not save the full output: ENOSPC: write]") {
+		t.Fatalf("withErr = %q", withErr)
+	}
+	bare := bashExecutionToText(map[string]any{
+		"command":   "seq 3000",
+		"output":    "tail",
+		"exitCode":  float64(0),
+		"truncated": true,
+	})
+	if !strings.HasSuffix(bare, "\n\n[Output truncated]") {
+		t.Fatalf("bare = %q", bare)
+	}
+}

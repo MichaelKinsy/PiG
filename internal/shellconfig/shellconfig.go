@@ -5,7 +5,9 @@
 package shellconfig
 
 import (
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
@@ -65,4 +67,69 @@ func ForBash(shell string) Config {
 		return Config{Path: shell, Args: []string{"-s"}, CommandTransport: "stdin"}
 	}
 	return Config{Path: shell, Args: []string{"-c"}}
+}
+
+// gitForWindowsShellSuffix is the POSIX shell suffix Git for Windows reports
+// from `git var GIT_SHELL_PATH`: `<root>\usr\bin\sh.exe`.
+const gitForWindowsShellSuffix = `usr\bin\sh.exe`
+
+// GitBashFromShellPath derives `<root>\bin\bash.exe` from the output of
+// `git var GIT_SHELL_PATH` when it matches the Git for Windows layout
+// (`<root>\usr\bin\sh.exe`) and the launcher exists according to exists.
+//
+// Ports packages/coding-agent/src/utils/shell.ts (findGitBashOfGitOnPath) and
+// packages/durable/src/env/node.ts (findGitBashOfGitOnPath).
+func GitBashFromShellPath(rawOutput string, exists func(string) bool) string {
+	gitShell := nodepath.Win32Normalize(strings.TrimSpace(rawOutput))
+	if !strings.HasSuffix(jsstring.ToLower(gitShell), `\`+gitForWindowsShellSuffix) {
+		return ""
+	}
+	root := gitShell[:len(gitShell)-len(gitForWindowsShellSuffix)]
+	bash := nodepath.Win32Join(root, "bin", "bash.exe")
+	if exists(bash) {
+		return bash
+	}
+	return ""
+}
+
+// windowsDefault resolves bash on Windows:
+// 1. Git Bash under ProgramFiles / ProgramFiles(x86)
+// 2. Git Bash of git.exe on PATH (`git var GIT_SHELL_PATH`, Git 2.47+)
+// 3. bash.exe on PATH (Cygwin, MSYS2, WSL, etc.)
+func windowsDefault(
+	programFiles, programFilesX86 string,
+	exists func(string) bool,
+	findOnPath func(string) string,
+	run func(string, ...string) (string, bool),
+) (Config, error) {
+	var searched []string
+	for _, base := range []string{programFiles, programFilesX86} {
+		if base == "" {
+			continue
+		}
+		p := base + `\Git\bin\bash.exe`
+		searched = append(searched, "  "+p)
+		if exists(p) {
+			return ForBash(p), nil
+		}
+	}
+	// Git Bash installed elsewhere, found through git on PATH. This must precede
+	// the generic bash.exe lookup, which usually finds the WSL launcher in System32 first.
+	if git := findOnPath("git.exe"); git != "" {
+		if out, ok := run(git, "var", "GIT_SHELL_PATH"); ok {
+			if gitBash := GitBashFromShellPath(out, exists); gitBash != "" {
+				return ForBash(gitBash), nil
+			}
+		}
+	}
+	if p := findOnPath("bash.exe"); p != "" {
+		return ForBash(p), nil
+	}
+	return Config{}, fmt.Errorf(
+		"No bash shell found. Options:\n"+
+			"  1. Install Git for Windows: https://git-scm.com/download/win\n"+
+			"  2. Add your bash to PATH (Cygwin, MSYS2, etc.)\n"+
+			"  3. Set shellPath in settings.json\n\n"+
+			"Searched Git Bash in:\n%s\n"+
+			"  the Git for Windows installation of git.exe on PATH", strings.Join(searched, "\n"))
 }

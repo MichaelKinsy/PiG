@@ -39,12 +39,22 @@ type OAuthProvider struct {
 	Status AuthCheck
 }
 
-// AuthCheck reports that a provider's auth is configured: its type ("oauth" or "api_key") and, when known, where it comes
-// from (an ai.AuthCheck).
+// AuthCheck reports a login option's auth status: configured auth (its type
+// "oauth" or "api_key" and optional source), or an unresolved stored credential
+// via AuthSelectorStatusUnresolved().
 type AuthCheck interface {
 	AuthCheckType() string
 	AuthCheckSource() string
 }
+
+type unresolvedAuthCheck struct{}
+
+func (unresolvedAuthCheck) AuthCheckType() string   { return "" }
+func (unresolvedAuthCheck) AuthCheckSource() string { return "" }
+
+// AuthSelectorStatusUnresolved returns an AuthCheck representing a stored
+// credential that did not resolve (for example a failing `!command`).
+func AuthSelectorStatusUnresolved() AuthCheck { return unresolvedAuthCheck{} }
 
 // OAuthSelectorComponent renders the bordered provider picker (port of
 // OAuthSelectorComponent in oauth-selector.ts).
@@ -247,6 +257,9 @@ func FormatAuthSelectorProviderStatus(p OAuthProvider) string {
 	th := ActiveTheme()
 	if p.Status == nil {
 		return th.Fg("muted", " • not configured")
+	}
+	if _, unresolved := p.Status.(unresolvedAuthCheck); unresolved {
+		return th.Fg("muted", " • ") + th.Fg("error", "stored key did not resolve")
 	}
 	statusType, source := p.Status.AuthCheckType(), p.Status.AuthCheckSource()
 	if statusType != p.AuthType {

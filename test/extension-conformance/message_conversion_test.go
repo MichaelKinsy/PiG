@@ -200,7 +200,7 @@ func messageConversionCases() []map[string]any {
 		var messages []any
 		for range 1 + random.IntN(4) {
 			m := map[string]any{"role": roles[random.IntN(len(roles))]}
-			for _, key := range []string{"command", "output", "exitCode", "cancelled", "truncated", "fullOutputPath", "excludeFromContext", "content", "summary", "timestamp", "details"} {
+			for _, key := range []string{"command", "output", "exitCode", "cancelled", "truncated", "fullOutputPath", "fullOutputError", "excludeFromContext", "content", "summary", "timestamp", "details"} {
 				if random.IntN(2) == 0 {
 					m[key] = pick()
 				}

@@ -55,3 +55,15 @@ func TestFormatAuthSelectorProviderTypeSubscriptionArgument(t *testing.T) {
 		t.Errorf("status = %q, want %q", status, " • account configured")
 	}
 }
+
+// Port of Pi main 71356387090d5f8060dc1837890d3d01b5b314ad (#12164).
+func TestOAuthSelectorUnresolvedStoredKeyUpstream(t *testing.T) {
+	p := OAuthProvider{ID: "deepseek", Name: "DeepSeek", AuthType: "api_key", Status: AuthSelectorStatusUnresolved()}
+	output := stripANSI(strings.Join(NewOAuthSelectorComponent("login", []OAuthProvider{p}, nil, nil).Render(120), "\n"))
+	if !strings.Contains(output, "DeepSeek • stored key did not resolve") {
+		t.Fatalf("render = %q, want unresolved status", output)
+	}
+	if strings.Contains(output, "not configured") {
+		t.Fatalf("render = %q, must not say not configured", output)
+	}
+}

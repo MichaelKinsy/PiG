@@ -141,10 +141,11 @@ type viewToolResult struct {
 }
 
 type viewBashComplete struct {
-	ExitCode       *int   `json:"exitCode,omitempty"`
-	Cancelled      bool   `json:"cancelled,omitempty"`
-	Truncated      bool   `json:"truncated,omitempty"`
-	FullOutputPath string `json:"fullOutputPath,omitempty"`
+	ExitCode        *int   `json:"exitCode,omitempty"`
+	Cancelled       bool   `json:"cancelled,omitempty"`
+	Truncated       bool   `json:"truncated,omitempty"`
+	FullOutputPath  string `json:"fullOutputPath,omitempty"`
+	FullOutputError string `json:"fullOutputError,omitempty"`
 }
 
 type viewStackEntry struct {

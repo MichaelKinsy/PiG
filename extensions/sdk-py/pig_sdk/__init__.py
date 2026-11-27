@@ -4630,6 +4630,8 @@ def _user_bash_event_result(value: Any) -> Any:
         del result["exitCode"]
     if "fullOutputPath" in result and result["fullOutputPath"] is None:
         del result["fullOutputPath"]
+    if "fullOutputError" in result and result["fullOutputError"] is None:
+        del result["fullOutputError"]
     return {**value, "result": result, "_pigUserBashExitCodeUndefined": undefined}
 
 

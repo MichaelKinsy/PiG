@@ -3,6 +3,7 @@ package codingagent
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -14,8 +15,10 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/crossspawn"
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 	"github.com/MichaelKinsy/PiG/internal/noderealpath"
+	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
 // pig divergence (D39): SelfUpdateTier selects one owner before mutation.
@@ -226,6 +229,10 @@ func resolveSelfUpdateTierOn(goos, exe string, runner cmdRunner, entrypoints ...
 	// a component that is not a link (case, 8.3 short names such as RUNNER~1), the second rewrites it to the stored long name.
 	if resolved, err := noderealpath.Eval(exe); err == nil {
 		exe = resolved
+	}
+
+	if err := checkWindowsManagedInstallFromWSL(goos, exe); err != nil {
+		return nil, err
 	}
 
 	// A baked Piglet/Piglet Binary release is immutable by construction: its
@@ -682,4 +689,99 @@ func applyProvenance(
 	default:
 		return SelfUpdateActionResult{Action: "refused", Message: prov.GetSelfUpdateUnavailableInstruction()}
 	}
+}
+
+const managedInstallMarkerName = "managed-install.json"
+
+var windowsEntrypointPathPattern = lazyregexp.New(`^(?:[A-Za-z]:\\|\\\\)`)
+
+// CheckWindowsManagedInstallFromWSL rejects self-updating a Windows managed
+// install (one whose managed-install.json records a Windows entrypoint path
+// such as C:\...\pi.cmd) when run from WSL / non-Windows, before any network
+// fetch or package-manager rebuild runs.
+//
+// Ports packages/coding-agent/src/package-manager-cli.ts (getActiveManagedInstallRoot, #12172).
+// selfUpdateExecutableForTest, when non-nil, overrides the running executable
+// path consulted by CheckWindowsManagedInstallFromWSL("").
+var selfUpdateExecutableForTest func() (string, error)
+
+// SetSelfUpdateExecutableForTest swaps the executable lookup used by
+// CheckWindowsManagedInstallFromWSL when called with an empty path. Test-only.
+func SetSelfUpdateExecutableForTest(fn func() (string, error)) func() {
+	prev := selfUpdateExecutableForTest
+	selfUpdateExecutableForTest = fn
+	return func() { selfUpdateExecutableForTest = prev }
+}
+
+func CheckWindowsManagedInstallFromWSL(exe string) error {
+	if exe == "" {
+		var err error
+		if selfUpdateExecutableForTest != nil {
+			exe, err = selfUpdateExecutableForTest()
+		} else {
+			exe, err = linkerexec.Executable()
+		}
+		if err != nil {
+			return nil
+		}
+	}
+	if resolved, err := noderealpath.Eval(exe); err == nil {
+		exe = resolved
+	}
+	return checkWindowsManagedInstallFromWSL(runtime.GOOS, exe)
+}
+
+func checkWindowsManagedInstallFromWSL(goos, exe string) error {
+	if goos == "windows" {
+		return nil
+	}
+	managedRoot := strings.TrimSpace(os.Getenv("PI_MANAGED_INSTALL_ROOT"))
+	if managedRoot == "" {
+		return nil
+	}
+	canonicalRoot := canonicalPath(managedRoot)
+	releasesDir := canonicalPath(filepath.Join(canonicalRoot, "releases"))
+	canonicalExe := canonicalPath(exe)
+	rel, err := filepath.Rel(releasesDir, canonicalExe)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+		return nil
+	}
+	markerPath := filepath.Join(managedRoot, managedInstallMarkerName)
+	raw, err := os.ReadFile(markerPath)
+	if err != nil {
+		return &TierError{
+			Tier:        tierUnsupported,
+			ExePath:     exe,
+			Remediation: fmt.Sprintf("Managed install marker is missing or invalid: %s", markerPath),
+			Cause:       err,
+		}
+	}
+	var marker struct {
+		Kind          string `json:"kind"`
+		SchemaVersion int    `json:"schemaVersion"`
+		Layout        string `json:"layout"`
+		Entrypoint    *struct {
+			Path string `json:"path"`
+		} `json:"entrypoint"`
+	}
+	if err := json.Unmarshal([]byte(text.StripBom(string(raw))), &marker); err != nil ||
+		marker.Kind != "pi-managed-install" || marker.SchemaVersion != 1 || marker.Layout != "releases-v1" {
+		return &TierError{
+			Tier:        tierUnsupported,
+			ExePath:     exe,
+			Remediation: fmt.Sprintf("Managed install marker is missing or invalid: %s", markerPath),
+			Cause:       err,
+		}
+	}
+	if marker.Entrypoint != nil && windowsEntrypointPathPattern.MatchString(marker.Entrypoint.Path) {
+		return &TierError{
+			Tier:    tierUnsupported,
+			ExePath: exe,
+			Remediation: fmt.Sprintf(
+				"This is the Windows installation of %s, run from WSL. Running the Windows installation from WSL is unsupported, so it cannot update itself here. Update it from Windows, or install %s in WSL.",
+				AppName, AppName,
+			),
+		}
+	}
+	return nil
 }

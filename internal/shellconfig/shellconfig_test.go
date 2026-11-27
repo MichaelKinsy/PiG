@@ -100,3 +100,100 @@ func TestFirstMatch(t *testing.T) {
 		})
 	}
 }
+
+// Port of Pi main e8ee38887e4aeacb0e15e8a3e367605347af3575 (#12408): find Git Bash of a Git for Windows
+// installed outside Program Files through git on PATH.
+func TestUpstreamGitBashDiscoveryThroughGitOnPath(t *testing.T) {
+	const (
+		gitPath = `G:\Programmi Aggiuntivi\Git\cmd\git.exe`
+		gitBash = `G:\Programmi Aggiuntivi\Git\bin\bash.exe`
+		wslBash = `C:\Windows\System32\bash.exe`
+	)
+	t.Setenv("SystemRoot", `C:\Windows`)
+
+	installed := func(paths ...string) func(string) bool {
+		set := make(map[string]bool, len(paths))
+		for _, path := range paths {
+			set[path] = true
+		}
+		return func(path string) bool { return set[path] }
+	}
+	makeLookup := func(gitShellPath *string, calls *int) (func(string) string, func(string, ...string) (string, bool)) {
+		findOnPath := func(exe string) string {
+			switch exe {
+			case "git.exe":
+				return gitPath
+			case "bash.exe":
+				return wslBash
+			default:
+				return ""
+			}
+		}
+		run := func(name string, args ...string) (string, bool) {
+			if calls != nil {
+				*calls++
+			}
+			if name == gitPath && len(args) == 2 && args[0] == "var" && args[1] == "GIT_SHELL_PATH" {
+				if gitShellPath == nil {
+					return "", false
+				}
+				return *gitShellPath + "\n", true
+			}
+			t.Fatalf("unexpected run: %s %v", name, args)
+			return "", false
+		}
+		return findOnPath, run
+	}
+
+	t.Run("prefers Git Bash of git on PATH over the WSL launcher on PATH", func(t *testing.T) {
+		shellPath := "G:/Programmi Aggiuntivi/Git/usr/bin/sh.exe"
+		findOnPath, run := makeLookup(&shellPath, nil)
+		got, err := windowsDefault(`C:\Program Files`, `C:\Program Files (x86)`, installed(gitPath, gitBash, wslBash), findOnPath, run)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := Config{Path: gitBash, Args: []string{"-c"}}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("got %+v, want %+v", got, want)
+		}
+	})
+
+	t.Run("keeps Git Bash under ProgramFiles first without running git", func(t *testing.T) {
+		const programFilesBash = `C:\Program Files\Git\bin\bash.exe`
+		shellPath := "G:/Programmi Aggiuntivi/Git/usr/bin/sh.exe"
+		var calls int
+		findOnPath, run := makeLookup(&shellPath, &calls)
+		got, err := windowsDefault(`C:\Program Files`, `C:\Program Files (x86)`, installed(programFilesBash, gitPath, gitBash), findOnPath, run)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := Config{Path: programFilesBash, Args: []string{"-c"}}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("got %+v, want %+v", got, want)
+		}
+		if calls != 0 {
+			t.Fatalf("git was spawned %d times, want 0", calls)
+		}
+	})
+
+	for _, tc := range []struct {
+		name         string
+		gitShellPath *string
+	}{
+		{"git without GIT_SHELL_PATH (before 2.47)", nil},
+		{"a shell outside a Git for Windows layout", new("G:/Tools/sh.exe")},
+		{"a Git for Windows root without its Bash launcher", new("G:/Programmi Aggiuntivi/Other/usr/bin/sh.exe")},
+	} {
+		t.Run("falls back to bash.exe on PATH for "+tc.name, func(t *testing.T) {
+			findOnPath, run := makeLookup(tc.gitShellPath, nil)
+			got, err := windowsDefault(`C:\Program Files`, `C:\Program Files (x86)`, installed(gitPath, gitBash, wslBash), findOnPath, run)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := Config{Path: wslBash, Args: []string{"-s"}, CommandTransport: "stdin"}
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("got %+v, want %+v", got, want)
+			}
+		})
+	}
+}

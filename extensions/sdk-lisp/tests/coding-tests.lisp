@@ -489,3 +489,24 @@ C
       (let ((ran nil))
         (check-error error (pig:with-file-mutation-queue "/x" (lambda () (setf ran t))))
         (check (not ran))))))
+
+(deftest bash-execution-convert-to-llm-and-full-output-error
+  (let* ((with-path (pig:obj "role" "bashExecution" "command" "ls" "output" "a" "truncated" t "fullOutputPath" "/tmp/out.log"))
+         (with-err  (pig:obj "role" "bashExecution" "command" "ls" "output" "a" "truncated" t "fullOutputError" "ENOSPC: write"))
+         (bare      (pig:obj "role" "bashExecution" "command" "ls" "output" "a" "truncated" t))
+         (text-of   (lambda (msg)
+                      (let ((converted (pig:convert-to-llm (vector msg))))
+                        (pig:jget (aref (pig:jget (aref converted 0) "content") 0) "text")))))
+    (check (search "[Output truncated. Full output: /tmp/out.log]" (funcall text-of with-path)))
+    (check (search "[Output truncated. Could not save the full output: ENOSPC: write]" (funcall text-of with-err)))
+    (check (search "[Output truncated]" (funcall text-of bare)))
+    ;; user-bash-event-result strips null fullOutputPath and fullOutputError
+    (let* ((raw (pig:obj "result" (pig:obj "output" "ok" "exitCode" 0 "cancelled" :false "truncated" t "fullOutputPath" :null "fullOutputError" :null)))
+           (norm (pig::user-bash-event-result raw))
+           (res (pig:jget norm "result")))
+      (check (not (nth-value 1 (gethash "fullOutputPath" res))))
+      (check (not (nth-value 1 (gethash "fullOutputError" res)))))
+    ;; kit-bash-execution-set-complete encodes fullOutputError
+    (let ((node (pig:kit-bash-execution "seq 3000")))
+      (pig:kit-bash-execution-set-complete node 0 nil t "" "ENOSPC")
+      (check-equal "ENOSPC" (pig:jget (pig::kit-get node :complete) "fullOutputError")))))

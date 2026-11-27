@@ -58,10 +58,11 @@ type NavigateTreeResult struct {
 type BashResult struct {
 	Output string `json:"output"`
 	// ExitCode is nil when the command has no exit status, including cancellation.
-	ExitCode       *int   `json:"exitCode,omitempty"`
-	Cancelled      bool   `json:"cancelled"`
-	Truncated      bool   `json:"truncated"`
-	FullOutputPath string `json:"fullOutputPath,omitempty"`
+	ExitCode        *int   `json:"exitCode,omitempty"`
+	Cancelled       bool   `json:"cancelled"`
+	Truncated       bool   `json:"truncated"`
+	FullOutputPath  string `json:"fullOutputPath,omitempty"`
+	FullOutputError string `json:"fullOutputError,omitempty"`
 }
 
 // ExecuteBashOptions is the options object of AgentSession.executeBash. The onChunk callback is not carried: the output chunks reach Subscribe listeners as the session's events do.

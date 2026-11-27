@@ -69,7 +69,7 @@ export const VIEW_WALK_FIELDS = Object.freeze({
   UserMessageComponent: ["text", "markdownTheme", "outputPad", "markdownTransformers"],
   AssistantMessageComponent: ["hideThinkingBlock", "markdownTheme", "hiddenThinkingLabel", "outputPad", "markdownTransformers", "lastMessage", "isStreaming", "thinkingVisibilityOverrides"],
   ToolExecutionComponent: ["toolName", "toolCallId", "args", "expanded", "showImages", "imageWidthCells", "outputPad", "isPartial", "toolDefinition", "cwd", "executionStarted", "argsComplete", "result"],
-  BashExecutionComponent: ["children", "command", "outputLines", "status", "exitCode", "loader", "truncationResult", "fullOutputPath", "expanded", "outputPad"],
+  BashExecutionComponent: ["children", "command", "outputLines", "status", "exitCode", "loader", "truncationResult", "fullOutputPath", "fullOutputError", "expanded", "outputPad"],
 });
 
 // The shared theme instance pi-coding-agent's `theme` reads (theme.ts).
@@ -899,6 +899,10 @@ function walkBashExecution(walk, c) {
     if (c.fullOutputPath !== undefined && c.fullOutputPath !== null) {
       if (typeof c.fullOutputPath !== "string") return undefined;
       if (c.fullOutputPath) complete.fullOutputPath = c.fullOutputPath;
+    }
+    if (c.fullOutputError !== undefined && c.fullOutputError !== null) {
+      if (typeof c.fullOutputError !== "string") return undefined;
+      if (c.fullOutputError) complete.fullOutputError = c.fullOutputError;
     }
     node.complete = complete;
   }

@@ -20,7 +20,7 @@ func TestBashExecutionSetCompleteResult(t *testing.T) {
 		not        []string
 	}{
 		{"truncated with a path", nil, false, &TruncationResult{Truncated: true}, "/tmp/full.log", []string{"Output truncated. Full output: /tmp/full.log"}, nil},
-		{"truncated without a path", nil, false, &TruncationResult{Truncated: true}, "", nil, []string{"Output truncated"}},
+		{"truncated without a path", nil, false, &TruncationResult{Truncated: true}, "", []string{"Output truncated"}, []string{"Full output:"}},
 		{"a path without truncation", nil, false, nil, "/tmp/full.log", nil, []string{"Output truncated"}},
 		{"an untruncated result with a path", nil, false, &TruncationResult{}, "/tmp/full.log", nil, []string{"Output truncated"}},
 		{"cancelled", nil, true, nil, "", []string{"(cancelled)"}, nil},
@@ -43,5 +43,22 @@ func TestBashExecutionSetCompleteResult(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestBashExecutionSetCompleteWithErrorRendersReason(t *testing.T) {
+	b := NewBashExecutionComponent("seq 3000", nil, false, 1)
+	b.AppendOutput("tail")
+	b.SetCompleteWithError(new(0), false, &TruncationResult{Truncated: true}, "", "ENOSPC: no space left")
+	got := strings.Join(strings.Fields(strings.Join(b.Render(120), " ")), " ")
+	if !strings.Contains(got, "Output truncated. Could not save the full output: ENOSPC: no space left") {
+		t.Fatalf("render = %q, want fullOutputError note", got)
+	}
+
+	b2 := NewBashExecutionComponent("seq 3000", nil, false, 1)
+	b2.SetCompleteWithOutputAndError(new(0), false, true, "tail2", "", "EACCES: open")
+	got2 := strings.Join(strings.Fields(strings.Join(b2.Render(120), " ")), " ")
+	if !strings.Contains(got2, "tail2") || !strings.Contains(got2, "Output truncated. Could not save the full output: EACCES: open") {
+		t.Fatalf("render2 = %q", got2)
 	}
 }

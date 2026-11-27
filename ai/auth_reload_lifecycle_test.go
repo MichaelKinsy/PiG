@@ -29,7 +29,8 @@ func TestAuthStorageCoalescedReloadSurvivesReaderCancellationUpstream(t *testing
 	synctest.Test(t, func(t *testing.T) {
 		storage, path := authReloadFile(t, `{"anthropic":{"type":"api_key","key":"old"}}`)
 		authReloadRead(t, storage, "anthropic", &Credential{Type: CredentialAPIKey, Key: "old"})
-		authReloadWrite(t, path, `{"anthropic":{"type":"api_key","key":"new"}}`)
+		// Change the file size so the revision changes even with coarse file timestamps (#12190).
+		authReloadWrite(t, path, `{"anthropic":{"type":"api_key","key":"newer"}}`)
 		grant := make(chan struct{})
 		entered := make(chan struct{})
 		var locks, releases atomic.Int32
@@ -57,7 +58,7 @@ func TestAuthStorageCoalescedReloadSurvivesReaderCancellationUpstream(t *testing
 		<-entered
 		go func() {
 			got, err := storage.Read(t.Context(), "anthropic")
-			if err == nil && (got == nil || got.Key != "new") {
+			if err == nil && (got == nil || got.Key != "newer") {
 				err = errors.New("wrong credential")
 			}
 			second <- err
