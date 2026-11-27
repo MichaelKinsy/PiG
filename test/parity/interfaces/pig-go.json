@@ -60754,6 +60754,17 @@
       "shapeHash": "sha256:8affaaf28f07495c26d1c1673278195fd5674fe572c3fecec6883c5ff6759f0e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#readOpenRouterNativeFinishReason",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "readOpenRouterNativeFinishReason",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(choice *oaiChunkChoice) string"
+      },
+      "shapeHash": "sha256:3f95061e47bd54167e6ddc22db89ff8d20dcae3fa7da9d79e144a1373367735b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#readProviderCredential",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "readProviderCredential",
