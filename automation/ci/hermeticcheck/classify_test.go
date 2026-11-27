@@ -947,3 +947,151 @@ func TestEnv(t *testing.T) {
 		t.Fatalf("expected --check with all expectations verified to pass, got exit %d: %s", code, errBuf.String())
 	}
 }
+
+func TestPR579CodeRabbitSoundnessRegressions(t *testing.T) {
+	t.Run("locally replaced dependency with unverified os.ReadFile fails closed", func(t *testing.T) {
+		root := baseSyntheticModule(t)
+		depRoot := filepath.Join(t.TempDir(), "extdep")
+		writeFiles(t, depRoot, map[string]string{
+			"go.mod": "module example.com/extdep\n\ngo 1.26.0\n",
+			"helper.go": `package extdep
+
+import "os"
+
+func LoadFixture() ([]byte, error) {
+	return os.ReadFile("/var/tmp/pig-fixture")
+}
+`,
+		})
+		writeFiles(t, root, map[string]string{
+			"go.mod": "module example.com/hermetictest\n\ngo 1.26.0\n\nrequire example.com/extdep v0.0.0\n\nreplace example.com/extdep => " + filepath.ToSlash(depRoot) + "\n",
+			"pure/use_dep_test.go": `package pure
+
+import (
+	"testing"
+	"example.com/extdep"
+)
+
+func TestUseDep(t *testing.T) {
+	_, _ = extdep.LoadFixture()
+}
+`,
+		})
+		res := analyzeOne(t, root, "./pure", false)
+		if res.Hermetic {
+			t.Fatalf("expected locally replaced dependency reading /var/tmp/pig-fixture to be non-hermetic")
+		}
+	})
+
+	t.Run("production code linked into test reading external path fails closed", func(t *testing.T) {
+		root := baseSyntheticModule(t)
+		writeFiles(t, root, map[string]string{
+			"pure/read.go": `package pure
+
+import "os"
+
+func ReadFixture() ([]byte, error) {
+	return os.ReadFile("/var/tmp/pig-fixture")
+}
+`,
+			"pure/read_test.go": `package pure
+
+import "testing"
+
+func TestReadFixture(t *testing.T) {
+	_, _ = ReadFixture()
+}
+`,
+		})
+		res := analyzeOne(t, root, "./pure", false)
+		if res.Hermetic {
+			t.Fatalf("expected production file reading external path to force non-hermetic")
+		}
+	})
+
+	t.Run("filepath.Dir escaping t.TempDir fails closed while child Join stays hermetic", func(t *testing.T) {
+		root := baseSyntheticModule(t)
+		writeFiles(t, root, map[string]string{
+			"escape/escape_test.go": `package escape
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestEscape(t *testing.T) {
+	_, _ = os.ReadFile(filepath.Join(filepath.Dir(t.TempDir()), "fixture"))
+}
+`,
+			"child/child_test.go": `package child
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestChild(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "fixture")
+	_, _ = os.ReadFile(p)
+}
+`,
+		})
+		esc := analyzeOne(t, root, "./escape", false)
+		if esc.Hermetic {
+			t.Fatalf("expected filepath.Dir(t.TempDir()) escape to be non-hermetic")
+		}
+		ch := analyzeOne(t, root, "./child", false)
+		if !ch.Hermetic {
+			t.Fatalf(`expected filepath.Join(t.TempDir(), "fixture") to remain hermetic, reasons: %+v`, ch.Reasons)
+		}
+	})
+
+	t.Run("reassigned scratch variable invalidates scratch provenance", func(t *testing.T) {
+		root := baseSyntheticModule(t)
+		writeFiles(t, root, map[string]string{
+			"pure/reassign_test.go": `package pure
+
+import (
+	"os"
+	"testing"
+)
+
+func hostFixturePath() string { return "/var/tmp/pig-fixture" }
+
+func TestReassign(t *testing.T) {
+	p := t.TempDir()
+	p = hostFixturePath()
+	_, _ = os.ReadFile(p)
+}
+`,
+		})
+		res := analyzeOne(t, root, "./pure", false)
+		if res.Hermetic {
+			t.Fatalf("expected reassigned scratch variable to be non-hermetic")
+		}
+	})
+
+	t.Run("aliased os.ReadFile reference fails closed", func(t *testing.T) {
+		root := baseSyntheticModule(t)
+		writeFiles(t, root, map[string]string{
+			"pure/alias_test.go": `package pure
+
+import (
+	"os"
+	"testing"
+)
+
+func TestAlias(t *testing.T) {
+	read := os.ReadFile
+	_, _ = read("/var/tmp/pig-fixture")
+}
+`,
+		})
+		res := analyzeOne(t, root, "./pure", false)
+		if res.Hermetic {
+			t.Fatalf("expected aliased os.ReadFile to fail closed")
+		}
+	})
+}
