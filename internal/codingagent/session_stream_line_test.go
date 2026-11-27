@@ -273,3 +273,73 @@ func TestResidentEntryTypesHoldNoRedundantRecord(t *testing.T) {
 		}
 	}
 }
+
+// FuzzStreamCustomLineMatchesFullLine verifies that the streaming parser of an
+// oversized custom line agrees with jsonvalid.Valid and, whenever it indexes
+// the line itself, produces the exact state, base metadata, and hash of
+// prepareIndexLineAfter across arbitrary split points, reader buffer sizes, and
+// line endings.
+func FuzzStreamCustomLineMatchesFullLine(f *testing.F) {
+	seeds := []string{
+		`{"type":"custom","id":"00000002","parentId":"00000001","timestamp":"2026-01-01T00:00:00.000Z","customType":"example.state","data":{"z":1,"payload":"hello\nworld\"\\\/\b\f\r\t\u00e9","arr":[1,2.5,-3e4,true,false,null,{}]}}`,
+		`{"type":"custom","id":"00000001","parentId":null,"timestamp":"2026-01-01T00:00:00.000Z","customType":"ext","data":null}`,
+		`{"type":"custom","id":"00000001","customType":"ext","data":{"k":"v"}}`,
+		`{"type":"custom","customType":"ext","data":{"blob":"aaaa"},"id":"00000009","parentId":"00000008","timestamp":"2026-01-01T00:00:09.000Z"}`,
+		`{"type":"custom","type":"custom","id":"00000002","parentId":null,"data":{}}`,
+		`{"type":"custom","i\u0064":"00000002","parentId":null,"data":{}}`,
+		`{"type":"custom","id":42,"parentId":null,"data":{}}`,
+		`{"type":"custom","id":"x","data":01}`,
+		`{"type":"custom","id":"x","data":{}} trailing`,
+		` {"type": "custom" , "id" : "a" , "parentId" : "b", "data" : [ ] }  `,
+		`{"type":"custom","id":"","parentId":"","timestamp":"","data":"\ud800"}`,
+		`{"type":"custom","id":null,"parentId":{"a":1},"timestamp":5,"data":-0.0e-0}`,
+		`{"type":"message","id":"m","message":{"role":"user","content":"\"type\":\"custom\""}}`,
+		`{"data":{"type":"custom"},"type":"custom","id":"n"}`,
+		"{\"type\":\"custom\",\"id\":\"a\",\"data\":\"x\r\"}",
+		`{"type":"custom","id":"a","data":"x"}` + "\r",
+	}
+	for _, s := range seeds {
+		f.Add([]byte(s), uint16(17), uint8(0), uint8(0))
+		f.Add([]byte(s), uint16(1), uint8(3), uint8(1))
+		f.Add([]byte(s), uint16(len(s)), uint8(40), uint8(2))
+	}
+	f.Fuzz(func(t *testing.T, raw []byte, split uint16, bufExtra uint8, suffixSel uint8) {
+		if len(raw) == 0 || bytes.IndexByte(raw, '\n') >= 0 || raw[len(raw)-1] == '\r' {
+			t.Skip()
+		}
+		i := skipJSONSpace(raw, 0)
+		if i >= len(raw) || raw[i] != '{' {
+			t.Skip()
+		}
+		at := int(split)%len(raw) + 1
+		suffix := []string{"\n", "\r\n", ""}[int(suffixSel)%3]
+		r := bufio.NewReaderSize(strings.NewReader(string(raw[at:])+suffix), 16+int(bufExtra))
+		prep, lineLen, consumed, _, err := streamOversizedCustomLine(bytes.Clone(raw[:at]), r)
+		if int(consumed) != len(raw)+len(suffix) {
+			t.Fatalf("consumed=%d want %d (split %d suffix %q) line %q", consumed, len(raw)+len(suffix), at, suffix, raw)
+		}
+		valid := jsonvalid.Valid(raw)
+		if !valid {
+			if prep != nil || err != nil {
+				t.Fatalf("invalid line gave prep=%v err=%v (split %d suffix %q) line %q", prep, err, at, suffix, raw)
+			}
+			return
+		}
+		if lineLen != len(raw) {
+			t.Fatalf("lineLen=%d want %d (split %d suffix %q) line %q", lineLen, len(raw), at, suffix, raw)
+		}
+		if err != nil {
+			if !errors.Is(err, errStreamFallback) || prep != nil {
+				t.Fatalf("valid line gave err=%v prep=%v line %q", err, prep, raw)
+			}
+			return
+		}
+		if prep == nil {
+			t.Fatalf("valid line was dropped: no prep and no fallback (split %d suffix %q) line %q", at, suffix, raw)
+		}
+		want := prepareIndexLineAfter(raw, "")
+		if prep.state != want.state || !reflect.DeepEqual(prep.base, want.base) || prep.hash != want.hash {
+			t.Fatalf("streamed differs from the full-line path (split %d suffix %q)\n line %q\n streamed %+v\n full     %+v", at, suffix, raw, prep.base, want.base)
+		}
+	})
+}

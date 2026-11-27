@@ -217,12 +217,6 @@ func (e CustomEntry) fileEntry() {}
 
 func (e CustomEntry) Raw() json.RawMessage { return rawOf(e.MarshalJSON) }
 
-// WithoutRecord is e without the record it was decoded from: it writes its fields.
-func (e CustomEntry) WithoutRecord() CustomEntry {
-	e.raw = nil
-	return e
-}
-
 func (e CustomEntry) MarshalJSON() ([]byte, error) {
 	if e.raw != nil {
 		return e.raw, nil
@@ -243,12 +237,6 @@ func (e CustomMessageEntry) Base() SessionEntryBase { return e.withoutRecord() }
 func (e CustomMessageEntry) fileEntry() {}
 
 func (e CustomMessageEntry) Raw() json.RawMessage { return rawOf(e.MarshalJSON) }
-
-// WithoutRecord is e without the record it was decoded from: it writes its fields.
-func (e CustomMessageEntry) WithoutRecord() CustomMessageEntry {
-	e.raw = nil
-	return e
-}
 
 func (e CustomMessageEntry) MarshalJSON() ([]byte, error) {
 	if e.raw != nil {
