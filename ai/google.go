@@ -957,7 +957,6 @@ func supportsMultimodalFunctionResponse(modelID string) bool {
 	return true
 }
 
-
 // getGoogleBudget returns the token budget for Gemini models using thinkingBudget:
 // custom budgets first, then per-model defaults, else -1 (dynamic).
 // upstream: packages/ai/src/api/google-shared.ts:getGoogleBudget

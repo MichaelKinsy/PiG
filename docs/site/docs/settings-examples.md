@@ -6,7 +6,7 @@ The outputs below come from PiG run against a scripted test model, with each key
 
 Settings are merged from two files, and a key in the project file wins: `~/.pig/agent/settings.json` (yours) and `<project>/.pig/settings.json` (the project's, read only after you trust the project). Some keys are read from the global file only and are ignored in a project file: `defaultProjectTrust`, `httpProxy`, `cacheWarming`, `extensionsAutoUpgrade`, `extensionsTypescriptRuntime` and `deviceId`.
 
-If the file is not valid JSON, PiG warns at startup (`Invalid settings file …`) and uses defaults for what it cannot read. A value of the wrong JSON type, such as `"skills": 5`, is ignored with one warning that names it, and the other keys apply. Pi 1.6.0 exits with a `TypeError` instead (D158). After an edit, start PiG again (or `/reload`) and look at the first lines of the screen.
+If the file is not valid JSON, PiG warns at startup (`Invalid settings file …`) and uses defaults for what it cannot read. A value of the wrong JSON type, such as `"skills": 5`, is ignored with one warning that names it, and the other keys apply. Pi 1.6.1 exits with a `TypeError` instead (D158). After an edit, start PiG again (or `/reload`) and look at the first lines of the screen.
 
 ## Choose the model, and how hard it thinks
 

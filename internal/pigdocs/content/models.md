@@ -172,7 +172,7 @@ OpenAI-compatible APIs support free-form `samplingParams` model defaults and `sa
 
 PiG first clamps an unsupported thinking level to a supported one. It then merges the model's `samplingParams`, the effective level's entry and the request's `samplingParams`, in that order; a later value wins per key. A level without an entry uses the model defaults. A `modelOverrides` entry merges each level per key with the base model's entry. These fields apply only to `openai-completions`, `openai-responses` and `azure-openai-responses`; other APIs ignore them.
 
-## Use classifier models
+## Use decision models
 
 Classifier models do not chat. They answer typed questions about JSON state: pick one of several choices, answer yes or no, or give a score, each with probabilities. The built-in classifiers come from TypeSafe (Jev), Cloudflare Workers AI (Clef and Clef Flash), and OpenAI (GPT-6 Luna, through the [Decisions API](https://developers.openai.com/api/docs/guides/decisions)). The `openai` provider authenticates GPT-6 Luna with `OPENAI_API_KEY`.
 

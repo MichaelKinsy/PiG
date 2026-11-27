@@ -152,7 +152,7 @@ A model is reasoning-capable when its catalog entry sets `reasoning: true`; `thi
 
 Extensions read the active model with `ctx.model` (Node) or `Context.GetModelInfo()` (Go SDK, returns `(*ModelInfo, error)`). The Go SDK's `ModelInfo` carries `ID`, `Name`, `Provider`, `ContextWindow`, `MaxOutputTokens`, `Reasoning`, `InputLimits` and the per-million-token costs `InputCostPer1M`, `OutputCostPer1M`, `CacheReadCostPer1M` and `CacheWriteCostPer1M`.
 
-## Use classifier models
+## Use decision models
 
 Classifier models do not chat. They answer typed questions about JSON state: pick one of several choices, answer yes or no, or give a score, each with probabilities. The built-in catalog includes TypeSafe's Jev model from these providers, Cloudflare's Clef and Clef Flash models from Workers AI, and OpenAI's GPT-6 Luna through the [Decisions API](https://developers.openai.com/api/docs/guides/decisions):
 

@@ -577,6 +577,7 @@ func (p *llamaSSEParser) processLine(line string, onEvent func(LlamaModelEvent))
 	if strings.HasPrefix(line, ":") {
 		return
 	}
+	// upstream: packages/coding-agent/src/extensions/llama/client.ts:watch
 	if rest, ok := strings.CutPrefix(line, "data:"); ok {
 		rest = strings.TrimPrefix(rest, " ")
 		p.data = append(p.data, rest)

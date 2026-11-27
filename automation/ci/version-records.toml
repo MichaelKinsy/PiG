@@ -313,3 +313,15 @@ paths = [
   "docs/release/0.8.0-release-notes-draft.md",
   "docs/site/docs/bug-ledger.md",
 ]
+
+[[record]]
+version = "1.6.0"
+reason = "Historical release records, changelog fragments, bug-ledger entries, and divergence records written and measured against Pi 1.6.0 before the pin advanced to Pi 1.6.1."
+paths = [
+  "changelog.d/bundled-catalog-pi-160-bc302875f2.md",
+  "docs/parity/DIVERGENCES.md",
+  "docs/parity/divergences/D661.md",
+  "docs/parity/divergences/D662.md",
+  "docs/release/0.8.0-release-notes-draft.md",
+  "docs/site/docs/bug-ledger.md",
+]

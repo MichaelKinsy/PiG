@@ -23,7 +23,7 @@ to move only this directory.
 Use `/settings` to change a setting from inside a session. PiG writes the file
 for you and applies the change without a restart. When the file cannot be
 written, PiG prints `Failed to save settings: <error>`, so you know the change
-will not survive a restart; Pi 1.6.0 reports the failed write only in the
+will not survive a restart; Pi 1.6.1 reports the failed write only in the
 settings warnings of a later start (D633).
 
 ## Where PiG reads settings
