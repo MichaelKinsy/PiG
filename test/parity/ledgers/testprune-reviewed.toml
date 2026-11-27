@@ -1523,3 +1523,9 @@ commit = "eb9075718e2f380e44972dc21c10c2128913cd1d"
 class = "CITE"
 cite = "packages/coding-agent/src/modes/interactive/interactive-mode.ts:4403"
 reason = "Pi 03de604b8 updates maybeShowThinkingDropNotice (interactive-mode.ts:4403) so both Anthropic and OpenAI reasoning drop notices include the deduplicated reasons list before (details in session). Commit eb9075718e updates the expected notice strings in assistant_diagnostics_unit_test.go to match."
+
+[[entry]]
+path = "automation/ci/gocacheprog/cacheprog_test.go"
+commit = "823497755a48202c2de55e6b1ea8623d82f7bd57"
+class = "NOBEHAVIOR"
+reason = "PiG-only CI GOCACHEPROG wrapper hardening: setup-gocacheprog.sh now explicitly clears GOCACHEPROG= in GITHUB_ENV on fallback so a prior step cannot leak a stale cacheprog binary; cacheprog_test.go updates its fallback assertion accordingly."
