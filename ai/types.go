@@ -596,6 +596,7 @@ type Usage struct {
 	CacheWrite   int       `json:"cacheWrite"`
 	CacheWrite1h *int      `json:"cacheWrite1h,omitempty"`
 	Reasoning    *int      `json:"reasoning,omitempty"`
+	ImageOutput  *int      `json:"imageOutput,omitempty"`
 	TotalTokens  int       `json:"totalTokens"`
 	Cost         UsageCost `json:"cost"`
 	// splitsAfterCost records that a provider created CacheWrite1h or Reasoning after the other members (Usage.MarshalJSON).
@@ -1068,11 +1069,12 @@ func (l *ModelInputLimits) Clone() *ModelInputLimits {
 // is an absent member and an empty one an authored [], which JSON keeps apart, so copies of a cost keep a nil Tiers nil and an
 // empty one empty (slices.Clone, not append to nil).
 type ModelCost struct {
-	Input      float64    `json:"input"`
-	Output     float64    `json:"output"`
-	CacheRead  float64    `json:"cacheRead"`
-	CacheWrite float64    `json:"cacheWrite"`
-	Tiers      []CostTier `json:"tiers,omitzero"`
+	Input       float64    `json:"input"`
+	Output      float64    `json:"output"`
+	CacheRead   float64    `json:"cacheRead"`
+	CacheWrite  float64    `json:"cacheWrite"`
+	ImageOutput *float64   `json:"imageOutput,omitempty"`
+	Tiers       []CostTier `json:"tiers,omitzero"`
 }
 
 // AnthropicAllowedFallbackModel describes a server-side fallback accepted by Anthropic.

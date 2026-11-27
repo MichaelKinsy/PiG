@@ -59,7 +59,7 @@ func GenerateImagesOpenRouter(ctx context.Context, model ImageModel, imagesCtx I
 // generateOpenRouterImages sends one request: to chat/completions, or with dedicated to the Images API (/images) that OpenRouter requires for
 // some image generation models.
 func generateOpenRouterImages(ctx context.Context, model ImageModel, imagesCtx ImagesContext, options ProviderImagesOptions, out AssistantImages, apiKey string, dedicated bool) AssistantImages {
-	var payload any = buildOpenRouterImagesPayload(model, imagesCtx)
+	var payload any = buildOpenRouterImagesPayload(model, imagesCtx, options)
 	endpoint := "/chat/completions"
 	if dedicated {
 		payload = buildOpenRouterImagesAPIPayload(model, imagesCtx)
@@ -202,7 +202,7 @@ func openRouterImagesHeaders(apiKey string, target ClientIdentityTarget, identit
 	return headers
 }
 
-func buildOpenRouterImagesPayload(model ImageModel, imagesCtx ImagesContext) map[string]any {
+func buildOpenRouterImagesPayload(model ImageModel, imagesCtx ImagesContext, options ProviderImagesOptions) map[string]any {
 	content := make([]map[string]any, 0, len(imagesCtx.Input))
 	for _, item := range imagesCtx.Input {
 		switch v := item.(type) {
@@ -221,12 +221,23 @@ func buildOpenRouterImagesPayload(model ImageModel, imagesCtx ImagesContext) map
 	if slicesContainsString(model.Output, "text") {
 		modalities = []string{"image", "text"}
 	}
-	return map[string]any{
+	payload := map[string]any{
 		"model":      model.ID,
 		"messages":   []map[string]any{{"role": "user", "content": content}},
 		"stream":     false,
 		"modalities": modalities,
 	}
+	imageConfig := map[string]any{}
+	if options.AspectRatio != "" {
+		imageConfig["aspect_ratio"] = options.AspectRatio
+	}
+	if options.Size != "" {
+		imageConfig["image_size"] = options.Size
+	}
+	if len(imageConfig) > 0 {
+		payload["image_config"] = imageConfig
+	}
+	return payload
 }
 
 func slicesContainsString(values []string, target string) bool {
@@ -258,6 +269,11 @@ type openRouterImagesUsage struct {
 		CachedTokens     int `json:"cached_tokens"`
 		CacheWriteTokens int `json:"cache_write_tokens"`
 	} `json:"prompt_tokens_details"`
+	CompletionTokensDetails *struct {
+		ReasoningTokens int  `json:"reasoning_tokens"`
+		ImageTokens     *int `json:"image_tokens"`
+	} `json:"completion_tokens_details"`
+	Accounting openRouterUsageAccounting
 }
 
 // parseOpenRouterImagesUsage mirrors upstream openrouter-images.ts parseUsage,
@@ -275,22 +291,22 @@ func parseOpenRouterImagesUsage(raw openRouterImagesUsage, model ImageModel) *Us
 	}
 	input := max(0, raw.PromptTokens-cacheReadTokens-cacheWriteTokens)
 	output := raw.CompletionTokens
+	reasoningTokens := 0
+	var imageOutputTokens *int
+	if raw.CompletionTokensDetails != nil {
+		reasoningTokens = raw.CompletionTokensDetails.ReasoningTokens
+		imageOutputTokens = raw.CompletionTokensDetails.ImageTokens
+	}
 	usage := &Usage{
 		Input:       input,
 		Output:      output,
 		CacheRead:   cacheReadTokens,
 		CacheWrite:  cacheWriteTokens,
+		Reasoning:   &reasoningTokens,
+		ImageOutput: imageOutputTokens,
 		TotalTokens: input + output + cacheReadTokens + cacheWriteTokens,
-		// float64() rounds each product before the sum below, as JavaScript
-		// does, instead of letting the compiler fuse a multiply-add.
-		Cost: UsageCost{
-			Input:      float64((model.Cost.Input / 1000000) * float64(input)),
-			Output:     float64((model.Cost.Output / 1000000) * float64(output)),
-			CacheRead:  float64((model.Cost.CacheRead / 1000000) * float64(cacheReadTokens)),
-			CacheWrite: float64((model.Cost.CacheWrite / 1000000) * float64(cacheWriteTokens)),
-		},
 	}
-	usage.Cost.Total = usage.Cost.Input + usage.Cost.Output + usage.Cost.CacheRead + usage.Cost.CacheWrite
-	usage.Cost.TotalFromProvider = new(false)
+	CalculateCost(&model, usage)
+	applyOpenRouterReportedCost(usage, raw.Accounting)
 	return usage
 }

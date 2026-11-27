@@ -3,7 +3,6 @@ package ai
 // Ports packages/ai/src/api/pi-decision.ts (Pi c2f3a5cea, 9553d5834, 604359311, bff71c709).
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -60,61 +59,6 @@ func piDecisionRequiredUnitInterval(raw json.RawMessage, field string) (float64,
 		return 0, fmt.Errorf("%s returned out-of-range %s: %s", piDecisionLabel, field, jsnumber.String(num))
 	}
 	return num, nil
-}
-
-func parsePiDecisionUsage(raw json.RawMessage, model ClassifierModel) *Usage {
-	obj, ok := jsonObjectOf(raw)
-	if !ok {
-		return nil
-	}
-	_, hasInput := finiteNumberOf(obj["input"])
-	_, hasOutput := finiteNumberOf(obj["output"])
-	if !hasInput && !hasOutput {
-		return nil
-	}
-	inputRaw, inputPresent := obj["input"]
-	outputRaw, outputPresent := obj["output"]
-	cacheReadRaw, cacheReadPresent := obj["cacheRead"]
-	cacheWriteRaw, cacheWritePresent := obj["cacheWrite"]
-	input := classifierTokenCount(inputRaw, inputPresent)
-	output := classifierTokenCount(outputRaw, outputPresent)
-	cacheRead := classifierTokenCount(cacheReadRaw, cacheReadPresent)
-	cacheWrite := classifierTokenCount(cacheWriteRaw, cacheWritePresent)
-	totalTokens := input + output + cacheRead + cacheWrite
-	if t, ok := finiteNumberOf(obj["totalTokens"]); ok && t >= 0 {
-		totalTokens = classifierTokenCount(obj["totalTokens"], true)
-	}
-	usage := &Usage{
-		Input:       input,
-		Output:      output,
-		CacheRead:   cacheRead,
-		CacheWrite:  cacheWrite,
-		TotalTokens: totalTokens,
-	}
-	if costObj, ok := jsonObjectOf(obj["cost"]); ok {
-		if total, ok := finiteNumberOf(costObj["total"]); ok {
-			totalCost := total
-			if totalCost < 0 {
-				totalCost = 0
-			}
-			usage.Cost = UsageCost{
-				Input:      piDecisionFiniteNonNegative(costObj["input"]),
-				Output:     piDecisionFiniteNonNegative(costObj["output"]),
-				CacheRead:  piDecisionFiniteNonNegative(costObj["cacheRead"]),
-				CacheWrite: piDecisionFiniteNonNegative(costObj["cacheWrite"]),
-				Total:      totalCost,
-			}
-			switch string(bytes.TrimSpace(costObj["totalFromProvider"])) {
-			case "true":
-				usage.Cost.TotalFromProvider = new(true)
-			case "false":
-				usage.Cost.TotalFromProvider = new(false)
-			}
-			return usage
-		}
-	}
-	CalculateCost(&model, usage)
-	return usage
 }
 
 func parsePiDecisionProbabilities(raw json.RawMessage, id string, criteria []ClassifierChoiceCriterion) ([]ClassifierProbability, error) {
@@ -280,7 +224,7 @@ func ClassifyPiDecision(ctx context.Context, model ClassifierModel, request Clas
 		return fail(errors.New(piDecisionLabel + " returned an unexpected response"))
 	}
 	parsed := PiDecisionResponse{
-		Usage: parsePiDecisionUsage(body["usage"], model),
+		Usage: ParsePiUsage(body["usage"], &model),
 	}
 	if id, ok := jsonStringOf(body["responseId"]); ok && id != "" {
 		parsed.ResponseID = id
@@ -307,4 +251,8 @@ func PiDecisionAPI() *ProviderClassifier {
 			return ClassifyPiDecision(ctx, *model, request, PiDecisionOptions{ClassifierOptions: options}), nil
 		},
 	}
+}
+
+func parsePiDecisionUsage(raw json.RawMessage, model ClassifierModel) *Usage {
+	return ParsePiUsage(raw, &model)
 }

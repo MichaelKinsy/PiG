@@ -87,10 +87,10 @@ func TestLoadCatalogSourcesReadsEverySource(t *testing.T) {
 		t.Errorf("openrouter images %d, nvidia ids %d; NVIDIA is only fetched when models.dev lists nvidia models", len(sources.OpenRouter.Images), len(sources.NvidiaModelIDs))
 	}
 	// Radius keeps every member of a valid model, in order, then api, provider and baseUrl; invalid models are dropped.
-	if len(sources.Radius) != 1 {
-		t.Fatalf("radius models = %d, want 1", len(sources.Radius))
+	if len(sources.Radius.Chat) != 1 {
+		t.Fatalf("radius models = %d, want 1", len(sources.Radius.Chat))
 	}
-	if got, want := string(Stringify(sources.Radius[0], "")), `{"id":"test","name":"Test","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":4096,"maxTokens":4096,"extra":1,"api":"pi-messages","provider":"radius","baseUrl":"https://radius.pi.dev"}`; got != want {
+	if got, want := string(Stringify(sources.Radius.Chat[0], "")), `{"id":"test","name":"Test","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":4096,"maxTokens":4096,"extra":1,"api":"pi-messages","provider":"radius","baseUrl":"https://radius.pi.dev"}`; got != want {
 		t.Errorf("radius model = %s\nwant %s", got, want)
 	}
 }

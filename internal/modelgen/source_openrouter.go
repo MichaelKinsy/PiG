@@ -204,7 +204,7 @@ func BuildOpenRouterCatalog(listed, imageListed, decisionListed []*Obj) OpenRout
 		image := O("type", "image", "id", model.Str("id"))
 		setDefined(image, "name", model.member("name"))
 		image.Set("api", "openrouter-images").Set("provider", "openrouter").Set("baseUrl", "https://openrouter.ai/api/v1").
-			Set("input", input).Set("output", output).Set("cost", OpenRouterCost(objectOf(model.member("pricing"))))
+			Set("input", input).Set("output", output).Set("cost", OpenRouterImageCost(objectOf(model.member("pricing"))))
 		catalog.Images = append(catalog.Images, image)
 	}
 
@@ -262,4 +262,14 @@ func FetchOpenRouterCatalog() (OpenRouterCatalog, error) {
 		}
 	}
 	return BuildOpenRouterCatalog(lists[0], lists[1], lists[2]), nil
+}
+
+// OpenRouterImageCost is OpenRouterCost for image models, adding image_output as imageOutput.
+func OpenRouterImageCost(pricing *Obj) *Obj {
+	cost := OpenRouterCost(pricing)
+	if pricing == nil || pricing.member("image_output") == nil {
+		return cost
+	}
+	cost.Set("imageOutput", perMillionPrice(pricing, "image_output", cost.Num("output")))
+	return cost
 }

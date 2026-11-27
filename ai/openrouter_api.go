@@ -35,11 +35,13 @@ func (r *OpenRouterRate) UnmarshalJSON(data []byte) error {
 
 // OpenRouterPricing is OpenRouter's per-token prices.
 type OpenRouterPricing struct {
-	Prompt          OpenRouterRate              `json:"prompt"`
-	Completion      OpenRouterRate              `json:"completion"`
-	InputCacheRead  OpenRouterRate              `json:"input_cache_read"`
-	InputCacheWrite OpenRouterRate              `json:"input_cache_write"`
-	Overrides       []OpenRouterPricingOverride `json:"overrides"`
+	Prompt          OpenRouterRate `json:"prompt"`
+	Completion      OpenRouterRate `json:"completion"`
+	InputCacheRead  OpenRouterRate `json:"input_cache_read"`
+	InputCacheWrite OpenRouterRate `json:"input_cache_write"`
+	// ImageOutput is image output tokens; Completion then prices the text and reasoning output of the same response.
+	ImageOutput *OpenRouterRate             `json:"image_output,omitempty"`
+	Overrides   []OpenRouterPricingOverride `json:"overrides"`
 }
 
 // OpenRouterPricingOverride is a conditional price. MinPromptTokens selects prompt-length pricing; the utc_* members select time-of-day or weekday pricing and keep
@@ -121,4 +123,16 @@ func OpenRouterCost(pricing *OpenRouterPricing) ModelCost {
 		})
 	}
 	return base
+}
+
+// OpenRouterImageCost is OpenRouterCost for image models, adding image_output as ImageOutput. Image tokens often cost
+// 10x or more the completion rate that the same response's text and reasoning tokens cost.
+func OpenRouterImageCost(pricing *OpenRouterPricing) ModelCost {
+	cost := OpenRouterCost(pricing)
+	if pricing == nil || pricing.ImageOutput == nil {
+		return cost
+	}
+	rate := openRouterPerMillion(*pricing.ImageOutput, cost.Output)
+	cost.ImageOutput = &rate
+	return cost
 }

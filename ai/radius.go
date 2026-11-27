@@ -62,6 +62,12 @@ func newRadiusParts(options RadiusProviderOptions) *RadiusProvider {
 				for _, m := range publishedRadiusModels(id) {
 					baseline = append(baseline, m)
 				}
+				for _, c := range publishedRadiusClassifierModels(id) {
+					baseline = append(baseline, c)
+				}
+				for _, img := range publishedRadiusImageModels(id) {
+					baseline = append(baseline, img)
+				}
 			}
 		})
 		return baseline
@@ -93,6 +99,8 @@ func newRadiusParts(options RadiusProviderOptions) *RadiusProvider {
 				models = append(models, cloneRadiusModel(m))
 			case *ClassifierModel:
 				models = append(models, cloneRadiusClassifierModel(m))
+			case *ImageModel:
+				models = append(models, cloneRadiusImageModel(m))
 			}
 		}
 		return models, nil
@@ -124,9 +132,10 @@ func newRadiusParts(options RadiusProviderOptions) *RadiusProvider {
 			}
 			return models, nil
 		},
-		Stream:       streams.Stream,
-		StreamSimple: streams.StreamSimple,
-		Classify:     PiDecisionAPI().Classify,
+		Stream:         streams.Stream,
+		StreamSimple:   streams.StreamSimple,
+		Classify:       PiDecisionAPI().Classify,
+		GenerateImages: PiImageAPI().GenerateImages,
 	}
 	provider.RefreshModels = func(refresh RefreshModelsContext) error {
 		ctx := refresh.Signal
@@ -235,7 +244,7 @@ func storedRadiusAllModels(id string, entry ModelsStoreEntry) []AnyModel {
 	for _, stored := range entry.Models {
 		if stored != nil && stored.ProviderID() == id {
 			switch stored.(type) {
-			case *Model, *ClassifierModel:
+			case *Model, *ClassifierModel, *ImageModel:
 				restored = append(restored, stored)
 			}
 		}
@@ -257,4 +266,82 @@ func radiusStoreEntry(models []*Model) *ModelsStoreEntry {
 		entry.Models = append(entry.Models, model)
 	}
 	return entry
+}
+
+// GenerateImages generates images through the Radius provider's pi-image API.
+func (p *RadiusProvider) GenerateImages(ctx context.Context, model *ImageModel, request ImagesContext, options ImagesOptions) (AssistantImages, error) {
+	return p.provider.GenerateImages(ctx, model, request, options)
+}
+
+func publishedRadiusClassifierModels(providerID string) []*ClassifierModel {
+	var models []*ClassifierModel
+	for i := range GeneratedClassifierModels {
+		if GeneratedClassifierModels[i].Provider != RadiusProviderID {
+			continue
+		}
+		copied := cloneRadiusClassifierModel(&GeneratedClassifierModels[i])
+		copied.Provider = providerID
+		models = append(models, copied)
+	}
+	return models
+}
+
+func publishedRadiusImageModels(providerID string) []*ImageModel {
+	var models []*ImageModel
+	for i := range GeneratedImageModels {
+		if GeneratedImageModels[i].Provider != RadiusProviderID {
+			continue
+		}
+		copied := cloneRadiusImageModel(&GeneratedImageModels[i])
+		copied.Provider = providerID
+		models = append(models, copied)
+	}
+	return models
+}
+
+func cloneRadiusClassifierModel(model *ClassifierModel) *ClassifierModel {
+	if model == nil {
+		return nil
+	}
+	copied := *model
+	copied.Input = append([]string(nil), model.Input...)
+	copied.InputLimits = model.InputLimits.Clone()
+	if model.Cost.Tiers != nil {
+		copied.Cost.Tiers = append([]CostTier(nil), model.Cost.Tiers...)
+	}
+	if model.Cost.ImageOutput != nil {
+		v := *model.Cost.ImageOutput
+		copied.Cost.ImageOutput = &v
+	}
+	if model.Headers != nil {
+		copied.Headers = make(map[string]string, len(model.Headers))
+		for k, v := range model.Headers {
+			copied.Headers[k] = v
+		}
+	}
+	copied.Compat = cloneRadiusSystemOneCompat(model.Compat)
+	return &copied
+}
+
+func cloneRadiusImageModel(model *ImageModel) *ImageModel {
+	if model == nil {
+		return nil
+	}
+	copied := *model
+	copied.Input = append([]string(nil), model.Input...)
+	copied.Output = append([]string(nil), model.Output...)
+	if model.Cost.Tiers != nil {
+		copied.Cost.Tiers = append([]CostTier(nil), model.Cost.Tiers...)
+	}
+	if model.Cost.ImageOutput != nil {
+		v := *model.Cost.ImageOutput
+		copied.Cost.ImageOutput = &v
+	}
+	if model.Headers != nil {
+		copied.Headers = make(map[string]string, len(model.Headers))
+		for k, v := range model.Headers {
+			copied.Headers[k] = v
+		}
+	}
+	return &copied
 }

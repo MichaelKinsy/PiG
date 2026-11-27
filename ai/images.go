@@ -9,7 +9,10 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-const APIImagesOpenRouter ImageAPI = "openrouter-images"
+const (
+	APIImagesOpenRouter ImageAPI = "openrouter-images"
+	APIImagesPiImage    ImageAPI = "pi-image"
+)
 
 const ProviderImagesOpenRouter = "openrouter"
 
@@ -51,8 +54,12 @@ type ImagesOptions struct {
 	APIKeySet bool
 	Headers   ProviderHeaders
 	// Identity is how the request identifies the calling app: `User-Agent` and provider attribution headers.
-	Identity  *ClientIdentity
-	Env       map[string]string
+	Identity *ClientIdentity
+	Env      map[string]string
+	// AspectRatio is the desired aspect ratio, e.g. "1:1", "16:9", "4:3", "9:16". Sent to the provider unchanged.
+	AspectRatio string
+	// Size is the desired resolution, e.g. "1K", "2K", "4K". Sent to the provider unchanged.
+	Size      string
 	Metadata  map[string]any
 	TimeoutMs int
 	// MaxRetries is the retry budget after a retryable failure. Nil uses retry.provider.maxRetries; an explicit zero disables retries.

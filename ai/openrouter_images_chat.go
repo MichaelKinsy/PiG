@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
 )
@@ -74,6 +75,23 @@ func jsTruthy1(value any, present bool) bool {
 	}
 }
 
+func formatOpenRouterChoiceError(value any) string {
+	obj, ok := value.(map[string]any)
+	if !ok || obj == nil {
+		return ""
+	}
+	if msg, ok := obj["message"].(string); ok && strings.TrimSpace(msg) != "" {
+		return strings.TrimSpace(msg)
+	}
+	if code, ok := obj["code"]; ok && code != nil {
+		codeStr := strings.TrimSpace(fmt.Sprint(code))
+		if codeStr != "" {
+			return fmt.Sprintf("Provider error (%s)", codeStr)
+		}
+	}
+	return ""
+}
+
 // readOpenRouterImagesChat applies generateImages to a parsed body: the response id, the usage, then the first choice's text and images.
 func readOpenRouterImagesChat(response any, model ImageModel, out *AssistantImages) error {
 	if response == nil {
@@ -91,7 +109,7 @@ func readOpenRouterImagesChat(response any, model ImageModel, out *AssistantImag
 		}
 		out.Usage = parsed
 	}
-	choices, present := jsMember(response, "choices")
+	choices, _ := jsMember(response, "choices")
 	var choice any
 	var chosen bool
 	switch list := choices.(type) {
@@ -100,20 +118,47 @@ func readOpenRouterImagesChat(response any, model ImageModel, out *AssistantImag
 			choice, chosen = list[0], true
 		}
 	case string:
-		// "abc"[0] is the first character.
 		if list != "" {
 			choice, chosen = string([]rune(list)[:1]), true
 		}
-	default:
-		if !present {
-			return jsTypeError("undefined", "0")
-		}
-		if choices == nil {
-			return jsTypeError("null", "0")
-		}
 	}
+	respErrVal, _ := jsMember(response, "error")
 	if !chosen || !jsTruthy1(choice, true) {
+		out.StopReason = ImagesStopReasonError
+		if msg := formatOpenRouterChoiceError(respErrVal); msg != "" {
+			out.ErrorMessage = msg
+		} else {
+			out.ErrorMessage = "Provider returned no choices"
+		}
 		return nil
+	}
+	choiceErrVal, _ := jsMember(choice, "error")
+	if msg := formatOpenRouterChoiceError(choiceErrVal); msg != "" {
+		out.StopReason = ImagesStopReasonError
+		out.ErrorMessage = msg
+		return nil
+	}
+	if msg := formatOpenRouterChoiceError(respErrVal); msg != "" {
+		out.StopReason = ImagesStopReasonError
+		out.ErrorMessage = msg
+		return nil
+	}
+	if frVal, ok := jsMember(choice, "finish_reason"); ok {
+		if fr, ok := frVal.(string); ok && fr != "" && fr != "stop" && fr != "end" {
+			out.StopReason = ImagesStopReasonError
+			nativeReason := ""
+			if nrVal, ok := jsMember(choice, "native_finish_reason"); ok {
+				if nr, ok := nrVal.(string); ok && strings.TrimSpace(nr) != "" {
+					nativeReason = strings.TrimSpace(nr)
+				}
+			}
+			if nativeReason != "" && nativeReason != fr {
+				out.ErrorMessage = fmt.Sprintf("Provider finish_reason: %s (native_finish_reason: %s)", fr, nativeReason)
+			} else {
+				out.ErrorMessage = fmt.Sprintf("Provider finish_reason: %s", fr)
+			}
+			return nil
+		}
 	}
 	message, hasMessage, err := jsRead(choice, true, "message")
 	if err != nil {
@@ -211,6 +256,33 @@ func parseOpenRouterImagesUsageValue(value any, model ImageModel) (*Usage, error
 		if raw.PromptTokensDetails.CacheWriteTokens, err = count(details, "cache_write_tokens"); err != nil {
 			return nil, err
 		}
+	}
+	if details, ok := jsMember(value, "completion_tokens_details"); ok && details != nil {
+		raw.CompletionTokensDetails = &struct {
+			ReasoningTokens int  `json:"reasoning_tokens"`
+			ImageTokens     *int `json:"image_tokens"`
+		}{}
+		if raw.CompletionTokensDetails.ReasoningTokens, err = count(details, "reasoning_tokens"); err != nil {
+			return nil, err
+		}
+		if imgVal, present := jsMember(details, "image_tokens"); present && imgVal != nil {
+			if _, isNum := imgVal.(float64); isNum {
+				n, err := count(details, "image_tokens")
+				if err != nil {
+					return nil, err
+				}
+				raw.CompletionTokensDetails.ImageTokens = &n
+			}
+		}
+	}
+	if cVal, ok := jsMember(value, "cost"); ok {
+		raw.Accounting.Cost = mustMarshalJSON(cVal)
+	}
+	if byokVal, ok := jsMember(value, "is_byok"); ok {
+		raw.Accounting.IsBYOK = mustMarshalJSON(byokVal)
+	}
+	if cdVal, ok := jsMember(value, "cost_details"); ok {
+		raw.Accounting.CostDetails = mustMarshalJSON(cdVal)
 	}
 	return parseOpenRouterImagesUsage(raw, model), nil
 }

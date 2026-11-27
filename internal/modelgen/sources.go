@@ -28,7 +28,14 @@ type CatalogSources struct {
 	AIGateway          AiGatewayCatalog
 	// NvidiaModelIDs are the live NVIDIA NIM ids, keyed by both the raw and the normalized id.
 	NvidiaModelIDs map[string]string
-	Radius         []*Obj
+	Radius         RadiusCatalog
+}
+
+// RadiusCatalog is the chat, image, and classifier models fetched from the public Radius gateway.
+type RadiusCatalog struct {
+	Chat        []*Obj
+	Images      []*Obj
+	Classifiers []*Obj
 }
 
 func fetchBody(url string, headers map[string]string) (*http.Response, error) {
@@ -77,20 +84,61 @@ func fetchNvidiaModelIDs() (map[string]string, error) {
 	return ids, nil
 }
 
-// isRadiusGatewayModel is radius-config.ts isRadiusGatewayModel.
-func isRadiusGatewayModel(value any) bool {
+// isRadiusGatewayClassifierModel is radius-config.ts isRadiusGatewayClassifierModel.
+func isRadiusGatewayClassifierModel(value any) bool {
 	model, ok := value.(*Obj)
 	if !ok {
 		return false
 	}
 	_, id := model.member("id").(string)
 	_, name := model.member("name").(string)
-	_, reasoning := model.member("reasoning").(bool)
 	_, input := model.member("input").([]any)
 	_, cost := model.member("cost").(*Obj)
 	_, contextWindow := model.member("contextWindow").(float64)
+	return id && name && input && cost && contextWindow
+}
+
+// isRadiusGatewayImageModel is radius-config.ts isRadiusGatewayImageModel.
+func isRadiusGatewayImageModel(value any) bool {
+	model, ok := value.(*Obj)
+	if !ok {
+		return false
+	}
+	_, id := model.member("id").(string)
+	_, name := model.member("name").(string)
+	_, input := model.member("input").([]any)
+	output, hasOutput := model.member("output").([]any)
+	_, cost := model.member("cost").(*Obj)
+	if !id || !name || !input || !hasOutput || !cost {
+		return false
+	}
+	for _, v := range output {
+		if s, ok := v.(string); ok && s == "image" {
+			return true
+		}
+	}
+	return false
+}
+
+func sanitizeRadiusModalitiesList(values []any) []any {
+	out := make([]any, 0, len(values))
+	for _, v := range values {
+		if s, ok := v.(string); ok && (s == "text" || s == "image") {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// isRadiusGatewayModel is radius-config.ts isRadiusGatewayModel.
+func isRadiusGatewayModel(value any) bool {
+	if !isRadiusGatewayClassifierModel(value) {
+		return false
+	}
+	model := value.(*Obj)
+	_, reasoning := model.member("reasoning").(bool)
 	_, maxTokens := model.member("maxTokens").(float64)
-	return id && name && reasoning && input && cost && contextWindow && maxTokens
+	return reasoning && maxTokens
 }
 
 func truncateHTTPBody(body string) string {
@@ -101,40 +149,70 @@ func truncateHTTPBody(body string) string {
 	return trimmed
 }
 
-func fetchRadiusModels() ([]*Obj, error) {
+// FetchRadiusCatalog fetches the unauthenticated public Radius catalog (chat, image, and classifier models).
+func FetchRadiusCatalog() (RadiusCatalog, error) {
 	gateway := DefaultRadiusGateway
 	response, err := fetchBody(gateway+"/v1/config", map[string]string{"accept": "application/json"})
 	if err != nil {
-		return nil, err
+		return RadiusCatalog{}, err
 	}
 	defer func() { _ = response.Body.Close() }()
 	data, err := io.ReadAll(response.Body)
 	if err != nil {
-		return nil, err
+		return RadiusCatalog{}, err
 	}
 	if response.StatusCode < 200 || response.StatusCode > 299 {
-		return nil, fmt.Errorf("Could not load Radius config from %s: %d: %s", gateway, response.StatusCode, truncateHTTPBody(string(data)))
+		return RadiusCatalog{}, fmt.Errorf("Could not load Radius config from %s: %d: %s", gateway, response.StatusCode, truncateHTTPBody(string(data)))
 	}
 	parsed, err := ParseJSON(data)
 	if err != nil {
-		return nil, err
+		return RadiusCatalog{}, err
 	}
 	config := objectOf(parsed)
 	baseURL, hasBaseURL := config.member("baseUrl").(string)
 	listed, hasModels := config.member("models").([]any)
 	if !hasBaseURL || !hasModels {
-		return nil, fmt.Errorf("Invalid Radius config from %s", gateway)
+		return RadiusCatalog{}, fmt.Errorf("Invalid Radius config from %s", gateway)
 	}
-	models := []*Obj{}
+	chat := []*Obj{}
 	for _, item := range listed {
 		if isRadiusGatewayModel(item) {
-			models = append(models, Spread(item.(*Obj), O("api", "pi-messages", "provider", "radius", "baseUrl", baseURL)))
+			chat = append(chat, Spread(item.(*Obj), O("api", "pi-messages", "provider", "radius", "baseUrl", baseURL)))
 		}
 	}
-	if len(models) == 0 {
-		return nil, errors.New("Radius API returned no models")
+	if len(chat) == 0 {
+		return RadiusCatalog{}, errors.New("Radius API returned no models")
 	}
-	return models, nil
+	images := []*Obj{}
+	if imgList, ok := config.member("images").([]any); ok {
+		for _, item := range imgList {
+			if isRadiusGatewayImageModel(item) {
+				m := item.(*Obj)
+				images = append(images, Spread(m, O(
+					"input", sanitizeRadiusModalitiesList(listOf(m.member("input"))),
+					"output", sanitizeRadiusModalitiesList(listOf(m.member("output"))),
+					"type", "image",
+					"api", "pi-image",
+					"provider", "radius",
+					"baseUrl", baseURL,
+				)))
+			}
+		}
+	}
+	classifiers := []*Obj{}
+	if decList, ok := config.member("decision").([]any); ok {
+		for _, item := range decList {
+			if isRadiusGatewayClassifierModel(item) {
+				classifiers = append(classifiers, Spread(item.(*Obj), O(
+					"type", "classifier",
+					"api", "pi-decision",
+					"provider", "radius",
+					"baseUrl", baseURL,
+				)))
+			}
+		}
+	}
+	return RadiusCatalog{Chat: chat, Images: images, Classifiers: classifiers}, nil
 }
 
 // LoadCatalogSources fetches every upstream source. In strict mode any failure aborts generation; otherwise a failed source
@@ -159,6 +237,7 @@ func LoadCatalogSources(strict bool) (*CatalogSources, error) {
 		OpenRouter:         OpenRouterCatalog{Chat: []*Obj{}, Images: []*Obj{}, Classifiers: []*Obj{}},
 		AIGateway:          AiGatewayCatalog{Chat: []*Obj{}, Classifiers: []*Obj{}},
 		NvidiaModelIDs:     map[string]string{},
+		Radius:             RadiusCatalog{Chat: []*Obj{}, Images: []*Obj{}, Classifiers: []*Obj{}},
 	}
 	if err := load("models.dev catalog", func() error {
 		data, err := fetchJSON(ModelsDevURL, "models.dev API")
@@ -224,9 +303,9 @@ func LoadCatalogSources(strict bool) (*CatalogSources, error) {
 		return nil, err
 	}
 	if err := load("Radius models", func() error {
-		models, err := fetchRadiusModels()
+		catalog, err := FetchRadiusCatalog()
 		if err == nil {
-			sources.Radius = models
+			sources.Radius = catalog
 		}
 		return err
 	}); err != nil {

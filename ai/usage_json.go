@@ -56,6 +56,7 @@ type usageWire struct {
 	CacheWrite   int       `json:"cacheWrite"`
 	CacheWrite1h *int      `json:"cacheWrite1h,omitempty"`
 	Reasoning    *int      `json:"reasoning,omitempty"`
+	ImageOutput  *int      `json:"imageOutput,omitempty"`
 	TotalTokens  int       `json:"totalTokens"`
 	Cost         UsageCost `json:"cost"`
 }
@@ -70,14 +71,15 @@ type usageWireSplitsAfterCost struct {
 	Cost         UsageCost `json:"cost"`
 	CacheWrite1h *int      `json:"cacheWrite1h,omitempty"`
 	Reasoning    *int      `json:"reasoning,omitempty"`
+	ImageOutput  *int      `json:"imageOutput,omitempty"`
 }
 
 func (usage Usage) wire() usageWire {
-	return usageWire{usage.Input, usage.Output, usage.CacheRead, usage.CacheWrite, usage.CacheWrite1h, usage.Reasoning, usage.TotalTokens, usage.Cost}
+	return usageWire{usage.Input, usage.Output, usage.CacheRead, usage.CacheWrite, usage.CacheWrite1h, usage.Reasoning, usage.ImageOutput, usage.TotalTokens, usage.Cost}
 }
 
 func (usage Usage) wireSplitsAfterCost() usageWireSplitsAfterCost {
-	return usageWireSplitsAfterCost{usage.Input, usage.Output, usage.CacheRead, usage.CacheWrite, usage.TotalTokens, usage.Cost, usage.CacheWrite1h, usage.Reasoning}
+	return usageWireSplitsAfterCost{usage.Input, usage.Output, usage.CacheRead, usage.CacheWrite, usage.TotalTokens, usage.Cost, usage.CacheWrite1h, usage.Reasoning, usage.ImageOutput}
 }
 
 // UnmarshalJSON decodes the upstream Usage wire shape and keeps where the source wrote cacheWrite1h and reasoning.
@@ -89,6 +91,7 @@ func (usage *Usage) UnmarshalJSON(data []byte) error {
 		CacheWrite   usageInt  `json:"cacheWrite"`
 		CacheWrite1h *usageInt `json:"cacheWrite1h"`
 		Reasoning    *usageInt `json:"reasoning"`
+		ImageOutput  *usageInt `json:"imageOutput"`
 		TotalTokens  usageInt  `json:"totalTokens"`
 		Cost         UsageCost `json:"cost"`
 	}
@@ -97,11 +100,11 @@ func (usage *Usage) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*usage = Usage{Input: int(value.Input), Output: int(value.Output), CacheRead: int(value.CacheRead), CacheWrite: int(value.CacheWrite), CacheWrite1h: value.CacheWrite1h.ptr(),
-		Reasoning: value.Reasoning.ptr(), TotalTokens: int(value.TotalTokens), Cost: value.Cost}
-	if value.CacheWrite1h != nil || value.Reasoning != nil {
+		Reasoning: value.Reasoning.ptr(), ImageOutput: value.ImageOutput.ptr(), TotalTokens: int(value.TotalTokens), Cost: value.Cost}
+	if value.CacheWrite1h != nil || value.Reasoning != nil || value.ImageOutput != nil {
 		// Usage holds numbers only, so a member name occurs in the source only as a key.
 		cost := bytes.Index(data, []byte(`"cost"`))
-		usage.splitsAfterCost = cost >= 0 && (bytes.LastIndex(data, []byte(`"cacheWrite1h"`)) > cost || bytes.LastIndex(data, []byte(`"reasoning"`)) > cost)
+		usage.splitsAfterCost = cost >= 0 && (bytes.LastIndex(data, []byte(`"cacheWrite1h"`)) > cost || bytes.LastIndex(data, []byte(`"reasoning"`)) > cost || bytes.LastIndex(data, []byte(`"imageOutput"`)) > cost)
 	}
 	return nil
 }
