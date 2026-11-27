@@ -252,17 +252,34 @@ func (b *S3Backend) Get(ctx context.Context, actionHex string) ([]byte, []byte, 
 }
 
 // Put uploads a framed (OutputID + body) artifact to the remote bucket.
-// Refuses all writes when ReadOnly is true.
-func (b *S3Backend) Put(ctx context.Context, actionHex string, outputID []byte, bodyPath string, _ int64) error {
+// Refuses all writes when ReadOnly is true. Returns ErrRemoteSkipped without
+// reading the local file when bodySize exceeds MaxObjectBytes or the circuit
+// breaker is open.
+func (b *S3Backend) Put(ctx context.Context, actionHex string, outputID []byte, bodyPath string, bodySize int64) error {
 	if b.cfg.ReadOnly {
 		return errors.New("s3: remote backend is read-only")
 	}
 	if b.CircuitOpen() {
-		return nil
+		return fmt.Errorf("%w: circuit breaker open", ErrRemoteSkipped)
+	}
+	if b.cfg.MaxObjectBytes > 0 && bodySize > b.cfg.MaxObjectBytes {
+		return fmt.Errorf("%w: body size %d exceeds max remote bytes %d", ErrRemoteSkipped, bodySize, b.cfg.MaxObjectBytes)
+	}
+	if bodySize < 0 && b.cfg.MaxObjectBytes > 0 {
+		info, err := os.Stat(bodyPath)
+		if err != nil {
+			return err
+		}
+		if info.Size() > b.cfg.MaxObjectBytes {
+			return fmt.Errorf("%w: body size %d exceeds max remote bytes %d", ErrRemoteSkipped, info.Size(), b.cfg.MaxObjectBytes)
+		}
 	}
 	body, err := os.ReadFile(bodyPath)
 	if err != nil {
 		return err
+	}
+	if b.cfg.MaxObjectBytes > 0 && int64(len(body)) > b.cfg.MaxObjectBytes {
+		return fmt.Errorf("%w: body size %d exceeds max remote bytes %d", ErrRemoteSkipped, len(body), b.cfg.MaxObjectBytes)
 	}
 	framed, err := encodeEnvelope(outputID, body)
 	if err != nil {

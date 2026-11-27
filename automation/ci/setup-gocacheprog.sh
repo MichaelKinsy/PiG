@@ -246,7 +246,9 @@ if [[ -z "$DISK_DIR" ]]; then
   fi
 fi
 
-mkdir -p "$BIN_DIR" "$DISK_DIR"
+if ! mkdir -p "$BIN_DIR" "$DISK_DIR" 2>/dev/null; then
+  fallback_local "failed to create helper/cache directories (bin=${BIN_DIR}, disk=${DISK_DIR})"
+fi
 
 BIN_NAME="pig-gocacheprog"
 if is_windows_bash; then
