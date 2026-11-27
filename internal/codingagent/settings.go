@@ -1389,9 +1389,7 @@ func (s *Settings) UnmarshalJSON(data []byte) error {
 			"reasoningDrops":  shown,
 		}
 		if existing, ok := legacy["notices"].(map[string]any); ok {
-			for k, v := range existing {
-				notices[k] = v
-			}
+			maps.Copy(notices, existing)
 		}
 		legacy["notices"] = notices
 	}

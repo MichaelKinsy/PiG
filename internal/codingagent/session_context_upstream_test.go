@@ -202,8 +202,8 @@ func TestBuildSessionContextUpstream(t *testing.T) {
 			id := "c" + strconv.Itoa(i)
 			parent := parentID
 			entries = append(entries, CustomEntry{
-				SessionEntryBase: SessionEntryBase{Type: "custom", ID: id, ParentID: &parent, Timestamp: "2025-01-01T00:00:00Z"},
-				CustomType:       "bulk",
+				Type: "custom", ID: id, ParentID: &parent, Timestamp: "2025-01-01T00:00:00Z",
+				CustomType: "bulk",
 			})
 			parentID = id
 		}

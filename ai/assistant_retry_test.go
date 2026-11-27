@@ -463,8 +463,7 @@ func TestRetryAssistantCallRequestRateIncreasedTooQuickly(t *testing.T) {
 }
 
 func TestRetryAssistantCallSucceedsAfterThreeBackoffsWithCallerContext(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	calls := 0
 	recorder := &retryRecorder{}
 	policy := &RetryPolicy{Enabled: true, MaxRetries: 4, BaseDelayMs: 1}

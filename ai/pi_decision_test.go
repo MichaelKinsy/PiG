@@ -58,8 +58,8 @@ func TestClassifyPiDecisionAndOpenRouterClassifier(t *testing.T) {
 		}
 		sess := "sess-42"
 		res := ClassifyPiDecision(context.Background(), model, req, PiDecisionOptions{
-			ClassifierOptions: ClassifierOptions{APIKey: "tok", APIKeySet: true},
-			SessionID:         &sess,
+			APIKey: "tok", APIKeySet: true,
+			SessionID: &sess,
 		})
 		if res.StopReason != ClassifierStopReasonStop {
 			t.Fatalf("stopReason=%q err=%q", res.StopReason, res.ErrorMessage)
@@ -110,9 +110,9 @@ func TestClassifyPiDecisionAndOpenRouterClassifier(t *testing.T) {
 
 		model := ClassifierModel{ID: "m", API: ClassifierAPIPiDecision, Provider: "radius", BaseURL: srv.URL, Input: []string{"text"}}
 		req := ClassifierContext{State: JsonObject{"x": 1}, Questions: ClassifierQuestions{{ID: "safe", Question: ClassifierBoolQuestion{Instructions: "ok?", Criteria: ClassifierBoolCriteria{True: "y", False: "n"}}}}}
-		_ = ClassifyPiDecision(context.Background(), model, req, PiDecisionOptions{ClassifierOptions: ClassifierOptions{APIKey: "k", APIKeySet: true}})
+		_ = ClassifyPiDecision(context.Background(), model, req, PiDecisionOptions{APIKey: "k", APIKeySet: true})
 		empty := ""
-		_ = ClassifyPiDecision(context.Background(), model, req, PiDecisionOptions{ClassifierOptions: ClassifierOptions{APIKey: "k", APIKeySet: true}, SessionID: &empty})
+		_ = ClassifyPiDecision(context.Background(), model, req, PiDecisionOptions{APIKey: "k", APIKeySet: true, SessionID: &empty})
 		if _, hasOpts := bodies[0]["options"]; hasOpts {
 			t.Fatalf("nil SessionID should omit options, got %v", bodies[0]["options"])
 		}
@@ -144,7 +144,7 @@ func TestClassifyPiDecisionAndOpenRouterClassifier(t *testing.T) {
 		}
 
 		multimodal := ClassifierModel{ID: "vision", API: ClassifierAPIPiDecision, Provider: "radius", BaseURL: srv.URL, Input: []string{"text", "image"}}
-		ok := ClassifyPiDecision(context.Background(), multimodal, req, PiDecisionOptions{ClassifierOptions: ClassifierOptions{APIKey: "k", APIKeySet: true}})
+		ok := ClassifyPiDecision(context.Background(), multimodal, req, PiDecisionOptions{APIKey: "k", APIKeySet: true})
 		if ok.StopReason != ClassifierStopReasonStop {
 			t.Fatalf("multimodal res=%+v", ok)
 		}
@@ -167,7 +167,7 @@ func TestClassifyPiDecisionAndOpenRouterClassifier(t *testing.T) {
 		res := ClassifyPiDecision(context.Background(), model, ClassifierContext{
 			State:     JsonObject{"x": 1},
 			Questions: ClassifierQuestions{{ID: "safe", Question: ClassifierBoolQuestion{Instructions: "ok?", Criteria: ClassifierBoolCriteria{True: "y", False: "n"}}}},
-		}, PiDecisionOptions{ClassifierOptions: ClassifierOptions{APIKey: "k", APIKeySet: true}})
+		}, PiDecisionOptions{APIKey: "k", APIKeySet: true})
 		if res.StopReason != ClassifierStopReasonError || !strings.Contains(res.ErrorMessage, "Quota exceeded") {
 			t.Fatalf("402 res=%+v", res)
 		}
@@ -202,7 +202,7 @@ func TestClassifyPiDecisionAndOpenRouterClassifier(t *testing.T) {
 				}))
 				defer srv.Close()
 				model := ClassifierModel{ID: "m", API: ClassifierAPIPiDecision, Provider: "radius", BaseURL: srv.URL, Input: []string{"text"}}
-				res := ClassifyPiDecision(context.Background(), model, req, PiDecisionOptions{ClassifierOptions: ClassifierOptions{APIKey: "k", APIKeySet: true}})
+				res := ClassifyPiDecision(context.Background(), model, req, PiDecisionOptions{APIKey: "k", APIKeySet: true})
 				if res.StopReason != ClassifierStopReasonError || res.ErrorMessage != tc.want {
 					t.Fatalf("got stopReason=%q err=%q, want %q", res.StopReason, res.ErrorMessage, tc.want)
 				}
@@ -263,7 +263,7 @@ func TestClassifyPiDecisionAndOpenRouterClassifier(t *testing.T) {
 				{ID: "2", Question: ClassifierBoolQuestion{Instructions: "two?", Criteria: ClassifierBoolCriteria{True: "y", False: "n"}}},
 			},
 		}
-		res := ClassifyPiDecision(context.Background(), model, req, PiDecisionOptions{ClassifierOptions: ClassifierOptions{APIKey: "k", APIKeySet: true}})
+		res := ClassifyPiDecision(context.Background(), model, req, PiDecisionOptions{APIKey: "k", APIKeySet: true})
 		if res.StopReason != ClassifierStopReasonStop {
 			t.Fatalf("stopReason=%q err=%q", res.StopReason, res.ErrorMessage)
 		}
@@ -294,7 +294,7 @@ func TestClassifyPiDecisionAndOpenRouterClassifier(t *testing.T) {
 		res := ClassifyPiDecision(context.Background(), model, ClassifierContext{
 			State:     JsonObject{"x": 1},
 			Questions: ClassifierQuestions{{ID: "safe", Question: ClassifierBoolQuestion{Instructions: "safe?", Criteria: ClassifierBoolCriteria{True: "y", False: "n"}}}},
-		}, PiDecisionOptions{ClassifierOptions: ClassifierOptions{APIKey: "tok", APIKeySet: true}})
+		}, PiDecisionOptions{APIKey: "tok", APIKeySet: true})
 		if res.StopReason != ClassifierStopReasonError || res.ErrorMessage != "Pi Decision returned out-of-range probability for safe: 1.5" {
 			t.Fatalf("res=%+v", res)
 		}

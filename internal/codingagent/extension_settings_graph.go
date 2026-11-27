@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -669,9 +670,7 @@ func (g *GraphSettingsManager) Call(_ context.Context, method string, raw json.R
 			"compactionCosts": notices.CompactionCosts,
 			"reasoningDrops":  notices.ReasoningDrops,
 		}
-		for k, v := range notices.extra {
-			out[k] = v
-		}
+		maps.Copy(out, notices.extra)
 		return out, nil
 	case "setNotice":
 		return nil, setString(args, 0, func(key NoticeKey) error {
