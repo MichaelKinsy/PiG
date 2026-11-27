@@ -69,3 +69,5 @@ e5d83fa9b1 Follow-up to unreleased work: reverts the automaticContinuation tick 
 673ec41d127750bed9f3de194e9ce72dc39fa74c Follow-up to unreleased work: review cure on unmerged Pi 1.6.1 TUI/settings/SDK port (no shipped release affected)
 f0422a28663fe776e2e450f81579cedad684dbe2 Follow-up to unreleased work: post-pin-bump Pi 1.6.1 oracle/microtask/alloc/SDK-retry integration cure on unmerged branch (no shipped release affected)
 c3c06b6d0add31f06d7692f96cd515c838b60502 Follow-up to unreleased work: review cure on unmerged Pi 1.6.1 staged port (no shipped release affected)
+affc0ddec724ec92c0d648fe12b9397c8daefbab Follow-up to unreleased work: aligns Python and Lisp SDK retryable pattern order on unreleased Pi 1.6.1 integration branch (no shipped release affected)
+8761ea569540ba41c607337f7b508d64c5abab60 Follow-up to unreleased work: regenerates settings.schema.json, restores intl_gen.go, and aligns 4 tests on unreleased Pi 1.6.1 integration branch (no shipped release affected)
