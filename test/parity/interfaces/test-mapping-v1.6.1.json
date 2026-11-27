@@ -67,8 +67,15 @@
     },
     {
       "path": "packages/ai/test/abort.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e61a0c28b3755d1b892780a4070959f8406a1d1ebc3c3c5f29f85febd34176b0"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e61a0c28b3755d1b892780a4070959f8406a1d1ebc3c3c5f29f85febd34176b0",
+      "evidence": [
+        "ai/abort_upstream_test.go#TestAbortMatrixUpstream",
+        "coding/model_runtime_abort_upstream_test.go#TestModelRuntimeRejectedPreparationIsAbortedWhenCanceled",
+        "coding/model_runtime_abort_upstream_test.go#TestModelRuntimeProviderTimeoutWithoutRequestCancellationIsError",
+        "test/parity/scenarios/providers-faux-streaming/14-provider-immediate-abort.toml"
+      ],
+      "rationale": "All 41 cases (20 providers x 2, plus the Bedrock follow-up) run in TestAbortMatrixUpstream with the 0.99.1 model list, including together moonshotai/Kimi-K3 (abort.test.ts:181). The case inventory is read from the current pinned inventory (coding.UpstreamVersion), so the titles are the 0.99.x titles. The paced faux provider supplies generation; remote transport cancellation stays live-only as in the 0.87.1 review. Pi 1.0.3 renames the Azure provider ID to azure; the Go cases use the azure provider. Pi 99fe1489/90d863f7 rename the Xiaomi model to mimo-v2.6-pro in this file; the Go cases use it (71023aec→8efd314f). Pi fdce48eb (#11173) moves the openai-codex case to gpt-6.1-sol because the Codex backend rejects gpt-5.5 for ChatGPT accounts; the Go case takes the same model from the regenerated catalog. Pi c23b9ec1: 3e4f87265 (Qwen Token Plan Individual CN provider, #7989) adds its provider row to the matrix; ai/abort_upstream_test.go runs the same row through the generated catalog."
     },
     {
       "path": "packages/ai/test/anthropic-auth-token.test.ts",
@@ -254,13 +261,22 @@
     },
     {
       "path": "packages/ai/test/anthropic-strict-tool-fallback.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:218e9c5fc8a5c98b0d3d2eb1ff0efd0aa9c142392863d9afe039d60790cd0015"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:218e9c5fc8a5c98b0d3d2eb1ff0efd0aa9c142392863d9afe039d60790cd0015",
+      "evidence": [
+        "ai/anthropic_strict_tool_fallback_upstream_test.go"
+      ],
+      "rationale": "45344bd3a: all cases are ported as same-named subtests with the same inputs and expectations (strict sampling retried without a session; preferred tools sent non-strict right away for a rejected session; strict tried again after the session was cleaned up; a remembered session's required tools rejected without a retry); afterEach cleanup is the harness's t.Cleanup. Red against base: reverting ai/anthropic.go fails two subtests (RevPortAi)."
     },
     {
       "path": "packages/ai/test/anthropic-strict-tool-schema.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:eeb7df219677ca888be09eccd95aed2ba7e1d79da99d2fe49ad1124506829afd"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:eeb7df219677ca888be09eccd95aed2ba7e1d79da99d2fe49ad1124506829afd",
+      "evidence": [
+        "ai/anthropic_strict_tool_schema_upstream_test.go#TestAnthropicStrictToolSchemas",
+        "ai/anthropic_strict_keywords_test.go"
+      ],
+      "rationale": "Both cases (:71 and :102; the first moved here from anthropic-eager-tool-input-compat.test.ts in 0.99.2). The keyword-fallback case runs one subtest per keyword Anthropic strict mode rejects and asserts the serialized tool payload. Pi c23b9ec1 delta (qwen-token-plan-individual-cn rows and compat fields) is carried by the existing cases files/tests."
     },
     {
       "path": "packages/ai/test/anthropic-temperature-compat.test.ts",
@@ -385,8 +401,12 @@
     },
     {
       "path": "packages/ai/test/bedrock-credentials.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c904815434927379161c2647afb8116e264f107d8396c3efd837de34dcb8d902"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c904815434927379161c2647afb8116e264f107d8396c3efd837de34dcb8d902",
+      "evidence": [
+        "ai/providers/bedrock/bedrock_config_upstream_test.go#TestBedrockUpstreamCredentials"
+      ],
+      "rationale": "The complete pinned upstream case set is reviewed in gate-close-03 and its delivered tests are composed from 52c9b1f95. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. This closes the test file, not unrelated partial or live-service obligations."
     },
     {
       "path": "packages/ai/test/bedrock-custom-headers.test.ts",
@@ -435,8 +455,12 @@
     },
     {
       "path": "packages/ai/test/bedrock-proxy-credentials.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f6103976cf86780a805462ad0167d47a68f25b2ee8dccd9c24d7757d16637298"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f6103976cf86780a805462ad0167d47a68f25b2ee8dccd9c24d7757d16637298",
+      "evidence": [
+        "ai/providers/bedrock/node_http_proxy_upstream_test.go#TestBedrockScopedProxyRequest"
+      ],
+      "rationale": "Ported in ai/providers/bedrock/node_http_proxy_upstream_test.go (Pi be269f57b, #12365): profile/SSO credentials resolve through HTTPS_PROXY."
     },
     {
       "path": "packages/ai/test/bedrock-raw-stop-reason.test.ts",
@@ -505,8 +529,15 @@
     },
     {
       "path": "packages/ai/test/cache-retention.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:08a7eac8d8a8fdf3a4f68603e63377ca8447fb8f1bfa66bc16a5d2e715bcd255"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:08a7eac8d8a8fdf3a4f68603e63377ca8447fb8f1bfa66bc16a5d2e715bcd255",
+      "evidence": [
+        "ai/cache_retention_upstream_test.go#TestCacheRetentionAnthropicUpstream",
+        "ai/cache_retention_upstream_test.go#TestCacheRetentionResponsesUpstream",
+        "ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream",
+        "test/parity/scenarios/providers-faux-streaming/11-cache-retention-request-policy.toml"
+      ],
+      "rationale": "All 19 cases; the 0.99.1 changes (apiKey sk-fake-key at :309-419, opencode-go/kimi-k2.6 dropped from the five-row OpenAI Completions list at :507-513) are in TestCacheRetentionCompletionsUpstream 'should omit long cache retention for <provider/id>' (ai/cache_retention_upstream_test.go:138-140)."
     },
     {
       "path": "packages/ai/test/clamp-max-tokens.test.ts",
@@ -530,13 +561,24 @@
     },
     {
       "path": "packages/ai/test/classifier-models.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:56334a82e5263cd74cebb8bfe17f095f68f6d191f0d0c78b5869fb3c565fa13c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:56334a82e5263cd74cebb8bfe17f095f68f6d191f0d0c78b5869fb3c565fa13c",
+      "evidence": [
+        "ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+        "coding/extension_model_types_wire_test.go#TestExtensionClassifyAction",
+        "ai/opencode_endpoints_upstream_test.go#TestOpenCodeCatalogUsesProtocolSpecificEndpoints",
+        "ai/github_copilot_classifier_test.go"
+      ],
+      "rationale": "Pi 7f225f25 changes the 'routes OpenRouter classifier models through the System One API' case (:248) to expect compat {imageInput: state-image-urls, sendImageOptInHeader: false}, explicit so images keep OpenRouter's form when the baseUrl is overridden. The Go subtest of the same name asserts model.Compat.ImageInput == SystemOneImageInputStateImageURLs and a false SendImageOptInHeader on the catalog models, which the regenerated classifier catalog (ai/classifier_models_generated.go) now carries. Earlier review, retained: All 5 cases. 'keeps chat and classifier entries...', 'exposes Jev only through classifier catalog accessors', the three 'routes <provider> Jev' rows and 'routes OpenRouter classifier models' are TestClassifierModelsUpstream subtests. 'rejects chat models at the classifier entry point at runtime' (:94) casts a chat model to ClassifierModel; ai.Models.Classify takes *ClassifierModel so the cast cannot compile in Go, and the reachable runtime entry that accepts any model (the extension classify action, coding.ModelRuntime via ai.AssertClassifierModel) is covered by TestExtensionClassifyAction asserting an error result containing 'is not a classifier model'. 1.1.0 adds three cases, all subtests of TestClassifierModelsUpstream (ai/classifier_models_upstream_test.go): images rejected before the provider call for text-only classifier models, GPT-6 Luna routed through the Decisions API with images (chat entry stays separate), and Decisions models listed only for API key credentials. Pi 3daa2028→b06c1f2c: Pi 195120a9 moves the OpenCode classifier base URLs from /zen/v1 to /inference/v1; TestClassifierModelsUpstream carries the new URLs. Pi 177e2ad7 (#11434) changes the 'routes opencode Jev' rows (:132-134) to expect https://opencode.ai/inference/systemone/v1/systemone (was /inference/v1/systemone) for jev-1.13 and jev-1.13-free; the Go rows follow and failed before the change against the regenerated classifier catalog (ai/classifier_models_generated.go, from the pinned provider data). TestOpenCodeCatalogUsesProtocolSpecificEndpoints walks every OpenCode and OpenCode Go chat and classifier model and checks its baseUrl against the endpoint of its API: openai-completions and openai-responses at /openai/v1, anthropic-messages at /anthropic, google-generative-ai at /google/v1beta, typesafe-system-one at /systemone/v1, under https://opencode.ai/inference and https://opencode.ai/inference/go. Pi c23b9ec1 delta (qwen-token-plan-individual-cn rows and compat fields) is carried by the existing cases files/tests."
     },
     {
       "path": "packages/ai/test/claude-model-generation.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e63bdc453ce2cc2ba4ae07c8dd673a3feb412673ef05d01c20175a193538df67"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e63bdc453ce2cc2ba4ae07c8dd673a3feb412673ef05d01c20175a193538df67",
+      "evidence": [
+        "internal/modelgen/providers/v161_catalog_rules_test.go#TestClaudeThinkingOffFromAnthropicModelsDev"
+      ],
+      "rationale": "Ported in internal/modelgen/providers/v161_catalog_rules_test.go (Pi 433c1fd94, #12489): Claude thinking-off support derived from Anthropic models.dev entry and canonical_id."
     },
     {
       "path": "packages/ai/test/cloudflare-ai-binding.test.ts",
@@ -597,8 +639,23 @@
     },
     {
       "path": "packages/ai/test/constrained-sampling.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3e97196b5d54dcb970ce2367dfc522cbac1467aa3875918ddf184c9c059c26eb"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3e97196b5d54dcb970ce2367dfc522cbac1467aa3875918ddf184c9c059c26eb",
+      "evidence": [
+        "ai/schema_order_test.go#TestConstrainedSamplingStrictSchemaDeclarationOrderUpstream",
+        "ai/schema_order_boundary_test.go#TestToolSchemaJSONOrderIndicesAndMutation",
+        "ai/constrained_sampling_upstream_test.go#TestConstrainedSamplingConversionUpstream",
+        "ai/constrained_sampling_upstream_test.go#TestConstrainedSamplingUnsupportedSchemasUpstream",
+        "ai/constrained_sampling_upstream_test.go#TestConstrainedSamplingGrammarReplayUpstream",
+        "ai/constrained_sampling_upstream_test.go#TestConstrainedSamplingInitialInputUpstream",
+        "ai/constrained_sampling_test.go#TestAppendGrammarToolInputJSONDelta",
+        "ai/responses_replay_identity_test.go",
+        "test/parity/scenarios/providers-faux-streaming/15-grammar-tool-stream-and-replay.toml",
+        "ai/constrained_sampling_upstream_test.go#TestConstrainedSamplingGrammarReplayDropsForeignItemIDsUpstream",
+        "ai/constrained_sampling_test.go#TestCloseGrammarToolInputJSONRejectsAFinalInputThatDoesNotContinueTheStreamedInput",
+        "ai/streaming_tool_arguments_norace_test.go#TestCustomToolInputStreamsInMemoryLinearInItsLength"
+      ],
+      "rationale": "All Pi 1.0.0 cases, including the grammar replay that drops foreign item ids (constrained-sampling.test.ts:260, radius#115). Pi f715a15c1 changes 'keeps grammar input JSON deltas append-only' (append a delta, close with the complete input, append after close throws) and adds 'rejects a final grammar input that does not continue the streamed input' and a linear-memory case for a streamed custom tool call; all three are ported (the linear case drives parseResponsesSSE with 32-character deltas and bounds the allocation ratio at 25). The oracle probes call Pi's append and close functions."
     },
     {
       "path": "packages/ai/test/context-estimate.test.ts",
@@ -613,18 +670,32 @@
     },
     {
       "path": "packages/ai/test/context-overflow.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d4234a8902b1db99a141c1cc756eb62ceacc6cf4e85ec33ba2b5950aab2d8efd"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d4234a8902b1db99a141c1cc756eb62ceacc6cf4e85ec33ba2b5950aab2d8efd",
+      "evidence": [
+        "ai/context_overflow_upstream_test.go#TestContextOverflowMatrixUpstream"
+      ],
+      "rationale": "All 35 cases run in TestContextOverflowMatrixUpstream with the 0.99.1 list, including Together 'Kimi-K3 - should detect overflow via isContextOverflow' (context-overflow.test.ts:341); inventory titles are read from the current pinned inventory. Pi 1.0.3 renames the Azure provider ID to azure; the Go cases use the azure provider. Pi 568c2a82 uses anthropic/claude-sonnet-4.5 for the OpenRouter case because anthropic/claude-sonnet-4 left the catalog; the case in TestContextOverflowMatrixUpstream follows. Pi 99fe1489/90d863f7 rename the Xiaomi model to mimo-v2.6-pro in this file; the Go cases use it (71023aec→8efd314f). Pi fdce48eb (#11173) moves the openai-codex case to gpt-5.6-sol; the Go case takes the same model from the regenerated catalog. Pi c23b9ec1 delta (qwen-token-plan-individual-cn rows and compat fields) is carried by the existing cases files/tests."
     },
     {
       "path": "packages/ai/test/cross-provider-handoff.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:cbb256451d7e8cb1a8988cb6387d92c9f4b16743747923039eb88d15f1581969"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:cbb256451d7e8cb1a8988cb6387d92c9f4b16743747923039eb88d15f1581969",
+      "evidence": [
+        "ai/cross_provider_handoff_upstream_test.go#TestCrossProviderHandoffUpstream",
+        "agent/transform_test.go#TestNormalizeMessages_ThinkingNormalization",
+        "agent/transform_provider_path_test.go#TestCleanToolCycleSurvivesProviderRequest"
+      ],
+      "rationale": "Both cases; the 0.99.1 row together moonshotai/Kimi-K3 label together-kimi-k3 (cross-provider-handoff.test.ts:110) is in ai/cross_provider_handoff_upstream_test.go:28. Pi 1.0.3 renames the Azure provider ID to azure; the Go cases use the azure provider. Pi 99fe1489/90d863f7 rename the Xiaomi model to mimo-v2.6-pro in this file; the Go cases use it (71023aec→8efd314f). Pi fdce48eb (#11173) moves the openai-codex case to gpt-6.1-sol because the Codex backend rejects gpt-5.5 for ChatGPT accounts; the Go case takes the same model from the regenerated catalog. Pi c23b9ec1 delta (qwen-token-plan-individual-cn rows and compat fields) is carried by the existing cases files/tests."
     },
     {
       "path": "packages/ai/test/empty.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4b53e4fefcbb5736f94214033415976121b0130195e0acd6b34c6508413ca9f4"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4b53e4fefcbb5736f94214033415976121b0130195e0acd6b34c6508413ca9f4",
+      "evidence": [
+        "ai/empty_upstream_test.go#TestEmptyMessagesUpstream"
+      ],
+      "rationale": "All 120 cases (30 model groups x 4) run in TestEmptyMessagesUpstream, including together moonshotai/Kimi-K3 (empty.test.ts:370); the model list was compared with every getModel call of the 0.99.1 file in order. Pi 1.0.3 renames the Azure provider ID to azure; the Go cases use the azure provider. Pi 99fe1489/90d863f7 rename the Xiaomi model to mimo-v2.6-pro in this file; the Go cases use it (71023aec→8efd314f). Pi fdce48eb (#11173) moves the openai-codex case to gpt-6.1-sol because the Codex backend rejects gpt-5.5 for ChatGPT accounts; the Go case takes the same model from the regenerated catalog. Pi c23b9ec1 delta (qwen-token-plan-individual-cn rows and compat fields) is carried by the existing cases files/tests."
     },
     {
       "path": "packages/ai/test/env-api-keys.test.ts",
@@ -706,13 +777,25 @@
     },
     {
       "path": "packages/ai/test/github-copilot-anthropic.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3de14b93eab2b7f948c5baeead2702dd0def290e536784cf31f212ddbc7b75cd"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3de14b93eab2b7f948c5baeead2702dd0def290e536784cf31f212ddbc7b75cd",
+      "evidence": [
+        "ai/githubcopilot_test.go#TestCopilotSSE_AnthropicMessages",
+        "ai/githubcopilot_test.go#TestCopilotAnthropicUpstream"
+      ],
+      "rationale": "The complete pinned upstream case set is reviewed in gate-close-04 and its delivered tests are composed from f6562b3a6. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. This closes the test file, not unrelated partial or live-service obligations. Pi e5fe9777 drops the claude-opus-4.7 assertions from 'applies Copilot-specific adaptive thinking effort overrides' because Copilot retired the model; the Go cases use claude-opus-5 for the request body and adaptive thinking (437d51c5), and the claude-opus-5, claude-opus-5.5 and claude-sonnet-4.6 override rows are unchanged."
     },
     {
       "path": "packages/ai/test/github-copilot-oauth.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:605518d69fae9bf4e8df638a5744c656d35f3b8d4533a994aa70d6206a4b710b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:605518d69fae9bf4e8df638a5744c656d35f3b8d4533a994aa70d6206a4b710b",
+      "evidence": [
+        "ai/github_copilot_oauth_upstream_test.go",
+        "ai/github_copilot_catalog_upstream_test.go",
+        "internal/codingagent/copilot_catalog_upstream_test.go#TestCopilotAuthenticatedAccountAvailableModelsUpstream",
+        "ai/github_copilot_classifier_test.go"
+      ],
+      "rationale": "All original device flow, interval/deadline, safe verification URI, refresh/account-catalog and real picker cases pass after 550d9c92a. Supplemental runtime-key transitions retain the account-filter contract. Owner-reviewed case inputs and current upstream hashes are retained. Named evidence passes on the union with Go 1.27.1, -race and -count=1; unrelated partial and live-service obligations remain open. Pi c23b9ec1 delta: Pi c23b9ec1 changes only the fake-timer driving of 'stops policy updates...' (loop until settled); the Go test runs it under testing/synctest, which advances the clock until login settles."
     },
     {
       "path": "packages/ai/test/github-copilot-request-size-overflow.test.ts",
@@ -737,23 +820,42 @@
     },
     {
       "path": "packages/ai/test/google-shared-convert-tools.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:98ce93a20b0e353ebbf6362cd2787429e804fd272a3442a032e7a383b3a668cb"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:98ce93a20b0e353ebbf6362cd2787429e804fd272a3442a032e7a383b3a668cb",
+      "evidence": [
+        "ai/google_convert_tools_upstream_test.go#TestGoogleSharedConvertToolsUpstream",
+        "ai/google_convert_tools_upstream_test.go#TestGoogleSharedConvertToolsConstHandlingUpstream"
+      ],
+      "rationale": "All eight cases ported: exact top-level/nested meta stripping, preserved references, original-schema immutability, JSON-schema mode preservation, ordinary schema, strict support/error/VALIDATED production payload, and both empty-list modes. A compiling overlay disabling legacy parameters fails five cases. Stock Google/Vertex continue selecting parametersJsonSchema; legacy helper behavior is unit evidence only and does not claim a CLI caller. Pi 7314819f0 and a7b94a03f (#11308) add 'google-shared convertTools const handling': literal data under default, examples, enum, const and x-custom is preserved, names in schema maps (including __proto__) are preserved while their schemas are rewritten, only schema-bearing keywords are rewritten, and string and number const values become single-value enums; all four are ported in TestGoogleSharedConvertToolsConstHandlingUpstream (byte-exact parametersJsonSchema text, authored schema unchanged), with the production change ported in ai/google.go rewriteConstAsEnum."
     },
     {
       "path": "packages/ai/test/google-shared-gemini3-unsigned-tool-call.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6529e3a32583b7be80b8a78b9b502f359b2925e61f3216d600f78219b734cf87"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:6529e3a32583b7be80b8a78b9b502f359b2925e61f3216d600f78219b734cf87",
+      "evidence": [
+        "ai/google_history_upstream_test.go#TestGoogleUnsignedToolCallsUpstream"
+      ],
+      "rationale": "Ports all 6 case sites (11 expanded cases): three adapter/model ID rows, unsigned Gen AI and Vertex replay without fabricated signatures, signed replay, non-Gemini-3 replay, and all four requiresToolCallId rows. Compiling mutations of the Gemini major-version boundary fail the ID assertions."
     },
     {
       "path": "packages/ai/test/google-shared-image-tool-result-routing.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0d18e4a7002af8a010193e87dd519f46bec326883e1d20a9d94ffbe705e8df4b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:0d18e4a7002af8a010193e87dd519f46bec326883e1d20a9d94ffbe705e8df4b",
+      "evidence": [
+        "ai/google_contract_0861_test.go#TestGeminiToolResultImageOrderingMatchesUpstream",
+        "ai/google_image_tool_results_d115_test.go#TestGoogleWhitespaceOnlyToolResultTextIsNoText"
+      ],
+      "rationale": "This test directly verifies both cases: converting the same tool-result-image messages for gemini-2.5-pro yields 4 separate content turns with a synthetic \"Tool result image:\" text turn per image, while gemini-3-pro nests both image tool results inside one content turn's FunctionResponse parts. Pi 4dd2b149 (#8720) adds \"treats whitespace-only tool result text as no text\" (:105), ported as ai/google_image_tool_results_d115_test.go#TestGoogleWhitespaceOnlyToolResultTextIsNoText."
     },
     {
       "path": "packages/ai/test/google-shared-retry.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:97effcdaf3e8d01f8a3b5374fe29d1b2b454556bd84132d5284f0e1fdcf277fb"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:97effcdaf3e8d01f8a3b5374fe29d1b2b454556bd84132d5284f0e1fdcf277fb",
+      "evidence": [
+        "ai/google_stream_upstream_test.go#TestGoogleSharedRetryUpstream",
+        "ai/provider_error_response_test.go#TestRetryGoogleRequestReportsErrorResponseWithEmptyHeaders"
+      ],
+      "rationale": "Ports all 3 cases through the Google HTTP provider: headers-less 429 retries once and returns ok, unset retries surfaces 429 after one attempt, and 400 never retries. Go HTTP status/error propagation replaces SDK Error identity. A compiling no-retry-client mutation fails the retry-success case."
     },
     {
       "path": "packages/ai/test/google-shared-signed-empty-blocks.test.ts",
@@ -776,8 +878,12 @@
     },
     {
       "path": "packages/ai/test/google-stream-errors.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1489c5438d1d937e29638d0ab35b1e335bf080212202beb0d9584a93b5509ad0"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1489c5438d1d937e29638d0ab35b1e335bf080212202beb0d9584a93b5509ad0",
+      "evidence": [
+        "ai/google_stream_errors_test.go#TestGoogleStreamPromptBlockVsIncompleteStream"
+      ],
+      "rationale": "Ported in ai/google_stream_errors_test.go (Pi 117eac3a0, #12357): distinguishes Google prompt blocks from empty/incomplete streams across Generative AI and Vertex."
     },
     {
       "path": "packages/ai/test/google-thinking-disable.test.ts",
@@ -792,8 +898,16 @@
     },
     {
       "path": "packages/ai/test/google-thinking-level-map.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4c5c75fdf37fe7570bf8e4121e06b264c111f91878e2c3a80d2d2a80271bd04e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4c5c75fdf37fe7570bf8e4121e06b264c111f91878e2c3a80d2d2a80271bd04e",
+      "evidence": [
+        "ai/google_thinking_level_map_upstream_test.go#TestResolveGoogleThinkingLevelUpstream",
+        "ai/google_thinking_level_map_upstream_test.go#TestGoogleThinkingLevelMapPayloadUpstream",
+        "coding/google_thinking_level_map_test.go#TestModelRuntimeGoogleThinkingMapReachesProvider",
+        "test/parity/scenarios/providers-faux-streaming/14-google-thinking-level-maps.toml",
+        "ai/google_thinking_level_map_upstream_test.go#TestGoogleThinkingLevelMapRegression"
+      ],
+      "rationale": "Ports all nine sites and table rows: exhaustive default/mapped logical resolution and exact errors, both adapter fallback/medium/disable cases, extended and uppercase values, and mapped custom budgets. Three pure regressions fail before the fix; the Model Runtime regression exposes missing reasoning metadata propagation. Compiling overlay mutations fail pure, provider and Model Runtime tests and the exact Pi probe. Pi 3daa2028→b06c1f2c: Pi 1692bba6 adds the Gemini 4 thinkingLevel case; ported in TestGoogleThinkingLevelMapRegression."
     },
     {
       "path": "packages/ai/test/google-thinking-signature.test.ts",
@@ -847,8 +961,15 @@
     },
     {
       "path": "packages/ai/test/image-tool-result.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3aad54caa277960bd8c23cefb1d728dad37af47f590b49185a8bf51d919a473c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3aad54caa277960bd8c23cefb1d728dad37af47f590b49185a8bf51d919a473c",
+      "evidence": [
+        "ai/image_tool_result_upstream_test.go#TestImageToolResultMatrixUpstream",
+        "ai/image_tool_result_wire_test.go#TestGeneratedModelToModelPreservesCapabilities",
+        "ai/image_tool_result_wire_test.go#TestMistralImageToolResultWireKeys",
+        "test/parity/scenarios/providers-faux-streaming/17-image-tool-result-wire.toml"
+      ],
+      "rationale": "All 46 cases (23 models x 2) run in TestImageToolResultMatrixUpstream; the model list matches every getModel call of the 0.99.1 file in order, with Together Kimi-K3 (:301-302) and Baseten Kimi-K2.6 unchanged. Pi 1.0.3 renames the Azure provider ID to azure; the Go cases use the azure provider. Pi 99fe1489/90d863f7 rename the Xiaomi model to mimo-v2.6-pro in this file; the Go cases use it (71023aec→8efd314f). Pi fdce48eb (#11173) moves the openai-codex case to gpt-6.1-sol because the Codex backend rejects gpt-5.5 for ChatGPT accounts; the Go case takes the same model from the regenerated catalog. Pi e5fe9777 deletes the credential-gated 'Baseten Provider (Kimi-K2.6)' pair of cases because models.dev retired the model; the Go matrix drops the baseten row (437d51c5), so 22 models x 2 = 44 cases remain and all 44 pass. Pi c23b9ec1 delta (qwen-token-plan-individual-cn rows and compat fields) is carried by the existing cases files/tests."
     },
     {
       "path": "packages/ai/test/images-models.test.ts",
@@ -931,13 +1052,22 @@
     },
     {
       "path": "packages/ai/test/llama-cpp-classify.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8ade7041462c422e62974f1bbcde9068627e79b7112a2a56b0ce6f69ea1a5652"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8ade7041462c422e62974f1bbcde9068627e79b7112a2a56b0ce6f69ea1a5652",
+      "evidence": [
+        "ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"
+      ],
+      "rationale": "All 15 cases of the new 0.99.1 file are subtests of TestLlamaCppClassifyUpstream (ai/llama_cpp_classify_upstream_test.go), each citing its upstream line."
     },
     {
       "path": "packages/ai/test/max-thinking.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c985d6f23d461678312a2c487668573c718add78b7c5b93aaf598d098fdcb926"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c985d6f23d461678312a2c487668573c718add78b7c5b93aaf598d098fdcb926",
+      "evidence": [
+        "ai/max_thinking_upstream_test.go#TestMaxThinkingUpstream",
+        "coding/cli/max_thinking_upstream_test.go#TestMaxThinkingCodingAgentUpstream"
+      ],
+      "rationale": "All 4 cases; the 0.99.1 it.each row gpt-6.1-sol (:70) is in TestMaxThinkingUpstream (ai/max_thinking_upstream_test.go:69)."
     },
     {
       "path": "packages/ai/test/message-types.test.ts",
@@ -973,8 +1103,14 @@
     },
     {
       "path": "packages/ai/test/mistral-raw-stop-reason.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d03713e87ccc50f9c375c25bf6b7a2da04584afface472f4affdaf10bc0e8646"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d03713e87ccc50f9c375c25bf6b7a2da04584afface472f4affdaf10bc0e8646",
+      "evidence": [
+        "ai/mistral_contract_0861_test.go#TestMistralUnknownFinishReasonTerminatesWithProviderMessage",
+        "ai/mistral_test.go#TestMapMistralStopReason",
+        "ai/mistral_contract_0861_test.go#TestMistralRawStopReasonsUpstream"
+      ],
+      "rationale": "The complete pinned upstream case set is reviewed in gate-close-04 and its delivered tests are composed from f6562b3a6. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. This closes the test file, not unrelated partial or live-service obligations. 1.1.0 (#10487) appends ' (server error)' to the raw 'error' finish reason and asserts isRetryableAssistantError true for it and false for an unmapped reason; TestMistralRawStopReasonsUpstream asserts both and fails when the message loses the suffix."
     },
     {
       "path": "packages/ai/test/mistral-reasoning-mode.test.ts",
@@ -987,8 +1123,13 @@
     },
     {
       "path": "packages/ai/test/mistral-tool-schema.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f17d3113f90c8e9ebc2739920ee2af9007dba1c286a73667c5849859c290f2c8"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f17d3113f90c8e9ebc2739920ee2af9007dba1c286a73667c5849859c290f2c8",
+      "evidence": [
+        "ai/mistral_tool_schema_upstream_test.go#TestMistralToolSchemaSerialization",
+        "ai/mistral_tool_schema_upstream_test.go#TestMistralToolsAreNonStrictUnlessTheModelEnablesStrictMode"
+      ],
+      "rationale": "The pinned file has one case, ported over the Mistral provider with the same tool: a nested object schema with constrainedSampling json_schema strict require, a payload captured through OnPayload, a connection to 127.0.0.1:9 that fails, and the two assertions that the payload carries one tool with strict true and the nested schema and that the failure is not 'Input validation failed'. The assertions on Object.getOwnPropertySymbols cannot port: the TypeBox symbol keys they check come from Type.Object and a Go schema is a plain map with only string keys. A mutation that stops setting strict turned the case red. Pi 2c2a77f9f3ab (#12148, past the pin; the hash is the pinned file's) sets compat supportsStrictMode on that case's model, which TestMistralToolSchemaSerialization does too, and adds the case 'does not send strict tools unless the model enables strict mode' (mistral-large-4, a strict 'prefer' tool, no compat: strict false and required [path]), ported as TestMistralToolsAreNonStrictUnlessTheModelEnablesStrictMode with the same input and expected results."
     },
     {
       "path": "packages/ai/test/model-catalog-types.test.ts",
@@ -1047,8 +1188,12 @@
     },
     {
       "path": "packages/ai/test/models-runtime.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:63af21773d8ef01a62eb6682296ce8b8f26a24b9be51bdaa52e7b644416c0d39"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:63af21773d8ef01a62eb6682296ce8b8f26a24b9be51bdaa52e7b644416c0d39",
+      "evidence": [
+        "ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+      ],
+      "rationale": "Pi 6382d870 case \"refreshes catalogs that need only configured auth without refreshing OAuth\" is ported in ai/models_runtime_refresh_upstream_test.go."
     },
     {
       "path": "packages/ai/test/node-http-proxy.test.ts",
@@ -1126,8 +1271,25 @@
     },
     {
       "path": "packages/ai/test/openai-codex-stream.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:cd8a382e23197b5b0baaeddc1950ccb3c675ac72d5f73ce0160d14d64f01eb5f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:cd8a382e23197b5b0baaeddc1950ccb3c675ac72d5f73ce0160d14d64f01eb5f",
+      "evidence": [
+        "ai/openai_codex_sse_upstream_test.go#TestCodexSSEAndPayloadUpstream",
+        "ai/openai_codex_sse_upstream_test.go#TestCodexSSELifetimeUpstream",
+        "ai/openai_codex_retry_upstream_test.go#TestCodexSSERetriesUpstream",
+        "ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream",
+        "ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketTimeoutsUpstream",
+        "coding/codex_stream_upstream_test.go#TestModelRuntimeCodexSimpleThinkingAndAutoTransport",
+        "test/parity/scenarios/providers-faux-streaming/24-codex-payload-lifetime.toml",
+        "test/parity/scenarios/providers-faux-streaming/25-codex-continuation-recovery.toml",
+        "ai/user_agent_test.go",
+        "coding/codex_model_headers_test.go#TestCodexModelsJSONHeadersOverrideIdentityDefaults",
+        "ai/identity_test.go#TestFormatUserAgentForms",
+        "ai/identity_oracle_test.go#TestProviderIdentityHeadersMatchPi",
+        "ai/openai_codex_ws_connection_limit_upstream_test.go#TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket",
+        "ai/provider_stream_event_order_test.go#TestCodexWebSocketLimitAfterLeadingRateLimitsEndsTheMessage"
+      ],
+      "rationale": "All 30 upstream case sites and 39 expanded rows are ported, including SSE framing/cancellation/timeouts, retry timing, cache affinity, selected reasoning maps, tool choice/strictness, tier pricing, account isolation, WebSocket reuse/age/idle/reconnect and both missing-continuation recovery paths. Model Runtime drives simple thinking and auto transport. D65 retains the existing product User-Agent identity difference. Compiling mutations and exact Pi payload/lifecycle and continuation scenarios guard the fixes. 1.1.0 renames and extends three cases: raw provider events with the model for each (TestCodexSSEAndPayloadUpstream 'streams SSE responses and forwards raw provider events', TestCodexWebSocketUpstream 'forwards auto transport and raw provider events from streamSimple') and 'lets model and caller headers override originator and User-Agent' (user_agent_test.go TestCodexModelAndCallerHeadersOverrideOriginatorAndUserAgent through StreamSimple with the model's headers; coding TestCodexModelsJSONHeadersOverrideIdentityDefaults through a models.json entry). Pi bd3c9b82 (adc5fa9f, 04a93bad) replaces the file's local `pi (<platform> <release>; <arch>)` expression with `formatUserAgent()`; the matching Go cases assert `ai.FormatUserAgent(nil)`, which carries PiG's D65 value, and ai/identity_test.go#TestFormatUserAgentForms locks the format. Codex keeps its own `originator` (D26). Pi c23b9ec1 delta: Pi c23b9ec1 adds 'removes SSE retry backoff abort listeners after the retry succeeds' (:324, #11708). Go has no abort-listener registry; the subtest 'removes SSE retry backoff abort waiters after the retry succeeds' asserts the Go carrier (a goroutine parked on the request context) is absent after each backoff and after the result. Mutation-checked: a goroutine leaked in abortableSleep fails it."
     },
     {
       "path": "packages/ai/test/openai-completions-cache-control-format.test.ts",
@@ -1151,8 +1313,14 @@
     },
     {
       "path": "packages/ai/test/openai-completions-non-null-assistant-content.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:dcd62e004d994185e3e6d0b8ece7a0859465973072eea06685b7d15839a84455"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:dcd62e004d994185e3e6d0b8ece7a0859465973072eea06685b7d15839a84455",
+      "evidence": [
+        "ai/openai_completions_non_null_assistant_content_upstream_test.go#TestRequiresNonNullAssistantContentSendsNullContentForToolCallOnlyMessagesByDefault",
+        "ai/openai_completions_non_null_assistant_content_upstream_test.go#TestRequiresNonNullAssistantContentSendsEmptyStringWithoutInsertingAnAssistantMessage",
+        "ai/openai_completions_non_null_assistant_content_upstream_test.go#TestRequiresNonNullAssistantContentStillInsertsAssistantMessageWhenRequiresAssistantAfterToolResult"
+      ],
+      "rationale": "All 3 cases (:86,:94,:107) have a Go test of the same title."
     },
     {
       "path": "packages/ai/test/openai-completions-prompt-cache.test.ts",
@@ -1177,8 +1345,14 @@
     },
     {
       "path": "packages/ai/test/openai-completions-raw-stop-reason.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:203aa3e315a647e33f50286025ef0fd0b7c4aa82e65e1776ba21f723edd6acfc"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:203aa3e315a647e33f50286025ef0fd0b7c4aa82e65e1776ba21f723edd6acfc",
+      "evidence": [
+        "ai/openai_completions_metadata_upstream_test.go#TestOpenAICompletionsRawStopReasonUpstream",
+        "test/parity/scenarios/providers-faux-streaming/11-completions-response-metadata.toml",
+        "ai/openrouter_finish_reason_test.go"
+      ],
+      "rationale": "Ports both cases with the upstream chunks at parser and HTTP caller boundaries. Both failed before preserving choice.finish_reason as RawStopReason. The exact Pi 0.87.1 comparator also exercises successful and filtered terminal results."
     },
     {
       "path": "packages/ai/test/openai-completions-reasoning-details.test.ts",
@@ -1235,8 +1409,18 @@
     },
     {
       "path": "packages/ai/test/openai-completions-tool-choice.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:68b4cbd440bdbdce52501d3bbb841b294786c4b95f5aff4141d1f0e0b075b5f8"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:68b4cbd440bdbdce52501d3bbb841b294786c4b95f5aff4141d1f0e0b075b5f8",
+      "evidence": [
+        "ai/openai_tool_choice_payload_upstream_test.go#TestOpenAICompletionsToolChoicePayloadUpstream",
+        "ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream",
+        "ai/openai_tool_choice_stream_upstream_test.go#TestOpenAICompletionsToolChoiceStreamUpstream",
+        "ai/openai_copilot_reasoning_upstream_test.go#TestOpenAICompletionsTopLevelReasoningTokensUpstream",
+        "ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsReasoningEffortUpstream",
+        "test/parity/scenarios/providers-faux-streaming/22-completions-tool-choice.toml",
+        "test/parity/scenarios/providers-faux-streaming/23-completions-interleaved-deltas.toml"
+      ],
+      "rationale": "All 49 upstream cases and their model/provider rows are ported with original request, metadata, replay, usage and stream assertions. The two cases Pi 86918f9eeb adds past the pin (a top-level usage.reasoning_tokens is read; GitHub Copilot chat-completions models send reasoning_effort) are the first rows of the two tables in ai/openai_copilot_reasoning_upstream_test.go. Independent event blocks, first tool identity, function/custom presence, native efforts, provider controls and strict property order have regression guards and compiling mutations; exact Pi scenarios exercise payload and event paths. No cases are omitted. Pi 0.99.2 review: the 0.99.1 fixture changes are ported: opencode-go/kimi-k2.6 became opencode-go/kimi-k3 in the replay and stream fixtures (:1323,:1370,:1380,:1522) and the two thinking cases now use OpenCode Kimi K2.6 (:1428,:1450) - openai_tool_choice_formats_upstream_test.go:54-56,75-77,200-201 and openai_tool_choice_stream_upstream_test.go:26. Pi 3daa2028→b06c1f2c: Pi 63035734 and 381a2d8e reorder thinking before text in the expected stream events and update the Xiaomi replay; TestOpenAICompletionsToolChoiceStreamUpstream and the formats test follow. Pi 99fe1489/90d863f7 rename the Xiaomi model to mimo-v2.6-pro in this file; the Go cases use it (71023aec→8efd314f). 0.5.2 (Pi e86b0547): \"uses OpenRouter reasoning object instead of reasoning_effort\" uses openrouter deepseek/deepseek-r1-0528, which is what the case in ai/openai_tool_choice_formats_upstream_test.go now loads; the catalog still lists deepseek/deepseek-r1 too (the frozen OpenRouter data of this pin is not Pi's of that day), so the change is a model-id switch with no behavior difference. Pi c23b9ec1 delta (qwen-token-plan-individual-cn rows and compat fields) is carried by the existing cases files/tests."
     },
     {
       "path": "packages/ai/test/openai-completions-tool-result-images.test.ts",
@@ -1259,8 +1443,12 @@
     },
     {
       "path": "packages/ai/test/openai-decisions.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7eb9b37c560e925ccc6e8aafeaa78478aec9f7c18cf8648e776bbfb953bac4ca"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7eb9b37c560e925ccc6e8aafeaa78478aec9f7c18cf8648e776bbfb953bac4ca",
+      "evidence": [
+        "ai/openai_decisions_upstream_test.go#TestOpenAIDecisionsUpstream"
+      ],
+      "rationale": "All 12 cases (question/answer mapping, long-context pricing, images after the state, the 128-image limit, refusals keeping billed usage, missing and mistyped answers, prototype-sensitive ids, gateway timeouts not retried, other server errors retried, API error bodies, other classifier APIs and missing keys) are subtests of TestOpenAIDecisionsUpstream with the same inputs and expectations."
     },
     {
       "path": "packages/ai/test/openai-reasoning-replay-e2e.test.ts",
@@ -1402,8 +1590,12 @@
     },
     {
       "path": "packages/ai/test/openai-responses-tool-call-replay.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:01ebedc24639091d695f41fd4c58ce20195fd5ca434b60092953f14dfdbb38fb"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:01ebedc24639091d695f41fd4c58ce20195fd5ca434b60092953f14dfdbb38fb",
+      "evidence": [
+        "ai/openai_responses_tool_call_replay_test.go#TestOpenAIResponsesReplaysToolCallsWithStatusCompleted"
+      ],
+      "rationale": "Ported in ai/openai_responses_tool_call_replay_test.go (Pi 69a699348, #12367): replays function_call and custom_tool_call with status completed."
     },
     {
       "path": "packages/ai/test/openai-responses-tool-result-images.test.ts",
@@ -1516,18 +1708,40 @@
     },
     {
       "path": "packages/ai/test/overflow.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:93ef1d8b722edc3b744263e9c03ca7b186d3affb11d85692bf7b7ad9d31e9b0a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:93ef1d8b722edc3b744263e9c03ca7b186d3affb11d85692bf7b7ad9d31e9b0a",
+      "evidence": [
+        "ai/overflow_upstream_test.go#TestOverflowUpstream",
+        "ai/overflow_upstream_test.go#TestOverflowLengthStopsUpstream",
+        "ai/overflow_upstream_test.go#detects z.ai CN endpoint prompt-exceeds-max-length errors",
+        "ai/overflow_upstream_test.go#TestOverflowRequestSizeUpstream",
+        "ai/overflow_oracle_test.go#TestContextOverflowMatchesPiOnSeededMessages",
+        "ai/overflow_test.go#TestOverflowRequestTooLargeIdentifierBoundaries"
+      ],
+      "rationale": "Pi d3398f82 adds the LiteLLM pre-call ContextWindowExceededError row; ported as the LiteLLM row of the overflow table."
     },
     {
       "path": "packages/ai/test/pi-decision.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:abd112be868a0522c05394edf6a213a72a04519d8592f5e5fb88e92dfad4a55e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:abd112be868a0522c05394edf6a213a72a04519d8592f5e5fb88e92dfad4a55e",
+      "evidence": [
+        "ai/pi_decision_test.go#TestClassifyPiDecisionAndOpenRouterClassifier"
+      ],
+      "rationale": "Ported in ai/pi_decision_test.go (Pi c2f3a5cea, 9553d5834, 604359311): POST /decision canonical context/options, error envelope, onResponse error reporting, probability validation, and image support."
     },
     {
       "path": "packages/ai/test/pi-messages.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:32b5010505812ed8d27fb33319d322d14f720b81de4c384eb98b170047f29125"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:32b5010505812ed8d27fb33319d322d14f720b81de4c384eb98b170047f29125",
+      "evidence": [
+        "ai/pi_messages_test.go",
+        "ai/provider_stream_events_upstream_test.go#pi-messages forwards parsed wire events in order before converting them",
+        "ai/pi_messages_test.go#TestPiMessagesStreamsTextAndToolCalls",
+        "ai/pi_messages_test.go#TestPiMessagesPropagatesServerErrorEvents",
+        "ai/pi_messages_test.go#TestPiMessagesDebugAndOnResponse",
+        "ai/pi_messages_test.go#TestPiMessagesRejectsContentIndexesThatAreNotTheNextOrAnExistingBlock"
+      ],
+      "rationale": "The ten pi-messages tests cover request shape/auth/custom headers, text/tool streaming, debug/onResponse, backend and SSE errors, missing auth, missing terminal events, thinking/options, abort and built-in registration, covering every upstream case hermetically. Pi 0.99.2 review: 0.99.1 adds \"forwards parsed wire events in order before converting them\" (pi-messages.test.ts:168-195), ported in provider_stream_events_upstream_test.go:279. The two registration cases (:275,:280) are ported as TestPiMessagesIsRegisteredBuiltinAPI. Pi 14c811841 (#11265) adds responseModel to the pi-messages done and error events: the tool-use case expects message.responseModel (:149), the server-sent error case expects it (:258), and the case without it has no responseModel property (:195); the Go cases assert the three."
     },
     {
       "path": "packages/ai/test/pre-generation-error.test.ts",
@@ -1565,18 +1779,54 @@
     },
     {
       "path": "packages/ai/test/provider-error-response.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1d3a280bac6c203f8f207153fc540434919c70b6fd9d3a3f985037fd9a02e927"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1d3a280bac6c203f8f207153fc540434919c70b6fd9d3a3f985037fd9a02e927",
+      "evidence": [
+        "ai/provider_error_response_test.go#TestProviderErrorResponsesReportedToOnResponse",
+        "ai/provider_error_response_oracle_test.go#TestProviderErrorResponseEventsMatchPi"
+      ],
+      "rationale": "Ported in ai/provider_error_response_test.go and ai/provider_error_response_oracle_test.go (Pi 8a57d42a5, #12502): every failed HTTP attempt is reported to onResponse across provider adapters."
     },
     {
       "path": "packages/ai/test/provider-retry.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ab5fd8410c98413ef8869079b302a7425eb23264c22de80441965a820f94f6d4"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ab5fd8410c98413ef8869079b302a7425eb23264c22de80441965a820f94f6d4",
+      "evidence": [
+        "ai/provider_retry_test.go#TestIsRetryableProviderResponse",
+        "ai/provider_retry_test.go#TestProviderRetryDelay",
+        "ai/provider_retry_request_upstream_test.go#TestRetryProviderRequestNoRetryStatuses",
+        "ai/provider_error_response_test.go#TestRetryProviderRequestErrorResponses"
+      ],
+      "rationale": "Retrying retryable errors, not retrying non-retryable ones, rejecting an above-cap provider-requested delay, allowing the cap to be disabled, and aborting a delay via context are all covered by the TestRetryTransport_* and TestProviderRetryDelay subtests. 1.1.0 adds one case (:40): a 504 listed in noRetryStatuses fails at once with one request; TestRetryProviderRequestNoRetryStatuses asserts it and the unlisted retry to the budget."
     },
     {
       "path": "packages/ai/test/providers.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:bdff6b3294c74b4433e22972e25c46b398e06bf8cd5fe2ddd63db48fb64ffd16"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:bdff6b3294c74b4433e22972e25c46b398e06bf8cd5fe2ddd63db48fb64ffd16",
+      "evidence": [
+        "ai/faux_test.go#TestFauxProvider_Cancellation",
+        "ai/register_builtins_test.go#TestRegisteredAPIs",
+        "ai/api_key_providers_test.go#TestAPIKeyProvidersStable",
+        "ai/provider_auth_upstream_test.go#TestProvidersOwnedCloudLoginUpstream",
+        "ai/provider_auth_upstream_test.go#TestProvidersCloudEnvironmentAuthUpstream",
+        "ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
+        "ai/providers_dispatch_upstream_test.go#TestLazyAPIOnlyDeclaredDeferredCapabilitiesUpstream",
+        "ai/models_collection_upstream_test.go",
+        "ai/models_provider_test.go#TestProviderMissingAPIImplementationUpstream",
+        "ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+        "ai/faux_deferred_models_upstream_test.go",
+        "test/parity/scenarios/providers-faux-streaming/23-models-provider-lifecycle.toml",
+        "ai/providers_login_upstream_test.go#TestProviderOwnedBedrockLoginUpstream",
+        "ai/providers_login_upstream_test.go#TestProviderOwnedVertexLoginUpstream",
+        "ai/providers_login_upstream_test.go#TestEnvAPIKeyAuthLoginUpstream",
+        "ai/auth_login_test.go",
+        "test/parity/scenarios/providers-faux-streaming/22-provider-owned-login.toml",
+        "ai/providers_upstream_test.go#TestBuiltinProvidersUpstream",
+        "ai/providers_runtime_upstream_test.go#TestBuiltinModelsRuntimeRegistersCatalog",
+        "ai/providers_runtime_upstream_test.go#TestFauxQueuedResponsesThroughModelRuntime",
+        "ai/providers_unknown_upstream_test.go#TestBuiltinProvidersUnknownProviderIDsUpstream"
+      ],
+      "rationale": "All 30 upstream case sites (19 builtin providers, 2 envApiKeyAuth, 6 createProvider, 3 fauxProvider) are ported with Pi's inputs and expectations across the listed files; the mid-conversation supported (28) and unsupported (12) model tables, the proxied tool-change rows, the Kimi K3 and Kimi Coding prices and the Cloudflare, Bedrock and Vertex auth cases equal Pi 1.5.1's lists row by row. Pi 647a197fc moves the Fireworks unsupported row to deepseek-v4p1-flash (cited in the case). Provider, auth, deferred and refresh behavior is exercised through production CreateProvider, Models and ProviderStreams, not test-only facades."
     },
     {
       "path": "packages/ai/test/qwen-token-plan-models.test.ts",
@@ -1603,8 +1853,15 @@
     },
     {
       "path": "packages/ai/test/radius-provider.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:332fa3cdbb3313c23dfe6d985d1f7150b715fa56d800f5ebe3cc081a7f36a6e9"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:332fa3cdbb3313c23dfe6d985d1f7150b715fa56d800f5ebe3cc081a7f36a6e9",
+      "evidence": [
+        "ai/radius_test.go",
+        "ai/radius_config_test.go",
+        "ai/radius_test.go#TestRadiusProviderExposesNoModelsWhenTheOrganizationDisabledAll",
+        "ai/radius_classifier_test.go"
+      ],
+      "rationale": "The integrated Radius provider/config tests cover the static default catalog, empty custom gateway, refreshed overlay, offline cached catalog and config sanitization/loading; all four upstream provider-catalog cases are covered. 1.1.0 (radius.ts:30-32) replaces the shipped catalog with the account's gateway catalog once known: the refreshed and cached cases now assert the exact model ids [balanced, organization-only] and the new case asserts an empty gateway catalog exposes no models (radius_test.go). Ported in RadiusProvider.GetModels; a mutation that treats an empty catalog as unknown fails the new case."
     },
     {
       "path": "packages/ai/test/radius-thinking-replay-e2e.test.ts",
@@ -1627,13 +1884,30 @@
     },
     {
       "path": "packages/ai/test/responseid.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d08a76686d2c72cda93e217bca52b0c7976cea55e2f6cee99e53b24d6b8aee5d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d08a76686d2c72cda93e217bca52b0c7976cea55e2f6cee99e53b24d6b8aee5d",
+      "evidence": [
+        "ai/responseid_upstream_test.go#TestResponseIDUpstream",
+        "ai/responseid_upstream_test.go#TestCompletionsResponseMetadataKeepsFirstValue",
+        "ai/responseid_upstream_test.go#TestResponsesResponseMetadataUsesFinalIDWithoutModel",
+        "test/parity/scenarios/providers-faux-streaming/12-provider-response-id.toml"
+      ],
+      "rationale": "All eleven upstream response-ID assertions run through the actual API providers with hermetic HTTP SSE responses and the exact upstream model IDs, including both Vertex configurations, both Copilot paths, Azure and Codex. The fixture ID is asserted exactly rather than merely truthy. Live provider availability and actual ADC/OAuth exchange are live-only dependencies, not response-ID assertions. The original Completions case failed with an empty ID. Compiling metadata mutations fail both the unit tests and exact real-Pi output; Responses final-ID and absent response-model behavior are cross-path regression guards. Pi 1.0.3 renames the Azure provider ID to azure; the Go cases use the azure provider. Pi fdce48eb (#11173) moves the openai-codex case to gpt-6.1-sol because the Codex backend rejects gpt-5.5 for ChatGPT accounts; the Go case takes the same model from the regenerated catalog."
     },
     {
       "path": "packages/ai/test/retry.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a92997dd5e863f29e6e2594f64a27c6d16b7ccd7d15cadc24c83deb9aa0d9a8f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a92997dd5e863f29e6e2594f64a27c6d16b7ccd7d15cadc24c83deb9aa0d9a8f",
+      "evidence": [
+        "ai/assistant_retry_test.go#TestIsRetryableAssistantErrorClassification",
+        "ai/assistant_retry_test.go#TestRetryDelayMsCapsAgentRetryDelay",
+        "ai/assistant_retry_test.go#TestRetryAssistantCall",
+        "ai/assistant_retry_classifier_oracle_test.go#TestIsRetryableAssistantErrorMatchesPiOracle",
+        "ai/assistant_retry_socket_codes_upstream_test.go#TestIsRetryableAssistantErrorNodeSocketErrorCodes",
+        "ai/assistant_retry_websocket_limit_upstream_test.go#TestIsRetryableAssistantErrorCodexWebSocketConnectionLimit",
+        "ai/assistant_retry_patterns_upstream_test.go"
+      ],
+      "rationale": "Audited all 19 case sites (22 cases after expanding the four DNS table rows) against the existing assistant retry tests. Added recognizable classification names and source-line citations; tightened successful content assertions to exact block equality. Tests preserve exact strings, callback arguments and ordering, retry budgets, capped delay sequences, aborted backoff normalization, and error propagation. No cases are designed out. Pi 0.99.2 review: 0.99.1 adds \"keeps the ChatGPT subscription usage limit non-retryable\" (retry.test.ts:88) and \"retries temporary ChatGPT subscription errors\" (:94, two rows), ported at assistant_retry_test.go:52-53,67. All 21 case sites are ported. Pi 1.0.4 adds the \"pending stream has been canceled\" classification rows (bare and \"(caused by: ...)\" wording), ported at assistant_retry_test.go:44-45; all case sites are ported. Pi 550f1f3e (#10965): \"matches service unavailable wording\" with its two messages (:73-81) is two rows of TestIsRetryableAssistantErrorClassification; reverting the retry pattern fails both. Pi 0fbdbd3f (#10996, two rows) and 698a2d23 (#10920, four rows) add classification rows; all six are in assistant_retry_test.go TestIsRetryableAssistantErrorClassification. ai/vertex_adc_token_error_test.go now expects the node-fetch wording retryable, as Pi 0fbdbd3f makes it. Pi cedefc53 adds 'keeps the ChatGPT Business workspace usage limit non-retryable' (the subscription_sharing_workplace_individual_usage_limit_exceeded 429) and Pi 6e491cfa adds the two 'does not match status codes inside ids or longer numbers' rows (a req_011CU503xyz request id and 5316784 bytes); all three are ported in TestIsRetryableAssistantErrorClassification (assistant_retry_test.go) and TestIsRetryableAssistantErrorMatchesPiOracle compares the classifier with the vendored Pi module over those messages, with stream disconnected before completion (Pi 29057ece) and the boundary cases x429, 5000 and _429_. Pi c23b9ec1 delta (qwen-token-plan-individual-cn rows and compat fields) is carried by the existing cases files/tests. Pi 4699b5b26 delta: \"matches Node socket error codes: %s\" (six rows) and \"does not match socket error codes inside longer identifiers: %s\" (three rows) are the nine subtests of TestIsRetryableAssistantErrorNodeSocketErrorCodes, with the same text and expectation."
     },
     {
       "path": "packages/ai/test/sampling-options.test.ts",
@@ -1649,13 +1923,26 @@
     },
     {
       "path": "packages/ai/test/sse.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:336bf77901c942ebc50713371c3160210b4e821329a21dc62007a0aa045c132c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:336bf77901c942ebc50713371c3160210b4e821329a21dc62007a0aa045c132c",
+      "evidence": [
+        "ai/sse_stream_decoder_test.go#TestSseDecoderUpstream",
+        "ai/sse_shared_behavior_test.go",
+        "ai/sse_linear_test.go"
+      ],
+      "rationale": "Ported in ai/sse_stream_decoder_test.go, ai/sse_shared_behavior_test.go, and ai/sse_linear_test.go (Pi da7e26cc8, #12451): chunking, line endings, split CRLF, empty event name, and comment-only blocks."
     },
     {
       "path": "packages/ai/test/stream.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8446f02e54f4b42636caeb85700f862468dff1da5a27fea2788f6a42664a8b97"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8446f02e54f4b42636caeb85700f862468dff1da5a27fea2788f6a42664a8b97",
+      "evidence": [
+        "ai/stream_upstream_test.go#TestStreamUpstream",
+        "ai/testdata/stream-cases.json",
+        "test/parity/testdata/extract-stream-cases.mjs",
+        "test/parity/scenarios/providers-faux-streaming/17-native-stream-options.toml"
+      ],
+      "rationale": "All 233 cases are ported with source-cited wrapper inputs extracted from pinned Pi, independently drift-checked, and Go implementations of every original helper assertion. Native HTTP/SSE/AWS and real Codex WebSocket fixtures exercise text, partial tool arguments, thinking, image payloads, multi-turn tool results, OAuth-shaped requests and all three Bedrock payload hooks. Fixed ignored raw Anthropic thinking/budget/effort and Bedrock requestMetadata; compiling mutations and exact Pi payload probes prove these paths. For stream.test.ts:1544, upstream test expectation disagrees with the pinned implementation; PiG matches the implementation. The credential-gated suite at :1541 expects max, but bedrock-converse-stream.ts:795-807 and a direct onPayload probe return high for Opus 4.6 xhigh. The lead approved asserting high, with no divergence or designed-out disposition. Remote model generation is not claimed by the hermetic matrix. Pi 0.99.2 review: the only change since 0.87.1 is Together moving to moonshotai/Kimi-K3 (stream.test.ts:759-760). ai/testdata/stream-cases.json was extracted from the 0.99.2 file: its 233 rows carry the same 233 line numbers and titles as the inventory. TestStreamUpstream's drift check re-runs the extractor, which needs the npm Pi 0.99.2 dist (not installable yet), so that test FAILS in this environment with ERR_MODULE_NOT_FOUND; the row data itself was compared against the inventory here. Pi 1.0.3 renames the Azure provider ID to azure; the Go cases use the azure provider. Pi 3daa2028→b06c1f2c: Pi b06c1f2c renames the Kimi For Coding e2e describe to 'via OpenAI Completions'; ai/testdata/stream-cases.json is regenerated from the test by test/parity/testdata/extract-stream-cases.mjs. Pi 99fe1489/90d863f7 rename the Xiaomi model to mimo-v2.6-pro in this file; the Go cases use it (71023aec→8efd314f). Pi 95364a54 (#10910): the NVIDIA case is Nemotron 3.5 Super VL; ai/testdata/stream-cases.json is regenerated from the pinned source (extract-stream-cases.mjs). Pi fdce48eb (#11173) moves the openai-codex case to gpt-6.1-sol because the Codex backend rejects gpt-5.5 for ChatGPT accounts; the Go case takes the same model from the regenerated catalog. Pi e5fe9777 renames the GitHub Copilot suite from gpt-5.3-codex via OpenAI Completions to gpt-6-luna via OpenAI Responses and makes its thinking and multi-turn cases use the suite model instead of gpt-5-mini; ai/testdata/stream-cases.json is regenerated from the pinned source (still 233 cases, drift-checked by test/parity/testdata/extract-stream-cases.mjs) and TestStreamUpstream runs the GitHub Copilot cases against the gpt-6-luna catalog entry. Pi v1.4.0→v1.5.0 delta (v1.5.0 has 233 upstream case sites, every changed hunk of the file diff checked against its Go assertion): only the StringEnum import path moved (utils/typebox-helpers to utils/string-enum); no case changes, so all 233 cases and stream-cases.json stand. Pi c23b9ec1 delta (qwen-token-plan-individual-cn rows and compat fields) is carried by the existing cases files/tests."
     },
     {
       "path": "packages/ai/test/streaming-json.test.ts",
@@ -1777,8 +2064,15 @@
     },
     {
       "path": "packages/ai/test/tokens.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:25928dca132b80660edd49a78c0b0682f05e7880f40fae5d2d2140f5aacab8cf"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:25928dca132b80660edd49a78c0b0682f05e7880f40fae5d2d2140f5aacab8cf",
+      "evidence": [
+        "ai/tokens_cases_upstream_test.go",
+        "ai/tokens_upstream_test.go#TestTokensOnAbortUpstream",
+        "ai/google_raw_thinking_test.go#TestGoogleRawThinkingOptions",
+        "test/parity/scenarios/providers-faux-streaming/16-google-native-thinking.toml"
+      ],
+      "rationale": "All 31 rows use the original model selection, poem prompt, options and >=1000 UTF-16-unit abort threshold. Native endpoints send only the usage available before abort and wait for transport cancellation rather than finishing first. Tests preserve all API/provider-specific zero, input-only, positive-token and cost assertions and wait for backend cleanup. The four Xiaomi rows skipped by upstream are exercised hermetically according to their current catalog API; no live early-usage availability is claimed. Clearing retained usage on failure compiles and fails early-usage rows. Raw Google thinking-object/zero-budget and neutral reasoning preservation required fixes in the option representation and Node/host bridge, with red/mutation tests and a paired ModelRuntime scenario. Pi 0.99.2 review: the only change since 0.87.1 is Together moving to moonshotai/Kimi-K3 (tokens.test.ts:189), ported at tokens_cases_upstream_test.go:27-28. Pi 1.0.3 renames the Azure provider ID to azure; the Go cases use the azure provider. Pi 99fe1489/90d863f7 rename the Xiaomi model to mimo-v2.6-pro in this file; the Go cases use it (71023aec→8efd314f). Pi fdce48eb (#11173) moves the openai-codex case to gpt-6.1-sol because the Codex backend rejects gpt-5.5 for ChatGPT accounts; the Go case takes the same model from the regenerated catalog. Pi c23b9ec1 delta (qwen-token-plan-individual-cn rows and compat fields) is carried by the existing cases files/tests."
     },
     {
       "path": "packages/ai/test/tool-call-id-normalization.test.ts",
@@ -1791,13 +2085,25 @@
     },
     {
       "path": "packages/ai/test/tool-call-without-result.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9a73b68f184c22923c762a21fbcd03c2ad67e17e37fc57e020ce74a0246714a5"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:9a73b68f184c22923c762a21fbcd03c2ad67e17e37fc57e020ce74a0246714a5",
+      "evidence": [
+        "ai/tool_call_without_result_cases_test.go",
+        "ai/tool_call_without_result_upstream_test.go#TestToolCallWithoutResultUpstream",
+        "ai/tool_flow_test.go#TestProviderToolFlowBoundaries",
+        "test/parity/scenarios/providers-faux-streaming/15-missing-tool-results.toml"
+      ],
+      "rationale": "All 30 cases retain the exact catalog IDs, explicit Completions override, calculate tool/schema, two user prompts and response assertions. Native-wire endpoints emit the first tool call and reject the next request unless the missing result is repaired. Every case failed before provider-side repair and passes after it; a compiling bypass mutation fails both cases and the real-Pi ModelRuntime fixture. The shared pass mirrors Pi's synthetic result, failed-turn omission and held-system ordering without importing Agent's D48 orphan-removal divergence. Exact Pi re-probes also corrected stale cache-control/native-tool-change expectations; comparator strength is unchanged. Pi 0.99.2 review: the only change since 0.87.1 is Together moving to moonshotai/Kimi-K3 (tool-call-without-result.test.ts:194), ported at tool_call_without_result_cases_test.go:27-28. Pi 1.0.3 renames the Azure provider ID to azure; the Go cases use the azure provider. Pi 99fe1489/90d863f7 rename the Xiaomi model to mimo-v2.6-pro in this file; the Go cases use it (71023aec→8efd314f). Pi fdce48eb (#11173) moves the openai-codex case to gpt-6.1-sol because the Codex backend rejects gpt-5.5 for ChatGPT accounts; the Go case takes the same model from the regenerated catalog. Pi c23b9ec1 delta (qwen-token-plan-individual-cn rows and compat fields) is carried by the existing cases files/tests."
     },
     {
       "path": "packages/ai/test/total-tokens.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4fe99a1ad083601487fe5cfd49d5d3c87638f8a97cc1efaaac3494f1f5824df6"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4fe99a1ad083601487fe5cfd49d5d3c87638f8a97cc1efaaac3494f1f5824df6",
+      "evidence": [
+        "ai/total_tokens_upstream_test.go#TestTotalTokensUpstream",
+        "ai/provider_matrix_test.go"
+      ],
+      "rationale": "All 35 cases, including the duplicate OpenRouter DeepSeek case, retain the catalog model IDs, API override, 50-paragraph system prompt, two questions, assistant replay, raw effort options, total-versus-component equality on both turns, and Anthropic cache-activity assertion. A hermetic HTTP endpoint supplies native SSE or AWS binary eventstream payloads to every production provider parser; completed assistant messages are not injected. Test credentials replace network auth, and Codex selects SSE explicitly. This proves provider extraction/accounting rather than live cache availability or model generation. Incrementing the shared stream builder's extracted total compiles and fails every matrix case; the restored matrix passes. Pi 0.99.2 review: the only change since 0.87.1 is Together moving to moonshotai/Kimi-K3 (total-tokens.test.ts:382; the case title at :381 still says Kimi-K2.6), ported at total_tokens_upstream_test.go:44-45. Pi 1.0.3 renames the Azure provider ID to azure; the Go cases use the azure provider. Pi 568c2a82 uses anthropic/claude-sonnet-4.5 for the OpenRouter case (anthropic/claude-sonnet-4 left the catalog); the case in TestTotalTokensUpstream follows. Pi 99fe1489/90d863f7 rename the Xiaomi model to mimo-v2.6-pro in this file; the Go cases use it (71023aec→8efd314f). Pi fdce48eb (#11173) moves the openai-codex case to gpt-6.1-sol because the Codex backend rejects gpt-5.5 for ChatGPT accounts; the Go case takes the same model from the regenerated catalog. Pi c23b9ec1 delta (qwen-token-plan-individual-cn rows and compat fields) is carried by the existing cases files/tests."
     },
     {
       "path": "packages/ai/test/transcript-tool-changes.test.ts",
@@ -1842,13 +2148,24 @@
     },
     {
       "path": "packages/ai/test/typesafe-system-one.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:186a57ad8181fd8c6ed564ffb5a7bbb7283146b36397640298d3685defa4ab38"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:186a57ad8181fd8c6ed564ffb5a7bbb7283146b36397640298d3685defa4ab38",
+      "evidence": [
+        "ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream"
+      ],
+      "rationale": "All 15 cases are subtests of TestTypesafeSystemOneUpstream with the upstream titles. Pi 7f225f25 renames 'rejects image input before sending' to 'rejects image input for text-only models before sending' (:123, the message now names the model: '<API> does not support image input for jev-latest', for System One and Cloudflare) and adds 'sends images to TypeSafe as assets with the opt-in header' (:136), 'rejects image formats TypeSafe does not accept before sending' (:176), 'sends images to OpenRouter as image_url parts in the state' (:189), the table 'sends OpenRouter's image form to %s' (:222) and 'lets compat override detected image settings per field' (:258). The Go subtests assert the exact wire bodies (assets, image_url state parts), the typesafe-danger-zone-images header present only with images, the pre-send rejections with no request, and the per-field compat override."
     },
     {
       "path": "packages/ai/test/unicode-surrogate.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d8706b6da0c00817537275092793513e0bf6e0dc9f74a51e45665b39f9621167"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d8706b6da0c00817537275092793513e0bf6e0dc9f74a51e45665b39f9621167",
+      "evidence": [
+        "ai/unicode_surrogate_cases_test.go",
+        "ai/unicode_surrogate_upstream_test.go#TestUnicodeSurrogateUpstream",
+        "ai/sanitize_unicode_test.go#TestSanitizeSurrogatesCodeUnits",
+        "test/parity/scenarios/providers-faux-streaming/14-unicode-tool-results.toml"
+      ],
+      "rationale": "All 90 source cases preserve their model IDs, API selection, tool IDs, exact emoji/LinkedIn text, lone high code unit, history, effort options, and response assertions through production providers against native-wire fixtures. WTF-8 represents the same unpaired UTF-16 code unit in a Go string; converting an invalid Go rune first would erase the test input. Fixed the no-op sanitizer and missing Anthropic/Google/Mistral tool-text calls. The endpoint validates Pi's exact sanitized text rather than accepting replacement-character corruption. Compiling helper and converter-call mutations fail the matrix and the real-Pi exact-output fixture through ModelRuntime; AI tests, race checks, and the provider parity family pass. Pi 0.99.2 review: the only change since 0.87.1 is Together moving to moonshotai/Kimi-K3 (unicode-surrogate.test.ts:549, the emoji-in-tool-results and LinkedIn rows), ported at unicode_surrogate_cases_test.go:89-92. Pi 1.0.3 renames the Azure provider ID to azure; the Go cases use the azure provider. Pi 99fe1489/90d863f7 rename the Xiaomi model to mimo-v2.6-pro in this file; the Go cases use it (71023aec→8efd314f). Pi fdce48eb (#11173) moves the openai-codex case to gpt-6.1-sol because the Codex backend rejects gpt-5.5 for ChatGPT accounts; the Go case takes the same model from the regenerated catalog. Pi c23b9ec1 delta (qwen-token-plan-individual-cn rows and compat fields) is carried by the existing cases files/tests."
     },
     {
       "path": "packages/ai/test/uuid.test.ts",
@@ -2572,8 +2889,12 @@
     },
     {
       "path": "packages/chord/test/host/host-data.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e22f049592a9c0a56136a2a91de9a4625d74306856794ca494f3e38144bfcf17"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e22f049592a9c0a56136a2a91de9a4625d74306856794ca494f3e38144bfcf17",
+      "evidence": [
+        "chord/next/host/host_host_data_test.go"
+      ],
+      "rationale": "All 15 upstream cases run in the evidence file, one Go test each: live owners (4), lifecycle (3), older and newer tables (2), the gate (2) and review round 3 (4). Forced differences are stated in the file's header: a Promise Pi leaves pending is a goroutine whose result arrives on a channel, 'await delivered()' is a wait for what the step reaches (never a duration), and the handler holding a transaction open waits with chordctx.Receive so it parks as a handler ctx should. Pi 8270d9af6 adds three cases (delete limited to one plugin; the reads over its tables rerun; a plugin not loaded is refused invalid/args): TestHostDataADeleteLimitedToOnePlugin* in host_host_data_test.go."
     },
     {
       "path": "packages/chord/test/host/host.test.ts",
@@ -2606,8 +2927,37 @@
     },
     {
       "path": "packages/chord/test/host/named-query.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f3bb04bfdb59417d73c496cc6a348ee91f5429fd2cf94132a5f223d44d71bc73"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f3bb04bfdb59417d73c496cc6a348ee91f5429fd2cf94132a5f223d44d71bc73",
+      "evidence": [
+        "chord/next/host/host_named_query_test.go#TestNamedQueryTheMemberCheckRefusesAnythingButWhatSelfQueriesReturnedAListedQueryWithoutABuilderAndASecondSchema",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryStagingRefusesTheQueriesAnAttemptRefusesTheNamedBuildersAndTheTable",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryAJoinedQueryReadsAPageAtATimeWithoutALiveRead",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryTheMappingsProjectionGetsOnlyTheColumnsReadsAndPartnerReadsListAlsoWhenTheQueryOrdersOrMatchesByOthers",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryAPublisherWhoseNewCodeDeclaresNoTableServesItsSetNoMore",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryAPageFailsWhenItsSetIsUnboundAndHealsWhenItIsBoundAgain",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryAClubThatRestartsWithTheSessionsGivesItsPagesWatchTheUnservedSet",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryAnUnknownQueryOfAMemberIsInvalidAndARemoteObjectHasNone",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryAPageChecksItsArgumentsByTheContractsSchemaAndWhatTheBuilderReturns",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryATargetIsWhatReadingItReadsAndDecodesAStoredRowAsItsPageDoes",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryAReferenceTellsItsFollowersOfEveryOtherInstanceOfItsObject",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryASetMovedToAnotherPluginsTableInOneReloadIsBoundToTheNewTable",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryAHostThatClosedServesNoSetAnymore",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryTwoTablesOfOneObjectExposingOneSetAreRefusedWhereTheyAreDeclaredNamingBoth",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryStagingAcceptsTheOwnNamedQueryCountedAsAnAttemptDoes",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryAUsedColumnDroppedFailsExactlyTheReadsUsingItBeforeAnySQLRestoredTheyHeal",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryASetExposedNoMoreIsNotServedTwoTablesExposingOneNameAreRefusedNamingBoth",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryAReaderNeedsAStore",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryAJoinedQueryMapsEachRowWithItsPartnersProjectedColumnsInThePartnersOrder",
+        "chord/next/host/host_named_query_test.go#TestNamedQueryAColumnSetAcrossItsPublishersReloadsUnchangedCodeAndAnUnusedColumnAddedNoReaderRestartsEqualRowsSendNothing",
+        "chord/next/host/host_named_query_old_code_test.go#TestNamedQueryAPluginKeepsItsOldCodeWhenItsNewFactoryDeclaresAReadWrongly",
+        "chord/next/host/host_named_query_restart_test.go#TestNamedQueryProvidersRestartAWriteAdmittedBeforeTheSealAndPausedAcrossItPublishesThenNoOldStatementRuns",
+        "chord/next/host/host_named_query_restart_test.go#TestNamedQueryProvidersRestartARemovedProvidersReadsLeaveTheIndexItsReadersKeepTheirRowsAndAnotherOwnersCommitRunsNothing",
+        "chord/next/host/host_named_query_restart_test.go#TestNamedQueryProvidersRestartRunsNoStatementCompiledForTheTableAsItWasNoFailedFrameWhileAnotherOwnerCommits",
+        "chord/next/host/host_named_query_restart_test.go#TestNamedQueryProvidersRestartAListsMoreDuringTheMigrationWaitsForTheSuccessorNoReadOfTheOldStatementIsRegistered",
+        "chord/next/host/host_named_query_restart_test.go#TestNamedQueryProvidersRestartKeepsNothingOfTheOldCodesNamedQueryOnceItsReadersReadTheSuccessors"
+      ],
+      "rationale": "92e1db6ca: the tests of host/named-query.ts and the queries members. Ported: the Go tests named in the evidence run every case of the file."
     },
     {
       "path": "packages/chord/test/host/native.test.ts",
@@ -2660,8 +3010,26 @@
     },
     {
       "path": "packages/chord/test/host/query-reader.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9b0cbe88117f13074162b2fa8389991d8db1d0acda4ed296571c018743a8ad63"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:9b0cbe88117f13074162b2fa8389991d8db1d0acda4ed296571c018743a8ad63",
+      "evidence": [
+        "chord/next/host/host_query_reader_test.go#TestQueryReaderOpen",
+        "chord/next/host/host_query_reader_test.go#TestQueryReaderProjection",
+        "chord/next/host/host_query_reader_test.go#TestQueryReaderArgumentsThatFollowAValue",
+        "chord/next/host/host_query_reader_test.go#TestQueryReaderArgumentsTheBuilderRefuses",
+        "chord/next/host/host_query_reader_test.go#TestQueryReaderFailures",
+        "chord/next/host/host_query_reader_test.go#TestQueryReaderAColumnSetNobodyServes",
+        "chord/next/host/host_query_reader_test.go#TestQueryReaderReadersBeforeNatives",
+        "chord/next/host/host_query_reader_test.go#TestQueryReaderArgumentsThatHaveNoValueWhenTheReaderOpens",
+        "chord/next/host/host_query_reader_test.go#TestQueryReaderAProvidersRestart",
+        "chord/next/host/host_query_reader_test.go#TestQueryReaderCount",
+        "chord/next/host/host_query_reader_test.go#TestQueryReaderMemory",
+        "chord/next/host/host_query_reader_test.go#TestQueryReaderTheCommitStepChoosesItsReads",
+        "chord/next/host/host_query_reader_queue_test.go#TestQueryReaderQueueTwoMovesWhileAReadRunsReadOnceWithTheLaterTarget",
+        "chord/next/host/host_query_reader_queue_test.go#TestQueryReaderQueueACloseDropsTheQueuedReadAndDetachesTheReading",
+        "chord/next/host/host_query_reader_queue_test.go#TestQueryReaderQueueAMoveBeforeTheFirstReadOnlyWakesItsAttempt"
+      ],
+      "rationale": "92e1db6ca: the tests of host/query-reader.ts. Ported: the Go tests named in the evidence run every case of the file."
     },
     {
       "path": "packages/chord/test/host/read-declarations.test.ts",
@@ -3020,8 +3388,22 @@
     },
     {
       "path": "packages/chord/test/node/app/app.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:5b978f5126eaeed5b2e15ae7752e5d44c8b6982653698bf0aae91973edac8ba4"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:5b978f5126eaeed5b2e15ae7752e5d44c8b6982653698bf0aae91973edac8ba4",
+      "evidence": [
+        "chord/nextnode/app/app_test.go",
+        "chord/nextnode/app/app_workers_test.go",
+        "chord/nextnode/app/app_changes_test.go",
+        "chord/nextnode/app/app_executable_test.go",
+        "chord/nextnode/app/app_bases_scan_test.go",
+        "chord/nextnode/app/app_bases_test.go",
+        "chord/nextnode/app/app_bases_linux_test.go",
+        "chord/nextnode/app/app_bases_workers_linux_test.go",
+        "chord/nextnode/app/app_export_test.go",
+        "chord/nextnode/app/app_export_host_test.go",
+        "chord/nextnode/plugins/plugins_watcher_base_test.go"
+      ],
+      "rationale": "34 of the 34 upstream cases run in the evidence files. starting and closing (9) run in app_test.go (the type-level half of 'starts without worker kinds and without principal.worker' is a compile error in Pi; Go refuses worker kinds without a worker principal at start, which the case asserts); workers (2) in app_workers_test.go and app_changes_test.go; applying changes one after another and installs in app_changes_test.go; base code (9) in app_executable_test.go (the server's own code is its executable, D603: cases that start with no base given), app_bases_scan_test.go (answers before the scan finished; a record edited right after the start), app_changes_test.go (marks base for a change of base files, a worker kind's entry, not a rewrite with the same bytes) and, for 'settles baseWatched only once the base bundles' records were compared', plugins_watcher_base_test.go TestRecordBaseSettlesOnceItsFirstComparisonsEnded; bases built after the listen (5) in app_bases_linux_test.go, app_bases_workers_linux_test.go and app_bases_test.go (a worker kind's base is its executable's copy, D600); the seven 'export and import per address' cases in app_export_test.go (running worker, the worker's data object, the lock, a failed address, the round trip with its refusals) and app_export_host_test.go (the server's records and rows of the address copied, refused, replaced and deleted with it, and the order around the server's commit). The server's data is two hosts' parts merged into the one `server.archive` (D462), so the two export cases run against the NodeHost's part (Pi's TypeScript host reached through the process's control requests) and the Go host's part together, and the import's one server commit is two commits in Go. The close case, 'closes without waiting for a scan of its own code stalled on a read', is TestAppClosesWithoutWaitingForAScanOfItsOwnCodeStalledOnAReadItsLateResultIsDropped in app_bases_scan_test.go (Pi holds the scan on a named pipe its start script imports; the Go server's own code is its executable, so the test holds the step that names it: the close returns while the scan is held, HTTP answers no more, the late result is dropped, nothing is reported or recorded). App.Close does not wait for a build or a scan, as Pi's does not; App.Wait joins them and is Go's own lifetime ownership."
     },
     {
       "path": "packages/chord/test/node/app/archive.test.ts",
@@ -3219,8 +3601,12 @@
     },
     {
       "path": "packages/chord/test/node/http/admission.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ce47321c5a206781ba5cae7296b546dbd14c020b4db203976ed21e097ec1dd75"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ce47321c5a206781ba5cae7296b546dbd14c020b4db203976ed21e097ec1dd75",
+      "evidence": [
+        "chord/nextnode/http/admission_test.go"
+      ],
+      "rationale": "All 6 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/node/http/authenticate.test.ts",
@@ -3251,8 +3637,12 @@
     },
     {
       "path": "packages/chord/test/node/http/headers.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:dfd8a866728096ab0175228eb33f169187f828d0d942a8530f7c2d7eed75cc84"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:dfd8a866728096ab0175228eb33f169187f828d0d942a8530f7c2d7eed75cc84",
+      "evidence": [
+        "chord/nextnode/http/headers_test.go"
+      ],
+      "rationale": "All 6 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/node/http/http.test.ts",
@@ -3349,13 +3739,26 @@
     },
     {
       "path": "packages/chord/test/node/plugins/install.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7cf43fcbb4a87b5f1ffbdfe4bb560f7ee5b7d0abd5216fbef33e2da2b24c1442"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7cf43fcbb4a87b5f1ffbdfe4bb560f7ee5b7d0abd5216fbef33e2da2b24c1442",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_install_test.go"
+      ],
+      "rationale": "All 14 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/node/plugins/plugins.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a0fb8ea4cc9f6a4220639575cff3140d81adc7ef4f76fa30ba5d4b29fa43e392"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a0fb8ea4cc9f6a4220639575cff3140d81adc7ef4f76fa30ba5d4b29fa43e392",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_endtoend_test.go",
+        "chord/nextnode/plugins/plugins_examples_test.go",
+        "chord/nextnode/plugins/plugins_node_bridged_test.go",
+        "chord/nextnode/plugins/plugins_node_test.go",
+        "chord/nextnode/plugins/plugins_plugins_test.go",
+        "chord/nextnode/plugins/plugins_runtime_test.go"
+      ],
+      "rationale": "All 25 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation. Pi 1.5.1 changes are JS file-watcher/GC timing fixes (settleFileEvents, vi.waitFor, capture before release) with no Go counterpart."
     },
     {
       "path": "packages/chord/test/node/plugins/runtime.test.ts",
@@ -3516,8 +3919,12 @@
     },
     {
       "path": "packages/chord/test/node/surfaces/web.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d8f91864bb46734657eb2cffa47da969a19add84bce8df94db9377ed5f30c36b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d8f91864bb46734657eb2cffa47da969a19add84bce8df94db9377ed5f30c36b",
+      "evidence": [
+        "chord/nextnode/app/app_surfaces_test.go"
+      ],
+      "rationale": "All 6 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"the base bundle and the page › answers the current base hash publicly, and refuses the page and files to a request without a session\" -> nextnode/app/app_surfaces_test.go:TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASignIn; \"plugin scripts › publishes a new set on a rollout without waiting for clients; the previous files stay served\" -> nextnode/app/app_surfaces_test.go:TestWebSurfacePublishesANewSetOnARolloutWithoutWaitingForClientsThePreviousFilesStayServed. Pi ff7414d51 renames one case title (a request without a sign-in) and issues through SignIns: TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASignIn; the hash is the pin's."
     },
     {
       "path": "packages/chord/test/node/tui/actions.test.ts",
@@ -3659,8 +4066,15 @@
     },
     {
       "path": "packages/chord/test/node/workers/workers.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4938bd93d020bf28a83057e524ed971b93ed86d3f46682666a8023b195e8e934"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4938bd93d020bf28a83057e524ed971b93ed86d3f46682666a8023b195e8e934",
+      "evidence": [
+        "chord/nextnode/workers/workers_base_held_linux_test.go#TestTheWorkerBaseAStartWaitsForAHeldBuildAndForksOnceItEndedTheStartDataIsAskedForThen",
+        "chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseAStartWaitsForTheBasesBuildAndStartsItWhenNothingDid",
+        "chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseCloseKeepsTheBasesCopyUntilItsWorkersExitedACloserStillFindsItsProgram",
+        "chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseForksWithoutEnableSourceMapsNodeParsesNoMapOfTheBaseWhoseMapsLieBesideItsFiles"
+      ],
+      "rationale": "284e63d9c: a start waits for the base's build and starts it when nothing did, and the close keeps the base's files until its workers exited; ported as the three tests. 602b8d1cb9: \"forks without --enable-source-maps\" is ported as the fork's arguments being ExecArgv verbatim (a Go worker has no source maps and never had the flag; its base's maps lie beside no files). Pi-only: the held pipe is the entry (a Go worker is a program, not a Node bundle)."
     },
     {
       "path": "packages/chord/test/output-skip.test.ts",
@@ -3757,8 +4171,14 @@
     },
     {
       "path": "packages/chord/test/remote/hold.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e94ca10e9a7005e0283b9afbe28503f63f01be59010d99ebd9dd77d66f2f7f36"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e94ca10e9a7005e0283b9afbe28503f63f01be59010d99ebd9dd77d66f2f7f36",
+      "evidence": [
+        "chord/next/host/remote_hold_test.go",
+        "chord/next/host/remote_hold_kept_test.go",
+        "chord/next/host/remote_hold_reload_test.go"
+      ],
+      "rationale": "All 50 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none). Pi 47e9d74f9 + 90ed3e3b1 add 2 cases (two references sharing one hold follow a restart, a dropped version and a removal together; a reference made during a version-dropping reload's drain joins the old live binding): the two TestHoldsAcrossAReload... tests at the end of remote_hold_reload_test.go; the hash is the pin's."
     },
     {
       "path": "packages/chord/test/remote/host-link.test.ts",
@@ -4104,8 +4524,12 @@
     },
     {
       "path": "packages/chord/test/store/import.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:05f3d42181580670badf3f87b57897a1f2e70c0064ade7cd3688bb1b28f78f99"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:05f3d42181580670badf3f87b57897a1f2e70c0064ade7cd3688bb1b28f78f99",
+      "evidence": [
+        "chord/next/store/import_test.go"
+      ],
+      "rationale": "All 8 upstream cases run in the evidence file: round trips (3), json(...) cells holding null (2) and refusals (the it.each table, one subtest per row, the non-empty backend, and the input that stalls cancelled by ctx). Pi 1.5.2 (8a5da3ce6) adds the row 'a host's data archive' (a manifest carrying a host is refused with 'import it with importHostData'), which runs in TestImportRefusals. Go also runs cases Pi has no title for: an input whose Next panics, and an archive written before schema 3 (TestImportOfAnArchiveWrittenBeforeSchema3)."
     },
     {
       "path": "packages/chord/test/store/json-column.test.ts",
@@ -4127,8 +4551,13 @@
     },
     {
       "path": "packages/chord/test/store/live-query.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:bf79b93c7a17703645648cd30d20c9d8f6333c2adaed75662161a8f19973c754"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:bf79b93c7a17703645648cd30d20c9d8f6333c2adaed75662161a8f19973c754",
+      "evidence": [
+        "chord/next/host/host_live_query_test.go",
+        "chord/next/store/live_query_test.go"
+      ],
+      "rationale": "All 12 upstream cases run in the evidence files: eleven in host_live_query_test.go (the objects, the host and the reload), the refresh applied again in live_query_test.go. The reload case reports the object `restarted`, as Pi does since a5d209afd; the limit cases take an int64, so the fractional and absent limits Pi's type admits cannot be written. Pi 92e1db6ca changes three expectations (a touching put costs two statements more than another table's: the keyed probe; query_failed names `query`; a refresh applied again goes through ReadRefresh and Reads): host_live_query_test.go and live_query_test.go."
     },
     {
       "path": "packages/chord/test/store/outbox.test.ts",
@@ -4230,8 +4659,13 @@
     },
     {
       "path": "packages/chord/test/store/store.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:024888a919b5d55b28daa1b77a9813590dde7fcb5f193e70890b4db94e00ccce"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:024888a919b5d55b28daa1b77a9813590dde7fcb5f193e70890b4db94e00ccce",
+      "evidence": [
+        "chord/next/store/store_test.go",
+        "chord/next/store/group_commit_test.go"
+      ],
+      "rationale": "All 45 upstream cases run in store_test.go (27: opening 3, the commit step 4, refusals and unknown outcomes 5, the id allocator 3, one host per store 1, close 1, a commit series 10) and group_commit_test.go (18). Pi 1.5.2 (8a5da3ce6) adds 'opening > migrates a store of schema 2 to 3: its records kept, a host column and its index added', which runs in store_test.go (which also opens a file written by the pre-schema-3 code). The Go forms of a throwing adapter, adoption and admission are stated in the files' headers (a panic recovered at the commit boundary)."
     },
     {
       "path": "packages/chord/test/store/table-changes.test.ts",
@@ -4450,8 +4884,12 @@
     },
     {
       "path": "packages/chord/test/sync/sync.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:aa1426c55e38aa7108c7deb05a7fa0592b7b461df41dfc774ca433a31427194c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:aa1426c55e38aa7108c7deb05a7fa0592b7b461df41dfc774ca433a31427194c",
+      "evidence": [
+        "chord/sync/sync_test.go"
+      ],
+      "rationale": "All 24 upstream cases run in the evidence files. Pi's `overriding` Proxy is an embedding struct, its monkeypatch of `chord.replay` the unexported `apply` of PullOptions, and its promise settling channel waits."
     },
     {
       "path": "packages/chord/test/telemetry-ingest/facet.test.ts",
@@ -4889,8 +5327,12 @@
     },
     {
       "path": "packages/coding-agent/test/auth-storage.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:dc5df3e63b87f5149dd45ef172ba0e9a308925993b3914c0896341f8a36a3019"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:dc5df3e63b87f5149dd45ef172ba0e9a308925993b3914c0896341f8a36a3019",
+      "evidence": [
+        "internal/pilock/symlink_alias_test.go#TestAuthLocksShareOneLockAcrossSymlinkedPaths"
+      ],
+      "rationale": "The added Pi case (symlinked auth.json path waits for the lock held on the real file, #11655) is ported with a lock held on the real file and the alias loops blocked."
     },
     {
       "path": "packages/coding-agent/test/auth-terminal.test.ts",
@@ -4933,8 +5375,14 @@
     },
     {
       "path": "packages/coding-agent/test/bash-executor-truncation.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b1fa45b25acf2b53c942de33fff1d3599775ec7526eb8cf86ec56aad9b287d4b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b1fa45b25acf2b53c942de33fff1d3599775ec7526eb8cf86ec56aad9b287d4b",
+      "evidence": [
+        "internal/codingagent/tools/bash_executor_truncation_test.go#TestExecuteBashWithOperationsReportsDiscardedChunks10164",
+        "internal/codingagent/compaction/bash_discarded_output_test.go#TestBashExecutionToTextNamesTheLogOfDiscardedOutput",
+        "coding/bash_execution_llm_text_upstream_test.go#TestRecordedBashResultReachesModelContextUpstream"
+      ],
+      "rationale": "Both upstream cases run: the discarded-chunk case (completed and cancelled) and the short-output case in internal/codingagent/tools; the bashExecutionToText assertion runs through the compaction converter and, end to end, through Session.RecordBashResult and agent.ConvertToLLM."
     },
     {
       "path": "packages/coding-agent/test/block-images.test.ts",
@@ -5085,8 +5533,37 @@
     },
     {
       "path": "packages/coding-agent/test/clipboard.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3da91d30cee5c91a6cc061616cbc8a6dce10b4bdbcfbd377900349053692e39b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3da91d30cee5c91a6cc061616cbc8a6dce10b4bdbcfbd377900349053692e39b",
+      "evidence": [
+        "internal/codingagent/clipboard_read_text_test.go#TestReadClipboardTextAwaitsNativeTextAndCatchesRejectedReads",
+        "internal/codingagent/clipboard_read_text_test.go#TestReadClipboardTextCommandResultStopsFallback",
+        "internal/codingagent/clipboard_read_text_test.go#TestReadClipboardTextUsesInjectedNativeX11AfterCommandFailures",
+        "internal/codingagent/clipboard_read_text_test.go#TestReadClipboardTextFallsBackToX11ToolsWhenWlPasteIsUnavailable",
+        "internal/codingagent/clipboard_copy_test.go#TestCopyToClipboardLocalNativeSuccessSkipsOSC52AndCommands",
+        "internal/codingagent/clipboard_copy_test.go#TestCopyToClipboardLinuxSkipsTheNativeWriter",
+        "internal/codingagent/clipboard_copy_test.go#TestCopyToClipboardWaitsForTheNativeWriteBeforeRemoteOSC52",
+        "internal/codingagent/clipboard_copy_test.go#TestCopyToClipboardRejectedNativeWriteFallsBackToPbcopy",
+        "internal/codingagent/clipboard_copy_test.go#TestCopyToClipboardReadOnlyNativeClipboardUsesTheCommandWriter",
+        "internal/codingagent/clipboard_copy_test.go#TestCopyToClipboardRemoteNativeAndCommandFailure",
+        "internal/codingagent/clipboard_copy_test.go#TestCopyToClipboardWSLWritesWindowsClipboardThroughPowerShell",
+        "internal/codingagent/clipboard_copy_test.go#TestCopyToClipboardWSLInWindowsTerminalUsesPowerShellForOversizedText",
+        "internal/codingagent/clipboard_copy_test.go#TestCopyToClipboardTriesXclipAndXselAfterWlCopy",
+        "internal/codingagent/clipboard_copy_test.go#TestCopyToClipboardLocalLinuxFailureReportsX11",
+        "internal/codingagent/clipboard_copy_test.go#TestCopyToClipboardDisplayLessLinuxFallsBackToOSC52",
+        "internal/codingagent/clipboard_copy_test.go#TestCopyToClipboardWSLFallsBackToOSC52WithoutInterop",
+        "internal/codingagent/clipboard_copy_test.go#TestCopyToClipboardWSLInWindowsTerminalPrefersOSC52",
+        "internal/codingagent/clipboard_copy_test.go#TestCopyToClipboardWSLWithADisplayPrefersLinuxTools",
+        "internal/codingagent/clipboard_copy_test.go#TestCopyToClipboardReportsWaylandInsteadOfX11",
+        "internal/codingagent/clipboard_read_text_test.go#TestReadClipboardTextUsesGetNativeClipboardText",
+        "internal/codingagent/clipboard_read_text_test.go#TestHostNativeClipboardTextWrapsGetNativeClipboard",
+        "internal/codingagent/clipboard_read_text_test.go#TestReadClipboardTextTermuxReadsOnAndroid",
+        "internal/codingagent/clipboard_copy_test.go#TestCopyToClipboardTermuxOnAndroidWritesThroughTermuxClipboardSet",
+        "internal/codingagent/clipboard_copy_test.go#TestCopyToClipboardReportsTheTermuxAPIRequirementOnAndroid",
+        "internal/codingagent/clipboard_remote_session_pi_test.go#TestCopyToClipboardPIClipboardOSC52ForcesOSC52AfterTheLocalWrite",
+        "internal/codingagent/clipboard_copy_test.go"
+      ],
+      "rationale": "Every case through 1.1.0 is ported offline (reviewed row carried: the readClipboardText and copyToClipboard tables, the 1.1.0 Termux cases #10391). 1.2.0 adds PI_CLIPBOARD_OSC52 to the cleared environment and one test.each with three rows, 'PI_CLIPBOARD_OSC52=1 emits OSC 52 after a successful %s copy' (darwin, win32, linux with DISPLAY :99; #10114, #10826, #10835): TestCopyToClipboardPIClipboardOSC52ForcesOSC52AfterTheLocalWrite runs the three rows (windows for win32) and asserts the local write (the native writer on darwin and windows, `xclip -selection clipboard` with the text on linux) and then exactly one OSC 52 sequence; the copy oracle's cleared environment includes PI_CLIPBOARD_OSC52."
     },
     {
       "path": "packages/coding-agent/test/code-highlighter.test.ts",
@@ -5595,8 +6072,13 @@
     },
     {
       "path": "packages/coding-agent/test/external-editor.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d57d3bcffb837d19d4c79e87f2ca5dd700be533b46650effa0a8a8585b2118cd"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d57d3bcffb837d19d4c79e87f2ca5dd700be533b46650effa0a8a8585b2118cd",
+      "evidence": [
+        "internal/codingagent/external_editor_test.go#TestExternalEditorUpstream",
+        "internal/codingagent/helper_dir_test.go#TestOpenExternalEditorReportsFailures"
+      ],
+      "rationale": "All 4 cases are ported; 'reports an editor that cannot be launched' (Pi 6454d07e) is the missing-binary row of TestOpenExternalEditorReportsFailures, which also covers a non-zero exit and a signal."
     },
     {
       "path": "packages/coding-agent/test/file-mutation-queue.test.ts",
@@ -5631,8 +6113,15 @@
     },
     {
       "path": "packages/coding-agent/test/first-time-setup.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:ee9f2e6b90303668ecbc09ff089eadbc5c4fa1578faa46aa39ebb4f163601511",
+      "evidence": [
+        "internal/codingagent/settings_explicit_values_test.go#TestAnalyticsSettings",
+        "coding/cli/first_time_setup_upstream_test.go#TestFirstTimeSetupOriginalCasesAsFork",
+        "internal/codingagent/first_time_setup_test.go#TestFirstTimeSetupOmitsThemePickerAndCancelsOnEsc",
+        "internal/codingagent/first_time_setup_oracle_test.go#TestFirstTimeSetupMatchesPi"
+      ],
+      "rationale": "Ported with four designed-out cases (owner decision, 2026-09-29, Michael Kinsy; listed in designedOutCases, which the gate checks against the inventory): the four shouldRunFirstTimeSetup cases (:36 true for experimental/default directory/missing settings, :40 false without experimental features, :46 false with a custom directory, :52 false with existing settings) are designed out. Pi runs first-time setup only for its official distribution identity (src/cli/startup-ui.ts:122-140 requires package @earendil-works/pi-coding-agent, app pi and .pi config directory); the caller is src/main.ts:661, which gates showFirstTimeSetup. PiG is never Pi's official distribution, so the only possible port was a fabricated test-only identity, which review rejected (a test-only implementation with no production path does not close a hot-path upstream test). No fake official identity is added; PiG's own first-time setup (D88) has its own gate and evidence. The remaining four analytics cases are ported and their evidence is verified by the gate, with their original assertions and source citations: disabled/no ID (:60), opt-in UUID (:67), opt-out/no ID (:76), and stable ID across toggles (:85). Both the original in-memory manager and supplemental file-backed manager pass on Linux with Go 1.27.1 and -count=1; a compiling mutation that regenerates the ID on every opt-in fails the toggle case in both managers. The real CLI fork test TestFirstTimeSetupOriginalCasesAsFork keeps the four original input combinations and asserts PiG's own first-time setup gate (D88, owner decision 2026-10-02): an interactive start in the default agent directory shows setup exactly when settings.json is missing, regardless of PI_EXPERIMENTAL, and a custom agent directory skips it as Pi's gate does (src/cli/startup-ui.ts:144-146); it is supplemental evidence for D88, not a port of the official-distribution expectations.",
       "designedOutCases": [
         "shouldRunFirstTimeSetup › returns true when experimental, default agent dir, and no settings.json",
         "shouldRunFirstTimeSetup › returns false when experimental features are disabled",
@@ -5641,18 +6130,7 @@
       ],
       "protects": "shouldRunFirstTimeSetup gates the setup dialog on Pi's official distribution, the default agent directory and a missing settings.json.",
       "pigTest": "Go tests of PiG's own gate: TestShouldRunFirstTimeSetupGate and TestFirstTimeSetupOriginalCasesAsFork run the four upstream inputs with PiG's identity, and TestForkedDistributionDoesNotBlockOnOfficialFirstTimeSetup. A test with a fake official identity was considered and rejected by review.",
-      "whyNot": "Upstream's property is that only the official distribution runs the setup. PiG is never that distribution (D2, D88), so the cases cannot run as written. The PiG-shaped tests exist and carry the gate property for PiG.",
-      "evidence": [
-        "internal/codingagent/settings_explicit_values_test.go#TestAnalyticsSettings",
-        "coding/cli/first_time_setup_upstream_test.go#TestFirstTimeSetupOriginalCasesAsFork"
-      ],
-      "rationale": "Ported with four designed-out cases (owner decision, 2026-09-29, Michael Kinsy; listed in designedOutCases, which the gate checks against the inventory): the four shouldRunFirstTimeSetup cases (:36 true for experimental/default directory/missing settings, :40 false without experimental features, :46 false with a custom directory, :52 false with existing settings) are designed out. Pi runs first-time setup only for its official distribution identity (src/cli/startup-ui.ts:122-140 requires package @earendil-works/pi-coding-agent, app pi and .pi config directory); the caller is src/main.ts:661, which gates showFirstTimeSetup. PiG is never Pi's official distribution, so the only possible port was a fabricated test-only identity, which review rejected (a test-only implementation with no production path does not close a hot-path upstream test). No fake official identity is added; PiG's own first-time setup (D88) has its own gate and evidence. The remaining four analytics cases are ported and their evidence is verified by the gate, with their original assertions and source citations: disabled/no ID (:60), opt-in UUID (:67), opt-out/no ID (:76), and stable ID across toggles (:85). Both the original in-memory manager and supplemental file-backed manager pass on Linux with Go 1.27.1 and -count=1; a compiling mutation that regenerates the ID on every opt-in fails the toggle case in both managers. The real CLI fork test TestFirstTimeSetupOriginalCasesAsFork keeps the four original input combinations and asserts PiG's own first-time setup gate (D88, owner decision 2026-10-02): an interactive start in the default agent directory shows setup exactly when settings.json is missing, regardless of PI_EXPERIMENTAL, and a custom agent directory skips it as Pi's gate does (src/cli/startup-ui.ts:144-146); it is supplemental evidence for D88, not a port of the official-distribution expectations.",
-      "missingCases": [
-        "FirstTimeSetupComponent › renders the colored pi logo and analytics opt-in without a theme picker",
-        "FirstTimeSetupComponent › submits analytics opt-in on confirm",
-        "FirstTimeSetupComponent › submits analytics opt-out after moving down",
-        "FirstTimeSetupComponent › cancels on escape"
-      ]
+      "whyNot": "Upstream's property is that only the official distribution runs the setup. PiG is never that distribution (D2, D88), so the cases cannot run as written. The PiG-shaped tests exist and carry the gate property for PiG."
     },
     {
       "path": "packages/coding-agent/test/flush-stdout.test.ts",
@@ -5840,8 +6318,14 @@
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-assistant-diagnostics.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c3cad25f97c639d027fc92a2bc617d8ba09b721f51133bf0f4f8e75a6c188e08"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c3cad25f97c639d027fc92a2bc617d8ba09b721f51133bf0f4f8e75a6c188e08",
+      "evidence": [
+        "internal/codingagent/assistant_diagnostics_unit_test.go#TestAssistantDiagnosticsUpstreamCases",
+        "internal/codingagent/assistant_diagnostics_upstream_test.go#TestAssistantDiagnosticsShowsThinkingDropsWhenEnabled",
+        "internal/codingagent/assistant_diagnostics_upstream_test.go#TestAssistantDiagnosticsDoesNotRepeatUnchangedThinkingDrops"
+      ],
+      "rationale": "The complete pinned upstream case set is reviewed in gate-close-09 and its delivered tests are composed from ee0ff721d. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. This closes the test file, not unrelated partial or live-service obligations."
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-bug-report-hint.test.ts",
@@ -5867,8 +6351,13 @@
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-compaction.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b427a24a7cab4affe4f36ee5afec29e347ded2ffe33223ee0b049e20727354cf"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b427a24a7cab4affe4f36ee5afec29e347ded2ffe33223ee0b049e20727354cf",
+      "evidence": [
+        "internal/codingagent/interactive_compaction_upstream_test.go#TestInteractiveCompactionUpstream",
+        "internal/codingagent/markdown_message_meta_test.go#TestMarkdownTransformContextCarriesPersistedEntryIdentity"
+      ],
+      "rationale": "All 6 cases are subtests of TestInteractiveCompactionUpstream (titles drop only an article). The only 1.1.0 change adds a programStatus.handleEvent stub to the two mode fixtures, which the Go fixture does not need; program status belongs to the status-events lane. Pi #11270 changes two assertions: renderSessionItems now receives a messageMeta map (message to entry id and timestamp), and the test reads the ids and timestamps of the compaction summary and retained entries from it. PiG has no renderSessionItems: the transcript rebuild hands each message's entry id and timestamp straight to the user and assistant blocks (messageMeta in interactive_transcript.go), so the Go test renders persisted entries and checks the Markdown transformer context for each, and checks that live messages carry none."
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-extension-changelog.test.ts",
@@ -5883,8 +6372,14 @@
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-extension-dialogs.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4fa0d5c92806f123782b8d352ae6f37bf0ba85fa858b65658fc75d1ede852e49"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4fa0d5c92806f123782b8d352ae6f37bf0ba85fa858b65658fc75d1ede852e49",
+      "evidence": [
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionCustomOverlayReportsBlockedStatusUntilDoneAlsoWhileHidden",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestResetRemovesEveryExtensionOverlayButKeepsPisOwn",
+        "internal/codingagent/startup_ui_program_status_test.go#TestExtensionDialogBlockedStatusFirstLineAndKind"
+      ],
+      "rationale": "Pi 7f47a2ed (#11851) and 80d4d3c8 (#11853): an overlay that opts in with `blocked` reports program status until done(), also while hidden, and resetting the extension UI removes every extension overlay and clears that status. The first Go test covers the stacked, hidden and ended overlays; the second covers the reset (its comment cites both Pi cases)."
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-import-command.test.ts",
@@ -5947,8 +6442,16 @@
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-status.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:84f182761ed91fe016da416febd01a7f7f54aff82b8b9986d0462b308350f303"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:84f182761ed91fe016da416febd01a7f7f54aff82b8b9986d0462b308350f303",
+      "evidence": [
+        "internal/codingagent/interactive_pending_bash_test.go#TestCtrlOExpandsUserBashOutputInThePendingArea",
+        "internal/codingagent/interactive_pending_bash_test.go#TestQueuedMessageUpdatesKeepUserBashOutputInThePendingArea",
+        "internal/codingagent/interactive_pending_bash_test.go#TestSettlingTheRunMovesUserBashOutputToTheChat",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestResetRemovesEveryExtensionOverlayButKeepsPisOwn",
+        "internal/codingagent/interactive_resume_bash_test.go"
+      ],
+      "rationale": "The added Pi cases are ported: pending user bash output expands with ctrl+o, stays pending across queued-message updates and moves to the chat when the run settles (#11875), and resetting the extension UI removes every extension overlay (also hidden ones, disposing each) while keeping Pi's own overlay and its focus."
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-suspend.test.ts",
@@ -6086,8 +6589,19 @@
     },
     {
       "path": "packages/coding-agent/test/mcp-extension.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b6a2983918360a2adeed2fbf7ba9b25f6d324b6d12a8066da483f5b4ffad187d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b6a2983918360a2adeed2fbf7ba9b25f6d324b6d12a8066da483f5b4ffad187d",
+      "evidence": [
+        "coding/mcpext/config_test.go",
+        "coding/mcpext/connection_test.go",
+        "coding/mcpext/servers_section_test.go",
+        "coding/mcpext/tools_test.go",
+        "coding/mcpext/extension_test.go",
+        "mcp/naming_pi_test.go#TestCreateMcpToolNameJoinsServerAndToolAndReplacesCharactersOutsideTheAllowedSet",
+        "mcp/naming_pi_test.go#TestCreateMcpToolNameShortensNamesOver64CharactersWithAHashOfServerAndTool",
+        "mcp/output_limit_pi_test.go#TestLimitMcpContentCutsMultiByteTextOnlyAtCharacterBoundaries"
+      ],
+      "rationale": "All 28 cases run in coding/mcpext (config, connections, servers section, tools, resources) with Pi's inputs and expectations; each Go case cites its Pi title. Checked against the Pi source at c23b9ec1: every case title has a Go counterpart and every short expected literal is present. Pi 76c040a2 moves createMcpToolName into pi-mcp (the test imports it from there) and the multi-byte truncation case out of this file, since truncateMiddle is no longer coding-agent's. Both live in the Go mcp package tests with the same inputs; the rest of the file is unchanged."
     },
     {
       "path": "packages/coding-agent/test/mcp-manager-view.test.ts",
@@ -6125,8 +6639,18 @@
     },
     {
       "path": "packages/coding-agent/test/mermaid.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f25a6c2710291f7d0ebf171dc5c5bed061a68081c7547964f4d708e66970cfcb"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f25a6c2710291f7d0ebf171dc5c5bed061a68081c7547964f4d708e66970cfcb",
+      "evidence": [
+        "internal/codingagent/mermaid_integration_test.go#TestMermaidBlockWiring",
+        "internal/codingagent/mermaid_transform_test.go#TestMermaidTransformMatchesUpstream",
+        "internal/codingagent/mermaid_transform_test.go#TestMermaidThemedTransformMatchesUpstream",
+        "internal/codingagent/mermaid_render_cache_test.go",
+        "internal/codingagent/mermaid_upstream_test.go#TestMermaidRenderingUpstream",
+        "internal/codingagent/mermaid_fallback_upstream_test.go#TestMermaidUnsupportedAndOversizedRemainSource",
+        "internal/codingagent/mermaid_hint_test.go"
+      ],
+      "rationale": "All 11 upstream cases are ported as same-named subtests of TestMermaidRenderingUpstream with the upstream inputs and expected results: Unicode replacement, raw source for unsupported (gantt) and oversized diagrams, the lovely-mermaid pie diagram, theme span mapping through getFgAnsi, classDef styles over the theme, hyperlinks only on node text and only with terminal support, incomplete streaming blocks, class assignments, code-block fallback with the first warning, the (+N more) summary, and mode, thinking and non-transcript-surface gating (Pi eebd5d90c, #11756: the last case, \"respects rendering modes and skips thinking blocks and non-transcript surfaces\", keeps its 4 added expectations: user and summary render, custom and changelog stay raw; the transformer renders only on user, assistant and summary messages, gated on MarkdownMessageType, through extension.MarkdownMessageUser/Assistant/Summary and the messageTypes surfaces from the coding-a port). The Go theme is concrete, so the span-mapping case asserts the theme's own SGR parameters. The transformer and scope goldens are regenerated from Pi's mermaid.ts at aceb1bd1."
     },
     {
       "path": "packages/coding-agent/test/model-catalog-protocol.test.ts",
@@ -6316,13 +6840,25 @@
     },
     {
       "path": "packages/coding-agent/test/oauth-selector.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b9f66b66a7fbf0b095db12c2ac8eaadacf1472de59c35584bab5f3524c877266"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b9f66b66a7fbf0b095db12c2ac8eaadacf1472de59c35584bab5f3524c877266",
+      "evidence": [
+        "tui/oauth_selector_partner_test.go",
+        "tui/oauth_selector_upstream_test.go"
+      ],
+      "rationale": "683a7a868: brand style only on the selected row, accent without a TUI and star marks are ported in oauth_selector_partner_test.go."
     },
     {
       "path": "packages/coding-agent/test/output-file-failures.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:86a2aa999bfd182a3a1d58e7c67a1f3a65b31c74221bf446264348ce781abbeb"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:86a2aa999bfd182a3a1d58e7c67a1f3a65b31c74221bf446264348ce781abbeb",
+      "evidence": [
+        "internal/codingagent/tools/output_file_failures_upstream_test.go#TestOutputFileStreamFailuresUpstream",
+        "internal/codingagent/tools/output_file_failures_upstream_test.go#TestBashToolOutputFileFailuresUpstream",
+        "internal/codingagent/tools/output_file_failures_upstream_test.go#TestUserBashExecutorOutputFileFailuresUpstream",
+        "internal/outputfiles/outputfiles_test.go"
+      ],
+      "rationale": "Ported in internal/codingagent/tools/output_file_failures_upstream_test.go and internal/outputfiles/outputfiles_test.go (Pi 943a99e3c, 8209929fb, 3511d4554): output file stream failures, bash tool fallbacks, and user bash executor fallbacks."
     },
     {
       "path": "packages/coding-agent/test/output-pad.test.ts",
@@ -6337,8 +6873,13 @@
     },
     {
       "path": "packages/coding-agent/test/package-command-paths.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c03226f2ec582c08f5a219124447134238f4d040f6ceaa816614f3dd3cb68cd7"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c03226f2ec582c08f5a219124447134238f4d040f6ceaa816614f3dd3cb68cd7",
+      "evidence": [
+        "coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10PackageCommandPaths",
+        "coding/cli/port_wave_10_self_update_test.go"
+      ],
+      "rationale": "Pi 6382d870 cases \"warns about a stale provider login during update --models and keeps the refresh successful\" and \"fails update --models when a catalog refresh fails for a reason other than a stale login\" are ported."
     },
     {
       "path": "packages/coding-agent/test/package-distribution.test.ts",
@@ -6468,8 +7009,12 @@
     },
     {
       "path": "packages/coding-agent/test/print-mode.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0ff35ce427be8108afd564dc0d7396e12e1cd68e8fdf83b0e224d84f8b323a5e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:0ff35ce427be8108afd564dc0d7396e12e1cd68e8fdf83b0e224d84f8b323a5e",
+      "evidence": [
+        "coding/cli/print_final_disposal_signal_test.go#TestPrintModeSignalDuringFinalDisposalWaitsForIt"
+      ],
+      "rationale": "The added Pi case (a SIGTERM during the final disposal waits for it and a repeated SIGTERM exits 143, handlers restored after) is ported with the same two signals and a blocked disposal."
     },
     {
       "path": "packages/coding-agent/test/program-status-reporter.test.ts",
@@ -6700,13 +7245,29 @@
     },
     {
       "path": "packages/coding-agent/test/rpc-jsonl.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f3380cc3e01648821016efaa4fbed34bca51d96f79e154374f9f84847f6f879a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f3380cc3e01648821016efaa4fbed34bca51d96f79e154374f9f84847f6f879a",
+      "evidence": [
+        "coding/cli/rpc_jsonl_upstream_test.go#TestRPCJSONLUpstream",
+        "test/parity/scenarios/rpc/02-rpc-unknown-command.toml"
+      ],
+      "rationale": "All four cases are ported with the same JSONL inputs and assertions, including literal Unicode separators on output, CRLF and the unterminated final record. Escaped-backslash cases guard the serializer fix."
     },
     {
       "path": "packages/coding-agent/test/rpc-prompt-response-semantics.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:23025a09255278799945a1e7bc360e25818f72d01d61ebff3df5d873fa0ed1c2"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:23025a09255278799945a1e7bc360e25818f72d01d61ebff3df5d873fa0ed1c2",
+      "evidence": [
+        "coding/cli/rpc_prompt_semantics_upstream_test.go#TestRPCPromptResponseSemanticsUpstream",
+        "test/parity/scenarios/rpc/25-rpc-clear-queue.toml",
+        "coding/cli/rpc_idle_shutdown_test.go#TestRPCExtensionShutdownWhileIdleExitsWithoutAnotherCommand",
+        "coding/cli/rpc_idle_shutdown_test.go#TestRPCExtensionCommandShutdownWritesResponseBeforeShutdown",
+        "coding/cli/rpc_idle_shutdown_test.go#TestRPCExtensionShutdownWaitsForCommandOfSameChunk",
+        "coding/cli/rpc_repeated_signal_test.go#TestRPCSingleSignalDuringInputEndShutdownLetsItFinish",
+        "coding/cli/rpc_repeated_signal_test.go#TestRPCInputEndDuringSignalShutdownLetsItFinish",
+        "coding/cli/rpc_repeated_signal_test.go#TestRPCRepeatedSignalDuringShutdownExitsAtOnce"
+      ],
+      "rationale": "The v1.1.0 diff replaces the test's own MockAssistantStream subclass of EventStream with pi-ai's createAssistantMessageEventStream (and, in agent-session-concurrent, a waitForStreaming poll instead of a fixed sleep): test infrastructure, no case or expectation changes. The Go tests build streams with ai.NewAssistantMessageEventStream and wait on the session state. Earlier cases: All 7 cases run through a real RPC process in TestRPCPromptResponseSemanticsUpstream: :197 one failure response, :237 one started response with data.disposition started (changed in 0.99.1), :259 extension command and intercepted input reported handled with no agent_start (new), :291 queued during streaming with disposition queued, :329 steer and follow_up reported handled when an extension consumes A and queues B, with the queue_update and exactly one response (new, #9803), :377 steer and follow Pi main c23b9ec1 adds two describes (6 cases, #11599 and #11752), each a real-process Go test: `shuts down an idle session when an extension requests shutdown asynchronously` is TestRPCExtensionShutdownWhileIdleExitsWithoutAnotherCommand (exit status and a single session_shutdown, in an isolated and a packed runtime); `writes the command response before shutting down for a shutdown requested by an extension command` is TestRPCExtensionCommandShutdownWritesResponseBeforeShutdown (response, then the shutdown notification, only after the command finished); `waits for a command that arrives before an idle shutdown request is processed` is TestRPCExtensionShutdownWaitsForCommandOfSameChunk: Pi calls the extension callback in process in the same tick as the command, which a real process cannot align, so the Go input puts the command in the chunk that is read while the shutdown request is pending and asserts the same order (response, then exit). The three `RPC shutdown triggers` cases mock process.exit and dispose; the Go tests send a real SIGTERM and close stdin on a process whose session_shutdown handler takes 1.5 s: EOF then one SIGTERM exits 0 with the handler run to its end, SIGTERM then EOF exits 143 with the handler run to its end, and a repeated SIGTERM (after EOF and after the first SIGTERM) exits 143 before the handler ends. Pi `listenerCount(\"SIGTERM\") === 1` is a Node listener assertion; its observable effect, the second signal not killing the process mid-dispose, is the handler-ran-to-end assertion."
     },
     {
       "path": "packages/coding-agent/test/rpc-replacement-diagnostics.test.ts",
@@ -6887,8 +7448,14 @@
     },
     {
       "path": "packages/coding-agent/test/session-manager/build-context.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0a1adcd3b56adaa23d7e78b2f0b161e862cb2965bba900a4b25a0f851ebac6bd"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:0a1adcd3b56adaa23d7e78b2f0b161e862cb2965bba900a4b25a0f851ebac6bd",
+      "evidence": [
+        "internal/codingagent/session_context_upstream_test.go#TestBuildSessionContextUpstream",
+        "coding/session_context_settings_upstream_test.go#TestRestoreSessionRuntimeStateUsesActiveBranchAssistantModel",
+        "test/parity/scenarios/session/13-session-context-settings.toml"
+      ],
+      "rationale": "All 16 cases preserve exact messages, model/thinking state, custom-entry provenance, compaction boundaries, branch selection, missing-leaf fallback and orphan behavior. Explicit-null/empty-string leaf boundaries are additionally tested. The runtime consumer now restores the selected branch and assistant model metadata. Units and caller were red; compiling metadata and all-entries mutations fail, including the real Pi paired scenario. Existing resume fixture now records the actual assistant model; untagged historical messages independently verify fallback behavior."
     },
     {
       "path": "packages/coding-agent/test/session-manager/custom-session-id.test.ts",
@@ -7041,8 +7608,17 @@
     },
     {
       "path": "packages/coding-agent/test/session-share.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b3d955156ed5640142873ea74dbcca1e351fe9438811a5de620864f4b4b0047d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b3d955156ed5640142873ea74dbcca1e351fe9438811a5de620864f4b4b0047d",
+      "evidence": [
+        "internal/codingagent/session_share_test.go",
+        "internal/codingagent/session_share_test.go#TestShareSessionKeepsConcurrentExportsIsolated",
+        "internal/codingagent/session_share_destination_test.go#TestShareHandlerUploadsToPiGForEveryShareDestination"
+      ],
+      "rationale": "The owning gate-close Promote review closes the original case set with the listed native tests and caller guards. All listed evidence passes on the integrated union with Go 1.27.1, -race and -count=1. Existing evidence and the current upstream hash are retained; no unrelated or live-service closure is claimed. Pi main cea25743 adds two cases after this pin, 'forces gist sharing without checking Radius authentication' and 'reports missing Radius authentication when Radius is forced'; both are designed out under D64 (PiG's /share uploads only to the PiG gateway), and TestShareHandlerUploadsToPiGForEveryShareDestination locks that every sessionShareDestination value still runs the PiG upload.",
+      "protects": "The sessionShareDestination setting picks the share target: 'gist' forces a GitHub gist without checking Radius authentication, and a forced 'radius' with no Radius authentication reports it missing (the two cases Pi cea25743 adds).",
+      "pigTest": "TestShareHandlerUploadsToPiGForEveryShareDestination (internal/codingagent/session_share_destination_test.go) runs the share handler once per sessionShareDestination value (auto, gist, radius) and asserts that each one runs one PiG upload and reports the PiG share URL with no Radius error; TestSettingsSelectorOmitsShareDestination covers the /settings item Pi cea25743 adds.",
+      "whyNot": "PiG has neither target (D64): /share uploads to the PiG gateway only, with no gh login and no Radius credential. Pi's two cases assert a gist request and a Radius authentication error, and PiG can produce neither, so the same inputs cannot give the same outputs. The PiG test locks the property that remains: every setting value shares through PiG."
     },
     {
       "path": "packages/coding-agent/test/settings-diagnostics.test.ts",
@@ -7079,13 +7655,28 @@
     },
     {
       "path": "packages/coding-agent/test/settings-manager.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:316caf2d6e59de014cedb394923cbd7f78caa0867b0c94d4edc34ed729ed6d06"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:316caf2d6e59de014cedb394923cbd7f78caa0867b0c94d4edc34ed729ed6d06",
+      "evidence": [
+        "internal/codingagent/settings_cache_warming_test.go",
+        "internal/codingagent/settings_manager_upstream_test.go",
+        "internal/codingagent/settings_manager_first_half_test.go",
+        "internal/codingagent/settings_notices_test.go#TestSettingsManagerNotices"
+      ],
+      "rationale": "7bcc15c92: the cacheWarming cases are ported with streaming and idle swapped as upstream."
     },
     {
       "path": "packages/coding-agent/test/settings-selector.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:5f1b14a236c954a627b9b51f85fffe7e4d8c64bd7dff608e7a5bd9481285d664"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:5f1b14a236c954a627b9b51f85fffe7e4d8c64bd7dff608e7a5bd9481285d664",
+      "evidence": [
+        "tui/select_page_keys_upstream_test.go#TestUpstreamSelectSubmenuPagesWithSelectionPageKeys",
+        "internal/codingagent/settings_selector_upstream_test.go#TestSettingsSelectorUpstream",
+        "internal/codingagent/settings_selector_upstream_test.go#TestAutomaticThemeSubmenuCancelRestoresPendingPair",
+        "internal/codingagent/session_share_destination_test.go#TestSettingsSelectorOmitsShareDestination",
+        "internal/codingagent/settings_notices_test.go#TestSettingsSelectorNoticesSubmenu"
+      ],
+      "rationale": "Pages a searchable submenu with selection page keys (Pi 3bae8527); SelectSubmenu lives in tui/."
     },
     {
       "path": "packages/coding-agent/test/settings-submenu.test.ts",
@@ -7098,8 +7689,12 @@
     },
     {
       "path": "packages/coding-agent/test/shell-kill-process-tree.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b379cec4c021d373faa2ec3f0c1f54d778c9a50d28a6425484134d12152df6ae"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b379cec4c021d373faa2ec3f0c1f54d778c9a50d28a6425484134d12152df6ae",
+      "evidence": [
+        "internal/codingagent/tools/bash_group_unix_kill_test.go#TestKillProcessTree"
+      ],
+      "rationale": "All 5 cases are subtests of TestKillProcessTree with Pi's pids, signals and call order: the macOS stop-then-kill, a failed stop that still kills the group, the single-process fallback when the group kill fails, a failure of all three signals, and the unchanged Linux group SIGKILL. Pi mocks process.kill and process.platform; Go injects the kill function and the darwin flag into killProcessTree, which killProcessGroup calls with syscall.Kill and runtime.GOOS."
     },
     {
       "path": "packages/coding-agent/test/shell-path-exists.test.ts",
@@ -7151,8 +7746,13 @@
     },
     {
       "path": "packages/coding-agent/test/startup-ui-program-status.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ec96f9b9970c4e741e94f8a6a1ee5c98895c1e6107e1cb802cc8e80420f7bffe"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ec96f9b9970c4e741e94f8a6a1ee5c98895c1e6107e1cb802cc8e80420f7bffe",
+      "evidence": [
+        "internal/codingagent/startup_ui_program_status_test.go#TestStartupDialogProgramStatus",
+        "coding/cli/project_trust_test.go#TestStartupTrustUIProgramStatusForwarding"
+      ],
+      "rationale": "Ported in internal/codingagent/startup_ui_program_status_test.go and coding/cli/project_trust_test.go (Pi 27a40ea2a, 642a705e1): startup selector, input, project trust confirm/select, and first-time setup blocked program status."
     },
     {
       "path": "packages/coding-agent/test/status-indicator.test.ts",
@@ -7546,8 +8146,13 @@
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/12164-stored-command-key-auth-status.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8301ae9b4d5467a9791b1de8f3ab6a3267706f91f5ae317470220b2e4aaa34f2"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8301ae9b4d5467a9791b1de8f3ab6a3267706f91f5ae317470220b2e4aaa34f2",
+      "evidence": [
+        "coding/stored_credential_auth_test.go#TestBuildModelStoredCredentialOwnsProvider",
+        "tui/oauth_selector_upstream_test.go"
+      ],
+      "rationale": "Ported in coding/stored_credential_auth_test.go and tui/oauth_selector_upstream_test.go (Pi 585648aaf, #12454): unresolved stored command-backed credential reported as stored but not configured."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/1717-2113-agent-session-event-settlement.test.ts",
@@ -7723,8 +8328,13 @@
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/4167-thinking-toggle-pending-tool-render.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3e2e0784d83ea537920c3acbc8f95e169aae64378c54b88d98726d7ffa31c55f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3e2e0784d83ea537920c3acbc8f95e169aae64378c54b88d98726d7ffa31c55f",
+      "evidence": [
+        "internal/codingagent/interactive_tool_lifetime_test.go#TestInteractiveRenderedPendingToolsUpstream",
+        "internal/codingagent/interactive_tool_lifetime_test.go#TestInteractivePendingToolLifetime"
+      ],
+      "rationale": "Both cases are present by title in TestInteractiveRenderedPendingToolsUpstream. The 1.1.0 change adds a programStatus.handleEvent stub to the mode fixture, which the Go fixture does not need; program status belongs to the status-events lane."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/5080-signal-shutdown-extension-cleanup.test.ts",
@@ -8098,8 +8708,16 @@
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/7301-stalled-availability-refresh.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4682d37a59b1a6127d63bc33316dd8f400b6aef381674d9ec4ecf5d009310242"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4682d37a59b1a6127d63bc33316dd8f400b6aef381674d9ec4ecf5d009310242",
+      "evidence": [
+        "coding/model_availability_upstream_test.go#TestStalledAvailabilityRefreshUpstream",
+        "coding/model_availability_native_test.go#TestAvailabilityCredentialSynchronizationRejectsStalledFullPass",
+        "coding/model_availability_boundaries_test.go",
+        "coding/model_availability_create_test.go",
+        "coding/model_availability_subscription_test.go"
+      ],
+      "rationale": "All three original sites (70,93,108) are delivered by 30ee1e5ef and pass on the integrated union under -race -count=1. Old credential snapshots cannot restore removed providers or discard recovered ones; stale full-pass and provider-scoped errors reach their original callers without replacing the newer availability error. Independent compiling mutations disabling the three generation guards fail all three cases. The composed credential synchronization guard additionally rejects notifications before availability publication; the superseded inner notification is removed while preserving current credential-operation ordering. Native, boundary, creation and subscription evidence remains separate from broader deferred async obligations."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/7443-model-command-cached-match.test.ts",
@@ -8661,8 +9279,34 @@
     },
     {
       "path": "packages/coding-agent/test/tools.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:92ad301cf114dc3027dcc0e071fb5f175ce301ae01203fc6546a8c08adf7294e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:92ad301cf114dc3027dcc0e071fb5f175ce301ae01203fc6546a8c08adf7294e",
+      "evidence": [
+        "internal/codingagent/read_image_unsupported_upstream_test.go#TestReadKeepsTextOnlyImageWarningOutOfWhatTheModelGetsUpstream",
+        "internal/codingagent/tools/tools_read_port_test.go#TestToolsReadPort",
+        "internal/codingagent/tools/tools_edit_port_test.go#TestToolsWritePort",
+        "internal/codingagent/tools/tools_edit_port_test.go#TestToolsEditPort",
+        "internal/codingagent/tools/tools_edit_port_test.go#TestToolsEditCRLFPort",
+        "internal/codingagent/tools/edit_fuzzy_test.go#TestEditFuzzyMatchingUpstreamCases",
+        "internal/codingagent/tools/tools_cwd_port_test.go#TestToolsContextCWDPort",
+        "internal/codingagent/tools/tools_bash_port_test.go#TestToolsBashPort",
+        "internal/codingagent/tools/tools_bash_port_unix_test.go#TestToolsBashSignalsPort",
+        "internal/codingagent/tools/tools_bash_port_unix_test.go#TestToolsLegacyWSLTransportPort",
+        "internal/codingagent/tools/tools_bash_port_test.go#TestToolsLsPort",
+        "internal/codingagent/tools/tools_search_port_test.go#TestToolsGrepPort",
+        "internal/codingagent/tools/tools_search_port_test.go#TestToolsFindPort",
+        "test/parity/scenarios/tools/16-tool-context-cwd.toml",
+        "test/parity/scenarios/tools/17-shell-operations.toml",
+        "internal/codingagent/tools/tools_test.go",
+        "internal/codingagent/tools/failure_details_test.go#TestBuiltinFailureDetails",
+        "coding/cli/rpc_tool_persistence_test.go#TestRPCEmptyReadTextPersistsAndReplays",
+        "internal/codingagent/tools/read_structured_upstream_test.go#TestReadStructuredContent",
+        "internal/codingagent/tools/grep_ripgrep_context_test.go",
+        "internal/codingagent/tools/edit_window_test.go",
+        "internal/codingagent/tools/find_ls_limit_test.go",
+        "internal/codingagent/tools/bash_long_line_blank_line_port_test.go"
+      ],
+      "rationale": "All 109 cases are ported: the previous pin's through the cited tests, and the cases the leap added through grep_ripgrep_context_test.go (rg context events, the match limit on proof of one more match, a lone CR, folder globs relative to path; Pi 8da141c2a, 6bf2ab9bb), edit_window_test.go (line endings of untouched lines; Pi d448c51e2) and find_ls_limit_test.go (result and entry limits). Pi 4be4cb4f5e9c (#12139, after the pin) adds \"should keep a text-only model's image warning out of what the model gets\" (:240 there): ported as TestReadKeepsTextOnlyImageWarningOutOfWhatTheModelGetsUpstream (the text, the image block, the card collapsed and expanded), with the details member in TestToolsReadPort's subtest of the same title."
     },
     {
       "path": "packages/coding-agent/test/tree-selector.test.ts",
@@ -8785,8 +9429,14 @@
     },
     {
       "path": "packages/coding-agent/test/windows-shell-config.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9f5ad4a0120063c8d9a8bd560594e6d37b6cef348ca41c9317d994c14e9b6cd6"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:9f5ad4a0120063c8d9a8bd560594e6d37b6cef348ca41c9317d994c14e9b6cd6",
+      "evidence": [
+        "internal/shellconfig/shellconfig_test.go#TestUpstreamLegacyWSLBashDetection",
+        "internal/shellconfig/shellconfig_test.go#TestEmptySystemRootFallsBackToConventionalLauncherPaths",
+        "internal/shellconfig/shellconfig_test.go"
+      ],
+      "rationale": "All 6 rows of the table, as subtests of TestUpstreamLegacyWSLBashDetection with the same SystemRoot and shell values; Pi stubs SystemRoot with vitest and mocks accessSync, here ForBash reads SystemRoot from the environment (set, unset or empty with t.Setenv/os.Unsetenv) and no existence check is involved. The three rows with a custom Windows directory, and the relative-SystemRoot row, fail against the earlier fixed C:\\Windows pattern. TestEmptySystemRootFallsBackToConventionalLauncherPaths adds the empty-SystemRoot fallback Pi's `if (systemRoot)` takes."
     },
     {
       "path": "packages/durable/test-workers/storage.test.ts",
@@ -8943,8 +9593,13 @@
     },
     {
       "path": "packages/durable/test/harness-after-run.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6f93887a1568db233b5647e0db399548b2e689e4a7ec1afca712ba9664c8fcc0"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:6f93887a1568db233b5647e0db399548b2e689e4a7ec1afca712ba9664c8fcc0",
+      "evidence": [
+        "durable/core/driver/harness_lanec_core_test.go",
+        "durable/harness/harness_after_run_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/harness-blocked.test.ts",
@@ -8983,8 +9638,35 @@
     },
     {
       "path": "packages/durable/test/harness-compaction.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:092378ce9747ec53213c493e021cc5d3ee21d07132311360201c7c794a090a3c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:092378ce9747ec53213c493e021cc5d3ee21d07132311360201c7c794a090a3c",
+      "evidence": [
+        "durable/harness/harness_compaction_test.go#TestRangeSelection",
+        "durable/harness/harness_compaction_test.go#TestSerialization",
+        "durable/harness/harness_compaction_test.go#TestManualCompaction",
+        "durable/harness/harness_compaction_test.go#TestManualCompactionConcurrency",
+        "durable/harness/harness_compaction_test.go#TestCompactionOutcomes",
+        "durable/harness/harness_compaction_test.go#TestBackgroundThresholdCompaction",
+        "durable/harness/harness_compaction_test.go#TestBlockingThresholdCompaction",
+        "durable/harness/harness_compaction_test.go#TestOverflowCompaction",
+        "durable/harness/harness_compaction_test.go#TestCompactionEstimates",
+        "durable/harness/harness_compaction_test.go#TestCompactionInteractions",
+        "durable/harness/harness_compaction_test.go#TestCompactionLiveStatus",
+        "durable/harness/harness_compaction_test.go#TestCompactionRecovery",
+        "durable/harness/harness_compaction_test.go#TestCompactionAndTheInbox",
+        "durable/harness/harness_compaction_test.go#TestCompactionEdgeCases",
+        "durable/harness/harness_compaction_test.go#TestCompactionEdgeCasesLater",
+        "durable/harness/harness_compaction_test.go#TestBlockingAndManualCompaction",
+        "durable/harness/harness_compaction_test.go#TestCompactionPinning",
+        "durable/harness/harness_compaction_test.go#TestBlockedCompaction",
+        "durable/harness/harness_compaction_test.go#TestContextContributions",
+        "durable/harness/harness_compaction_test.go#TestPerModelCompactionOverrides",
+        "durable/harness/harness_compaction_test.go#TestPiLiveMigrations",
+        "durable/core/driver/compaction_failure_core_test.go#TestCorePerModelCompactionOverrideSetsTheBlockingThreshold",
+        "durable/core/driver/compaction_failure_core_test.go#TestCoreACompactionFailureIsVisibleUntilASummaryIsProduced",
+        "durable/harness/harness_compaction_test.go#TestPerConversationCompactionSettings"
+      ],
+      "rationale": "102 it() sites (6 parameterized: three orders, five failures, three policies, three preparations, two clocks, two responses), all ported under Pi's names across the Test functions of harness_compaction_test.go, with the variant lists equal to Pi's. Pi b3a29f11 to 1.5.0: pi.live compactions and compactionFailure carry `trigger` instead of `reason` (the Go expectations read Trigger / \"trigger\"); Harness.closed is {kind: failed} (End().Kind, the blocking-compaction-fault case); the two new 'pi.live migrations' cases (a version 1 value read with `reason` as `trigger` and stored migrated on its next write, a version 2 run without turns counted as 0) are the subtests of TestPiLiveMigrations; imports change Type.Object to obj only. Bodies compared line by line; 'fails the run when its blocking compaction faults' runs Pi's input: the Harness's Models is a wrapper whose CompleteSimple panics with 'no credentials' (Pi replaces completeSimple with a function that throws), which the scheduler turns into a task fault. Two cases keep a Go form with Pi's assertions: the 300 ms wall-clock race of the background summary through retry backoff holds the Harness clock, and the retry-backoff and overflow-after-reopen cases queue their responses before the reopen because Go's resume runs pending work at once. Pi c4cf7957 to c23b9ec1 (#11771): the four 'per-conversation compaction settings' cases are the subtests of TestPerConversationCompactionSettings under Pi's names (model-specific over general with the four maxTokens, the conversation's enabled: false over the Harness's model override, no overflow compaction when the conversation turns it off, undefined fields dropped / RangeError for token counts that are not integers 0 or more / null clears); the order of modelOverrides in the stored value is asserted in an added subtest (Pi keeps insertion order). Intention check: Pi's 'drops undefined fields, rejects token counts...' case rejects 1.5 so that a token count that is not an integer is refused, not rounded. The Go settings carry *int, which cannot hold 1.5, so the typed twin rejects -1 (the other input that is not an integer 0 or more) and the same subtest decodes {\"reserveTokens\":1.5} and a model override's {\"backgroundTokens\":1.5} as JSON, the one way a fractional count reaches the Go API (SDK and wire input), and requires the decode to fail."
     },
     {
       "path": "packages/durable/test/harness-context-range.test.ts",
@@ -9108,8 +9790,12 @@
     },
     {
       "path": "packages/durable/test/harness-hook-tasks.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9df0a65276c2842d5a0b7954fad2b8bf953f6b6e3f363aab28b72446ab43439e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:9df0a65276c2842d5a0b7954fad2b8bf953f6b6e3f363aab28b72446ab43439e",
+      "evidence": [
+        "durable/harness/harness_hook_tasks_test.go#TestAfterToolsTasks"
+      ],
+      "rationale": "Ported to durable/harness/harness_hook_tasks_test.go."
     },
     {
       "path": "packages/durable/test/harness-host-inputs.test.ts",
@@ -9136,8 +9822,14 @@
     },
     {
       "path": "packages/durable/test/harness-inbox.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b1b0f6388d661abfd6556904f709a7e4dad1a4ee2d8b7d9f698d88f8559d6b03"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b1b0f6388d661abfd6556904f709a7e4dad1a4ee2d8b7d9f698d88f8559d6b03",
+      "evidence": [
+        "durable/harness/harness_inbox_test.go#TestInbox",
+        "durable/harness/harness_inbox_test.go#TestUsage",
+        "durable/harness/harness_inbox_test.go#func queuedNote"
+      ],
+      "rationale": "37 cases: 32 in TestInbox and 5 usage cases in TestUsage, under Pi's names. Pi b3a29f11 to 1.5.0: commit observers take {advance, end} with documentValues, the follow-up-mode case occupies the Session line with a commit whose callback waits instead of holding the Storage (harness_inbox_test.go: 'Occupy the line with a commit whose callback waits'), the recording Storage reads every batch of the batched commit (inboxRecordingStorage.Commit), and imports change Type.Object to obj. queuedNote still builds the same model-message write."
     },
     {
       "path": "packages/durable/test/harness-input-entries.test.ts",
@@ -9206,8 +9898,14 @@
     },
     {
       "path": "packages/durable/test/harness-nested-tools.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:14a76ec87cd187e7a222f30d6a2132b307a75c9b10a6c3bd0b6f168295d94587"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:14a76ec87cd187e7a222f30d6a2132b307a75c9b10a6c3bd0b6f168295d94587",
+      "evidence": [
+        "durable/core/driver/harness_nested_core_test.go",
+        "durable/core/driver/harness_nested_slots_core_test.go",
+        "durable/harness/tool_nested_calls_doc_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/harness-observers.test.ts",
@@ -9236,8 +9934,12 @@
     },
     {
       "path": "packages/durable/test/harness-park-children.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7b8bb087558b1da2a33a7a02e775c50941ac943f6d62916e41e5211a5eb20a08"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7b8bb087558b1da2a33a7a02e775c50941ac943f6d62916e41e5211a5eb20a08",
+      "evidence": [
+        "durable/harness/harness_park_children_test.go#TestParkChildrenNestedCallsWithoutWaiting"
+      ],
+      "rationale": "Ported to durable/harness/harness_park_children_test.go."
     },
     {
       "path": "packages/durable/test/harness-partial-changes.test.ts",
@@ -9354,8 +10056,12 @@
     },
     {
       "path": "packages/durable/test/harness-signals.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7ade9e157f55589b59a1cc2c2ccd3eba10ac3d73f9ed7d804bacaaae5f36852b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7ade9e157f55589b59a1cc2c2ccd3eba10ac3d73f9ed7d804bacaaae5f36852b",
+      "evidence": [
+        "durable/harness/harness_signals_test.go#TestDefineSignal"
+      ],
+      "rationale": "Ported to durable/harness/harness_signals_test.go."
     },
     {
       "path": "packages/durable/test/harness-sleep.test.ts",
@@ -9410,8 +10116,13 @@
     },
     {
       "path": "packages/durable/test/harness-submit-in-commit.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:5ad0d3ab9369cf257ab5ab30d8a6a834c9ea03897c04f6337d43a5088fad7163"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:5ad0d3ab9369cf257ab5ab30d8a6a834c9ea03897c04f6337d43a5088fad7163",
+      "evidence": [
+        "durable/harness/harness_submit_in_commit_test.go#TestWhenIdleReject",
+        "durable/harness/harness_submit_in_commit_test.go#TestSubmitInsideTheCallersCommit"
+      ],
+      "rationale": "All 24 cases ported against durable/harness, compared body to body (5 TestWhenIdleReject, 19 TestSubmitInsideTheCallersCommit); the trace-carrier case asserts both links with empty attributes. Pi 1.5.0 to c23b9ec1 (9ca15920): 'reads a submission by ID in a commit, with the entry its input was placed at' is the subtest of that name (Tx.Submission)."
     },
     {
       "path": "packages/durable/test/harness-task-graph.test.ts",
@@ -9454,13 +10165,50 @@
     },
     {
       "path": "packages/durable/test/harness-telemetry.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:91cecc9ed96efec14b9e28e76bb84afaf940ba13722b08c9b9ef1c2c9ebd3ce9"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:91cecc9ed96efec14b9e28e76bb84afaf940ba13722b08c9b9ef1c2c9ebd3ce9",
+      "evidence": [
+        "durable/harness/harness_telemetry_test.go",
+        "durable/harness/harness_telemetry_admission_test.go",
+        "durable/harness/harness_telemetry_events_test.go",
+        "durable/harness/harness_telemetry_options_test.go",
+        "durable/harness/harness_telemetry_support_test.go",
+        "durable/harness/harness_telemetry_test.go#TestDurableTelemetryRecordsContentFreeSubmitAndPhaseSpans",
+        "durable/harness/harness_telemetry_test.go#TestDurableTelemetryRecordsAttributesInPisKeyOrder",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryReturnsAdmissionResultsWithoutRereadingRecordsOrProbingRootLinkTargets",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryInheritsOmittedOrUndefinedTaskTracesAndStoresNoCarrierForAnExplicitRoot",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryRecordsCheckpointsOnlyWhenTheRunningPhaseChanges",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryStartsEachQueuedInputsRunInItsAdmissionTraceAndLinksInputRootsToTheirCaller",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryLinksTheOtherQueuedInputsToTheFirstInvocationOfTheirSharedRun",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryLinksASteerAdmissionToTheCurrentRunWithoutMovingItsWorkIntoTheSteersTrace",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryKeepsAPublicWriteAdmissionOpenThroughCommitAsAChildOfItsCaller",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryLinksAnInputSubmittedInsideATurnToTheCallingPhaseWithoutParentingIt",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryParentsBackgroundCompactionToThePreparePhaseThatCreatesIt",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryMarksOnlyTheFirstInvocationAfterReopenResumedRetainingItsStoredParent",
+        "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryEmitsEntryAndSettlementEventsOnlyAfterSuccessfulStorageCommits",
+        "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryRecordsInternalCompactionAdmissionsAsPhaseEventsWithoutASubmitSpan",
+        "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryRecordsAFixedCategoryAndABoundedDiagnostic",
+        "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryKeepsBothInterruptedRunsAndExplicitAbortHandlersAtStatusOk",
+        "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryMirrorsRuntimeReportsAsFixedFieldPhaseEventsAndTypeOnlyCounters",
+        "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryReportsHookFailuresOnThePhaseAndClockFailuresWithoutAPhaseContext",
+        "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryCountsAnOutsideSpanSessionFailureWithoutStartingASpan",
+        "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryCountsReportsRaisedWithANoopSpanWithoutCreatingARoot",
+        "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryAttachesSynchronousCommitListenerReportsToTheActiveSubmissionSpan",
+        "durable/harness/harness_telemetry_late_listener_test.go#TestDurableTelemetryCountsAListenerFailureThatArrivesAfterEverySpanSettled",
+        "durable/codemode/telemetry_replay_test.go#TestDurableTelemetryEmitsReplayForACodemodeJournalResultWithoutRerunningItsNestedTool",
+        "durable/storage/record_carriers_test.go#TestStorageKeepsTaskAndSubmissionTelemetryCarriers",
+        "durable/record_carriers_wire_test.go#TestRecordCarriersAreOptionalPlainJsonMembers"
+      ],
+      "rationale": "All 24 upstream cases run in the evidence files. The case 'preserves async listener error containment and report counting' runs in PiG's own form (TestDurableTelemetryCountsAListenerFailureThatArrivesAfterEverySpanSettled): Pi's listener returns a promise that rejects after every span settled; a Go commit listener returns nothing from Advance and fails by panic, so the late failure is a listener that fails on a commit made after the submission's spans settled. The test asserts Pi's results: one report with the error, one pi.durable.reports counter with type listener_error only, no span left open or given the report event, and no error text in any span. Re-recorded at Pi b556cfe5: the file changed only in the tool parameter builders (TypeBox Type.Object to pi-schema obj); the Go tests declare their tool parameters as Go schemas, so the cases are unchanged."
     },
     {
       "path": "packages/durable/test/harness-tool-gates.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:404931d676741d71db272f3b4240a43f578b1bd7aee592c75d210f696d0895e0"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:404931d676741d71db272f3b4240a43f578b1bd7aee592c75d210f696d0895e0",
+      "evidence": [
+        "durable/harness/harness_tool_gates_test.go#TestToolGatesBeforeToolSleep"
+      ],
+      "rationale": "Ported to durable/harness/harness_tool_gates_test.go."
     },
     {
       "path": "packages/durable/test/harness-tool-hooks.test.ts",
@@ -9473,8 +10221,12 @@
     },
     {
       "path": "packages/durable/test/harness-tool-parks.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:893dd1a9644be4128a9442d1251d9e17884507267da1322f6107d463a45524da"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:893dd1a9644be4128a9442d1251d9e17884507267da1322f6107d463a45524da",
+      "evidence": [
+        "durable/harness/harness_tool_parks_test.go#TestToolParksOnASignal"
+      ],
+      "rationale": "Ported to durable/harness/harness_tool_parks_test.go."
     },
     {
       "path": "packages/durable/test/harness-tools-recovery.test.ts",
@@ -9489,13 +10241,22 @@
     },
     {
       "path": "packages/durable/test/harness-tools.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:854fd106d0937b9b3147437a206f7c6443b1ef8e7eb8128ca44156fc92a73c19"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:854fd106d0937b9b3147437a206f7c6443b1ef8e7eb8128ca44156fc92a73c19",
+      "evidence": [
+        "durable/core/driver/harness_provider_request_core_test.go",
+        "durable/harness/agent_regression_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/harness-turn-limit.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:be19144ced89e96c7ed4ece549f02f922be64386cf9e9cf5c1b7b3e3ae235f9d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:be19144ced89e96c7ed4ece549f02f922be64386cf9e9cf5c1b7b3e3ae235f9d",
+      "evidence": [
+        "durable/harness/harness_turn_limit_test.go#TestTurnLimit"
+      ],
+      "rationale": "All 11 cases ported against durable/harness, compared body to body; \"keeps the stored count across a restart\" crashes the first harness as upstream does (thOpen, kill: every later storage call hangs), without a clean close."
     },
     {
       "path": "packages/durable/test/harness-view-run.test.ts",
@@ -9549,13 +10310,21 @@
     },
     {
       "path": "packages/durable/test/indexeddb-storage.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0b3953cca36a4b5b82fc28d5e62b2b577615da5f5b6b640af9ceba04d99240c5"
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:0b3953cca36a4b5b82fc28d5e62b2b577615da5f5b6b640af9ceba04d99240c5",
+      "rationale": "Browser-only: the test opens with /// <reference lib=\"dom\" /> and runs the Storage conformance suite against IndexedDbStorage (packages/durable/src/storage/indexeddb.ts) on fake-indexeddb's IDBFactory, an IndexedDB API that exists only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can reach the backend (PORT_MAP records the source row as designed-out); the Storage contract it implements is exercised by the Go memory, jsonl and sqlite drivers' conformance tests. Pi 16f5f0af4d changes 3 lines of the test.",
+      "protects": "The Storage contract holds on IndexedDbStorage. A Go test is impossible: IndexedDB exists only in a browser and PiG has no browser or WebAssembly build; the same contract is exercised by the Go memory, jsonl and sqlite drivers' conformance tests.",
+      "pigTest": "The Go memory, jsonl and sqlite drivers' conformance tests exercise the same Storage contract.",
+      "whyNot": "IndexedDB exists only in a browser and PiG has no browser or WebAssembly build."
     },
     {
       "path": "packages/durable/test/jsonl-storage.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:28634f04721284a3a03fdb7bbcf1e89d16ca4fa328eacddb48e841eadf220fcd"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:28634f04721284a3a03fdb7bbcf1e89d16ca4fa328eacddb48e841eadf220fcd",
+      "evidence": [
+        "durable/storage/jsonl/jsonl_storage_read_only_test.go#TestJsonlStorageReadOnlyOpen"
+      ],
+      "rationale": "f5f4a71af: the four cases of 'JsonlStorage read-only open' are the four subtests of TestJsonlStorageReadOnlyOpen."
     },
     {
       "path": "packages/durable/test/memory-storage.test.ts",
@@ -9606,8 +10375,12 @@
     },
     {
       "path": "packages/durable/test/session-cached-storage.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:2ed2a45225c4a671d41d9d9926bd179d6c6d5529cc3790defb6d9dc3a3826d04"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:2ed2a45225c4a671d41d9d9926bd179d6c6d5529cc3790defb6d9dc3a3826d04",
+      "evidence": [
+        "durable/session/cached_storage_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/session-checkpoints-migrations.test.ts",
@@ -9748,8 +10521,13 @@
     },
     {
       "path": "packages/durable/test/spec-usage.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8abe0a64c299d700aabfd5c26547c3ef38cd636681cd5e95300b5ee6c1936bfb"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8abe0a64c299d700aabfd5c26547c3ef38cd636681cd5e95300b5ee6c1936bfb",
+      "evidence": [
+        "durable/examples/spec_usage_upstream_test.go",
+        "durable/spec_usage_upstream_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/sqlite-cloudflare.test.ts",
@@ -9763,8 +10541,14 @@
     },
     {
       "path": "packages/durable/test/sqlite-commit.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f25013c7fc1d70588c8238569b609ec34cc18f9c70a670454c992a531ad846b0"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f25013c7fc1d70588c8238569b609ec34cc18f9c70a670454c992a531ad846b0",
+      "evidence": [
+        "durable/storage/sqlite/sqlite_commit_test.go#TestSqliteStorageBatchCommitsAgainstMemoryReference",
+        "durable/storage/sqlite/sqlite_commit_test.go#TestSqliteStorageBatchCommitStatements",
+        "durable/storage/sqlite/sqlite_commit_test.go#TestSqliteStorageBatchCommitRegressions"
+      ],
+      "rationale": "All 6 cases ported under Pi's names (the random batch calls against MemoryStorage per seed, the four statement-count cases, adapted to bound VALUES inserts (eight statements for one batch; VALUES statements of 1, 2, 4 ... rows within 100 parameters for 150; rows of little text and large rows both bound column by column; the 512 Ki character split of the JSON array has no counterpart), no table scans by EXPLAIN QUERY PLAN, and the regression of a third incarnation after a replacement in an earlier batch for each order). The Go suite adds a stored document record that cannot be parsed, which rejects the whole call as a storage failure."
     },
     {
       "path": "packages/durable/test/sqlite-facade.test.ts",
@@ -9787,8 +10571,16 @@
     },
     {
       "path": "packages/durable/test/sqlite-storage.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0f214d915a1ec79e193f3feb49cb68eb0dc6dae51d1b3879e82d671111300053"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:0f214d915a1ec79e193f3feb49cb68eb0dc6dae51d1b3879e82d671111300053",
+      "evidence": [
+        "durable/storage/sqlite/sqlite_storage_test.go",
+        "durable/durabletest/storage_conformance_cases_test.go#TestCreateStorageConformanceCasesMatchUpstream",
+        "durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageConformance",
+        "durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageBatches",
+        "durable/storage/backend_reads_test.go#TestBackendReadsAgreeWithMemory"
+      ],
+      "rationale": "Pi v1.5.0 re-record: the 32-case conformance suite (durabletest, including the continue submissions and the creation-plus-change refusal new in v1.5.0), the pico storage, the record key order, the batches and the reads agreeing with memory run in the evidence files; the six upstream cases of SqliteStorage batches run as TestSqliteStorageBatches with each failure mode of the check read: Error, primitive and undefined rejections become the error the read returns (a message, a bare string, an empty one) and the synchronous throw its panic, each rejecting the whole call with nothing received or stored. Pi 1.5.0 to c23b9ec1 (fabf916f): the batch failure cases moved to a faultyDatabase helper and the first now fails a copy's source read (the batches before it are written first, so the whole call, the written batches included, is rejected with nothing received or stored): TestSqliteStorageBatches 'rejects the whole call, the batches written before it included, when a copy's source read fails with a ...' for the undefined rejection and the synchronous throw, and the check-read failures of record types for each failure mode."
     },
     {
       "path": "packages/durable/test/storage-runtime-boundary.test.ts",
@@ -9800,8 +10592,13 @@
     },
     {
       "path": "packages/durable/test/store-storage-commit.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c8fd32997069adb4c189ea6cd627fd8a604505a6883f8eba51f2630912ab11ed"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c8fd32997069adb4c189ea6cd627fd8a604505a6883f8eba51f2630912ab11ed",
+      "evidence": [
+        "durable/session/store_storage_publication_test.go",
+        "durable/storage/store/store_storage_commit_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/store-storage.test.ts",
@@ -10144,8 +10941,15 @@
     },
     {
       "path": "packages/mcp/test/model-content.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:05e8b27e1e2a03a5b1af42e18fdad270e3be84cc08bc5e7aa9edeb744328f922"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:05e8b27e1e2a03a5b1af42e18fdad270e3be84cc08bc5e7aa9edeb744328f922",
+      "evidence": [
+        "mcp/model_content_pi_test.go#TestToMcpModelContentNamesTheReadToolInResourceLinksWhenThereIsOne",
+        "mcp/model_content_pi_test.go#TestToMcpModelContentSavesBinaryResourcesShowsTextBlobsAsTextAndKeepsImages",
+        "mcp/model_content_pi_test.go#TestToMcpModelContentLeavesBinaryResourcesOutWithoutASaverAndSaysWhyWhenSavingFails",
+        "mcp/model_content_pi_test.go#TestToMcpModelContentShowsStructuredContentAsJSONWhenThereAreNoContentBlocks"
+      ],
+      "rationale": "Ported in mcp/model_content_pi_test.go (Pi 1acc72acd): all 4 toMcpModelContent cases."
     },
     {
       "path": "packages/mcp/test/naming.test.ts",
@@ -10255,8 +11059,13 @@
     },
     {
       "path": "packages/mcp/test/result-schema.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:173d6f9025e07a3de88bd9e9d629143ee3a696b4efdf1462d59227dd2640bbcb"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:173d6f9025e07a3de88bd9e9d629143ee3a696b4efdf1462d59227dd2640bbcb",
+      "evidence": [
+        "mcp/result_schema_pi_test.go#TestCreateMcpResultSchemaDeclaresTheCallToolResultWithAnyStructuredContentWithoutAnOutputSchema",
+        "mcp/result_schema_pi_test.go#TestCreateMcpResultSchemaMovesLocalReferencesBelowStructuredContentKeepingDataAndRemoteReferences"
+      ],
+      "rationale": "Ported in mcp/result_schema_pi_test.go (Pi 1acc72acd): all createMcpResultSchema cases."
     },
     {
       "path": "packages/mcp/test/sign-in.test.ts",
@@ -10311,8 +11120,39 @@
     },
     {
       "path": "packages/mcp/test/streamable-http.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:aca3c9d4e687142cc6c7a863b82269572c6f0569e6463835a7b1aafb549ace3b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:aca3c9d4e687142cc6c7a863b82269572c6f0569e6463835a7b1aafb549ace3b",
+      "evidence": [
+        "mcp/streamable_http_test.go#TestConsumeSSEStreamParsesChunkedCRLFEventsCommentsIDsAndMultilineData",
+        "mcp/streamable_http_test.go#TestConsumeSSEStreamRejectsEventsWhoseDataLinesExceedTheLimitWithoutABlankLine",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportHandlesJSONAndSSEResponsesWithSessionAndProtocolHeaders",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportClassifiesAuthenticationFailures",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportFailsOnlyTheRequestWhoseSSEStreamBreaks",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportOpensTheGETStreamAfterInitializationAndSendsLastEventIDOnlyWhenResuming",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportResumesAResponseStreamTheServerClosedBeforeAnswering",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportFailsARequestWhoseResponseStreamEndsWithoutAnAnswer",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportReconnectsTheGETStreamAfterItDrops",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportRejectsARequestTheServerAcceptsWithoutAResponse",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportIncludesTheResponseBodyInHTTPErrors",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportHandsUnauthorizedAndInsufficientScopeResponsesToTheAuthProviderWithTheRejectedToken",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportRoutesEveryRequestThroughTheFetchInUse",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportClassifiesAnExpiredEstablishedSession",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportWritesTheGETStreamRequestBeforeTheInitializedNotificationReturns",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportClosesTheSessionWithTheLastRequestsTokenWithoutAskingTheAuthProvider",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportSkipsAnSSEEventWhoseDataIsJavaScriptWhitespace",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportSetProtocolVersionChangesTheHeaderOfLaterRequests",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportSendsTheProtocolVersionSetOnIt",
+        "mcp/streamable_http_body_cap_pi_test.go#TestStreamableHTTPAppliesMaxMessageBytesToJSONResponses",
+        "mcp/streamable_http_body_cap_pi_test.go#TestStreamableHTTPDecodesJSONResponsesSplitInsideABOMAndAMultiByteCharacter",
+        "mcp/streamable_http_body_cap_pi_test.go#TestStreamableHTTPReadsOnlyAnExcerptOfHTTPErrorBodiesAndCancelsTheRest",
+        "mcp/streamable_http_body_cap_pi_test.go#TestStreamableHTTPRejectsAnOversizedJSONReplyWithoutWaitingForTheRestOfTheBody",
+        "mcp/streamable_http_body_cap_pi_test.go#TestStreamableHTTPAnErrorBodyThatFailsMidReadIsEmpty",
+        "mcp/streamable_http_body_cap_pi_test.go#TestStreamableHTTPClosesAnSSEResponseWhoseEventExceedsTheLimit",
+        "mcp/sse_cr_pi_test.go#TestConsumeSSEStreamRecognizesCRLFAndCRLineEndingsIncludingCRLFSplitAcrossChunks",
+        "mcp/sse_cr_pi_test.go#TestConsumeSSEStreamDispatchesCRTerminatedEventsWhileTheStreamStaysOpen",
+        "mcp/sse_linear_test.go"
+      ],
+      "rationale": "Pi main f40984747: a failed SSE response is closed; the body cap and excerpt cases are unchanged."
     },
     {
       "path": "packages/schema/test/builders.test.ts",
@@ -10574,8 +11414,12 @@
     },
     {
       "path": "packages/tui/test/editor.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7195676abffe52e7ee001faa549d0b9f0dd7c035141954edfadcd3550cf23cad"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7195676abffe52e7ee001faa549d0b9f0dd7c035141954edfadcd3550cf23cad",
+      "evidence": [
+        "tui/editor_sticky_paste_upstream_test.go#TestUpstreamEditorPasteMarkerAtomicBehavior"
+      ],
+      "rationale": "a77207d9c: 'renumbers short paste markers without a size suffix' is a subtest of TestUpstreamEditorPasteMarkerAtomicBehavior; the Go renumbering was already equivalent."
     },
     {
       "path": "packages/tui/test/exit-restore.test.ts",
@@ -10674,8 +11518,42 @@
     },
     {
       "path": "packages/tui/test/markdown.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c142a6a5089a1eb4917ec1be4e0ccebc3380b91956ae42f5ea1a442463d16f06"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c142a6a5089a1eb4917ec1be4e0ccebc3380b91956ae42f5ea1a442463d16f06",
+      "evidence": [
+        "tui/markdown_upstream_test.go#TestUpstreamMarkdown",
+        "tui/markdown_cjk_url_test.go#TestMarkdownBareURLCJKPunctuation",
+        "tui/markdown_test.go#TestMarkdownTableSimple",
+        "tui/w3_sessions_test.go#TestMarkdownRuleWidthCap",
+        "internal/codingagent/w3_pi_test.go#TestW3SessionPiComparison",
+        "tui/markdown_codeblock_wrap_test.go#TestCodeBlockKeepsEveryCharacterAtNarrowWidth",
+        "tui/markdown_row_invariant_test.go#TestRealMarkdownNeverEmitsAnOverWideRow",
+        "tui/markdown_width_test.go#TestMarkdownRender_NeverExceedsWidth",
+        "tui/markdown_latex_test.go#TestMarkdownLatexMatchesUpstream",
+        "tui/markdown_upstream_fixture_test.go",
+        "tui/markdown_port_regressions_test.go",
+        "test/parity/scenarios/tui-components/16-markdown-user-components.toml",
+        "tui/markdown_cjk_test.go#TestMarkdownCJKEmphasisPiCases",
+        "tui/markdown_cjk_test.go#TestMarkdownCJKEmphasisMatchesPi",
+        "tui/markdown_cjk_test.go#TestMarkedCJKClassMatchesPinnedPackage",
+        "tui/markdown_marked_test.go#TestMarkedRightDelimiterScanMatchesRegexps",
+        "tui/markdown_latex_table_test.go#TestMarkdownUnclosedDisplayMathBeforeTables",
+        "tui/markdown_latex_table_test.go#TestMarkdownUnclosedDisplayMathBeforeTablesMatchesPi",
+        "tui/markdown_latex_table_test.go#TestMarkdownContainsTableStart",
+        "tui/markdown_upstream_test.go#TestMarkdownRendersQuotesNestedDeeperThanTheWidthAllowsWithoutExploding",
+        "tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWiderThanTheContentWidthFallsBackToRawSource",
+        "tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWidthFallbackMatchesPi",
+        "tui/markdown_wrap_boundary_test.go#TestMarkdownStyledWordsAtTheWrapBoundaryPiCase",
+        "tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse",
+        "tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender",
+        "tui/markdown_html_comments_upstream_test.go#TestUpstreamMarkdownHTMLComments",
+        "tui/markdown_latex_upstream_test.go",
+        "tui/terminal_image_upstream_test.go"
+      ],
+      "rationale": "All 102 upstream cases are ported: the 98 cases of the earlier pin keep their evidence and the four Pi 0f21a331 'Block reuse' cases run as TestUpstreamMarkdownBlockReuse subtests with the same inputs and expectations. The 'holds rendered blocks weakly, so a full garbage collection releases them' case holds the memos of a render in a weak.Pointer, as markdown.ts holds its rendered blocks in a WeakRef, and runs runtime.GC between the two renders. The other reuse cases run with the collector paused, as a WeakRef's target lives until its JavaScript job ends. TestMarkdownReusedHighlightingEqualsAFreshRender and the 'releases the reused highlighting when streaming finishes' subtest pin that reuse changes no output and that FinishStreaming releases the memos at once. Pi main 54280c4ff adds the HTML comment cases (TestUpstreamMarkdownHTMLComments).",
+      "protects": "Rendered markdown blocks held for reuse are released after a full garbage collection.",
+      "pigTest": "tui/markdown_upstream_test.go#TestUpstreamMarkdownBlockReuse subtest 'releases the reused highlighting when streaming finishes' and TestMarkdownReusedHighlightingEqualsAFreshRender pin the release by FinishStreaming, Invalidate and a theme change.",
+      "whyNot": "The case asserts a JavaScript WeakRef cleared by gc(). Go's collector can clear a weak pointer between two streaming deltas, so PiG holds the memo strongly for one render; a GC-timed test would be flaky and would assert the opposite design."
     },
     {
       "path": "packages/tui/test/mouse-components.test.ts",
@@ -10859,8 +11737,21 @@
     },
     {
       "path": "packages/tui/test/stdin-buffer.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:2c255b461f40a2068bc6ee01650b79312bd08f1151b018581d63848b8d508622"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:2c255b461f40a2068bc6ee01650b79312bd08f1151b018581d63848b8d508622",
+      "evidence": [
+        "tui/stdin_buffer_first_half_upstream_test.go#TestStdinBufferFirstHalfSequences",
+        "tui/stdin_buffer_first_half_upstream_test.go#TestStdinBufferFirstHalfPartialWithPendingBuffer",
+        "tui/stdin_buffer_first_half_upstream_test.go#TestStdinBufferFirstHalfTimers",
+        "tui/stdin_buffer_second_half_upstream_test.go#TestStdinBufferSecondHalfSequences",
+        "tui/stdin_buffer_second_half_upstream_test.go#TestStdinBufferSecondHalfPartialAndFlush",
+        "tui/stdin_buffer_second_half_upstream_test.go#TestStdinBufferSecondHalfTimeoutAndDestroy",
+        "tui/stdin_buffer_second_half_upstream_test.go#TestStdinBufferSecondHalfPaste",
+        "tui/stdin_buffer_second_half_upstream_test.go#TestStdinBufferEmptyFlushPreservesKittyDuplicateState",
+        "tui/stdin_buffer_terminal_reply_upstream_test.go#TestStdinBufferTerminalReplyStrings",
+        "tui/stdin_buffer_oracle_test.go#TestStdinBufferMatchesPiOracle"
+      ],
+      "rationale": "82 cases. The 59 cases of 1.1.0 are unchanged and keep their evidence: cases 1-29 in tui/stdin_buffer_first_half_upstream_test.go and cases 30-59 in tui/stdin_buffer_second_half_upstream_test.go, timer cases driven through the production TerminalInput timer under synctest. 1.2.0 adds an afterEach destroy (the Go owner closes the TerminalInput in t.Cleanup) and the 23-case describe \"Terminal Reply Strings\": 7 \"keeps delayed <reply> intact at every split after its reply header\" cases, \"keeps an OSC reply buffered across multiple expired sequence timeouts\", \"still times out bare string introducers as Alt keys\", 11 \"recovers batched legacy Alt input <input> within the sequence timeout\" cases, \"recognizes a reply header assembled within the ambiguous-input timeout\", \"recovers from an unterminated reply when a new escape sequence arrives\" and \"discards a canceled reply without swallowing subsequent input\". All 23 are ported with the same inputs and the same timeout options (10ms for the beforeEach buffer, the default for new StdinBuffer()) as subtests of TestStdinBufferTerminalReplyStrings; they observe the StdinBuffer data event as Pi's buffer.on(\"data\") does. The production change of stdin-buffer.ts is ported in tui/stdin_buffer.go: terminalReplyHeaderRegex (TERMINAL_REPLY_HEADER_PATTERN), HasPendingFlush arms no timeout for a recognized reply header, extractCompleteSequences drops a reply cancelled by CAN/SUB and aborts one at a new escape sequence, and FlushExpired (the timeout callback) emits a timed-out control string as its two-unit introducer and reparses the tail; TerminalInput.Flush and the experimental client and durable input loops call FlushExpired, while public Flush keeps returning the remainder whole. testdata/stdin-buffer-oracle.json is regenerated from Pi 1.2.0's stdin-buffer.ts with the unchanged generator (the 1.1.0 source reproduces the old fixture byte for byte), and TestStdinBufferMatchesPiOracle passes 900 of 900 sequences."
     },
     {
       "path": "packages/tui/test/suspend-signal.test.ts",
@@ -10963,8 +11854,29 @@
     },
     {
       "path": "packages/tui/test/tui-alt-screen.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:be3a9385730167e56ffe394f079daaf7f44a08280eff940c05adf87ed6c3b603"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:be3a9385730167e56ffe394f079daaf7f44a08280eff940c05adf87ed6c3b603",
+      "evidence": [
+        "tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenDefersViewportKeysToAFocusedList",
+        "tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenGivesViewportKeysBackWhenEditorAutocompleteCloses",
+        "tui/tui_alt_screen_test.go",
+        "tui/tui_alt_screen_v087_test.go",
+        "tui/mouse_test.go",
+        "tui/tui_alt_screen_wheel_upstream_test.go#TestUpstreamAltScreenAppliesRuntimeWheelLineCountUpdates",
+        "tui/tui_alt_screen_kitty_order_test.go#TestAltScreenRedrawsKittyImagesAfterWritesToCoveredRows",
+        "tui/tui_alt_screen_v087_test.go#TestAltScreenModifiedNavigationReachesFocusedComponent",
+        "tui/tui_alt_screen_v087_test.go#TestAltScreenKeyboardNavigationHasFourRowsOfPageOverlap",
+        "tui/tui_alt_screen_test.go#TestAltScreenKeyboardPageAndEdgeScroll",
+        "tui/fake_cursor_test.go#TestAltScreenKeepsTheSelectionHighlightAfterAFakeCursorCell",
+        "tui/tui_alt_screen_v087_test.go#TestAltScreenScrollsOnWheelAFocusedOverlayDoesNotHandle",
+        "tui/tui_alt_screen_v087_test.go#TestAltScreenFocusedOverlayOwnsViewportKeys",
+        "tui/tui_alt_screen_v087_test.go#TestAltScreenDoubleClickJoinsSlashAndHyphenSegments",
+        "tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenCropsAKittyImageWhosePlaceholderRowsContainText",
+        "tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenCropsAKittyImageInAPaddedColoredBoxWhoseFirstLineIsAboveTheViewport",
+        "tui/tui_alt_screen_kitty_order_test.go#TestAltScreenDoesNotLeakCursorMarkersWhileSelectingAfterTheCaret",
+        "tui/tui_alt_screen_kitty_order_test.go#TestAltScreenDrawsKittyImagesAfterClearingTheRowsTheyCover"
+      ],
+      "rationale": "Pi 3bae8527 'defers viewport keys to a focused list' and 'gives viewport keys back when autocomplete closes'. Pi main 25490ea49 and 4622edb79 change or add three cases (tui/tui_alt_screen_kitty_order_test.go)."
     },
     {
       "path": "packages/tui/test/tui-cell-size-input.test.ts",
@@ -10986,8 +11898,24 @@
     },
     {
       "path": "packages/tui/test/tui-render.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:bd5f6f6aa79d83f765a848fe34287f1c69c0c66371270747baa3dfc03fcee406"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:bd5f6f6aa79d83f765a848fe34287f1c69c0c66371270747baa3dfc03fcee406",
+      "evidence": [
+        "tui/tui_render_upstream_test.go#TestUpstreamTUIOSC133Markers",
+        "tui/tui_render_keyboard_upstream_test.go#TestUpstreamTUIKeyboardRender",
+        "tui/tui_render_upstream_test.go#TestUpstreamTUIRenderDiagnostics",
+        "tui/tui_render_upstream_test.go#TestUpstreamTUIBoundedRender",
+        "tui/tui_render_kitty_upstream_test.go#TestUpstreamTUIRenderKittyCleanup",
+        "tui/tui_render_upstream_test.go#TestUpstreamTUIResize",
+        "tui/tui_render_upstream_test.go#TestUpstreamTUIContentShrinkage",
+        "tui/tui_render_upstream_test.go#TestUpstreamTUIDifferentialRendering",
+        "tui/fake_cursor_test.go#TestMainScreenDrawsTheFocusedFakeCursorAndOmitsItWhenTheHardwareCursorIsShown",
+        "tui/fake_cursor_test.go#TestMainScreenKeepsTheFakeCursorOfAnUnfocusedInput",
+        "tui/fake_cursor_test.go#TestMainScreenOmitsAFocusedFakeCursorWhoseEndMarkerTruncationDropped",
+        "tui/fake_cursor_test.go#TestMainScreenKeepsTheCursorWhenAnOverlayEndsDirectlyLeftOfIt",
+        "tui/render_overflow_test.go"
+      ],
+      "rationale": "Pi 19ce8059 'does not write OSC 133 prompt markers to the terminal'. Pi main 25490ea49 adds two cursor-marker cases, run as TestUpstreamTUIBoundedRender subtests."
     },
     {
       "path": "packages/tui/test/tui-shrink.test.ts",
