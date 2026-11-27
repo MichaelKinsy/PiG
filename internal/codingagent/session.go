@@ -163,8 +163,10 @@ type Session struct {
 	// factArena holds the /tree facts of assistant messages (entrySlot.facts, storeFactsLocked).
 	factArena []byte
 	// coldChunks hold the slots' cold parts (entrySlot.cold), coldCount of them.
-	coldChunks [][]slotCold
-	coldCount  uint32
+	// oversizedSizes maps a cold ref (slot.cold) to its full int64 length when a record exceeds math.MaxInt32.
+	coldChunks     [][]slotCold
+	coldCount      uint32
+	oversizedSizes map[uint32]int64
 	// backing is the session file, set only together with a snapshot; "" keeps every entry resident. The slot offsets locate lines in snapshot,
 	// the session's private copy of it, so a change another program makes to the file reaches no read.
 	backing  string
@@ -365,19 +367,35 @@ func (s *Session) AppendEntry(entry any) error {
 
 // appendEntryRecord adds the entry whose encoded record is raw. ownMessage reports that raw is the record this session just encoded from a message entry, so the decoded entry stands for it in the accounting and in the conversation gate and the record is not parsed again for them.
 func (s *Session) appendEntryRecord(raw []byte, ownMessage bool) error {
-	return s.appendEntryRecordOf(compactionWithoutRecord(sessionentry.DecodeSessionEntry(raw), raw), raw, ownMessage)
+	return s.appendEntryRecordOf(entryWithoutRedundantRecord(sessionentry.DecodeSessionEntry(raw), raw), raw, ownMessage)
 }
 
-// compactionWithoutRecord is entry, decoded from raw, without its record when it is a compaction that encodes to raw again: a compaction stays
-// resident for the session's life (a context read takes every entry before its kept range), and its record repeats its summary, escaped. Pi
-// holds the parsed entry and no text of it. Every reader of the entry gets raw's bytes.
-func compactionWithoutRecord(entry SessionEntry, raw []byte) SessionEntry {
-	compaction, ok := entry.(CompactionEntry)
-	if !ok {
+// entryWithoutRedundantRecord returns entry without its raw JSON record when re-encoding its decoded fields produces raw byte-for-byte.
+// Keeping both the decoded struct and a copy of the raw line doubles memory for resident entries (compactions, branch summaries,
+// labels, session_info, model_change, thinking_level_change, usage, context_edit). Every reader still gets raw's exact bytes.
+func entryWithoutRedundantRecord(entry SessionEntry, raw []byte) SessionEntry {
+	var bare SessionEntry
+	switch typed := entry.(type) {
+	case CompactionEntry:
+		bare = typed.WithoutRecord()
+	case BranchSummaryEntry:
+		bare = typed.WithoutRecord()
+	case LabelEntry:
+		bare = typed.WithoutRecord()
+	case SessionInfoEntry:
+		bare = typed.WithoutRecord()
+	case ModelChangeEntry:
+		bare = typed.WithoutRecord()
+	case ThinkingLevelEntry:
+		bare = typed.WithoutRecord()
+	case UsageEntry:
+		bare = typed.WithoutRecord()
+	case ContextEditEntry:
+		bare = typed.WithoutRecord()
+	default:
 		return entry
 	}
-	bare := compaction.WithoutRecord()
-	if encoded, err := marshalSessionLine(bare); err != nil || !bytes.Equal(encoded, raw) {
+	if encoded, err := jsstring.MarshalJSON(bare); err != nil || !bytes.Equal(encoded, raw) {
 		return entry
 	}
 	return bare

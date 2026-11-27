@@ -166031,8 +166031,8 @@
       ],
       "evidence": [
         "test:coding/session_tree_test.go#TestNavigateTreeExtensionSummary",
-        "test:internal/codingagent/session_null_members_rewrite_test.go#TestRewritersKeepNullMembers",
-        "test:internal/sessionentry/entry_test.go#TestAsCompactionAndAsBranchSummaryKeepDetailsOrder"
+        "test:internal/codingagent/session_custom_open_retention_test.go#TestOpenSessionDoesNotDoubleRetainBranchSummary",
+        "test:internal/codingagent/session_null_members_rewrite_test.go#TestRewritersKeepNullMembers"
       ]
     },
     {

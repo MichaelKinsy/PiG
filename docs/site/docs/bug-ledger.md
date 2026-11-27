@@ -1826,6 +1826,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b8df7eb-2](#bf-b8df7eb-2) | On Windows, an image fallback links a path that starts with a slash but no drive (`/tmp/x.png`) as Pi does… | PiG's own defect | Windows | 0.5.0 |
 | [BF-b8df7eb-3](#bf-b8df7eb-3) | Alt-screen frames outside the Kitty protocol no longer read the environment for WezTerm on every render… | PiG's own defect | Windows | 0.5.0 |
 | [BF-b91a454](#bf-b91a454) | `pig --list-models` now checks credentials again before it prints, as Pi does | PiG's own defect | All platforms | 0.8.0 |
+| [BF-b9253e4](#bf-b9253e4) | Opening a file-backed v3 session through `coding.SessionManagerFor` or `SessionManager.Open` now indexes… | PiG's own defect | All platforms | Unreleased |
 | [BF-b96952c](#bf-b96952c) | fix(chord/nextnode/workers): Kill never uses a closed job handle; a worker that cannot be placed in a job… | PiG's own defect | All platforms | Unreleased |
 | [BF-b978381](#bf-b978381) | fix(chord/workers): the rollout lists every retried worker (#489) | PiG's own defect | All platforms | Unreleased |
 | [BF-b99457f](#bf-b99457f) | `tool_search` and codemode tool search match Chinese, Japanese and Korean queries: each such character is a… | PiG's own defect | All platforms | 0.5.0 |
@@ -27591,6 +27592,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `b91a45414f` (2026-11-12)
 - **Tests:** `coding/cli/model_list_async_wcli2_test.go::TestListModelsEndsAtItsSignalWithoutATable`, `coding/cli/model_list_async_wcli2_test.go::TestListModelsListsStoredOAuthAndConfiguredKeyProvidersWithoutRefreshing`, `coding/cli/model_list_async_wcli2_test.go::TestListModelsWarnsOfTheLoadErrorBeforeTheTable`, `coding/cli/model_list_reject_async_wcli2_test.go::TestListModelsEndsWithTheAvailabilityFailure`
 - **Release note:** `pig --list-models` now checks credentials again before it prints, as Pi does. When `auth.json` cannot be read (for example it is not valid JSON) the run warns `Availability refresh: <error>`, reports the error and exits with status 1 instead of printing a table and exiting 0; a check that takes longer than 15 s ends the same way with a timeout error.
+
+### BF-b9253e4
+
+**Opening a file-backed v3 session through `coding.SessionManagerFor` or `SessionManager.Open` now indexes…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Opening a file-backed v3 session through `coding.SessionManagerFor` or `SessionManager.Open` now indexes `custom` and `branch_summary` entries lazily by file offset, length, hash, and base metadata instead of eagerly decoding and retaining both a cloned JSONL line and the decoded payload on the heap, streams standard-shaped oversized `custom` JSONL lines (>4 MiB) in constant memory without buffering the full line (falling back to full-line indexing from the private snapshot for unusual valid shapes such as a repeated top-level `type` key or escaped top-level keys), and strips redundant raw JSON copies on canonical resident entries across all entry types (fixes #575).
+- **Root cause:** prepareIndexLineAfter only took the offset-backed lazy path for message and custom_message, eagerly cloning and decoding custom and branch_summary lines on open
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6d6928e61d` (2026-11-26), `759c3fda6b` (2026-11-26), `b9253e4219` (2026-11-26)
+- **Tests:** `internal/codingagent/session_custom_open_retention_test.go::TestOpenSessionDoesNotDoubleRetainBranchSummary`, `internal/codingagent/session_custom_open_retention_test.go::TestOpenSessionDoesNotRetainCustomPayloads`, `internal/codingagent/session_stream_line_test.go::FuzzStreamCustomLineMatchesFullLine`, `internal/codingagent/session_stream_line_test.go::TestFallbackReadsSnapshotNotEditedLiveFile`, `internal/codingagent/session_stream_line_test.go::TestOversizedCustomEntryEndToEnd`, `internal/codingagent/session_stream_line_test.go::TestResidentEntryTypesHoldNoRedundantRecord`, `internal/codingagent/session_stream_line_test.go::TestSlotColdPreservesOver2GiBRecordSize`, `internal/codingagent/session_stream_line_test.go::TestStreamCustomParserMatchesValidAndPrepare` and 1 more in docs/bug-ledger.json
+- **Release note:** Opening a file-backed v3 session through `coding.SessionManagerFor` or `SessionManager.Open` now indexes `custom` and `branch_summary` entries lazily by file offset, length, hash, and base metadata instead of eagerly decoding and retaining both a cloned JSONL line and the decoded payload on the heap, streams standard-shaped oversized `custom` JSONL lines (>4 MiB) in constant memory without buffering the full line (falling back to full-line indexing from the private snapshot for unusual valid shapes such as a repeated top-level `type` key or escaped top-level keys), and strips redundant raw JSON copies on canonical resident entries across all entry types (fixes #575).
 
 ### BF-b96952c
 
