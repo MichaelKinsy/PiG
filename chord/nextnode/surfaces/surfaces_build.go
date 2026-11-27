@@ -229,6 +229,9 @@ func (b *surfaceBuild) step(name string) plugins.RolloutStep {
 
 // run builds the base bundle, takes the kind's current set as the first and publishes it.
 func (b *surfaceBuild) run(ctx context.Context) *buildOutcome {
+	// The kind's plugins build here while the base builds; Start below takes the same set (and its failure, if any).
+	//portlint:allow golifetime bounded by Plugins.Close (ownCtx) and awaited by published.Start below
+	go func() { _, _ = b.options.plugins.Scripts(b.options.kind, ctx) }()
 	base, err := BuildBase(b.options.entry, b.platform, b.prefix, b.options.resolution)
 	if err != nil {
 		return &buildOutcome{err: err}
@@ -240,9 +243,9 @@ func (b *surfaceBuild) run(ctx context.Context) *buildOutcome {
 	b.mu.Lock()
 	b.live = published
 	b.mu.Unlock()
-	if err := PublishTo(b.server, b.surface, published.Set(), ctx); err != nil {
-		return &buildOutcome{err: err}
-	}
+	// A push that fails (once, or as the scripts object's host closes) leaves the build standing: the next step's
+	// push sends the set again (round 2 of the perf pass, Astra).
+	_ = published.Push(ctx)
 	return &buildOutcome{base: base, published: published}
 }
 

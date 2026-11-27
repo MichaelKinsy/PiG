@@ -79,16 +79,16 @@ func TestARolloutStepDuringTheBuildStopsWaitingAtItsContextsAbortBeforeTheBuildE
 	}
 }
 
-// The server's close fails a build in flight (Pi: "the server's close fails it"): the waiting request is answered 503 once the
-// build's esbuild run ends, and nothing is published on the closed host.
-func TestTheServersCloseFailsTheBuildInFlightItsWaitersAnswer503(t *testing.T) {
+// Pi 1.7.0 (round 2 of the perf pass, Astra): a push that fails as the scripts object's host closes leaves the build standing
+// (the next step's push sends the set again, and the surface's files remain served rather than 503).
+func TestTheServersCloseDuringPushLeavesTheBuildStanding(t *testing.T) {
 	entry, pipe := heldEntry(t)
 	f := newBuildFixture(t, entry)
 	answered := make(chan error, 1)
 	go func() {
 		response, err := f.building.file(WebPrefix+"base.0.js", context.Background())
-		if err == nil && (response.Kind != http.KindError || response.Status != 503) {
-			err = errors.New("the waiter was not answered 503")
+		if err == nil && response.Kind == http.KindError && response.Status == 503 {
+			err = errors.New("the waiter was answered 503")
 		}
 		answered <- err
 	}()
@@ -109,8 +109,8 @@ func TestTheServersCloseFailsTheBuildInFlightItsWaitersAnswer503(t *testing.T) {
 	case <-time.After(30 * time.Second):
 		t.Fatal("the waiter was never answered after the close")
 	}
-	if outcome := f.building.build(); outcome.Error == nil {
-		t.Fatal("a build the close ended reports built")
+	if outcome := f.building.build(); outcome.Kind != SurfaceBuiltKindBuilt {
+		t.Fatalf("outcome = %+v, want built", outcome)
 	}
 }
 

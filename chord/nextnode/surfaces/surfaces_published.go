@@ -57,14 +57,19 @@ type PublishedScripts struct {
 	current map[string]published
 	names   []string
 	set     next.ScriptSet
+	hasSet  bool
 	// files are the files of the last keptSets sets, newest last, each by path.
 	files []map[string]ServedFile
+	// pushed is the set last pushed to the surface's current-scripts object: a push that failed is retried by the next.
+	pushed        next.ScriptSet
+	hasPushed     bool
+	pushedScripts map[string]published
 }
 
 // NewPublishedScripts is the published scripts of kind (plugin facets of that kind) of surface, under prefix, for the base
 // bundle base, from p, published on h.
 func NewPublishedScripts(surface SurfaceName, kind, prefix, base string, p *plugins.Plugins, h host.Host) *PublishedScripts {
-	return &PublishedScripts{surface: surface, kind: kind, prefix: prefix, base: base, plugins: p, host: h, current: map[string]published{}}
+	return &PublishedScripts{surface: surface, kind: kind, prefix: prefix, base: base, plugins: p, host: h, current: map[string]published{}, pushedScripts: map[string]published{}}
 }
 
 // Set is the set published now (after Start).
@@ -82,6 +87,30 @@ func (p *PublishedScripts) Start(ctx context.Context) ([]host.PluginFailure, err
 		return nil, err
 	}
 	return p.publish(scripts)
+}
+
+// Push pushes the current set to the surface's current-scripts object, unless that one was pushed already.
+func (p *PublishedScripts) Push(ctx context.Context) error {
+	p.mu.Lock()
+	set := p.set
+	already := p.hasPushed && sameScriptSet(p.pushed, set)
+	snapshot := make(map[string]published, len(p.current))
+	for k, v := range p.current {
+		snapshot[k] = v
+	}
+	p.mu.Unlock()
+	if already {
+		return nil
+	}
+	if err := PublishTo(p.host, p.surface, set, ctx); err != nil {
+		return err
+	}
+	p.mu.Lock()
+	p.pushed = set
+	p.hasPushed = true
+	p.pushedScripts = snapshot
+	p.mu.Unlock()
+	return nil
 }
 
 // File is a published file by its path, from the last few sets (nil: none).
@@ -102,26 +131,27 @@ func (p *PublishedScripts) Step(name string) plugins.RolloutStep {
 	return plugins.RolloutStep{
 		Name: name, Kinds: []string{p.kind},
 		Reload: func(_ *plugins.Built, applied map[string][]plugins.PluginScript, ctx context.Context) (plugins.StepResult, error) {
+			// Against the set clients last got: an apply retrying a failed push reports what that push carries.
 			p.mu.Lock()
-			before := map[string]string{}
-			for plugin, each := range p.current {
-				before[plugin] = each.digest
+			before := make(map[string]published, len(p.pushedScripts))
+			for plugin, each := range p.pushedScripts {
+				before[plugin] = each
 			}
 			p.mu.Unlock()
 			failed, err := p.publish(applied[p.kind])
 			if err != nil {
 				return plugins.StepResult{}, err
 			}
-			if err := PublishTo(p.host, p.surface, p.Set(), ctx); err != nil {
+			if err := p.Push(ctx); err != nil {
 				return plugins.StepResult{}, err
 			}
 			p.mu.Lock()
 			changes := host.PluginChanges{}
 			for _, plugin := range p.names {
-				digest := p.current[plugin].digest
+				now := p.current[plugin]
 				if was, had := before[plugin]; !had {
 					changes.Added = append(changes.Added, plugin)
-				} else if was != digest {
+				} else if !samePublished(was, now) {
 					changes.Changed = append(changes.Changed, plugin)
 				}
 			}
@@ -163,6 +193,9 @@ func (p *PublishedScripts) publish(scripts []plugins.PluginScript) ([]host.Plugi
 			kept[name] = previous
 		}
 	}
+	if p.hasSet && sameScripts(p.current, kept) {
+		return failed, nil
+	}
 	p.current = kept
 	p.names = p.names[:0]
 	for name := range kept {
@@ -175,7 +208,41 @@ func (p *PublishedScripts) publish(scripts []plugins.PluginScript) ([]host.Plugi
 		p.files = p.files[1:]
 	}
 	p.set = set
+	p.hasSet = true
 	return failed, nil
+}
+
+// sameScripts reports whether next publishes the plugins current does, each the same.
+func sameScripts(current, next map[string]published) bool {
+	if len(current) != len(next) {
+		return false
+	}
+	for name, now := range next {
+		was, ok := current[name]
+		if !ok || !samePublished(was, now) {
+			return false
+		}
+	}
+	return true
+}
+
+// samePublished reports whether two published scripts are the same: their digest and stylesheet.
+// Assets need no comparison: they are named by their content inside the script or the stylesheet.
+func samePublished(was, now published) bool {
+	return was.digest == now.digest && was.hasCSS == now.hasCSS && was.css == now.css
+}
+
+// sameScriptSet reports whether two ScriptSets are identical (same base, combined URL, and plugin entries).
+func sameScriptSet(a, b next.ScriptSet) bool {
+	if a.Base != b.Base || a.Combined != b.Combined || len(a.Plugins) != len(b.Plugins) {
+		return false
+	}
+	for i := range a.Plugins {
+		if a.Plugins[i] != b.Plugins[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // buildFailure is a plugin whose build failed: its errors.
