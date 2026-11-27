@@ -87,7 +87,7 @@ func TestIsRetryableAssistantErrorMoreTemporaryProviderFailures(t *testing.T) {
 		// Pi a00a5048d packages/ai/test/retry.test.ts: retries temporary provider failures
 		"Unable to process request. Repeat the request later.",
 		"waited 73.4s in queue, reaching this model's admission ceiling of 60s; retry after the hinted delay",
-		`{"type":"error","error":{"details":null,"type":"api_error","message":"Unable to complete this request right now. Please try again."},"request_id":"req_011CgfE1bTgPTDsor4TsApFv"}`,
+		`{"type":"error","error":{"details":null,"type":"api_error","message":"Unable to complete this request right now. Please try again."},"request_id":"req_test_001"}`,
 		"Provider finish_reason: error",
 		"Provider returned an empty response",
 		"Upstream error from Relace: The model stopped before completing the response.",

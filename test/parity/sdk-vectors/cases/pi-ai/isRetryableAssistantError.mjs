@@ -212,7 +212,7 @@ for (const errorMessage of [
   "The provider ended the response before it was complete.", "The connection to the provider was reset. Retry shortly.",
   "The provider reported a failure while generating the response.", "Provider unavailable for this model", "The provider is unavailable in your region",
   "Unable to process request. Repeat the request later.", "waited 73.4s in queue, reaching this model's admission ceiling of 60s; retry after the hinted delay",
-  '{"type":"error","error":{"details":null,"type":"api_error","message":"Unable to complete this request right now. Please try again."},"request_id":"req_011CgfE1bTgPTDsor4TsApFv"}',
+  '{"type":"error","error":{"details":null,"type":"api_error","message":"Unable to complete this request right now. Please try again."},"request_id":"req_test_001"}',
   "Provider finish_reason: error", "Provider returned an empty response", "Upstream error from Relace: The model stopped before completing the response.",
   "The operation was aborted", '{"type":"error","error":{"type":"invalid_request_error","message":"messages: at least one message is required"}}',
   "Provider finish_reason: content_filter", '{"type":"error","error":{"type":"api_error","message":"Monthly quota exceeded"}}',
