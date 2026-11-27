@@ -163,8 +163,10 @@ type Session struct {
 	// factArena holds the /tree facts of assistant messages (entrySlot.facts, storeFactsLocked).
 	factArena []byte
 	// coldChunks hold the slots' cold parts (entrySlot.cold), coldCount of them.
-	coldChunks [][]slotCold
-	coldCount  uint32
+	// oversizedSizes maps a cold ref (slot.cold) to its full int64 length when a record exceeds math.MaxInt32.
+	coldChunks     [][]slotCold
+	coldCount      uint32
+	oversizedSizes map[uint32]int64
 	// backing is the session file, set only together with a snapshot; "" keeps every entry resident. The slot offsets locate lines in snapshot,
 	// the session's private copy of it, so a change another program makes to the file reaches no read.
 	backing  string

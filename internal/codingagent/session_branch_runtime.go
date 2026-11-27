@@ -132,7 +132,7 @@ func (s *Session) replaceSessionLog(branched *Session) {
 	s.byID = branched.byID
 	s.danglingParents = branched.danglingParents
 	s.factArena = branched.factArena
-	s.coldChunks, s.coldCount = branched.coldChunks, branched.coldCount
+	s.coldChunks, s.coldCount, s.oversizedSizes = branched.coldChunks, branched.coldCount, branched.oversizedSizes
 	s.backing, s.snapshot = branched.backing, branched.snapshot
 	s.firstKept = branched.firstKept
 	s.labels = branched.labels

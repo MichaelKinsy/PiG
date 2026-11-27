@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"math"
 	"os"
 	"runtime"
 	"slices"
@@ -371,7 +372,7 @@ func streamSessionFileBatched(path string, batching lineBatching) (*Session, err
 		}
 		return s.applyIndexLine(prepared, line, off)
 	}
-	visitLine := func(line []byte, off int64, prepared *preparedLine, streamedLen int) error {
+	visitLine := func(line []byte, off int64, prepared *preparedLine, streamedLen int64) error {
 		if streamedLen > 0 {
 			if s == nil {
 				// First record in file was a huge custom entry, not a session header.
@@ -410,13 +411,13 @@ func streamSessionFileBatched(path string, batching lineBatching) (*Session, err
 		restoreErr = index(line, off, prepared)
 		return nil
 	}
-	fallbackSource := io.ReaderAt(file)
-	if cloned {
-		fallbackSource = snapshot
+	var fallbackSource io.ReaderAt = snapshot
+	if !cloned {
+		fallbackSource = copier
 	}
 	err = forEachPreparedLineStream(reader, fallbackSource, batching, visitLine)
 	if err != nil {
-		if errors.Is(err, errNoSessionRecords) || errors.Is(err, errSessionNeedsMigration) {
+		if errors.Is(err, errNoSessionRecords) || errors.Is(err, errSessionNeedsMigration) || errors.Is(err, errSessionUnsnapshotted) {
 			return nil, err
 		}
 		if pathErr, ok := errors.AsType[*fs.PathError](err); ok {
@@ -483,17 +484,20 @@ func defaultLineBatching() lineBatching {
 // reads ahead of visit and prepares the lines (prepareIndexLine) on the workers, and visit receives each line's preparation; otherwise visit
 // receives nil. It returns the first error in line order: visit's, or then the read's. It returns once every goroutine it started has ended.
 func forEachPreparedLine(r io.Reader, batching lineBatching, visit func(line []byte, off int64, prepared *preparedLine) error) error {
-	return forEachPreparedLineStream(r, nil, batching, func(line []byte, off int64, prepared *preparedLine, _ int) error {
+	return forEachPreparedLineStream(r, nil, batching, func(line []byte, off int64, prepared *preparedLine, _ int64) error {
 		return visit(line, off, prepared)
 	})
 }
 
-func forEachPreparedLineStream(r io.Reader, fallback io.ReaderAt, batching lineBatching, visit func(line []byte, off int64, prepared *preparedLine, streamedLen int) error) error {
-	readFallback := func(off int64, lineLen int) ([]byte, error) {
+func forEachPreparedLineStream(r io.Reader, fallback io.ReaderAt, batching lineBatching, visit func(line []byte, off int64, prepared *preparedLine, streamedLen int64) error) error {
+	readFallback := func(off, lineLen int64) ([]byte, error) {
 		if fallback == nil {
 			return nil, errStreamFallback
 		}
-		buf := make([]byte, lineLen)
+		if lineLen < 0 || lineLen > int64(math.MaxInt) {
+			return nil, fmt.Errorf("session: read: record length %d out of range", lineLen)
+		}
+		buf := make([]byte, int(lineLen))
 		if _, err := fallback.ReadAt(buf, off); err != nil {
 			return nil, fmt.Errorf("session: read: %w", err)
 		}
@@ -506,8 +510,8 @@ func forEachPreparedLineStream(r io.Reader, fallback io.ReaderAt, batching lineB
 		}
 		return forEachStreamLine(r,
 			func(line []byte, off int64) error { return visit(line, off, nil, 0) },
-			func(prepared *preparedLine, off int64, lineLen int) error { return visit(nil, off, prepared, lineLen) },
-			func(off int64, lineLen int) error {
+			func(prepared *preparedLine, off, lineLen int64) error { return visit(nil, off, prepared, lineLen) },
+			func(off, lineLen int64) error {
 				line, err := readFallback(off, lineLen)
 				if err != nil {
 					return err
@@ -575,7 +579,7 @@ func forEachPreparedLineStream(r io.Reader, fallback io.ReaderAt, batching lineB
 			err = forEachJSONLLineOffset(r, onLine)
 		} else {
 			err = forEachStreamLine(r, onLine,
-				func(prepared *preparedLine, off int64, lineLen int) error {
+				func(prepared *preparedLine, off, lineLen int64) error {
 					if len(batch.lines) > 0 && !send() {
 						return errIndexStopped
 					}
@@ -585,7 +589,7 @@ func forEachPreparedLineStream(r io.Reader, fallback io.ReaderAt, batching lineB
 					}
 					return nil
 				},
-				func(off int64, lineLen int) error {
+				func(off, lineLen int64) error {
 					line, readErr := readFallback(off, lineLen)
 					if readErr != nil {
 						return readErr
@@ -647,7 +651,7 @@ type lineBatch struct {
 type batchLine struct {
 	start, end  int
 	off         int64
-	streamedLen int
+	streamedLen int64
 }
 
 // add copies line into the batch, which forEachPreparedLine ends once it holds batchBytes, so it is sized for that and the line that crosses it in one allocation
@@ -661,7 +665,7 @@ func (b *lineBatch) add(line []byte, off int64, batchBytes int) {
 	b.lines = append(b.lines, batchLine{start: start, end: len(b.buf), off: off})
 }
 
-func (b *lineBatch) addStreamed(prepared *preparedLine, off int64, lineLen int) {
+func (b *lineBatch) addStreamed(prepared *preparedLine, off, lineLen int64) {
 	b.lines = append(b.lines, batchLine{off: off, streamedLen: lineLen})
 	b.prepared = append(b.prepared, *prepared)
 }
@@ -803,7 +807,7 @@ func prepareMessageLine(base SessionEntryBase, account sessionAccountingEntry, d
 }
 
 // applyStreamedIndexLine adds an oversized custom record that was validated and hashed in streaming mode without buffering its full line.
-func (s *Session) applyStreamedIndexLine(p *preparedLine, off int64, lineLen int) error {
+func (s *Session) applyStreamedIndexLine(p *preparedLine, off, lineLen int64) error {
 	if p == nil || p.state != lineMessage {
 		return nil
 	}
@@ -822,7 +826,7 @@ func (s *Session) applyIndexLine(p *preparedLine, line []byte, off int64) error 
 			s.stats.addDecoded(p.account, p.base.Type)
 		}
 		slot := p.slot
-		s.locateHashedLocked(&slot.entrySlot, off, len(line), p.hash)
+		s.locateHashedLocked(&slot.entrySlot, off, int64(len(line)), p.hash)
 		if slot.role() == "assistant" {
 			slot.facts = s.storeFactsLocked(p.facts)
 		}

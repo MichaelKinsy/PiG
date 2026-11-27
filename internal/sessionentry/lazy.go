@@ -20,7 +20,7 @@ import (
 type RecordAt struct {
 	// Off and Size are where the record lies in its source, and Hash the source's hash of its bytes.
 	Off  int64
-	Size int32
+	Size int64
 	Hash uint64
 }
 

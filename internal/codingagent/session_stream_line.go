@@ -36,21 +36,30 @@ var errStreamFallback = errors.New("stream fallback")
 func forEachStreamLine(
 	r io.Reader,
 	onLine func(line []byte, off int64) error,
-	onStream func(prepared *preparedLine, off int64, lineLen int) error,
-	onFallback func(off int64, lineLen int) error,
+	onStream func(prepared *preparedLine, off, lineLen int64) error,
+	onFallback func(off, lineLen int64) error,
 ) error {
 	reader := bufio.NewReaderSize(r, 64*1024)
 	var long []byte
 	var off int64
+	var wsScanned int
+	var firstNonWS byte
 	for {
 		chunk, err := reader.ReadSlice('\n')
 		if errors.Is(err, bufio.ErrBufferFull) {
 			long = append(long, chunk...)
-			if len(long) >= streamLineLimit && canStreamCustomLine(long) {
+			if firstNonWS == 0 {
+				wsScanned = skipJSONSpace(long, wsScanned)
+				if wsScanned < len(long) {
+					firstNonWS = long[wsScanned]
+				}
+			}
+			if len(long) >= streamLineLimit && firstNonWS == '{' {
 				start := off
 				prepared, lineLen, consumed, eof, streamErr := streamOversizedCustomLine(long, reader)
 				off += consumed
 				long = nil
+				wsScanned, firstNonWS = 0, 0
 				if streamErr != nil {
 					if errors.Is(streamErr, errStreamFallback) {
 						if fnErr := onFallback(start, lineLen); fnErr != nil {
@@ -91,6 +100,7 @@ func forEachStreamLine(
 				return fnErr
 			}
 		}
+		wsScanned, firstNonWS = 0, 0
 		if cap(long) > maxRetainedLineBuffer {
 			long = nil
 		} else {
@@ -102,22 +112,10 @@ func forEachStreamLine(
 	}
 }
 
-// canStreamCustomLine reports whether prefix begins a JSON object whose
-// leading bytes look like a "custom" entry.
-func canStreamCustomLine(prefix []byte) bool {
-	i := skipJSONSpace(prefix, 0)
-	if i >= len(prefix) || prefix[i] != '{' {
-		return false
-	}
-	head := prefix[:min(len(prefix), 4096)]
-	return bytes.Contains(head, []byte(`"type":"custom"`)) ||
-		bytes.Contains(head, []byte(`"type": "custom"`))
-}
-
 // streamOversizedCustomLine validates, hashes, and extracts base members of a
 // single oversized JSONL line whose initial bytes are in prefix and whose
 // remainder is in reader (up to and including '\n' or io.EOF).
-func streamOversizedCustomLine(prefix []byte, reader *bufio.Reader) (prepared *preparedLine, lineLen int, consumed int64, eof bool, err error) {
+func streamOversizedCustomLine(prefix []byte, reader *bufio.Reader) (prepared *preparedLine, lineLen int64, consumed int64, eof bool, err error) {
 	var st streamCustomParser
 	st.init()
 	var pendingCR bool
@@ -196,7 +194,7 @@ func streamOversizedCustomLine(prefix []byte, reader *bufio.Reader) (prepared *p
 // oversized "custom" JSONL lines.
 type streamCustomParser struct {
 	hash   maphash.Hash
-	length int
+	length int64
 
 	state     uint8
 	failed    bool
@@ -252,7 +250,7 @@ func (p *streamCustomParser) init() {
 }
 
 func (p *streamCustomParser) write(data []byte) {
-	p.length += len(data)
+	p.length += int64(len(data))
 	_, _ = p.hash.Write(data)
 	if p.failed {
 		return

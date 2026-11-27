@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"math"
 	"math/bits"
 	"os"
 	"slices"
@@ -58,7 +59,8 @@ type slotCold struct {
 	// off and size locate the entry's line in the Session's backing file; off is -1 when the entry has no line there. A negative off below -1 locates
 	// the entry's record in a compressed block instead (blockOf, blockAt): the block's number in Session.blockList plus one, and the record's offset in
 	// the block, in 32 bits each.
-	off  int64
+	off int64
+	// size is the record's byte length, or -1 when it exceeds math.MaxInt32 (the full int64 length lives in Session.oversizedSizes[slot.cold]).
 	size int32
 	// hash is recordHash of the record at off, or in the block, which a read back verifies.
 	hash uint32
@@ -66,6 +68,37 @@ type slotCold struct {
 
 // noCold is the cold part of a slot that has none.
 var noCold = slotCold{off: -1}
+
+// coldSizeLocked returns the full int64 byte length of slot's record (resolving oversized records from s.oversizedSizes). The caller holds s.mu.
+func (s *Session) coldSizeLocked(slot *entrySlot) int64 {
+	cold := s.coldPart(slot)
+	if cold.size >= 0 {
+		return int64(cold.size)
+	}
+	if s.oversizedSizes != nil {
+		if n, ok := s.oversizedSizes[slot.cold]; ok {
+			return n
+		}
+	}
+	return -1
+}
+
+// setColdSizeLocked stores size on slot's cold part, overflowing sizes above math.MaxInt32 into s.oversizedSizes so slotCold stays 16 bytes.
+// The caller holds s.mu for writing.
+func (s *Session) setColdSizeLocked(slot *entrySlot, cold *slotCold, size int64) {
+	if size > math.MaxInt32 {
+		cold.size = -1
+		if s.oversizedSizes == nil {
+			s.oversizedSizes = map[uint32]int64{}
+		}
+		s.oversizedSizes[slot.cold] = size
+		return
+	}
+	cold.size = int32(size)
+	if s.oversizedSizes != nil {
+		delete(s.oversizedSizes, slot.cold)
+	}
+}
 
 // coldPart is the slot's cold part, or noCold, which is read-only. The caller holds s.mu.
 func (s *Session) coldPart(slot *entrySlot) *slotCold {
@@ -539,7 +572,7 @@ func (s *Session) readSlotsStaleLocked(indexes []int32, stale *atomic.Int64) []S
 				record, ok = run.record(file, s, indexes, order, k)
 			}
 			if !ok {
-				record, ok = reader.record(s.coldPart(slot))
+				record, ok = reader.recordSized(s.coldPart(slot), s.coldSizeLocked(slot))
 			}
 			if ok {
 				record = bytes.Clone(record) // the lone reader's buffer is valid only until its next call
@@ -558,7 +591,7 @@ func (s *Session) readSlotsStaleLocked(indexes []int32, stale *atomic.Int64) []S
 			out[k] = entry
 		}
 	}
-	parallelOverWeighted(order, func(k int) int64 { return int64(s.coldPart(&s.slots[indexes[k]]).size) }, parallelReadMinBytes, read)
+	parallelOverWeighted(order, func(k int) int64 { return s.coldSizeLocked(&s.slots[indexes[k]]) }, parallelReadMinBytes, read)
 	return out
 }
 
@@ -818,7 +851,8 @@ func (s *Session) packLocked(records []packedRecord) {
 		size := len(raw)
 		cold := s.coldLocked(slot)
 		cold.inBlock(ref, int64(at))
-		cold.size, cold.hash = int32(size), uint32(recordHash(raw))
+		s.setColdSizeLocked(slot, cold, int64(size))
+		cold.hash = uint32(recordHash(raw))
 		s.resident.set(record.index, nil)
 		at += size
 	}
@@ -845,6 +879,14 @@ const recordWindow = 1 << 20
 
 // record returns the record cold locates, valid until the next call; ok is false when it cannot be read.
 func (r *recordReader) record(cold *slotCold) (record []byte, ok bool) {
+	return r.recordSized(cold, int64(cold.size))
+}
+
+// recordSized returns the record cold locates with explicit full 64-bit byte length recordSize, valid until the next call; ok is false when it cannot be read.
+func (r *recordReader) recordSized(cold *slotCold, recordSize int64) (record []byte, ok bool) {
+	if recordSize < 0 || recordSize > int64(math.MaxInt) {
+		return nil, false
+	}
 	if blockNo := cold.blockOf(); blockNo != 0 {
 		if block := r.blocks[blockNo-1]; r.block != block {
 			packed, err := block.packed()
@@ -857,7 +899,7 @@ func (r *recordReader) record(cold *slotCold) (record []byte, ok bool) {
 			}
 			r.block, r.plain = block, plain
 		}
-		end := cold.blockAt() + int64(cold.size)
+		end := cold.blockAt() + recordSize
 		if end > int64(len(r.plain)) {
 			return nil, false
 		}
@@ -866,18 +908,19 @@ func (r *recordReader) record(cold *slotCold) (record []byte, ok bool) {
 	if r.file == nil || cold.off < 0 {
 		return nil, false
 	}
+	size := int(recordSize)
 	if !r.window {
-		r.buf = slices.Grow(r.buf[:0], int(cold.size))[:cold.size]
+		r.buf = slices.Grow(r.buf[:0], size)[:size]
 		if _, err := r.file.ReadAt(r.buf, cold.off); err != nil {
 			return nil, false
 		}
 		return r.buf, true
 	}
-	end := cold.off + int64(cold.size)
+	end := cold.off + recordSize
 	if cold.off < r.at || end > r.at+int64(len(r.buf)) {
-		r.buf = slices.Grow(r.buf[:0], max(int(cold.size), recordWindow))
+		r.buf = slices.Grow(r.buf[:0], max(size, recordWindow))
 		n, err := r.file.ReadAt(r.buf[:cap(r.buf)], cold.off)
-		if n < int(cold.size) || err != nil && !errors.Is(err, io.EOF) {
+		if n < size || err != nil && !errors.Is(err, io.EOF) {
 			r.buf = r.buf[:0]
 			return nil, false
 		}
@@ -1115,7 +1158,7 @@ func (s *Session) RawEntriesPage(cursor, maxBytes int) (page []json.RawMessage, 
 			raw = resident.Raw()
 		} else {
 			reader.file = records.get()
-			if record, ok := reader.record(s.coldPart(slot)); ok {
+			if record, ok := reader.recordSized(s.coldPart(slot), s.coldSizeLocked(slot)); ok {
 				raw = bytes.Clone(record)
 			}
 		}
@@ -1236,13 +1279,14 @@ func (s *Session) indexSearchTexts() {
 		index int
 		slot  entrySlot
 		cold  slotCold
+		size  int64
 		id    string
 	}
 	s.mu.RLock()
 	var missing []located
 	for i := range s.slots {
 		if slot := &s.slots[i]; s.resident.get(i) == nil && slot.evictable() && slot.cold != 0 && s.searchAtOf(slot) == 0 {
-			missing = append(missing, located{index: i, slot: *slot, cold: *s.coldPart(slot), id: s.idOf(slot)})
+			missing = append(missing, located{index: i, slot: *slot, cold: *s.coldPart(slot), size: s.coldSizeLocked(slot), id: s.idOf(slot)})
 		}
 	}
 	var file io.ReaderAt
@@ -1269,7 +1313,7 @@ func (s *Session) indexSearchTexts() {
 		reader := recordReader{file: file, blocks: blocks, window: true}
 		for _, k := range part {
 			m := &missing[k]
-			if record, ok := reader.record(&m.cold); ok {
+			if record, ok := reader.recordSized(&m.cold, m.size); ok {
 				texts[k], read[k] = searchTextOf(m.slot.typ(), record), true
 			}
 		}
@@ -1341,8 +1385,13 @@ type runBuffer struct {
 
 // record returns the record of slot indexes[k] from the joined read, reading the next run when it is not covered; ok is false when the read failed.
 func (r *runBuffer) record(file io.ReaderAt, s *Session, indexes []int32, order []int, k int) ([]byte, bool) {
-	cold := s.coldPart(&s.slots[indexes[k]])
-	from, to := cold.off, cold.off+int64(cold.size)
+	slot := &s.slots[indexes[k]]
+	cold := s.coldPart(slot)
+	size := s.coldSizeLocked(slot)
+	if size < 0 || size > int64(math.MaxInt) {
+		return nil, false
+	}
+	from, to := cold.off, cold.off+size
 	if r.buf == nil || from < r.base || to > r.base+int64(len(r.buf)) {
 		r.fill(file, s, indexes, order, k)
 	}
@@ -1361,20 +1410,27 @@ func (r *runBuffer) fill(file io.ReaderAt, s *Session, indexes []int32, order []
 			r.pos[j] = p
 		}
 	}
-	first := s.coldPart(&s.slots[indexes[k]])
+	firstSlot := &s.slots[indexes[k]]
+	first := s.coldPart(firstSlot)
+	firstSize := s.coldSizeLocked(firstSlot)
+	if firstSize < 0 || firstSize > int64(math.MaxInt) {
+		return
+	}
 	r.base = first.off
-	end := first.off + int64(first.size)
+	end := first.off + firstSize
 	for _, j := range order[r.pos[k]+1:] {
-		c := s.coldPart(&s.slots[indexes[j]])
-		if s.resident.get(int(indexes[j])) != nil || c.off < 0 {
+		slot := &s.slots[indexes[j]]
+		c := s.coldPart(slot)
+		cSize := s.coldSizeLocked(slot)
+		if s.resident.get(int(indexes[j])) != nil || c.off < 0 || cSize < 0 {
 			continue
 		}
-		if c.off-end > fileRunGap || c.off+int64(c.size)-r.base > fileRunMax {
+		if c.off-end > fileRunGap || c.off+cSize-r.base > fileRunMax {
 			break
 		}
-		end = max(end, c.off+int64(c.size))
+		end = max(end, c.off+cSize)
 	}
-	buf := make([]byte, end-r.base)
+	buf := make([]byte, int(end-r.base))
 	if n, err := file.ReadAt(buf, r.base); n == len(buf) || err == nil {
 		r.buf = buf
 	}
