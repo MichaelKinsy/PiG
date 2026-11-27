@@ -1146,12 +1146,7 @@ func isSafeRelativeChildExpr(expr ast.Expr) bool {
 	if len(v) >= 2 && ((v[0] >= 'A' && v[0] <= 'Z') || (v[0] >= 'a' && v[0] <= 'z')) && v[1] == ':' {
 		return false
 	}
-	for _, part := range strings.FieldsFunc(v, func(r rune) bool { return r == '/' || r == '\\' }) {
-		if part == ".." {
-			return false
-		}
-	}
-	return true
+	return !slices.Contains(strings.FieldsFunc(v, func(r rune) bool { return r == '/' || r == '\\' }), "..")
 }
 
 // isScratchDerivedExpr reports whether expr is statically proven to stay within

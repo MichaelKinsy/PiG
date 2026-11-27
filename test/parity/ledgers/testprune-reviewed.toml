@@ -1529,3 +1529,9 @@ path = "automation/ci/gocacheprog/cacheprog_test.go"
 commit = "823497755a48202c2de55e6b1ea8623d82f7bd57"
 class = "NOBEHAVIOR"
 reason = "PiG-only CI GOCACHEPROG wrapper hardening: setup-gocacheprog.sh now explicitly clears GOCACHEPROG= in GITHUB_ENV on fallback so a prior step cannot leak a stale cacheprog binary; cacheprog_test.go updates its fallback assertion accordingly."
+
+[[entry]]
+path = "automation/ci/cidag/cidag_test.go"
+commit = "644d3ee30b09ac45dae4b22e2cda5eda92e568cf"
+class = "NOBEHAVIOR"
+reason = "PiG-only CI DAG tier renderer hardening (PR #579 review): when lightMode is empty on a pull_request, Full=true now retains the full static platform matrices instead of pruning them, while lightMode=queue keeps the fail-closed unmapped-row + pruning assertions in sub-case 4."
