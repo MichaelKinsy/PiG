@@ -31,6 +31,7 @@ package runtime
 // Moss.
 
 import (
+	"internal/gclayout"
 	"internal/reflectlite"
 	"internal/task"
 	"runtime/interrupt"
@@ -59,6 +60,13 @@ var (
 	gcNumGC       uint32         // total number of completed collection cycles
 	gcLock        task.PMutex    // lock to avoid race conditions on multicore systems
 )
+
+// markedTaskQueue holds the tasks that runGC has already marked while scanning
+// the runqueue. It is a package level variable because a local would have its
+// address taken by Queue.Push, which makes it escape and allocate at -opt=0.
+// The collector must never allocate. Every runGC caller holds gcLock, so a
+// single shared queue is safe.
+var markedTaskQueue task.Queue
 
 // Provide some abstraction over heap blocks.
 
@@ -204,8 +212,9 @@ func (b gcBlock) free() {
 
 // objHeader is a structure appended to every heap object to hold metadata.
 type objHeader struct {
-	// next is the next object to scan after this.
-	next *objHeader
+	// next links the GC scan list. Manual allocations remain permanently marked
+	// and use the otherwise invalid value 1 as an until-free marker.
+	next uintptr
 
 	// layout holds the layout bitmap used to find pointers in the object.
 	layout gcLayout
@@ -485,6 +494,7 @@ func alloc(size uintptr, layout unsafe.Pointer) unsafe.Pointer {
 	// Create the object header.
 	size -= unsafe.Sizeof(objHeader{})
 	header := (*objHeader)(unsafe.Add(pointer, size))
+	header.next = 0
 	header.layout = parseGCLayout(layout)
 
 	// We've claimed this allocation, now we can unlock the heap.
@@ -503,42 +513,77 @@ func alloc(size uintptr, layout unsafe.Pointer) unsafe.Pointer {
 	return pointer
 }
 
-func realloc(ptr unsafe.Pointer, size uintptr) unsafe.Pointer {
-	if ptr == nil {
-		return alloc(size, nil)
+// allocManual allocates pointer-free memory that remains live until freeManual.
+func allocManual(size uintptr) unsafe.Pointer {
+	if size == 0 {
+		return alloc_zero(size, gclayout.NoPtrs.AsPtr())
 	}
+	ptr := alloc(size, gclayout.NoPtrs.AsPtr())
 
-	// Find the first block of the original allocation.
-	firstBlock := blockFromAddr(uintptr(ptr))
-
-	// Find the last block of the original allocation.
-	lastBlock := firstBlock.findHead()
-
-	// Calculate the size of the original allocation body.
-	oldSize := uintptr(lastBlock-firstBlock)*bytesPerBlock + (bytesPerBlock - unsafe.Sizeof(objHeader{}))
-
-	if size <= oldSize {
-		// The requested size is less than the old size.
-		// There are likely scenarios for this:
-		//  - The caller intended to grow the allocation, but the original size
-		//    was rounded up by alloc to a multiple of the block size.
-		//    The rounded size is already sufficient.
-		//  - The caller intended to shrink the allocation.
-		//    We currently ignore this case.
-		// Either way, the current allocation can be left alone.
-		return ptr
-	}
-
-	// Create a new allocation and copy the old data.
-	newAlloc := alloc(size, nil)
-	memcpy(newAlloc, ptr, oldSize)
-	free(ptr)
-
-	return newAlloc
+	gcLock.Lock()
+	head := blockFromAddr(uintptr(ptr)).findHead()
+	head.setState(blockStateMark)
+	header := (*objHeader)(unsafe.Add(head.pointer(), bytesPerBlock-unsafe.Sizeof(objHeader{})))
+	header.next = 1
+	gcLock.Unlock()
+	return ptr
 }
 
 func free(ptr unsafe.Pointer) {
-	// TODO: free blocks on request, when the compiler knows they're unused.
+	if ptr == nil {
+		return
+	}
+
+	gcLock.Lock()
+	addr := uintptr(ptr)
+	if !isOnHeap(addr) || (addr-heapStart)%bytesPerBlock != 0 {
+		gcLock.Unlock()
+		runtimeFatal("free: invalid pointer")
+	}
+
+	firstBlock := blockFromAddr(addr)
+	state := firstBlock.state()
+	if state != blockStateTail && state != blockStateHead && state != blockStateMark {
+		gcLock.Unlock()
+		runtimeFatal("free: invalid pointer")
+	}
+
+	allocationStart := firstBlock
+	for allocationStart != 0 && (allocationStart-1).state() == blockStateTail {
+		allocationStart--
+	}
+	if allocationStart != firstBlock {
+		gcLock.Unlock()
+		runtimeFatal("free: invalid pointer")
+	}
+
+	lastBlock := firstBlock.findHead()
+	header := (*objHeader)(unsafe.Add(lastBlock.pointer(), bytesPerBlock-unsafe.Sizeof(objHeader{})))
+	if header.next != 1 {
+		gcLock.Unlock()
+		runtimeFatal("free: invalid pointer")
+	}
+	for block := firstBlock; block <= lastBlock; block++ {
+		block.free()
+	}
+	insertFreeRange(firstBlock.pointer(), uintptr(lastBlock-firstBlock+1))
+	gcLock.Unlock()
+}
+
+//go:noinline
+func freeTaskStack(addr uintptr) {
+	ptr := unsafe.Pointer(addr)
+	gcLock.Lock()
+	firstBlock := blockFromAddr(addr)
+	if gcAsserts && firstBlock.pointer() != ptr {
+		runtimeFatal("gc: freeing pointer inside allocation")
+	}
+	lastBlock := firstBlock.findHead()
+	for block := firstBlock; block <= lastBlock; block++ {
+		block.free()
+	}
+	insertFreeRange(ptr, uintptr(lastBlock-firstBlock+1))
+	gcLock.Unlock()
 }
 
 // GC performs a garbage collection cycle.
@@ -557,6 +602,8 @@ func GC() {
 // runGC performs a garbage collection cycle. It is the internal implementation
 // of the runtime.GC() function. The difference is that it returns the number of
 // free bytes in the heap after the GC is finished.
+//
+//go:noheap
 func runGC() (freeBytes uintptr) {
 	if gcDebug {
 		println("running collection cycle...")
@@ -569,7 +616,7 @@ func runGC() (freeBytes uintptr) {
 	if baremetal && hasScheduler {
 		// Channel operations in interrupts may move task pointers around while we are marking.
 		// Therefore we need to scan the runqueue separately.
-		var markedTaskQueue task.Queue
+		markedTaskQueue = task.Queue{}
 	runqueueScan:
 		runqueue := schedulerRunQueue()
 		for !runqueue.Empty() {
@@ -670,7 +717,7 @@ func finishMark() {
 		if obj == nil {
 			return
 		}
-		scanList = obj.next
+		scanList = (*objHeader)(unsafe.Pointer(obj.next))
 
 		// Check if the object may contain pointers.
 		if obj.layout.pointerFree() {
@@ -728,7 +775,7 @@ func markRoot(addr, root uintptr) {
 
 	// Add the object to the scan list.
 	header := (*objHeader)(unsafe.Add(head.pointer(), bytesPerBlock-unsafe.Sizeof(objHeader{})))
-	header.next = scanList
+	header.next = uintptr(unsafe.Pointer(scanList))
 	scanList = header
 }
 
@@ -762,7 +809,10 @@ func sweep() uintptr {
 
 		// Unmark the next head.
 		block--
-		block.unmark()
+		header := (*objHeader)(unsafe.Add(block.pointer(), bytesPerBlock-unsafe.Sizeof(objHeader{})))
+		if header.next != 1 {
+			block.unmark()
+		}
 
 		// Skip the tail.
 		for block > 0 && (block-1).state() == blockStateTail {
@@ -867,6 +917,13 @@ func ReadMemStats(m *MemStats) {
 	gcLock.Unlock()
 }
 
+func mallocs() uint64 {
+	gcLock.Lock()
+	mallocs := gcMallocs
+	gcLock.Unlock()
+	return mallocs
+}
+
 // count4LUT is a lookup table used to count set bits in a 4-bit mask.
 // TODO: replace with popcnt when available
 var count4LUT = [16]uint8{
@@ -907,6 +964,20 @@ func SetFinalizer(obj interface{}, finalizer interface{}) {
 		// A nil pointer has nothing to finalize.
 		return
 	}
+
+	gcLock.Lock()
+	addr := uintptr(objPtr)
+	manual := false
+	if isOnHeap(addr) {
+		head := blockFromAddr(addr).findHead()
+		header := (*objHeader)(unsafe.Add(head.pointer(), bytesPerBlock-unsafe.Sizeof(objHeader{})))
+		manual = header.next == 1
+	}
+	gcLock.Unlock()
+	if manual && finalizer != nil {
+		runtimeFatal("runtime.SetFinalizer: manual allocation")
+	}
+
 	registerFinalizer(uintptr(objPtr), finalizer)
 }
 
@@ -926,8 +997,8 @@ func SetFinalizer(obj interface{}, finalizer interface{}) {
 const keepLargeBlocks = (32 << 10) / bytesPerBlock
 
 // allocAtGCNot is ^gcTotalAlloc when the last collection started, inverted
-// like heapKeepNot: a byte total is a word in the heap's address range, and the
-// root scan would read it as a pointer.
+// like heapKeepNot so a non-pointer global word is never mistaken for a heap
+// pointer even under conservative GC.
 var allocAtGCNot = ^uint64(0)
 
 // keepLargeRanges reports whether a small request should collect before it

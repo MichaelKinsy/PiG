@@ -11,4 +11,4 @@ pi:
   package: 1.6.0
   version: 1.6.0
 sbcl: 2.6.9
-tinygo: 0.42.0
+tinygo: 0.44.0

@@ -40,7 +40,6 @@ ceiling 171
 ./durable/core/abi/abitest no shared state: no sync, atomic, channel or cancellation in non-test code
 ./durable/core/abi/spec no shared state: no sync, atomic, channel or cancellation in non-test code
 ./durable/core/budget/coldhints no shared state: no sync, atomic, channel or cancellation in non-test code
-./durable/core/budget/tinygo/patchdata no shared state: no sync, atomic, channel or cancellation in non-test code
 ./durable/core/contracttest/binding no shared state: no sync, atomic, channel or cancellation in non-test code
 ./durable/core/contracttest/boundary no shared state: no sync, atomic, channel or cancellation in non-test code
 ./durable/core/contracttest/cmd/countgate no shared state: no sync, atomic, channel or cancellation in non-test code

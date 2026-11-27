@@ -73,11 +73,8 @@ case "$toolchain" in
     cp -rs "$root" "$target/root"
     (cd "$fork" && find src -type f -name '*.go') | while read -r f; do rm -f "$target/root/$f"; cp "$fork/$f" "$target/root/$f"; done
     export TINYGOROOT="$target/root"
-    # --Map: patchdata (below) takes the start of .data from the linker map.
-    printf '{\n\t"inherits": ["wasip1"],\n\t"ldflags": ["--initial-memory=%s", "--max-memory=%s", "--Map=%s"]\n}\n' "$initial" "$max" "$target/core.map" > "$target/wasip1-capped.json"
+    printf '{\n\t"inherits": ["wasip1"],\n\t"ldflags": ["--initial-memory=%s", "--max-memory=%s"]\n}\n' "$initial" "$max" > "$target/wasip1-capped.json"
     "$tinygo" build ${tags:+"$tags"} -target="$target/wasip1-capped.json" -ldflags="-X runtime.growHeapStepKiB=$((step / 1024)) -X runtime.heapMaxKiB=$((max / 1024))" -scheduler=none ${CORE_OPT:+-opt="$CORE_OPT"} ${CORE_GC:+-gc="$CORE_GC"} ${CORE_PANIC:+-panic="$CORE_PANIC"} ${CORE_PRINT_ALLOCS:+-print-allocs="$CORE_PRINT_ALLOCS"} -buildmode=c-shared -no-debug -o "$target/core.wasm" .
-    # The forked findGlobals scans the globals from .data, not .rodata, once the module records where .data starts.
-    (cd "$fork/patchdata" && go run . "$target/core.wasm" "$target/core.map") || exit 1
     # The functions the first turn runs are marked as compilation hints (coldset.txt names them): a host that enables hints compiles
     # them with the module instead of on their first call. The sections are inert elsewhere. The command fails when the list no
     # longer matches the module, so a renamed function cannot drop out of the hints unseen.
