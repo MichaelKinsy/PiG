@@ -200,7 +200,7 @@ The built-in tools are `read`, `bash`, `powershell`, `edit`, `write`, `grep`,
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `warnings` | object | see meaning | Warning toggles: `anthropicExtraUsage` (default `true`) warns when Anthropic subscription auth may use paid extra usage. |
-| `showCacheMissNotices` | boolean |  | Report a prompt cache miss and each successful cache-warming refresh. |
+| `notices` | object |  | Transcript notice toggles (`notices.cacheMisses`, `notices.cacheWarming`, `notices.compactionCosts`, `notices.reasoningDrops`), all `false` by default. Legacy `showCacheMissNotices` is migrated to all four. |
 | `enableInstallTelemetry` | boolean | `true` | Gate for the anonymous install/update ping and the pig-branded OpenRouter, NVIDIA, and Cloudflare attribution headers. When on, PiG sends one HTTPS GET carrying only your PiG version (`?version=<version>`) and PiG's `User-Agent` header to `https://pi-in-go.dev/api/report-install`, after a fresh install and after an update that has new changelog entries, and at no other time. The site stores one data point (the version and arrival time) per call and never logs your IP address or User-Agent. Set to `false`, or set `PI_TELEMETRY=0`, to opt out; `PI_OFFLINE=1` also stops it. Override with `PI_TELEMETRY`. |
 | `enableAnalytics` | boolean | `false` | Opt in to analytics data sharing. PiG stores the choice; nothing sends data. |
 | `trackingId` | string |  | Analytics tracking identifier. PiG writes this on the first opt-in and keeps it when you toggle `enableAnalytics`. Bug reports omit it. |

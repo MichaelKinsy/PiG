@@ -40,7 +40,7 @@ func TestSettingsScalarGettersDoNotCopySettings(t *testing.T) {
 		"GetFollowUpMode":               func() { _ = sm.GetFollowUpMode() },
 		"GetTransport":                  func() { _ = sm.GetTransport() },
 		"GetHideThinkingBlock":          func() { _ = sm.GetHideThinkingBlock() },
-		"GetShowCacheMissNotices":       func() { _ = sm.GetShowCacheMissNotices() },
+		"GetNotices":                    func() { _ = sm.GetNotices() },
 		"GetShowImages":                 func() { _ = sm.GetShowImages() },
 		"GetImageWidthCells":            func() { _ = sm.GetImageWidthCells() },
 		"GetImageAutoResize":            func() { _ = sm.GetImageAutoResize() },

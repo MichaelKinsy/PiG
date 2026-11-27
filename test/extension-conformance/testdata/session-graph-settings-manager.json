@@ -82,6 +82,9 @@
 			"modelThinkingLevels": {
 				"p/m": "low"
 			},
+			"notices": {
+				"cacheMisses": false
+			},
 			"npmCommand": [
 				"pnpm",
 				"dlx"
@@ -107,7 +110,6 @@
 			"sessionShareDestination": "gist",
 			"shellCommandPrefix": "set -e",
 			"shellPath": "/bin/sh",
-			"showCacheMissNotices": false,
 			"showHardwareCursor": true,
 			"skills": [
 				"s1"
@@ -139,6 +141,12 @@
 		"getImageWidthCells": 40,
 		"getLastChangelogVersion": "9.9.9",
 		"getMermaidRenderingMode": "off",
+		"getNotices": {
+			"cacheMisses": false,
+			"cacheWarming": false,
+			"compactionCosts": false,
+			"reasoningDrops": false
+		},
 		"getNpmCommand": [
 			"pnpm",
 			"dlx"
@@ -227,6 +235,9 @@
 			"modelThinkingLevels": {
 				"p/m": "low"
 			},
+			"notices": {
+				"cacheMisses": false
+			},
 			"npmCommand": [
 				"pnpm",
 				"dlx"
@@ -246,7 +257,6 @@
 			"sessionShareDestination": "gist",
 			"shellCommandPrefix": "set -e",
 			"shellPath": "/bin/sh",
-			"showCacheMissNotices": false,
 			"showHardwareCursor": true,
 			"skills": [
 				"ps"
@@ -274,7 +284,6 @@
 		},
 		"getShellCommandPrefix": "set -e",
 		"getShellPath": "/bin/sh",
-		"getShowCacheMissNotices": false,
 		"getShowHardwareCursor": true,
 		"getShowImages": false,
 		"getShowTerminalProgress": true,
@@ -337,7 +346,7 @@
 			"defaultProjectTrust": "never",
 			"defaultProvider": "anthropic",
 			"defaultThinkingLevel": "high",
-			"deviceId": "\u003cuuid\u003e",
+			"deviceId": "<uuid>",
 			"doubleEscapeAction": "tree",
 			"editorPaddingX": 2,
 			"enableAnalytics": false,
@@ -367,6 +376,9 @@
 			"markdown": {
 				"mermaid": "off"
 			},
+			"notices": {
+				"cacheMisses": false
+			},
 			"npmCommand": [
 				"pnpm",
 				"dlx"
@@ -392,7 +404,6 @@
 			"sessionShareDestination": "gist",
 			"shellCommandPrefix": "set -e",
 			"shellPath": "/bin/sh",
-			"showCacheMissNotices": false,
 			"showHardwareCursor": true,
 			"skills": [
 				"s1"
@@ -510,6 +521,12 @@
 		"getImageWidthCells": 60,
 		"getLastChangelogVersion": null,
 		"getMermaidRenderingMode": "streaming",
+		"getNotices": {
+			"cacheMisses": false,
+			"cacheWarming": false,
+			"compactionCosts": false,
+			"reasoningDrops": false
+		},
 		"getNpmCommand": null,
 		"getOutputPad": 1,
 		"getPackages": [
@@ -579,7 +596,6 @@
 		},
 		"getShellCommandPrefix": null,
 		"getShellPath": null,
-		"getShowCacheMissNotices": false,
 		"getShowHardwareCursor": false,
 		"getShowImages": true,
 		"getShowTerminalProgress": false,
@@ -707,7 +723,7 @@
 			"defaultProjectTrust": "never",
 			"defaultProvider": "anthropic",
 			"defaultThinkingLevel": "high",
-			"deviceId": "\u003cuuid\u003e",
+			"deviceId": "<uuid>",
 			"doubleEscapeAction": "tree",
 			"editorPaddingX": 2,
 			"enableAnalytics": false,
@@ -737,6 +753,9 @@
 			"markdown": {
 				"mermaid": "off"
 			},
+			"notices": {
+				"cacheMisses": false
+			},
 			"npmCommand": [
 				"pnpm",
 				"dlx"
@@ -762,7 +781,6 @@
 			"sessionShareDestination": "gist",
 			"shellCommandPrefix": "set -e",
 			"shellPath": "/bin/sh",
-			"showCacheMissNotices": false,
 			"showHardwareCursor": true,
 			"skills": [
 				"s1"
@@ -794,6 +812,12 @@
 		"getImageWidthCells": 40,
 		"getLastChangelogVersion": "9.9.9",
 		"getMermaidRenderingMode": "off",
+		"getNotices": {
+			"cacheMisses": false,
+			"cacheWarming": false,
+			"compactionCosts": false,
+			"reasoningDrops": false
+		},
 		"getNpmCommand": [
 			"pnpm",
 			"dlx"
@@ -851,7 +875,7 @@
 			"defaultProjectTrust": "never",
 			"defaultProvider": "anthropic",
 			"defaultThinkingLevel": "high",
-			"deviceId": "\u003cuuid\u003e",
+			"deviceId": "<uuid>",
 			"doubleEscapeAction": "tree",
 			"editorPaddingX": 2,
 			"enableAnalytics": false,
@@ -880,6 +904,9 @@
 			"markdown": {
 				"mermaid": "off"
 			},
+			"notices": {
+				"cacheMisses": false
+			},
 			"npmCommand": [
 				"pnpm",
 				"dlx"
@@ -899,7 +926,6 @@
 			"sessionShareDestination": "gist",
 			"shellCommandPrefix": "set -e",
 			"shellPath": "/bin/sh",
-			"showCacheMissNotices": false,
 			"showHardwareCursor": true,
 			"skills": [
 				"ps"
@@ -927,7 +953,6 @@
 		},
 		"getShellCommandPrefix": "set -e",
 		"getShellPath": "/bin/sh",
-		"getShowCacheMissNotices": false,
 		"getShowHardwareCursor": true,
 		"getShowImages": false,
 		"getShowTerminalProgress": true,

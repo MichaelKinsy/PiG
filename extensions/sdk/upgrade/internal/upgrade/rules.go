@@ -62,6 +62,7 @@ const (
 	RuleHostHighlightCode   = "host-helpers-highlight-code-no-markdown"
 	RuleMarkdownTransformer = "markdown-transformer-options"
 	RuleSetModelObject      = "set-model-takes-model-object"
+	RuleSettingsNotices     = "settings-manager-notices"
 )
 
 // markdownTransformerSymbol names the changed method as apidiff reports it.
@@ -280,6 +281,15 @@ func Rules() []Rule {
 			Remedy:   "Call `ctx.SetModelNamed(\"provider/id\")` where you passed the name. `ctx.SetModel` takes a model object, as Pi's pi.setModel(model) does: one from `ctx.ModelRegistry().Find(provider, id)`, as it is or edited, or one you build; the Session uses the object you pass.",
 			Changes: []Change{
 				{Symbol: SetModelSymbol, Old: "func(string) (bool, error)", New: "func(map[string]any) (bool, error)", Since: setModelSince},
+			},
+		},
+		{
+			ID:      RuleSettingsNotices,
+			Summary: "SettingsManager.GetShowCacheMissNotices and SetShowCacheMissNotices were replaced by GetNotices and SetNotice",
+			Remedy:  "Call `GetNotices()` to read the per-notice map (`cacheMisses`, `cacheWarming`, `compactionCosts`, `reasoningDrops`) and `SetNotice(key, shown)` to toggle an individual notice.",
+			Changes: []Change{
+				{Symbol: "SettingsManager.GetShowCacheMissNotices", Old: "func() (bool, error)", New: "deprecated (removed in 0.9.0); use SettingsManager.GetNotices", Since: "0.8.1"},
+				{Symbol: "SettingsManager.SetShowCacheMissNotices", Old: "func(bool) error", New: "deprecated (removed in 0.9.0); use SettingsManager.SetNotice", Since: "0.8.1"},
 			},
 		},
 	}

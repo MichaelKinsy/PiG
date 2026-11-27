@@ -36,7 +36,6 @@ type SettingsConfig struct {
 	AvailableThemes         []string
 	HideThinkingBlock       bool
 	MermaidRenderingMode    MermaidRenderingMode
-	ShowCacheMissNotices    bool
 	CollapseChangelog       bool
 	EnableInstallTelemetry  bool
 	DoubleEscapeAction      string
@@ -56,6 +55,7 @@ type SettingsConfig struct {
 	// FullscreenWheelScrollLines is upstream's WheelScrollLines: "auto" or a line count.
 	FullscreenWheelScrollLines WheelScrollLines
 	Warnings                   WarningSettings
+	Notices                    NoticeSettings
 	// MaskSecretInput feeds the PiG-only "Mask secret input" row.
 	// pig divergence (D80): configurable input privacy leaves the upstream setting order intact.
 	MaskSecretInput bool
@@ -80,7 +80,6 @@ type SettingsCallbacks struct {
 	OnThemePreview                     func(theme string)
 	OnHideThinkingBlockChange          func(hidden bool)
 	OnMermaidRenderingModeChange       func(mode MermaidRenderingMode)
-	OnShowCacheMissNoticesChange       func(shown bool)
 	OnCollapseChangelogChange          func(collapsed bool)
 	OnEnableInstallTelemetryChange     func(enabled bool)
 	OnDoubleEscapeActionChange         func(action string)
@@ -99,6 +98,7 @@ type SettingsCallbacks struct {
 	OnFullscreenCopyOnSelectChange     func(enabled bool)
 	OnFullscreenWheelScrollLinesChange func(lines WheelScrollLines)
 	OnWarningsChange                   func(warnings WarningSettings)
+	OnNoticeChange                     func(key NoticeKey, shown bool)
 	// OnMaskSecretInputChange handles the PiG-only "Mask secret input" row.
 	// pig divergence (D80): configurable input privacy leaves the upstream setting order intact.
 	OnMaskSecretInputChange func(enabled bool)
@@ -174,6 +174,67 @@ func newWarningSettingsSubmenu(warnings WarningSettings, onChange func(WarningSe
 
 func (m *warningSettingsSubmenu) Render(width int) []string { return m.list.Render(width) }
 func (m *warningSettingsSubmenu) HandleInput(data string)   { m.list.HandleInput(data) }
+
+type noticeSettingsSubmenu struct {
+	tui.BaseComponent
+	list  *tui.SettingsList
+	state NoticeSettings
+}
+
+func newNoticeSettingsSubmenu(notices NoticeSettings, onChange func(NoticeKey, bool), onCancel func()) *noticeSettingsSubmenu {
+	menu := &noticeSettingsSubmenu{state: notices}
+	items := []tui.SettingItem{
+		{
+			ID:           string(NoticeCacheMisses),
+			Label:        "Cache misses",
+			Description:  "Show a notice when a response re-bills a significant part of the prompt cache",
+			CurrentValue: warningBoolString(menu.state.CacheMisses),
+			Values:       []string{"true", "false"},
+		},
+		{
+			ID:           string(NoticeCacheWarming),
+			Label:        "Cache warming",
+			Description:  "Show the cost of cache warming requests",
+			CurrentValue: warningBoolString(menu.state.CacheWarming),
+			Values:       []string{"true", "false"},
+		},
+		{
+			ID:           string(NoticeCompactionCosts),
+			Label:        "Compaction costs",
+			Description:  "Show the cost of compactions and branch summaries",
+			CurrentValue: warningBoolString(menu.state.CompactionCosts),
+			Values:       []string{"true", "false"},
+		},
+		{
+			ID:           string(NoticeReasoningDrops),
+			Label:        "Reasoning drops",
+			Description:  "Show a notice when a provider drops reasoning items from a request",
+			CurrentValue: warningBoolString(menu.state.ReasoningDrops),
+			Values:       []string{"true", "false"},
+		},
+	}
+	menu.list = tui.NewSettingsList(items, min(len(items), 10), tui.GetSettingsListTheme(), func(id, value string) {
+		shown := value == "true"
+		key := NoticeKey(id)
+		switch key {
+		case NoticeCacheMisses:
+			menu.state.CacheMisses = shown
+		case NoticeCacheWarming:
+			menu.state.CacheWarming = shown
+		case NoticeCompactionCosts:
+			menu.state.CompactionCosts = shown
+		case NoticeReasoningDrops:
+			menu.state.ReasoningDrops = shown
+		}
+		if onChange != nil {
+			onChange(key, shown)
+		}
+	}, onCancel)
+	return menu
+}
+
+func (m *noticeSettingsSubmenu) Render(width int) []string { return m.list.Render(width) }
+func (m *noticeSettingsSubmenu) HandleInput(data string)   { m.list.HandleInput(data) }
 
 // selectSubmenuStep reports a SelectSubmenu's selection change, selection and cancel as upstream's constructor callbacks do.
 type selectSubmenuStep struct {
@@ -498,6 +559,7 @@ type SettingsSelectorComponent struct {
 func NewSettingsSelectorComponent(config SettingsConfig, callbacks SettingsCallbacks) *SettingsSelectorComponent {
 	supportsImages := tui.GetCapabilities().Images != ""
 	currentWarnings := config.Warnings
+	currentNotices := config.Notices
 	currentModelThinkingLevels := maps.Clone(config.ModelThinkingLevels)
 	if currentModelThinkingLevels == nil {
 		currentModelThinkingLevels = map[string]string{}
@@ -549,7 +611,6 @@ func NewSettingsSelectorComponent(config SettingsConfig, callbacks SettingsCallb
 		cycle("cache-warming-mode", "Cache warming", "off; streaming while the agent runs; idle also between runs while continuation stays profitable", string(config.CacheWarmingMode), cacheWarmingModes...),
 		toggle("hide-thinking", "Hide thinking", "Hide thinking blocks in assistant responses", config.HideThinkingBlock),
 		cycle("mermaid-rendering", "Mermaid diagrams", "Render Mermaid code blocks as Unicode diagrams", string(config.MermaidRenderingMode), string(MermaidRenderingOff), string(MermaidRenderingFinal), string(MermaidRenderingStreaming)),
-		toggle("cache-miss-notices", "Cache miss notices", "Show transcript notices for cache costs and provider recovery diagnostics", config.ShowCacheMissNotices),
 		toggle("collapse-changelog", "Collapse changelog", "Show condensed changelog after updates", config.CollapseChangelog),
 		cycle("quiet-startup", "Quiet startup", "Disable verbose printing at startup (header: keep only the startup header)", config.QuietStartup.String(), "true", "header", "false"),
 		toggle("install-telemetry", "Install telemetry", "Send an anonymous version/update ping after changelog-detected updates", config.EnableInstallTelemetry),
@@ -566,6 +627,27 @@ func NewSettingsSelectorComponent(config SettingsConfig, callbacks SettingsCallb
 					currentWarnings = warnings
 					if callbacks.OnWarningsChange != nil {
 						callbacks.OnWarningsChange(warnings)
+					}
+				}, func() { done(nil) })
+			},
+		},
+		tui.SettingItem{
+			ID: "notices", Label: "Notices", Description: "Notices about cache misses, cache warming, compaction costs and dropped reasoning", CurrentValue: "configure",
+			Submenu: func(_ string, doneWithOptions func(*string, *tui.SubmenuDoneOptions)) tui.Component {
+				done := func(value *string) { doneWithOptions(value, nil) }
+				return newNoticeSettingsSubmenu(currentNotices, func(key NoticeKey, shown bool) {
+					switch key {
+					case NoticeCacheMisses:
+						currentNotices.CacheMisses = shown
+					case NoticeCacheWarming:
+						currentNotices.CacheWarming = shown
+					case NoticeCompactionCosts:
+						currentNotices.CompactionCosts = shown
+					case NoticeReasoningDrops:
+						currentNotices.ReasoningDrops = shown
+					}
+					if callbacks.OnNoticeChange != nil {
+						callbacks.OnNoticeChange(key, shown)
 					}
 				}, func() { done(nil) })
 			},
@@ -686,10 +768,6 @@ func (s *SettingsSelectorComponent) dispatch(callbacks SettingsCallbacks, id, ne
 	case "mermaid-rendering":
 		if callbacks.OnMermaidRenderingModeChange != nil {
 			callbacks.OnMermaidRenderingModeChange(MermaidRenderingMode(newValue))
-		}
-	case "cache-miss-notices":
-		if callbacks.OnShowCacheMissNoticesChange != nil {
-			callbacks.OnShowCacheMissNoticesChange(newValue == "true")
 		}
 	case "collapse-changelog":
 		if callbacks.OnCollapseChangelogChange != nil {

@@ -422,6 +422,7 @@ The Go SDK changes that the upgrade reports since 0.4.1:
 - `HostHelpers.HighlightCode` has no `markdown` parameter: `getMarkdownTheme().highlightCode` is `highlightCode`.
 
 - `Context.SetModel` takes a model object (`map[string]any`) instead of the `provider/id` string, and `Context.SetModelNamed` takes the string. The upgrade rewrites a call whose argument is a string; it lists a call whose argument has another type.
+- `SettingsManager.GetShowCacheMissNotices` and `SettingsManager.SetShowCacheMissNotices` are deprecated in 0.8.1 (delegating to `notices.cacheMisses`) and scheduled for removal in 0.9.0; migrate to `SettingsManager.GetNotices()` and `SettingsManager.SetNotice(key, shown)`.
 
 `make sdk-apidiff` fails an incompatible change to an extension SDK package that has no upgrade rule or release note.
 

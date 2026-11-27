@@ -299,6 +299,164 @@ func (w *WarningSettings) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// NoticeKey identifies one transcript notice toggle under settings.notices.
+type NoticeKey string
+
+const (
+	NoticeCacheMisses     NoticeKey = "cacheMisses"
+	NoticeCacheWarming    NoticeKey = "cacheWarming"
+	NoticeCompactionCosts NoticeKey = "compactionCosts"
+	NoticeReasoningDrops  NoticeKey = "reasoningDrops"
+)
+
+// NoticeSettings mirrors upstream NoticeSettings (packages/coding-agent/src/core/settings-schema.ts).
+type NoticeSettings struct {
+	CacheMisses        bool                       `json:"cacheMisses,omitempty"`
+	cacheMissesSet     bool                       `json:"-"`
+	CacheWarming       bool                       `json:"cacheWarming,omitempty"`
+	cacheWarmingSet    bool                       `json:"-"`
+	CompactionCosts    bool                       `json:"compactionCosts,omitempty"`
+	compactionCostsSet bool                       `json:"-"`
+	ReasoningDrops     bool                       `json:"reasoningDrops,omitempty"`
+	reasoningDropsSet  bool                       `json:"-"`
+	extra              map[string]bool            `json:"-"`
+	raw                map[string]json.RawMessage `json:"-"`
+	keyOrder           []string                   `json:"-"`
+}
+
+func (n NoticeSettings) MarshalJSON() ([]byte, error) {
+	encoded := orderedjson.New()
+	setKey := func(k string) {
+		switch NoticeKey(k) {
+		case NoticeCacheMisses:
+			if n.cacheMissesSet || n.CacheMisses {
+				encoded.Set(k, json.RawMessage(strconv.FormatBool(n.CacheMisses)))
+				return
+			}
+		case NoticeCacheWarming:
+			if n.cacheWarmingSet || n.CacheWarming {
+				encoded.Set(k, json.RawMessage(strconv.FormatBool(n.CacheWarming)))
+				return
+			}
+		case NoticeCompactionCosts:
+			if n.compactionCostsSet || n.CompactionCosts {
+				encoded.Set(k, json.RawMessage(strconv.FormatBool(n.CompactionCosts)))
+				return
+			}
+		case NoticeReasoningDrops:
+			if n.reasoningDropsSet || n.ReasoningDrops {
+				encoded.Set(k, json.RawMessage(strconv.FormatBool(n.ReasoningDrops)))
+				return
+			}
+		default:
+			if v, ok := n.extra[k]; ok {
+				encoded.Set(k, json.RawMessage(strconv.FormatBool(v)))
+				return
+			}
+		}
+		if raw, ok := n.raw[k]; ok {
+			encoded.Set(k, raw)
+		}
+	}
+	seen := make(map[string]bool, len(n.keyOrder))
+	for _, k := range n.keyOrder {
+		if seen[k] {
+			continue
+		}
+		seen[k] = true
+		setKey(k)
+	}
+	for _, k := range []string{"cacheMisses", "cacheWarming", "compactionCosts", "reasoningDrops"} {
+		if !seen[k] {
+			seen[k] = true
+			setKey(k)
+		}
+	}
+	if len(n.extra) > 0 || len(n.raw) > 0 {
+		var rest []string
+		for k := range n.extra {
+			if !seen[k] {
+				seen[k] = true
+				rest = append(rest, k)
+			}
+		}
+		for k := range n.raw {
+			if !seen[k] {
+				seen[k] = true
+				rest = append(rest, k)
+			}
+		}
+		slices.Sort(rest)
+		for _, k := range rest {
+			setKey(k)
+		}
+	}
+	return json.Marshal(encoded)
+}
+
+func (n *NoticeSettings) UnmarshalJSON(data []byte) error {
+	var obj orderedjson.Object
+	if err := json.Unmarshal(data, &obj); err != nil {
+		return err
+	}
+	*n = NoticeSettings{}
+	for _, k := range obj.Keys() {
+		v, _ := obj.Get(k)
+		n.keyOrder = append(n.keyOrder, k)
+		trimmed := bytes.TrimSpace(v)
+		// Match JS: only JSON booleans toggle the typed notice flag; null and non-boolean values
+		// are preserved verbatim on round-trip without setting the typed boolean flag.
+		if bytes.Equal(trimmed, []byte("true")) || bytes.Equal(trimmed, []byte("false")) {
+			b := bytes.Equal(trimmed, []byte("true"))
+			switch NoticeKey(k) {
+			case NoticeCacheMisses:
+				n.CacheMisses = b
+				n.cacheMissesSet = true
+			case NoticeCacheWarming:
+				n.CacheWarming = b
+				n.cacheWarmingSet = true
+			case NoticeCompactionCosts:
+				n.CompactionCosts = b
+				n.compactionCostsSet = true
+			case NoticeReasoningDrops:
+				n.ReasoningDrops = b
+				n.reasoningDropsSet = true
+			default:
+				if n.extra == nil {
+					n.extra = map[string]bool{}
+				}
+				n.extra[k] = b
+			}
+			continue
+		}
+		if n.raw == nil {
+			n.raw = map[string]json.RawMessage{}
+		}
+		n.raw[k] = append(json.RawMessage(nil), v...)
+	}
+	return nil
+}
+
+func cloneNoticeSettings(n *NoticeSettings) *NoticeSettings {
+	if n == nil {
+		return nil
+	}
+	c := *n
+	if len(n.extra) > 0 {
+		c.extra = maps.Clone(n.extra)
+	}
+	if len(n.raw) > 0 {
+		c.raw = make(map[string]json.RawMessage, len(n.raw))
+		for k, v := range n.raw {
+			c.raw[k] = append(json.RawMessage(nil), v...)
+		}
+	}
+	if len(n.keyOrder) > 0 {
+		c.keyOrder = slices.Clone(n.keyOrder)
+	}
+	return &c
+}
+
 // terminalSettingsWire mirrors upstream terminal nested settings.
 type terminalSettingsWire struct {
 	ShowImages           *bool `json:"showImages,omitempty"`
@@ -356,7 +514,6 @@ type settingsWire struct {
 	NpmCommand             []string                 `json:"npmCommand,omitzero"`
 	SelfUpdateCommand      []string                 `json:"selfUpdateCommand,omitzero"`
 	CollapseChangelog      *bool                    `json:"collapseChangelog,omitempty"`
-	ShowCacheMissNotices   *bool                    `json:"showCacheMissNotices,omitempty"`
 	EnableInstallTelemetry *bool                    `json:"enableInstallTelemetry,omitempty"`
 	EnableAnalytics        *bool                    `json:"enableAnalytics,omitempty"`
 	TrackingID             string                   `json:"trackingId,omitempty"`
@@ -382,6 +539,7 @@ type settingsWire struct {
 	ShowHardwareCursor     *bool                    `json:"showHardwareCursor,omitempty"`
 	Markdown               *MarkdownSettings        `json:"markdown,omitempty"`
 	Warnings               *WarningSettings         `json:"warnings,omitempty"`
+	Notices                *NoticeSettings          `json:"notices,omitempty"`
 	SessionDir             string                   `json:"sessionDir,omitempty"`
 	// HTTPIdleTimeoutMs keeps the raw JSON value: upstream accepts numbers,
 	// numeric strings and "disabled".
@@ -654,11 +812,10 @@ type Settings struct {
 	CollapseChangelog    bool `json:"collapseChangelog,omitempty"`
 	collapseChangelogSet bool `json:"-"`
 
-	// ShowCacheMissNotices controls transcript notices for significant prompt
-	// cache misses. Default: false. Mirrors upstream settings.showCacheMissNotices
-	// (settings-manager.ts:96).
-	ShowCacheMissNotices    bool `json:"showCacheMissNotices,omitempty"`
-	showCacheMissNoticesSet bool `json:"-"`
+	// ShowCacheMissNotices is kept as a deprecated compatibility field for 0.8.x embedders.
+	//
+	// Deprecated: use Notices instead; scheduled for removal in 0.9.0.
+	ShowCacheMissNotices bool `json:"-"`
 
 	// EnableSkillCommands, when false, hides skill commands from the
 	// /skill:name autocomplete popup. Default: true.
@@ -784,6 +941,9 @@ type Settings struct {
 
 	// Warnings holds persisted warning-dismissal preferences.
 	Warnings *WarningSettings `json:"warnings,omitempty"`
+
+	// Notices holds per-notice transcript visibility preferences.
+	Notices *NoticeSettings `json:"notices,omitempty"`
 }
 
 func cloneIntPtr(v *int) *int {
@@ -1049,7 +1209,6 @@ func cloneSettings(s Settings) Settings {
 		CollapseChangelog:              s.CollapseChangelog,
 		collapseChangelogSet:           s.collapseChangelogSet,
 		ShowCacheMissNotices:           s.ShowCacheMissNotices,
-		showCacheMissNoticesSet:        s.showCacheMissNoticesSet,
 		EnableSkillCommands:            cloneBoolPtr(s.EnableSkillCommands),
 		EnableInstallTelemetry:         cloneBoolPtr(s.EnableInstallTelemetry),
 		EnableAnalytics:                cloneBoolPtr(s.EnableAnalytics),
@@ -1080,6 +1239,7 @@ func cloneSettings(s Settings) Settings {
 		SelfUpdateCommand:              slices.Clone(s.SelfUpdateCommand),
 		Markdown:                       cloneMarkdownSettings(s.Markdown),
 		Warnings:                       cloneWarningSettings(s.Warnings),
+		Notices:                        cloneNoticeSettings(s.Notices),
 	}
 }
 
@@ -1142,6 +1302,7 @@ func (s Settings) MarshalJSON() ([]byte, error) {
 		ShowHardwareCursor:          s.ShowHardwareCursor,
 		Markdown:                    s.Markdown,
 		Warnings:                    s.Warnings,
+		Notices:                     s.Notices,
 		SessionDir:                  s.SessionDir,
 		HTTPProxy:                   s.HTTPProxy,
 		WebSocketConnectTimeoutMs:   webSocketConnectTimeoutWire(s),
@@ -1159,10 +1320,6 @@ func (s Settings) MarshalJSON() ([]byte, error) {
 	if s.collapseChangelogSet {
 		v := s.CollapseChangelog
 		w.CollapseChangelog = &v
-	}
-	if s.showCacheMissNoticesSet {
-		v := s.ShowCacheMissNotices
-		w.ShowCacheMissNotices = &v
 	}
 	if s.BranchSummary != nil {
 		w.BranchSummary = &branchSummaryWire{}
@@ -1224,6 +1381,21 @@ func (s *Settings) UnmarshalJSON(data []byte) error {
 			delete(legacy, "websockets")
 		}
 	}
+	if shown, ok := legacy["showCacheMissNotices"].(bool); ok {
+		notices := map[string]any{
+			"cacheMisses":     shown,
+			"cacheWarming":    shown,
+			"compactionCosts": shown,
+			"reasoningDrops":  shown,
+		}
+		if existing, ok := legacy["notices"].(map[string]any); ok {
+			for k, v := range existing {
+				notices[k] = v
+			}
+		}
+		legacy["notices"] = notices
+	}
+	delete(legacy, "showCacheMissNotices")
 	if rawSkills, ok := legacy["skills"].(map[string]any); ok {
 		if _, exists := legacy["enableSkillCommands"]; !exists {
 			if enabled, ok := rawSkills["enableSkillCommands"]; ok {
@@ -1315,10 +1487,6 @@ func (s *Settings) UnmarshalJSON(data []byte) error {
 		s.CollapseChangelog = *w.CollapseChangelog
 		s.collapseChangelogSet = true
 	}
-	if w.ShowCacheMissNotices != nil {
-		s.ShowCacheMissNotices = *w.ShowCacheMissNotices
-		s.showCacheMissNoticesSet = true
-	}
 	s.EnableInstallTelemetry = w.EnableInstallTelemetry
 	s.EnableAnalytics = w.EnableAnalytics
 	s.TrackingID = w.TrackingID
@@ -1372,6 +1540,18 @@ func (s *Settings) UnmarshalJSON(data []byte) error {
 	s.ShowHardwareCursor = w.ShowHardwareCursor
 	s.Markdown = w.Markdown
 	s.Warnings = w.Warnings
+	s.Notices = w.Notices
+	if s.Notices != nil {
+		// The wire decode went through a map, which lost the notices object's key order.
+		if object, err := orderedjson.Parse(data); err == nil {
+			if raw, ok := object.Get("notices"); ok {
+				if noticesObj, err := orderedjson.Parse(raw); err == nil {
+					s.Notices.keyOrder = noticesObj.Keys()
+				}
+			}
+		}
+	}
+	s.ShowCacheMissNotices = s.GetNotices().CacheMisses
 	s.SessionDir = w.SessionDir
 	s.HTTPProxy = w.HTTPProxy
 	s.webSocketConnectTimeoutNull = false
@@ -1761,8 +1941,25 @@ func (s Settings) GetCodeBlockIndent() string {
 // GetHideThinkingBlock returns whether thinking blocks should be hidden.
 func (s Settings) GetHideThinkingBlock() bool { return s.HideThinkingBlock }
 
-// GetShowCacheMissNotices returns whether transcript cache-miss notices are shown.
-func (s Settings) GetShowCacheMissNotices() bool { return s.ShowCacheMissNotices }
+// GetNotices returns which transcript notices to show, with defaults (all false) filled in.
+func (s Settings) GetNotices() NoticeSettings {
+	out := NoticeSettings{}
+	if s.Notices != nil {
+		out = *s.Notices
+	}
+	if s.ShowCacheMissNotices && s.Notices == nil {
+		out.CacheMisses = true
+		out.CacheWarming = true
+		out.CompactionCosts = true
+		out.ReasoningDrops = true
+	}
+	return out
+}
+
+// GetShowCacheMissNotices reports whether prompt cache miss notices are enabled.
+//
+// Deprecated: use GetNotices().CacheMisses instead; scheduled for removal in 0.9.0.
+func (s Settings) GetShowCacheMissNotices() bool { return s.GetNotices().CacheMisses }
 
 // GetQuietStartup returns the quiet startup setting: true, "header" or false.
 func (s Settings) GetQuietStartup() QuietStartup { return s.QuietStartup }
@@ -2912,9 +3109,16 @@ func (sm *SettingsManager) GetHideThinkingBlock() bool {
 	return readMerged(sm, func(s *Settings) bool { return s.HideThinkingBlock })
 }
 
-// GetShowCacheMissNotices returns whether transcript cache-miss notices are shown.
+// GetNotices returns which transcript notices to show, with defaults filled in.
+func (sm *SettingsManager) GetNotices() NoticeSettings {
+	return readMerged(sm, (*Settings).GetNotices)
+}
+
+// GetShowCacheMissNotices reports whether prompt cache miss notices are enabled.
+//
+// Deprecated: use GetNotices().CacheMisses instead; scheduled for removal in 0.9.0.
 func (sm *SettingsManager) GetShowCacheMissNotices() bool {
-	return readMerged(sm, func(s *Settings) bool { return s.ShowCacheMissNotices })
+	return sm.GetNotices().CacheMisses
 }
 
 // GetShellPath returns the configured shell path (for bash tool). An invalid
@@ -3340,11 +3544,54 @@ func (sm *SettingsManager) SetHideThinkingBlock(hide bool) error {
 	})
 }
 
-// SetShowCacheMissNotices sets whether transcript cache-miss notices are shown.
+// SetNotice shows or hides one transcript notice. Writes only that key so other notices keep following their defaults.
+func (sm *SettingsManager) SetNotice(key NoticeKey, shown bool) error {
+	return sm.UpdateGlobal(func(s *Settings) {
+		if s.Notices == nil {
+			s.Notices = &NoticeSettings{}
+		}
+		switch key {
+		case NoticeCacheMisses:
+			s.Notices.CacheMisses = shown
+			s.Notices.cacheMissesSet = true
+			s.ShowCacheMissNotices = shown
+		case NoticeCacheWarming:
+			s.Notices.CacheWarming = shown
+			s.Notices.cacheWarmingSet = true
+		case NoticeCompactionCosts:
+			s.Notices.CompactionCosts = shown
+			s.Notices.compactionCostsSet = true
+		case NoticeReasoningDrops:
+			s.Notices.ReasoningDrops = shown
+			s.Notices.reasoningDropsSet = true
+		default:
+			if key != "" {
+				if s.Notices.extra == nil {
+					s.Notices.extra = map[string]bool{}
+				}
+				s.Notices.extra[string(key)] = shown
+			}
+		}
+	})
+}
+
+// SetShowCacheMissNotices toggles all four transcript notices to match 0.8.0 behavior.
+//
+// Deprecated: use SetNotice(key, show) instead; scheduled for removal in 0.9.0.
 func (sm *SettingsManager) SetShowCacheMissNotices(show bool) error {
 	return sm.UpdateGlobal(func(s *Settings) {
+		if s.Notices == nil {
+			s.Notices = &NoticeSettings{}
+		}
+		s.Notices.CacheMisses = show
+		s.Notices.cacheMissesSet = true
+		s.Notices.CacheWarming = show
+		s.Notices.cacheWarmingSet = true
+		s.Notices.CompactionCosts = show
+		s.Notices.compactionCostsSet = true
+		s.Notices.ReasoningDrops = show
+		s.Notices.reasoningDropsSet = true
 		s.ShowCacheMissNotices = show
-		s.showCacheMissNoticesSet = true
 	})
 }
 
@@ -3896,6 +4143,31 @@ func migrateSettingsObject(o *orderedjson.Object) error {
 			}
 		}
 	}
+	if raw, ok := o.Get("showCacheMissNotices"); ok {
+		trimmed := string(bytes.TrimSpace(raw))
+		if trimmed == "true" || trimmed == "false" {
+			notices := orderedjson.New()
+			val := json.RawMessage(trimmed)
+			notices.Set("cacheMisses", slices.Clone(val))
+			notices.Set("cacheWarming", slices.Clone(val))
+			notices.Set("compactionCosts", slices.Clone(val))
+			notices.Set("reasoningDrops", slices.Clone(val))
+			if existingRaw, hasNotices := o.Get("notices"); hasNotices && isObject(existingRaw) {
+				if existing, err := orderedjson.Parse(existingRaw); err == nil {
+					for _, k := range existing.Keys() {
+						v, _ := existing.Get(k)
+						notices.Set(k, slices.Clone(v))
+					}
+				}
+			}
+			encoded, err := json.Marshal(notices)
+			if err != nil {
+				return err
+			}
+			o.Set("notices", encoded)
+		}
+		o.Delete("showCacheMissNotices")
+	}
 	if raw, ok := o.Get("skills"); ok && isObject(raw) {
 		skills, err := orderedjson.Parse(raw)
 		if err != nil {
@@ -4300,10 +4572,7 @@ func mergeSettings(global, project Settings) Settings {
 		m.CollapseChangelog = project.CollapseChangelog
 		m.collapseChangelogSet = true
 	}
-	if project.showCacheMissNoticesSet {
-		m.ShowCacheMissNotices = project.ShowCacheMissNotices
-		m.showCacheMissNoticesSet = true
-	}
+
 	if project.EnableSkillCommands != nil {
 		m.EnableSkillCommands = cloneBoolPtr(project.EnableSkillCommands)
 	}
@@ -4391,6 +4660,47 @@ func mergeSettings(global, project Settings) Settings {
 			m.Warnings.anthropicExtraUsageSet = true
 		}
 	}
+	if project.Notices != nil {
+		if m.Notices == nil {
+			m.Notices = &NoticeSettings{}
+		}
+		if project.Notices.cacheMissesSet {
+			m.Notices.CacheMisses = project.Notices.CacheMisses
+			m.Notices.cacheMissesSet = true
+		}
+		if project.Notices.cacheWarmingSet {
+			m.Notices.CacheWarming = project.Notices.CacheWarming
+			m.Notices.cacheWarmingSet = true
+		}
+		if project.Notices.compactionCostsSet {
+			m.Notices.CompactionCosts = project.Notices.CompactionCosts
+			m.Notices.compactionCostsSet = true
+		}
+		if project.Notices.reasoningDropsSet {
+			m.Notices.ReasoningDrops = project.Notices.ReasoningDrops
+			m.Notices.reasoningDropsSet = true
+		}
+		if len(project.Notices.extra) > 0 {
+			if m.Notices.extra == nil {
+				m.Notices.extra = map[string]bool{}
+			}
+			maps.Copy(m.Notices.extra, project.Notices.extra)
+		}
+		if len(project.Notices.raw) > 0 {
+			if m.Notices.raw == nil {
+				m.Notices.raw = map[string]json.RawMessage{}
+			}
+			for k, v := range project.Notices.raw {
+				m.Notices.raw[k] = append(json.RawMessage(nil), v...)
+			}
+		}
+		for _, k := range project.Notices.keyOrder {
+			if !slices.Contains(m.Notices.keyOrder, k) {
+				m.Notices.keyOrder = append(m.Notices.keyOrder, k)
+			}
+		}
+	}
+	m.ShowCacheMissNotices = m.GetNotices().CacheMisses
 	if project.ShowHardwareCursor != nil {
 		m.ShowHardwareCursor = cloneBoolPtr(project.ShowHardwareCursor)
 	}

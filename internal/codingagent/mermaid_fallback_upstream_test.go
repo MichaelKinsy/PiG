@@ -14,6 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/markdowntransform"
 	"github.com/MichaelKinsy/PiG/internal/mermaid"
 	"github.com/MichaelKinsy/PiG/tui"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 const wideMermaidSource = `flowchart LR
@@ -31,29 +32,36 @@ const wideMermaidSource = `flowchart LR
   NBENV -. "four five six" .-> PGGW
   PGPIG ==> PGGW`
 
-// Upstream packages/coding-agent/test/mermaid.test.ts:43 and components/mermaid.ts:76-77 return token.raw for unsupported or naturally oversized diagrams, without a warning or a second layout with narrowed labels.
+// Upstream packages/coding-agent/test/mermaid.test.ts:43 and components/mermaid.ts:80-100 return token.raw for unsupported diagrams and while streaming, and append a width note once completed when a diagram is wider than the available area.
 func TestMermaidUnsupportedAndOversizedRemainSource(t *testing.T) {
 	for _, tc := range []struct {
 		name, body string
 		width      int
+		oversized  bool
 	}{
-		{"unsupported gantt", "gantt\n  title Plan", 100},
-		{"oversized original", "flowchart LR\n  A[Start] --> B[Done]", 10},
-		{"would fit only by narrowing", wideMermaidSource, 80},
-		{"unmeasured area", "sequenceDiagram\n  A->>B: hello", 0},
+		{"unsupported gantt", "gantt\n  title Plan", 100, false},
+		{"oversized original", "flowchart LR\n  A[Start] --> B[Done]", 10, true},
+		{"would fit only by narrowing", wideMermaidSource, 80, true},
+		{"unmeasured area", "sequenceDiagram\n  A->>B: hello", 0, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if tc.name == "would fit only by narrowing" {
+			var artWidth int
+			if tc.oversized {
 				art, ok := mermaid.Render(tc.body)
 				if !ok || art.Width <= tc.width {
 					t.Fatalf("fixture does not exceed area: width=%d rendered=%v", art.Width, ok)
 				}
+				artWidth = art.Width
 			}
 			md := "```mermaid\n" + tc.body + "\n```"
 			for _, streaming := range []bool{false, true} {
 				got := createMermaidMarkdownTransformer(func() string { return "streaming" }, nil)(md, extension.MarkdownTransformContext{MessageType: extension.MarkdownMessageAssistant, IsStreaming: streaming, AvailableWidth: tc.width})
-				if got != md {
-					t.Fatalf("streaming=%v transformed raw fallback:\ngot %q\nwant %q", streaming, got, md)
+				want := md
+				if tc.oversized && !streaming {
+					want = fmt.Sprintf("%s\n`Mermaid diagram not rendered: needs %d columns, %d available`  \n", md, artWidth, tc.width)
+				}
+				if got != want {
+					t.Fatalf("streaming=%v transformed raw fallback:\ngot %q\nwant %q", streaming, got, want)
 				}
 			}
 		})
@@ -61,22 +69,35 @@ func TestMermaidUnsupportedAndOversizedRemainSource(t *testing.T) {
 }
 
 func TestMermaidFallbackAssistantBlockMatchesDisabledTransform(t *testing.T) {
-	for _, body := range []string{"gantt\n  title Plan", wideMermaidSource} {
-		source := "Before\n\n```mermaid\n" + body + "\n```\n\nAfter"
-		render := func(mode string) []string {
-			block := tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
-			transform := createMermaidMarkdownTransformer(func() string { return mode }, tui.ActiveTheme())
-			block.SetMarkdownTransform(markdowntransform.CreateMarkdownTransform(extension.MarkdownMessageAssistant, false, []extension.MarkdownTransformer{transform}, "", ""))
-			block.SetTextDelta(source)
-			rows := block.Render(80)
-			if block.Text() != source {
-				t.Fatal("rendering changed stored assistant text")
-			}
-			return rows
+	// Unsupported diagrams keep the raw code block identically to mode="off".
+	source := "Before\n\n```mermaid\ngantt\n  title Plan\n```\n\nAfter"
+	render := func(mode string) []string {
+		block := tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
+		transform := createMermaidMarkdownTransformer(func() string { return mode }, tui.ActiveTheme())
+		block.SetMarkdownTransform(markdowntransform.CreateMarkdownTransform(extension.MarkdownMessageAssistant, false, []extension.MarkdownTransformer{transform}, "", ""))
+		block.SetTextDelta(source)
+		rows := block.Render(80)
+		if block.Text() != source {
+			t.Fatal("rendering changed stored assistant text")
 		}
-		if got, want := render("streaming"), render("off"); !slices.Equal(got, want) {
-			t.Fatalf("caller fallback differs from raw code block:\ngot %q\nwant %q", got, want)
-		}
+		return rows
+	}
+	if got, want := render("streaming"), render("off"); !slices.Equal(got, want) {
+		t.Fatalf("caller fallback differs from raw code block:\ngot %q\nwant %q", got, want)
+	}
+	// Oversized completed diagrams keep stored text untouched and display the width note.
+	wideSource := "Before\n\n```mermaid\n" + wideMermaidSource + "\n```\n\nAfter"
+	block := tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
+	transform := createMermaidMarkdownTransformer(func() string { return "streaming" }, tui.ActiveTheme())
+	block.SetMarkdownTransform(markdowntransform.CreateMarkdownTransform(extension.MarkdownMessageAssistant, false, []extension.MarkdownTransformer{transform}, "", ""))
+	block.SetTextDelta(wideSource)
+	rows := strings.Join(block.Render(80), "\n")
+	if block.Text() != wideSource {
+		t.Fatal("rendering changed stored assistant text")
+	}
+	plain := widthx.StripAnsi(rows)
+	if !strings.Contains(plain, "Mermaid diagram not rendered: needs 119 columns, 78 available") {
+		t.Fatalf("oversized diagram note missing: %q", rows)
 	}
 }
 

@@ -1079,7 +1079,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 				m.setAutocompleteUncaught(m.buildAutocompleteProvider())
 			case "transport":
 				m.agent.SetTransport(ai.Transport(value))
-			case "cache-miss-notices":
+			case "notices":
 				m.rebuildChatFromSession()
 			case "http-idle-timeout":
 				//portlint:allow numbers value is the millisecond string of a fixed HTTP_IDLE_TIMEOUT_CHOICES entry (settings-selector.ts:524-529), all ASCII digits, where parseInt and Atoi agree

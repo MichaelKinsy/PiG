@@ -115,3 +115,24 @@ func TestUpstreamTerminalProgramStatus(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) { run(t, tc.override, tc.run) })
 	}
 }
+
+func TestFormatProgramStatusOmitsMalformedKind(t *testing.T) {
+	for _, bad := range []ProgramStatusKind{
+		"permission:app=evil",
+		"question\x1b]7501;state=done",
+		"unknown",
+	} {
+		got := FormatProgramStatus(ProgramStatus{
+			State:   ProgramStateBlocked,
+			App:     "pig",
+			Kind:    bad,
+			Message: "Proceed?",
+		})
+		if strings.Contains(got, "kind=") {
+			t.Fatalf("malformed kind %q was emitted in %q", bad, got)
+		}
+		if !strings.HasPrefix(got, "\x1b]7501;state=blocked:app=pig:msg=") || !strings.HasSuffix(got, "\x1b\\") {
+			t.Fatalf("unexpected formatted status %q", got)
+		}
+	}
+}

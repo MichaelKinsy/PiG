@@ -83,23 +83,10 @@ Start PiG in any folder:
 pig
 ```
 
-The first time, PiG shows a setup screen with three questions. Press `Enter` to accept each one, or `Esc` to skip all of them and save no answer. PiG does not show the screen again either way:
+The first time, PiG shows a setup screen with two questions (using the default `system` theme). Press `Enter` to accept each one, or `Esc` to skip all of them and save no answer. PiG does not show the screen again either way:
 
-```text
- Welcome to PiG, the minimal coding agent.
-
- Pick a theme.
-
- → System (matches your terminal colors)
-   Dark
-   Light
-
- ↑↓ navigate  enter continue  escape/ctrl+c skip setup
-```
-
-1. **Pick a theme.** `System` uses your terminal's colours.
-2. **Pick a sprite.** The picture of a pig at the top of the screen. It changes nothing else. Change it later with `/sprite`.
-3. **Opt-in to anonymous usage data sharing?** Use `↓` to move to `Don't share` if you do not want to send usage data, then press `Enter`. To change it later, set `"enableAnalytics"` to `true` or `false` in `~/.pig/agent/settings.json`. The screen's text also mentions a privacy command. Neither Pi 1.6.0 nor PiG has one. PiG shows Pi's text with only the program name changed (Pi `first-time-setup.ts:77`).
+1. **Pick a sprite.** The picture of a pig at the top of the screen. It changes nothing else. Change it later with `/sprite`.
+2. **Opt-in to anonymous usage data sharing?** Use `↓` to move to `Don't share` if you do not want to send usage data, then press `Enter`. To change it later, set `"enableAnalytics"` to `true` or `false` in `~/.pig/agent/settings.json`. The screen's text also mentions a privacy command. Neither Pi 1.6.0 nor PiG has one. PiG shows Pi's text with only the program name changed (Pi `first-time-setup.ts:77`).
 
 PiG saves your answers in `~/.pig/agent/settings.json` and does not ask again. Pi shows this screen only for its own release with `PI_EXPERIMENTAL=1` set. PiG shows it on the first interactive start (divergence D88, `coding/cli/extensions.go:93-95`). PiG skips the screen when the `PIG_CODING_AGENT_DIR` environment variable is set, and when it runs a single prompt with `-p`.
 

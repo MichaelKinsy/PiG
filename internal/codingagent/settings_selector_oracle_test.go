@@ -54,7 +54,7 @@ type settingsOracleConfig struct {
 	AvailableThemes            []string              `json:"availableThemes"`
 	HideThinkingBlock          bool                  `json:"hideThinkingBlock"`
 	MermaidRenderingMode       string                `json:"mermaidRenderingMode"`
-	ShowCacheMissNotices       bool                  `json:"showCacheMissNotices"`
+	Notices                    NoticeSettings        `json:"notices"`
 	CollapseChangelog          bool                  `json:"collapseChangelog"`
 	EnableInstallTelemetry     bool                  `json:"enableInstallTelemetry"`
 	DoubleEscapeAction         string                `json:"doubleEscapeAction"`
@@ -106,7 +106,7 @@ func (c settingsOracleConfig) settingsConfig(t *testing.T) SettingsConfig {
 		CacheWarmingMode: CacheWarmingMode(c.CacheWarmingMode), ThinkingLevel: c.ThinkingLevel, AvailableThinkingLevels: c.AvailableThinkingLevels,
 		ModelThinkingLevels: c.ModelThinkingLevels, CurrentTheme: c.CurrentTheme, TerminalTheme: tui.TerminalTheme(c.TerminalTheme),
 		AvailableThemes: c.AvailableThemes, HideThinkingBlock: c.HideThinkingBlock, MermaidRenderingMode: MermaidRenderingMode(c.MermaidRenderingMode),
-		ShowCacheMissNotices: c.ShowCacheMissNotices, CollapseChangelog: c.CollapseChangelog, EnableInstallTelemetry: c.EnableInstallTelemetry,
+		Notices: c.Notices, CollapseChangelog: c.CollapseChangelog, EnableInstallTelemetry: c.EnableInstallTelemetry,
 		DoubleEscapeAction: c.DoubleEscapeAction, TreeFilterMode: c.TreeFilterMode, ShowHardwareCursor: c.ShowHardwareCursor,
 		EditorPaddingX: c.EditorPaddingX, OutputPad: OutputPad(c.OutputPad), AutocompleteMaxVisible: c.AutocompleteMaxVisible,
 		DefaultProjectTrust: c.DefaultProjectTrust, ClearOnShrink: c.ClearOnShrink, ShowTerminalProgress: c.ShowTerminalProgress,
@@ -155,7 +155,7 @@ func settingsOracleCallbacks(record func(name string, args ...any)) SettingsCall
 		OnThemePreview:                 func(v string) { record("onThemePreview", v) },
 		OnHideThinkingBlockChange:      func(v bool) { record("onHideThinkingBlockChange", v) },
 		OnMermaidRenderingModeChange:   func(v MermaidRenderingMode) { record("onMermaidRenderingModeChange", string(v)) },
-		OnShowCacheMissNoticesChange:   func(v bool) { record("onShowCacheMissNoticesChange", v) },
+		OnNoticeChange:                 func(k NoticeKey, v bool) { record("onNoticeChange", k, v) },
 		OnCollapseChangelogChange:      func(v bool) { record("onCollapseChangelogChange", v) },
 		OnEnableInstallTelemetryChange: func(v bool) { record("onEnableInstallTelemetryChange", v) },
 		OnDoubleEscapeActionChange:     func(v string) { record("onDoubleEscapeActionChange", v) },
@@ -198,7 +198,7 @@ func settingsOracleBase() settingsOracleConfig {
 		ThinkingLevel: "medium", AvailableThinkingLevels: []string{"off", "minimal", "low", "medium", "high"},
 		ModelThinkingLevels: map[string]string{"alpha/alpha-1": "high"}, CurrentTheme: "dark", TerminalTheme: "dark",
 		AvailableThemes: []string{"dark", "light", "system"}, HideThinkingBlock: false, MermaidRenderingMode: "ascii",
-		ShowCacheMissNotices: true, CollapseChangelog: false, EnableInstallTelemetry: true, DoubleEscapeAction: "tree",
+		CollapseChangelog: false, EnableInstallTelemetry: true, DoubleEscapeAction: "tree",
 		TreeFilterMode: "default", ShowHardwareCursor: false, EditorPaddingX: 1, OutputPad: 1, AutocompleteMaxVisible: 5,
 		QuietStartup: json.RawMessage(`false`), DefaultProjectTrust: "ask", ClearOnShrink: false, ShowTerminalProgress: true,
 		TuiMode: "inline", FullscreenExitOutput: "keep", FullscreenScrollbar: "auto", FullscreenCopyOnSelect: true,

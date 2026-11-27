@@ -508,6 +508,9 @@ type DialogOptions struct {
 	// value starts a countdown; in RPC mode any non-zero value arms Node's
 	// timer, as Pi does. Zero is omitted.
 	Timeout float64 `json:"timeout,omitempty"`
+	// BlockedKind sets the kind of blocked program status (OSC 7501) the dialog reports
+	// ("permission", "question", or "auth"). Empty uses the dialog's default.
+	BlockedKind string `json:"blockedKind,omitempty"`
 }
 
 // SelectWithOptions is [Context.Select] with upstream's dialog options.

@@ -14,7 +14,7 @@ import (
 )
 
 // settings-manager.ts getBranchSummarySettings, getBranchSummarySkipPrompt, getRetryEnabled, getRetrySettings, getProviderRetrySettings,
-// getCacheWarmingMode (global file only), getCollapseChangelog, getEnableInstallTelemetry, getEnableAnalytics, getShowCacheMissNotices,
+// getCacheWarmingMode (global file only), getCollapseChangelog, getEnableInstallTelemetry, getEnableAnalytics, getNotices,
 // getQuietStartup, getDefaultProjectTrust (global file only), getDoubleEscapeAction, getTreeFilterMode, getOutputPad, getMermaidRenderingMode,
 // getImageWidthCells, getShowTerminalProgress, getTuiMode, getFullscreenExitOutput, getFullscreenScrollbar, getFullscreenCopyOnSelect,
 // getFullscreenWheelScrollLines, getEnabledModels, getShellCommandPrefix, getNpmCommand, getLastChangelogVersion and getTrackingId against pinned Pi, over layered
@@ -64,7 +64,7 @@ const { CONFIG_DIR_NAME } = await load("pi-coding-agent/config.js");
 const fs = await import("node:fs");
 const os = await import("node:os");
 const path = await import("node:path");
-const names = ["getBranchSummarySettings", "getBranchSummarySkipPrompt", "getRetryEnabled", "getRetrySettings", "getProviderRetrySettings", "getCacheWarmingMode", "getCollapseChangelog", "getEnableInstallTelemetry", "getEnableAnalytics", "getShowCacheMissNotices", "getQuietStartup", "getDefaultProjectTrust", "getDoubleEscapeAction", "getTreeFilterMode", "getOutputPad", "getMermaidRenderingMode", "getImageWidthCells", "getShowTerminalProgress", "getTuiMode", "getFullscreenExitOutput", "getFullscreenScrollbar", "getFullscreenCopyOnSelect", "getFullscreenWheelScrollLines", "getEnabledModels", "getShellCommandPrefix", "getNpmCommand", "getLastChangelogVersion", "getTrackingId"];
+const names = ["getBranchSummarySettings", "getBranchSummarySkipPrompt", "getRetryEnabled", "getRetrySettings", "getProviderRetrySettings", "getCacheWarmingMode", "getCollapseChangelog", "getEnableInstallTelemetry", "getEnableAnalytics", "getNotices", "getQuietStartup", "getDefaultProjectTrust", "getDoubleEscapeAction", "getTreeFilterMode", "getOutputPad", "getMermaidRenderingMode", "getImageWidthCells", "getShowTerminalProgress", "getTuiMode", "getFullscreenExitOutput", "getFullscreenScrollbar", "getFullscreenCopyOnSelect", "getFullscreenWheelScrollLines", "getEnabledModels", "getShellCommandPrefix", "getNpmCommand", "getLastChangelogVersion", "getTrackingId"];
 const out = [];
 for (const c of input) {
 	const root = fs.mkdtempSync(path.join(os.tmpdir(), "settingss-"));
@@ -130,16 +130,24 @@ emit(out);`, cases, &want)
 			npm = toAnySlice(command)
 		}
 		got := map[string]any{
-			"getBranchSummarySettings":      map[string]any{"reserveTokens": float64(branch.ReserveTokens), "skipPrompt": branch.SkipPrompt},
-			"getBranchSummarySkipPrompt":    sm.GetBranchSummarySkipPrompt(),
-			"getRetryEnabled":               sm.GetRetryEnabled(),
-			"getRetrySettings":              map[string]any{"enabled": retry.Enabled, "maxRetries": float64(retry.MaxRetries), "baseDelayMs": float64(retry.BaseDelayMs), "maxAgentDelayMs": float64(retry.MaxAgentDelayMs)},
-			"getProviderRetrySettings":      providerRetryJSON(optionalInt(provider.TimeoutMs), optionalInt(provider.MaxRetries), float64(provider.MaxRetryDelayMs)),
-			"getCacheWarmingMode":           string(sm.GetCacheWarmingMode()),
-			"getCollapseChangelog":          sm.GetCollapseChangelog(),
-			"getEnableInstallTelemetry":     sm.GetEnableInstallTelemetry(),
-			"getEnableAnalytics":            sm.GetEnableAnalytics(),
-			"getShowCacheMissNotices":       sm.GetShowCacheMissNotices(),
+			"getBranchSummarySettings":   map[string]any{"reserveTokens": float64(branch.ReserveTokens), "skipPrompt": branch.SkipPrompt},
+			"getBranchSummarySkipPrompt": sm.GetBranchSummarySkipPrompt(),
+			"getRetryEnabled":            sm.GetRetryEnabled(),
+			"getRetrySettings":           map[string]any{"enabled": retry.Enabled, "maxRetries": float64(retry.MaxRetries), "baseDelayMs": float64(retry.BaseDelayMs), "maxAgentDelayMs": float64(retry.MaxAgentDelayMs)},
+			"getProviderRetrySettings":   providerRetryJSON(optionalInt(provider.TimeoutMs), optionalInt(provider.MaxRetries), float64(provider.MaxRetryDelayMs)),
+			"getCacheWarmingMode":        string(sm.GetCacheWarmingMode()),
+			"getCollapseChangelog":       sm.GetCollapseChangelog(),
+			"getEnableInstallTelemetry":  sm.GetEnableInstallTelemetry(),
+			"getEnableAnalytics":         sm.GetEnableAnalytics(),
+			"getNotices": func() map[string]any {
+				n := sm.GetNotices()
+				return map[string]any{
+					"cacheMisses":     n.CacheMisses,
+					"cacheWarming":    n.CacheWarming,
+					"compactionCosts": n.CompactionCosts,
+					"reasoningDrops":  n.ReasoningDrops,
+				}
+			}(),
 			"getQuietStartup":               quiet,
 			"getDefaultProjectTrust":        string(sm.GetDefaultProjectTrust()),
 			"getDoubleEscapeAction":         sm.GetDoubleEscapeAction(),

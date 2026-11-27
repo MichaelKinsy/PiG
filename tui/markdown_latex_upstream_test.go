@@ -22,6 +22,10 @@ func TestMarkdownLatexUpstreamLayoutRegressions(t *testing.T) {
 		{"centered cases", `$$f(x) = \begin{cases} x^{2} & x \geq 0 \\ -x & x < 0 \end{cases}$$`, []string{"       ⎧ x² if x ≥ 0", "f(x) = ⎨", "       ⎩ -x if x < 0"}},
 		// .upstream/v0.87.1/packages/tui/test/latex.test.ts:494
 		{"nested display script", `$$x^{n^2}$$`, []string{"  2", " n", "x"}},
+		// Port of Pi main 362bf6f1bec2db70dc072e4db4eb5b2903f4e9f6 (packages/tui/test/markdown.test.ts)
+		{"unclosed currency dollar sign before bold", "Costs +$50 for **this** option.", []string{"Costs +$50 for this option."}},
+		{"unclosed currency dollar sign across lines", "**A:** costs +$50 (once).\n**B:** next.", []string{"A: costs +$50 (once).", "B: next."}},
+		{"pending dollar formula does not cross line break", "**A:** costs $x + y\n**B:** next.", []string{"A: costs $x + y", "B: next."}},
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {

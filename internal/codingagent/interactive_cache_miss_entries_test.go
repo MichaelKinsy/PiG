@@ -16,7 +16,7 @@ import (
 func TestRebuiltCacheMissNoticesScanEveryEntryInFileOrder(t *testing.T) {
 	dir := t.TempDir()
 	sm := NewSettingsManager(dir, dir)
-	if err := sm.SetShowCacheMissNotices(true); err != nil {
+	if err := sm.SetNotice(NoticeCacheMisses, true); err != nil {
 		t.Fatal(err)
 	}
 	session := NewSession("cache-miss-branches", dir)

@@ -10,6 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 type projectTrustResolutionOptions struct {
@@ -93,7 +94,7 @@ func resolveProjectTrusted(ctx context.Context, opts projectTrustResolutionOptio
 	for _, option := range options {
 		labels = append(labels, option.Label)
 	}
-	selected, err := opts.UI.Select(ctx, formatProjectTrustPrompt(opts.CWD, opts.ShadowedPiglet), labels, extension.ExtensionUIDialogOptions{})
+	selected, err := opts.UI.Select(ctx, formatProjectTrustPrompt(opts.CWD, opts.ShadowedPiglet), labels, extension.ExtensionUIDialogOptions{BlockedKind: tui.ProgramStatusKindPermission})
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
 			return false, nil
@@ -133,11 +134,13 @@ func newStartupTrustUI(opts codingagent.StartupUIOptions) extension.UIContext {
 	return &startupTrustUI{UIContext: extension.NoopUIContext, opts: opts}
 }
 
-func (ui *startupTrustUI) Select(ctx context.Context, title string, options []string, _ extension.ExtensionUIDialogOptions) (string, error) {
+func (ui *startupTrustUI) Select(ctx context.Context, title string, options []string, opts extension.ExtensionUIDialogOptions) (string, error) {
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}
-	selected, ok, err := codingagent.ShowStartupSelector(title, options, ui.opts)
+	startupOpts := ui.opts
+	startupOpts.BlockedKind = opts.BlockedKind
+	selected, ok, err := codingagent.ShowStartupSelector(title, options, startupOpts)
 	if err != nil {
 		return "", err
 	}
@@ -147,8 +150,12 @@ func (ui *startupTrustUI) Select(ctx context.Context, title string, options []st
 	return options[selected], nil
 }
 
-func (ui *startupTrustUI) Confirm(ctx context.Context, title, message string, _ extension.ExtensionUIDialogOptions) (bool, error) {
-	selected, err := ui.Select(ctx, title+"\n"+message, []string{"Yes", "No"}, extension.ExtensionUIDialogOptions{})
+func (ui *startupTrustUI) Confirm(ctx context.Context, title, message string, opts extension.ExtensionUIDialogOptions) (bool, error) {
+	confirmOpts := opts
+	if confirmOpts.BlockedKind == "" {
+		confirmOpts.BlockedKind = tui.ProgramStatusKindPermission
+	}
+	selected, err := ui.Select(ctx, title+"\n"+message, []string{"Yes", "No"}, confirmOpts)
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
 			return false, nil
@@ -158,11 +165,13 @@ func (ui *startupTrustUI) Confirm(ctx context.Context, title, message string, _ 
 	return selected == "Yes", nil
 }
 
-func (ui *startupTrustUI) Input(ctx context.Context, title, placeholder string, _ extension.ExtensionUIDialogOptions) (string, error) {
+func (ui *startupTrustUI) Input(ctx context.Context, title, placeholder string, opts extension.ExtensionUIDialogOptions) (string, error) {
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}
-	value, ok, err := codingagent.ShowStartupInput(title, placeholder, ui.opts)
+	startupOpts := ui.opts
+	startupOpts.BlockedKind = opts.BlockedKind
+	value, ok, err := codingagent.ShowStartupInput(title, placeholder, startupOpts)
 	if err != nil {
 		return "", err
 	}

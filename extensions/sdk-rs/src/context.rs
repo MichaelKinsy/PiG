@@ -5063,10 +5063,16 @@ impl Context {
         )?)
     }
 
-    fn dialog_opts(options: &DialogOptions) -> serde_json::Value {
+    fn dialog_opts(options: DialogPromptOptions) -> serde_json::Value {
         let mut opts = serde_json::Map::new();
         if let Some(timeout) = options.timeout {
             opts.insert("timeout".into(), serde_json::Value::from(timeout));
+        }
+        if let Some(blocked_kind) = options.blocked_kind {
+            opts.insert(
+                "blockedKind".into(),
+                serde_json::Value::from(blocked_kind.as_str()),
+            );
         }
         serde_json::Value::Object(opts)
     }
@@ -5076,7 +5082,7 @@ impl Context {
         &self,
         title: &str,
         options: &[&str],
-        opts: &DialogOptions,
+        opts: impl Into<DialogPromptOptions>,
     ) -> io::Result<(String, bool)> {
         self.block_for_user();
         let v = call_result_value(self.call_wire(
@@ -5084,7 +5090,7 @@ impl Context {
             Some(serde_json::json!({
                 "title": title,
                 "options": options,
-                "opts": Self::dialog_opts(opts),
+                "opts": Self::dialog_opts(opts.into()),
             })),
         )?)?;
         let selected = v
@@ -5101,7 +5107,7 @@ impl Context {
         &self,
         title: &str,
         message: &str,
-        opts: &DialogOptions,
+        opts: impl Into<DialogPromptOptions>,
     ) -> io::Result<bool> {
         self.block_for_user();
         let v = call_result_value(self.call_wire(
@@ -5109,7 +5115,7 @@ impl Context {
             Some(serde_json::json!({
                 "title": title,
                 "message": message,
-                "opts": Self::dialog_opts(opts),
+                "opts": Self::dialog_opts(opts.into()),
             })),
         )?)?;
         Ok(v.get("confirmed")
@@ -5122,12 +5128,12 @@ impl Context {
         &self,
         title: &str,
         placeholder: &str,
-        opts: &DialogOptions,
+        opts: impl Into<DialogPromptOptions>,
     ) -> io::Result<(String, bool)> {
         self.input_with_options_wire(serde_json::json!({
             "title": title,
             "placeholder": placeholder,
-            "opts": Self::dialog_opts(opts),
+            "opts": Self::dialog_opts(opts.into()),
         }))
     }
 
@@ -5135,10 +5141,10 @@ impl Context {
     pub fn input_without_placeholder_with_options(
         &self,
         title: &str,
-        opts: &DialogOptions,
+        opts: impl Into<DialogPromptOptions>,
     ) -> io::Result<(String, bool)> {
         self.input_with_options_wire(
-            serde_json::json!({"title": title, "opts": Self::dialog_opts(opts)}),
+            serde_json::json!({"title": title, "opts": Self::dialog_opts(opts.into())}),
         )
     }
 
@@ -5406,12 +5412,75 @@ pub struct ExecOptions {
     pub signal: Option<crate::ProviderSignal>,
 }
 
-/// Upstream `ExtensionUIDialogOptions` for the `*_with_options` dialogs.
-/// Cancellation (upstream's `signal`) is the request's own.
+/// Kind of blocked program status (OSC 7501) a dialog reports.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DialogBlockedKind {
+    Permission,
+    Question,
+    Auth,
+}
+
+impl DialogBlockedKind {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Permission => "permission",
+            Self::Question => "question",
+            Self::Auth => "auth",
+        }
+    }
+}
+
+/// Upstream `ExtensionUIDialogOptions` for the `*_with_options` dialogs (0.8.0-compatible 1-field shape).
+/// Cancellation (upstream's `signal`) is the request's own. Use [`DialogPromptOptions`] when setting `blocked_kind`.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct DialogOptions {
     /// Dismisses the dialog after this many milliseconds. Pi's `timeout` is a JavaScript number: fractional and very large values are meaningful, and only a positive one starts a countdown.
     pub timeout: Option<f64>,
+}
+
+/// Full upstream `ExtensionUIDialogOptions` including `blocked_kind` (OSC 7501).
+/// Both `&DialogOptions`, `DialogOptions`, `&DialogPromptOptions`, and `DialogPromptOptions` convert into this type.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct DialogPromptOptions {
+    /// Dismisses the dialog after this many milliseconds.
+    pub timeout: Option<f64>,
+    /// Kind of blocked program status (OSC 7501) the dialog reports (`Permission`, `Question`, or `Auth`).
+    pub blocked_kind: Option<DialogBlockedKind>,
+}
+
+impl DialogPromptOptions {
+    /// Sets `timeout` in milliseconds.
+    pub const fn with_timeout(mut self, timeout: f64) -> Self {
+        self.timeout = Some(timeout);
+        self
+    }
+
+    /// Sets `blocked_kind` for OSC 7501 blocked program status.
+    pub const fn with_blocked_kind(mut self, blocked_kind: DialogBlockedKind) -> Self {
+        self.blocked_kind = Some(blocked_kind);
+        self
+    }
+}
+
+impl From<DialogOptions> for DialogPromptOptions {
+    fn from(o: DialogOptions) -> Self {
+        Self {
+            timeout: o.timeout,
+            blocked_kind: None,
+        }
+    }
+}
+
+impl From<&DialogOptions> for DialogPromptOptions {
+    fn from(o: &DialogOptions) -> Self {
+        Self::from(*o)
+    }
+}
+
+impl From<&DialogPromptOptions> for DialogPromptOptions {
+    fn from(o: &DialogPromptOptions) -> Self {
+        *o
+    }
 }
 
 /// The message of upstream `pi.sendMessage`: `CustomMessage`'s `customType`,
@@ -7314,6 +7383,21 @@ mod sdk_surface_call_tests {
             json!({"title": "Name", "placeholder": "type", "opts": {"timeout": 1500.0}})
         );
         assert_eq!(result.unwrap(), (String::new(), false));
+    }
+
+    #[test]
+    fn dialogs_with_options_send_blocked_kind() {
+        let opts = DialogPromptOptions::default().with_blocked_kind(DialogBlockedKind::Permission);
+        let (call, result) = roundtrip(
+            move |ctx| ctx.select_with_options("Deploy?", &["Yes", "No"], &opts),
+            ok(Some(json!({"selected": "Yes", "ok": true}))),
+        );
+        assert_eq!(call.method, "ui.select");
+        assert_eq!(
+            call.args.unwrap(),
+            json!({"title": "Deploy?", "options": ["Yes", "No"], "opts": {"blockedKind": "permission"}})
+        );
+        assert_eq!(result.unwrap(), ("Yes".to_string(), true));
     }
 
     #[test]

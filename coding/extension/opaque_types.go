@@ -98,6 +98,10 @@ type EditorTheme = tui.EditorTheme
 type ExtensionUIDialogOptions struct {
 	// Timeout is the dialog's auto-dismiss time in milliseconds, nil for none.
 	Timeout *float64 `json:"timeout,omitempty"`
+	// BlockedKind sets the kind of blocked program status (OSC 7501) the dialog reports
+	// ("permission", "question", or "auth"). Empty uses the dialog's default ("permission"
+	// for confirm, "question" for select and input).
+	BlockedKind tui.ProgramStatusKind `json:"blockedKind,omitempty"`
 }
 
 // WorkingIndicatorOptions mirrors upstream WorkingIndicatorOptions.

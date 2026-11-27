@@ -542,3 +542,32 @@ def test_exec_result_without_truncated_reads_false_and_a_non_finite_max_buffer_s
     assert len(calls) == 1, "only the exec without a cap reached the host"
     assert results == [pig_sdk.ExecResult()]
     assert len(errors) == 3 and all("maxBuffer must be an integer" in str(error) for error in errors)
+
+
+def test_dialog_blocked_kind_sends_opts() -> None:
+    def handler(ctx: pig_sdk.Context) -> None:
+        ctx.select("Deploy?", ["Yes", "No"], blocked_kind="permission")
+        ctx.confirm("Proceed?", "details", blocked_kind="auth")
+        ctx.input("Token", "", blocked_kind="auth")
+
+    calls, _ = _run_command(handler, {
+        "ui.select": {"selected": "Yes", "ok": True},
+        "ui.confirm": {"confirmed": True},
+        "ui.input": {"text": "abc", "ok": True},
+    })
+    assert [(c["call"]["method"], c["call"]["args"]) for c in calls] == [
+        ("ui.select", {"title": "Deploy?", "options": ["Yes", "No"], "opts": {"blockedKind": "permission"}}),
+        ("ui.confirm", {"title": "Proceed?", "message": "details", "opts": {"blockedKind": "auth"}}),
+        ("ui.input", {"title": "Token", "placeholder": "", "opts": {"blockedKind": "auth"}}),
+    ]
+
+
+def test_hyperlink_url_length_cap_utf16() -> None:
+    from pig_sdk.tui import hyperlink
+
+    prefix = "https://example.com/"
+    at_limit = prefix + "a" * (8192 - len(prefix))
+    assert "\x1b]8;;" in hyperlink("ok", at_limit)
+    assert hyperlink("ok", at_limit + "a") == "ok"
+    assert "\x1b]8;;" in hyperlink("ok", prefix + "中" * 4000)
+    assert hyperlink("ok", prefix + "😀" * 4100) == "ok"

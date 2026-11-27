@@ -28,7 +28,7 @@ func TestAssistantDiagnosticsUpstreamCases(t *testing.T) {
 	t.Run("shows Anthropic thinking drops when cache miss notices are enabled", func(t *testing.T) {
 		for _, enabled := range []bool{true, false} {
 			m := &InteractiveMode{chatContainer: tui.NewContainer()}
-			m.opts.Settings.ShowCacheMissNotices = enabled
+			m.opts.Settings.Notices = &NoticeSettings{ReasoningDrops: enabled, reasoningDropsSet: true}
 			m.maybeShowThinkingDropNotice(diagnosticAssistant().Assistant)
 			if enabled {
 				if got := stripANSITest(strings.Join(m.chatContainer.Render(120), "\n")); !strings.Contains(got, "Anthropic dropped 3 thinking blocks: prefix_binding_mismatch (details in session)") {
@@ -42,7 +42,7 @@ func TestAssistantDiagnosticsUpstreamCases(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/interactive-mode-assistant-diagnostics.test.ts:83
 	t.Run("does not repeat unchanged Anthropic thinking drops", func(t *testing.T) {
 		m := resumeThinkingMode(t, false, diagnosticAssistant())
-		m.opts.Settings.ShowCacheMissNotices = true
+		m.opts.Settings.Notices = &NoticeSettings{ReasoningDrops: true, reasoningDropsSet: true}
 		m.renderSessionEntries()
 		m.chatContainer.Clear()
 		current := diagnosticAssistant()
@@ -77,7 +77,7 @@ func TestCountDroppedThinkingBlocksIgnoresOtherDiagnosticShapes(t *testing.T) {
 
 func BenchmarkThinkingDropNoticeUnchanged(b *testing.B) {
 	message := diagnosticAssistant().Assistant
-	m := &InteractiveMode{opts: InteractiveModeOptions{Settings: Settings{ShowCacheMissNotices: true}}, previousDroppedReasoning: droppedReasoningState{diagnostic: reasoningDropDiagnostics["anthropic_input_transformations"], count: 3}}
+	m := &InteractiveMode{opts: InteractiveModeOptions{Settings: Settings{Notices: &NoticeSettings{ReasoningDrops: true, reasoningDropsSet: true}}}, previousDroppedReasoning: droppedReasoningState{diagnostic: reasoningDropDiagnostics["anthropic_input_transformations"], count: 3}}
 	b.ReportAllocs()
 	for b.Loop() {
 		m.maybeShowThinkingDropNotice(message)
@@ -86,7 +86,7 @@ func BenchmarkThinkingDropNoticeUnchanged(b *testing.B) {
 
 func TestThinkingDropNoticeTracksTheSelectedBranch(t *testing.T) {
 	m := resumeThinkingMode(t, false, diagnosticAssistant(), userMsg("next"), assistantMsg("no drops"))
-	m.opts.Settings.ShowCacheMissNotices = true
+	m.opts.Settings.Notices = &NoticeSettings{ReasoningDrops: true, reasoningDropsSet: true}
 	m.renderSessionEntries()
 	m.chatContainer.Clear()
 	m.maybeShowThinkingDropNotice(diagnosticAssistant().Assistant)
