@@ -3,7 +3,7 @@
 package cli
 
 import (
-"context"
+	"context"
 	"encoding/json"
 	"flag"
 	"go/ast"
@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-"github.com/MichaelKinsy/PiG/coding"
+	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
