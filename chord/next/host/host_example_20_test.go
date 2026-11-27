@@ -41,7 +41,7 @@ func TestExample20Tables(t *testing.T) {
 	column := store.NewColumnRef
 	facet := func(h FacetHost, _ FacetSelf) error {
 		// Tables need a stable identity: a local type with empty params (one object per host).
-		return h.Serve(history, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(history, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			table := self.(StoreSelf).Table(edits)
 			// A query of the table: a condition and an order (the key is the tie-break); immutable, built once.
 			open := store.NewQuery(edits).Where(func(row, _ store.ColumnRefs) store.Condition { return store.Eq(row["done"], false) }).

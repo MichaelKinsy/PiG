@@ -64,9 +64,9 @@ func reporting(log *reportLog, options reportOptions) host.HostFacet {
 		lines = fixtureStoredLines
 	}
 	return host.HostFacet{Name: "@test/reports", Facet: host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		if err := h.Serve(fixtureJournal, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+		if err := h.Serve(fixtureJournal, func(_ *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
 			document := self.State(lines).(*documents.Singleton)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"lines": self.Derive([]any{document}, func(values []any) (delta.JsonValue, error) {
 						return values[0].(*delta.JsonObject).Value("lines"), nil
@@ -81,13 +81,13 @@ func reporting(log *reportLog, options reportOptions) host.HostFacet {
 						return nil, err
 					},
 				},
-			}}, nil
+			}, nil
 		}, host.ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(fixtureReports, func(_ *delta.JsonObject, _ data.Principal, self host.Self) (contracts.Implementation, error) {
+		return h.Serve(fixtureReports, func(_ *delta.JsonObject, _ data.Principal, self host.Self) (contracts.MembersImplementation, error) {
 			journal := self.Get(fixtureJournal, delta.NewJsonObject(0))
-			return contracts.Implementation{Variant: "main", Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				"report": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					text, _ := args.(string)
 					received := text
@@ -111,7 +111,7 @@ func reporting(log *reportLog, options reportOptions) host.HostFacet {
 					log.outcomes.add(outcome)
 					return nil, nil
 				},
-			}}}, nil
+			}}, nil
 		}, host.ServeOptions{})
 	})}
 }

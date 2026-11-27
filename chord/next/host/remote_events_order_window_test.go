@@ -19,23 +19,26 @@ import (
 // its source line.
 
 // orderVariants is a variant with an event member and a method that emits its argument before it returns it.
-func orderVariants() []contracts.VariantEntry {
-	return []contracts.VariantEntry{contracts.Var("player", contracts.VariantDeclaration{
-		Events:  []contracts.Property{contracts.Prop("paddle", Sample)},
-		Methods: []contracts.MethodEntry{contracts.Meth("serve", contracts.NewMethod(Sample, contracts.Num()))},
-	})}
+func orderEvents() []contracts.RemoteEventEntry {
+	return []contracts.RemoteEventEntry{contracts.EventEntry("paddle", Sample)}
+}
+
+func orderMethods() []contracts.RemoteMethodEntry {
+	return []contracts.RemoteMethodEntry{contracts.Meth("serve", contracts.NewMethod(Sample, contracts.Num()))}
 }
 
 // OrderMatch is served by the server, PlacedOrderMatch by its session's worker (reached through the server's relay).
 var OrderMatch = mustContract(contracts.Remote("app.order-match", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-	Variants:    orderVariants(),
+	Events:      orderEvents(),
+	Methods:     orderMethods(),
 }))
 
 var PlacedOrderMatch = mustContract(contracts.Remote("app.placed-order-match", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{contracts.Prop("session", contracts.Str())}, HostAddress: exSessionAddress,
-	Variants: orderVariants(),
+	Events:  orderEvents(),
+	Methods: orderMethods(),
 }))
 
 // orderProbe is the sources of the served order matches.
@@ -53,12 +56,12 @@ func (p *orderProbe) paddle() contracts.EventSource[delta.JsonValue] {
 // serveOrder serves typ: `serve(sample)` emits the sample on the paddle, then returns its y.
 func serveOrder(typ *contracts.Contract, probe *orderProbe) func(host FacetHost) error {
 	return func(host FacetHost) error {
-		return host.Serve(typ, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return host.Serve(typ, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			paddle := self.Events()
 			probe.mu.Lock()
 			probe.paddles = append(probe.paddles, paddle)
 			probe.mu.Unlock()
-			return contracts.Implementation{Variant: "player", Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				Events: map[string]contracts.EventMember[delta.JsonValue]{"paddle": paddle},
 				Methods: map[string]contracts.MethodFunction{"serve": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
 					if err := paddle.Emit(args); err != nil {
@@ -66,7 +69,7 @@ func serveOrder(typ *contracts.Contract, probe *orderProbe) func(host FacetHost)
 					}
 					return args.(*delta.JsonObject).Value("y"), nil
 				}},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}
 }

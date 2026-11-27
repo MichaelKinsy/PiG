@@ -32,9 +32,9 @@ func tableReadsRaceWithTheObjectsEnd(t *testing.T) {
 	started := newSignal()
 	finished := make(chan error, 1)
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(reader, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+		return h.Serve(reader, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 			handle := plain.(StoreSelf).Table(rows)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				Methods: map[string]contracts.MethodFunction{"spin": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					chordctx.Suspend(ctx)
 					started.fire()
@@ -49,7 +49,7 @@ func tableReadsRaceWithTheObjectsEnd(t *testing.T) {
 					finished <- nil
 					return nil, nil
 				}},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, loadedOptions{Store: chordStore})
 	object := mustGet(t, host, reader, jsonObject())

@@ -43,12 +43,12 @@ func notesFacet(t *testing.T) (host.HostFacet, *contracts.Contract) {
 		t.Fatal(err)
 	}
 	facet := host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		return h.Serve(notes, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+		return h.Serve(notes, func(_ *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
 			handle := self.(host.StoreSelf).State(doc).(*documents.Singleton)
 			text := self.Derive([]any{handle}, func(values []any) (delta.JsonValue, error) {
 				return values[0].(*delta.JsonObject).Value("text"), nil
 			})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"text": text},
 				Methods: map[string]contracts.MethodFunction{
 					"write": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -59,7 +59,7 @@ func notesFacet(t *testing.T) (host.HostFacet, *contracts.Contract) {
 						return nil, err
 					},
 				},
-			}}, nil
+			}, nil
 		}, host.ServeOptions{})
 	})
 	return host.HostFacet{Name: "test.notes", Facet: facet}, notes

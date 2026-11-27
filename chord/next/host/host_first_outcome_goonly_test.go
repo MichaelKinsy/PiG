@@ -39,11 +39,11 @@ func firstOutcomeOf(host Host, typ *contracts.Contract) (had, found bool) {
 // barrierFacet serves admBarrier, whose state reads the text of the document `a`.
 func barrierFacet() Facet {
 	return DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(admBarrier, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(admBarrier, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			text := self.Get(admDoc, jsonObject("id", "a")).Member("text")
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 				"shout": self.Derive([]any{text}, func(values []any) (delta.JsonValue, error) { return values[0], nil }),
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	})
 }

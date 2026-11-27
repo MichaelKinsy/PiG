@@ -84,8 +84,8 @@ func (l *testedList) root(t *testing.T, principal data.Principal, fn func(todos 
 func TestTheListsPluginAddsATodoAsThePrincipalThatCalled(t *testing.T) {
 	ada := delta.JsonObjectOf("kind", "user", "id", "u1", "name", "ada")
 	testList(t).root(t, ada, func(list *host.Reference, ctx host.Ctx) error {
-		if variant, _, err := list.Variant(); err != nil || variant != "member" {
-			t.Errorf("variant = %q, %v; want member", variant, err)
+		if granted, err := list.Granted(); err != nil || granted["clear"] {
+			t.Errorf("granted = %v, %v; want no clear", granted, err)
 		}
 		if _, err := list.Call("add", "coffee", ctx); err != nil {
 			return err
@@ -112,8 +112,8 @@ func TestTheListsPluginRefusesATodoWithoutTextWithInvalidArgs(t *testing.T) {
 func TestTheListsPluginLetsTheOwnerClearTheDoneTodos(t *testing.T) {
 	l := testList(t)
 	l.root(t, ownerPrincipal, func(list *host.Reference, ctx host.Ctx) error {
-		if variant, _, err := list.Variant(); err != nil || variant != "owner" {
-			t.Errorf("the owner got %q, %v", variant, err)
+		if granted, err := list.Granted(); err != nil || !granted["clear"] {
+			t.Errorf("the owner got %v, %v", granted, err)
 		}
 		for _, text := range []string{"milk", "eggs"} {
 			if _, err := list.Call("add", text, ctx); err != nil {

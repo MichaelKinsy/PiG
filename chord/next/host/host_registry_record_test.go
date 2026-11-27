@@ -67,7 +67,7 @@ func TestComposeAWatchedRegistryInTheBatchOfTheCommitThatChangedAContributionOnc
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(two, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(two, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			document := stateOf(self, doc)
 			self.(StoreSelf).Contribute(rvTwoSum, document.Member())
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{
@@ -137,11 +137,11 @@ func TestContributionsACatchesARingThroughADeriveAndOneDeclaredWithinOneFactoryT
 		if err := h.Serve(b, registries.RegistryProvider[any, any]{Compose: length}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(both, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(both, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			store := self.(StoreSelf)
 			store.Contribute(a, self.Registry(b))
 			store.Contribute(b, self.Derive([]any{self.Registry(a)}, func(values []any) (delta.JsonValue, error) { return values[0], nil }))
-			return contracts.Implementation{}, nil
+			return contracts.MembersImplementation{}, nil
 		}, ServeOptions{})
 	}))
 	ref := mustGet(t, host, both, jsonObject())
@@ -178,12 +178,12 @@ func TestContributionsAFollowedContributionWhoseRuntimeEndedItsObserverStaysWith
 		if err := rvServeNames(h); err != nil {
 			return err
 		}
-		return h.Serve(follower, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(follower, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			self.(StoreSelf).Contribute(rvNames, self.Follow(func(observer FollowObserver[any], _ context.Context) (*FollowAttachment[delta.JsonValue], error) {
 				observed <- observer
 				return &FollowAttachment[delta.JsonValue]{Value: "followed", Detach: func() {}}, nil
 			}))
-			return contracts.Implementation{}, nil
+			return contracts.MembersImplementation{}, nil
 		}, ServeOptions{})
 	}))
 	names, err := host.Registry(background, rvNames, GetOptions{})
@@ -313,7 +313,7 @@ func TestComposeEveryServedRegistryOnceAtTheEndOfLoadsSetupsAnEmptyTableTooBefor
 		if err := self.Contribute(rvNames, "a"); err != nil {
 			return err
 		}
-		return h.Serve(reader, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(reader, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			activations.Add(1)
 			names := self.Registry(rvNames)
 			self.Open(func(context.Context) (any, error) {

@@ -21,11 +21,11 @@ import (
 // share one wire hold")' of packages/chord/test/remote/remote-object.test.ts (Pi 47e9d74f9 + 90ed3e3b1).
 
 // rsWaiterVariants are the variants of Pi's `Waiter` and `DeepWaiter`: `wait(tag)`.
-func rsWaiterVariants() []contracts.VariantEntry {
-	return []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{
-		State:   []contracts.Property{contracts.Prop("n", contracts.Int())},
-		Methods: []contracts.MethodEntry{contracts.Meth("wait", contracts.NewMethod(contracts.Str()))},
-	})}
+func rsWaiterState() []contracts.RemoteStateEntry {
+	return []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())}
+}
+func rsWaiterMethods() []contracts.RemoteMethodEntry {
+	return []contracts.RemoteMethodEntry{contracts.Meth("wait", contracts.NewMethod(contracts.Str()))}
 }
 
 // rsWaiter is Pi's `Waiter`: a waiter placed on a session's worker: `wait(tag)` records its tag, resolves when its
@@ -37,7 +37,7 @@ var rsWaiter = mustContract(contracts.Remote("app.waiter", contracts.RemoteDecla
 		session, _ := params.Value("session").(string)
 		return Session.Address(jsonObject("id", session)), nil
 	},
-	Variants: rsWaiterVariants(),
+	State: rsWaiterState(), Methods: rsWaiterMethods(),
 }))
 
 // rsTags are the tags the waiters' calls recorded, in the order their handlers started.
@@ -60,8 +60,8 @@ func (s *rsTags) all() []string {
 
 // rsServeWaiter is Pi's `serveWaiter`: it serves typ (a waiter), recording each call's tag in seen.
 func rsServeWaiter(h FacetHost, typ *contracts.Contract, seen *rsTags) error {
-	return h.Serve(typ, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
-		return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+	return h.Serve(typ, func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{"n": rhConst(0.0)},
 			Methods: map[string]contracts.MethodFunction{
 				"wait": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -71,7 +71,7 @@ func rsServeWaiter(h FacetHost, typ *contracts.Contract, seen *rsTags) error {
 					return nil, nil
 				},
 			},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 }
 
@@ -182,7 +182,7 @@ func TestReferencesSharingOneWireHoldCancellation(t *testing.T) {
 		deepWaiter := mustContract(contracts.Remote("app.deep-waiter", contracts.RemoteDeclaration{
 			Version: 1, Params: contracts.Params{},
 			HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return deep.Address(nil), nil },
-			Variants:    rsWaiterVariants(),
+			State: rsWaiterState(), Methods: rsWaiterMethods(),
 		}))
 		seen := &rsTags{}
 		var mu sync.Mutex

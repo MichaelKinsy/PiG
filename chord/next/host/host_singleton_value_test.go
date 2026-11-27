@@ -17,14 +17,14 @@ func TestSingletonValueReadFromGoroutinesDoesNotRaceTheObjectsChanges(t *testing
 	var mu sync.Mutex
 	var list *documents.Singleton
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(attemptPage, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(attemptPage, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			mu.Lock()
 			list = self.State(attemptListDoc).(*documents.Singleton)
 			mu.Unlock()
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State:   map[string]chord.Watchable[delta.JsonValue]{"label": constant("")},
 				Methods: map[string]contracts.MethodFunction{"slow": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil }},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	page := mustGet(t, host, attemptPage, jsonObject("id", 1.0))
@@ -75,14 +75,14 @@ func singletonForBench(b *testing.B) (*documents.Singleton, Host) {
 	var mu sync.Mutex
 	var list *documents.Singleton
 	host, _ := loaded(b, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(attemptPage, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(attemptPage, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			mu.Lock()
 			list = self.State(attemptListDoc).(*documents.Singleton)
 			mu.Unlock()
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State:   map[string]chord.Watchable[delta.JsonValue]{"label": constant("")},
 				Methods: map[string]contracts.MethodFunction{"slow": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil }},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	page := mustGet(b, host, attemptPage, jsonObject("id", 1.0))

@@ -51,7 +51,7 @@ func TestEventMembersFailTheObjectBrokenForAnImplementationThatIsNeitherItsOwnSo
 	var mu sync.Mutex
 	var others []contracts.EventSource[delta.JsonValue]
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(membersTicks, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(membersTicks, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			n := int(params.Value("n").(float64))
 			own := self.Events()
 			mu.Lock()
@@ -68,9 +68,9 @@ func TestEventMembersFailTheObjectBrokenForAnImplementationThatIsNeitherItsOwnSo
 			case 3:
 				ticks = stateAsEvents{constant(1.0)}
 			}
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				Events: map[string]contracts.EventMember[delta.JsonValue]{"ticks": ticks},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	base := mustGet(t, host, membersTicks, jsonObject("n", 0.0))
@@ -94,15 +94,13 @@ func TestEventMembersBindAnEventOnlyContractLiveNoStateToHydrateAtOnceOverALinkT
 		Version:     1,
 		Params:      contracts.Params{},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-		Variants: []contracts.VariantEntry{
-			contracts.Var("v", contracts.VariantDeclaration{Events: []contracts.Property{contracts.Prop("ticks", Sample)}}),
-		},
+		Events: []contracts.RemoteEventEntry{contracts.EventEntry("ticks", Sample)},
 	}))
 	l := linked(t, func(h FacetHost) error {
-		return h.Serve(only, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+		return h.Serve(only, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				Events: map[string]contracts.EventMember[delta.JsonValue]{"ticks": self.Events()},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, linkedOptions{})
 	ref, err := l.Client.Get(background, only, jsonObject(), GetOptions{})

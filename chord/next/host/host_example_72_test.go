@@ -108,7 +108,7 @@ func ex72Condition(person string, teams []any) delta.JsonValue {
 
 func ex72SessionsFacet(clock *int64) Facet {
 	return DefineFacet(func(host FacetHost, _ FacetSelf) error {
-		return host.Serve(ex72Sessions, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+		return host.Serve(ex72Sessions, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 			self := plain.(StoreSelf)
 			rows := self.Table(ex72SessionRows)
 			sessions := self.Queries(rows, QueriesOptions{
@@ -125,7 +125,7 @@ func ex72SessionsFacet(clock *int64) Facet {
 						OrderBy(func(s, _ store.ColumnRefs) *store.ColumnRef { return s["lastTouch"] }, "desc")
 				}},
 			})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				Queries: map[string]map[string]contracts.NamedQuery[delta.JsonValue, delta.JsonValue]{"sessions": sessions},
 				Methods: map[string]contracts.MethodFunction{
 					"put": exMethod(func(row *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
@@ -145,13 +145,13 @@ func ex72SessionsFacet(clock *int64) Facet {
 						return nil, err
 					},
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})
 }
 
 var ex72ClubFacet = DefineFacet(func(host FacetHost, _ FacetSelf) error {
-	return host.Serve(ex72Club, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+	return host.Serve(ex72Club, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 		self := plain.(StoreSelf)
 		rows := self.Table(ex72TeamRows)
 		teams := self.Queries(rows, QueriesOptions{
@@ -174,7 +174,7 @@ var ex72ClubFacet = DefineFacet(func(host FacetHost, _ FacetSelf) error {
 					OrderBy(func(_, session store.ColumnRefs) *store.ColumnRef { return session["lastTouch"] }, "desc")
 			}},
 		})
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			Queries: map[string]map[string]contracts.NamedQuery[delta.JsonValue, delta.JsonValue]{"teams": teams},
 			Methods: map[string]contracts.MethodFunction{
 				"add": exMethod(func(row *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
@@ -184,23 +184,23 @@ var ex72ClubFacet = DefineFacet(func(host FacetHost, _ FacetSelf) error {
 					return nil, err
 				}),
 			},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 })
 
 var ex72ScreensFacet = DefineFacet(func(host FacetHost, _ FacetSelf) error {
-	return host.Serve(ex72Screens, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+	return host.Serve(ex72Screens, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 		person, team := params.Value("person").(string), params.Value("team").(string)
 		condition := ex72Condition(person, []any{team})
 		ofTeam := self.Get(ex72Club, jsonObject()).Queries("teams")["ofTeam"]
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{
 				"club": self.LiveQuery(self.Get(ex72Sessions, jsonObject()).Queries("sessions")["visible"], jsonObject("app", "club", "condition", condition), 10),
 				"team": self.LiveQuery(ofTeam, jsonObject("team", team, "condition", condition), 10),
 				// A count over what a key bounds: the team's rows.
 				"size": self.Count(ofTeam, jsonObject("team", team, "condition", condition)),
 			},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 })
 

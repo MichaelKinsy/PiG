@@ -48,7 +48,7 @@ func TestExample18Routines(t *testing.T) {
 	}{on: true}
 	var ons exCollector
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@example/forwards", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(catalog, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(catalog, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			doc := stateOf(self, sessions)
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{
 				"sessions": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) {
@@ -64,7 +64,7 @@ func TestExample18Routines(t *testing.T) {
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(forwardStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(forwardStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			forwards := stateOf(self, forwardList)
 			catalogRef := self.Get(catalog, jsonObject())
 			// 2. Reconcile: close every forward of an archived session. Idempotent, from the current value; the first

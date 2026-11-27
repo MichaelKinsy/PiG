@@ -33,20 +33,19 @@ import (
 // `narrow` only `x`.
 var rsPanel = mustContract(contracts.Remote("app.panel", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{}, HostAddress: exServerAddress,
-	Variants: []contracts.VariantEntry{
-		contracts.Var("wide", contracts.VariantDeclaration{
-			State:   []contracts.Property{contracts.Prop("x", contracts.Int()), contracts.Prop("y", contracts.Int())},
-			Methods: []contracts.MethodEntry{contracts.Meth("poke", contracts.NewMethod(contracts.Str(), contracts.Int()))},
-		}),
-		contracts.Var("narrow", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("x", contracts.Int())}}),
-	},
+	State:   []contracts.RemoteStateEntry{contracts.StateEntry("x", contracts.Int()), contracts.StateEntry("y", contracts.NewGrantable(contracts.Int()))},
+	Methods: []contracts.RemoteMethodEntry{contracts.Meth("poke", contracts.NewGrantable(contracts.NewMethod(contracts.Str(), contracts.Int())))},
 }))
 
 // rsBindPanel is Pi's `bindPanel`: it binds hold of rsPanel in variant with values (absent members failed with
 // `member threw`).
 func rsBindPanel(t testing.TB, peer *RawPeer, hold int, variant string, values map[string]float64) {
 	t.Helper()
-	names := wireNames(t, rsPanel, variant)
+	spec := "none"
+	if variant == "wide" {
+		spec = "all"
+	}
+	names := wireNames(t, rsPanel, spec)
 	listed := make([]string, 0, len(names.State))
 	for member := range names.State {
 		listed = append(listed, member)
@@ -64,7 +63,7 @@ func rsBindPanel(t testing.TB, peer *RawPeer, hold int, variant string, values m
 		must(t, err)
 		members = append(members, link.BoundMember{Member: names.State[member], Value: part})
 	}
-	peer.Send(&link.BoundMessage{Holds: []link.BoundEntry{{Hold: hold, Variant: names.Variant, Members: members, Failed: failed}}})
+	peer.Send(&link.BoundMessage{Holds: []link.BoundEntry{{Hold: hold, Granted: names.Granted, Members: members, Failed: failed}}})
 }
 
 // rsCount is a `state` message replacing hold's `count` of Notes by value.
@@ -307,14 +306,14 @@ func TestReferencesSharingOneWireHoldStateChanges(t *testing.T) {
 		rhSync(t, rig.Peer)
 		rhWaitFor(t, func() bool { return calls[0].Len() >= 1 && calls[1].Len() >= 1 })
 		for index, ref := range []*Reference{first, second} {
-			if variant, _, _ := ref.Variant(); variant != "narrow" {
-				t.Fatalf("reference %d's variant = %q, want narrow", index, variant)
+			if granted, _ := ref.Granted(); granted["y"] {
+				t.Fatalf("reference %d's granted = %v, want no y", index, granted)
 			}
 			if items := calls[index].Items(); len(items) != 1 || items[0].Kind != chord.WatchCallFailed {
 				t.Fatalf("y's calls of reference %d = %+v, want one failed call", index, items)
 			}
 		}
-		if _, err := second.Member("y").Value(); err == nil || !strings.Contains(err.Error(), `has no state member "y"`) {
+		if _, err := second.Member("y").Value(); err == nil || !strings.Contains(err.Error(), `has not granted "y"`) {
 			t.Fatalf("y.value error = %v, want has no state member \"y\"", err)
 		}
 	})

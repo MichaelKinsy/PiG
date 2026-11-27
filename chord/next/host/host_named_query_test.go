@@ -53,11 +53,11 @@ func nqBroken(t *testing.T, teams func(self StoreSelf) nqNamed) []string {
 	t.Helper()
 	chordStore := memoryStore(t)
 	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(nqClub, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+		return h.Serve(nqClub, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				Queries: map[string]nqNamed{"teams": teams(plain.(StoreSelf))},
 				Methods: map[string]contracts.MethodFunction{"add": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil }},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, loadedOptions{Store: chordStore})
 	// The page's refusal is the report: Pi's `.catch(() => {})`.
@@ -112,7 +112,7 @@ var (
 // nqServeCounted serves Counted, its member n the value declare returns (declare runs in the factory, the declarations of
 // the case first).
 func nqServeCounted(h FacetHost, declare func(self StoreSelf)) error {
-	return h.Serve(nqCounted, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+	return h.Serve(nqCounted, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 		self := plain.(StoreSelf)
 		declare(self)
 		return exImpl(map[string]chord.Watchable[delta.JsonValue]{
@@ -239,7 +239,7 @@ func nqSession(id string) contracts.Address { return Session.Address(jsonObject(
 // nqServeSessions is the sessions' store: the publisher of the column set. table is the version its code declares; declare,
 // when set, declares more after it (Pi's `serveSessions(h, table, declare)`).
 func nqServeSessions(h FacetHost, table *store.TableDefinition, declare func(self StoreSelf)) error {
-	return h.Serve(nqSessions, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+	return h.Serve(nqSessions, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 		self := plain.(StoreSelf)
 		rows := self.Table(table)
 		if declare != nil {
@@ -296,7 +296,7 @@ func nqKeys(row map[string]any) []string {
 
 // nqServeClub is the club: its team rows joined with the sessions' column set, a query per team.
 func nqServeClub(h FacetHost, probe *nqProbe, set *store.ColumnSet) error {
-	if err := h.Serve(nqClub, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+	if err := h.Serve(nqClub, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 		self := plain.(StoreSelf)
 		table := self.Table(nqTeamRows)
 		teams := self.Queries(table, QueriesOptions{
@@ -313,7 +313,7 @@ func nqServeClub(h FacetHost, probe *nqProbe, set *store.ColumnSet) error {
 				Where(func(_, session store.ColumnRefs) store.Condition { return store.Eq(session["app"], "club") }).
 				OrderBy(func(_, session store.ColumnRefs) *store.ColumnRef { return session["lastTouch"] }, "desc")
 		}}})
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			Queries: map[string]nqNamed{"teams": teams},
 			Methods: map[string]contracts.MethodFunction{"add": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
 				_, err := self.Tx(func(tx documents.Tx) (any, error) {
@@ -321,11 +321,11 @@ func nqServeClub(h FacetHost, probe *nqProbe, set *store.ColumnSet) error {
 				}, ctx)
 				return nil, err
 			})},
-		}}, nil
+		}, nil
 	}, ServeOptions{}); err != nil {
 		return err
 	}
-	return h.Serve(nqTeamPage, func(params *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+	return h.Serve(nqTeamPage, func(params *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 		self := plain.(StoreSelf)
 		page := self.LiveQuery(self.Get(nqClub, jsonObject()).Queries("teams")["ofTeam"], jsonObject("team", params.Value("team")), 10)
 		return exImpl(map[string]chord.Watchable[delta.JsonValue]{"sessions": page}, nil), nil
@@ -409,7 +409,7 @@ func TestNamedQueryTheMappingsProjectionGetsOnlyTheColumnsReadsAndPartnerReadsLi
 		contracts.Mem("put", contracts.NewMethod(exInt())))
 	host := newHost(t, HostOptions{Store: memoryStore(t)})
 	_, err := host.Load([]HostFacet{nqPublisher(nqRows), {Name: "@test/projected", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(projected, func(_ *delta.JsonObject, plainSelf Self) (contracts.Implementation, error) {
+		return h.Serve(projected, func(_ *delta.JsonObject, plainSelf Self) (contracts.MembersImplementation, error) {
 			self := plainSelf.(StoreSelf)
 			table := self.Table(plain)
 			rows := self.Queries(table, QueriesOptions{
@@ -427,14 +427,14 @@ func TestNamedQueryTheMappingsProjectionGetsOnlyTheColumnsReadsAndPartnerReadsLi
 					OrderBy(func(row, _ store.ColumnRefs) *store.ColumnRef { return row["group"] }, "asc").
 					OrderBy(func(_, session store.ColumnRefs) *store.ColumnRef { return session["lastTouch"] }, "asc")
 			}}})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				Queries: map[string]nqNamed{"rows": rows},
 				Methods: map[string]contracts.MethodFunction{"put": func(arg delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					row := store.Row{"id": int64(arg.(float64)), "group": "g", "text": "t", "session": nqSession("s0")}
 					_, err := self.Tx(func(tx documents.Tx) (any, error) { return nil, tx.Put(table, row) }, ctx)
 					return nil, err
 				}},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})}}, background)
 	must(t, err)
@@ -483,7 +483,7 @@ func TestNamedQueryAPublisherWhoseNewCodeDeclaresNoTableServesItsSetNoMore(t *te
 // nqBareSessions is the sessions' plugin whose new code declares no table.
 func nqBareSessions() HostFacet {
 	return HostFacet{Name: "@test/sessions", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(nqSessions, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+		return h.Serve(nqSessions, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
 			noop := func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil }
 			return exImpl(nil, map[string]contracts.MethodFunction{"put": noop, "touch": noop}), nil
 		}, ServeOptions{})
@@ -593,13 +593,13 @@ func TestNamedQueryAPageChecksItsArgumentsByTheContractsSchemaAndWhatTheBuilderR
 	} {
 		t.Run(each.what, func(t *testing.T) {
 			host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-				return h.Serve(nqClub, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+				return h.Serve(nqClub, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 					self := plain.(StoreSelf)
 					teams := self.Queries(self.Table(nqTeamRows), QueriesOptions{}, map[string]QueryBuilder{"ofTeam": {Build: func(delta.JsonValue) *store.Query { return built(each.table) }}})
 					noop := func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil }
-					return contracts.Implementation{Members: contracts.VariantImplementation{
+					return contracts.MembersImplementation{
 						Queries: map[string]nqNamed{"teams": teams}, Methods: map[string]contracts.MethodFunction{"add": noop},
-					}}, nil
+					}, nil
 				}, ServeOptions{})
 			}, loadedOptions{Store: memoryStore(t)})
 			_, err := mustGet(t, host, nqClub, jsonObject()).Queries("teams")["ofTeam"].Page(each.args, 1, background, contracts.QueryPageOptions{})
@@ -689,7 +689,7 @@ func TestNamedQueryASetMovedToAnotherPluginsTableInOneReloadIsBoundToTheNewTable
 		Version: 1, Columns: slices.Clone(nqSessionColumns.Schemas), Key: []string{"id"}, Exposes: nqSessionColumns,
 	}))
 	movedPlugin := HostFacet{Name: "@test/moved", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(moved, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+		return h.Serve(moved, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 			self := plain.(StoreSelf)
 			rows := self.Table(movedRows)
 			return exImpl(nil, map[string]contracts.MethodFunction{
@@ -738,7 +738,7 @@ func TestNamedQueryTwoTablesOfOneObjectExposingOneSetAreRefusedWhereTheyAreDecla
 		Version: 1, Columns: slices.Clone(nqSessionColumns.Schemas), Key: []string{"id"}, Exposes: nqSessionColumns,
 	}))
 	serve := func(h FacetHost) error {
-		return h.Serve(twice, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+		return h.Serve(twice, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 			self := plain.(StoreSelf)
 			self.Table(nqRows)
 			self.Table(second)
@@ -756,7 +756,7 @@ func TestNamedQueryTwoTablesOfOneObjectExposingOneSetAreRefusedWhereTheyAreDecla
 	}
 	// Staging refuses them too, where the reload declares them (Pi's recording `table`).
 	bare, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(twice, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+		return h.Serve(twice, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"n": constant(float64(1))}, nil), nil
 		}, ServeOptions{})
 	}, loadedOptions{Store: memoryStore(t)})
@@ -776,7 +776,7 @@ func TestNamedQueryStagingAcceptsTheOwnNamedQueryCountedAsAnAttemptDoes(t *testi
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return nqServeCounted(h, func(StoreSelf) {}) }, loadedOptions{Store: memoryStore(t)})
 	counted := mustGet(t, host, nqCounted, jsonObject())
 	report := reloadMust(t)(reloadApp(host, func(h FacetHost) error {
-		return h.Serve(nqCounted, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+		return h.Serve(nqCounted, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 			self := plain.(StoreSelf)
 			named := self.Queries(self.Table(nqPlain), QueriesOptions{}, map[string]QueryBuilder{"all": {Args: contracts.Obj(), Build: func(delta.JsonValue) *store.Query { return store.NewQuery(nqPlain) }}})
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"n": self.Count(named["all"], jsonObject())}, nil), nil
@@ -873,7 +873,7 @@ func TestNamedQueryASetExposedNoMoreIsNotServedTwoTablesExposingOneNameAreRefuse
 		Version: 1, Columns: slices.Clone(nqSessionColumns.Schemas), Key: []string{"id"}, Exposes: nqSessionColumns,
 	}))
 	thieves := HostFacet{Name: "@test/thief", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(thief, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+		return h.Serve(thief, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 			self := plain.(StoreSelf)
 			self.Table(stolen)
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"n": self.Derive(nil, func([]any) (delta.JsonValue, error) { return float64(1), nil })}, nil), nil
@@ -897,7 +897,7 @@ func TestNamedQueryASetExposedNoMoreIsNotServedTwoTablesExposingOneNameAreRefuse
 func TestNamedQueryAReaderNeedsAStore(t *testing.T) {
 	// Pi: `reading a named query needs a store` (`readerSite`); no Pi case reaches it.
 	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(nqCounted, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(nqCounted, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"n": self.Count(nqForeign{}, jsonObject())}, nil), nil
 		}, ServeOptions{})
 	}, loadedOptions{})

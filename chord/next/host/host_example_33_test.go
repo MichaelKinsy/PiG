@@ -39,7 +39,7 @@ func TestExample33Reload(t *testing.T) {
 	// The notes plugin, its banner and the text `add` prefixes differing per version: a pure object (no `self.open`).
 	notesPlugin := func(banner string) Facet {
 		return DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(notes, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(notes, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				doc := stateOf(self, list)
 				return exImpl(map[string]chord.Watchable[delta.JsonValue]{
 					"list": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) {
@@ -61,7 +61,7 @@ func TestExample33Reload(t *testing.T) {
 	// The search plugin: its engine is a native, so every reload of it restarts the object.
 	searchPlugin := func(engine string) Facet {
 		return DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(search, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(search, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				index := self.Open(func(context.Context) (any, error) {
 					logs.add("search: " + engine + " opened")
 					return engine, nil
@@ -82,7 +82,7 @@ func TestExample33Reload(t *testing.T) {
 		})
 	}
 	clockPlugin := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(clock, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+		return h.Serve(clock, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"zone": exConstant("UTC")}, nil), nil
 		}, ServeOptions{})
 	})
@@ -167,8 +167,8 @@ func TestExample33Reload(t *testing.T) {
 	exEqual(t, "5. clock holder", exValue(t, held, "zone"), "UTC")
 	// 6. A staging error is reported in `failed` and changes nothing: the plugin keeps its old code.
 	broken := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(notes, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{}, errors.New("a typo in the new factory")
+		return h.Serve(notes, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{}, errors.New("a typo in the new factory")
 		}, ServeOptions{})
 	})
 	failed, err := host.Reload([]HostFacet{{Name: "@example/notes", Facet: broken}, {Name: "@example/search", Facet: searchV2}, {Name: "@example/clock", Facet: clockPlugin}}, background, ReloadOptions{})

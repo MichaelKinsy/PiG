@@ -65,7 +65,7 @@ func batchProbe(t *testing.T, attempt func(host Host, self *Reference, change fu
 	var ready atomic.Bool
 	var holderMu sync.Mutex
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(batchProbeType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(batchProbeType, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			num := stateOf(self, batchNum)
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{
 				"probe": self.Derive([]any{num.Member()}, func(values []any) (delta.JsonValue, error) {
@@ -202,7 +202,7 @@ func TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCo
 		contracts.Mem("other", contracts.Obj(contracts.Prop("n", contracts.Int()))),
 		contracts.Mem("set", contracts.NewMethod(contracts.Int())))
 	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(two, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(two, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			num := stateOf(self, batchNum)
 			otherDoc := stateOf(self, other)
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{

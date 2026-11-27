@@ -30,7 +30,7 @@ func TestClaimsAnObjectClaimsItsTablesAndDocumentsWhenItDeclaresThemAndReleasesT
 		Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
 	}))
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(notes, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(notes, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			self.(StoreSelf).State(note)
 			self.(StoreSelf).Table(edits)
 			return storeImplementation(), nil

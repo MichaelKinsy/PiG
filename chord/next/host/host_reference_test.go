@@ -45,9 +45,9 @@ var (
 func refConstant(value any) chord.Watchable[delta.JsonValue] { return Expose(state.NewConstant(value)) }
 
 // refServeCounter is Pi's `serveCounter`: one document, exposed, and a method that increments it.
-func refServeCounter(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+func refServeCounter(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 	doc := self.State(refDoc).(*documents.Singleton)
-	return contracts.Implementation{Members: contracts.VariantImplementation{
+	return contracts.MembersImplementation{
 		State: map[string]chord.Watchable[delta.JsonValue]{"doc": Expose(doc)},
 		Methods: map[string]contracts.MethodFunction{"bump": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 			_, err := doc.Change(ctx, func(draft *delta.Object) (any, error) {
@@ -55,7 +55,7 @@ func refServeCounter(_ *delta.JsonObject, self Self) (contracts.Implementation, 
 			})
 			return nil, err
 		}},
-	}}, nil
+	}, nil
 }
 
 func refLoadCounter(t *testing.T) Host {
@@ -160,18 +160,18 @@ func TestReferencesDeclaredWithSelfGetKeepTheirObjectAliveAndAreReleasedWhenTheD
 	}))
 	var runs atomic.Int32
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(inner, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+		if err := h.Serve(inner, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
 			runs.Add(1)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": refConstant(float64(1))},
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(refViewer, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+		return h.Serve(refViewer, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 				"n": Expose(self.Get(inner, jsonObject("id", params.Value("id"))).Member("n")),
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	viewer := refGet(t, host, refViewer, jsonObject("id", float64(1)))
@@ -234,11 +234,11 @@ func refCycleTypes() (*contracts.Contract, *contracts.Contract, *contracts.Contr
 
 // refCycleFactory is `({ n }, self) => ({ v: self.get(next, { n }).v })`; runs counts its calls.
 func refCycleFactory(next *contracts.Contract, runs *atomic.Int32) LocalFactory {
-	return func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+	return func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 		runs.Add(1)
-		return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+		return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 			"v": Expose(self.Get(next, jsonObject("n", params.Value("n"))).Member("v")),
-		}}}, nil
+		}}, nil
 	}
 }
 
@@ -319,13 +319,13 @@ func TestGCAReleasedReferenceKeepsNeitherItsContractNorItsObject(t *testing.T) {
 	var objects []weak.Pointer[attempt]
 	var mu sync.Mutex
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(refViewer, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(refViewer, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			mu.Lock()
 			objects = append(objects, weak.Make(self.(*attempt)))
 			mu.Unlock()
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": refConstant(params.Value("id"))},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	var reference *Reference
@@ -357,10 +357,10 @@ func TestGCAReleasedReferenceWhoseStateWasReadKeepsNoHost(t *testing.T) {
 	var hosts []weak.Pointer[chordHost]
 	func() {
 		host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(refViewer, func(params *delta.JsonObject, _ Self) (contracts.Implementation, error) {
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+			return h.Serve(refViewer, func(params *delta.JsonObject, _ Self) (contracts.MembersImplementation, error) {
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{"n": refConstant(params.Value("id"))},
-				}}, nil
+				}, nil
 			}, ServeOptions{})
 		}, loadedOptions{})
 		reference = refGet(t, host, refViewer, jsonObject("id", float64(1)))
@@ -388,12 +388,12 @@ func TestGCAReleasedReferenceWhoseStateWasReadAfterAFailureKeepsNeitherTheFailur
 	var hosts []weak.Pointer[chordHost]
 	func() {
 		host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(refViewer, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(refViewer, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				self.Open(func(context.Context) (any, error) { return nil, data.Broken(errors.New("no configuration")) },
 					func(any, NativeCloseReason, context.Context) error { return nil })
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{"n": refConstant(float64(1))},
-				}}, nil
+				}, nil
 			}, ServeOptions{})
 		}, loadedOptions{})
 		var err error
@@ -443,7 +443,7 @@ func TestGCAReleasedHoldKeepsNeitherItsObjectNorItsStatesWatchesNorARemoteObject
 	var mu sync.Mutex
 	var objects []weak.Pointer[attempt]
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(refViewer, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(refViewer, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			mu.Lock()
 			objects = append(objects, weak.Make(self.(*attempt)))
 			mu.Unlock()
@@ -453,9 +453,9 @@ func TestGCAReleasedHoldKeepsNeitherItsObjectNorItsStatesWatchesNorARemoteObject
 				return nil, err
 			},
 				func(any, NativeCloseReason, context.Context) error { return nil })
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": refConstant(params.Value("id"))},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	client := newHost(t, HostOptions{OnError: func(HostError) {}})
@@ -505,8 +505,8 @@ func TestReleaseRejectsTheCallsMadeThroughTheReferenceWithReleasedAndAbortsTheir
 	var aborted []error
 	entered := make(chan struct{}, 2)
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(slow, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+		return h.Serve(slow, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				Methods: map[string]contracts.MethodFunction{"wait": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					entered <- struct{}{}
 					UntilAborted(ctx)
@@ -515,7 +515,7 @@ func TestReleaseRejectsTheCallsMadeThroughTheReferenceWithReleasedAndAbortsTheir
 					mu.Unlock()
 					return nil, nil
 				}},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	first := refGet(t, host, slow, jsonObject())
@@ -543,11 +543,11 @@ func TestReleaseReadsWatchesAndCallsAfterTheObjectEndedCarryTheEndsReasonTheHold
 		Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int()), contracts.Mem("m", contracts.NewMethod())},
 	}))
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(ended, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+		return h.Serve(ended, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				State:   map[string]chord.Watchable[delta.JsonValue]{"n": refConstant(float64(1))},
 				Methods: map[string]contracts.MethodFunction{"m": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil }},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	end := refGet(t, host, ended, jsonObject())
@@ -569,12 +569,11 @@ func TestReleaseReadsWatchesAndCallsAfterTheObjectEndedCarryTheEndsReasonTheHold
 var refTwo = mustContract(contracts.Remote("app.two", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return serverAddress(), nil },
-	Variants: []contracts.VariantEntry{
-		contracts.Var("full", contracts.VariantDeclaration{
-			State: []contracts.Property{contracts.Prop("n", contracts.Int())}, Methods: []contracts.MethodEntry{contracts.Meth("bump", contracts.NewMethod())},
-		}),
-		contracts.Var("view", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("m", contracts.Int())}}),
+	State: []contracts.RemoteStateEntry{
+		contracts.StateEntry("m", contracts.Int()),
+		contracts.StateEntry("n", contracts.NewGrantable(contracts.Int())),
 	},
+	Methods: []contracts.RemoteMethodEntry{contracts.Meth("bump", contracts.NewGrantable(contracts.NewMethod()))},
 }))
 
 // refTwoHost is a server host (principal owner) serving Two's view variant and a Holder that gets Two in its factory.
@@ -586,18 +585,22 @@ func refTwoHost(t *testing.T, seen func(two *Reference)) Host {
 	}))
 	host := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: ownerPrincipal(), OnError: func(HostError) {}})
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(refTwo, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Variant: "view", Members: contracts.VariantImplementation{
-				State: map[string]chord.Watchable[delta.JsonValue]{"m": refConstant(float64(1))},
-			}}, nil
-		}, ServeOptions{}); err != nil {
+		if err := h.Serve(refTwo, func(*delta.JsonObject, data.Principal, AdmittedValue, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
+				State:      map[string]chord.Watchable[delta.JsonValue]{"m": refConstant(float64(1))},
+				StateBuild: map[string]contracts.StateBuilder{"n": func() chord.Watchable[delta.JsonValue] { return refConstant(float64(2)) }},
+				Methods:    map[string]contracts.MethodFunction{"bump": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil }},
+			}, nil
+		}, ServeOptions{Admit: func(*delta.JsonObject, data.Principal, AdmitSelf) (chord.Watchable[delta.JsonValue], error) {
+			return refConstant(Allow(delta.NewJsonObject(0))), nil
+		}}); err != nil {
 			return err
 		}
-		return h.Serve(holder, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(holder, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			seen(self.Get(refTwo, jsonObject()))
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": refConstant(float64(1))},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})}}, background))
 	return host
@@ -610,21 +613,21 @@ func TestRemoteReferencesHaveEveryMemberOfEveryVariantVariantIsUndefinedBeforeLi
 	var seen []any
 	host := refTwoHost(t, func(two *Reference) {
 		_, hasBump := two.binding.methods["bump"]
-		variant, bound, err := two.Variant()
+		granted, err := two.Granted()
 		mu.Lock()
 		defer mu.Unlock()
-		seen = append(seen, []any{two.Member("m") != nil, two.Member("n") != nil, hasBump}, []any{variant, bound, err})
+		seen = append(seen, []any{two.Member("m") != nil, two.Member("n") != nil, hasBump}, []any{len(granted), err})
 	})
 	mu.Lock()
-	nexttest.RequireJSONEqual(t, []any{seen[0], seen[1].([]any)[0], seen[1].([]any)[1]}, []any{[]any{true, true, true}, "", false})
+	nexttest.RequireJSONEqual(t, []any{seen[0], seen[1].([]any)[0]}, []any{[]any{true, true, true}, 0})
 	mu.Unlock()
 	two := refGet(t, host, refTwo, jsonObject())
-	if _, err := two.Member("n").Value(); err == nil || err.Error() != `app.two (variant view) has no state member "n"` {
-		t.Fatalf("n.value = %v, want it to throw has no state member", err)
+	if _, err := two.Member("n").Value(); err == nil || err.Error() != `app.two has not granted "n"` {
+		t.Fatalf("n.value = %v, want it to throw has not granted", err)
 	}
 	two.Release()
-	if _, _, err := two.Variant(); err == nil || err.Error() != "app.two: released" {
-		t.Fatalf("variant after release = %v, want app.two: released", err)
+	if _, err := two.Granted(); err == nil || err.Error() != "app.two: released" {
+		t.Fatalf("granted after release = %v, want app.two: released", err)
 	}
 }
 
@@ -634,12 +637,12 @@ func TestRemoteReferencesHaveEveryMemberOfEveryVariantVariantIsUndefinedBeforeLi
 func TestRemoteReferenceTypesNarrowOnVariantRefInPicksVariants(t *testing.T) {
 	host := refTwoHost(t, func(*Reference) {})
 	two := refGet(t, host, refTwo, jsonObject())
-	if variant, bound, err := two.Variant(); err != nil || !bound || variant != "view" {
-		t.Fatalf("variant = %q, %v, %v, want view bound", variant, bound, err)
+	if granted, err := two.Granted(); err != nil || len(granted) != 0 {
+		t.Fatalf("granted = %v, %v, want empty", granted, err)
 	}
 	counter := refGet(t, refLoadCounter(t), refCounter, jsonObject())
-	if variant, bound, err := counter.Variant(); err != nil || bound || variant != "" {
-		t.Fatalf("a local reference's variant = %q, %v, %v, want none", variant, bound, err)
+	if granted, err := counter.Granted(); err != nil || len(granted) != 0 {
+		t.Fatalf("a local reference's granted = %v, %v, want empty", granted, err)
 	}
 	if two.Member("m") == nil || two.Member("zzz") != nil {
 		t.Fatalf("Member does not tell the contract's members from others")
@@ -656,8 +659,8 @@ func TestRemoteReferenceTypesAHeldReferencesVariantMayBeUndefinedBeforeItsFirstB
 	var err error
 	held, err = host.Hold(background, refTwo, jsonObject(), GetOptions{})
 	must(t, err)
-	if variant, bound, err := held.Variant(); err != nil || bound || variant != "" {
-		t.Fatalf("variant before the first binding = %q, %v, %v, want none", variant, bound, err)
+	if granted, err := held.Granted(); err != nil || len(granted) != 0 {
+		t.Fatalf("granted before the first binding = %v, %v, want empty", granted, err)
 	}
 	if kind := refKind(held); kind != RefStateFailed {
 		t.Fatalf("held state = %s, want failed (waiting)", kind)
@@ -703,10 +706,10 @@ func refTitle(title string) *delta.JsonObject { return jsonObject("title", title
 
 // refStoreFactory serves the note store over definition: write and remove change and retire a note; memos receives the handle.
 func refStoreFactory(definition *documents.StateDefinition, memos func(*documents.Keyed)) LocalFactory {
-	return func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+	return func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 		notes := self.State(definition).(*documents.Keyed)
 		memos(notes)
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			Keyed: kmKeyed(notes),
 			Methods: map[string]contracts.MethodFunction{
 				"write": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -720,13 +723,13 @@ func refStoreFactory(definition *documents.StateDefinition, memos func(*document
 					return nil, notes.Retire(ctx, args.(string))
 				},
 			},
-		}}, nil
+		}, nil
 	}
 }
 
 // refNoteViewFactory pins one key of the store's notes (through the relay when viaRelay); pinned receives its at(key).
 func refNoteViewFactory(viaRelay bool, pinned func(*KeyedMemberAt), refs func(*Reference)) LocalFactory {
-	return func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+	return func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 		var source *Reference
 		if viaRelay {
 			source = self.Get(refRelay, jsonObject())
@@ -736,12 +739,12 @@ func refNoteViewFactory(viaRelay bool, pinned func(*KeyedMemberAt), refs func(*R
 		refs(source)
 		note, err := source.Keyed("notes").At(params.Value("id").(string))
 		if err != nil {
-			return contracts.Implementation{}, err
+			return contracts.MembersImplementation{}, err
 		}
 		pinned(note)
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{"note": Expose(note)},
-		}}, nil
+		}, nil
 	}
 }
 
@@ -779,10 +782,10 @@ func refServeNotes(t *testing.T, viaRelay bool) *refNotes {
 		}), ServeOptions{}); err != nil {
 			return err
 		}
-		if err := h.Serve(refRelay, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+		if err := h.Serve(refRelay, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				Keyed: kmKeyed(self.Get(refNoteStore, jsonObject()).Keyed("notes")),
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
@@ -1086,14 +1089,14 @@ func TestKeyedStateMembersAFailedProvidersRefMemberGetRejectsWithTheFailuresCaus
 func TestKeyedStateMembersAProviderReturningSomethingElseForAKeyedMemberFailsBroken(t *testing.T) {
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
 		// Plugin code returning a wrong value for the keyed member.
-		return h.Serve(refNoteStore, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+		return h.Serve(refNoteStore, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"notes": refConstant(jsonObject())},
 				Methods: map[string]contracts.MethodFunction{
 					"write":  func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil },
 					"remove": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil },
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	_, err := host.Get(background, refNoteStore, jsonObject(), GetOptions{})

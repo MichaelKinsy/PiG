@@ -121,10 +121,10 @@ func tlTx(self Self, ctx context.Context, write func(tx documents.Tx) error) (de
 }
 
 func tlServeSessions(h FacetHost) error {
-	return h.Serve(tlSessions, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+	return h.Serve(tlSessions, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 		self := plain.(StoreSelf)
 		rows := self.Table(tlSessionRows)
-		return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+		return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 			"write": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
 				return tlTx(self, ctx, func(tx documents.Tx) error {
 					for _, id := range tlStrings(args, "overflow") {
@@ -157,12 +157,12 @@ func tlServeSessions(h FacetHost) error {
 					return nil
 				})
 			}),
-		}}}, nil
+		}}, nil
 	}, ServeOptions{})
 }
 
 func tlServeClub(h FacetHost) error {
-	return h.Serve(tlClub, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+	return h.Serve(tlClub, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 		self := plain.(StoreSelf)
 		rows := self.Table(tlTeamRows)
 		teams := self.Queries(
@@ -186,7 +186,7 @@ func tlServeClub(h FacetHost) error {
 						OrderBy(func(_, session store.ColumnRefs) *store.ColumnRef { return session["touched"] }, "desc")
 				}},
 			})
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			Queries: map[string]map[string]contracts.NamedQuery[delta.JsonValue, delta.JsonValue]{"teams": teams},
 			Methods: map[string]contracts.MethodFunction{
 				"write": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
@@ -205,29 +205,29 @@ func tlServeClub(h FacetHost) error {
 					})
 				}),
 			},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 }
 
 func tlServeFiller(h FacetHost) error {
-	return h.Serve(tlFiller, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+	return h.Serve(tlFiller, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 		self := plain.(StoreSelf)
 		rows := self.Table(tlFillRows)
-		return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+		return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 			"write": func(id delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 				return tlTx(self, ctx, func(tx documents.Tx) error { return tx.Put(rows, store.Row{"id": int64(id.(float64))}) })
 			},
-		}}}, nil
+		}}, nil
 	}, ServeOptions{})
 }
 
 // tlServeScreen serves a `Screen` over `contract`'s list of `name` from `source` (the team's sessions, or a test's own).
 func tlServeScreen(h FacetHost, screen *contracts.Contract, name string, first int, initial any, source func(self Self, args delta.JsonValue) ListSource) error {
-	return h.Serve(screen, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+	return h.Serve(screen, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 		team := self.Writable(initial)
 		args := self.Derive([]any{team}, func(values []any) (delta.JsonValue, error) { return jsonObject("team", values[0]), nil })
 		handle := self.List(name, []ListSource{source(self, args)}, ListOptions{First: first})
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{"list": handle.Value()},
 			Methods: map[string]contracts.MethodFunction{
 				"more": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) { return nil, handle.More(ctx) },
@@ -235,7 +235,7 @@ func tlServeScreen(h FacetHost, screen *contracts.Contract, name string, first i
 					return nil, team.Set(shown.(string))
 				},
 			},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 }
 
@@ -758,7 +758,7 @@ func TestTilingARowAnotherOwnersCommitLetsInInTheGroupThatMergedItsPages(t *test
 	}
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		return firstError(
-			h.Serve(rowsContract, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+			h.Serve(rowsContract, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 				self := plain.(StoreSelf)
 				table := self.Table(data)
 				rows := self.Queries(table,
@@ -770,7 +770,7 @@ func TestTilingARowAnotherOwnersCommitLetsInInTheGroupThatMergedItsPages(t *test
 							return store.Exists(gateSet, store.Match{{Column: "id", Ref: r["id"]}}, nil)
 						})
 					}}})
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					Queries: map[string]map[string]contracts.NamedQuery[delta.JsonValue, delta.JsonValue]{"rows": rows},
 					Methods: map[string]contracts.MethodFunction{"write": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
 						return tlTx(self, ctx, func(tx documents.Tx) error {
@@ -787,12 +787,12 @@ func TestTilingARowAnotherOwnersCommitLetsInInTheGroupThatMergedItsPages(t *test
 							return nil
 						})
 					})},
-				}}, nil
+				}, nil
 			}, ServeOptions{}),
-			h.Serve(gatesContract, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+			h.Serve(gatesContract, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 				self := plain.(StoreSelf)
 				table := self.Table(gate)
-				return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+				return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 					"put": func(values delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 						return tlTx(self, ctx, func(tx documents.Tx) error {
 							for _, id := range values.([]any) {
@@ -803,16 +803,16 @@ func TestTilingARowAnotherOwnersCommitLetsInInTheGroupThatMergedItsPages(t *test
 							return nil
 						})
 					},
-				}}}, nil
+				}}, nil
 			}, ServeOptions{}),
 			tlServeFiller(h),
-			h.Serve(gatedContract, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			h.Serve(gatedContract, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				source := ListSource{Query: self.Get(rowsContract, jsonObject()).Queries("rows")["all"], Args: jsonObject()}
 				handle := self.List("rows", []ListSource{source}, ListOptions{First: 2})
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State:   map[string]chord.Watchable[delta.JsonValue]{"list": handle.Value()},
 					Methods: map[string]contracts.MethodFunction{"more": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) { return nil, handle.More(ctx) }},
-				}}, nil
+				}, nil
 			}, ServeOptions{}),
 		)
 	})
@@ -879,7 +879,7 @@ func TestTilingAPublishersMigrationThatChangesTheOrder(t *testing.T) {
 	}}))
 	readers := HostFacet{Name: "@test/readers", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		return firstError(
-			h.Serve(rowsContract, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+			h.Serve(rowsContract, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 				self := plain.(StoreSelf)
 				table := self.Table(data)
 				rows := self.Queries(table,
@@ -891,35 +891,35 @@ func TestTilingAPublishersMigrationThatChangesTheOrder(t *testing.T) {
 							Join(touches, func(r store.ColumnRefs) store.Match { return store.Match{{Column: "id", Ref: r["id"]}} }).
 							OrderBy(func(_, touch store.ColumnRefs) *store.ColumnRef { return touch["touched"] }, "desc")
 					}}})
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					Queries: map[string]map[string]contracts.NamedQuery[delta.JsonValue, delta.JsonValue]{"rows": rows},
 					Methods: map[string]contracts.MethodFunction{"put": func(id delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 						return tlTx(self, ctx, func(tx documents.Tx) error { return tx.Put(table, store.Row{"id": int64(id.(float64))}) })
 					}},
-				}}, nil
+				}, nil
 			}, ServeOptions{}),
-			h.Serve(listedContract, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			h.Serve(listedContract, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				source := ListSource{Query: self.Get(rowsContract, jsonObject()).Queries("rows")["all"], Args: jsonObject()}
 				handle := self.List("rows", []ListSource{source}, ListOptions{First: 2})
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State:   map[string]chord.Watchable[delta.JsonValue]{"list": handle.Value()},
 					Methods: map[string]contracts.MethodFunction{"more": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) { return nil, handle.More(ctx) }},
-				}}, nil
+				}, nil
 			}, ServeOptions{}),
 		)
 	})}
 	publisher := func(table *store.TableDefinition) HostFacet {
 		return HostFacet{Name: "@test/publisher", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(toucherContract, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+			return h.Serve(toucherContract, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 				self := plain.(StoreSelf)
 				rows := self.Table(table)
-				return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+				return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 					"put": func(id delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 						return tlTx(self, ctx, func(tx documents.Tx) error {
 							return tx.Put(rows, store.Row{"id": int64(id.(float64)), "touched": int64(id.(float64))})
 						})
 					},
-				}}}, nil
+				}}, nil
 			}, ServeOptions{})
 		})}
 	}

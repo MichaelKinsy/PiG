@@ -38,10 +38,10 @@ func portOf(t *testing.T, options HostOptions) *portRig {
 		if err := serveTickers(h, probe); err != nil {
 			return err
 		}
-		return h.Serve(portPlain, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+		return h.Serve(portPlain, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				Methods: map[string]contracts.MethodFunction{"ping": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil }},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})}}, background)
 	must(t, err)

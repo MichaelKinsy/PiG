@@ -53,7 +53,7 @@ func TestFollowOverChangingSource(t *testing.T) {
 		vPlugin := HostFacet{
 			Name: "@test/viewer",
 			Facet: DefineFacet(func(fh FacetHost, _ FacetSelf) error {
-				return fh.Serve(viewer, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+				return fh.Serve(viewer, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 					r := self.Registry(reg)
 					shown := self.FollowOver(r, func(val any, _ FollowObserver[any], _ context.Context) (*FollowAttachment[delta.JsonValue], error) {
 						s := val.(string)
@@ -63,9 +63,7 @@ func TestFollowOverChangingSource(t *testing.T) {
 							Detach: func() { detachedVals = append(detachedVals, s) },
 						}, nil
 					})
-					return contracts.Implementation{
-						Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"shown": shown}},
-					}, nil
+					return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"shown": shown}}, nil
 				}, ServeOptions{})
 			}),
 		}
@@ -118,7 +116,7 @@ func TestFollowOverChangingSource(t *testing.T) {
 		vPlugin := HostFacet{
 			Name: "@test/viewer",
 			Facet: DefineFacet(func(fh FacetHost, _ FacetSelf) error {
-				return fh.Serve(viewer, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+				return fh.Serve(viewer, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 					r := self.Registry(reg)
 					shown := self.FollowOver(r, func(val any, _ FollowObserver[any], _ context.Context) (*FollowAttachment[delta.JsonValue], error) {
 						s := val.(string)
@@ -130,9 +128,7 @@ func TestFollowOverChangingSource(t *testing.T) {
 							Detach: func() {},
 						}, nil
 					})
-					return contracts.Implementation{
-						Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"shown": shown}},
-					}, nil
+					return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"shown": shown}}, nil
 				}, ServeOptions{})
 			}),
 		}
@@ -203,7 +199,7 @@ func TestTransactionCancelledAttributionERNDL1190(t *testing.T) {
 		if _, err := h.Load([]HostFacet{{
 			Name: "@test/owner",
 			Facet: DefineFacet(func(fh FacetHost, _ FacetSelf) error {
-				return fh.Serve(ownerContract, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+				return fh.Serve(ownerContract, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 					list := self.State(listDef)
 					self.OnLive(func(c Ctx) *Handled {
 						return Awaiting(h.(*chordHost).loop(), func() error {
@@ -217,13 +213,11 @@ func TestTransactionCancelledAttributionERNDL1190(t *testing.T) {
 							return nil
 						})
 					})
-					return contracts.Implementation{
-						Members: contracts.VariantImplementation{
+					return contracts.MembersImplementation{
 							Methods: map[string]contracts.MethodFunction{
 								"touch": func(_ delta.JsonValue, _ context.Context) (delta.JsonValue, error) { return nil, nil },
 							},
-						},
-					}, nil
+						}, nil
 				}, ServeOptions{})
 			}),
 		}}, background); err != nil {
@@ -259,10 +253,9 @@ func TestTransactionCancelledAttributionERNDL1190(t *testing.T) {
 		if _, err := h.Load([]HostFacet{{
 			Name: "@test/owner",
 			Facet: DefineFacet(func(fh FacetHost, _ FacetSelf) error {
-				return fh.Serve(ownerContract, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+				return fh.Serve(ownerContract, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 					_ = self.State(listDef)
-					return contracts.Implementation{
-						Members: contracts.VariantImplementation{
+					return contracts.MembersImplementation{
 							Methods: map[string]contracts.MethodFunction{
 								"touch": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 									defer close(done)
@@ -274,8 +267,7 @@ func TestTransactionCancelledAttributionERNDL1190(t *testing.T) {
 									}, ctx)
 								},
 							},
-						},
-					}, nil
+						}, nil
 				}, ServeOptions{})
 			}),
 		}}, background); err != nil {
@@ -321,15 +313,13 @@ func TestNamedQueryJSONOnlyArgsAndLazyReferenceQueries(t *testing.T) {
 	if _, err := h.Load([]HostFacet{{
 		Name: "@test/prov",
 		Facet: DefineFacet(func(fh FacetHost, _ FacetSelf) error {
-			return fh.Serve(providerContract, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return fh.Serve(providerContract, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				ss := self.(StoreSelf)
 				tbl := ss.Table(items)
 				qs := ss.Queries(tbl, QueriesOptions{}, map[string]QueryBuilder{
 					"all": {Build: func(_ delta.JsonValue) *store.Query { return store.NewQuery(items) }},
 				})
-				return contracts.Implementation{
-					Members: contracts.VariantImplementation{Queries: map[string]nqNamed{"q": qs}},
-				}, nil
+				return contracts.MembersImplementation{Queries: map[string]nqNamed{"q": qs}}, nil
 			}, ServeOptions{})
 		}),
 	}}, background); err != nil {

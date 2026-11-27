@@ -31,9 +31,7 @@ import (
 var cbWhoContract = mustContract(contracts.Remote("test.who", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return workerKind.Address(nil), nil },
-	Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
-		State: []contracts.Property{contracts.Prop("log", contracts.Str())},
-	})},
+	State: []contracts.RemoteStateEntry{contracts.StateEntry("log", contracts.Str())},
 }))
 
 // cbWhoPlugin serves `test.who`.

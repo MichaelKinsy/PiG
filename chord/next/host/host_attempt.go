@@ -66,13 +66,13 @@ import (
 //
 // It is an alias of the function type, so a function literal served as `any` is a LocalFactory for the host's type
 // switch.
-type LocalFactory = func(params *delta.JsonObject, self Self) (contracts.Implementation, error)
+type LocalFactory = func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error)
 
 // RemoteFactory is a remote type's factory: it also gets the principal in its object's identity and returns one variant,
 // `{ variant, members }` as an Implementation.
 //
 // An alias of the function type, as LocalFactory.
-type RemoteFactory = func(params *delta.JsonObject, principal data.Principal, self Self) (contracts.Implementation, error)
+type RemoteFactory = func(params *delta.JsonObject, principal data.Principal, self Self) (contracts.MembersImplementation, error)
 
 // Self is what a factory declares with. Declarations (`State`, `Derive`, `Get`, `Registry`, `Writable`, `RetryOn`, `Open`,
 // `On`, `OnLive`, `Job`) are valid only while it runs: elsewhere they panic with the error Pi throws.
@@ -335,9 +335,8 @@ type attempt struct {
 	declaring bool
 	// isLive: it went live: its derives' failures are reported from then on (`derive_failed`).
 	isLive bool
-	// members are the checked implementation and, for a remote object, its variant, once activation checked them.
+	// members are the checked implementation, once activation checked them.
 	members *members
-	variant *string
 	derives []*state.Derive
 	// follows are its followed sources, attached in declaration order after the natives.
 	follows          []*followSource
@@ -1152,12 +1151,12 @@ func (a *attempt) contributionList() []*registries.RegistryContribution {
 	return a.registry.contributions
 }
 
-// variantName is the variant a remote object's factory chose; not found for a local object.
-func (a *attempt) variantName() (string, bool) {
-	if a.variant == nil {
-		return "", false
+// grantedSet is what its caller was granted (contracts.NoGrants when not admitted or none granted).
+func (a *attempt) grantedSet() map[string]bool {
+	if a.allowed != nil && a.allowed.granted != nil {
+		return a.allowed.granted
 	}
-	return *a.variant, true
+	return contracts.NoGrants
 }
 
 // stateMembers are the state members, as Chord follows them.
@@ -1187,9 +1186,16 @@ func (a *attempt) call(method string, args any, ctx context.Context, parent tele
 	// Its own served type: an old attempt answers old work by the contract it was made with.
 	entry := a.served
 	own, hasOwn := a.members.methods.Get(method)
-	if !hasOwn && version == entry.contract.Version {
-		result.settle(nil, a.noMethod(method))
-		return result
+	if !hasOwn {
+		at, _ := contracts.VersionAt(entry.contract, version)
+		refused := version == entry.contract.Version
+		if at != nil && at.Grantable[method] {
+			refused = !a.grantedSet()[method]
+		}
+		if at != nil && refused {
+			result.settle(nil, lacking(object.text, entry.contract, method, "method", at))
+			return result
+		}
 	}
 	checked, err := data.CheckArgs(entry.provider, method, args, version, ctx)
 	if err != nil {
@@ -1203,7 +1209,7 @@ func (a *attempt) call(method string, args any, ctx context.Context, parent tele
 			return call(callArgs, ctx)
 		}
 	} else if !hasOwn {
-		result.settle(nil, a.noMethod(method))
+		result.settle(nil, lacking(object.text, entry.contract, method, "method", nil))
 		return result
 	}
 	linked := withLinkedAbortSignal(a.opening, ctx)
@@ -1295,11 +1301,6 @@ func (a *attempt) methodSpan(parent telemetry.TelemetryContext, method string, a
 	}
 	attributes = append(attributes, object.host.PrincipalAttributes(acting.principal, ctx)...)
 	return chordtelemetry.NewOpenSpan(parent, "chord.method", attributes)
-}
-
-// noMethod is the `invalid/member` error of a method outside the variant.
-func (a *attempt) noMethod(method string) *data.ChordError {
-	return data.Invalid(data.ReasonMember, a.object.text+a.inVariant()+` has no method "`+method+`"`)
 }
 
 // keyedMember is the keyed member `member`'s ultimate slot (slice 6a §12, rule 22: through re-exposures); an unknown one
@@ -1425,7 +1426,7 @@ func (a *attempt) adaptedAt(version int) *adaptedMembers {
 	}
 	host, label := a.object.host, a.object.text
 	made := newAdaptedMembers(adaptedInstance{
-		served: a.served, variant: a.variant, label: label, batch: host.batch, member: a.member,
+		served: a.served, granted: a.grantedSet(), label: label, batch: host.batch, member: a.member,
 		report: func(member string, err error) {
 			host.report(HostError{Kind: ErrDeriveFailed, Object: label, Member: member, Error: err})
 		},
@@ -1461,19 +1462,16 @@ func (a *attempt) eventNode(member string, version int) *eventNode {
 	return a.adaptedAt(version).event(member)
 }
 
-// attachedVariant is the variant of the instance a reference attaches to ("" for a local object: Pi's undefined).
-func (a *attempt) attachedVariant() string {
-	if a.variant == nil {
-		return ""
-	}
-	return *a.variant
+// attachedGranted is what the instance a reference attaches to was granted.
+func (a *attempt) attachedGranted() map[string]bool {
+	return a.grantedSet()
 }
 
-// member is the state member `member`, as Chord follows it; one outside the variant fails `invalid/member`.
+// member is the state member `member`, as Chord follows it; one it lacks fails (`forbidden` when not granted, else `invalid/member`).
 func (a *attempt) member(member string) (state.DeriveSource, error) {
 	source, found := a.members.state.Get(member)
 	if !found {
-		return nil, data.Invalid(data.ReasonMember, a.object.text+a.inVariant()+` has no state member "`+member+`"`)
+		return nil, lacking(a.object.text, a.served.contract, member, "state member", nil)
 	}
 	return source, nil
 }
@@ -1609,7 +1607,7 @@ func (a *attempt) declaredTable(table string) *store.TableDefinition {
 func (a *attempt) activateSteps(dl *deadline, finish func(activation)) {
 	object := a.object
 	host := object.host
-	var implementation factoryResult
+	var implementation implementation
 	var dependencies []dependency
 	setup := func() error {
 		var err error
@@ -1978,7 +1976,7 @@ func (a *attempt) retryDependencies(walk *retryWalk) {
 // ownSteps are the steps after the dependency check (its own: the member check, derives attached, the readers of named
 // queries, natives, followed sources, derives computed), under the deadline. A dependency that leaves `live` meanwhile
 // changes nothing (R18 after live).
-func (a *attempt) ownSteps(implementation factoryResult, dl *deadline, finish func(activation)) {
+func (a *attempt) ownSteps(implementation implementation, dl *deadline, finish func(activation)) {
 	host := a.object.host
 	failedWith := func(cause data.FailureCause) {
 		if a.abandoned != nil {
@@ -2084,14 +2082,13 @@ func (a *attempt) awaitReaders(dl *deadline, done func(*activation)) {
 // checkMembers is the member check and the derives' attachment: what the factory returned is checked against the contract,
 // the contributions resolved, the derives attached (a throwing derive fails the attempt, reported by its `activation_failed`
 // alone).
-func (a *attempt) checkMembers(implementation factoryResult) error {
+func (a *attempt) checkMembers(impl implementation) error {
 	object := a.object
-	variant, checked, err := checkImplementation(object.served.contract, implementation, a.sourceOwner)
+	checked, err := checkImplementation(object.served.contract, impl, a.sourceOwner, a.grantedSet())
 	if err != nil {
 		return err
 	}
 	a.members = checked
-	a.variant = variant
 	// Fed by their references from now on (the object's bindings tap them once it is live).
 	for _, event := range checked.events.All() {
 		if event.reexposed != nil {
@@ -2208,7 +2205,7 @@ func (a *attempt) bindSets(tables []declaredTable, chordStore *store.ChordStore)
 
 // declare runs the factory with declarations open; the member check establishes what it returned. A throwing factory
 // releases its pins.
-func (a *attempt) declare() (factoryResult, error) {
+func (a *attempt) declare() (implementation, error) {
 	a.declaring = true
 	defer func() { a.declaring = false }()
 	object := a.object
@@ -2218,7 +2215,7 @@ func (a *attempt) declare() (factoryResult, error) {
 		}
 		// A remote object's identity has its principal; an admitted one's factory gets what its admission allowed.
 		if object.served.admission != nil {
-			return object.served.admitted(object.params, object.principal, a.allowed.value, a)
+			return object.served.admitted(object.params, object.principal, a.allowed.admitted, a)
 		}
 		return object.served.remote(object.params, object.principal, a)
 	})
@@ -2226,25 +2223,33 @@ func (a *attempt) declare() (factoryResult, error) {
 		for _, release := range a.pins {
 			release()
 		}
-		return factoryResult{}, err
+		return nil, err
 	}
-	return factoryResultOf(value.(contracts.Implementation)), nil
+	impl := implementationOf(value.(contracts.MembersImplementation))
+	if object.served.kind == servedRemote {
+		impl, err = grantedImplementation(object.served.contract, impl, a.grantedSet())
+		if err != nil {
+			for _, release := range a.pins {
+				release()
+			}
+			return nil, err
+		}
+	}
+	return impl, nil
 }
 
-// factoryResultOf is what a factory returned as the member check takes it: the variant (none for a local contract's) and
-// the members by name, state members, methods, keyed members and event members, each in name order.
-func factoryResultOf(implementation contracts.Implementation) factoryResult {
-	result := factoryResult{}
-	if implementation.Variant != "" {
-		variant := implementation.Variant
-		result.variant = &variant
-	}
-	members := implementation.Members
+// implementationOf is what a factory returned as the member check takes it: the members by name, state members,
+// grantable state builders, methods, keyed members, event members, grantable event builders, and queries, each in name order.
+func implementationOf(members contracts.MembersImplementation) implementation {
+	var result implementation
 	add := func(name string, value any) {
-		result.members = append(result.members, implementationMember{name: name, value: unwrapMember(value)})
+		result = append(result, implementationMember{name: name, value: unwrapMember(value)})
 	}
 	for _, name := range sortedKeys(members.State) {
 		add(name, members.State[name])
+	}
+	for _, name := range sortedKeys(members.StateBuild) {
+		result = append(result, implementationMember{name: name, value: members.StateBuild[name]})
 	}
 	for _, name := range sortedKeys(members.Methods) {
 		add(name, members.Methods[name])
@@ -2254,6 +2259,9 @@ func factoryResultOf(implementation contracts.Implementation) factoryResult {
 	}
 	for _, name := range sortedKeys(members.Events) {
 		add(name, members.Events[name])
+	}
+	for _, name := range sortedKeys(members.EventsBuild) {
+		result = append(result, implementationMember{name: name, value: members.EventsBuild[name]})
 	}
 	for _, name := range sortedKeys(members.Queries) {
 		add(name, members.Queries[name])
@@ -2336,14 +2344,6 @@ func (a *attempt) caller() caller {
 		return caller{principal: object.principal, incarnation: object.host.incarnation}
 	}
 	return caller{principal: object.host.principal, incarnation: object.host.incarnation}
-}
-
-// inVariant is ` (variant reader)` for a remote object, for errors.
-func (a *attempt) inVariant() string {
-	if a.variant == nil {
-		return ""
-	}
-	return " (variant " + *a.variant + ")"
 }
 
 // broken is the outcome of an activation step that failed `broken` with err, or the abandonment that came first.

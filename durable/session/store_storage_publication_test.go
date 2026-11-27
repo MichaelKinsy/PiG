@@ -75,7 +75,7 @@ func TestStoreStoragePublishesEachCommitOfACallInAHostBatchOfItsOwn(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	chord := opened.(*chordstore.ChordStore)
+	chord := opened
 	owned, err := store.Open(ctx, chord, "harness")
 	if err != nil {
 		t.Fatal(err)

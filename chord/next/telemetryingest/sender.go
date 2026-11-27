@@ -67,7 +67,7 @@ func SendWorkerTelemetry(h host.Host, recorder *Recorder, ctx context.Context) (
 			if held.State().Value().Kind != host.RefStateLive {
 				return false, nil
 			}
-			if variant, _, _ := held.Variant(); variant != "worker" {
+			if granted, err := held.Granted(); err != nil || !granted["ingest"] {
 				return false, nil
 			}
 			// A batch takes at most WorkerBatchRows metric rows; more series in one interval are dropped.

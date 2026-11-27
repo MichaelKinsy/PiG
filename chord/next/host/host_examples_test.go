@@ -51,9 +51,12 @@ func exLocal(name string, params contracts.Params, members ...contracts.LocalEnt
 	return mustContract(contracts.Local(name, contracts.LocalDeclaration{Version: 1, Params: params, Members: members}))
 }
 
-// exRemote is `remote(name, { version: 1, params, hostAddress, variants })`.
-func exRemote(name string, params contracts.Params, address contracts.HostAddress, variants ...contracts.VariantEntry) *contracts.Contract {
-	return mustContract(contracts.Remote(name, contracts.RemoteDeclaration{Version: 1, Params: params, HostAddress: address, Variants: variants}))
+// exRemote is `remote(name, { version: 1, params, hostAddress, ...decl })`.
+func exRemote(name string, params contracts.Params, address contracts.HostAddress, decl contracts.RemoteDeclaration) *contracts.Contract {
+	decl.Version = 1
+	decl.Params = params
+	decl.HostAddress = address
+	return mustContract(contracts.Remote(name, decl))
 }
 
 // exServerAddress is `hostAddress: () => Server()`.
@@ -124,13 +127,13 @@ func exMethod(fn func(args *delta.JsonObject, ctx context.Context) (delta.JsonVa
 }
 
 // exImpl is a local implementation: its state members and methods.
-func exImpl(members map[string]chord.Watchable[delta.JsonValue], methods map[string]contracts.MethodFunction) contracts.Implementation {
-	return contracts.Implementation{Members: contracts.VariantImplementation{State: members, Methods: methods}}
+func exImpl(members map[string]chord.Watchable[delta.JsonValue], methods map[string]contracts.MethodFunction) contracts.MembersImplementation {
+	return contracts.MembersImplementation{State: members, Methods: methods}
 }
 
 // exVariant is a remote implementation of variant.
-func exVariant(variant string, members map[string]chord.Watchable[delta.JsonValue], methods map[string]contracts.MethodFunction) contracts.Implementation {
-	return contracts.Implementation{Variant: variant, Members: contracts.VariantImplementation{State: members, Methods: methods}}
+func exVariant(variant string, members map[string]chord.Watchable[delta.JsonValue], methods map[string]contracts.MethodFunction) contracts.MembersImplementation {
+	return contracts.MembersImplementation{State: members, Methods: methods}
 }
 
 // exConstant is `constant(value)`.
@@ -168,10 +171,10 @@ func exValue(t testing.TB, reference *Reference, member string) delta.JsonValue 
 	return value
 }
 
-// exVariantName is `ref.variant`.
-func exVariantName(reference *Reference) string {
-	variant, _, _ := reference.Variant()
-	return variant
+// exHasGrant reports whether name is in `ref.Granted()`.
+func exHasGrant(reference *Reference, name string) bool {
+	granted, err := reference.Granted()
+	return err == nil && granted[name]
 }
 
 // exCall is `await ref.<method>(args, ctx)`.

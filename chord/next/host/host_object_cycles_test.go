@@ -21,8 +21,8 @@ import (
 // Ports the `cycles across hosts (Q5)` and the two released-reference GC cases of packages/chord/test/host/object.test.ts:
 // a tab, a server and its workers over trusted route links (relay), and raw workers that hold the server's types by hand.
 
-func nVariant() []contracts.VariantEntry {
-	return []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("n", contracts.Int())}})}
+func nState() []contracts.RemoteStateEntry {
+	return []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())}
 }
 
 func sessionAddress(key string) func(params *delta.JsonObject) (contracts.Address, error) {
@@ -35,17 +35,17 @@ var (
 	// cycNear is on the server: its activation holds `Far` on the session's worker.
 	cycNear = mustContract(contracts.Remote("app.near", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{contracts.Prop("session", contracts.Str())},
-		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil }, Variants: nVariant(),
+		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil }, State: nState(),
 	}))
 	// cycFar is on the session's worker: its activation holds `Near` back on the server, or `Middle`.
 	cycFar = mustContract(contracts.Remote("app.far", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{contracts.Prop("session", contracts.Str())},
-		HostAddress: sessionAddress("session"), Variants: nVariant(),
+		HostAddress: sessionAddress("session"), State: nState(),
 	}))
 	// cycMiddle is on the server, held by `Far`: its activation holds `Hub` on its own host.
 	cycMiddle = mustContract(contracts.Remote("app.middle", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{contracts.Prop("session", contracts.Str())},
-		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil }, Variants: nVariant(),
+		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil }, State: nState(),
 	}))
 	// cycHub is a local type on the server: its activation holds `Far` as the host.
 	cycHub = mustContract(contracts.Local("app.hub", contracts.LocalDeclaration{
@@ -54,12 +54,12 @@ var (
 	// cycLoop lives on `here`'s worker and holds `Loop({ here: there, there: here })`.
 	cycLoop = mustContract(contracts.Remote("app.loop", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{contracts.Prop("here", contracts.Str()), contracts.Prop("there", contracts.Str())},
-		HostAddress: sessionAddress("here"), Variants: nVariant(),
+		HostAddress: sessionAddress("here"), State: nState(),
 	}))
 )
 
-func cycImpl(member any) contracts.Implementation {
-	return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"n": Expose(member)}}}
+func cycImpl(member any) contracts.MembersImplementation {
+	return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"n": Expose(member)}}
 }
 
 // cyclic is a tab, a server and its workers over trusted route links (Far holds back).
@@ -77,25 +77,25 @@ func cyclicAttempting(t *testing.T, back string, attempted func(Self)) *relayed 
 	return relay(t, relayedOptions{
 		Trusted: true,
 		Server: func(h FacetHost) error {
-			if err := h.Serve(cycNear, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+			if err := h.Serve(cycNear, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 				attempt(self)
 				return cycImpl(self.Get(cycFar, jsonObject("session", params.Value("session"))).Member("n")), nil
 			}, ServeOptions{}); err != nil {
 				return err
 			}
-			if err := h.Serve(cycMiddle, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+			if err := h.Serve(cycMiddle, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 				return cycImpl(self.Get(cycHub, jsonObject("session", params.Value("session"))).Member("n")), nil
 			}, ServeOptions{}); err != nil {
 				return err
 			}
-			return h.Serve(cycHub, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
-				return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+			return h.Serve(cycHub, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
+				return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 					"n": Expose(self.Get(cycFar, jsonObject("session", params.Value("session"))).Member("n")),
-				}}}, nil
+				}}, nil
 			}, ServeOptions{})
 		},
 		Worker: func(h FacetHost) error {
-			if err := h.Serve(cycFar, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+			if err := h.Serve(cycFar, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 				attempt(self)
 				target := cycNear
 				if back == "middle" {
@@ -105,7 +105,7 @@ func cyclicAttempting(t *testing.T, back string, attempted func(Self)) *relayed 
 			}, ServeOptions{}); err != nil {
 				return err
 			}
-			return h.Serve(cycLoop, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+			return h.Serve(cycLoop, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 				return cycImpl(self.Get(cycLoop, jsonObject("here", params.Value("there"), "there", params.Value("here"))).Member("n")), nil
 			}, ServeOptions{})
 		},
@@ -194,7 +194,7 @@ func nearBehindRawWorker(t *testing.T) (*relayed, *RawPeer) {
 	r := relay(t, relayedOptions{
 		Resolve: workers.Resolve,
 		Server: func(h FacetHost) error {
-			return h.Serve(cycNear, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+			return h.Serve(cycNear, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 				return cycImpl(self.Get(cycFar, jsonObject("session", params.Value("session"))).Member("n")), nil
 			}, ServeOptions{})
 		},
@@ -307,7 +307,7 @@ func TestObjectCyclesAcrossHostsKeepNoObjectAndSoNoChainOnceReleasedGC(t *testin
 
 func TestObjectGCOfReleasedReferencesKeepsNothingInAReleasedReferenceOrAStoppedWatch(t *testing.T) {
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(objStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) { return serveStore(self), nil }, ServeOptions{})
+		return h.Serve(objStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) { return serveStore(self), nil }, ServeOptions{})
 	}, loadedOptions{})
 	store := mustGet(t, host, objStore, jsonObject())
 	held := mustGet(t, host, objStore, jsonObject())
@@ -333,18 +333,18 @@ func TestObjectGCOfReleasedReferencesKeepsNeitherTheDeclaringObjectNorTheHostInA
 	var attempts []weak.Pointer[attempt]
 	var declared *Reference
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(objStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) { return serveStore(self), nil }, ServeOptions{}); err != nil {
+		if err := h.Serve(objStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) { return serveStore(self), nil }, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(attemptPage, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(attemptPage, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			mu.Lock()
 			declared = self.Get(objStore, jsonObject())
 			attempts = append(attempts, weak.Make(self.(*attempt)))
 			mu.Unlock()
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State:   map[string]chord.Watchable[delta.JsonValue]{"label": constant("")},
 				Methods: map[string]contracts.MethodFunction{"slow": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil }},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	mustGet(t, host, attemptPage, jsonObject("id", 1.0)).Release()

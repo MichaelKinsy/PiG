@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
@@ -50,6 +51,9 @@ const (
 	ErrDrainTimeout HostErrorKind = "drain_timeout"
 	// ErrProtocolError: a link's peer broke the protocol (Error).
 	ErrProtocolError HostErrorKind = "protocol_error"
+	// ErrLinkClosed: the heartbeat closed a link whose peer stayed silent past `close` (slice 15 §4): a stalled or gone
+	// peer. Its holders here are `loading` until another link holds them again; once per closed link (Reason, Role).
+	ErrLinkClosed HostErrorKind = "link_closed"
 	// ErrResolveFailed: a route's `resolve` rejected (Address, Error).
 	ErrResolveFailed HostErrorKind = "resolve_failed"
 	// ErrDeriveFailed: a derive's compute threw (Object, Member when it is an exposed state member, Error), once per
@@ -103,6 +107,9 @@ type HostError struct {
 	Native  Position
 	Routine Position
 	Address string
+	// Reason and Role are a link_closed error's close reason (`heartbeat`) and link role (`parent`, `child`, `route`).
+	Reason link.LinkCloseReason
+	Role   string
 	Member  string
 	// Query is a query_failed's query: the table's name for `self.query`, the named query's label for `self.liveQuery`,
 	// `self.count` and `self.list` (slice 14).

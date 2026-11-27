@@ -23,13 +23,13 @@ func TestExample01Objects(t *testing.T) {
 	clock := exLocal("example.clock", contracts.Params{}, contracts.Mem("started", exInt()))
 	var created exCollector
 	host, _ := exOpenHost(t, loadedOptions{}, func(host FacetHost, _ FacetSelf) error {
-		if err := host.Serve(clock, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+		if err := host.Serve(clock, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
 			created.add("clock: created at load")
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"started": exConstant(float64(time.Now().UnixMilli()))}, nil), nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return host.Serve(greeter, func(params *delta.JsonObject, _ Self) (contracts.Implementation, error) {
+		return host.Serve(greeter, func(params *delta.JsonObject, _ Self) (contracts.MembersImplementation, error) {
 			language := exParam(params, "language")
 			created.add("greeter " + language + ": created by its first get")
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"language": exConstant(language)}, map[string]contracts.MethodFunction{

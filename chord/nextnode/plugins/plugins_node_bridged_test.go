@@ -50,14 +50,14 @@ var bgCount = func() *documents.StateDefinition {
 // bgFacet is the Go core facet: `test.gocore` with a label, a counter and `add`.
 func bgFacet(contract *contracts.Contract) host.Facet {
 	return host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		return h.Serve(contract, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+		return h.Serve(contract, func(_ *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
 			counter := self.State(bgCount).(*documents.Singleton)
 			self.Open(func(context.Context) (any, error) { return struct{}{}, nil },
 				func(any, host.NativeCloseReason, context.Context) error {
 					bgClosed.Add(1)
 					return nil
 				})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"label": self.Derive([]any{counter}, func([]any) (delta.JsonValue, error) { return "core", nil }),
 					"count": self.Derive([]any{counter}, func(values []any) (delta.JsonValue, error) {
@@ -74,7 +74,7 @@ func bgFacet(contract *contracts.Contract) host.Facet {
 						return n, err
 					},
 				},
-			}}, nil
+			}, nil
 		}, host.ServeOptions{})
 	})
 }
@@ -276,7 +276,7 @@ func bgIdx(version float64, extra ...contracts.LocalEntry) *contracts.Contract {
 // bgStandIn is the Go side's form of the plugin `@test/idx`: a Go facet named like it that serves its type.
 func bgStandIn(contract *contracts.Contract) host.Facet {
 	return host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		return h.Serve(contract, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+		return h.Serve(contract, func(_ *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
 			counter := self.State(bgCount).(*documents.Singleton)
 			constant := func(value delta.JsonValue) chord.Watchable[delta.JsonValue] {
 				return self.Derive([]any{counter}, func([]any) (delta.JsonValue, error) { return value, nil })
@@ -285,7 +285,7 @@ func bgStandIn(contract *contracts.Contract) host.Facet {
 			if contract.Version > 1 {
 				members["size"] = constant(1.0)
 			}
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: members}}, nil
+			return contracts.MembersImplementation{State: members}, nil
 		}, host.ServeOptions{})
 	})
 }
@@ -297,11 +297,11 @@ var bgNeeds = mustContract(contracts.Local("test.needs", contracts.LocalDeclarat
 // bgNeedsFacet is a Go core facet whose `tag` is tag, needing the plugin's type at idx.
 func bgNeedsFacet(idx *contracts.Contract, tag string) host.Facet {
 	return host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		return h.Serve(bgNeeds, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+		return h.Serve(bgNeeds, func(_ *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
 			dep := self.Get(idx, delta.NewJsonObject(0))
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 				"tag": self.Derive([]any{dep.Member("label")}, func([]any) (delta.JsonValue, error) { return tag, nil }),
-			}}}, nil
+			}}, nil
 		}, host.ServeOptions{})
 	})
 }

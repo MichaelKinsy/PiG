@@ -984,9 +984,7 @@ export default defineFacet((host) => host.serve(Hello, () => ({ variant: "main",
 	hello := mustContract(contracts.Remote("test.hello", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return workerKind.Address(nil), nil },
-		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
-			Methods: []contracts.MethodEntry{contracts.Meth("hi", contracts.NewMethod(contracts.Str(), contracts.Str()))},
-		})},
+		Methods: []contracts.RemoteMethodEntry{contracts.Meth("hi", contracts.NewMethod(contracts.Str(), contracts.Str()))},
 	}))
 	ref, err := serverFor(t, workerRoute(node)).Get(background, hello, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {

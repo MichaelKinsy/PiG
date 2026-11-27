@@ -46,7 +46,7 @@ func TestAppStartsAWorkerPerAddressWithTheKitsStartDataAndItsOwnDirectoryTwoKind
 		HostAddress: func(params *delta.JsonObject) (contracts.Address, error) {
 			return team.Address(delta.JsonObjectOf("id", params.Value("id"))), nil
 		},
-		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("start", contracts.Unknown())}})},
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("start", contracts.Unknown())},
 	})
 	teamPlugin := map[string]string{"teamworker.ts": `import { defineFacet, hostKind, remote, str, unknown, WorkerInfo } from "@test/app/v1";
 const Team = hostKind("team", { id: str() });

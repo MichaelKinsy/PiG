@@ -28,7 +28,7 @@ func serverRemote(t *testing.T, name string) *contracts.Contract {
 	return mustRemote(name, contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-		Variants:    []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("who", contracts.Str())}})},
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("who", contracts.Str())},
 	})
 }
 

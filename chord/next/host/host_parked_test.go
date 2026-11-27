@@ -498,9 +498,9 @@ func gatedLocal(t *testing.T) *gatedHost {
 	t.Helper()
 	g := &gatedHost{gate: make(chan error, 1), Loop: &skewedLoop{scopeLoop: newScopeLoop()}, nested: make(chan error, 1)}
 	g.Host, _ = loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(parkedGated, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(parkedGated, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			selfOpen(self, func(context.Context) error { return <-g.gate }, func(NativeCloseReason) {})
-			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				"log": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
 					text := args.(string)
 					g.mu.Lock()
@@ -518,7 +518,7 @@ func gatedLocal(t *testing.T) *gatedHost {
 					}
 					return float64(n), nil
 				},
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{Loop: g.Loop})
 	return g
@@ -770,11 +770,11 @@ func TestHostParkedCallsOnALoadingRemoteReferenceAreResolvedAgainstTheBindingThe
 		countPart, err := link.JsonPart(float64(0))
 		must(t, err)
 		p.Peer.Send(&link.BoundMessage{Holds: []link.BoundEntry{{
-			Hold: hold, Variant: reader.Variant, Failed: []link.FailedMember{},
+			Hold: hold, Granted: reader.Granted, Failed: []link.FailedMember{},
 			Members: []link.BoundMember{{Member: reader.State["notes"], Value: notesPart}, {Member: reader.State["count"], Value: countPart}},
 		}}})
 		_, err = add.wait(background)
-		wantScopeError(t, err, data.CodeInvalid, data.ReasonMember, `app.notes(S1) (variant reader) has no method "add"`)
+		wantScopeError(t, err, data.CodeForbidden, "", `app.notes(S1) has not granted "add"`)
 		sent := p.Peer.Next("call").(*link.CallMessage)
 		if sent.Method != reader.Methods["wait"] {
 			t.Fatalf("method = %d, want the reader's wait (%d)", sent.Method, reader.Methods["wait"])

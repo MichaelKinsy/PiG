@@ -62,10 +62,10 @@ func ScriptsFacet(surface SurfaceName, published func() next.ScriptSet) host.Fac
 		})
 	}
 	return host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		err := h.Serve(contract, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+		err := h.Serve(contract, func(_ *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
 			// The latest set: an attempt after a failure starts at what was published last.
 			set := self.Writable(published().JSON())
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"set": self.Derive([]any{set}, func(values []any) (delta.JsonValue, error) { return values[0], nil }),
 				},
@@ -74,18 +74,18 @@ func ScriptsFacet(surface SurfaceName, published func() next.ScriptSet) host.Fac
 						return nil, set.Set(args)
 					},
 				},
-			}}, nil
+			}, nil
 		}, host.ServeOptions{})
 		if err != nil {
 			return err
 		}
-		return h.Serve(scripts[surface], func(_ *delta.JsonObject, _ data.Principal, self host.Self) (contracts.Implementation, error) {
+		return h.Serve(scripts[surface], func(_ *delta.JsonObject, _ data.Principal, self host.Self) (contracts.MembersImplementation, error) {
 			now := self.Get(contract, delta.NewJsonObject(0))
-			return contracts.Implementation{Variant: "main", Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"set": self.Derive([]any{now.Member("set")}, func(values []any) (delta.JsonValue, error) { return values[0], nil }),
 				},
-			}}, nil
+			}, nil
 		}, host.ServeOptions{})
 	})
 }

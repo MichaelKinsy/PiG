@@ -89,10 +89,8 @@ var (
 	exNotes = mustContract(contracts.Remote("example.notes", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return exWorkerKind.Address(nil), nil },
-		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
-			State:   []contracts.Property{contracts.Prop("label", contracts.Str()), contracts.Prop("count", contracts.Int())},
-			Methods: []contracts.MethodEntry{contracts.Meth("add", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
-		})},
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("label", contracts.Str()), contracts.StateEntry("count", contracts.Int())},
+			Methods: []contracts.RemoteMethodEntry{contracts.Meth("add", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
 	}))
 )
 

@@ -24,13 +24,13 @@ func TestNativeSourcesAsDeriveSourcesRefStateIsADeriveSourceAStateMemberCanShowA
 	watcher := exLocal("app.watcher", contracts.Params{}, contracts.Mem("flaky", contracts.Str()))
 	var flakySelf Self
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(flaky, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(flaky, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			flakySelf = self
 			return exImpl(nil, nil), nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(watcher, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(watcher, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			dependency := self.Get(flaky, jsonObject("id", 1.0))
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{
 				"flaky": self.Derive([]any{dependency.State()}, func(values []any) (delta.JsonValue, error) {
@@ -87,7 +87,7 @@ func TestGCOfHandedOutErrorsAFailureCallsFreshErrorKeptByItsListenerKeepsNothing
 	)
 	func() {
 		host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(fresh, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(fresh, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				attemptRef = weak.Make(self.(*attempt))
 				document := stateOf(self, num)
 				member := self.Derive([]any{document.Member()}, func(values []any) (delta.JsonValue, error) {

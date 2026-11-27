@@ -41,9 +41,9 @@ func (s *replicaSet) set(name string, r *replica) {
 // member, and a node per event member, at which the events arriving for this binding go out (a new binding has new nodes,
 // so its reference's subscriptions move there from its counter value: nothing of an earlier binding reaches them).
 type boundVariant struct {
-	variant  string
+	granted  map[string]bool
 	methods  *contracts.NamedMap[*contracts.MethodData]
-	names    contracts.VariantNames
+	names    contracts.MemberNames
 	replicas *replicaSet
 	nodes    map[string]*eventNode
 }
@@ -196,12 +196,12 @@ func (*remoteObject) blocksFirstPass() bool { return false }
 // lastFailure is the error of the last `failed`, until `bound`.
 func (r *remoteObject) lastFailure() *data.ChordError { return r.failure }
 
-// variant is the variant last bound; false before the first binding.
-func (r *remoteObject) variant() (string, bool) {
+// granted is the set of names bound last; contracts.NoGrants before the first binding or while denied.
+func (r *remoteObject) granted() map[string]bool {
 	if r.bound == nil {
-		return "", false
+		return contracts.NoGrants
 	}
-	return r.bound.variant, true
+	return r.bound.granted
 }
 
 // hydrated is whether its state members have values: bound once.
@@ -247,30 +247,23 @@ func (r *remoteObject) hold(h holder) {
 // one): its own history starts there.
 func (r *remoteObject) unseen(bound *boundVariant) []unseenMember {
 	live := r.refState.Kind == RefStateLive
-	variants, err := contracts.CurrentVariants(r.contract)
+	members, err := contracts.CurrentMembers(r.contract)
 	if err != nil {
 		// A served or got contract was checked when it was made.
 		return nil
 	}
 	var unseen []unseenMember
-	listed := map[string]struct{}{}
-	for _, variant := range variants.All() {
-		for _, member := range contracts.VariantNamesOf(variant).State {
-			if _, is := listed[member]; is {
-				continue
-			}
-			listed[member] = struct{}{}
-			replica := bound.replicas.byName[member]
-			good := live && slices.Contains(bound.names.State, member) && replica != nil && replica.Start().Kind == state.StartValue
-			if good {
-				continue
-			}
-			count := 0
-			if replica != nil {
-				count = replica.generation
-			}
-			unseen = append(unseen, unseenMember{member: member, count: count})
+	for _, member := range contracts.MemberOrder(members).State {
+		replica := bound.replicas.byName[member]
+		good := live && slices.Contains(bound.names.State, member) && replica != nil && replica.Start().Kind == state.StartValue
+		if good {
+			continue
 		}
+		count := 0
+		if replica != nil {
+			count = replica.generation
+		}
+		unseen = append(unseen, unseenMember{member: member, count: count})
 	}
 	return unseen
 }
@@ -371,7 +364,7 @@ func (r *remoteObject) call(method string, args any, b *binding, ctx context.Con
 	bound, held := r.bound, r.held
 	methodData, ok := bound.methods.Get(method)
 	if !ok {
-		result.settle(nil, memberInvalid(fmt.Sprintf("%s (variant %s) has no method %q", r.name, bound.variant, method)))
+		result.settle(nil, lacking(r.name, r.contract, method, "method", nil))
 		return result
 	}
 	// Arguments are checked by the provider.
@@ -415,11 +408,7 @@ func (r *remoteObject) followed(member string, _ int) followed {
 		if replica != nil {
 			return followed{kind: followedLive, source: replica, instance: bound}
 		}
-		variant := ""
-		if bound != nil {
-			variant = bound.variant
-		}
-		return followed{kind: followedLacking, err: memberInvalid(fmt.Sprintf("%s (variant %s) has no state member %q", r.name, variant, member))}
+		return followed{kind: followedLacking, err: lacking(r.name, r.contract, member, "state member", nil)}
 	case RefStateFailed:
 		// A denial keeps no value (slice 14 §2.2).
 		if r.refState.Cause.Kind == data.FailureDenied {
@@ -430,8 +419,8 @@ func (r *remoteObject) followed(member string, _ int) followed {
 	return followed{kind: followedLoading, last: last, instance: bound}
 }
 
-// attachedVariant makes a binding an `attachable`: the variant its replicas are of.
-func (b *boundVariant) attachedVariant() string { return b.variant }
+// attachedGranted makes a binding an `attachable`: what it was granted.
+func (b *boundVariant) attachedGranted() map[string]bool { return b.granted }
 
 // eventNode is event member member's node as a binding taps it: a remote binding's reference binds at its own version (the
 // provider mapped what arrives).
@@ -622,20 +611,26 @@ func (r *remoteObject) fail(err *data.ChordError) {
 // snapshot that does not fit (a protocol error), and `too_large/part` for a value past the link's limits, before anything
 // changed. wentLive follows the batch.
 func (r *remoteObject) prepareBound(entry link.BoundEntry, hl *hostLink) (func(), error) {
-	order, err := contracts.VariantOrder(r.contract)
+	curVer, err := contracts.CurrentVersion(r.contract)
 	if err != nil {
 		return nil, err
 	}
-	if entry.Variant < 0 || entry.Variant >= len(order) {
-		return nil, fmt.Errorf("hold %d: no variant %d", entry.Hold, entry.Variant)
+	granted := contracts.NoGrants
+	if len(entry.Granted) > 0 {
+		granted = make(map[string]bool, len(entry.Granted))
+		for _, idx := range entry.Granted {
+			if idx < 0 || idx >= len(curVer.Grants) {
+				return nil, fmt.Errorf("hold %d: no grant %d", entry.Hold, idx)
+			}
+			name := curVer.Grants[idx]
+			if granted[name] {
+				return nil, fmt.Errorf("hold %d: duplicate grant %d", entry.Hold, idx)
+			}
+			granted[name] = true
+		}
 	}
-	variant := order[entry.Variant]
-	variants, err := contracts.CurrentVariants(r.contract)
-	if err != nil {
-		return nil, err
-	}
-	variantData := variants.Value(variant)
-	names := contracts.VariantNamesOf(variantData)
+	membersData := contracts.GrantedMembers(curVer, granted)
+	names := contracts.MemberOrder(membersData)
 	members := map[string]memberSnapshot{}
 	var memberOrder []string
 	add := func(index int, snapshot memberSnapshot) error {
@@ -682,8 +677,8 @@ func (r *remoteObject) prepareBound(entry link.BoundEntry, hl *hostLink) (func()
 			previous = r.bound.replicas
 		}
 		replicas := newReplicaSet()
-		// First: a derive recomputing in this batch reads the new variant through its reference.
-		r.bound = &boundVariant{variant: variant, methods: variantData.Methods, names: names, replicas: replicas, nodes: eventNodes(names.Events)}
+		// First: a derive recomputing in this batch reads the new granted set through its reference.
+		r.bound = &boundVariant{granted: granted, methods: membersData.Methods, names: names, replicas: replicas, nodes: eventNodes(names.Events)}
 		for _, member := range memberOrder {
 			snapshot := members[member]
 			var existing *replica
@@ -703,7 +698,7 @@ func (r *remoteObject) prepareBound(entry link.BoundEntry, hl *hostLink) (func()
 					continue
 				}
 				gone := previous.byName[member]
-				gone.vanish(memberInvalid(fmt.Sprintf("%s (variant %s) has no state member %q", r.name, variant, member)))
+				gone.vanish(lacking(r.name, r.contract, member, "state member", nil))
 				replicas.set(member, gone)
 			}
 		}

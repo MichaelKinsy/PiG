@@ -255,18 +255,18 @@ func FilesFacet(dir string, caps FilesCaps, uploads int) host.Facet {
 	blobs := NewBlobs(filepath.Join(dir, "blobs"))
 	views := NewFolderViews()
 	return host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		if err := h.Serve(Files, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+		if err := h.Serve(Files, func(_ *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
 			return filesObject(self.(host.StoreSelf), uploadsDir, blobs, views, maxFile, maxTotal, uploads)
 		}, host.ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(FilesFolder, func(params *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+		return h.Serve(FilesFolder, func(params *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
 			space, folder := optString(params, "space"), optString(params, "folder")
 			if err := CheckSpace(space); err != nil {
-				return contracts.Implementation{}, err
+				return contracts.MembersImplementation{}, err
 			}
 			if err := CheckPath(folder, PathFolder); err != nil {
-				return contracts.Implementation{}, err
+				return contracts.MembersImplementation{}, err
 			}
 			// Its listing is read through the host's `Files`, which must be live first.
 			self.Get(Files, delta.NewJsonObject(0))
@@ -277,9 +277,9 @@ func FilesFacet(dir string, caps FilesCaps, uploads int) host.Facet {
 				}
 				return &host.FollowAttachment[delta.JsonValue]{Value: attached.Value.JSON(), Detach: attached.Detach}, nil
 			})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"listing": listing},
-			}}, nil
+			}, nil
 		}, host.ServeOptions{})
 	})
 }
@@ -300,7 +300,7 @@ func checkWrite(write FileWrite) error {
 // filesObject is the factory of the host's `Files`: one index, one run of uploads, one turn.
 func filesObject(
 	self host.StoreSelf, uploadsDir string, blobs *Blobs, views *FolderViews, maxFile, maxTotal int64, maxUploads int,
-) (contracts.Implementation, error) {
+) (contracts.MembersImplementation, error) {
 	index := NewFilesIndex(self)
 	// This run's uploads in their own directory: an upload left by an earlier run (its process ended) can never finish and
 	// is dropped, while this run's may already have begun.
@@ -380,7 +380,7 @@ func filesObject(
 		})
 	})
 	summary := host.ExposeKeyed(index.Summary)
-	return contracts.Implementation{Members: contracts.VariantImplementation{
+	return contracts.MembersImplementation{
 		Keyed: map[string]contracts.KeyedWatchable[delta.JsonValue]{"summary": summary},
 		Methods: map[string]contracts.MethodFunction{
 			"put": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -703,7 +703,7 @@ func filesObject(
 				})
 			},
 		},
-	}}, nil
+	}, nil
 }
 
 func limitOf(object *delta.JsonObject) int64 {

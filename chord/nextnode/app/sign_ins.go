@@ -181,7 +181,7 @@ func CreateSignIns(cookieSecret string, limits SignInLimits) *KitSignIns {
 // signInsFacet is the facet of CreateSignIns.
 func signInsFacet(cookieSecret string, ephemeral *EphemeralSignIns) host.Facet {
 	return host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		return h.Serve(SignIns, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+		return h.Serve(SignIns, func(_ *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
 			document := self.State(signInsDocument).(*documents.Singleton)
 			change := func(ctx context.Context, fn func(signIns *delta.Object)) {
 				// Not awaited by authentication: the request goes on; a write that fails is made again by a later request. As Pi's
@@ -254,7 +254,7 @@ func signInsFacet(cookieSecret string, ephemeral *EphemeralSignIns) host.Facet {
 			store.Contribute(registries.Registry[any, any](chordhttp.Http), chordhttp.HttpContribution{
 				Wraps: []chordhttp.HttpWrap{rollingCookie(cookieSecret, authenticate)},
 			})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"list": self.Derive([]any{document}, func(values []any) (delta.JsonValue, error) {
 						signIns := values[0].(*delta.JsonObject).Value("signIns").(*delta.JsonObject)
@@ -326,7 +326,7 @@ func signInsFacet(cookieSecret string, ephemeral *EphemeralSignIns) host.Facet {
 						return nil, err
 					},
 				},
-			}}, nil
+			}, nil
 		}, host.ServeOptions{})
 	})
 }

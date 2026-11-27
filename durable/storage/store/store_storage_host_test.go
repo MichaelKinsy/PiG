@@ -127,9 +127,9 @@ func persistMemo(t *testing.T, store *chordstore.ChordStore) {
 	t.Helper()
 	chordHost := value(host.CreateHost(host.HostOptions{Store: store, OnError: func(host.HostError) {}}))
 	facet := host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		return h.Serve(memoContract, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+		return h.Serve(memoContract, func(_ *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
 			memo := self.State(memoDoc).(*documents.Singleton)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"memo": self.Derive([]any{memo}, func(values []any) (delta.JsonValue, error) { return values[0], nil })},
 				Methods: map[string]contracts.MethodFunction{
 					"set": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -137,7 +137,7 @@ func persistMemo(t *testing.T, store *chordstore.ChordStore) {
 						return nil, err
 					},
 				},
-			}}, nil
+			}, nil
 		}, host.ServeOptions{})
 	})
 	value(chordHost.Load([]host.HostFacet{{Name: "app", Facet: facet}}, background))
@@ -251,7 +251,7 @@ func TestStoreStorageViewsAsChordSources(t *testing.T) {
 		var computes sync.Mutex
 		count := 0
 		facet := host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-			return h.Serve(chatContract, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+			return h.Serve(chatContract, func(_ *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
 				opened := self.Open(openHarness(store, chatContract.Name, nil), closeHarness)
 				current := func() harness.Harness { return value(opened.Value()).(harness.Harness) }
 				view := self.Follow(followed(func(ctx context.Context, observer durable.Observer[harness.ConversationView]) (durable.Observation[harness.ConversationView], error) {
@@ -266,7 +266,7 @@ func TestStoreStorageViewsAsChordSources(t *testing.T) {
 					computes.Unlock()
 					return float64(len(values[0].(*delta.JsonObject).Value("entries").([]any))), nil
 				})
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{"entries": entries},
 					Methods: map[string]contracts.MethodFunction{
 						"note": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -282,7 +282,7 @@ func TestStoreStorageViewsAsChordSources(t *testing.T) {
 							return nil, err
 						},
 					},
-				}}, nil
+				}, nil
 			}, host.ServeOptions{})
 		})
 		value(chordHost.Load([]host.HostFacet{{Name: "app", Facet: facet}}, background))
@@ -329,7 +329,7 @@ func TestStoreStorageViewsAsChordSources(t *testing.T) {
 			}
 		}
 		facet := host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-			return h.Serve(liveContract, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+			return h.Serve(liveContract, func(_ *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
 				opened := self.Open(openHarness(store, liveContract.Name, func(ctx context.Context, root harness.Conversation) error {
 					_, err := root.Commit(ctx, set(0))
 					return err
@@ -349,7 +349,7 @@ func TestStoreStorageViewsAsChordSources(t *testing.T) {
 					}
 					return parsed, nil
 				})
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{"n": n},
 					Methods: map[string]contracts.MethodFunction{
 						"bump": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -366,7 +366,7 @@ func TestStoreStorageViewsAsChordSources(t *testing.T) {
 							return nil, err
 						},
 					},
-				}}, nil
+				}, nil
 			}, host.ServeOptions{})
 		})
 		value(chordHost.Load([]host.HostFacet{{Name: "app", Facet: facet}}, background))

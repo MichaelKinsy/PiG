@@ -83,9 +83,9 @@ type holdState struct {
 	cause   data.FailureCause
 	// told is the failure a pending hold's consumer was told.
 	told    *data.ChordError
-	variant *contracts.VariantData
-	// names are the bound version's names of the variant, which the wire's indexes point into.
-	names contracts.VariantNames
+	members *contracts.MembersData
+	// names are the bound version's granted member names, which the wire's indexes point into.
+	names contracts.MemberNames
 	// instance is the attempt a bound hold was bound to: it follows it on while it still changes (a restart's open old attempt).
 	instance any
 	// followed are the members it follows, in the order they were subscribed.
@@ -95,8 +95,8 @@ type holdState struct {
 // boundNames is what calls need of a binding: its variant's data at the hold's version and the names the wire's indexes
 // point into. Only contract data: kept after an unbind, it keeps no instance and no source.
 type boundNames struct {
-	variant *contracts.VariantData
-	names   contracts.VariantNames
+	members *contracts.MembersData
+	names   contracts.MemberNames
 }
 
 // holdDecoding is what a call is decoded by: the names of a binding (bound set: while the hold rebinds after a `loading`
@@ -497,7 +497,7 @@ func (h *hold) method(index int) (name string, resultBytes bool, err error) {
 		bound := decoding.bound
 		if index >= 0 && index < len(bound.names.Methods) {
 			name = bound.names.Methods[index]
-			return name, bound.variant.Methods.Value(name).Result.Bytes, nil
+			return name, bound.members.Methods.Value(name).Result.Bytes, nil
 		}
 	}
 	return "", false, fmt.Errorf("hold %d: no method %d", h.id, index)
@@ -513,8 +513,7 @@ func (h *hold) boundEntry(ctx context.Context) link.BoundEntry {
 	// tells its holds at that attempt's seal (`moved`), so a hold waiting for a slot never binds it later.
 	instance := object.instance().(*attempt)
 	contract := instance.served.contract
-	// A live remote object's instance has its variant.
-	variant, _ := instance.variantName()
+	granted := instance.grantedSet()
 	bound := h.bindTo(instance)
 	var snapshot []link.BoundMember
 	var failures []link.FailedMember
@@ -572,11 +571,11 @@ func (h *hold) boundEntry(ctx context.Context) link.BoundEntry {
 	h.failures = nil
 	h.retired = link.NoRetired
 	countEncode(ctx)
-	order, err := contracts.VariantOrder(contract)
+	v, err := contracts.VersionAt(contract, version)
 	if err != nil {
 		panic(err)
 	}
-	return link.BoundEntry{Hold: h.id, Variant: slices.Index(order, variant), Members: snapshot, Failed: failures}
+	return link.BoundEntry{Hold: h.id, Granted: contracts.GrantIndexes(v, granted), Members: snapshot, Failed: failures}
 }
 
 // encodePart is a member value as a part of its link, within its limits.
@@ -680,19 +679,18 @@ func (h *hold) end(err *data.ChordError) {
 // bindTo is the binding: its variant and names at the hold's version, with no member followed yet. What its consumer's calls
 // were decoded by so far is fenced until it acknowledged this `bound`, the next of this host's own messages.
 func (h *hold) bindTo(instance *attempt) *holdState {
-	variants, err := contracts.VariantsAt(instance.served.contract, h.contract().version)
+	v, err := contracts.VersionAt(instance.served.contract, h.contract().version)
 	if err != nil {
 		panic(err)
 	}
-	variant, _ := instance.variantName()
-	data := variants.Value(variant)
-	names := contracts.VariantNamesOf(data)
-	h.state = holdState{kind: holdBound, variant: data, names: names, instance: instance}
+	membersData := contracts.GrantedMembers(v, instance.grantedSet())
+	names := contracts.MemberOrder(membersData)
+	h.state = holdState{kind: holdBound, members: membersData, names: names, instance: instance}
 	if h.latest != nil {
 		h.fences = append(h.fences, holdFence{until: h.provider.nextOwn(), before: h.latest})
 		h.provider.fenced(h)
 	}
-	h.latest = &holdDecoding{bound: &boundNames{variant: data, names: names}}
+	h.latest = &holdDecoding{bound: &boundNames{members: membersData, names: names}}
 	return &h.state
 }
 

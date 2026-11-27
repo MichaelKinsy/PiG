@@ -26,12 +26,12 @@ var reloadReportMissing = mustContract(declareLocal("app.missing", contracts.Loc
 
 // reloadReportNeedsMissing serves `Pure` whose factory needs `Missing`: a restart to it parks (its readiness finds `Missing` not served).
 func reloadReportNeedsMissing(h FacetHost) error {
-	return h.Serve(reloadPure, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+	return h.Serve(reloadPure, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 		self.Get(reloadReportMissing, jsonObject())
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			State:   map[string]chord.Watchable[delta.JsonValue]{"n": constant(9.0), "label": constant("v2")},
 			Methods: map[string]contracts.MethodFunction{"bump": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return 0.0, nil }},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 }
 
@@ -62,8 +62,8 @@ func TestReloadReportARetriedObjectWithAnOpenOldAttemptReportsWhatItsReadinessFi
 	second := reloadMust(t)(host.Reload([]HostFacet{
 		{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return reloadServePure(t, h, "v3", 1, nil) })},
 		{Name: "@test/missing", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(reloadReportMissing, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-				return contracts.Implementation{}, nil
+			return h.Serve(reloadReportMissing, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+				return contracts.MembersImplementation{}, nil
 			}, ServeOptions{})
 		})},
 	}, background, ReloadOptions{}))

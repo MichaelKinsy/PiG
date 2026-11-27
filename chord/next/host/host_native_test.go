@@ -561,12 +561,12 @@ var nativeRes = mustContract(declareLocal("app.res", contracts.LocalDeclaration{
 // serveRes serves `Res` with factory, which declares its natives; `n` is constant(id).
 func serveRes(factory func(id float64, self Self)) func(h FacetHost, _ FacetSelf) error {
 	return func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(nativeRes, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(nativeRes, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			id := params.Value("id").(float64)
 			factory(id, self)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(id)},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}
 }

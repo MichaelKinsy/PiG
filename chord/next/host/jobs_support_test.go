@@ -208,13 +208,13 @@ func declaredJob(
 	t.Helper()
 	found := &jobFixture{t: t}
 	host, errs := jobsLoaded(t, func(h FacetHost) error {
-		return h.Serve(jobStoreType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(jobStoreType, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			log := stateOf(self, jobLogState)
 			handle := self.Job(definition, implement(self, log))
 			found.Self, found.Log, found.Job = self, log, handle
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"log": log.Member()},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, options)
 	found.Host, found.Errors = host, errs

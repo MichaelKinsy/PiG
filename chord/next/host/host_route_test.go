@@ -146,14 +146,14 @@ func TestRouteAdmissionAuthorizesEveryHoldWithItsPrincipalARefusalIsBrokenForbid
 		wantResolves(t, guest)
 		reader, err := guest.Tab.Get(background, PlacedNotes, routeS("S1"), GetOptions{})
 		must(t, err)
-		if variant, _, _ := reader.Variant(); variant != "reader" {
-			t.Fatalf("variant = %q, want reader", variant)
+		if granted, _ := reader.Granted(); granted["add"] {
+			t.Fatalf("granted = %v, want no add", granted)
 		}
 		owner := relay(t, relayedOptions{Authorize: authorize})
 		editor, err := owner.Tab.Get(background, PlacedNotes, routeS("S2"), GetOptions{})
 		must(t, err)
-		if variant, _, _ := editor.Variant(); variant != "editor" {
-			t.Fatalf("variant = %q, want editor", variant)
+		if granted, _ := editor.Granted(); !granted["add"] {
+			t.Fatalf("granted = %v, want add", granted)
 		}
 	})
 }
@@ -229,9 +229,7 @@ func TestRouteAdmissionFailsAHoldBrokenInvalidHostAddressForAnAddressWhoseParams
 			HostAddress: func(params *delta.JsonObject) (contracts.Address, error) {
 				return contracts.Address{Kind: "session", Params: jsonObject("id", params.Value("n")), Key: ""}, nil
 			},
-			Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{
-				State: []contracts.Property{contracts.Prop("n", contracts.Int())},
-			})},
+			State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 		}))
 		r := relay(t, relayedOptions{})
 		_, err := r.Tab.Get(background, misplaced, jsonObject("n", float64(1)), GetOptions{})
@@ -636,9 +634,7 @@ func TestARoutesContextIsTheParentOfItsResolvesAndOfTheWorkArrivingOnItsLinks(t 
 			Version:     1,
 			Params:      contracts.Params{},
 			HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return serverAddress(), nil },
-			Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{
-				Methods: []contracts.MethodEntry{contracts.Meth("app", contracts.NewMethod(contracts.Schema{}, contracts.Str()))},
-			})},
+			Methods: []contracts.RemoteMethodEntry{contracts.Meth("app", contracts.NewMethod(contracts.Schema{}, contracts.Str()))},
 		}))
 		var mu sync.Mutex
 		var resolvedBy []string
@@ -667,8 +663,8 @@ func TestARoutesContextIsTheParentOfItsResolvesAndOfTheWorkArrivingOnItsLinks(t 
 			},
 		}, chordctx.WithValue(background, app, "the app's")))
 		mustLoad(t)(server.Load([]HostFacet{{Name: "@test/server", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(who, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
-				return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+			return h.Serve(who, func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {
+				return contracts.MembersImplementation{
 					Methods: map[string]contracts.MethodFunction{
 						"app": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 							if value, ok := chordctx.Value(ctx, app); ok {
@@ -677,7 +673,7 @@ func TestARoutesContextIsTheParentOfItsResolvesAndOfTheWorkArrivingOnItsLinks(t 
 							return "none", nil
 						},
 					},
-				}}, nil
+				}, nil
 			}, ServeOptions{})
 		})}}, background))
 		_, err := server.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})

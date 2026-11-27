@@ -32,9 +32,17 @@ func ContractDataOf(contract *contracts.Contract) (*ContractData, error) {
 		return nil, err
 	}
 	current := declared.Versions[len(declared.Versions)-1]
+	var grantableNames, flagNames []string
+	for _, name := range current.Grants {
+		if current.Grantable[name] {
+			grantableNames = append(grantableNames, name)
+		} else {
+			flagNames = append(flagNames, name)
+		}
+	}
 	return &ContractData{
 		Name: declared.Name, Version: current.Version, Fingerprint: current.Fingerprint,
-		Normal: contracts.NormalForm(declared.Kind, declared.Params, current.Variants),
+		Normal: contracts.NormalForm(declared.Kind, declared.Params, current.Members, grantableNames, flagNames),
 	}, nil
 }
 

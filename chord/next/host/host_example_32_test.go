@@ -21,13 +21,13 @@ func TestExample32Startup(t *testing.T) {
 	// On the server, a host-lifetime object (local, empty params): it starts at `load`.
 	bootstrap := exLocal("example.bootstrap", contracts.Params{}, contracts.Mem("agents", exInt()))
 	// On the session's worker.
-	agent := exRemote("example.agent", contracts.Params{exProp("session", exStr())}, exSessionAddress, contracts.Var("v", contracts.VariantDeclaration{
-		State: []contracts.Property{exProp("models", exInt())},
-	}))
+	agent := exRemote("example.agent", contracts.Params{exProp("session", exStr())}, exSessionAddress, contracts.RemoteDeclaration{
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("models", exInt())},
+	})
 	// On the server.
-	catalog := exRemote("example.catalog", contracts.Params{}, exServerAddress, contracts.Var("v", contracts.VariantDeclaration{
-		State: []contracts.Property{exProp("models", exInt())},
-	}))
+	catalog := exRemote("example.catalog", contracts.Params{}, exServerAddress, contracts.RemoteDeclaration{
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("models", exInt())},
+	})
 	errs := &hostErrors{}
 	// startWorker is the worker of a session, started by the server's route; it connects first, then loads (W6).
 	type started struct {
@@ -51,7 +51,7 @@ func TestExample32Startup(t *testing.T) {
 		worker := newHost(t, HostOptions{Address: &address, Principal: workerPrincipal(id), OnError: errs.push})
 		must(t, worker.Connect(down, LinkOptions{Principal: serverPrincipal(), Trusted: true}, background))
 		agents := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(agent, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+			return h.Serve(agent, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 				// The worker's Agent declares the server's Catalog.
 				return exVariant("v", map[string]chord.Watchable[delta.JsonValue]{
 					"models": Expose(self.Get(catalog, jsonObject()).Member("models")),
@@ -80,12 +80,12 @@ func TestExample32Startup(t *testing.T) {
 		},
 	}, background))
 	core := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(catalog, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
+		if err := h.Serve(catalog, func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {
 			return exVariant("v", map[string]chord.Watchable[delta.JsonValue]{"models": exConstant(float64(3))}, nil), nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(bootstrap, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(bootstrap, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			// The server's Bootstrap declares the worker's Agent.
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{
 				"agents": Expose(self.Get(agent, jsonObject("session", "S1")).Member("models")),

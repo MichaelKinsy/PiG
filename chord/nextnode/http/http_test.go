@@ -216,10 +216,10 @@ func TestHostAndPrincipalsAdmitsHostsAWritableContributionAddsAndRemovesAtRuntim
 		t.Fatal(err)
 	}
 	facet := host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		return h.Serve(tunnel, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+		return h.Serve(tunnel, func(_ *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
 			contribution := self.Writable(HttpContribution{Hosts: []string{}})
 			self.(host.StoreSelf).Contribute(registries.Registry[any, any](Http), contribution)
-			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				"name": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
 					hosts := []string{}
 					for _, each := range args.([]any) {
@@ -227,7 +227,7 @@ func TestHostAndPrincipalsAdmitsHostsAWritableContributionAddsAndRemovesAtRuntim
 					}
 					return nil, contribution.Set(HttpContribution{Hosts: hosts})
 				},
-			}}}, nil
+			}}, nil
 		}, host.ServeOptions{})
 	})
 	server := serving(t, []plugin{{"@app/tunnel", facet}, {"@app/who", httpWhoami}}, servedOptions{})

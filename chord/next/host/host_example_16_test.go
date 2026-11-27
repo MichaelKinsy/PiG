@@ -18,17 +18,17 @@ import (
 // --- 16-presence-and-activity.ts -----------------------------------------------------------------------------------
 
 func TestExample16PresenceAndActivity(t *testing.T) {
-	doc := exRemote("example.doc", contracts.Params{exProp("id", exStr())}, exServerAddress, contracts.Var("v", contracts.VariantDeclaration{
-		State:   []contracts.Property{exProp("viewers", exInt())},
-		Methods: []contracts.MethodEntry{contracts.Meth("think", contracts.NewMethod(contracts.Schema{}, exInt()))},
-	}))
+	doc := exRemote("example.doc", contracts.Params{exProp("id", exStr())}, exServerAddress, contracts.RemoteDeclaration{
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("viewers", exInt())},
+		Methods: []contracts.RemoteMethodEntry{contracts.Meth("think", contracts.NewMethod(contracts.Schema{}, exInt()))},
+	})
 	userOf := func(name string) data.Principal { return jsonObject("kind", "user", "name", name) }
 	thinking := make(chan struct{})
 	release := make(chan struct{})
 	linger := 50 * time.Millisecond
 	// 1. The server serves `Doc`; its factory derives the viewer count from `host.references(Doc)`.
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(doc, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return h.Serve(doc, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			id := exParam(params, "id")
 			return exVariant("v", map[string]chord.Watchable[delta.JsonValue]{
 				"viewers": self.Derive([]any{h.References(doc)}, func(values []any) (delta.JsonValue, error) {

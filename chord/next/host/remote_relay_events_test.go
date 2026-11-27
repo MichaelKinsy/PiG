@@ -614,17 +614,13 @@ func TestRelayEvents(t *testing.T) {
 // PlacedMatch is a worker type with an event member (placed by its session), and Lobby a server view re-exposing it.
 var PlacedMatch = mustContract(contracts.Remote("app.placed-match", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{contracts.Prop("session", contracts.Str())}, HostAddress: exSessionAddress,
-	Variants: []contracts.VariantEntry{contracts.Var("player", contracts.VariantDeclaration{
-		Events: []contracts.Property{contracts.Prop("paddle", Sample)},
-	})},
+	Events: []contracts.RemoteEventEntry{contracts.EventEntry("paddle", Sample)},
 }))
 
 var Lobby = mustContract(contracts.Remote("app.lobby", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{contracts.Prop("session", contracts.Str())},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-	Variants: []contracts.VariantEntry{contracts.Var("player", contracts.VariantDeclaration{
-		Events: []contracts.Property{contracts.Prop("paddle", Sample)},
-	})},
+	Events: []contracts.RemoteEventEntry{contracts.EventEntry("paddle", Sample)},
 }))
 
 // Ports "events across real hosts › reach a tab from a worker through the relay, and through the server's
@@ -635,24 +631,24 @@ func TestRelayEventsAcrossRealHostsReachATabThroughTheRelayAndThroughTheServersR
 		var paddles []contracts.EventSource[delta.JsonValue]
 		rig := relay(t, relayedOptions{
 			Worker: func(host FacetHost) error {
-				return host.Serve(PlacedMatch, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+				return host.Serve(PlacedMatch, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 					paddle := self.Events()
 					mu.Lock()
 					paddles = append(paddles, paddle)
 					mu.Unlock()
-					return contracts.Implementation{Variant: "player", Members: contracts.VariantImplementation{
+					return contracts.MembersImplementation{
 						Events: map[string]contracts.EventMember[delta.JsonValue]{"paddle": paddle},
-					}}, nil
+					}, nil
 				}, ServeOptions{})
 			},
 			Server: func(host FacetHost) error {
-				return host.Serve(Lobby, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+				return host.Serve(Lobby, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 					session, _ := params.Value("session").(string)
-					return contracts.Implementation{Variant: "player", Members: contracts.VariantImplementation{
+					return contracts.MembersImplementation{
 						Events: map[string]contracts.EventMember[delta.JsonValue]{
 							"paddle": self.Get(PlacedMatch, jsonObject("session", session)).Events("paddle"),
 						},
-					}}, nil
+					}, nil
 				}, ServeOptions{})
 			},
 		})
@@ -703,18 +699,16 @@ func TestRelayedCallsInARealWorkersFiniteWindowNeverExceedItWhenAHoldWithAForwar
 		waiter := mustContract(contracts.Remote("app.waiter", contracts.RemoteDeclaration{
 			Version: 1, Params: contracts.Params{contracts.Prop("session", contracts.Str()), contracts.Prop("id", contracts.Int())},
 			HostAddress: exSessionAddress,
-			Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{
-				Methods: []contracts.MethodEntry{contracts.Meth("wait", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
-			})},
+			Methods: []contracts.RemoteMethodEntry{contracts.Meth("wait", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
 		}))
 		var mu sync.Mutex
 		var runs []int
 		rig := relay(t, relayedOptions{
 			WorkerCallWindow: new(1),
 			Worker: func(host FacetHost) error {
-				return host.Serve(waiter, func(params *delta.JsonObject, _ data.Principal, _ Self) (contracts.Implementation, error) {
+				return host.Serve(waiter, func(params *delta.JsonObject, _ data.Principal, _ Self) (contracts.MembersImplementation, error) {
 					id := params.Value("id").(float64)
-					return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+					return contracts.MembersImplementation{
 						Methods: map[string]contracts.MethodFunction{
 							"wait": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 								mu.Lock()
@@ -724,7 +718,7 @@ func TestRelayedCallsInARealWorkersFiniteWindowNeverExceedItWhenAHoldWithAForwar
 								return id, nil
 							},
 						},
-					}}, nil
+					}, nil
 				}, ServeOptions{})
 			},
 		})

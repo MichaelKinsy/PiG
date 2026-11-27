@@ -205,10 +205,10 @@ func exRelayContracts() (sessionInfo, notes *contracts.Contract) {
 	initSchema := exObj(exProp("id", exStr()), exProp("title", exStr()), exProp("pid", exInt()))
 	sessionInfo = exLocal("example.session-info", contracts.Params{}, contracts.Mem("init", initSchema))
 	notes = exRemote("example.notes", contracts.Params{exProp("session", exStr())}, exSessionAddress,
-		contracts.Var("owner", contracts.VariantDeclaration{
-			State:   []contracts.Property{exProp("info", initSchema), exProp("notes", exArr(exStr()))},
-			Methods: []contracts.MethodEntry{contracts.Meth("add", contracts.NewMethod(exObj(exProp("text", exStr())), exInt()))},
-		}))
+		contracts.RemoteDeclaration{
+			State: []contracts.RemoteStateEntry{contracts.StateEntry("info", initSchema), contracts.StateEntry("notes", exArr(exStr()))},
+			Methods: []contracts.RemoteMethodEntry{contracts.Meth("add", contracts.NewMethod(exObj(exProp("text", exStr())), exInt()))},
+		})
 	return sessionInfo, notes
 }
 
@@ -234,13 +234,13 @@ func exRelayWorker(id string) {
 	}
 	init := jsonObject("id", id, "title", "Session "+id, "pid", float64(os.Getpid()))
 	core := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(sessionInfo, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+		return h.Serve(sessionInfo, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"init": exConstant(init)}, nil), nil
 		}, ServeOptions{})
 	})
 	doc := exStringListDoc("notes")
 	notesFacet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(notes, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return h.Serve(notes, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			notesDoc := stateOf(self, doc)
 			info := self.Get(sessionInfo, jsonObject())
 			return exVariant("owner", map[string]chord.Watchable[delta.JsonValue]{

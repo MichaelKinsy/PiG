@@ -31,15 +31,15 @@ func presenceServe(h FacetHost) error {
 
 // presenceViewed is a remote type served by the test server with one `viewers` state member, as the race-9 cases use.
 func presenceViewed(members ...string) *contracts.Contract {
-	properties := make([]contracts.Property, len(members))
+	properties := make([]contracts.RemoteStateEntry, len(members))
 	for i, member := range members {
-		properties[i] = contracts.Prop(member, contracts.Int())
+		properties[i] = contracts.StateEntry(member, contracts.Int())
 	}
 	return mustContract(contracts.Remote("app.viewed", contracts.RemoteDeclaration{
 		Version:     1,
 		Params:      contracts.Params{},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return serverAddress(), nil },
-		Variants:    []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{State: properties})},
+		State: properties,
 	}))
 }
 
@@ -168,19 +168,17 @@ func TestHostReferencesFeedsDerivesInFactoriesViewersPerSessionALinkDropADepartu
 		Version:     1,
 		Params:      contracts.Params{contracts.Prop("session", contracts.Str())},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return serverAddress(), nil },
-		Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{
-			State: []contracts.Property{contracts.Prop("here", contracts.Int())},
-		})},
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("here", contracts.Int())},
 	}))
 	server := presenceServer(t, func(h FacetHost) error {
-		if err := h.Serve(shown, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+		if err := h.Serve(shown, func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"here": Expose(state.NewConstant(float64(1)))},
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(viewers, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(viewers, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			session := params.Value("session")
 			count := self.Derive([]any{h.References(shown)}, func(values []any) (delta.JsonValue, error) {
 				matching := 0
@@ -191,9 +189,9 @@ func TestHostReferencesFeedsDerivesInFactoriesViewersPerSessionALinkDropADepartu
 				}
 				return float64(matching), nil
 			})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"count": count},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, HostOptions{})
 	view, err := server.Get(background, viewers, jsonObject("session", "S1"), GetOptions{})
@@ -248,7 +246,7 @@ func TestHostReferencesPutsADepartureDiscoveredWhileACommitSendsIntoTheNextBatch
 		if _, err := serveNotes(h, nil); err != nil {
 			return err
 		}
-		return h.Serve(viewed, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return h.Serve(viewed, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			session := "S1"
 			store := self.Get(NoteStore, jsonObject("session", session))
 			count := self.Derive([]any{store.Member("list")}, func(values []any) (delta.JsonValue, error) {
@@ -257,9 +255,9 @@ func TestHostReferencesPutsADepartureDiscoveredWhileACommitSendsIntoTheNextBatch
 			viewers := self.Derive([]any{h.References(viewed)}, func(values []any) (delta.JsonValue, error) {
 				return float64(len(values[0].([]any))), nil
 			})
-			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"count": count, "viewers": viewers},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, HostOptions{})
 	names := wireNames(t, viewed, "v")
@@ -307,13 +305,13 @@ func TestHostReferencesCompletesAHoldsBookkeepingBeforeItsPresenceEntryPublishes
 	viewed := presenceViewed("viewers")
 	linger := 60 * time.Second
 	server := presenceServer(t, func(h FacetHost) error {
-		return h.Serve(viewed, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return h.Serve(viewed, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			viewers := self.Derive([]any{h.References(viewed)}, func(values []any) (delta.JsonValue, error) {
 				return float64(len(values[0].([]any))), nil
 			})
-			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"viewers": viewers},
-			}}, nil
+			}, nil
 		}, ServeOptions{Linger: &linger})
 	}, HostOptions{})
 	drop := &atomic.Bool{}
@@ -343,13 +341,13 @@ func TestHostReferencesCompletesAReleasesBookkeepingBeforeItsDeparturePublishesA
 	linger := 50 * time.Millisecond
 	timers := newScopeLoop()
 	server := presenceServer(t, func(h FacetHost) error {
-		return h.Serve(viewed, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return h.Serve(viewed, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			viewers := self.Derive([]any{h.References(viewed)}, func(values []any) (delta.JsonValue, error) {
 				return float64(len(values[0].([]any))), nil
 			})
-			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"viewers": viewers},
-			}}, nil
+			}, nil
 		}, ServeOptions{Linger: &linger})
 	}, HostOptions{loop: timers})
 	drop := &atomic.Bool{}
@@ -438,16 +436,14 @@ func TestHostReferencesHasNoEntriesForLingeringObjects(t *testing.T) {
 		Version:     1,
 		Params:      contracts.Params{},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return serverAddress(), nil },
-		Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{
-			State: []contracts.Property{contracts.Prop("n", contracts.Int())},
-		})},
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 	}))
 	linger := 60 * time.Second
 	hosts := linked(t, func(h FacetHost) error {
-		return h.Serve(kept, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+		return h.Serve(kept, func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": Expose(state.NewConstant(float64(1)))},
-			}}, nil
+			}, nil
 		}, ServeOptions{Linger: &linger})
 	}, linkedOptions{})
 	held, err := hosts.Client.Get(background, kept, jsonObject(), GetOptions{})

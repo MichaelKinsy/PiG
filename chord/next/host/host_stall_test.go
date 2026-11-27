@@ -39,14 +39,14 @@ func TestStallABlockOnARawChannelBeforeTheFirstHostCallIsReported(t *testing.T) 
 	defer parking.Watch(10*time.Millisecond, func(text string) { reports <- text })()
 	gate := make(chan struct{})
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(attemptPage, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+		return h.Serve(attemptPage, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"label": constant("")},
 				Methods: map[string]contracts.MethodFunction{"slow": func(delta.JsonValue, context.Context) (delta.JsonValue, error) {
 					<-gate // a raw receive before any host call: a synchronous block of the section
 					return nil, nil
 				}},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	page := mustGet(t, host, attemptPage, jsonObject("id", 1.0))

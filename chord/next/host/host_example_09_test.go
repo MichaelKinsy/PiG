@@ -20,8 +20,8 @@ import (
 // --- 09-calls.ts ---------------------------------------------------------------------------------------------------
 
 func TestExample09Calls(t *testing.T) {
-	files := exRemote("example.files", contracts.Params{}, exServerAddress, contracts.Var("owner", contracts.VariantDeclaration{
-		Methods: []contracts.MethodEntry{
+	files := exRemote("example.files", contracts.Params{}, exServerAddress, contracts.RemoteDeclaration{
+		Methods: []contracts.RemoteMethodEntry{
 			contracts.Meth("whoami", contracts.NewMethod(contracts.Schema{}, exStr())),
 			// A `bytes()` leaf: the argument and result travel as raw segments, never base64.
 			contracts.Meth("upload", contracts.NewMethod(exObj(exProp("name", exStr()), exProp("data", exBytes())), exInt())),
@@ -29,13 +29,13 @@ func TestExample09Calls(t *testing.T) {
 			contracts.Meth("quota", contracts.NewMethod()),
 			contracts.Meth("slow", contracts.NewMethod()),
 		},
-	}))
+	})
 	var stored sync.Map
 	aborted := make(chan error, 2)
 	// reached receives once per slow call whose handler runs at the server: a call that never reached it sends nothing.
 	reached := make(chan struct{}, 2)
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(files, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
+		return h.Serve(files, func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {
 			return exVariant("owner", nil, map[string]contracts.MethodFunction{
 				// ctx.principal is the caller as its link stamped it; ctx.incarnation the calling host's run (R20).
 				"whoami": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {

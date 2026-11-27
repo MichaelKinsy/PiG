@@ -14,6 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 	"github.com/MichaelKinsy/PiG/chord/output"
@@ -49,17 +50,14 @@ func TestExample19Jobs(t *testing.T) {
 		contracts.Mem("entries", exArr(exStr())), contracts.Mem("shells", exArr(shell)),
 		contracts.Mem("runShell", contracts.NewMethod(runArgs, exStr())),
 		contracts.Mem("abortShell", contracts.NewMethod(exObj(exProp("id", exStr())))))
-	chat := exRemote("example.chat", contracts.Params{}, exServerAddress,
-		contracts.Var("owner", contracts.VariantDeclaration{
-			State: []contracts.Property{exProp("entries", exArr(exStr())), exProp("shells", exArr(shell))},
-			Methods: []contracts.MethodEntry{
-				contracts.Meth("runShell", contracts.NewMethod(runArgs, exStr())),
-				contracts.Meth("abortShell", contracts.NewMethod(exObj(exProp("id", exStr())))),
-			},
-		}),
-		contracts.Var("guest", contracts.VariantDeclaration{
-			State: []contracts.Property{exProp("entries", exArr(exStr())), exProp("shells", exArr(guestShell))},
-		}))
+	_ = guestShell
+	chat := exRemote("example.chat", contracts.Params{}, exServerAddress, contracts.RemoteDeclaration{
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("entries", exArr(exStr())), contracts.StateEntry("shells", exArr(shell))},
+		Methods: []contracts.RemoteMethodEntry{
+			contracts.Meth("runShell", contracts.NewGrantable(contracts.NewMethod(runArgs, exStr()))),
+			contracts.Meth("abortShell", contracts.NewGrantable(contracts.NewMethod(exObj(exProp("id", exStr()))))),
+		},
+	})
 	// A fake process: one line every 30 ms; `Sleep` returns when the run is aborted.
 	runProcess := func(lines int, ctx context.Context, onLine func(string)) (int, error) {
 		for n := 1; n <= lines; n++ {
@@ -72,7 +70,7 @@ func TestExample19Jobs(t *testing.T) {
 	}
 	errs := &hostErrors{}
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(chatStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(chatStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			entries := stateOf(self, entriesDoc)
 			notify := self.Job(notifyJob, JobImplementation{
 				Run: func(args any, _ JobCtx) (any, error) {
@@ -184,7 +182,7 @@ func TestExample19Jobs(t *testing.T) {
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(chat, func(_ *delta.JsonObject, principal data.Principal, self Self) (contracts.Implementation, error) {
+		return h.Serve(chat, func(_ *delta.JsonObject, principal data.Principal, _ AdmittedValue, self Self) (contracts.MembersImplementation, error) {
 			store := self.Get(chatStore, jsonObject())
 			if principalKind(principal) != "owner" {
 				// A guest sees no output: the view drops it.
@@ -210,7 +208,12 @@ func TestExample19Jobs(t *testing.T) {
 					return store.Call("abortShell", args, ctx)
 				},
 			}), nil
-		}, ServeOptions{})
+		}, ServeOptions{Admit: func(_ *delta.JsonObject, principal data.Principal, _ AdmitSelf) (chord.Watchable[delta.JsonValue], error) {
+			if principalKind(principal) == "guest" {
+				return Expose(state.NewConstant(Allow(delta.NewJsonObject(0)))), nil
+			}
+			return Expose(state.NewConstant(Allow(delta.JsonObjectOf("granted", []delta.JsonValue{"runShell", "abortShell"})))), nil
+		}})
 	})
 	// 2. A server and two tabs, the owner's and a guest's.
 	server, serverErrors := exServer(t, nil, HostFacet{Name: "@example/chat", Facet: facet})
@@ -218,8 +221,8 @@ func TestExample19Jobs(t *testing.T) {
 	guestTab := exAccept(t, server, jsonObject("kind", "guest"))
 	owner := exGet(t, ownerTab.Host, chat, jsonObject())
 	guest := exGet(t, guestTab.Host, chat, jsonObject())
-	if exVariantName(owner) != "owner" || exVariantName(guest) != "guest" {
-		t.Fatalf("variants: %q %q", exVariantName(owner), exVariantName(guest))
+	if !exHasGrant(owner, "runShell") || exHasGrant(guest, "runShell") {
+		t.Fatalf("grants: owner=%v guest=%v", exHasGrant(owner, "runShell"), exHasGrant(guest, "runShell"))
 	}
 	// 3. The owner runs a command; its request id dedupes a resent request (the same run comes back).
 	id := exCall(t, owner, "runShell", jsonObject("command", "npm test", "lines", float64(5), "requestId", "r1"))

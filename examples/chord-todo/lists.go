@@ -32,8 +32,12 @@ func (s *session) listsStep() error {
 		if err != nil {
 			return err
 		}
-		variant, _, err := todos.Variant()
-		_, _ = fmt.Fprintln(s.out, "2. as the owner:", variant, "|", show(items))
+		granted, err := todos.Granted()
+		role := "member"
+		if granted["clear"] {
+			role = "owner"
+		}
+		_, _ = fmt.Fprintln(s.out, "2. as the owner:", role, "|", show(items))
 		return err
 	})
 	if err != nil {
@@ -51,8 +55,12 @@ func (s *session) listsStep() error {
 		if err != nil {
 			return err
 		}
-		variant, _, err := todos.Variant()
-		_, _ = fmt.Fprintln(s.out, "   as the server:", variant, "|", show(items[2:]))
+		granted, err := todos.Granted()
+		role := "member"
+		if granted["clear"] {
+			role = "owner"
+		}
+		_, _ = fmt.Fprintln(s.out, "   as the server:", role, "|", show(items[2:]))
 		return err
 	})
 	if err != nil {

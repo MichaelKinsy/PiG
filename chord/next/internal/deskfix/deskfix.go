@@ -59,29 +59,20 @@ func UntilState(t testing.TB, ref *host.Reference, check func() bool) {
 	}
 }
 
-// VariantName is the variant ref is bound in, "undefined" before it binds (Pi's `ref.variant`).
-func VariantName(ref *host.Reference) string {
-	variant, bound, err := ref.Variant()
-	if err != nil || !bound {
-		return "undefined"
-	}
-	return variant
+// HasGrant reports whether ref has been granted name.
+func HasGrant(ref *host.Reference, name string) bool {
+	granted, err := ref.Granted()
+	return err == nil && granted[name]
 }
 
 var server = must(contracts.NewHostKind("server"))
 
-// Desk is a desk its caller reads or edits by its admitted mode: a variant each (Pi's `Desk`).
+// Desk is a desk its caller reads or edits by its admitted mode: `write` is grantable (Pi's `Desk`).
 var Desk = must(contracts.Remote("test.desk", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return server.Address(nil), nil },
-	Admission:   func() *contracts.Schema { s := contracts.OneOf("reader", "editor"); return &s }(),
-	Variants: []contracts.VariantEntry{
-		contracts.Var("reader", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("text", contracts.Str())}}),
-		contracts.Var("editor", contracts.VariantDeclaration{
-			State:   []contracts.Property{contracts.Prop("text", contracts.Str())},
-			Methods: []contracts.MethodEntry{{Name: "write", Value: contracts.NewMethod(contracts.Str())}},
-		}),
-	},
+	State:   []contracts.RemoteStateEntry{contracts.StateEntry("text", contracts.Str())},
+	Methods: []contracts.RemoteMethodEntry{contracts.Meth("write", contracts.NewGrantable(contracts.NewMethod(contracts.Str())))},
 }))
 
 // deskMode is the mode `Desk`'s admission reads.
@@ -152,9 +143,9 @@ func New(t testing.TB) *Fixture {
 		}
 	})
 	facet := host.DefineFacet(func(fh host.FacetHost, _ host.FacetSelf) error {
-		if err := fh.Serve(deskMode, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+		if err := fh.Serve(deskMode, func(_ *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
 			mode := self.Writable("reader")
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"mode": self.Derive([]any{mode}, func(values []any) (delta.JsonValue, error) { return values[0], nil }),
 				},
@@ -163,11 +154,11 @@ func New(t testing.TB) *Fixture {
 						return nil, mode.Set(next)
 					},
 				},
-			}}, nil
+			}, nil
 		}, host.ServeOptions{}); err != nil {
 			return err
 		}
-		return fh.Serve(Desk, func(_ *delta.JsonObject, _ data.Principal, admitted delta.JsonValue, self host.Self) (contracts.Implementation, error) {
+		return fh.Serve(Desk, func(_ *delta.JsonObject, _ data.Principal, _ host.AdmittedValue, self host.Self) (contracts.MembersImplementation, error) {
 			if gate := f.gate(); gate != nil {
 				// Its object stays loading until the gate opens: a test reads what a reference says in that state.
 				self.Open(func(ctx context.Context) (any, error) {
@@ -177,19 +168,19 @@ func New(t testing.TB) *Fixture {
 			}
 			text := self.Writable("a desk")
 			shown := self.Derive([]any{text}, func(values []any) (delta.JsonValue, error) { return values[0], nil })
-			state := map[string]chord.Watchable[delta.JsonValue]{"text": shown}
-			if admitted == "reader" {
-				return contracts.Implementation{Variant: "reader", Members: contracts.VariantImplementation{State: state}}, nil
-			}
 			write := func(next delta.JsonValue, _ context.Context) (delta.JsonValue, error) { return nil, text.Set(next) }
-			return contracts.Implementation{Variant: "editor", Members: contracts.VariantImplementation{
-				State: state, Methods: map[string]contracts.MethodFunction{"write": write},
-			}}, nil
+			return contracts.MembersImplementation{
+				State:   map[string]chord.Watchable[delta.JsonValue]{"text": shown},
+				Methods: map[string]contracts.MethodFunction{"write": write},
+			}, nil
 		}, host.ServeOptions{Admit: func(_ *delta.JsonObject, _ data.Principal, self host.AdmitSelf) (chord.Watchable[delta.JsonValue], error) {
 			mode := self.Get(deskMode, delta.JsonObjectOf()).Member("mode")
 			return self.Derive([]any{mode}, func(values []any) (delta.JsonValue, error) {
-				if values[0] == "reader" || values[0] == "editor" {
-					return host.Allow(values[0]), nil
+				if values[0] == "reader" {
+					return host.Allow(delta.NewJsonObject(0)), nil
+				}
+				if values[0] == "editor" {
+					return host.Allow(delta.JsonObjectOf("granted", []delta.JsonValue{"write"})), nil
 				}
 				return host.Deny("no access"), nil
 			}), nil

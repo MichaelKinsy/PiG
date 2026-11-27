@@ -56,23 +56,19 @@ var (
 		contracts.Meth("echo", contracts.NewMethod(contracts.Str(), contracts.Str())))
 	rhAsker = mustContract(contracts.Remote("app.asker", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{contracts.Prop("session", contracts.Str())}, HostAddress: exSessionAddress,
-		Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{
-			State:   []contracts.Property{rhProp("who", contracts.Str())},
-			Methods: []contracts.MethodEntry{contracts.Meth("ask", contracts.NewMethod(contracts.Str(), contracts.Str()))},
-		})},
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("who", contracts.Str())},
+			Methods: []contracts.RemoteMethodEntry{contracts.Meth("ask", contracts.NewMethod(contracts.Str(), contracts.Str()))},
 	}))
 	rhNeighbour = mustContract(contracts.Remote("app.neighbour", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{contracts.Prop("session", contracts.Str()), contracts.Prop("other", contracts.Str())},
 		HostAddress: exSessionAddress,
-		Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{
-			State: []contracts.Property{rhProp("count", contracts.Int())},
-		})},
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("count", contracts.Int())},
 	}))
 )
 
 func rhServeWho(host FacetHost) error {
-	return host.Serve(rhServerWho, func(_ *delta.JsonObject, principal data.Principal, _ Self) (contracts.Implementation, error) {
-		return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+	return host.Serve(rhServerWho, func(_ *delta.JsonObject, principal data.Principal, _ Self) (contracts.MembersImplementation, error) {
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{"who": rhConst(principalKind(principal))},
 			Methods: map[string]contracts.MethodFunction{
 				"echo": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -83,14 +79,14 @@ func rhServeWho(host FacetHost) error {
 					return who + ":" + args.(string), nil
 				},
 			},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 }
 
 func rhServeAsker(host FacetHost) error {
-	if err := host.Serve(rhAsker, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+	if err := host.Serve(rhAsker, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 		server := self.Get(rhServerWho, jsonObject())
-		return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{"who": Expose(server.Member("who"))},
 			Methods: map[string]contracts.MethodFunction{
 				"ask": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -101,15 +97,15 @@ func rhServeAsker(host FacetHost) error {
 					return got.Call("echo", args, ctx)
 				},
 			},
-		}}, nil
+		}, nil
 	}, ServeOptions{}); err != nil {
 		return err
 	}
-	return host.Serve(rhNeighbour, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+	return host.Serve(rhNeighbour, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 		notes := self.Get(PlacedNotes, jsonObject("session", params.Value("other")))
-		return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{"count": Expose(notes.Member("count"))},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 }
 
@@ -149,7 +145,7 @@ func rhBindPlaced(t testing.TB, peer *RawPeer, hold *link.HoldMessage) {
 	count, err := link.JsonPart(float64(0))
 	must(t, err)
 	peer.Send(&link.BoundMessage{Origin: hold.Origin, Holds: []link.BoundEntry{{
-		Hold: hold.Hold, Variant: editor.Variant, Failed: []link.FailedMember{},
+		Hold: hold.Hold, Granted: editor.Granted, Failed: []link.FailedMember{},
 		Members: []link.BoundMember{{Member: editor.State["notes"], Value: notes}, {Member: editor.State["count"], Value: count}},
 	}}})
 }
@@ -289,10 +285,10 @@ func rhPrincipalsRig(t testing.TB, tab data.Principal) *rhPrincipals {
 		tab = guestPrincipal("S1")
 	}
 	rig := relay(t, relayedOptions{Tab: tab, Resolve: workers.Resolve, Server: func(host FacetHost) error {
-		if err := host.Serve(rhGateway, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		if err := host.Serve(rhGateway, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			// `self.get` in a remote object: the object's principal, this host's incarnation.
 			own := self.Get(PlacedNotes, jsonObject("session", "own"))
-			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": Expose(own.Member("count"))},
 				Methods: map[string]contracts.MethodFunction{
 					// `ctx.get` in a handler: the caller's principal and incarnation.
@@ -304,14 +300,14 @@ func rhPrincipalsRig(t testing.TB, tab data.Principal) *rhPrincipals {
 						return got.Member("count").Value()
 					},
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return host.Serve(rhView, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+		return host.Serve(rhView, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": Expose(self.Get(PlacedNotes, jsonObject("session", "view")).Member("count"))},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}})
 	return &rhPrincipals{relayed: rig, workers: workers}
@@ -474,10 +470,10 @@ func TestHostLinkTrustedLinks(t *testing.T) {
 			rig := relay(t, relayedOptions{Trusted: true})
 			notes, err := rig.Tab.Get(background, PlacedNotes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
-			variant, bound, err := notes.Variant()
+			granted, err := notes.Granted()
 			must(t, err)
-			if !bound || variant != "editor" {
-				t.Fatalf("variant = %q bound %v, want editor", variant, bound)
+			if !granted["add"] {
+				t.Fatalf("granted = %v, want add", granted)
 			}
 		})
 	})
@@ -564,8 +560,8 @@ func TestHostLinkPartsCompressionAndLimits(t *testing.T) {
 			addNote(t, hosts.Server, "S1", rhLarge)
 			notes, err := hosts.Client.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
-			if variant, _, _ := notes.Variant(); variant != "editor" {
-				t.Fatalf("an owner's notes are the editor's, got %q", variant)
+			if granted, _ := notes.Granted(); !granted["add"] {
+				t.Fatalf("an owner's notes are the editor's, got %v", granted)
 			}
 			if texts := rhNoteTexts(t, notes); len(texts) != 1 || texts[0] != rhLarge {
 				t.Fatalf("notes = %d texts", len(texts))
@@ -673,8 +669,8 @@ func TestHostLinkPartsCompressionAndLimits(t *testing.T) {
 			hosts := rhCompress(t, server, nil, link.PartLimits{})
 			notes, err := hosts.Client.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
-			if variant, _, _ := notes.Variant(); variant != "editor" {
-				t.Fatalf("an owner's notes are the editor's, got %q", variant)
+			if granted, _ := notes.Granted(); !granted["add"] {
+				t.Fatalf("an owner's notes are the editor's, got %v", granted)
 			}
 			_, err = notes.Call("add", jsonObject("text", rhLarge), background)
 			must(t, err)
@@ -693,9 +689,9 @@ func TestOnOnARemoteMemberFailedSinceItsBindingNoValueYetWaitsForItsFirstValue(t
 		contracts.Meth("set", contracts.NewMethod(contracts.Int())))
 	server := rhCreate(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), OnError: func(HostError) {}})
 	mustLoad(t)(server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
-		return host.Serve(halves, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return host.Serve(halves, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			doc := stateOf(self, rhCounter)
-			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"half": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) {
 						n := values[0].(*delta.JsonObject).Value("n").(float64)
@@ -710,7 +706,7 @@ func TestOnOnARemoteMemberFailedSinceItsBindingNoValueYetWaitsForItsFirstValue(t
 						return nil, doc.Change(func(draft *delta.Object) { _ = draft.Set("n", args) }, ctx)
 					},
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})}}, background))
 	ref, err := server.Get(background, halves, jsonObject(), GetOptions{})
@@ -725,14 +721,14 @@ func TestOnOnARemoteMemberFailedSinceItsBindingNoValueYetWaitsForItsFirstValue(t
 	errs := &hostErrors{}
 	client := rhCreate(t, HostOptions{OnError: errs.push})
 	mustLoad(t)(client.Load([]HostFacet{{Name: "@test/client", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
-		return host.Serve(viewer, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return host.Serve(viewer, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			self.On(self.Get(halves, jsonObject()).Member("half"), func(call chord.WatchCall[delta.JsonValue], _ Ctx) *Handled {
 				mu.Lock()
 				defer mu.Unlock()
 				calls = append(calls, []any{call.Value, call.Ops})
 				return nil
 			})
-			return contracts.Implementation{}, nil
+			return contracts.MembersImplementation{}, nil
 		}, ServeOptions{})
 	})}}, background))
 	a, b := link.MemoryLinkPair()

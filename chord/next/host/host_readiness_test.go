@@ -47,13 +47,13 @@ var (
 // readinessSlowHost is a host serving `Slow`, whose native opens once opened fires and logs its close to closed.
 func readinessSlowHost(t testing.TB, opened signal, closed *readinessLog) *chordHost {
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(readinessSlow, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(readinessSlow, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			self.Open(func(ctx context.Context) (any, error) { opened.await(t, ctx); return nil, nil },
 				func(_ any, reason NativeCloseReason, _ context.Context) error {
 					closed.push(string(reason.Kind))
 					return nil
 				})
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(1.0)}}}, nil
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(1.0)}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	return host.(*chordHost)
@@ -197,23 +197,23 @@ func TestReadinessCountsARequestFailedOnThisHostAsReadyTheReloadReportsItAsWhatT
 func TestReadinessWaitsUpToItsBoundForARequestAnotherHostRefusesForItsVersionThatHostsReloadHealsIt(t *testing.T) {
 	shown := mustContract(declareRemote("app.shown", contracts.RemoteDeclaration{
 		Version: 1, HostAddress: exServerAddress,
-		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{State: []contracts.Property{rhProp("text", contracts.Str())}})},
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("text", contracts.Str())},
 	}))
 	shownV2 := mustContract(contracts.Evolve(shown, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
-		return e.AddState("main", "n", contracts.Int())
+		return e.AddState("n", contracts.Int())
 	}))
 	serve := func(h FacetHost, raised bool) error {
 		if raised {
-			return h.Serve(shownV2, func(_ *delta.JsonObject, _ data.Principal, _ Self) (contracts.Implementation, error) {
-				return contracts.Implementation{Variant: "main", Members: contracts.VariantImplementation{
+			return h.Serve(shownV2, func(_ *delta.JsonObject, _ data.Principal, _ Self) (contracts.MembersImplementation, error) {
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{"text": constant("v2"), "n": constant(2.0)},
-				}}, nil
+				}, nil
 			}, ServeOptions{})
 		}
-		return h.Serve(shown, func(_ *delta.JsonObject, _ data.Principal, _ Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Variant: "main", Members: contracts.VariantImplementation{
+		return h.Serve(shown, func(_ *delta.JsonObject, _ data.Principal, _ Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"text": constant("v1")},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}
 	s := linked(t, func(h FacetHost) error { return serve(h, false) }, linkedOptions{})
@@ -263,14 +263,14 @@ func TestReadinessShowsARequestsFailureAndNoneOnceTheRequestRecovered(t *testing
 	down := true
 	isDown := func() bool { failing.Lock(); defer failing.Unlock(); return down }
 	hostAny, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(flaky, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(flaky, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			self.Open(func(context.Context) (any, error) {
 				if isDown() {
 					return nil, errNotYet
 				}
 				return nil, nil
 			}, func(any, NativeCloseReason, context.Context) error { return nil })
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(1.0)}}}, nil
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(1.0)}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	host := hostAny.(*chordHost)
@@ -367,14 +367,14 @@ func TestReadinessMemoryIsCollectedWithItsBindingsOnceTheRestartsSuccessorIsLive
 	gates := reloadGates(gate)
 	facet := func(n float64) func(FacetHost, FacetSelf) error {
 		return func(h FacetHost, _ FacetSelf) error {
-			if err := h.Serve(readinessSlow, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-				return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(1.0)}}}, nil
+			if err := h.Serve(readinessSlow, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+				return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(1.0)}}, nil
 			}, ServeOptions{}); err != nil {
 				return err
 			}
-			return h.Serve(dependentType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(dependentType, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				slow := self.Get(readinessSlow, jsonObject("id", 1.0))
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{
 						"n": self.Derive([]any{slow.Member("n")}, func(values []any) (delta.JsonValue, error) { return values[0].(float64) + n, nil }),
 					},
@@ -385,7 +385,7 @@ func TestReadinessMemoryIsCollectedWithItsBindingsOnceTheRestartsSuccessorIsLive
 						}
 						return n, nil
 					}},
-				}}, nil
+				}, nil
 			}, ServeOptions{})
 		}
 	}

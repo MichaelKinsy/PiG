@@ -308,7 +308,7 @@ func TestReferenceSourceAMemberTheNewAttemptsVariantLacksFailsItsWatchGetsOneFai
 	h := newMemberHarness(t)
 	m := h.member(state.NewConstant(float64(1)))
 	calls := nexttest.ChangesOf(h.watch(t, m))
-	lacking := data.Invalid(data.ReasonMember, `app.two (variant view) has no state member "n"`)
+	lacking := data.Invalid(data.ReasonMember, `app.two has not granted "n"`)
 	h.loop.Run(m.hold)
 	h.within(t, func() { m.vanish(lacking, memberBackground) })
 	h.delivered()
@@ -319,7 +319,7 @@ func TestReferenceSourceAMemberTheNewAttemptsVariantLacksFailsItsWatchGetsOneFai
 	if err, ok := data.IsChordErrorCode(got[0].Error, data.CodeInvalid); !ok || err.Reason != data.ReasonMember {
 		t.Fatalf("failure = %v, want invalid/member", got[0].Error)
 	}
-	if _, err := h.value(m); err == nil || err.Error() != `app.two (variant view) has no state member "n"` {
+	if _, err := h.value(m); err == nil || err.Error() != `app.two has not granted "n"` {
 		t.Fatalf("read = %v, want the missing member", err)
 	}
 	// The same as over a link: the member comes back with the next attempt that has it.
@@ -528,13 +528,13 @@ func (s *msServed) fail() {
 }
 
 // msStoreFactory is the Store's factory: its attempts and lists recorded in s.
-func (s *msServed) factory(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+func (s *msServed) factory(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 	s.Attempts.add(self)
 	list := self.State(msList).(*documents.Singleton)
 	s.mu.Lock()
 	s.lists = append(s.lists, list)
 	s.mu.Unlock()
-	return contracts.Implementation{Members: contracts.VariantImplementation{
+	return contracts.MembersImplementation{
 		State: map[string]chord.Watchable[delta.JsonValue]{
 			"list": Expose(list),
 			"count": self.Derive([]any{list}, func(values []any) (delta.JsonValue, error) {
@@ -542,7 +542,7 @@ func (s *msServed) factory(_ *delta.JsonObject, self Self) (contracts.Implementa
 			}),
 		},
 		Methods: map[string]contracts.MethodFunction{"add": msPush(list, "text")},
-	}}, nil
+	}, nil
 }
 
 func msServe(t *testing.T, options loadedOptions) *msServed {
@@ -553,13 +553,13 @@ func msServe(t *testing.T, options loadedOptions) *msServed {
 		if err := h.Serve(msStore, s.factory, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(msViewer, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(msViewer, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			tens := self.Derive([]any{self.Get(msStore, jsonObject()).Member("count")}, func(values []any) (delta.JsonValue, error) {
 				return values[0].(float64) * 10, nil
 			})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"tens": tens},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, options)
 	var err error
@@ -719,16 +719,16 @@ func TestHostReferenceSourceReExposedFromAnotherObjectHoldWithTheReExposingObjec
 	}))
 	registry := newKmRegistry("")
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(provider, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(provider, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			memos := self.State(memo).(*documents.Keyed)
 			at, err := memos.At("a")
 			if err != nil {
-				return contracts.Implementation{}, err
+				return contracts.MembersImplementation{}, err
 			}
 			n := self.Derive([]any{at}, func(values []any) (delta.JsonValue, error) {
 				return float64(len(values[0].(*delta.JsonObject).Value("title").(string))), nil
 			})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": n},
 				Keyed: kmKeyed(memos),
 				Methods: map[string]contracts.MethodFunction{"set": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -737,18 +737,18 @@ func TestHostReferenceSourceReExposedFromAnotherObjectHoldWithTheReExposingObjec
 					})
 					return nil, err
 				}},
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(exposerType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(exposerType, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			registry.addExposer(self)
 			self.State(own)
 			held := self.Get(provider, jsonObject())
 			noteAt, err := held.Keyed("notes").At("a")
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": Expose(held.Member("n")), "note": Expose(noteAt)},
-			}}, err
+			}, err
 		}, ServeOptions{})
 	}, loadedOptions{})
 	providerRef, err := host.Get(background, provider, jsonObject(), GetOptions{})
@@ -796,26 +796,26 @@ func TestHostReferenceSourceTheWindowOfALiveFailureEveryMemberFollowsOnWhileAnAd
 	registry := newKmRegistry("")
 	var own atomic.Pointer[documents.Singleton]
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(provider, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(provider, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			doc := self.State(counter).(*documents.Singleton)
 			n := self.Derive([]any{doc}, func(values []any) (delta.JsonValue, error) { return values[0].(*delta.JsonObject).Value("n"), nil })
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": n},
 				Methods: map[string]contracts.MethodFunction{"set": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					_, err := doc.Change(ctx, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", args) })
 					return nil, err
 				}},
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(exposerType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(exposerType, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			registry.addExposer(self)
 			doc := self.State(persisted).(*documents.Singleton)
 			own.Store(doc)
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 				"n": Expose(self.Get(provider, jsonObject()).Member("n")), "own": Expose(doc),
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{Store: st})
 	providerRef, err := host.Get(background, provider, jsonObject(), GetOptions{})
@@ -863,7 +863,7 @@ func TestHostReferenceSourceRebindingRecoversAConsumersDeriveThatFailedOnTheProv
 	}))
 	attempts := &attemptList{}
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(counted, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(counted, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			attempts.add(self)
 			first := attempts.len() == 1
 			list := self.State(msList).(*documents.Singleton)
@@ -873,21 +873,21 @@ func TestHostReferenceSourceRebindingRecoversAConsumersDeriveThatFailedOnTheProv
 				}
 				return msItemCount(values[0]), nil
 			})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State:   map[string]chord.Watchable[delta.JsonValue]{"count": count},
 				Methods: map[string]contracts.MethodFunction{"add": msPush(list, "")},
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(tensType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(tensType, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			tens := self.Derive([]any{self.Get(counted, jsonObject()).Member("count")}, func(values []any) (delta.JsonValue, error) {
 				return values[0].(float64) * 10, nil
 			})
 			hundreds := self.Derive([]any{tens}, func(values []any) (delta.JsonValue, error) { return values[0].(float64) * 10, nil })
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"tens": tens, "hundreds": hundreds},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	countedRef, err := host.Get(background, counted, jsonObject(), GetOptions{})
@@ -950,13 +950,13 @@ func TestHostReferenceSourceRebindingSendsOneFrameFromTheLastValueWhenTheNewAtte
 	labels := []string{"old", "new"}
 	attempts := &attemptList{}
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(shown, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(shown, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			label := labels[attempts.len()]
 			attempts.add(self)
 			self.State(msList)
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 				"label": self.Derive(nil, func([]any) (delta.JsonValue, error) { return label, nil }),
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	ref, err := host.Get(background, shown, jsonObject(), GetOptions{})
@@ -980,20 +980,18 @@ func TestHostReferenceSourceSubscribersAHoldOverALinkOnARemoteObjectReExposingAL
 		view := mustContract(contracts.Remote("app.view", contracts.RemoteDeclaration{
 			Version: 1, Params: contracts.Params{},
 			HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return serverAddress(), nil },
-			Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{
-				State: []contracts.Property{contracts.Prop("n", kmSchema)},
-			})},
+			State: []contracts.RemoteStateEntry{contracts.StateEntry("n", kmSchema)},
 		}))
 		counter := kmDefine("counter", documents.StateOptions{})
 		attempts := &attemptList{}
 		hosts := linked(t, func(h FacetHost) error {
-			if err := h.Serve(count, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			if err := h.Serve(count, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				attempts.add(self)
 				doc := self.State(counter).(*documents.Singleton)
 				n := self.Derive([]any{doc}, func(values []any) (delta.JsonValue, error) {
 					return jsonObject("n", values[0].(*delta.JsonObject).Value("n").(float64)*10), nil
 				})
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{"n": n},
 					Methods: map[string]contracts.MethodFunction{"add": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 						_, err := doc.Change(ctx, func(draft *delta.Object) (any, error) {
@@ -1001,14 +999,14 @@ func TestHostReferenceSourceSubscribersAHoldOverALinkOnARemoteObjectReExposingAL
 						})
 						return nil, err
 					}},
-				}}, nil
+				}, nil
 			}, ServeOptions{}); err != nil {
 				return err
 			}
-			return h.Serve(view, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
-				return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+			return h.Serve(view, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{"n": Expose(self.Get(count, jsonObject()).Member("n"))},
-				}}, nil
+				}, nil
 			}, ServeOptions{})
 		}, linkedOptions{})
 		server, client := hosts.Server, hosts.Client
@@ -1016,9 +1014,6 @@ func TestHostReferenceSourceSubscribersAHoldOverALinkOnARemoteObjectReExposingAL
 		must(t, err)
 		viewRef, err := client.Get(background, view, jsonObject(), GetOptions{})
 		must(t, err)
-		if variant, _, _ := viewRef.Variant(); variant != "v" {
-			t.Fatalf("variant = %q, want v", variant)
-		}
 		frames := kmWatch(t, viewRef.Member("n"))
 		_, err = countRef.Call("add", nil, background)
 		must(t, err)
@@ -1081,7 +1076,7 @@ func TestHostReferenceSourceSubscribersDirectlyAreFedTheMembersCallsAFailureThen
 	}))
 	attempts := &attemptList{}
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(counted, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(counted, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			attempts.add(self)
 			first := attempts.len() == 1
 			list := self.State(msList).(*documents.Singleton)
@@ -1091,10 +1086,10 @@ func TestHostReferenceSourceSubscribersDirectlyAreFedTheMembersCallsAFailureThen
 				}
 				return msItemCount(values[0]), nil
 			})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State:   map[string]chord.Watchable[delta.JsonValue]{"count": count},
 				Methods: map[string]contracts.MethodFunction{"add": msPush(list, "")},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	ref, err := host.Get(background, counted, jsonObject(), GetOptions{})
@@ -1133,31 +1128,33 @@ func TestHostReferenceSourceAMemberTheNewAttemptsVariantLacksFailsItsWatchGetsOn
 	two := mustContract(contracts.Remote("app.two", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return serverAddress(), nil },
-		Variants: []contracts.VariantEntry{
-			contracts.Var("full", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("n", contracts.Int())}}),
-			contracts.Var("view", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("m", contracts.Int())}}),
+		State: []contracts.RemoteStateEntry{
+			contracts.StateEntry("n", contracts.NewGrantable(contracts.Int())),
+			contracts.StateEntry("m", contracts.Int()),
 		},
 	}))
 	host := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: ownerPrincipal(), OnError: func(HostError) {}})
 	attempts := &attemptList{}
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(two, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return h.Serve(two, func(_ *delta.JsonObject, _ data.Principal, _ AdmittedValue, self Self) (contracts.MembersImplementation, error) {
 			attempts.add(self)
 			self.State(msList)
-			if attempts.len() == 2 {
-				return contracts.Implementation{Variant: "view", Members: contracts.VariantImplementation{
-					State: map[string]chord.Watchable[delta.JsonValue]{"m": Expose(state.NewConstant(float64(2)))},
-				}}, nil
+			attemptNum := float64(attempts.len())
+			return contracts.MembersImplementation{
+				State:      map[string]chord.Watchable[delta.JsonValue]{"m": Expose(state.NewConstant(float64(2)))},
+				StateBuild: map[string]contracts.StateBuilder{"n": func() chord.Watchable[delta.JsonValue] { return Expose(state.NewConstant(attemptNum)) }},
+			}, nil
+		}, ServeOptions{Admit: func(_ *delta.JsonObject, _ data.Principal, _ AdmitSelf) (chord.Watchable[delta.JsonValue], error) {
+			if attempts.len() == 1 {
+				return Expose(state.NewConstant(Allow(delta.NewJsonObject(0)))), nil
 			}
-			return contracts.Implementation{Variant: "full", Members: contracts.VariantImplementation{
-				State: map[string]chord.Watchable[delta.JsonValue]{"n": Expose(state.NewConstant(float64(attempts.len())))},
-			}}, nil
-		}, ServeOptions{})
+			return Expose(state.NewConstant(Allow(delta.JsonObjectOf("granted", []delta.JsonValue{"n"})))), nil
+		}})
 	})}}, background))
 	ref, err := host.Get(background, two, jsonObject(), GetOptions{})
 	must(t, err)
-	if variant, _, _ := ref.Variant(); variant != "full" {
-		t.Fatalf("variant = %q, want full", variant)
+	if granted, _ := ref.Granted(); !granted["n"] {
+		t.Fatalf("granted = %v, want n", granted)
 	}
 	n := ref.Member("n")
 	calls := kmWatch(t, n)
@@ -1168,12 +1165,12 @@ func TestHostReferenceSourceAMemberTheNewAttemptsVariantLacksFailsItsWatchGetsOn
 	if len(items) != 1 || items[0].Kind != chord.WatchCallFailed {
 		t.Fatalf("calls = %+v, want one failure", items)
 	}
-	if err := items[0].Error; err == nil || !strings.Contains(err.Error(), `app.two (variant view) has no state member "n"`) {
+	if err := items[0].Error; err == nil || !strings.Contains(err.Error(), `app.two has not granted "n"`) {
 		t.Fatalf("failure = %v", err)
-	} else if chordErr, ok := data.IsChordError(err); !ok || chordErr.Code != data.CodeInvalid || chordErr.Reason != data.ReasonMember {
+	} else if chordErr, ok := data.IsChordError(err); !ok || chordErr.Code != data.CodeForbidden {
 		t.Fatalf("failure = %v, want invalid/member", err)
 	}
-	if _, err := n.Value(); err == nil || err.Error() != `app.two (variant view) has no state member "n"` {
+	if _, err := n.Value(); err == nil || err.Error() != `app.two has not granted "n"` {
 		t.Fatalf("n = %v, want it to throw has no state member", err)
 	}
 	// The failed instance is followed until its admitted commits published (audit A10), when the retry's attempt loads
@@ -1199,20 +1196,20 @@ func TestHostReferenceSourceAnEndedObjectsMembersMarkTheDerivesOverThemAConsumer
 		Version: 1, Members: []contracts.LocalEntry{contracts.Mem("twice", contracts.Int())},
 	}))
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(paged, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+		if err := h.Serve(paged, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": Expose(state.NewConstant(float64(4)))},
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(readerType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(readerType, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			twice := self.Derive([]any{self.Get(paged, jsonObject("id", float64(1))).Member("n")}, func(values []any) (delta.JsonValue, error) {
 				return values[0].(float64) * 2, nil
 			})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"twice": twice},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	reader, err := host.Get(background, readerType, jsonObject(), GetOptions{})
@@ -1240,12 +1237,12 @@ func TestHostReferenceSourceAFailedAttemptIsCollectedAfterARetryWhileTheObjectIt
 	var mu sync.Mutex
 	var attempts []weak.Pointer[attempt]
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(msStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(msStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			mu.Lock()
 			attempts = append(attempts, weak.Make(self.(*attempt)))
 			mu.Unlock()
 			list := self.State(msList).(*documents.Singleton)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"list": Expose(list),
 					"count": self.Derive([]any{list}, func(values []any) (delta.JsonValue, error) {
@@ -1253,7 +1250,7 @@ func TestHostReferenceSourceAFailedAttemptIsCollectedAfterARetryWhileTheObjectIt
 					}),
 				},
 				Methods: map[string]contracts.MethodFunction{"add": msPush(list, "text")},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	store := refGet(t, host, msStore, jsonObject())
@@ -1306,16 +1303,16 @@ func TestHostReferenceSourceWhatAReferenceKeepsKeepsNothingOfAnEndedInstanceWhil
 	var mu sync.Mutex
 	var selves []weak.Pointer[attempt]
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(count, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(count, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			mu.Lock()
 			selves = append(selves, weak.Make(self.(*attempt)))
 			mu.Unlock()
 			handle := self.State(doc).(*documents.Singleton)
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 				"n": self.Derive([]any{handle}, func(values []any) (delta.JsonValue, error) {
 					return values[0].(*delta.JsonObject).Value("n"), nil
 				}),
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	})
 	host := newHost(t, HostOptions{OnError: func(HostError) {}})
@@ -1418,15 +1415,13 @@ func TestHostReferenceSourceAReferenceKeepsTheLastValuesOfItsAttachedInstancesVa
 	typ := mustContract(contracts.Remote("app.remote-unread", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return serverAddress(), nil },
-		Variants: []contracts.VariantEntry{contracts.Var("full", contracts.VariantDeclaration{
-			State: []contracts.Property{contracts.Prop("n", contracts.Int())},
-		})},
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 	}))
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(typ, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Variant: "full", Members: contracts.VariantImplementation{
+		return h.Serve(typ, func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": Expose(state.NewConstant(float64(7)))},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})
 	host := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: ownerPrincipal(), OnError: func(HostError) {}})
@@ -1451,13 +1446,13 @@ func TestHostReferenceSourceAFailedObjectLetsItsEndedInstanceGoCollectsTheInstan
 	var mu sync.Mutex
 	var self Self
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(typ, func(_ *delta.JsonObject, declared Self) (contracts.Implementation, error) {
+		return h.Serve(typ, func(_ *delta.JsonObject, declared Self) (contracts.MembersImplementation, error) {
 			mu.Lock()
 			self = declared
 			mu.Unlock()
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": Expose(state.NewConstant(float64(7)))},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})
 	host := newHost(t, HostOptions{OnError: func(HostError) {}})

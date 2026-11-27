@@ -29,15 +29,15 @@ var rootInfo = mustContract(declareLocal("app.info", contracts.LocalDeclaration{
 
 // serveRootInfo serves `Info`; its `wait` waits until the caller's context aborts.
 func serveRootInfo(h FacetHost, _ FacetSelf) error {
-	return h.Serve(rootInfo, func(params *delta.JsonObject, _ Self) (contracts.Implementation, error) {
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+	return h.Serve(rootInfo, func(params *delta.JsonObject, _ Self) (contracts.MembersImplementation, error) {
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{"id": constant(params.Value("id"))},
 			Methods: map[string]contracts.MethodFunction{
 				"wait": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					return nil, Sleep(time.Minute, ctx)
 				},
 			},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 }
 
@@ -347,9 +347,9 @@ func TestHostRootRefusesAnAnonymousScopeARemoteTypeServedHereForbiddenALocalOneI
 	secrets := mustContract(declareRemote("app.secrets", contracts.RemoteDeclaration{
 		Version:     1,
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{Methods: []contracts.MethodEntry{
+		Methods: []contracts.RemoteMethodEntry{
 			contracts.Meth("read", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
-		}})},
+		},
 	}))
 	address := serverAddress()
 	host := newHost(t, HostOptions{Address: &address, Principal: serverPrincipal(), OnError: func(HostError) {}})
@@ -358,10 +358,10 @@ func TestHostRootRefusesAnAnonymousScopeARemoteTypeServedHereForbiddenALocalOneI
 		if err := serveRootInfo(h, self); err != nil {
 			return err
 		}
-		return h.Serve(secrets, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Variant: "main", Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+		return h.Serve(secrets, func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				"read": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return "secret", nil },
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	})
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/secrets", Facet: facet}}, background))

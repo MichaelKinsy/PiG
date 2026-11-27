@@ -50,7 +50,7 @@ func TestExample29Registries(t *testing.T) {
 		}.Erase(), ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(server, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(server, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			router := self.Registry(registries.Registry[any, any](http))
 			return exImpl(nil, map[string]contracts.MethodFunction{
 				"request": exMethod(func(args *delta.JsonObject, _ context.Context) (delta.JsonValue, error) {
@@ -88,7 +88,7 @@ func TestExample29Registries(t *testing.T) {
 	})
 	// 4. A host-lifetime object contributes a writable: its changes recompose the router.
 	mountsPlugin := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(mounts, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(mounts, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			routes := self.Writable(exRoutes{})
 			self.(StoreSelf).Contribute(registries.Registry[any, any](http), routes)
 			return exImpl(nil, map[string]contracts.MethodFunction{

@@ -28,17 +28,17 @@ func TestExample15Revocation(t *testing.T) {
 	guestOf := func(grant, session string) data.Principal {
 		return jsonObject("kind", "guest", "grant", grant, "session", session)
 	}
-	notes := exRemote("example.notes", contracts.Params{exProp("session", exStr())}, exSessionAddress, contracts.Var("all", contracts.VariantDeclaration{
-		State: []contracts.Property{exProp("notes", exArr(exStr()))},
-		Methods: []contracts.MethodEntry{
+	notes := exRemote("example.notes", contracts.Params{exProp("session", exStr())}, exSessionAddress, contracts.RemoteDeclaration{
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("notes", exArr(exStr()))},
+		Methods: []contracts.RemoteMethodEntry{
 			contracts.Meth("add", contracts.NewMethod(exObj(exProp("text", exStr())))),
 			contracts.Meth("follow", contracts.NewMethod()),
 		},
-	}))
+	})
 	doc := exStringListDoc("notes")
 	followAborted := make(chan error, 1)
 	notesFacet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(notes, func(_ *delta.JsonObject, principal data.Principal, self Self) (contracts.Implementation, error) {
+		return h.Serve(notes, func(_ *delta.JsonObject, principal data.Principal, self Self) (contracts.MembersImplementation, error) {
 			notesDoc := stateOf(self, doc)
 			return exVariant("all", map[string]chord.Watchable[delta.JsonValue]{
 				"notes": self.Derive([]any{notesDoc.s}, func(values []any) (delta.JsonValue, error) {

@@ -69,13 +69,13 @@ func TestNamedQueryAPluginKeepsItsOldCodeWhenItsNewFactoryDeclaresAReadWrongly(t
 // nqServeClubDeclaring is the club's plugin whose factory declares what declare does (Pi's `serveClub(h, ..., declare)`),
 // and serves the page as the club's old code does.
 func nqServeClubDeclaring(h FacetHost, declare func(self StoreSelf)) error {
-	if err := h.Serve(nqClub, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+	if err := h.Serve(nqClub, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 		declare(plain.(StoreSelf))
-		return contracts.Implementation{}, nil
+		return contracts.MembersImplementation{}, nil
 	}, ServeOptions{}); err != nil {
 		return err
 	}
-	return h.Serve(nqTeamPage, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-		return contracts.Implementation{}, nil
+	return h.Serve(nqTeamPage, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+		return contracts.MembersImplementation{}, nil
 	}, ServeOptions{})
 }

@@ -34,12 +34,12 @@ func setOutput(ctx JobCtx, output string, options ChangeOptions) error {
 func TestSelfJobIsDeclaredOncePerJobNameOnlyWhileTheFactoryRuns(t *testing.T) {
 	var later Self
 	host, errs := jobsLoaded(t, func(h FacetHost) error {
-		return h.Serve(jobItemType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(jobItemType, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			later = self
 			self.Job(jobEcho, JobImplementation{Run: echoRun()})
 			// Declared twice: Pi throws, so does Self.Job (the factory's panic is the activation's error).
 			self.Job(jobEcho, JobImplementation{Run: echoRun()})
-			return contracts.Implementation{}, nil
+			return contracts.MembersImplementation{}, nil
 		}, ServeOptions{})
 	}, jobHostOptions{})
 	_, err := host.Get(background, jobItemType, jsonObject("id", float64(1)), GetOptions{})
@@ -67,15 +67,15 @@ func TestRunGetsACtxWithTheRunsIDTheHostsPrincipalForALocalObjectAndNoStateWitho
 	var job JobHandle
 	host := newJobHost(t, HostOptions{Principal: serverPrincipal(), OnError: func(HostError) {}})
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(jobStoreType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(jobStoreType, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			log := stateOf(self, jobLogState)
 			job = self.Job(jobEcho, JobImplementation{Run: func(args any, ctx JobCtx) (any, error) {
 				got <- seen{id: ctx.JobID(), principal: ctx.Principal(), hasState: ctx.State() != nil}
 				return textOf(args), nil
 			}})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"log": log.Member()},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})}}, background))
 	run := jobStart(t, job, textArgs("a"), background)
@@ -345,15 +345,15 @@ func TestRunReleasesItsCtxGetReferencesWhenItSettles(t *testing.T) {
 	var host Host
 	inside := make(chan int, 1)
 	host, _ = jobsLoaded(t, func(h FacetHost) error {
-		if err := h.Serve(other, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(other, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			log := stateOf(self, jobLogState)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"log": log.Member()},
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(jobStoreType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(jobStoreType, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			log := stateOf(self, jobLogState)
 			job = self.Job(jobEcho, JobImplementation{Run: func(args any, ctx JobCtx) (any, error) {
 				if _, err := ctx.Get(other, jsonObject("id", float64(1)), GetOptions{}); err != nil {
@@ -362,9 +362,9 @@ func TestRunReleasesItsCtxGetReferencesWhenItSettles(t *testing.T) {
 				inside <- referenceCount(t, host, other)
 				return textOf(args), nil
 			}})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"log": log.Member()},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, jobHostOptions{})
 	runOutcome(t, jobStart(t, job, textArgs("a"), background))
@@ -903,7 +903,7 @@ func TestKeepAliveKeepsAnObjectWithoutHoldersWhileRunsRunAndEndsItAfterTheLastOn
 	ended := make(chan struct{})
 	var host Host
 	host, _ = jobsLoaded(t, func(h FacetHost) error {
-		return h.Serve(jobItemType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(jobItemType, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			log := stateOf(self, jobLogState)
 			job = self.Job(jobEcho, JobImplementation{Run: gated(g)})
 			self.OnLive(func(ctx Ctx) *Handled {
@@ -913,9 +913,9 @@ func TestKeepAliveKeepsAnObjectWithoutHoldersWhileRunsRunAndEndsItAfterTheLastOn
 					return nil
 				})
 			})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"log": log.Member()},
-			}}, nil
+			}, nil
 		}, ServeOptions{Linger: new(20 * time.Millisecond)})
 	}, jobHostOptions{Loop: loop})
 	item, err := host.Get(background, jobItemType, jsonObject("id", float64(1)), GetOptions{})
@@ -968,7 +968,7 @@ func TestKeepAliveKeepsAnObjectWhoseLastRunsFinishChainsAnotherJobTheChainedRunR
 	var chained Run
 	var host Host
 	host, _ = jobsLoaded(t, func(h FacetHost) error {
-		return h.Serve(jobItemType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(jobItemType, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			log := stateOf(self, jobLogState)
 			self.Open(
 				func(context.Context) (any, error) { return nil, nil },
@@ -989,9 +989,9 @@ func TestKeepAliveKeepsAnObjectWhoseLastRunsFinishChainsAnotherJobTheChainedRunR
 					return err
 				},
 			})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"log": log.Member()},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, jobHostOptions{})
 	item, err := host.Get(background, jobItemType, jsonObject("id", float64(1)), GetOptions{})
@@ -1025,15 +1025,15 @@ func TestKeepAliveDropsBlockedRunsReportedWhenTheObjectEndsAfterItsLastRun(t *te
 	var host Host
 	var errs *hostErrors
 	host, errs = jobsLoaded(t, func(h FacetHost) error {
-		return h.Serve(jobItemType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(jobItemType, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			log := stateOf(self, jobLogState)
 			job = self.Job(jobEcho, JobImplementation{
 				Run:    echoRun(),
 				Finish: func(Outcome, documents.Tx) error { return errors.New("stuck") },
 			})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"log": log.Member()},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, jobHostOptions{Loop: loop})
 	item, err := host.Get(background, jobItemType, jsonObject("id", float64(1)), GetOptions{})
@@ -1059,12 +1059,12 @@ func TestKeepAliveKeepsALingeringObjectWhenARunStartsDuringItsLinger(t *testing.
 	g := newJobGate()
 	var job JobHandle
 	host, _ := jobsLoaded(t, func(h FacetHost) error {
-		return h.Serve(jobItemType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(jobItemType, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			log := stateOf(self, jobLogState)
 			job = self.Job(jobEcho, JobImplementation{Run: gated(g)})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"log": log.Member()},
-			}}, nil
+			}, nil
 		}, ServeOptions{Linger: new(20 * time.Millisecond)})
 	}, jobHostOptions{})
 	item, err := host.Get(background, jobItemType, jsonObject("id", float64(1)), GetOptions{})

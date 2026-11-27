@@ -151,14 +151,14 @@ func TestSlotPersistedSingletonsFailTheActivationBrokenForANewerStoredVersionOrA
 		func() *delta.JsonObject { return jsonObject("theme", "light") })
 	serve := func(definition *documents.StateDefinition, doc **singletonDoc) func(h FacetHost, _ FacetSelf) error {
 		return func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(StoreRestartable, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(StoreRestartable, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				handle := self.(StoreSelf).State(definition).(*documents.Singleton)
 				if doc != nil {
 					*doc = &singletonDoc{s: handle}
 				}
-				return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+				return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 					"touch": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil },
-				}}}, nil
+				}}, nil
 			}, ServeOptions{})
 		}
 	}
@@ -194,18 +194,18 @@ func TestSlotPersistedSingletonsRefusePersistingWithoutAStableIdentityOrAStoreAn
 	inMemory := prefsDefinition(t, 1, themeN, false, light)
 	// The types refuse it; a plugin may still try (P3).
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(Restartable, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(Restartable, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			self.State(prefs)
-			return contracts.Implementation{}, nil
+			return contracts.MembersImplementation{}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	if _, err := host.Get(background, Restartable, jsonObject("id", 1.0), GetOptions{}); err == nil || !hasText(err.Error(), "persist needs a stable identity") {
 		t.Fatalf("keyed get = %v, want persist needs a stable identity", err)
 	}
 	storeless, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(StoreRestartable, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(StoreRestartable, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			self.State(prefs)
-			return contracts.Implementation{}, nil
+			return contracts.MembersImplementation{}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	if _, err := storeless.Get(background, StoreRestartable, jsonObject(), GetOptions{}); err == nil || !hasText(err.Error(), "persist needs a store") {
@@ -252,22 +252,22 @@ func TestObjectALiveObjectFailingLetsACommitAdmittedBeforeTheFailureAdoptAndPubl
 	var self Self
 	var counter *singletonDoc
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(doubled, func(_ *delta.JsonObject, s Self) (contracts.Implementation, error) {
+		if err := h.Serve(doubled, func(_ *delta.JsonObject, s Self) (contracts.MembersImplementation, error) {
 			mu.Lock()
 			self, counter = s, &singletonDoc{s: s.(StoreSelf).State(objCounterPersisted).(*documents.Singleton)}
 			mu.Unlock()
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 				"double": s.Derive([]any{counter.s}, func(values []any) (delta.JsonValue, error) {
 					return values[0].(*delta.JsonObject).Value("n").(float64) * 2, nil
 				}),
-			}}}, nil
+			}}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(viewerType, func(_ *delta.JsonObject, s Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+		return h.Serve(viewerType, func(_ *delta.JsonObject, s Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 				"tens": s.Derive([]any{s.Get(doubled, jsonObject()).Member("double")}, func(values []any) (delta.JsonValue, error) { return values[0].(float64) * 10, nil }),
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{Store: chordStore})
 	ref := mustGet(t, host, doubled, jsonObject())
@@ -377,7 +377,7 @@ func TestObjectALiveObjectFailingKeepsItsStateMembersLastValuesForSameHostReadsA
 	var mu sync.Mutex
 	var storeSelf Self
 	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(objStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(objStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			mu.Lock()
 			storeSelf = self
 			mu.Unlock()
@@ -385,10 +385,10 @@ func TestObjectALiveObjectFailingKeepsItsStateMembersLastValuesForSameHostReadsA
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(viewerType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+		return h.Serve(viewerType, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 				"tens": self.Derive([]any{self.Get(objStore, jsonObject()).Member("count")}, func(values []any) (delta.JsonValue, error) { return values[0].(float64) * 10, nil }),
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	ref := mustGet(t, host, objStore, jsonObject())
@@ -443,13 +443,13 @@ func TestTransactionPersistedDocumentsAHandlersCommitHeldInTheSQLPastCloseTimeou
 	var counter *singletonDoc
 	closeTimeout := 20 * time.Millisecond
 	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(writer, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(writer, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			counter = &singletonDoc{s: self.(StoreSelf).State(objCounterPersisted).(*documents.Singleton)}
-			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				"write": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					return nil, bumpDoc(counter, ctx)
 				},
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{Store: chordStore, CloseTimeout: &closeTimeout, Loop: loop})
 	ref := mustGet(t, host, writer, jsonObject())
@@ -475,11 +475,11 @@ func TestTransactionPersistedDocumentsAHandlersCommitHeldInTheSQLPastCloseTimeou
 	_ = receive(t, called)
 	// The store stays usable: a new host over it serves the committed value.
 	again, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(writer, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(writer, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			counter = &singletonDoc{s: self.(StoreSelf).State(objCounterPersisted).(*documents.Singleton)}
-			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				"write": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil },
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{Store: chordStore})
 	mustGet(t, again, writer, jsonObject())

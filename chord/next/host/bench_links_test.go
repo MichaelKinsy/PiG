@@ -48,26 +48,23 @@ var benchLinksStore = mustContract(contracts.Local("bench.store", contracts.Loca
 }))
 
 // benchLinksView is the remote view a client holds: the store's document as it is.
-var benchLinksView = remoteOneVariantNamed("bench.view", "owner", contracts.Params{contracts.Prop("name", contracts.Str())},
-	contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("doc", benchLinksShape)}})
+var benchLinksView = mustContract(contracts.Remote("bench.view", contracts.RemoteDeclaration{
+	Version:     1,
+	Params:      contracts.Params{contracts.Prop("name", contracts.Str())},
+	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
+	State:       []contracts.RemoteStateEntry{contracts.StateEntry("doc", benchLinksShape)},
+}))
 
 // benchLinksFiles is a file service: a call with a small argument, and one with bytes.
-var benchLinksFiles = remoteOneVariantNamed("bench.files", "owner", contracts.Params{}, contracts.VariantDeclaration{
-	Methods: []contracts.MethodEntry{
+var benchLinksFiles = mustContract(contracts.Remote("bench.files", contracts.RemoteDeclaration{
+	Version:     1,
+	Params:      contracts.Params{},
+	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
+	Methods: []contracts.RemoteMethodEntry{
 		contracts.Meth("ping", contracts.NewMethod(contracts.Obj(contracts.Prop("n", contracts.Int())), contracts.Int())),
 		contracts.Meth("put", contracts.NewMethod(contracts.Obj(contracts.Prop("data", contracts.Bytes())), contracts.Int())),
 	},
-})
-
-// remoteOneVariantNamed is remoteOneVariant with the variant's name.
-func remoteOneVariantNamed(name, variant string, params contracts.Params, declaration contracts.VariantDeclaration) *contracts.Contract {
-	return mustContract(contracts.Remote(name, contracts.RemoteDeclaration{
-		Version:     1,
-		Params:      params,
-		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-		Variants:    []contracts.VariantEntry{contracts.Var(variant, declaration)},
-	}))
-}
+}))
 
 var benchLinksDoc = func() *documents.StateDefinition {
 	definition, err := documents.DefineState("doc", documents.StateOptions{
@@ -112,9 +109,9 @@ func benchLinksFacet(pings *benchPings) func(host FacetHost, _ FacetSelf) error 
 			_, err := doc.Change(ctx, func(draft *delta.Object) (any, error) { return nil, fn(draft.Array("entries")) })
 			return nil, err
 		}
-		if err := h.Serve(benchLinksStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(benchLinksStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			doc := self.State(benchLinksDoc).(*documents.Singleton)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"doc": Expose(doc)},
 				Methods: map[string]contracts.MethodFunction{
 					"append": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -139,21 +136,21 @@ func benchLinksFacet(pings *benchPings) func(host FacetHost, _ FacetSelf) error 
 						}, ctx)
 					},
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		if err := h.Serve(benchLinksView, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Variant: "owner", Members: contracts.VariantImplementation{
+		if err := h.Serve(benchLinksView, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"doc": Expose(self.Get(benchLinksStore, jsonObject("name", params.Value("name"))).Member("doc")),
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(benchLinksFiles, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Variant: "owner", Members: contracts.VariantImplementation{
+		return h.Serve(benchLinksFiles, func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				Methods: map[string]contracts.MethodFunction{
 					"ping": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
 						n := args.(*delta.JsonObject).Value("n").(float64)
@@ -164,7 +161,7 @@ func benchLinksFacet(pings *benchPings) func(host FacetHost, _ FacetSelf) error 
 						return float64(len(args.(*delta.JsonObject).Value("data").([]byte))), nil
 					},
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}
 }

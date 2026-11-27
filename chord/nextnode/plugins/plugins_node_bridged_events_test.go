@@ -77,7 +77,7 @@ func (p *gmProbe) paddle() contracts.EventSource[delta.JsonValue] {
 // gmFacet is the Go core facet that serves `test.gomatch`.
 func gmFacet(probe *gmProbe) host.Facet {
 	return host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		return h.Serve(gmMatch, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+		return h.Serve(gmMatch, func(_ *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
 			paddle := self.Events()
 			self.Open(func(context.Context) (any, error) { return struct{}{}, nil },
 				func(any, host.NativeCloseReason, context.Context) error {
@@ -87,7 +87,7 @@ func gmFacet(probe *gmProbe) host.Facet {
 			probe.mu.Lock()
 			probe.paddles = append(probe.paddles, paddle)
 			probe.mu.Unlock()
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				Events: map[string]contracts.EventMember[delta.JsonValue]{"paddle": paddle},
 				Methods: map[string]contracts.MethodFunction{
 					"serve": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
@@ -110,7 +110,7 @@ func gmFacet(probe *gmProbe) host.Facet {
 						}
 					},
 				},
-			}}, nil
+			}, nil
 		}, host.ServeOptions{})
 	})
 }
@@ -558,9 +558,7 @@ var tlServer = mustKind(contracts.NewHostKind("test.goserver"))
 var tlEcho = mustContract(contracts.Remote("test.goecho", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return tlServer.Address(nil), nil },
-	Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
-		Methods: []contracts.MethodEntry{contracts.Meth("echo", contracts.NewMethod(contracts.Num(), contracts.Num()))},
-	})},
+	Methods: []contracts.RemoteMethodEntry{contracts.Meth("echo", contracts.NewMethod(contracts.Num(), contracts.Num()))},
 }))
 
 // tlRelay is `test.relay`, served by the plugin below: `relay(n)` calls the Go server's `echo(n)` over the Node host's link.
@@ -580,12 +578,12 @@ func TestAPluginsCallOfATypeTheGoHostServesOverTheNodeHostsTrustedLinkCompletes(
 	}
 	t.Cleanup(func() { _ = server.Close(background) })
 	facet := host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		return h.Serve(tlEcho, func(*delta.JsonObject, data.Principal, host.Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Variant: "main", Members: contracts.VariantImplementation{
+		return h.Serve(tlEcho, func(*delta.JsonObject, data.Principal, host.Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				Methods: map[string]contracts.MethodFunction{
 					"echo": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) { return args, nil },
 				},
-			}}, nil
+			}, nil
 		}, host.ServeOptions{})
 	})
 	if _, err := server.Load([]host.HostFacet{{Name: "@app/echo", Facet: facet}}, background); err != nil {

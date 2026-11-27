@@ -58,8 +58,8 @@ func TestSupportLoadedCollectsErrorsAndTheFailedPlugins(t *testing.T) {
 		t.Fatalf("failed = %+v, want @test/app with its setup's error", errs.Failed)
 	}
 	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(Restartable, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{}, errors.New("no way")
+		return h.Serve(Restartable, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{}, errors.New("no way")
 		}, ServeOptions{})
 	}, loadedOptions{})
 	if len(errs.Failed) != 0 {

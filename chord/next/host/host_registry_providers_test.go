@@ -93,7 +93,7 @@ func TestTheTablesMemoryKeepsNothingOfAClosedHostRecordsTablesAndFollowedContrib
 			if err := rvServeNames(h); err != nil {
 				return err
 			}
-			return h.Serve(kept, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(kept, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				document := stateOf(self, doc)
 				self.(StoreSelf).Contribute(rvNames, self.Derive([]any{document.Member()}, func(values []any) (delta.JsonValue, error) {
 					return fmt.Sprint(values[0].(*delta.JsonObject).Value("on")), nil

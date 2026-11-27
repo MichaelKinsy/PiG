@@ -28,9 +28,9 @@ var stagingStore = mustContract(declareLocal("app.store", contracts.LocalDeclara
 }))
 
 // stagingStoreImpl is `{ label: constant(label), bump: async () => 0 }`.
-func stagingStoreImpl(label string) contracts.Implementation {
+func stagingStoreImpl(label string) contracts.MembersImplementation {
 	implementation := impl("label", constant(label))
-	implementation.Members.Methods = map[string]contracts.MethodFunction{
+	implementation.Methods = map[string]contracts.MethodFunction{
 		"bump": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return float64(0), nil },
 	}
 	return implementation
@@ -39,7 +39,7 @@ func stagingStoreImpl(label string) contracts.Implementation {
 // stagingServeStore is `serveStore(label, declare)`: serves Store labelled label, its factory running declare first.
 func stagingServeStore(label string, declare func(self StoreSelf)) Facet {
 	return DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(stagingStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(stagingStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			if declare != nil {
 				declare(self.(StoreSelf))
 			}
@@ -94,11 +94,11 @@ func TestStagingAThrowKeepsThePluginOnItsOldCodeReported(t *testing.T) {
 		}, "version 1 is older than its documents' (2)"},
 		{"a broken accepts table", func(*testing.T) Facet {
 			return DefineFacet(func(h FacetHost, _ FacetSelf) error {
-				return h.Serve(stagingStore, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+				return h.Serve(stagingStore, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
 					return stagingStoreImpl("x"), nil
 				}, ServeOptions{Accepts: contracts.AcceptsTable{{Name: "7", Value: contracts.VersionMappings{}}}})
 			})
-		}, "accepts[7]: not an older version"},
+		}, "accepts[7]: not a version of this contract's history"},
 	}
 	for _, c := range cases {
 		t.Run(c.what+": the reload reports it, the plugin unchanged", func(t *testing.T) {
@@ -126,15 +126,14 @@ func TestStagingARemoteTypeOnAHostWithoutAnAddressIsRefusedAsAtLoad(t *testing.T
 	remoteType := mustContract(declareRemote("app.remote", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-		Variants:    []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("n", contracts.Int())}})},
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 	}))
 	host := newHost(t, HostOptions{Principal: serverPrincipal(), OnError: noopOnError})
 	defer closeHosts(t, host)
 	mustLoad(t)(host.Load(nil, background))
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(remoteType, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
+		return h.Serve(remoteType, func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {
 			implementation := impl("n", constant(float64(1)))
-			implementation.Variant = "v"
 			return implementation, nil
 		}, ServeOptions{})
 	})
@@ -282,7 +281,7 @@ func TestStagingAContributionOutsideAHostLifetimeObjectIsADeclarationErrorAtStag
 	defer closeHosts(t, host)
 	pageFacet := func(contribute bool) Facet {
 		return DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(page, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(page, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				if contribute {
 					self.(StoreSelf).Contribute(registries.Registry[any, any](names), "x")
 				}
@@ -302,12 +301,12 @@ func TestStagingAContributionOutsideAHostLifetimeObjectIsADeclarationErrorAtStag
 func TestStagingDeclarationParityWithAnAttemptRefusesRetryOnOfAnAttemptOwnedWritableThePluginKeptOnItsOldCode(t *testing.T) {
 	typ := mustContract(declareLocal("astra.staging", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())}}))
 	oldFacet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(typ, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+		return h.Serve(typ, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
 			return impl("n", constant(float64(1))), nil
 		}, ServeOptions{})
 	})
 	newFacet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(typ, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(typ, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			self.RetryOn(self.Writable(float64(0)))
 			return impl("n", constant(float64(2))), nil
 		}, ServeOptions{})
@@ -342,11 +341,11 @@ var (
 func stagingNotes(version int, count float64) Facet {
 	return DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		if version == 1 {
-			return h.Serve(stagingNotesV1, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+			return h.Serve(stagingNotesV1, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
 				return impl("count", constant(count)), nil
 			}, ServeOptions{})
 		}
-		return h.Serve(stagingNotesV2, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+		return h.Serve(stagingNotesV2, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
 			return impl("count", constant(count), "title", constant("t")), nil
 		}, ServeOptions{})
 	})
@@ -355,7 +354,7 @@ func stagingNotes(version int, count float64) Facet {
 // stagingViewFacet is a consumer of the notes at version, labelled label and the count it reads.
 func stagingViewFacet(version int, label string) Facet {
 	return DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(stagingView, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(stagingView, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			notes := stagingNotesV1
 			if version == 2 {
 				notes = stagingNotesV2
@@ -503,17 +502,17 @@ func TestStagingPerPluginTheClosureRuleChecksARequestAsARealBindDoesTheKeptProvi
 			}
 			return hereKind.Address(nil), nil
 		},
-		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("n", contracts.Int())}})},
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 	}))
 	consumed := mustContract(declareRemote("app.provider", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Int())},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return hereKind.Address(nil), nil },
-		Variants:    []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("n", contracts.Int())}})},
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 	}))
 	consumer := mustContract(declareLocal("app.consumer", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())}}))
 	consumerFacet := func(id float64) Facet {
 		return DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(consumer, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(consumer, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				n := self.Get(consumed, jsonObject("id", id)).Member("n")
 				return impl("n", self.Derive([]any{n}, func(values []any) (delta.JsonValue, error) { return values[0], nil })), nil
 			}, ServeOptions{})
@@ -523,9 +522,8 @@ func TestStagingPerPluginTheClosureRuleChecksARequestAsARealBindDoesTheKeptProvi
 	host := newHost(t, HostOptions{Address: &address, Principal: ownerPrincipal(), OnError: noopOnError})
 	defer closeHosts(t, host)
 	providerFacet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(provided, func(params *delta.JsonObject, _ data.Principal, _ Self) (contracts.Implementation, error) {
+		return h.Serve(provided, func(params *delta.JsonObject, _ data.Principal, _ Self) (contracts.MembersImplementation, error) {
 			implementation := impl("n", constant(params.Value("id")))
-			implementation.Variant = "main"
 			return implementation, nil
 		}, ServeOptions{})
 	})
@@ -553,7 +551,7 @@ func TestStagingPerPluginTheClosureRuleCoversANameNobodyServesWhileAPluginFailed
 	defer closeHosts(t, host)
 	chain := func(typ, needed *contracts.Contract, needs bool) Facet {
 		return DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(typ, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(typ, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				if needs {
 					return impl("n", Expose(self.Get(needed, jsonObject()).Member("n"))), nil
 				}

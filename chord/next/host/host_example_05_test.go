@@ -36,7 +36,7 @@ func TestExample05Errors(t *testing.T) {
 		}
 	}})
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(echo, func(params *delta.JsonObject, _ Self) (contracts.Implementation, error) {
+		if err := h.Serve(echo, func(params *delta.JsonObject, _ Self) (contracts.MembersImplementation, error) {
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"id": exConstant(params.Value("id"))}, map[string]contracts.MethodFunction{
 				"echo": exMethod(func(args *delta.JsonObject, _ context.Context) (delta.JsonValue, error) {
 					return args.Value("text"), nil
@@ -45,24 +45,24 @@ func TestExample05Errors(t *testing.T) {
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		if err := h.Serve(broken, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{}, errors.New("broken: missing configuration")
+		if err := h.Serve(broken, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{}, errors.New("broken: missing configuration")
 		}, ServeOptions{}); err != nil {
 			return err
 		}
 		// Chord checks the implementation's members when the object activates.
-		return h.Serve(sloppy, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+		return h.Serve(sloppy, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"n": exConstant(float64(1)), "extra": exConstant(float64(2))}, nil), nil
 		}, ServeOptions{})
 	})
 	// Ping and Pong are served by a second plugin: types with empty params activate at load.
 	cycle := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(ping, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(ping, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"n": Expose(self.Get(pong, jsonObject()).Member("n"))}, nil), nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(pong, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(pong, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"n": Expose(self.Get(ping, jsonObject()).Member("n"))}, nil), nil
 		}, ServeOptions{})
 	})

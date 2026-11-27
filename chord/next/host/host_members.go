@@ -7,6 +7,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
@@ -129,45 +130,104 @@ func (i implementation) own(member string) any {
 	return nil
 }
 
-// factoryResult is what a factory returned: the members of a local contract's variant (variant nil), or a remote
-// contract's `{ variant, members }` (variant nil when it named none: Pi's undefined).
-type factoryResult struct {
-	variant *string
-	members implementation
+// grantedImplementation is what a remote factory's return exposes to a caller granted `granted` (slice 15 §1.3):
+// its plain members as returned, its granted grantable methods, and its granted grantable state and event members built
+// (their builders called now, while the factory's declarations are open); nothing of a member not granted. Plugin code:
+// a grantable member that is no function fails the attempt.
+func grantedImplementation(
+	contract *contracts.Contract,
+	impl implementation,
+	granted map[string]bool,
+) (implementation, error) {
+	version, err := contracts.CurrentVersion(contract)
+	if err != nil {
+		return nil, err
+	}
+	if len(version.Grantable) == 0 {
+		return impl, nil
+	}
+	exposed := make(implementation, 0, len(impl))
+	for _, each := range impl {
+		if !version.Grantable[each.name] {
+			exposed = append(exposed, each)
+			continue
+		}
+		switch fn := each.value.(type) {
+		case contracts.MethodFunction:
+			if fn == nil {
+				return nil, errors.New(each.name + ": a grantable member is a function (a builder of its state or events)")
+			}
+			if granted[each.name] {
+				exposed = append(exposed, each)
+			}
+		case contracts.StateBuilder:
+			if fn == nil {
+				return nil, errors.New(each.name + ": a grantable member is a function (a builder of its state or events)")
+			}
+			if granted[each.name] {
+				if version.Members.Methods.Has(each.name) {
+					exposed = append(exposed, each)
+				} else {
+					built, err := tryPlugin(func() (any, error) { return fn(), nil })
+					if err != nil {
+						return nil, err
+					}
+					exposed = append(exposed, implementationMember{name: each.name, value: unwrapMember(built)})
+				}
+			}
+		case contracts.EventBuilder:
+			if fn == nil {
+				return nil, errors.New(each.name + ": a grantable member is a function (a builder of its state or events)")
+			}
+			if granted[each.name] {
+				if version.Members.Methods.Has(each.name) {
+					exposed = append(exposed, each)
+				} else {
+					built, err := tryPlugin(func() (any, error) { return fn(), nil })
+					if err != nil {
+						return nil, err
+					}
+					exposed = append(exposed, implementationMember{name: each.name, value: unwrapMember(built)})
+				}
+			}
+		default:
+			return nil, errors.New(each.name + ": a grantable member is a function (a builder of its state or events)")
+		}
+	}
+	return exposed, nil
 }
 
-// checkImplementation checks what a factory returned (plugin code): a local contract's members, or a remote contract's
-// `{ variant, members }` naming one of its current variants. sources owns the attempt's own event sources (none
-// declared: nil). Errors name the variant or member (the failure cause adds the object). The returned variant is nil for
-// a local contract.
+// checkImplementation checks what a factory returned (plugin code; a remote one's as grantedImplementation exposed it):
+// exactly the contract's members, a remote one's plain members and the granted ones. sources owns the attempt's own
+// event sources (none declared: nil). Errors name the member (the failure cause adds the object).
 func checkImplementation(
 	contract *contracts.Contract,
-	result factoryResult,
+	impl implementation,
 	sources *eventSourceOwner,
-) (variant *string, checked *members, err error) {
-	variants, err := contracts.CurrentVariants(contract)
+	granted map[string]bool,
+) (*members, error) {
+	version, err := contracts.CurrentVersion(contract)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	if contract.Kind == contracts.KindLocal {
-		// The member check establishes the shape.
-		checked, err = checkMembers(variants.Value(contracts.LocalVariant), result.members, sources)
-		return nil, checked, err
-	}
-	var named *contracts.VariantData
-	found := false
-	if result.variant != nil {
-		named, found = variants.Get(*result.variant)
-	}
-	if !found {
-		name := "undefined"
-		if result.variant != nil {
-			name = jsStringify(*result.variant)
+	return checkMembers(contracts.GrantedMembers(version, granted), impl, sources)
+}
+
+// lacking is the error of a use of member (what: "method" or "state member") that the object label lacks: `forbidden`
+// for a member grantable at version (the caller's; nil means the current version) it was not granted (slice 15 §1.3:
+// the member exists), else `invalid/member`.
+func lacking(label string, contract *contracts.Contract, member string, what string, version *contracts.VersionData) *data.ChordError {
+	if version == nil {
+		var err error
+		version, err = contracts.CurrentVersion(contract)
+		if err != nil {
+			return data.Invalid(data.ReasonMember, fmt.Sprintf("%s has no %s %q", label, what, member))
 		}
-		return nil, nil, fmt.Errorf("variant %s: not a variant of %s", name, contract.Name)
 	}
-	checked, err = checkMembers(named, result.members, sources)
-	return result.variant, checked, err
+	if version.Grantable[member] {
+		return data.Forbidden(fmt.Sprintf("%s has not granted %q", label, member))
+	}
+	return data.Invalid(data.ReasonMember, fmt.Sprintf("%s has no %s %q", label, what, member))
 }
 
 // jsStringify is JSON.stringify of a string.
@@ -183,7 +243,7 @@ func jsStringify(text string) string {
 // watchables, keyed members keyed document handles and event members the attempt's own sources or references' event
 // members); a method without arguments is called with the context alone.
 func checkMembers(
-	variant *contracts.VariantData,
+	variant *contracts.MembersData,
 	given implementation,
 	sources *eventSourceOwner,
 ) (*members, error) {

@@ -42,7 +42,7 @@ func TestExample07Failures(t *testing.T) {
 		errs.push(err)
 	}})
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@example/failures", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(remote, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(remote, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			attempts++
 			attempt := attempts
 			self.Open(func(context.Context) (any, error) {
@@ -56,7 +56,7 @@ func TestExample07Failures(t *testing.T) {
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		if err := h.Serve(inbox, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(inbox, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			user := exParam(params, "user")
 			// A dependency that fails parks this object (`failed { waiting }`); it goes on once the dependency is live.
 			remoteRef := self.Get(remote, jsonObject())
@@ -68,7 +68,7 @@ func TestExample07Failures(t *testing.T) {
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		if err := h.Serve(mirror, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(mirror, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			self.Open(func(context.Context) (any, error) {
 				// broken(error) says retrying is pointless: no retry, and getters are rejected at once.
 				return nil, data.Broken(errors.New("no mirror configured"))
@@ -77,7 +77,7 @@ func TestExample07Failures(t *testing.T) {
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(stuck, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(stuck, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			self.Open(func(ctx context.Context) (any, error) { <-ctx.Done(); return nil, context.Cause(ctx) }, func(any, NativeCloseReason, context.Context) error { return nil })
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"status": exConstant("never")}, nil), nil
 		}, ServeOptions{})

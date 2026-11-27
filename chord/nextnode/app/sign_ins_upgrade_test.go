@@ -76,9 +76,9 @@ func upgradeOldHost(t *testing.T, dir string) *upgradeOldKit {
 		t.Fatal(err)
 	}
 	facet := host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		return h.Serve(upgradeOldSessions, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+		return h.Serve(upgradeOldSessions, func(_ *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
 			document := self.State(upgradeOldDocument).(*documents.Singleton)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				Methods: map[string]contracts.MethodFunction{
 					"put": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 						arguments := args.(*delta.JsonObject)
@@ -95,7 +95,7 @@ func upgradeOldHost(t *testing.T, dir string) *upgradeOldKit {
 						return value.Value("sessions"), nil
 					},
 				},
-			}}, nil
+			}, nil
 		}, host.ServeOptions{})
 	})
 	report, err := h.Load([]host.HostFacet{{Name: "chord.app.sessions", Facet: facet}}, background)

@@ -66,10 +66,13 @@ var (
 		},
 	}))
 	// lsBoard is Pi's `Board`, the screen as a client holds it over a link (the variant is `v` as remoteOneVariant's).
-	lsBoard = remoteOneVariant("app.board", contracts.Params{}, contracts.VariantDeclaration{
-		State:   []contracts.Property{contracts.Prop("list", contracts.Obj(contracts.Prop("rows", contracts.Arr(lsItem)), contracts.Prop("moreAfter", contracts.Bool())))},
-		Methods: []contracts.MethodEntry{contracts.Meth("more", contracts.NewMethod())},
-	})
+	lsBoard = mustContract(contracts.Remote("app.board", contracts.RemoteDeclaration{
+		Version:     1,
+		Params:      contracts.Params{},
+		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
+		State:       []contracts.RemoteStateEntry{contracts.StateEntry("list", contracts.Obj(contracts.Prop("rows", contracts.Arr(lsItem)), contracts.Prop("moreAfter", contracts.Bool())))},
+		Methods:     []contracts.RemoteMethodEntry{contracts.Meth("more", contracts.NewMethod())},
+	}))
 )
 
 // lsSubscriber is Pi's test Subscriber: the calls it was advanced with, none folded.
@@ -105,7 +108,7 @@ type lsStoreProbe struct {
 }
 
 func lsServeStore(h FacetHost, direction string, probe *lsStoreProbe) error {
-	return h.Serve(lsStoreContract, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+	return h.Serve(lsStoreContract, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 		self := plain.(StoreSelf)
 		table := self.Table(lsRows)
 		if probe != nil && probe.declare != nil {
@@ -136,7 +139,7 @@ func lsServeStore(h FacetHost, direction string, probe *lsStoreProbe) error {
 			_, err := self.Tx(func(tx documents.Tx) (any, error) { return nil, write(tx) }, ctx)
 			return nil, err
 		}
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			Queries: map[string]map[string]contracts.NamedQuery[delta.JsonValue, delta.JsonValue]{"rows": rows},
 			Methods: map[string]contracts.MethodFunction{
 				"write": func(puts delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -165,12 +168,12 @@ func lsServeStore(h FacetHost, direction string, probe *lsStoreProbe) error {
 					})
 				},
 			},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 }
 
 func lsServeScreen(h FacetHost, first int, probe *lsProbe) error {
-	return h.Serve(lsScreenContract, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+	return h.Serve(lsScreenContract, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 		self := plain
 		probe.factories.Add(1)
 		shown := self.Writable("a")
@@ -178,7 +181,7 @@ func lsServeScreen(h FacetHost, first int, probe *lsProbe) error {
 		source := ListSource{Query: self.Get(lsStoreContract, jsonObject()).Queries("rows")["ofGroup"], Args: args}
 		handle := self.List("rows", []ListSource{source}, ListOptions{First: first})
 		probe.lists.add(listOf(handle))
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{"list": handle.Value()},
 			Methods: map[string]contracts.MethodFunction{
 				"more": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) { return nil, handle.More(ctx) },
@@ -186,7 +189,7 @@ func lsServeScreen(h FacetHost, first int, probe *lsProbe) error {
 					return nil, shown.Set(group.(string))
 				},
 			},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 }
 
@@ -478,15 +481,15 @@ func TestListPages(t *testing.T) {
 		serverErrors, clientErrors := &hostErrors{}, &hostErrors{}
 		server := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), Store: chordStore, OnError: serverErrors.push})
 		board := HostFacet{Name: "@test/board", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(lsBoard, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+			return h.Serve(lsBoard, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 				args := self.Derive([]any{self.Writable("a")}, func(values []any) (delta.JsonValue, error) { return jsonObject("group", values[0]), nil })
 				handle := self.List("rows", []ListSource{{Query: self.Get(lsStoreContract, jsonObject()).Queries("rows")["ofGroup"], Args: args}}, ListOptions{First: 3})
-				return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{"list": handle.Value()},
 					Methods: map[string]contracts.MethodFunction{
 						"more": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) { return nil, handle.More(ctx) },
 					},
-				}}, nil
+				}, nil
 			}, ServeOptions{})
 		})}
 		_, err := server.Load([]HostFacet{lsStorePlugin("desc", nil), board}, background)
@@ -776,7 +779,7 @@ func TestListDeclarationAndMemory(t *testing.T) {
 			Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
 		}))
 		facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return firstError(lsServeStore(h, "desc", nil), h.Serve(bad, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return firstError(lsServeStore(h, "desc", nil), h.Serve(bad, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				source := ListSource{Query: self.Get(lsStoreContract, jsonObject()).Queries("rows")["ofGroup"], Args: jsonObject("group", "a")}
 				attempt := func(work func()) {
 					if message := panicMessage(work); message != "" {
@@ -788,9 +791,9 @@ func TestListDeclarationAndMemory(t *testing.T) {
 				attempt(func() { self.List("a", []ListSource{source, source}, ListOptions{First: 3}) })
 				self.List("a", []ListSource{source}, ListOptions{First: 3})
 				attempt(func() { self.List("a", []ListSource{source}, ListOptions{First: 3}) })
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{"n": self.Derive([]any{}, func([]any) (delta.JsonValue, error) { return 1.0, nil })},
-				}}, nil
+				}, nil
 			}, ServeOptions{}))
 		})
 		_, err := host.Load([]HostFacet{{Name: "@test/bad", Facet: facet}}, background)

@@ -19,14 +19,11 @@ import (
 func TestExample08Remote(t *testing.T) {
 	note := exObj(exProp("text", exStr()), exProp("author", exStr()))
 	publicNote := exObj(exProp("text", exStr()))
-	notes := exRemote("example.notes", contracts.Params{exProp("session", exStr())}, exServerAddress,
-		contracts.Var("editor", contracts.VariantDeclaration{
-			State:   []contracts.Property{exProp("notes", exArr(note)), exProp("count", exInt())},
-			Methods: []contracts.MethodEntry{contracts.Meth("add", contracts.NewMethod(exObj(exProp("text", exStr()))))},
-		}),
-		contracts.Var("reader", contracts.VariantDeclaration{
-			State: []contracts.Property{exProp("notes", exArr(publicNote)), exProp("count", exInt())},
-		}))
+	_ = publicNote
+	notes := exRemote("example.notes", contracts.Params{exProp("session", exStr())}, exServerAddress, contracts.RemoteDeclaration{
+		State:   []contracts.RemoteStateEntry{contracts.StateEntry("notes", exArr(note)), contracts.StateEntry("count", exInt())},
+		Methods: []contracts.RemoteMethodEntry{contracts.Meth("add", contracts.NewGrantable(contracts.NewMethod(exObj(exProp("text", exStr())))))},
+	})
 	noteStore := exLocal("example.note-store", contracts.Params{exProp("session", exStr())},
 		contracts.Mem("notes", exArr(note)), contracts.Mem("add", contracts.NewMethod(note)))
 	doc := exDefineState("notes", documents.StateOptions{
@@ -35,7 +32,7 @@ func TestExample08Remote(t *testing.T) {
 	})
 	redact := state.MapShared(func(entry any) any { return jsonObject("text", entry.(*delta.JsonObject).Value("text")) })
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(noteStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(noteStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			notesDoc := stateOf(self, doc)
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{
 				"notes": self.Derive([]any{notesDoc.s}, func(values []any) (delta.JsonValue, error) {
@@ -49,31 +46,33 @@ func TestExample08Remote(t *testing.T) {
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		// A remote factory gets the principal its object is for and returns one variant with exactly its members.
-		return h.Serve(notes, func(params *delta.JsonObject, principal data.Principal, self Self) (contracts.Implementation, error) {
+		return h.Serve(notes, func(params *delta.JsonObject, principal data.Principal, admitted AdmittedValue, self Self) (contracts.MembersImplementation, error) {
 			store := self.Get(noteStore, jsonObject("session", exParam(params, "session")))
 			count := self.Derive([]any{store.Member("notes")}, func(values []any) (delta.JsonValue, error) {
 				return float64(len(values[0].([]any))), nil
 			})
-			if principalKind(principal) == "guest" {
-				return exVariant("reader", map[string]chord.Watchable[delta.JsonValue]{
-					"notes": self.Derive([]any{store.Member("notes")}, func(values []any) (delta.JsonValue, error) {
-						list := values[0].([]any)
-						out := redact(list)
-						result := make([]any, len(out))
-						copy(result, out)
-						return result, nil
-					}),
-					"count": count,
-				}, nil), nil
+			notesVal := Expose(store.Member("notes"))
+			if !admitted.Granted["add"] {
+				notesVal = self.Derive([]any{store.Member("notes")}, func(values []any) (delta.JsonValue, error) {
+					list := values[0].([]any)
+					out := redact(list)
+					result := make([]any, len(out))
+					copy(result, out)
+					return result, nil
+				})
 			}
-			return exVariant("editor", map[string]chord.Watchable[delta.JsonValue]{"notes": Expose(store.Member("notes")), "count": count},
+			return exVariant("editor", map[string]chord.Watchable[delta.JsonValue]{"notes": notesVal, "count": count},
 				map[string]contracts.MethodFunction{
 					"add": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
 						return store.Call("add", jsonObject("text", args.Value("text"), "author", principalKind(principal)), ctx)
 					}),
 				}), nil
-		}, ServeOptions{})
+		}, ServeOptions{Admit: func(_ *delta.JsonObject, principal data.Principal, _ AdmitSelf) (chord.Watchable[delta.JsonValue], error) {
+			if principalKind(principal) == "guest" {
+				return Expose(state.NewConstant(Allow(delta.NewJsonObject(0)))), nil
+			}
+			return Expose(state.NewConstant(Allow(delta.JsonObjectOf("granted", []delta.JsonValue{"add"})))), nil
+		}})
 	})
 	server, _ := exServer(t, nil, HostFacet{Name: "@example/notes", Facet: facet})
 	clientErrors := &hostErrors{}
@@ -81,13 +80,13 @@ func TestExample08Remote(t *testing.T) {
 	exTwoPartyHosts(t, server, client, guestPrincipal("S1"))
 	mustLoad(t)(client.Load(nil, background))
 	own := exGet(t, server, notes, jsonObject("session", "S1"))
-	if exVariantName(own) != "editor" {
-		t.Fatalf("the server's variant = %q", exVariantName(own))
+	if !exHasGrant(own, "add") {
+		t.Fatalf("the server was not granted add")
 	}
 	exCall(t, own, "add", jsonObject("text", "hello"))
 	guest := exGet(t, client, notes, jsonObject("session", "S1"))
-	if exVariantName(guest) != "reader" {
-		t.Fatalf("guest variant = %q, want reader", exVariantName(guest))
+	if exHasGrant(guest, "add") {
+		t.Fatalf("guest was granted add")
 	}
 	exEqual(t, "guest notes", exValue(t, guest, "notes"), exJSON(t, `[{"text":"hello"}]`))
 	exEqual(t, "guest count", exValue(t, guest, "count"), float64(1))
@@ -98,7 +97,7 @@ func TestExample08Remote(t *testing.T) {
 	scopeEventually(t, "count after the commit", func() bool { return exValue(t, guest, "count") == float64(2) })
 	// `add` is not a member of the reader variant.
 	_, err := guest.Call("add", jsonObject("text", "x"), background)
-	_ = exCode(t, err, data.CodeInvalid, data.ReasonMember)
+	_ = exCode(t, err, data.CodeForbidden, "")
 	exCloseHost(t, server)
 	scopeEventually(t, "the client sees the server gone", func() bool {
 		current := guest.State().Value()

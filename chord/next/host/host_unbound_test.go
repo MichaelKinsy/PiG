@@ -181,10 +181,10 @@ var (
 
 // serveInfo is `h.serve(Info, () => ({ title: constant("t") }))`.
 func serveInfo(h FacetHost) error {
-	return h.Serve(unboundInfo, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+	return h.Serve(unboundInfo, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{"title": constant("t")},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 }
 
@@ -295,14 +295,14 @@ func TestHostReferencesWaitingInTheIndexEndAtTheStartOfTheHostsClose(t *testing.
 	closeGate := make(chan struct{})
 	host := newHost(t, HostOptions{OnError: func(HostError) {}})
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(core, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(core, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			self.Open(func(context.Context) (any, error) { return nil, nil }, func(_ any, _ NativeCloseReason, ctx context.Context) error {
 				_, _ = chordctx.Receive(context.WithoutCancel(ctx), closeGate)
 				return nil
 			})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(float64(1))},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/a", Facet: facet}}, background))

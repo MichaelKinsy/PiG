@@ -21,9 +21,9 @@ import (
 // of the worker's loop (`void worker.get(...).then(...)`) that ends with the answer, which the test receives from `answered`.
 func TestRouteResolvesOpenedIsToldThePeersIncarnationAtTheHandshakeBeforeThePeersFirstCallIsHandledNeverForALinkClosedBeforeIt(t *testing.T) {
 	forEachCodec(t, func(t *testing.T) {
-		who := exRemote("app.who", contracts.Params{}, exServerAddress, contracts.Var("v", contracts.VariantDeclaration{
-			Methods: []contracts.MethodEntry{contracts.Meth("incarnation", contracts.NewMethod(contracts.Schema{}, exStr()))},
-		}))
+		who := exRemote("app.who", contracts.Params{}, exServerAddress, contracts.RemoteDeclaration{
+			Methods: []contracts.RemoteMethodEntry{contracts.Meth("incarnation", contracts.NewMethod(contracts.Schema{}, exStr()))},
+		})
 		var mu sync.Mutex
 		var events []string
 		record := func(event string) {
@@ -40,7 +40,7 @@ func TestRouteResolvesOpenedIsToldThePeersIncarnationAtTheHandshakeBeforeThePeer
 		var r *relayed
 		r = relay(t, relayedOptions{
 			Server: func(h FacetHost) error {
-				return h.Serve(who, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
+				return h.Serve(who, func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {
 					return exVariant("v", nil, map[string]contracts.MethodFunction{
 						"incarnation": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 							record("handled " + exCtx(ctx).Incarnation())

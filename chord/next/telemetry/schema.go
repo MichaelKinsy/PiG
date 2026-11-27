@@ -328,8 +328,22 @@ var Schema = pitelemetry.DefineTelemetrySchema(&pitelemetry.TelemetrySchemaDefin
 		"chord.calls.in_flight":   upDown("Method calls running on this host."),
 		"chord.holds.active":      upDown("Holds arriving over links and placed on this host."),
 		"chord.links.open":        upDown("Open links of this host."),
+		"chord.links.closed": {
+			Kind:        pitelemetry.TelemetryMetricKindCounter,
+			Description: "Links of this host that closed.",
+			Attributes: map[string]pitelemetry.TelemetryMetricAttributeDefinition{
+				"reason": str("`local` (this host), `heartbeat`, `protocol` or `peer` (the other end or the transport).", true, false),
+			},
+		},
 		"chord.park.duration":     histogram("How long an activation attempt stayed parked on its dependencies."),
 		"chord.backpressure.wait": histogram("How long a link origin's state waited for a slot of its window."),
+		"chord.follow.attaches": {
+			Kind:        pitelemetry.TelemetryMetricKindCounter,
+			Description: "Attachments a follow over a changing source made (`self.follow(over, attach)`): for a new value of its source (`value`, the first one too), or a retry after a failure (`retry`).",
+			Attributes: map[string]pitelemetry.TelemetryMetricAttributeDefinition{
+				"reason": str("Why it attached.", true, false, "value", "retry"),
+			},
+		},
 		"chord.events.emitted":    counter("Event values this host's sources emitted."),
 		"chord.events.sent":       counter("Event entries this host sent of its own in `event` messages (one per hold)."),
 		"chord.events.dropped": {

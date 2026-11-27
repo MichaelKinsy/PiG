@@ -28,7 +28,7 @@ func TestExample30HostRoot(t *testing.T) {
 	var heldGate atomic.Pointer[chan struct{}]
 	entered := make(chan struct{}, 1)
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(notes, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(notes, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			doc := stateOf(self, list)
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{
 				"list": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) {

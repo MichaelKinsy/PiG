@@ -19,10 +19,10 @@ func TestNativeCloseIsAnOwnedTaskTheJoinWaitsForWhileItRunsAndNotWhileItIsParked
 	served := func(t *testing.T, closer func(ctx context.Context)) (Host, *Reference) {
 		t.Helper()
 		host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(objSvc, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(objSvc, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				self.Open(func(context.Context) (any, error) { return nil, nil },
 					func(_ any, _ NativeCloseReason, ctx context.Context) error { closer(ctx); return nil })
-				return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(1.0)}}}, nil
+				return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(1.0)}}, nil
 			}, ServeOptions{})
 		}, loadedOptions{})
 		return host, mustGet(t, host, objSvc, jsonObject("id", 1.0))

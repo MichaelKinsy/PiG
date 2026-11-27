@@ -38,7 +38,7 @@ func TestExample21PersistedDocuments(t *testing.T) {
 		contracts.Mem("read", contracts.NewMethod(exStr(), exStr())))
 	facet := func(h FacetHost, _ FacetSelf) error {
 		// Persisted documents need a stable identity, as tables do: a local type with empty params.
-		return h.Serve(notebook, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(notebook, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			tagsDoc := stateOf(self, tags)
 			notesDoc := self.State(notes).(*documents.Keyed)
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"tags": tagsDoc.Member()}, map[string]contracts.MethodFunction{

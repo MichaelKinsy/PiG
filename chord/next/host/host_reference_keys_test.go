@@ -123,33 +123,33 @@ func kmKeyed(handle any) map[string]contracts.KeyedWatchable[delta.JsonValue] {
 }
 
 // kmViewerFactory is a viewer of key `k` of the exposer's notes.
-func kmViewerFactory(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+func kmViewerFactory(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 	value, err := self.Get(kmExposer, jsonObject()).Keyed("notes").At("k")
 	if err != nil {
-		return contracts.Implementation{}, err
+		return contracts.MembersImplementation{}, err
 	}
 	double := self.Derive([]any{value}, func(values []any) (delta.JsonValue, error) {
 		return values[0].(*delta.JsonObject).Value("n").(float64) * 2, nil
 	})
-	return contracts.Implementation{Members: contracts.VariantImplementation{
+	return contracts.MembersImplementation{
 		State: map[string]chord.Watchable[delta.JsonValue]{"value": Expose(value), "double": double},
-	}}, nil
+	}, nil
 }
 
 // kmServeProviders serves the providers `a` and `b` (in memory) and the exposer re-exposing the registry's `which`.
 func kmServeProviders(h FacetHost, registry *kmRegistry) error {
-	if err := h.Serve(kmProvider, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+	if err := h.Serve(kmProvider, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 		notes := self.State(kmNotes).(*documents.Keyed)
 		registry.setProvider(params.Value("id").(string), notes)
-		return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(notes)}}, nil
+		return contracts.MembersImplementation{Keyed: kmKeyed(notes)}, nil
 	}, ServeOptions{}); err != nil {
 		return err
 	}
-	return h.Serve(kmExposer, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+	return h.Serve(kmExposer, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 		registry.addExposer(self)
 		self.State(kmOwn)
 		notes := self.Get(kmProvider, jsonObject("id", registry.current())).Keyed("notes")
-		return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(notes)}}, nil
+		return contracts.MembersImplementation{Keyed: kmKeyed(notes)}, nil
 	}, ServeOptions{})
 }
 
@@ -318,10 +318,10 @@ func TestReferenceKeysRebindingLoadsAColdPersistedKeyOfTheNewMemberOnceTheNewIns
 	st := memoryStore(t)
 	var memos atomic.Pointer[documents.Keyed]
 	serveDurable := func(h FacetHost) error {
-		return h.Serve(durable, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(durable, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			notes := self.State(kmStored).(*documents.Keyed)
 			memos.Store(notes)
-			return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(notes)}}, nil
+			return contracts.MembersImplementation{Keyed: kmKeyed(notes)}, nil
 		}, ServeOptions{})
 	}
 	seed, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return serveDurable(h) }, loadedOptions{Store: st})
@@ -333,15 +333,15 @@ func TestReferenceKeysRebindingLoadsAColdPersistedKeyOfTheNewMemberOnceTheNewIns
 	registry := newKmRegistry("a")
 	var runs atomic.Int32
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(kmProvider, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(self.State(kmNotes))}}, nil
+		if err := h.Serve(kmProvider, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{Keyed: kmKeyed(self.State(kmNotes))}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
 		if err := serveDurable(h); err != nil {
 			return err
 		}
-		if err := h.Serve(kmExposer, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(kmExposer, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			registry.addExposer(self)
 			self.State(kmOwn)
 			var notes *ReferenceKeyed
@@ -350,7 +350,7 @@ func TestReferenceKeysRebindingLoadsAColdPersistedKeyOfTheNewMemberOnceTheNewIns
 			} else {
 				notes = self.Get(durable, jsonObject()).Keyed("notes")
 			}
-			return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(notes)}}, nil
+			return contracts.MembersImplementation{Keyed: kmKeyed(notes)}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
@@ -465,10 +465,10 @@ func kmColdServe(t *testing.T, which string) *kmCold {
 	t.Cleanup(gate.Release)
 	var seeded atomic.Pointer[documents.Keyed]
 	seed, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(kmColdProvider, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(kmColdProvider, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			notes := self.State(kmStored).(*documents.Keyed)
 			seeded.Store(notes)
-			return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(notes)}}, nil
+			return contracts.MembersImplementation{Keyed: kmKeyed(notes)}, nil
 		}, ServeOptions{})
 	}, loadedOptions{Store: st})
 	_, err := seed.Get(background, kmColdProvider, jsonObject(), GetOptions{})
@@ -478,21 +478,21 @@ func kmColdServe(t *testing.T, which string) *kmCold {
 	// A new host: the key is in the store only.
 	registry := newKmRegistry(which)
 	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(kmColdProvider, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(kmColdProvider, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			notes := self.State(kmStored).(*documents.Keyed)
 			registry.setProvider("a", notes)
-			return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(notes)}}, nil
+			return contracts.MembersImplementation{Keyed: kmKeyed(notes)}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		if err := h.Serve(kmProvider, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(kmProvider, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			notes := self.State(kmNotes).(*documents.Keyed)
 			registry.setProvider(params.Value("id").(string), notes)
-			return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(notes)}}, nil
+			return contracts.MembersImplementation{Keyed: kmKeyed(notes)}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		if err := h.Serve(kmExposer, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(kmExposer, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			registry.addExposer(self)
 			self.State(kmOwn)
 			var notes *ReferenceKeyed
@@ -501,7 +501,7 @@ func kmColdServe(t *testing.T, which string) *kmCold {
 			} else {
 				notes = self.Get(kmProvider, jsonObject("id", "b")).Keyed("notes")
 			}
-			return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(notes)}}, nil
+			return contracts.MembersImplementation{Keyed: kmKeyed(notes)}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
@@ -626,10 +626,10 @@ func TestReferenceKeysAKeyedWatchWhoseObjectClosesWhileItIsSetUpRejectsWithTheOb
 	for gap := range 40 {
 		var notes atomic.Pointer[documents.Keyed]
 		host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(kmExposer, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(kmExposer, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				handle := self.State(kmNotes).(*documents.Keyed)
 				notes.Store(handle)
-				return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(handle)}}, nil
+				return contracts.MembersImplementation{Keyed: kmKeyed(handle)}, nil
 			}, ServeOptions{})
 		}, loadedOptions{})
 		exposer, err := host.Get(background, kmExposer, jsonObject(), GetOptions{})
@@ -672,18 +672,18 @@ func TestReferenceKeysChainsAndReleasesAKeyReexposedThroughTwoObjectsHoldsWithTh
 		if err := kmServeProviders(h, registry); err != nil {
 			return err
 		}
-		if err := h.Serve(outer, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+		if err := h.Serve(outer, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				Keyed: kmKeyed(self.Get(kmExposer, jsonObject()).Keyed("notes")),
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(outerViewer, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(outerViewer, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			value, err := self.Get(outer, jsonObject()).Keyed("notes").At("k")
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"value": Expose(value)},
-			}}, err
+			}, err
 		}, ServeOptions{})
 	}, loadedOptions{})
 	for _, id := range []string{"a", "b"} {
@@ -762,18 +762,18 @@ func TestReferenceKeysAKeyWhoseFirstPinStillLoadsAtStartupScenario20AstraKeepsTh
 	t.Cleanup(gate.Release)
 	var memos atomic.Pointer[documents.Keyed]
 	facet := func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(pinStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(pinStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			notes := self.State(data4).(*documents.Keyed)
 			memos.Store(notes)
-			return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(notes)}}, nil
+			return contracts.MembersImplementation{Keyed: kmKeyed(notes)}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(reader, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(reader, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			value, err := self.Get(pinStore, jsonObject()).Keyed("notes").At("k")
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"value": Expose(value)},
-			}}, err
+			}, err
 		}, ServeOptions{})
 	}
 	seed, _ := loaded(t, facet, loadedOptions{Store: st})
@@ -930,15 +930,15 @@ func TestReferenceKeysAReleasedKeyLeavesItsDocumentFinalReviewCollectsAReference
 		Members: []contracts.LocalEntry{contracts.Mem("rows", contracts.Keyed(kmSchema)), contracts.Mem("set", contracts.NewMethod())},
 	}))
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(typ, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(typ, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			handle := self.State(rows).(*documents.Keyed)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				Keyed: map[string]contracts.KeyedWatchable[delta.JsonValue]{"rows": ExposeKeyed(handle)},
 				Methods: map[string]contracts.MethodFunction{"set": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					_, err := handle.Change(ctx, "a", func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(2)) })
 					return nil, err
 				}},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})
 	host := newHost(t, HostOptions{OnError: func(HostError) {}})
@@ -998,12 +998,12 @@ func (k *kmKeysHandles) at(index int) *documents.Keyed {
 // kmServeKeys serves `Keys` over the persisted kmStored (its handle kept in handles), with a native opened by open.
 func kmServeKeys(handles *kmKeysHandles, open func(ctx context.Context) error) Facet {
 	return DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(kmKeys, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(kmKeys, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			self.Open(func(ctx context.Context) (any, error) { return nil, open(ctx) },
 				func(any, NativeCloseReason, context.Context) error { return nil })
 			notes := self.State(kmStored).(*documents.Keyed)
 			handles.add(notes)
-			return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(notes)}}, nil
+			return contracts.MembersImplementation{Keyed: kmKeyed(notes)}, nil
 		}, ServeOptions{})
 	})
 }
@@ -1055,7 +1055,7 @@ type fakeInstance struct {
 	source state.DeriveSource
 }
 
-func (*fakeInstance) attachedVariant() string { return "" }
+func (*fakeInstance) attachedGranted() map[string]bool { return contracts.NoGrants }
 
 func (*fakeInstance) eventNode(string, int) *eventNode { return nil }
 

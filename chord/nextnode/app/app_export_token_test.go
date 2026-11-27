@@ -41,12 +41,10 @@ var snoop = mustRemote("test.snoop", contracts.RemoteDeclaration{
 	HostAddress: func(params *delta.JsonObject) (contracts.Address, error) {
 		return project.Address(delta.JsonObjectOf("id", params.Value("id"))), nil
 	},
-	Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
-		Methods: []contracts.MethodEntry{contracts.Meth("probe", contracts.NewMethod(
+	Methods: []contracts.RemoteMethodEntry{contracts.Meth("probe", contracts.NewMethod(
 			contracts.Obj(contracts.Prop("mode", contracts.Str()), contracts.Prop("token", contracts.Str()), contracts.Prop("path", contracts.Str()), contracts.Prop("manifest", contracts.Str()), contracts.Prop("server", contracts.Str())),
 			contracts.Str(),
 		))},
-	})},
 })
 
 func TestAWorkersDataExportLocalRefusesAPluginCallWithAWrongTokenOrNoTokenAndExportsNothing(t *testing.T) {

@@ -32,20 +32,16 @@ func TestExample63OptimisticAnswers(t *testing.T) {
 	sessions := mustContract(contracts.Remote("example.sessions", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-		Variants: []contracts.VariantEntry{contracts.Var("all", contracts.VariantDeclaration{
-			State:   []contracts.Property{contracts.Prop("titles", contracts.Map(contracts.Str()))},
-			Methods: []contracts.MethodEntry{contracts.Meth("report", contracts.NewMethod(report))},
-		})},
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("titles", contracts.Map(contracts.Str()))},
+			Methods: []contracts.RemoteMethodEntry{contracts.Meth("report", contracts.NewMethod(report))},
 	}))
 	sessionTitle := mustContract(contracts.Remote("example.session-title", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Str())},
 		HostAddress: func(params *delta.JsonObject) (contracts.Address, error) {
 			return Session.Address(jsonObject("id", params.Value("id"))), nil
 		},
-		Variants: []contracts.VariantEntry{contracts.Var("owner", contracts.VariantDeclaration{
-			State:   []contracts.Property{contracts.Prop("title", contracts.Str())},
-			Methods: []contracts.MethodEntry{contracts.Meth("rename", contracts.NewMethod(contracts.Str()))},
-		})},
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("title", contracts.Str())},
+			Methods: []contracts.RemoteMethodEntry{contracts.Meth("rename", contracts.NewMethod(contracts.Str()))},
 	}))
 	indexDoc, err := documents.DefineState("index", documents.StateOptions{
 		Schema: contracts.Obj(contracts.Prop("titles", contracts.Map(contracts.Str()))), Version: 1,
@@ -60,9 +56,9 @@ func TestExample63OptimisticAnswers(t *testing.T) {
 
 	rel := relay(t, relayedOptions{
 		Server: func(h FacetHost) error {
-			if err := h.Serve(sessionIndex, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			if err := h.Serve(sessionIndex, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				doc := stateOf(self, indexDoc)
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{
 						"titles": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) {
 							return values[0].(*delta.JsonObject).Value("titles"), nil
@@ -74,26 +70,26 @@ func TestExample63OptimisticAnswers(t *testing.T) {
 							_ = draft.Object("titles").Set(input.Value("id").(string), input.Value("title"))
 						}, ctx)
 					}},
-				}}, nil
+				}, nil
 			}, ServeOptions{}); err != nil {
 				return err
 			}
-			return h.Serve(sessions, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+			return h.Serve(sessions, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 				index := self.Get(sessionIndex, jsonObject())
-				return contracts.Implementation{Variant: "all", Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{"titles": self.Derive([]any{index.Member("titles")}, func(values []any) (delta.JsonValue, error) { return values[0], nil })},
 					Methods: map[string]contracts.MethodFunction{"report": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 						return index.Call("report", args, ctx)
 					}},
-				}}, nil
+				}, nil
 			}, ServeOptions{})
 		},
 		Worker: func(h FacetHost) error {
-			return h.Serve(sessionTitle, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+			return h.Serve(sessionTitle, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 				doc := stateOf(self, titleDoc)
 				held := self.Get(sessions, jsonObject())
 				id := params.Value("id")
-				return contracts.Implementation{Variant: "owner", Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{
 						"title": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) {
 							return values[0].(*delta.JsonObject).Value("title"), nil
@@ -106,7 +102,7 @@ func TestExample63OptimisticAnswers(t *testing.T) {
 						}
 						return held.Call("report", jsonObject("id", id, "title", title), ctx)
 					}},
-				}}, nil
+				}, nil
 			}, ServeOptions{})
 		},
 	})

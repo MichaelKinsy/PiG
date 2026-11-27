@@ -38,7 +38,7 @@ func (b *reloadBuilt) items() []string {
 
 // reloadServeBuilt serves `Pure` labelled label, noting in built that its factory ran.
 func reloadServeBuilt(t testing.TB, h FacetHost, label string, built *reloadBuilt) error {
-	return h.Serve(reloadPure, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+	return h.Serve(reloadPure, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 		built.add(label)
 		return reloadPureImplementation(t, self, label, 1, nil, nil), nil
 	}, ServeOptions{})

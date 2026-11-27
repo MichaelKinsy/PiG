@@ -32,8 +32,8 @@ import (
 // reports.
 type adaptedInstance struct {
 	served *served
-	// variant is the instance's variant, nil for a local object (Pi's undefined).
-	variant *string
+	// granted is what its caller was granted (nil/empty for none).
+	granted map[string]bool
 	label   string
 	batch   *state.Batch
 	// member is the instance's state member `member` (`invalid/member` when its variant has none).
@@ -61,10 +61,14 @@ type mappedKey struct {
 	order int
 }
 
-// refusal is why consumers of the older version cannot bind to served's variant: a version it does not accept, or a member of
-// it the provider refuses (`contract_mismatch`); nil when they can.
-func refusal(entry *served, version int, variant *string) *data.ChordError {
+// refusal is why consumers of an older version (none for the current one) cannot bind to an instance of served:
+// a version it does not accept, or a member of it the provider refuses (`contract_mismatch`); nil when they can.
+// Static per provider and version, whatever a caller was granted (slice 15 §8, (B)): a refused consumer waits for a publication.
+func refusal(entry *served, version int) *data.ChordError {
 	contract, provider := entry.contract, entry.provider
+	if version == contract.Version {
+		return nil
+	}
 	accepted := false
 	for _, each := range provider.Accepted {
 		if each.Version == version {
@@ -76,20 +80,13 @@ func refusal(entry *served, version int, variant *string) *data.ChordError {
 		return notServedHere(contract, version)
 	}
 	mappings := mappingsOf(entry, version)
-	variants, err := contracts.VariantsAt(contract, version)
+	v, err := contracts.VersionAt(contract, version)
 	if err != nil {
 		return data.AsChordError(err, contract.Name)
 	}
-	name := contracts.LocalVariant
-	if variant != nil {
-		name = *variant
-	}
-	old, found := variants.Get(name)
-	if !found {
-		return nil
-	}
+	old := v.Members
 	for _, member := range old.State.Keys() {
-		if mapping := stateMapping(entry, mappings, variant, member); mapping != nil && mapping.Refuse {
+		if mapping := stateMapping(mappings, member); mapping != nil && mapping.Refuse {
 			return refused(contract, version, member)
 		}
 	}
@@ -99,7 +96,7 @@ func refusal(entry *served, version int, variant *string) *data.ChordError {
 		}
 	}
 	for _, member := range old.Events.Keys() {
-		if mapping := eventMappingOf(entry, mappings, variant, member); mapping != nil && mapping.Refuse {
+		if mapping := eventMappingOf(mappings, member); mapping != nil && mapping.Refuse {
 			return refused(contract, version, member)
 		}
 	}
@@ -121,10 +118,17 @@ type adaptedMembers struct {
 	spawn int
 	// events are the event members mapped so far, each tapping the instance's node; made by the first.
 	events map[string]*mappedEvents
+	// refused is why its provider refuses this version (static per provider and version, so found once); nil when served.
+	refused *data.ChordError
 }
 
 func newAdaptedMembers(instance adaptedInstance, version int) *adaptedMembers {
-	return &adaptedMembers{version: version, instance: instance, members: map[string]state.DeriveSource{}}
+	return &adaptedMembers{
+		version:  version,
+		instance: instance,
+		members:  map[string]state.DeriveSource{},
+		refused:  refusal(instance.served, version),
+	}
 }
 
 // member is state member `member` as this version reads it, made by the first use; `contract_mismatch` when the provider
@@ -197,8 +201,8 @@ func (m *adaptedMembers) key(member string, document state.DeriveSource) (pinned
 // keyed is the provider's mapping of keyed member `member`'s documents to this version's shape (nil: unchanged), counted;
 // `contract_mismatch` when the provider refuses it.
 func (m *adaptedMembers) keyed(member string) (contracts.Mapping, error) {
-	if err := m.assertAccepted(); err != nil {
-		return nil, err
+	if m.refused != nil {
+		return nil, m.refused
 	}
 	mapping := keyedMappingOf(m.mappings(), member)
 	if mapping == nil {
@@ -221,21 +225,14 @@ func (m *adaptedMembers) keyed(member string) (contracts.Mapping, error) {
 // the member (removed since: an older consumer receives none of it).
 func (m *adaptedMembers) event(member string) *eventNode {
 	instance := m.instance
-	accepted := false
-	for _, each := range instance.served.provider.Accepted {
-		if each.Version == m.version {
-			accepted = true
-			break
-		}
-	}
-	if !accepted {
+	if m.refused != nil {
 		return nil
 	}
 	node := instance.event(member)
 	if node == nil {
 		return nil
 	}
-	mapping := eventMappingOf(instance.served, m.mappings(), instance.variant, member)
+	mapping := eventMappingOf(m.mappings(), member)
 	if mapping == nil {
 		return node
 	}
@@ -279,14 +276,23 @@ func (m *adaptedMembers) detach(err error) {
 }
 
 // make is what `member` is at this version: the instance's member itself (unchanged), or a derive through the mapping, of the
-// member when the current variant has it, else of the variant's whole current state (a removed member).
+// member when the current version has it, else of the whole current state its caller was granted (a removed member).
 func (m *adaptedMembers) make(member string) (state.DeriveSource, error) {
-	if err := m.assertAccepted(); err != nil {
-		return nil, err
+	if m.refused != nil {
+		return nil, m.refused
 	}
 	instance := m.instance
-	variant, batch := instance.variant, instance.batch
-	mapping := stateMapping(instance.served, m.mappings(), variant, member)
+	granted, batch := instance.granted, instance.batch
+	// A member its version marks grantable and its caller was not granted is refused before any mapping sees anything,
+	// also one removed since.
+	at, err := contracts.VersionAt(m.contract(), m.version)
+	if err != nil {
+		return nil, data.AsChordError(err, instance.label)
+	}
+	if at.Grantable[member] && !granted[member] {
+		return nil, lacking(instance.label, m.contract(), member, "state member", at)
+	}
+	mapping := stateMapping(m.mappings(), member)
 	if mapping == nil {
 		return instance.member(member)
 	}
@@ -299,16 +305,12 @@ func (m *adaptedMembers) make(member string) (state.DeriveSource, error) {
 		// The provider's mapping, typed by its contract; its result is the old member's shape (not validated).
 		return call(value)
 	}
-	variants, err := contracts.CurrentVariants(m.contract())
+	currentVer, err := contracts.CurrentVersion(m.contract())
 	if err != nil {
 		return nil, data.AsChordError(err, instance.label)
 	}
-	name := contracts.LocalVariant
-	if variant != nil {
-		name = *variant
-	}
-	current := variants.Value(name)
-	// The member when the current variant has it, else the variant's whole current state (a removed member).
+	current := contracts.GrantedMembers(currentVer, granted)
+	// The member when the current version has it, else the whole current state granted (a removed member).
 	kept := current.State.Has(member)
 	names := []string{member}
 	if !kept {
@@ -344,16 +346,6 @@ func (m *adaptedMembers) make(member string) (state.DeriveSource, error) {
 	return derive, nil
 }
 
-// assertAccepted returns `contract_mismatch` unless the provider accepts this version.
-func (m *adaptedMembers) assertAccepted() error {
-	for _, accepted := range m.instance.served.provider.Accepted {
-		if accepted.Version == m.version {
-			return nil
-		}
-	}
-	return notServedHere(m.contract(), m.version)
-}
-
 func (m *adaptedMembers) contract() *contracts.Contract { return m.instance.served.contract }
 
 // mappings are this version's mappings in the provider's accepts table.
@@ -374,57 +366,27 @@ func mappingsOf(entry *served, version int) *contracts.VersionMappings {
 	return nil
 }
 
-// stateMapping is the mapping of state member `member` of `variant` in mappings; nil when it is unchanged.
-func stateMapping(entry *served, mappings *contracts.VersionMappings, variant *string, member string) *contracts.StateMapping {
+// stateMapping is the mapping of state member `member` in mappings; nil when it is unchanged.
+func stateMapping(mappings *contracts.VersionMappings, member string) *contracts.StateMapping {
 	if mappings == nil {
 		return nil
 	}
-	var section []contracts.Entry[contracts.StateMapping]
-	if entry.kind == servedLocal {
-		section = mappings.State
-	} else {
-		name := ""
-		if variant != nil {
-			name = *variant
-		}
-		for index := range mappings.VariantState {
-			if mappings.VariantState[index].Name == name {
-				section = mappings.VariantState[index].Value
-				break
-			}
-		}
-	}
-	for index := range section {
-		if section[index].Name == member {
-			return &section[index].Value
+	for index := range mappings.State {
+		if mappings.State[index].Name == member {
+			return &mappings.State[index].Value
 		}
 	}
 	return nil
 }
 
-// eventMappingOf is the mapping of event member `member` of `variant` in mappings (a remote contract's by variant, a
-// local one's flat); nil when it is unchanged.
-func eventMappingOf(entry *served, mappings *contracts.VersionMappings, variant *string, member string) *contracts.EventMapping {
+// eventMappingOf is the mapping of event member `member` in mappings; nil when it is unchanged.
+func eventMappingOf(mappings *contracts.VersionMappings, member string) *contracts.EventMapping {
 	if mappings == nil {
 		return nil
 	}
-	section := mappings.Events
-	if entry.kind != servedLocal {
-		name := ""
-		if variant != nil {
-			name = *variant
-		}
-		section = nil
-		for index := range mappings.VariantEvents {
-			if mappings.VariantEvents[index].Name == name {
-				section = mappings.VariantEvents[index].Value
-				break
-			}
-		}
-	}
-	for index := range section {
-		if section[index].Name == member {
-			return &section[index].Value
+	for index := range mappings.Events {
+		if mappings.Events[index].Name == member {
+			return &mappings.Events[index].Value
 		}
 	}
 	return nil

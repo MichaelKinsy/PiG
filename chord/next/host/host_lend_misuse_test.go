@@ -35,8 +35,8 @@ var lendDesk = mustContract(declareLocal("app.lend-desk", contracts.LocalDeclara
 func lendDeskRef(t *testing.T) *Reference {
 	t.Helper()
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(lendDesk, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+		return h.Serve(lendDesk, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				// A handler that ends its goroutine before its first wait: inside the section that admitted its call.
 				"exit": func(delta.JsonValue, context.Context) (delta.JsonValue, error) {
 					runtime.Goexit()
@@ -62,7 +62,7 @@ func lendDeskRef(t *testing.T) *Reference {
 					return fmt.Sprintf("raised %v, panic %v", raised, panicked), nil
 				},
 				"who": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) { return whoIs(ctx), nil },
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	ref, err := host.Get(background, lendDesk, jsonObject(), GetOptions{})
@@ -125,18 +125,18 @@ func TestMethodHandlerThatEndsItsGoroutineLeavesTheHandlerThatCalledItRunning(t 
 		Members: []contracts.LocalEntry{contracts.Mem("through", contracts.NewMethod(contracts.Schema{}, contracts.Str()))},
 	}))
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(callee, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+		if err := h.Serve(callee, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				"exit": func(delta.JsonValue, context.Context) (delta.JsonValue, error) {
 					runtime.Goexit()
 					return nil, nil
 				},
-			}}}, nil
+			}}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(desk, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+		return h.Serve(desk, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				"through": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					held, err := ctx.(Ctx).Get(callee, jsonObject(), GetOptions{})
 					if err != nil {
@@ -147,7 +147,7 @@ func TestMethodHandlerThatEndsItsGoroutineLeavesTheHandlerThatCalledItRunning(t 
 					}
 					return "survived", nil
 				},
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	ref, err := host.Get(background, desk, jsonObject(), GetOptions{})

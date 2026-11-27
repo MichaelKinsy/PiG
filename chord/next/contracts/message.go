@@ -1,6 +1,10 @@
 package contracts
 
-import "math"
+import (
+	"math"
+
+	"github.com/MichaelKinsy/PiG/chord/delta"
+)
 
 // Ports packages/chord/src/contracts/message.ts (a message as data: its namespace, key and parameters, which each
 // client renders in its own language, its schema, and the check of one plugin code hands Chord). Declared here, below
@@ -38,6 +42,20 @@ func IsMessageData(value any) bool {
 			return false
 		}
 		msg = *v
+	case *delta.JsonObject:
+		if v == nil {
+			return false
+		}
+		nsRaw, hasNS := v.Get("namespace")
+		keyRaw, hasKey := v.Get("key")
+		paramsRaw, hasParams := v.Get("params")
+		ns, okNS := nsRaw.(string)
+		key, okKey := keyRaw.(string)
+		params, okParams := paramsRaw.([]delta.JsonValue)
+		if !hasNS || !hasKey || !hasParams || !okNS || !okKey || !okParams {
+			return false
+		}
+		msg = MessageData{Namespace: ns, Key: key, Params: params}
 	default:
 		return false
 	}

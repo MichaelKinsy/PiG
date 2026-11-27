@@ -42,7 +42,7 @@ func TestExample11LingerAndRetry(t *testing.T) {
 	host := newHost(t, HostOptions{OnError: func(err HostError) { errs.push(err); reported.add(string(err.Kind)) }})
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@example/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		// 1. A draft lingers 200 ms after its last reference: a tab that closes and reopens quickly finds its text.
-		if err := h.Serve(draft, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(draft, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			mu.Lock()
 			activated++
 			mu.Unlock()
@@ -59,7 +59,7 @@ func TestExample11LingerAndRetry(t *testing.T) {
 		}, ServeOptions{Linger: &linger}); err != nil {
 			return err
 		}
-		return h.Serve(mirror, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(mirror, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			self.Open(func(context.Context) (any, error) {
 				// `broken`: retrying cannot help until someone changes something (no automatic retry).
 				if !flag(&configured) {

@@ -29,19 +29,20 @@ var item = contracts.Obj(
 // version and schema bind. Its objects live at a list's address, on that list's worker.
 var todos = func() *contracts.Contract {
 	notice := contracts.Union([]contracts.Schema{surfaces.MessageSchema, contracts.Nul()})
-	state := []contracts.Property{contracts.Prop("items", contracts.Arr(item)), contracts.Prop("notice", notice)}
 	add := contracts.Meth("add", contracts.NewMethod(contracts.Str()))
 	tick := contracts.Meth("tick", contracts.NewMethod(contracts.Obj(contracts.Prop("id", contracts.Int()), contracts.Prop("done", contracts.Bool()))))
+	clear := contracts.Meth("clear", contracts.NewGrantable(contracts.NewMethod()))
 	contract, err := contracts.Remote("todo.todos", contracts.RemoteDeclaration{
 		Version: 1,
 		Params:  contracts.Params{contracts.Prop("list", contracts.Str())},
 		HostAddress: func(params *delta.JsonObject) (contracts.Address, error) {
 			return listKind.Address(delta.JsonObjectOf("id", params.Value("list"))), nil
 		},
-		Variants: []contracts.VariantEntry{
-			contracts.Var("member", contracts.VariantDeclaration{State: state, Methods: []contracts.MethodEntry{add, tick}}),
-			contracts.Var("owner", contracts.VariantDeclaration{State: state, Methods: []contracts.MethodEntry{add, tick, contracts.Meth("clear", contracts.NewMethod())}}),
+		State: []contracts.RemoteStateEntry{
+			contracts.StateEntry("items", contracts.Arr(item)),
+			contracts.StateEntry("notice", notice),
 		},
+		Methods: []contracts.RemoteMethodEntry{add, tick, clear},
 	})
 	if err != nil {
 		panic(err)

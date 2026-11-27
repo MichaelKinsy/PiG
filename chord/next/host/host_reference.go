@@ -76,15 +76,27 @@ func (r *Reference) Queries(member string) map[string]*ReferenceQuery {
 // Events is the event member `name`, nil when the contract has none.
 func (r *Reference) Events(name string) *ReferenceEvents { return r.binding.events[name] }
 
-// Variant is the variant its remote object bound last; bound is false before the first binding and for a local contract.
+// Granted is the set of names its remote object granted last (grantable members and flags, slice 15 §1.4),
+// projected to this reference's contract version; empty before the first binding, while denied, and for a local contract.
 // A released reference returns its end.
-func (r *Reference) Variant() (variant string, bound bool, err error) {
+func (r *Reference) Granted() (map[string]bool, error) {
 	b := r.binding
 	if b.contractKind != contracts.KindRemote {
-		return "", false, nil
+		return contracts.NoGrants, nil
 	}
-	b.loop.Run(func() { variant, bound, err = b.variantOf() })
-	return variant, bound, err
+	var granted map[string]bool
+	var err error
+	b.loop.Run(func() { granted, err = b.grantedOf() })
+	return granted, err
+}
+
+// WasLive reports whether this reference last settled live (slice 15 §1.5, Pi's WAS_LIVE): true once live, stays true
+// across a reload/rebind/link-drop while loading again, and becomes false on failure or end.
+func (r *Reference) WasLive() bool {
+	b := r.binding
+	var was bool
+	b.loop.Run(func() { was = b.wasLiveOf() })
+	return was
 }
 
 // State is the reference's state: loading, live, failed or ended; watches get every change.
@@ -141,8 +153,9 @@ type target interface {
 	stateFor(version int, fingerprint string) *RefState
 	// hydrated is whether its state members have values: live once, for a remote object bound once.
 	hydrated() bool
-	// variant is the variant bound last; not bound for a local object and before the first binding.
-	variant() (variant string, bound bool)
+	// granted is the set of names bound last (slice 15 §1.4): kept while loading or failed; contracts.NoGrants for a local
+	// object, before the first binding and while denied.
+	granted() map[string]bool
 	// lastFailure is the error of its last failure (an attempt's, or the dependencies it is parked on) while none went
 	// live since; nil otherwise.
 	lastFailure() *data.ChordError
@@ -190,11 +203,11 @@ type target interface {
 	pathTo(goal *chordObject, visited map[target]struct{}) []*chordObject
 }
 
-// attachable is an instance a reference attaches to (`Target.attachable`): it keeps last values in that instance's
-// variant ("" is Pi's `undefined`). It is a pointer type, compared by identity.
+// attachable is an instance a reference attaches to (`Target.attachable`): it keeps last values for the members
+// granted to that instance. It is a pointer type, compared by identity.
 type attachable interface {
-	attachedVariant() string
-	// eventNode is event member member's node as a binding of version taps it; nil for a member its variant lacks.
+	attachedGranted() map[string]bool
+	// eventNode is event member member's node as a binding of version taps it; nil for a member it lacks.
 	eventNode(member string, version int) *eventNode
 }
 
@@ -367,6 +380,13 @@ type binding struct {
 	querySpecs map[string]*contracts.QueriesData
 	// queries are its queries members' named queries, by member and name; made lazily on first use (slice 15 §5).
 	queries map[string]map[string]*ReferenceQuery
+	// wasLive is whether this reference last settled live (slice 15 §1.5, Pi's WAS_LIVE).
+	wasLive bool
+	// decided is whether this reference has ever settled live or denied (slice 15 §1.4).
+	decided bool
+	// grantFrom is the last target granted map projected; grantTo is its projection at consumer's version.
+	grantFrom map[string]bool
+	grantTo   map[string]bool
 }
 
 var (
@@ -389,37 +409,32 @@ func newBinding(
 		consumer: contract, parkTimeout: parkTimeout, state: bindingState{kind: bindingUnbound, batch: batch, dependent: dependent},
 		members: map[string]*ReferenceMember{}, keyed: map[string]*ReferenceKeyed{}, methods: map[string]struct{}{},
 	}
-	// Every member of every variant (one kind and signature per name, D11); the bound variant decides which work.
-	variants, err := contracts.CurrentVariants(contract)
+	curMembers, err := contracts.CurrentMembers(contract)
 	if err != nil {
 		panic(err)
 	}
 	b.events = map[string]*ReferenceEvents{}
-	for _, variant := range variants.All() {
-		// Event bookkeeping only for a contract with event members: others pay nothing for events per binding.
-		if variant.Events.Len() > 0 {
-			if b.eventsOf == nil {
-				b.eventsOf = &bindingEvents{host: events}
-			}
-			for _, member := range variant.Events.Keys() {
-				b.events[member] = &ReferenceEvents{binding: b, member: member}
-			}
+	// Event bookkeeping only for a contract with event members: others pay nothing for events per binding.
+	if curMembers.Events.Len() > 0 {
+		b.eventsOf = &bindingEvents{host: events}
+		for _, member := range curMembers.Events.Keys() {
+			b.events[member] = &ReferenceEvents{binding: b, member: member}
 		}
-		for _, member := range variant.State.Keys() {
-			b.members[member] = &ReferenceMember{binding: b, member: member}
+	}
+	for _, member := range curMembers.State.Keys() {
+		b.members[member] = &ReferenceMember{binding: b, member: member}
+	}
+	for member, declared := range curMembers.Keyed.All() {
+		b.keyed[member] = &ReferenceKeyed{binding: b, member: member, kind: declared.Key}
+	}
+	for member, listed := range curMembers.Queries.All() {
+		if b.querySpecs == nil {
+			b.querySpecs = map[string]*contracts.QueriesData{}
 		}
-		for member, declared := range variant.Keyed.All() {
-			b.keyed[member] = &ReferenceKeyed{binding: b, member: member, kind: declared.Key}
-		}
-		for member, listed := range variant.Queries.All() {
-			if b.querySpecs == nil {
-				b.querySpecs = map[string]*contracts.QueriesData{}
-			}
-			b.querySpecs[member] = listed
-		}
-		for _, member := range variant.Methods.Keys() {
-			b.methods[member] = struct{}{}
-		}
+		b.querySpecs[member] = listed
+	}
+	for _, member := range curMembers.Methods.Keys() {
+		b.methods[member] = struct{}{}
 	}
 	b.reference = newReference(b)
 	return b
@@ -763,19 +778,12 @@ func (b *binding) removed(r removal) {
 // keepAll gives every state member of its version, in the variant of the instance it attached to (its object may be
 // live no more), a source, read or not, so each keeps a last value while it points at nothing (no-op for one made).
 func (b *binding) keepAll(attached attachable) {
-	name := attached.attachedVariant()
-	if name == "" {
-		name = contracts.LocalVariant
-	}
-	variants, err := contracts.CurrentVariants(b.consumer)
+	ver, err := contracts.CurrentVersion(b.consumer)
 	if err != nil {
 		panic(err)
 	}
-	variant, found := variants.Get(name)
-	if !found {
-		return
-	}
-	for _, member := range variant.State.Keys() {
+	granted := contracts.GrantedMembers(ver, attached.attachedGranted())
+	for _, member := range granted.State.Keys() {
 		if _, err := b.memberSource(member); err != nil {
 			panic(err)
 		}
@@ -827,10 +835,11 @@ func (b *binding) refuse(cause data.FailureCause, bind func()) {
 // moved: the state may have changed: `ref.state`'s watches are told; live sends the parked calls in order, failed
 // rejects them with the cause; waits for a state decide; the object whose attempt declared it re-evaluates.
 func (b *binding) moved() {
+	current := b.refState()
+	b.settled(current)
 	if b.refStateOf != nil {
 		b.refStateOf.moved()
 	}
-	current := b.refState()
 	switch current.Kind {
 	case RefStateLive:
 		if b.parked != nil {
@@ -1281,6 +1290,7 @@ func (b *binding) end(err *data.ChordError) {
 	finished := &ended{Kind: RefStateEnded, Error: err}
 	previous := b.state
 	b.state = bindingState{kind: bindingReleased, ended: finished}
+	b.wasLive = false
 	b.consumer = nil
 	if previous.kind == bindingWaiting {
 		previous.leave()
@@ -1449,16 +1459,77 @@ func (b *binding) watchableState() *referenceState {
 	return b.refStateOf
 }
 
-// variantOf is the variant bound last (`bound` false before the first binding); a released reference returns its end.
-func (b *binding) variantOf() (variant string, bound bool, err error) {
+// grantedOf is its grant, read through: a rebind changes it in its batch, before moved; empty before it; returns its end once released.
+func (b *binding) grantedOf() (map[string]bool, error) {
 	if b.state.kind == bindingReleased {
-		return "", false, b.state.ended.Error
+		return nil, b.state.ended.Error
 	}
-	if b.state.kind != bindingBound {
-		return "", false, nil
+	if b.state.kind == bindingBound {
+		b.settled(b.refState())
 	}
-	variant, bound = b.state.target.variant()
-	return variant, bound, nil
+	if b.grantTo == nil {
+		return contracts.NoGrants, nil
+	}
+	return b.grantTo, nil
+}
+
+// wasLiveOf reports whether this reference last settled live.
+func (b *binding) wasLiveOf() bool {
+	if b.state.kind == bindingBound {
+		b.settled(b.refState())
+	}
+	return b.wasLive
+}
+
+// settled takes what state says: live, its target's grant at its version; denied, none; failed, it is live no more.
+func (b *binding) settled(state *RefState) {
+	if state.Kind == RefStateFailed {
+		b.wasLive = false
+		if state.Cause.Kind == data.FailureDenied {
+			b.decided = true
+			b.grantFrom = nil
+			b.grantTo = nil
+		}
+		return
+	}
+	if state.Kind != RefStateLive {
+		return
+	}
+	granted := contracts.NoGrants
+	if b.state.kind == bindingBound {
+		granted = b.state.target.granted()
+	}
+	// Project granted to consumer's version grants.
+	if b.consumer != nil {
+		ver, err := contracts.CurrentVersion(b.consumer)
+		if err == nil {
+			var kept map[string]bool
+			allKept := true
+			for name, ok := range granted {
+				if !ok {
+					continue
+				}
+				if !slices.Contains(ver.Grants, name) {
+					allKept = false
+					break
+				}
+			}
+			if allKept {
+				kept = granted
+			} else {
+				kept = map[string]bool{}
+				for name, ok := range granted {
+					if ok && slices.Contains(ver.Grants, name) {
+						kept[name] = true
+					}
+				}
+			}
+			b.grantFrom = granted
+			b.grantTo = kept
+		}
+	}
+	b.wasLive = true
+	b.decided = true
 }
 
 // ReferenceMember is a state member of a reference: the provider's member, followed through this reference.

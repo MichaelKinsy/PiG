@@ -25,9 +25,9 @@ func TestRefusalAnIntOutOfRangeFailsOnlyItsTransactionAndTheObjectStaysLive(t *t
 	}))
 	chordStore := memoryStore(t)
 	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(counter, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(counter, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			table := self.(StoreSelf).Table(counts)
-			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				"bump": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					by := int64(args.(*delta.JsonObject).Value("by").(float64))
 					_, err := self.Tx(func(tx documents.Tx) (any, error) {
@@ -41,7 +41,7 @@ func TestRefusalAnIntOutOfRangeFailsOnlyItsTransactionAndTheObjectStaysLive(t *t
 					}, ctx)
 					return nil, err
 				},
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{Store: chordStore})
 	defer closeHosts(t, host)

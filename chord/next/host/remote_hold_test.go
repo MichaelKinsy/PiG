@@ -82,10 +82,14 @@ var rhCounter = func() *documents.StateDefinition {
 }()
 
 // rhRemote is `remote(name, { version: 1, params: {}, hostAddress: () => Server(), variants: { v: ... } })`.
-func rhRemote(name string, state []contracts.Property, methods ...contracts.MethodEntry) *contracts.Contract {
+func rhRemote(name string, state []contracts.Property, methods ...contracts.RemoteMethodEntry) *contracts.Contract {
+	entries := make([]contracts.RemoteStateEntry, len(state))
+	for i, p := range state {
+		entries[i] = contracts.StateEntry(p.Name, p.Value)
+	}
 	return mustContract(contracts.Remote(name, contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{}, HostAddress: exServerAddress,
-		Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{State: state, Methods: methods})},
+		State: entries, Methods: methods,
 	}))
 }
 
@@ -99,9 +103,9 @@ func rhConst(value any) chord.Watchable[delta.JsonValue] {
 }
 
 func rhServeHalves(host FacetHost) error {
-	return host.Serve(rhHalves, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+	return host.Serve(rhHalves, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 		n := stateOf(self, rhCounter)
-		return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{
 				"n": n.Member(),
 				"half": self.Derive([]any{n.s}, func(values []any) (delta.JsonValue, error) {
@@ -121,7 +125,7 @@ func rhServeHalves(host FacetHost) error {
 					return nil, nil
 				},
 			},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 }
 
@@ -273,7 +277,7 @@ func (f *rhFailing) next() (fail bool) {
 
 func rhServeFlaky(failing *rhFailing) func(FacetHost) error {
 	return func(host FacetHost) error {
-		return host.Serve(rhFlaky, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return host.Serve(rhFlaky, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			self.Open(func(context.Context) (any, error) {
 				if !failing.next() {
 					return nil, nil
@@ -283,9 +287,9 @@ func rhServeFlaky(failing *rhFailing) func(FacetHost) error {
 				}
 				return nil, errors.New("offline")
 			}, func(any, NativeCloseReason, context.Context) error { return nil })
-			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": rhConst(1)},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}
 }
@@ -483,14 +487,14 @@ func TestHoldGC(t *testing.T) {
 var rhPending = rhRemote("app.pending", []contracts.Property{rhProp("n", contracts.Int())})
 
 func rhServePending(host FacetHost) error {
-	return host.Serve(rhPending, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+	return host.Serve(rhPending, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 		self.Open(func(ctx context.Context) (any, error) {
 			<-ctx.Done()
 			return nil, nil
 		}, func(any, NativeCloseReason, context.Context) error { return nil })
-		return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{"n": rhConst(1)},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 }
 
@@ -559,14 +563,14 @@ func TestHoldGCPending(t *testing.T) {
 					if err := rhServePending(host); err != nil {
 						return err
 					}
-					return host.Serve(slow, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+					return host.Serve(slow, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 						self.Open(func(ctx context.Context) (any, error) {
 							<-ctx.Done()
 							return nil, nil
 						}, func(any, NativeCloseReason, context.Context) error { return nil })
-						return contracts.Implementation{Members: contracts.VariantImplementation{
+						return contracts.MembersImplementation{
 							State: map[string]chord.Watchable[delta.JsonValue]{"n": rhConst(1)},
-						}}, nil
+						}, nil
 					}, ServeOptions{})
 				})}}, background)
 			}()
@@ -751,24 +755,24 @@ func TestHoldsThatBindToNothingYet(t *testing.T) {
 			var mu sync.Mutex
 			cores := 0
 			rig := rawLinked(t, func(host FacetHost) error {
-				if err := host.Serve(core, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+				if err := host.Serve(core, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
 					mu.Lock()
 					cores++
 					n := cores
 					mu.Unlock()
 					if n < 3 {
-						return contracts.Implementation{}, fmt.Errorf("bug %d", n)
+						return contracts.MembersImplementation{}, fmt.Errorf("bug %d", n)
 					}
-					return contracts.Implementation{Members: contracts.VariantImplementation{
+					return contracts.MembersImplementation{
 						State: map[string]chord.Watchable[delta.JsonValue]{"n": rhConst(float64(n))},
-					}}, nil
+					}, nil
 				}, ServeOptions{}); err != nil {
 					return err
 				}
-				return host.Serve(rhHalves, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+				return host.Serve(rhHalves, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 					coreRef := self.Get(core, jsonObject())
 					n := stateOf(self, rhCounter)
-					return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+					return contracts.MembersImplementation{
 						State: map[string]chord.Watchable[delta.JsonValue]{
 							"n": n.Member(),
 							"half": self.Derive([]any{coreRef.Member("n")}, func(values []any) (delta.JsonValue, error) {
@@ -779,7 +783,7 @@ func TestHoldsThatBindToNothingYet(t *testing.T) {
 							"set":  func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil },
 							"wait": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil },
 						},
-					}}, nil
+					}, nil
 				}, ServeOptions{})
 			}, rawLinkedOptions{})
 			peer := rig.Peer
@@ -832,25 +836,25 @@ var (
 
 // rhServeTally serves `Tally` (lingering a minute) and `Fresh` (not lingering, its native's close waits for closing).
 func rhServeTally(closing <-chan struct{}) func(FacetHost) error {
-	serve := func(self Self) contracts.Implementation {
+	serve := func(self Self) contracts.MembersImplementation {
 		doc := stateOf(self, rhCounter)
-		return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{"n": doc.Member()},
 			Methods: map[string]contracts.MethodFunction{
 				"bump": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					return nil, doc.Change(func(draft *delta.Object) { _ = draft.Set("n", draft.Get("n").(float64)+1) }, ctx)
 				},
 			},
-		}}
+		}
 	}
 	return func(host FacetHost) error {
 		linger := time.Minute
-		if err := host.Serve(rhTally, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		if err := host.Serve(rhTally, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			return serve(self), nil
 		}, ServeOptions{Linger: &linger}); err != nil {
 			return err
 		}
-		return host.Serve(rhFresh, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return host.Serve(rhFresh, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			self.Open(func(context.Context) (any, error) { return nil, nil }, func(_ any, _ NativeCloseReason, ctx context.Context) error {
 				_, _ = chordctx.Receive(context.WithoutCancel(ctx), closing)
 				return nil
@@ -941,10 +945,10 @@ func rhRetiringPeer(t testing.TB) *rhRetiringRig {
 	t.Helper()
 	server := rhCreate(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), OnError: func(HostError) {}})
 	mustLoad(t)(server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
-		return host.Serve(rhRetiring, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return host.Serve(rhRetiring, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			doc := stateOf(self, rhCounter)
 			number := func(values []any) float64 { return values[0].(*delta.JsonObject).Value("n").(float64) }
-			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"doc": doc.Member(),
 					"big": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) { return number(values) > 10, nil }),
@@ -961,7 +965,7 @@ func rhRetiringPeer(t testing.TB) *rhRetiringRig {
 					},
 					"retire": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) { return nil, doc.Retire(ctx) },
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})}}, background))
 	peer := rhSecondPeerWith(t, server, rawPeerOptions{NoAck: true})
@@ -1235,9 +1239,7 @@ func TestHoldRetriesAcrossLinksQuiesceAtTheirBudget(t *testing.T) {
 					Version:     1,
 					Params:      contracts.Params{},
 					HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return kind.Address(nil), nil },
-					Variants: []contracts.VariantEntry{contracts.Var("reader", contracts.VariantDeclaration{
-						State: []contracts.Property{rhProp("n", contracts.Int())},
-					})},
+					State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 				}))
 			}
 			localA, localB := local("app.a"), local("app.b")
@@ -1261,15 +1263,15 @@ func TestHoldRetriesAcrossLinksQuiesceAtTheirBudget(t *testing.T) {
 				},
 			}, background))
 			must(t, worker.Connect(workerLink, LinkOptions{Principal: serverPrincipal(), Trusted: true, Codec: testCodec()}, background))
-			readerImpl := func(member chord.Watchable[delta.JsonValue]) contracts.Implementation {
-				return contracts.Implementation{Variant: "reader", Members: contracts.VariantImplementation{
+			readerImpl := func(member chord.Watchable[delta.JsonValue]) contracts.MembersImplementation {
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{"n": member},
-				}}
+				}
 			}
-			localImpl := func(member chord.Watchable[delta.JsonValue]) contracts.Implementation {
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+			localImpl := func(member chord.Watchable[delta.JsonValue]) contracts.MembersImplementation {
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{"n": member},
-				}}
+				}
 			}
 			var wg sync.WaitGroup
 			var leftErr, rightErr error
@@ -1277,13 +1279,13 @@ func TestHoldRetriesAcrossLinksQuiesceAtTheirBudget(t *testing.T) {
 			go func() {
 				defer wg.Done()
 				_, leftErr = server.Load([]HostFacet{{Name: "@test/a", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
-					if err := host.Serve(localA, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+					if err := host.Serve(localA, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 						factories.Add(1)
 						return localImpl(Expose(self.Get(remoteB, jsonObject()).Member("n"))), nil
 					}, ServeOptions{}); err != nil {
 						return err
 					}
-					return host.Serve(remoteA, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+					return host.Serve(remoteA, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 						factories.Add(1)
 						return readerImpl(Expose(self.Get(localA, jsonObject()).Member("n"))), nil
 					}, ServeOptions{})
@@ -1293,14 +1295,14 @@ func TestHoldRetriesAcrossLinksQuiesceAtTheirBudget(t *testing.T) {
 			go func() {
 				defer wg.Done()
 				_, rightErr = worker.Load([]HostFacet{{Name: "@test/b", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
-					if err := host.Serve(localB, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+					if err := host.Serve(localB, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 						factories.Add(1)
 						self.Get(missing, jsonObject())
 						return localImpl(Expose(self.Get(remoteA, jsonObject()).Member("n"))), nil
 					}, ServeOptions{}); err != nil {
 						return err
 					}
-					return host.Serve(remoteB, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+					return host.Serve(remoteB, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 						factories.Add(1)
 						return readerImpl(Expose(self.Get(localB, jsonObject()).Member("n"))), nil
 					}, ServeOptions{})

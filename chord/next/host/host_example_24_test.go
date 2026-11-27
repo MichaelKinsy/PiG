@@ -29,10 +29,10 @@ func TestExample24KeyedMembers(t *testing.T) {
 	// A badge per user: its own object, showing one profile.
 	badge := exLocal("example.badge", contracts.Params{exProp("user", exStr())}, contracts.Mem("label", exStr()))
 	host, _ := exOpenHost(t, loadedOptions{}, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(directory, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(directory, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			handle := self.State(profiles).(*documents.Keyed)
 			// The keyed handle is the member as it is.
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				Keyed: map[string]contracts.KeyedWatchable[delta.JsonValue]{"profiles": ExposeKeyed(handle)},
 				Methods: map[string]contracts.MethodFunction{
 					"set": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
@@ -45,16 +45,16 @@ func TestExample24KeyedMembers(t *testing.T) {
 						return nil, err
 					}),
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(badge, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(badge, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			user := exParam(params, "user")
 			// Pinned for this attempt; the badge goes live once the profile is loaded.
 			profile, err := self.Get(directory, jsonObject()).Keyed("profiles").At(user)
 			if err != nil {
-				return contracts.Implementation{}, err
+				return contracts.MembersImplementation{}, err
 			}
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{
 				"label": self.Derive([]any{profile}, func(values []any) (delta.JsonValue, error) {

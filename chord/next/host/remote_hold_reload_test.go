@@ -29,21 +29,19 @@ import (
 // rhShown is `Shown`: a remote object on the server: a label, a counter and `bump`.
 var rhShown = mustContract(contracts.Remote("app.shown", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{}, HostAddress: exServerAddress,
-	Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{
-		State:   []contracts.Property{rhProp("label", contracts.Str()), rhProp("n", contracts.Int())},
-		Methods: []contracts.MethodEntry{contracts.Meth("bump", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
-	})},
+	State: []contracts.RemoteStateEntry{contracts.StateEntry("label", contracts.Str()), contracts.StateEntry("n", contracts.Int())},
+		Methods: []contracts.RemoteMethodEntry{contracts.Meth("bump", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
 }))
 
 // rhShownV2 is `Shown` v2: its label became an object; v1 consumers map back through `accepts`.
 var rhShownV2 = mustContract(contracts.Evolve(rhShown, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
-	return e.State("v", "label", contracts.Obj(contracts.Prop("text", contracts.Str())))
+	return e.State("label", contracts.Obj(contracts.Prop("text", contracts.Str())))
 }))
 
 // rhShownMembers are the members of a `Shown` object labelled label (any JSON value), `bump` adding 1 to its counter.
-func rhShownMembers(self Self, label any) contracts.VariantImplementation {
+func rhShownMembers(self Self, label any) contracts.MembersImplementation {
 	doc := stateOf(self, rhCounter)
-	return contracts.VariantImplementation{
+	return contracts.MembersImplementation{
 		State: map[string]chord.Watchable[delta.JsonValue]{
 			"label": rhConst(label),
 			"n": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) {
@@ -64,12 +62,12 @@ func rhShownMembers(self Self, label any) contracts.VariantImplementation {
 
 // rhServeShown serves `Shown` labelled label (with a native when native).
 func rhServeShown(h FacetHost, label string, native bool) error {
-	return h.Serve(rhShown, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+	return h.Serve(rhShown, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 		if native {
 			self.Open(func(context.Context) (any, error) { return label, nil },
 				func(any, NativeCloseReason, context.Context) error { return nil })
 		}
-		return contracts.Implementation{Variant: "v", Members: rhShownMembers(self, label)}, nil
+		return rhShownMembers(self, label), nil
 	}, ServeOptions{})
 }
 
@@ -81,9 +79,9 @@ func rhLabelText(current delta.JsonValue) (delta.JsonValue, error) {
 // rhAcceptsLabel is the accepts table of a variant "v" whose member "label" maps through mapping (version 1).
 func rhAcceptsLabel(mapping contracts.Mapping) contracts.AcceptsTable {
 	return contracts.AcceptsTable{{Name: "1", Value: contracts.VersionMappings{
-		VariantState: []contracts.Entry[[]contracts.Entry[contracts.StateMapping]]{{Name: "v", Value: []contracts.Entry[contracts.StateMapping]{
+		State: []contracts.Entry[contracts.StateMapping]{
 			{Name: "label", Value: contracts.StateMapping{Func: mapping}},
-		}}},
+		},
 	}}}
 }
 
@@ -93,8 +91,8 @@ func rhServeShownV2(h FacetHost, text string, accept bool) error {
 	if accept {
 		options.Accepts = rhAcceptsLabel(rhLabelText)
 	}
-	return h.Serve(rhShownV2, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
-		return contracts.Implementation{Variant: "v", Members: rhShownMembers(self, jsonObject("text", text))}, nil
+	return h.Serve(rhShownV2, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
+		return rhShownMembers(self, jsonObject("text", text)), nil
 	}, options)
 }
 
@@ -206,13 +204,13 @@ func TestHoldsAcrossAReload(t *testing.T) {
 		}))
 		s := linked(t, func(h FacetHost) error { return rhServeShown(h, "v1", false) }, linkedOptions{})
 		_, err := s.Client.Reload([]HostFacet{{Name: "@test/panel", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(panel, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(panel, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				shown := self.Get(rhShown, jsonObject())
-				return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+				return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 					"text": self.Derive([]any{shown.Member("label")}, func(values []any) (delta.JsonValue, error) {
 						return fmt.Sprintf("panel %v", values[0]), nil
 					}),
-				}}}, nil
+				}}, nil
 			}, ServeOptions{})
 		})}}, background, ReloadOptions{})
 		must(t, err)
@@ -301,24 +299,16 @@ func TestHoldsAcrossAReload(t *testing.T) {
 	t.Run("reloads during a full window: calls are answered by the old names until the fresh bound goes (audit A9)", func(t *testing.T) {
 		two := mustContract(contracts.Remote("app.two-variants", contracts.RemoteDeclaration{
 			Version: 1, Params: contracts.Params{}, HostAddress: exServerAddress,
-			Variants: []contracts.VariantEntry{
-				contracts.Var("a", contracts.VariantDeclaration{
-					State: []contracts.Property{rhProp("label", contracts.Str())},
-					Methods: []contracts.MethodEntry{
-						contracts.Meth("bump", contracts.NewMethod(contracts.Schema{}, contracts.Int())),
-						contracts.Meth("ping", contracts.NewMethod(contracts.Schema{}, contracts.Int())),
-					},
-				}),
-				contracts.Var("b", contracts.VariantDeclaration{
-					State:   []contracts.Property{rhProp("label", contracts.Str())},
-					Methods: []contracts.MethodEntry{contracts.Meth("ping", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
-				}),
+			State: []contracts.RemoteStateEntry{contracts.StateEntry("label", contracts.Str())},
+			Methods: []contracts.RemoteMethodEntry{
+				contracts.Meth("bump", contracts.NewGrantable(contracts.NewMethod(contracts.Schema{}, contracts.Int()))),
+				contracts.Meth("ping", contracts.NewMethod(contracts.Schema{}, contracts.Int())),
 			},
 		}))
 		ping := func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return 7.0, nil }
 		serveTwo := func(variant, label string) func(FacetHost) error {
 			return func(h FacetHost) error {
-				return h.Serve(two, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+				return h.Serve(two, func(_ *delta.JsonObject, _ data.Principal, _ AdmittedValue, self Self) (contracts.MembersImplementation, error) {
 					doc := stateOf(self, rhCounter)
 					bump := func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 						err := doc.Change(func(draft *delta.Object) { _ = draft.Set("n", draft.Get("n").(float64)+1) }, ctx)
@@ -327,26 +317,27 @@ func TestHoldsAcrossAReload(t *testing.T) {
 						}
 						return doc.Value().Value("n"), nil
 					}
-					members := contracts.VariantImplementation{
+					return contracts.MembersImplementation{
 						State:   map[string]chord.Watchable[delta.JsonValue]{"label": rhConst(label)},
-						Methods: map[string]contracts.MethodFunction{"ping": ping},
-					}
+						Methods: map[string]contracts.MethodFunction{"ping": ping, "bump": bump},
+					}, nil
+				}, ServeOptions{Admit: func(*delta.JsonObject, data.Principal, AdmitSelf) (chord.Watchable[delta.JsonValue], error) {
 					if variant == "a" {
-						members.Methods["bump"] = bump
+						return rhConst(Allow(delta.JsonObjectOf("granted", []delta.JsonValue{"bump"}))), nil
 					}
-					return contracts.Implementation{Variant: variant, Members: members}, nil
-				}, ServeOptions{})
+					return rhConst(Allow(delta.NewJsonObject(0))), nil
+				}})
 			}
 		}
 		server, peer := rhRawServer(t, serveTwo("a", "v1"), rawPeerOptions{NoAck: true})
-		a := wireNames(t, two, "a")
-		b := wireNames(t, two, "b")
+		a := wireNames(t, two, "bump")
+		b := wireNames(t, two, "none")
 		rhHold(peer, 0, two)
 		peer.Next("bound")
 		// A second message in flight: the window (two) is full.
 		changed := func(h FacetHost) error {
-			return h.Serve(two, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
-				return contracts.Implementation{Variant: "a", Members: contracts.VariantImplementation{
+			return h.Serve(two, func(_ *delta.JsonObject, _ data.Principal, _ AdmittedValue, self Self) (contracts.MembersImplementation, error) {
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{
 						"label": self.Derive([]any{stateOf(self, rhCounter).s}, func(values []any) (delta.JsonValue, error) {
 							return fmt.Sprintf("n %v", values[0].(*delta.JsonObject).Value("n")), nil
@@ -356,8 +347,10 @@ func TestHoldsAcrossAReload(t *testing.T) {
 						"bump": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return 0.0, nil },
 						"ping": ping,
 					},
-				}}, nil
-			}, ServeOptions{})
+				}, nil
+			}, ServeOptions{Admit: func(*delta.JsonObject, data.Principal, AdmitSelf) (chord.Watchable[delta.JsonValue], error) {
+				return rhConst(Allow(delta.JsonObjectOf("granted", []delta.JsonValue{"bump"}))), nil
+			}})
 		}
 		rhReload(t, server, changed)
 		peer.Next("bound")
@@ -370,7 +363,7 @@ func TestHoldsAcrossAReload(t *testing.T) {
 		rhReload(t, server, serveTwo("b", "v3"))
 		rhSync(t, peer)
 		rhBumpCall(peer, 1, a.Methods["bump"])
-		requireChordWire(t, peer.Next("error").(*link.ErrorMessage).Error, "invalid", "member")
+		requireChordWire(t, peer.Next("error").(*link.ErrorMessage).Error, "forbidden", "")
 		rhBumpCall(peer, 2, a.Methods["ping"])
 		rhEqual(t, "ping", rhResultNumber(t, peer.Next("result")), 7)
 		if got := countKind(peer, "bound"); got != 0 {
@@ -378,7 +371,7 @@ func TestHoldsAcrossAReload(t *testing.T) {
 		}
 		peer.Ack(link.Optional[int]{})
 		fresh := peer.Next("bound").(*link.BoundMessage)
-		if fresh.Holds[0].Hold != 0 || fresh.Holds[0].Variant != b.Variant {
+		if fresh.Holds[0].Hold != 0 || !slices.Equal(fresh.Holds[0].Granted, b.Granted) {
 			t.Fatalf("fresh bound = %+v, want hold 0 of variant b", fresh.Holds[0])
 		}
 		rhEqual(t, "members", b.NamedBound(t, fresh.Holds[0].Members), map[string]any{"label": "v3"})
@@ -388,21 +381,19 @@ func TestHoldsAcrossAReload(t *testing.T) {
 	t.Run("collects the old instance while the hold's fresh bound waits for a slot (Astra, audit A9 GC)", func(t *testing.T) {
 		typ := mustContract(contracts.Remote("astra.audit-gc", contracts.RemoteDeclaration{
 			Version: 1, Params: contracts.Params{}, HostAddress: exServerAddress,
-			Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
-				State: []contracts.Property{rhProp("n", contracts.Int())},
-			})},
+			State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 		}))
 		var declared Self
 		var declaredMu sync.Mutex
 		facet := func(n float64) func(FacetHost) error {
 			return func(h FacetHost) error {
-				return h.Serve(typ, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+				return h.Serve(typ, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 					declaredMu.Lock()
 					declared = self
 					declaredMu.Unlock()
-					return contracts.Implementation{Variant: "main", Members: contracts.VariantImplementation{
+					return contracts.MembersImplementation{
 						State: map[string]chord.Watchable[delta.JsonValue]{"n": rhConst(n)},
-					}}, nil
+					}, nil
 				}, ServeOptions{})
 			}
 		}
@@ -476,10 +467,8 @@ func TestHoldsAcrossMoreThanOneSwapKeepsARealSubscriberWhenAChangedConstantLater
 	typ := mustContract(contracts.Remote("sol.wire", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return kind.Address(nil), nil },
-		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
-			State:   []contracts.Property{rhProp("x", contracts.Int())},
-			Methods: []contracts.MethodEntry{contracts.Meth("set", contracts.NewMethod(contracts.Int()))},
-		})},
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("x", contracts.Int())},
+			Methods: []contracts.RemoteMethodEntry{contracts.Meth("set", contracts.NewMethod(contracts.Int()))},
 	}))
 	doc, err := documents.DefineState("wire", documents.StateOptions{
 		Schema: contracts.Obj(contracts.Prop("n", contracts.Int())), Version: 1,
@@ -488,7 +477,7 @@ func TestHoldsAcrossMoreThanOneSwapKeepsARealSubscriberWhenAChangedConstantLater
 	must(t, err)
 	facet := func(constant *float64) func(FacetHost) error {
 		return func(h FacetHost) error {
-			return h.Serve(typ, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+			return h.Serve(typ, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 				wire := stateOf(self, doc)
 				var x chord.Watchable[delta.JsonValue]
 				if constant != nil {
@@ -498,12 +487,12 @@ func TestHoldsAcrossMoreThanOneSwapKeepsARealSubscriberWhenAChangedConstantLater
 						return values[0].(*delta.JsonObject).Value("n"), nil
 					})
 				}
-				return contracts.Implementation{Variant: "main", Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{"x": x},
 					Methods: map[string]contracts.MethodFunction{"set": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 						return nil, wire.Change(func(draft *delta.Object) { _ = draft.Set("n", args) }, ctx)
 					}},
-				}}, nil
+				}, nil
 			}, ServeOptions{})
 		}
 	}
@@ -548,30 +537,30 @@ func TestAHoldAfterItsObjectsLiveFailureFollowsAMemberReExposingAnotherObjectsSo
 	}))
 	b := mustContract(contracts.Remote("app.reexposing", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{}, HostAddress: exServerAddress,
-		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{State: []contracts.Property{rhProp("x", point)}})},
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("x", point)},
 	}))
 	var mu sync.Mutex
 	var foreign state.Writable[any]
 	var selfB Self
 	s := linked(t, func(h FacetHost) error {
-		if err := h.Serve(a, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(a, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			w := self.Writable(jsonObject("n", 0.0))
 			mu.Lock()
 			foreign = w
 			mu.Unlock()
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 				"x": self.Derive([]any{w}, func(values []any) (delta.JsonValue, error) { return values[0], nil }),
-			}}}, nil
+			}}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(b, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return h.Serve(b, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			mu.Lock()
 			selfB = self
 			mu.Unlock()
-			return contracts.Implementation{Variant: "main", Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"x": Expose(self.Get(a, jsonObject()).Member("x"))},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, linkedOptions{})
 	ref := refGet(t, s.Client, b, jsonObject())
@@ -602,30 +591,30 @@ func TestAHoldAfterItsObjectsLiveFailureFollowsAMemberReExposingAnotherObjectsSo
 func TestAHoldAcrossASwapWhoseMappingFailsGetsTheMembersFailureInItsFreshBoundAndHealsWithTheNewSource(t *testing.T) {
 	w1 := mustContract(contracts.Remote("app.swap-failed", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{}, HostAddress: exServerAddress,
-		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{State: []contracts.Property{rhProp("x", contracts.Int())}})},
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("x", contracts.Int())},
 	}))
 	w2 := mustContract(contracts.Evolve(w1, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
-		return e.State("main", "x", contracts.Obj(contracts.Prop("n", contracts.Int())))
+		return e.State("x", contracts.Obj(contracts.Prop("n", contracts.Int())))
 	}))
 	var throws atomic.Bool
 	throws.Store(true)
 	var mu sync.Mutex
 	var point state.Writable[any]
 	serve := func(h FacetHost, mapping contracts.Mapping) error {
-		return h.Serve(w2, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return h.Serve(w2, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			w := self.Writable(jsonObject("n", 1.0))
 			mu.Lock()
 			point = w
 			mu.Unlock()
-			return contracts.Implementation{Variant: "main", Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"x": self.Derive([]any{w}, func(values []any) (delta.JsonValue, error) { return values[0], nil }),
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{Accepts: contracts.AcceptsTable{{Name: "1", Value: contracts.VersionMappings{
-			VariantState: []contracts.Entry[[]contracts.Entry[contracts.StateMapping]]{{Name: "main", Value: []contracts.Entry[contracts.StateMapping]{
+			State: []contracts.Entry[contracts.StateMapping]{
 				{Name: "x", Value: contracts.StateMapping{Func: mapping}},
-			}}},
+			},
 		}}}})
 	}
 	n := func(value delta.JsonValue) (delta.JsonValue, error) { return value.(*delta.JsonObject).Value("n"), nil }
@@ -670,14 +659,12 @@ func TestHoldWaitingForAWindowSlotWhoseSlotFreesBetweenTheOldAttemptsSealAndItsE
 	forEachCodec(t, func(t *testing.T) {
 		window := mustContract(contracts.Remote("app.window", contracts.RemoteDeclaration{
 			Version: 1, Params: contracts.Params{}, HostAddress: exServerAddress,
-			Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
-				State: []contracts.Property{rhProp("n", contracts.Int())},
-				Methods: []contracts.MethodEntry{
+			State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
+				Methods: []contracts.RemoteMethodEntry{
 					contracts.Meth("bump", contracts.NewMethod(contracts.Schema{}, contracts.Int())),
 					contracts.Meth("slow", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
 					contracts.Meth("start", contracts.NewMethod()),
 				},
-			})},
 		}))
 		wait, err := DefineJob("app.window-wait", JobOptions{Version: 1, Args: contracts.Obj(), Result: contracts.Str()})
 		must(t, err)
@@ -686,7 +673,7 @@ func TestHoldWaitingForAWindowSlotWhoseSlotFreesBetweenTheOldAttemptsSealAndItsE
 		var atSeal atomic.Pointer[func()]
 		serveWindow := func(code string) func(FacetHost) error {
 			return func(h FacetHost) error {
-				return h.Serve(window, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+				return h.Serve(window, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 					self.Open(func(context.Context) (any, error) { return code, nil },
 						func(any, NativeCloseReason, context.Context) error { return nil })
 					doc := stateOf(self, rhCounter)
@@ -697,7 +684,7 @@ func TestHoldWaitingForAWindowSlotWhoseSlotFreesBetweenTheOldAttemptsSealAndItsE
 						}
 						return "cut", nil
 					}})
-					return contracts.Implementation{Variant: "main", Members: contracts.VariantImplementation{
+					return contracts.MembersImplementation{
 						State: map[string]chord.Watchable[delta.JsonValue]{
 							"n": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) {
 								return values[0].(*delta.JsonObject).Value("n"), nil
@@ -722,7 +709,7 @@ func TestHoldWaitingForAWindowSlotWhoseSlotFreesBetweenTheOldAttemptsSealAndItsE
 								return code + " slow", nil
 							},
 						},
-					}}, nil
+					}, nil
 				}, ServeOptions{})
 			}
 		}
@@ -794,8 +781,8 @@ func TestHoldWaitingForAWindowSlotWhoseSlotFreesBetweenTheOldAttemptsSealAndItsE
 func TestHoldsAcrossAReloadAReferenceMadeDuringAVersionDroppingReloadsDrainJoinsTheOldLiveBindingNoFreshAdmission(t *testing.T) {
 	gate, entered := newSignal(), newSignal()
 	s := linked(t, func(h FacetHost) error {
-		return h.Serve(rhShown, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+		return h.Serve(rhShown, func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"label": rhConst("v1"), "n": rhConst(float64(0))},
 				Methods: map[string]contracts.MethodFunction{
 					"bump": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -804,7 +791,7 @@ func TestHoldsAcrossAReloadAReferenceMadeDuringAVersionDroppingReloadsDrainJoins
 						return float64(1), nil
 					},
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, linkedOptions{})
 	a := refGet(t, s.Client, rhShown, jsonObject())

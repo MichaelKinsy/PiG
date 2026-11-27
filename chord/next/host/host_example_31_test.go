@@ -20,10 +20,10 @@ import (
 
 func TestExample31ParkedDependencies(t *testing.T) {
 	// The server's notes (the notes plugin), placed on the server.
-	notes := exRemote("example.notes", contracts.Params{}, exServerAddress, contracts.Var("editor", contracts.VariantDeclaration{
-		State:   []contracts.Property{exProp("list", exArr(exStr()))},
-		Methods: []contracts.MethodEntry{contracts.Meth("add", contracts.NewMethod(exObj(exProp("text", exStr()))))},
-	}))
+	notes := exRemote("example.notes", contracts.Params{}, exServerAddress, contracts.RemoteDeclaration{
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("list", exArr(exStr()))},
+		Methods: []contracts.RemoteMethodEntry{contracts.Meth("add", contracts.NewMethod(exObj(exProp("text", exStr()))))},
+	})
 	// A panel in the tab: a local object over the server's notes.
 	panel := exLocal("example.panel", contracts.Params{exProp("id", exInt())}, contracts.Mem("count", exInt()))
 	// A local object the panel's sibling needs, which no plugin of the tab serves.
@@ -32,7 +32,7 @@ func TestExample31ParkedDependencies(t *testing.T) {
 	list := exStringListDoc("example.list")
 	// The notes plugin's server facet.
 	notesPlugin := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(notes, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return h.Serve(notes, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			doc := stateOf(self, list)
 			return exVariant("editor", map[string]chord.Watchable[delta.JsonValue]{
 				"list": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) {
@@ -59,7 +59,7 @@ func TestExample31ParkedDependencies(t *testing.T) {
 	tabErrors := &hostErrors{}
 	tab := newHost(t, HostOptions{OnError: tabErrors.push})
 	mustLoad(t)(tab.Load([]HostFacet{{Name: "@example/panel", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(panel, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(panel, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			panelMu.Lock()
 			panels++
 			panelMu.Unlock()
@@ -72,7 +72,7 @@ func TestExample31ParkedDependencies(t *testing.T) {
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(header, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(header, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"title": Expose(self.Get(theme, jsonObject()).Member("name"))}, nil), nil
 		}, ServeOptions{})
 	})}}, background))

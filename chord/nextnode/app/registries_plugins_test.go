@@ -71,7 +71,7 @@ func workerRead(registry string) *contracts.Contract {
 		HostAddress: func(params *delta.JsonObject) (contracts.Address, error) {
 			return project.Address(delta.JsonObjectOf("id", params.Value("id"))), nil
 		},
-		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("v", contracts.Str())}})},
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("v", contracts.Str())},
 	})
 }
 

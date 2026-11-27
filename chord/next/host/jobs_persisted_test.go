@@ -234,7 +234,7 @@ func openedRecorded(
 	}
 	host := newJobHost(t, options)
 	mustLoad(t)(host.Load([]HostFacet{{Name: "notes", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(jobNotesStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(jobNotesStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			result.Imports = self.Job(definition, JobImplementation{
 				Run: run,
 				Finish: func(outcome Outcome, _ documents.Tx) error {
@@ -259,7 +259,7 @@ func openedRecorded(
 				},
 			})
 			result.Self = self
-			return contracts.Implementation{}, nil
+			return contracts.MembersImplementation{}, nil
 		}, ServeOptions{})
 	})}}, background))
 	result.Host = host
@@ -1179,7 +1179,7 @@ func TestPersistedPinningAnUnsettledRunsStateNeverIdlesPastTheResidencyRetention
 	host := newJobHost(t, HostOptions{Store: st, OnError: func(HostError) {}, loop: loop})
 	var imports JobHandle
 	mustLoad(t)(host.Load([]HostFacet{{Name: "notes", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(jobNotesStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(jobNotesStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			imports = self.Job(jobImport, JobImplementation{Run: func(_ any, ctx JobCtx) (any, error) {
 				if _, err := ctx.State().Change(ctx, func(draft *delta.Object) (any, error) { return nil, draft.Set("done", float64(3)) }, ChangeOptions{}); err != nil {
 					return nil, err
@@ -1195,7 +1195,7 @@ func TestPersistedPinningAnUnsettledRunsStateNeverIdlesPastTheResidencyRetention
 				mu.Unlock()
 				return countResult(outputDone(value)), nil
 			}})
-			return contracts.Implementation{}, nil
+			return contracts.MembersImplementation{}, nil
 		}, ServeOptions{})
 	})}}, background))
 	run := jobStart(t, imports, pathArgs("a"), background)
@@ -1561,7 +1561,7 @@ func TestPersistedVersionsResolvedByAReloadAPersistedRunBlockedForItsVersionAtIt
 	var finished []Outcome
 	serve := func(declared *JobDefinition) Facet {
 		return DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(jobNotesStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(jobNotesStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				self.Job(declared, JobImplementation{
 					Run: func(any, JobCtx) (any, error) { return countResult(7), nil },
 					Finish: func(outcome Outcome, _ documents.Tx) error {
@@ -1571,7 +1571,7 @@ func TestPersistedVersionsResolvedByAReloadAPersistedRunBlockedForItsVersionAtIt
 						return nil
 					},
 				})
-				return contracts.Implementation{}, nil
+				return contracts.MembersImplementation{}, nil
 			}, ServeOptions{})
 		})
 	}

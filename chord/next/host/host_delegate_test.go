@@ -26,7 +26,7 @@ func delegateType(t testing.TB, name string) *contracts.Contract {
 	t.Helper()
 	contract, err := contracts.Remote(name, contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{}, HostAddress: contractstest.ServerAddress,
-		Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("n", contracts.Int())}})},
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -37,8 +37,8 @@ func delegateType(t testing.TB, name string) *contracts.Contract {
 // delegateServes serves the remote type contract with its variant v, member n constant n.
 func delegateServes(contract *contracts.Contract, n float64) Facet {
 	return DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(contract, func(_ *delta.JsonObject, _ data.Principal, _ Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(n)}}}, nil
+		return h.Serve(contract, func(_ *delta.JsonObject, _ data.Principal, _ Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(n)}}, nil
 		}, ServeOptions{})
 	})
 }
@@ -298,7 +298,7 @@ func TestDelegateTheClosureRuleReadsTheStagedTableAChangedPluginsRequestForAType
 	viewType := mustContract(declareLocal("app.view", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())}}))
 	view := func(code float64) Facet {
 		return DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(viewType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(viewType, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				// The view's `n` is `app.b`'s: the server serves it now, the delegate does once the server stops.
 				return impl("n", Expose(self.Get(r.B, jsonObject()).Member("n"))), nil
 			}, ServeOptions{})

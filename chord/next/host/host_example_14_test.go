@@ -23,16 +23,14 @@ func TestExample14FlowControl(t *testing.T) {
 		contracts.Mem("reply", exObj(exProp("text", exStr()))), contracts.Mem("append", contracts.NewMethod(exStr())))
 	view := mustContract(contracts.Remote("example.view", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{exProp("session", exStr())}, HostAddress: exSessionAddress,
-		Variants: []contracts.VariantEntry{contracts.Var("owner", contracts.VariantDeclaration{
-			State: []contracts.Property{exProp("reply", exObj(exProp("text", exStr())))},
-		})},
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("reply", exObj(exProp("text", exStr())))},
 	}))
 	replyDoc := exDefineState("reply", documents.StateOptions{
 		Schema:  exObj(exProp("text", exStr())),
 		Initial: func() *delta.JsonObject { return jsonObject("text", "") },
 	})
 	workerFacet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(reply, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(reply, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			doc := stateOf(self, replyDoc)
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"reply": doc.Member()}, map[string]contracts.MethodFunction{
 				"append": func(token delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -42,7 +40,7 @@ func TestExample14FlowControl(t *testing.T) {
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(view, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return h.Serve(view, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			return exVariant("owner", map[string]chord.Watchable[delta.JsonValue]{
 				"reply": Expose(self.Get(reply, jsonObject()).Member("reply")),
 			}, nil), nil

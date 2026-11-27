@@ -295,13 +295,11 @@ var notes = func() *contracts.Contract {
 		HostAddress: func(params *delta.JsonObject) (contracts.Address, error) {
 			return project.Address(delta.JsonObjectOf("id", params.Value("id"))), nil
 		},
-		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
-			State: []contracts.Property{contracts.Prop("text", contracts.Str()), contracts.Prop("start", contracts.Unknown())},
-			Methods: []contracts.MethodEntry{
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("text", contracts.Str()), contracts.StateEntry("start", contracts.Unknown())},
+			Methods: []contracts.RemoteMethodEntry{
 				contracts.Meth("write", contracts.NewMethod(contracts.Str())), contracts.Meth("visit", contracts.NewMethod(contracts.Str(), contracts.Int())),
 				contracts.Meth("attach", contracts.NewMethod(contracts.Str(), contracts.Str())), contracts.Meth("file", contracts.NewMethod(contracts.Str(), contracts.Str())),
 			},
-		})},
 	})
 	if err != nil {
 		panic(err)

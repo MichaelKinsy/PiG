@@ -102,7 +102,7 @@ func TestAReloadWithACopyOfTheLoadedFacetChangesNothing(t *testing.T) {
 	var runs int
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		runs++
-		return h.Serve(hostInfo, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+		return h.Serve(hostInfo, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
 			return impl("title", constant("a")), nil
 		}, ServeOptions{})
 	})

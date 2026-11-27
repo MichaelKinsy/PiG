@@ -35,7 +35,7 @@ func TestExample25ExportImport(t *testing.T) {
 		contracts.Mem("title", exObj(exProp("text", exStr()))), contracts.Mem("visit", contracts.NewMethod(exStr(), exInt())),
 		contracts.Mem("rename", contracts.NewMethod(exStr())))
 	facet := func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(site, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(site, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			table := self.(StoreSelf).Table(visits)
 			titleDoc := stateOf(self, title)
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"title": titleDoc.Member()}, map[string]contracts.MethodFunction{

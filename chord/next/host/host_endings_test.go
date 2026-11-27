@@ -23,18 +23,20 @@ import (
 // serveGatedNotes serves Notes whose attempts open a native that closes only once gate is closed: a teardown parked on a
 // real wait (Pi: `await native.close()`, attempt.ts:1375-1390).
 func serveGatedNotes(h FacetHost, gate <-chan struct{}) error {
-	return h.Serve(Notes, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+	return h.Serve(Notes, func(_ *delta.JsonObject, _ data.Principal, _ AdmittedValue, self Self) (contracts.MembersImplementation, error) {
 		self.Open(func(context.Context) (any, error) { return nil, nil },
 			func(_ any, _ NativeCloseReason, ctx context.Context) error {
 				_, _ = chordctx.Receive(context.WithoutCancel(ctx), gate)
 				return nil
 			})
 		stub := func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil }
-		return contracts.Implementation{Variant: "editor", Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			State:   map[string]chord.Watchable[delta.JsonValue]{"notes": constant([]any{}), "count": constant(float64(0))},
 			Methods: map[string]contracts.MethodFunction{"add": stub, "fail": stub, "wait": stub, "echo": stub},
-		}}, nil
-	}, ServeOptions{})
+		}, nil
+	}, ServeOptions{Admit: func(*delta.JsonObject, data.Principal, AdmitSelf) (chord.Watchable[delta.JsonValue], error) {
+		return constant(Allow(delta.JsonObjectOf("granted", []delta.JsonValue{"add", "fail", "echo"}))), nil
+	}})
 }
 
 // tasksAlive is how many tasks the host's loop runs or has parked on a wait.

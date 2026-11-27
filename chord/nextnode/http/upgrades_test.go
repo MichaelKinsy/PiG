@@ -45,14 +45,12 @@ var serverKind = must(contracts.NewHostKind("server"))
 var who = must(contracts.Remote("test.who", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return serverKind.Address(nil), nil },
-	Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
-		Methods: []contracts.MethodEntry{contracts.Meth("who", contracts.NewMethod(contracts.Schema{}, contracts.Str()))},
-	})},
+	Methods: []contracts.RemoteMethodEntry{contracts.Meth("who", contracts.NewMethod(contracts.Schema{}, contracts.Str()))},
 }))
 
 var serveWho = host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-	return h.Serve(who, func(_ *delta.JsonObject, _ data.Principal, _ host.Self) (contracts.Implementation, error) {
-		return contracts.Implementation{Variant: "main", Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+	return h.Serve(who, func(_ *delta.JsonObject, _ data.Principal, _ host.Self) (contracts.MembersImplementation, error) {
+		return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 			"who": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 				principal := ctx.(host.Ctx).Principal()
 				if principal == nil {
@@ -61,7 +59,7 @@ var serveWho = host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
 				out, err := chordjson.Marshal(principal)
 				return string(out), err
 			},
-		}}}, nil
+		}}, nil
 	}, host.ServeOptions{})
 })
 
@@ -314,10 +312,10 @@ func newTunnel(name string, initial []string, build func(args []string) HttpCont
 		contracts.Mem("name", contracts.NewMethod(contracts.Arr(contracts.Str()))),
 	}}))
 	facet := host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		return h.Serve(contract, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+		return h.Serve(contract, func(_ *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
 			contribution := self.Writable(build(initial))
 			self.(host.StoreSelf).Contribute(registries.Registry[any, any](Http), contribution)
-			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				"name": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
 					list, _ := args.([]any)
 					names := make([]string, len(list))
@@ -326,7 +324,7 @@ func newTunnel(name string, initial []string, build func(args []string) HttpCont
 					}
 					return nil, set(contribution, build(names))
 				},
-			}}}, nil
+			}}, nil
 		}, host.ServeOptions{})
 	})
 	return tunnel{facet: facet, contract: contract}

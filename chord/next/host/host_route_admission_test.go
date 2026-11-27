@@ -56,9 +56,9 @@ var Gate = mustContract(contracts.Local("test.gate", contracts.LocalDeclaration{
 
 // serveGate serves Gate on the server.
 func serveGate(facet FacetHost) error {
-	return facet.Serve(Gate, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+	return facet.Serve(Gate, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 		doc := stateOf(self, modesDoc)
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{
 				"modes": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) {
 					return values[0].(*delta.JsonObject).Value("modes"), nil
@@ -71,7 +71,7 @@ func serveGate(facet FacetHost) error {
 					return nil, doc.Change(func(draft *delta.Object) { _ = draft.Object("modes").Set(who, mode) }, ctx)
 				},
 			},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 }
 
@@ -446,12 +446,12 @@ func TestRouteAdmissionADecisionThatChangesWhileItIsSettledEndsDeniedWheneverThe
 				var rel *relayed
 				rel = relay(t, relayedOptions{
 					Server: func(h FacetHost) error {
-						return h.Serve(Open, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+						return h.Serve(Open, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 							open := self.Writable("yes")
 							flag.Store(&open)
-							return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+							return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 								"open": self.Derive([]any{open}, func(values []any) (delta.JsonValue, error) { return values[0], nil }),
-							}}}, nil
+							}}, nil
 						}, ServeOptions{})
 					},
 					Admit: func(_ data.Principal, _ contracts.Address, self AdmitSelf) (any, error) {
@@ -507,8 +507,8 @@ func TestRouteAdmissionADenialUnbindsThePrincipalsHoldsReleasedAtTheWorkerReplic
 		if references := activityOf(worker).References; references != 1 {
 			t.Fatalf("worker references = %d, want 1", references)
 		}
-		if variant, _, _ := notes.Variant(); variant != "editor" {
-			t.Fatalf("variant = %q, want editor", variant)
+		if granted, _ := notes.Granted(); !granted["add"] {
+			t.Fatalf("granted = %v, want add", granted)
 		}
 		waiting := startNotesCall(t, notes, "wait")
 		g.settled()
@@ -524,8 +524,8 @@ func TestRouteAdmissionADenialUnbindsThePrincipalsHoldsReleasedAtTheWorkerReplic
 		if got := toldOf(t, err); got != (errorTold{"forbidden", "", "no access"}) {
 			t.Fatalf("count = %+v, want forbidden: no access", got)
 		}
-		if _, bound, _ := notes.Variant(); bound {
-			t.Fatal("a denied hold still has a variant")
+		if granted, _ := notes.Granted(); len(granted) != 0 {
+			t.Fatal("a denied hold still has grants")
 		}
 		if references := activityOf(worker).References; references != 0 {
 			t.Fatalf("worker references = %d, want 0 after the denial", references)
@@ -567,10 +567,10 @@ func TestRouteAdmissionADenialIsPerPrincipalAndAddressAnotherPrincipalsHoldsOnTh
 		defer closeHosts(t, guest)
 		owners := mustGet(t, g.Tab, PlacedNotes, jsonObject("session", "S1"))
 		guests := mustGet(t, guest, PlacedNotes, jsonObject("session", "S1"))
-		ownerVariant, _, _ := owners.Variant()
-		guestVariant, _, _ := guests.Variant()
-		if ownerVariant != "editor" || guestVariant != "reader" {
-			t.Fatalf("variants = %s, %s, want editor, reader", ownerVariant, guestVariant)
+		ownerGranted, _ := owners.Granted()
+		guestGranted, _ := guests.Granted()
+		if !ownerGranted["add"] || guestGranted["add"] {
+			t.Fatalf("granted = %v, %v, want add/none", ownerGranted, guestGranted)
 		}
 		g.WorkerLoaded(t, "session|S1")
 		g.set("no", "guest")
@@ -848,7 +848,7 @@ func boundOf(t testing.TB, held *link.HoldMessage, count int) link.Message {
 	counted, err := link.JsonPart(float64(count))
 	must(t, err)
 	return &link.BoundMessage{Origin: held.Origin, Holds: []link.BoundEntry{{
-		Hold: held.Hold, Variant: editor.Variant,
+		Hold: held.Hold, Granted: editor.Granted,
 		Members: []link.BoundMember{{Member: editor.State["notes"], Value: notes}, {Member: editor.State["count"], Value: counted}},
 		Failed:  []link.FailedMember{},
 	}}}
@@ -1272,8 +1272,8 @@ func TestRouteAdmissionAServersOwnReferenceToAGatedAddressIsWithheldAndAdmittedA
 		g.set("yes", "server")
 		g.settled()
 		wantKind(t, own, RefStateLive)
-		if _, bound, err := own.Variant(); err != nil || !bound {
-			t.Fatalf("variant bound = %v, %v, want a variant bound once it is live", bound, err)
+		if granted, err := own.Granted(); err != nil || !granted["add"] {
+			t.Fatalf("granted = %v, %v, want add once it is live", granted, err)
 		}
 		g.set("no", "server")
 		g.settled()
@@ -1282,8 +1282,8 @@ func TestRouteAdmissionAServersOwnReferenceToAGatedAddressIsWithheldAndAdmittedA
 			t.Fatal("a denied remote reference still reads its replica")
 		}
 		// remote-object.ts `withheld`: a denial drops what it bound; a refusal that only holds back (waiting) would keep it.
-		if variant, bound, err := own.Variant(); err != nil || bound {
-			t.Fatalf("variant after the denial = %q bound %v, %v, want none bound", variant, bound, err)
+		if granted, err := own.Granted(); err != nil || len(granted) != 0 {
+			t.Fatalf("granted after the denial = %v, %v, want empty", granted, err)
 		}
 		g.WorkerLoaded(t, "session|S1")
 		if references := workerReferences(g.relayed, "session|S1"); references != 0 {

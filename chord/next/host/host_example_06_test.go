@@ -47,7 +47,7 @@ func TestExample06Natives(t *testing.T) {
 	}})
 	_ = errs
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@example/natives", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(clock, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(clock, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			zone := exParam(params, "zone")
 			// `self.open(open, close)` declares a native; it opens after the references are live, in declaration order.
 			config := self.Open(func(context.Context) (any, error) {
@@ -94,7 +94,7 @@ func TestExample06Natives(t *testing.T) {
 			return err
 		}
 		// Closes that throw or hang: they never stop the other closes.
-		return h.Serve(leaky, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(leaky, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			self.Open(func(context.Context) (any, error) { return "socket", nil }, func(any, NativeCloseReason, context.Context) error {
 				return errors.New("socket close failed")
 			})

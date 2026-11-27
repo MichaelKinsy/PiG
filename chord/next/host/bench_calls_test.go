@@ -65,9 +65,9 @@ func benchCalls(b *testing.B, recorder *telemetry.InMemoryTelemetryContext) {
 	}
 	host := newHost(b, options)
 	mustLoad(b)(host.Load([]HostFacet{{Name: "@bench/calls", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(benchStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(benchStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			counter := self.State(benchCounterDoc).(*documents.Singleton)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"doubled": self.Derive([]any{counter}, func(values []any) (delta.JsonValue, error) {
 						return values[0].(*delta.JsonObject).Value("n").(float64) * 2, nil
@@ -80,19 +80,19 @@ func benchCalls(b *testing.B, recorder *telemetry.InMemoryTelemetryContext) {
 						return nil, err
 					},
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(benchItem, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(benchItem, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			id := params.Value("id").(float64)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"n": self.Derive([]any{self.Get(benchStore, jsonObject()).Member("doubled")}, func(values []any) (delta.JsonValue, error) {
 						return values[0].(float64) + id, nil
 					}),
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})}}, background))
 	store, err := host.Get(background, benchStore, jsonObject(), GetOptions{})

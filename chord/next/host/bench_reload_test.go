@@ -54,7 +54,7 @@ var benchReloadTypes = func() []*contracts.Contract {
 // benchReloadFacet is plugin index's facet at code version code; with native, each object opens a native.
 func benchReloadFacet(index, code int, native bool) Facet {
 	return DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(benchReloadTypes[index], func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(benchReloadTypes[index], func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			counter := self.State(benchReloadCounter).(*documents.Singleton)
 			if native {
 				self.Open(func(context.Context) (any, error) { return code, nil },
@@ -63,7 +63,7 @@ func benchReloadFacet(index, code int, native bool) Facet {
 			implementation := impl("n", self.Derive([]any{counter}, func(values []any) (delta.JsonValue, error) {
 				return values[0].(*delta.JsonObject).Value("n"), nil
 			}), "label", constant(float64(code)))
-			implementation.Members.Methods = map[string]contracts.MethodFunction{
+			implementation.Methods = map[string]contracts.MethodFunction{
 				"bump": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					return counter.Change(ctx, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", 1.0) })
 				},

@@ -35,7 +35,7 @@ func TestExample04Watches(t *testing.T) {
 		errs.push(err)
 	}})
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@example/counter", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(counter, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(counter, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			count := stateOf(self, countDoc)
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{
 				"count": count.Member(),

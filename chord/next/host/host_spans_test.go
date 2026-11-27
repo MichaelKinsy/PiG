@@ -187,8 +187,8 @@ func tracedFacet(workFn, failingFn func(ctx Ctx) (any, error)) Facet {
 		if err := servePage(h, nil); err != nil {
 			return err
 		}
-		return h.Serve(tracedType, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+		return h.Serve(tracedType, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				"work": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					if workFn == nil {
 						return nil, nil
@@ -201,7 +201,7 @@ func tracedFacet(workFn, failingFn func(ctx Ctx) (any, error)) Facet {
 					}
 					return failingFn(ctx.(Ctx))
 				},
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	})
 }
@@ -543,18 +543,18 @@ func TestServeOptionsStartNoMethodSpanForATypeServedUntraced(t *testing.T) {
 		Members: []contracts.LocalEntry{contracts.Mem("ping", contracts.NewMethod())}}))
 	loud := mustContract(contracts.Local("app.loud", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{},
 		Members: []contracts.LocalEntry{contracts.Mem("ping", contracts.NewMethod())}}))
-	ping := func() contracts.Implementation {
-		return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+	ping := func() contracts.MembersImplementation {
+		return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 			"ping": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil },
-		}}}
+		}}
 	}
 	recorder := telemetry.NewInMemoryTelemetryContext()
 	host := newHost(t, HostOptions{Telemetry: recorder, OnError: noopOnError})
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(quiet, func(*delta.JsonObject, Self) (contracts.Implementation, error) { return ping(), nil }, ServeOptions{Untraced: true}); err != nil {
+		if err := h.Serve(quiet, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) { return ping(), nil }, ServeOptions{Untraced: true}); err != nil {
 			return err
 		}
-		return h.Serve(loud, func(*delta.JsonObject, Self) (contracts.Implementation, error) { return ping(), nil }, ServeOptions{})
+		return h.Serve(loud, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) { return ping(), nil }, ServeOptions{})
 	})}}, background))
 	quietRef, loudRef := mustGet(t, host, quiet, jsonObject()), mustGet(t, host, loud, jsonObject())
 	tracedUnder(t, recorder, "work", func(ctx context.Context) {

@@ -243,7 +243,7 @@ func TestActivityValueIsOneObjectUntilTheNextChange(t *testing.T) {
 var Kept = mustContract(declareRemote("app.kept", contracts.RemoteDeclaration{
 	Version:     1,
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return serverAddress(), nil },
-	Variants:    []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("n", contracts.Int())}})},
+	State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 }))
 
 // activityOf is host.activity.value: the counts now.
@@ -261,10 +261,10 @@ var activityCounter = mustContract(declareLocal("app.counter", contracts.LocalDe
 }))
 
 // bumpImplementation is `{ bump: async () => null }`.
-func bumpImplementation() (contracts.Implementation, error) {
-	return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+func bumpImplementation() (contracts.MembersImplementation, error) {
+	return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 		"bump": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil },
-	}}}, nil
+	}}, nil
 }
 
 // Mirrors activity.test.ts "host.activity › counts holds arriving over links and served here, not this host's own references".
@@ -367,7 +367,7 @@ func awaitActivity(t testing.TB, host Host, ok func(ActivityCounts) bool) {
 // Ports packages/chord/test/host/activity.test.ts:18 (describe "host.activity").
 func TestHostActivityPublishesOncePerMicrotaskTurnWithChanges(t *testing.T) {
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(activityCounter, func(*delta.JsonObject, Self) (contracts.Implementation, error) { return bumpImplementation() }, ServeOptions{})
+		return h.Serve(activityCounter, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) { return bumpImplementation() }, ServeOptions{})
 	}, loadedOptions{})
 	defer closeHosts(t, host)
 	counter, err := host.Get(background, activityCounter, jsonObject(), GetOptions{})
@@ -402,7 +402,7 @@ func TestHostActivityPublishesOncePerMicrotaskTurnWithChanges(t *testing.T) {
 // Ports packages/chord/test/host/activity.test.ts:18 (describe "host.activity").
 func TestHostActivityGivesASlowWatcherTheNewestCountsOnceItIsFree(t *testing.T) {
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(activityCounter, func(*delta.JsonObject, Self) (contracts.Implementation, error) { return bumpImplementation() }, ServeOptions{})
+		return h.Serve(activityCounter, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) { return bumpImplementation() }, ServeOptions{})
 	}, loadedOptions{})
 	defer closeHosts(t, host)
 	counter, err := host.Get(background, activityCounter, jsonObject(), GetOptions{})
@@ -444,8 +444,8 @@ func TestHostActivitySchedulesNothingWhileNobodyWatchesOrDerivesFromIt(t *testin
 	var gateOnce sync.Once
 	release := func() { gateOnce.Do(func() { close(gate) }) }
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(counter, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+		return h.Serve(counter, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				"bump": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil },
 				"wait": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					// Pi: `await gate.promise`.
@@ -453,7 +453,7 @@ func TestHostActivitySchedulesNothingWhileNobodyWatchesOrDerivesFromIt(t *testin
 					<-gate
 					return nil, nil
 				},
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	defer closeHosts(t, host)
@@ -497,8 +497,8 @@ func TestHostActivityFeedsDerivesWhichRecomputeInThePublishingBatch(t *testing.T
 	host := newHost(t, HostOptions{OnError: func(HostError) {}})
 	defer closeHosts(t, host)
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(busy, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+		return h.Serve(busy, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"busy": self.Derive([]any{host.Activity()}, func(values []any) (delta.JsonValue, error) {
 						return values[0].(*delta.JsonObject).Value("calls").(float64) > 0, nil
@@ -507,7 +507,7 @@ func TestHostActivityFeedsDerivesWhichRecomputeInThePublishingBatch(t *testing.T
 				Methods: map[string]contracts.MethodFunction{
 					"work": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil },
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/core", Facet: facet}}, background))
@@ -537,10 +537,10 @@ func TestHostActivityLingeringCountsLiveObjectsKeptByTheirTypesLinger(t *testing
 	loop := newScopeLoop()
 	linger := 1000 * time.Millisecond
 	l := linked(t, func(h FacetHost) error {
-		return h.Serve(Kept, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+		return h.Serve(Kept, func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(float64(1))},
-			}}, nil
+			}, nil
 		}, ServeOptions{Linger: &linger})
 	}, linkedOptions{Loop: loop})
 	defer closeHosts(t, l.Client, l.Server)

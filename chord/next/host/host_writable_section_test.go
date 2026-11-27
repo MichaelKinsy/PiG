@@ -32,9 +32,9 @@ func TestWritableSetOffTheLoopRunsItsCommitOnTheLoop(t *testing.T) {
 	host = h
 	loop := h.(*chordHost).events.(*Loop)
 	mustLoad(t)(h.Load([]HostFacet{{Name: "@test/writable-section", Facet: DefineFacet(func(fh FacetHost, _ FacetSelf) error {
-		return fh.Serve(writableSectionContract, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return fh.Serve(writableSectionContract, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			writable = self.Writable(0.0)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"n": self.Derive([]any{writable}, func(values []any) (delta.JsonValue, error) {
 						n := values[0].(float64)
@@ -44,7 +44,7 @@ func TestWritableSetOffTheLoopRunsItsCommitOnTheLoop(t *testing.T) {
 						return n, nil
 					}),
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})}}, background))
 	object, err := host.Get(background, writableSectionContract, jsonObject(), GetOptions{})
@@ -85,9 +85,9 @@ func TestWritableSetInASectionNests(t *testing.T) {
 		Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int()), contracts.Mem("set", contracts.NewMethod(contracts.Int()))},
 	}))
 	mustLoad(t)(h.Load([]HostFacet{{Name: "@test/writable-nested", Facet: DefineFacet(func(fh FacetHost, _ FacetSelf) error {
-		return fh.Serve(nested, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return fh.Serve(nested, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			writable := self.Writable(0.0)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"n": self.Derive([]any{writable}, func(values []any) (delta.JsonValue, error) { return values[0].(float64), nil }),
 				},
@@ -96,7 +96,7 @@ func TestWritableSetInASectionNests(t *testing.T) {
 						return nil, writable.Set(args.(float64))
 					},
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})}}, background))
 	object, err := h.Get(background, nested, jsonObject(), GetOptions{})

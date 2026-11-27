@@ -72,17 +72,17 @@ func benchRegistryOf(b testing.TB, contributors int) *benchRegistry {
 			return err
 		}
 		for _, typ := range types {
-			if err := h.Serve(typ, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			if err := h.Serve(typ, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				value := self.Writable(0.0)
 				mu.Lock()
 				result.writables = append(result.writables, value)
 				mu.Unlock()
 				self.(StoreSelf).Contribute(benchSum, value)
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{
 						"n": self.Derive([]any{value}, func(values []any) (delta.JsonValue, error) { return values[0], nil }),
 					},
-				}}, nil
+				}, nil
 			}, ServeOptions{}); err != nil {
 				return err
 			}

@@ -54,9 +54,9 @@ func DefineUsers(profile contracts.Schema) (users *contracts.Contract, facet hos
 		return nil, host.Facet{}, err
 	}
 	facet = host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		return h.Serve(users, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+		return h.Serve(users, func(_ *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
 			document := self.State(accounts).(*documents.Singleton)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"list": self.Derive([]any{document}, func(values []any) (delta.JsonValue, error) {
 						all := values[0].(*delta.JsonObject).Value("users").(*delta.JsonObject)
@@ -100,7 +100,7 @@ func DefineUsers(profile contracts.Schema) (users *contracts.Contract, facet hos
 						return nil, err
 					},
 				},
-			}}, nil
+			}, nil
 		}, host.ServeOptions{})
 	})
 	return users, facet, nil

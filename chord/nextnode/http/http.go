@@ -247,7 +247,7 @@ func newComponent(h host.Host, options HttpOptions, ctx context.Context, after a
 			return err
 		}
 		// The follower: a host-lifetime object following the router (Pi's `#follow`, started at the first resolution).
-		if err := facet.Serve(HttpFollower, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+		if err := facet.Serve(HttpFollower, func(_ *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
 			router := self.Registry(registries.Registry[any, any](Http))
 			self.OnNative(router, func(call chord.NativeWatchCall[any], _ host.Ctx) *host.Handled {
 				if call.Kind == chord.WatchCallValue {
@@ -255,14 +255,14 @@ func newComponent(h host.Host, options HttpOptions, ctx context.Context, after a
 				}
 				return nil
 			})
-			return contracts.Implementation{}, nil
+			return contracts.MembersImplementation{}, nil
 		}, host.ServeOptions{}); err != nil {
 			return err
 		}
 		if listen == nil {
 			return nil
 		}
-		return facet.Serve(HttpListener, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+		return facet.Serve(HttpListener, func(_ *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
 			self.Open(
 				func(opening context.Context) (any, error) { return c.listen(*listen, opening) },
 				func(value any, _ host.NativeCloseReason, closing context.Context) error {
@@ -273,7 +273,7 @@ func newComponent(h host.Host, options HttpOptions, ctx context.Context, after a
 					return nil
 				},
 			)
-			return contracts.Implementation{}, nil
+			return contracts.MembersImplementation{}, nil
 		}, host.ServeOptions{})
 	})
 	return c

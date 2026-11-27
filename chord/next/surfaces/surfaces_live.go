@@ -1,6 +1,9 @@
 package surfaces
 
-import "github.com/MichaelKinsy/PiG/chord/next/host"
+import (
+	"github.com/MichaelKinsy/PiG/chord"
+	"github.com/MichaelKinsy/PiG/chord/next/host"
+)
 
 // Ports packages/chord/src/surfaces/live.ts (slice 15 §1.5): a remote reference as a UI reads it: the reference while
 // it is live, and while it loads again after it last settled live (a rebind, a link drop: its tools stay up and its
@@ -9,7 +12,7 @@ import "github.com/MichaelKinsy/PiG/chord/next/host"
 
 // LiveRef is a remote reference, held or got: its state, the names it was granted, and whether it last settled live.
 type LiveRef interface {
-	State() host.RefStateWatchable
+	State() chord.NativeWatchable[*host.RefState]
 	Granted() (map[string]bool, error)
 	WasLive() bool
 }

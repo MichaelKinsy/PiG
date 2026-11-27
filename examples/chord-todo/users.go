@@ -54,8 +54,12 @@ func (s *session) userStep() error {
 	if _, err := s.adas.Call("add", "coffee", s.ctx); err != nil {
 		return err
 	}
-	variant, _, err := s.adas.Variant()
-	_, _ = fmt.Fprintln(s.out, "   ada's variant:", variant)
+	granted, err := s.adas.Granted()
+	role := "member"
+	if granted["clear"] {
+		role = "owner"
+	}
+	_, _ = fmt.Fprintln(s.out, "   ada's variant:", role)
 	if err != nil {
 		return err
 	}

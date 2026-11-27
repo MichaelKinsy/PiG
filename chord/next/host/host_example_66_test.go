@@ -38,7 +38,7 @@ func TestExample66HostData(t *testing.T) {
 
 	serverStore := memoryStore(t)
 	server, _ := exOpenHost(t, loadedOptions{Store: serverStore}, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(projects, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(projects, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			handle := self.State(meta).(*documents.Keyed)
 			table := self.(StoreSelf).Table(labels)
 			return exImpl(nil, map[string]contracts.MethodFunction{

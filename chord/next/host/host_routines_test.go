@@ -173,8 +173,8 @@ func newRoutinesEnv(t *testing.T) *routinesEnv {
 }
 
 // implementation is what the factories of `Store` and `Item` return: the document's `n` and `bump`.
-func (e *routinesEnv) implementation(self Self, doc *singletonDoc) contracts.Implementation {
-	return contracts.Implementation{Members: contracts.VariantImplementation{
+func (e *routinesEnv) implementation(self Self, doc *singletonDoc) contracts.MembersImplementation {
+	return contracts.MembersImplementation{
 		State: map[string]chord.Watchable[delta.JsonValue]{
 			"n": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) {
 				return values[0].(*delta.JsonObject).Value("n"), nil
@@ -183,14 +183,14 @@ func (e *routinesEnv) implementation(self Self, doc *singletonDoc) contracts.Imp
 		Methods: map[string]contracts.MethodFunction{
 			"bump": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) { return nil, bumpDoc(doc, ctx) },
 		},
-	}}
+	}
 }
 
 // store loads a host serving `Store`; declare declares its routines over its document. It gets the reference to it.
 func (e *routinesEnv) store(closeTimeout *time.Duration, declare func(doc *singletonDoc, self Self)) {
 	e.t.Helper()
 	e.host, e.errs = loaded(e.t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(routinesStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(routinesStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			doc := stateOf(self, routinesDoc)
 			declare(doc, self)
 			return e.implementation(self, doc), nil
@@ -203,7 +203,7 @@ func (e *routinesEnv) store(closeTimeout *time.Duration, declare func(doc *singl
 func (e *routinesEnv) item(closeTimeout *time.Duration, declare func(doc *singletonDoc, self Self)) {
 	e.t.Helper()
 	e.host, e.errs = loaded(e.t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(routinesItem, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(routinesItem, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			doc := stateOf(self, routinesDoc)
 			declare(doc, self)
 			return e.implementation(self, doc), nil
@@ -1173,15 +1173,15 @@ func TestOnEndsWithoutAReportWhenItsSourceEnds(t *testing.T) {
 	var log routineLog
 	var errs *hostErrors
 	e.host, errs = loaded(t, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(other, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(other, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			otherDoc = stateOf(self, routinesDoc)
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 				"n": self.Derive([]any{otherDoc.s}, func(values []any) (delta.JsonValue, error) { return values[0].(*delta.JsonObject).Value("n"), nil }),
-			}}}, nil
+			}}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(routinesItem, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(routinesItem, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			doc := stateOf(self, routinesDoc)
 			// Another object's document: it ends with that object.
 			self.On(otherDoc.s, e.handler(self, &log, nil))
@@ -1292,9 +1292,9 @@ func TestOnStartsOnASourceFailedNowNoCallAndNoReportUntilItsFirstGoodValueARefer
 	var log routineLog
 	var errs *hostErrors
 	e.host, errs = loaded(t, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(routinesFailing, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(routinesFailing, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			doc := stateOf(self, routinesDoc)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"t": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) {
 					n := values[0].(*delta.JsonObject).Value("n").(float64)
 					if n == 1 {
@@ -1307,15 +1307,15 @@ func TestOnStartsOnASourceFailedNowNoCallAndNoReportUntilItsFirstGoodValueARefer
 						return nil, setDoc(doc, args.(float64), ctx)
 					},
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(routinesViewer, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(routinesViewer, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			self.On(self.Get(routinesFailing, jsonObject()).Member("t"), e.handler(self, &log, nil))
-			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				"m": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil },
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{Loop: e.loop})
 	e.errs = errs
@@ -1347,14 +1347,14 @@ func TestOnFollowsAReferenceMemberTheProvidersValueFirstThenItsChanges(t *testin
 	var log routineLog
 	var bumper func() error
 	e.host, e.errs = loaded(t, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(routinesStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(routinesStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			doc := stateOf(self, routinesDoc)
 			bumper = func() error { return bumpDoc(doc, background) }
 			return e.implementation(self, doc), nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(routinesItem, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(routinesItem, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			doc := stateOf(self, routinesDoc)
 			provider := self.Get(routinesStore, jsonObject())
 			self.On(provider.Member("n"), e.handler(self, &log, nil))
@@ -1539,7 +1539,7 @@ func TestRoutinesStartInTheTurnTheirObjectWentLiveNextToAMethodCallAdmittedInTha
 		mu.Unlock()
 	}
 	e.host, e.errs = loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(routinesItem, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(routinesItem, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			doc := stateOf(self, routinesDoc)
 			self.On(doc.s, func(call chord.WatchCall[delta.JsonValue], _ Ctx) *Handled {
 				record(fmt.Sprintf("on %v", call.Value.(*delta.JsonObject).Value("n")))
@@ -1550,7 +1550,7 @@ func TestRoutinesStartInTheTurnTheirObjectWentLiveNextToAMethodCallAdmittedInTha
 				return nil
 			})
 			implementation := e.implementation(self, doc)
-			implementation.Members.Methods["bump"] = func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+			implementation.Methods["bump"] = func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 				record("bump")
 				return nil, bumpDoc(doc, ctx)
 			}
@@ -1589,7 +1589,7 @@ func TestRoutinesNeverStartARoutineCallOnceTheObjectEndedInItsFirstTurnNoCallNoR
 		mu.Unlock()
 	}
 	e.host, e.errs = loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(routinesItem, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(routinesItem, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			doc := stateOf(self, routinesDoc)
 			self.On(doc.s, func(chord.WatchCall[delta.JsonValue], Ctx) *Handled {
 				record("on")
@@ -1699,15 +1699,15 @@ func TestRoutinesReleaseTheirCallsCtxGetReferencesWhenEachCallSettles(t *testing
 		Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
 	}))
 	e.host, e.errs = loaded(t, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(other, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(other, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			doc := stateOf(self, routinesDoc)
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 				"n": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) { return values[0].(*delta.JsonObject).Value("n"), nil }),
-			}}}, nil
+			}}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(routinesStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(routinesStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			doc := stateOf(self, routinesDoc)
 			self.OnLive(func(ctx Ctx) *Handled {
 				return e.awaiting(self, func() error {
@@ -1736,15 +1736,15 @@ func TestRoutinesActAsTheOwnersCallerPrincipal(t *testing.T) {
 	watcher := mustContract(contracts.Remote("app.watcher", contracts.RemoteDeclaration{Params: contracts.Params{},
 		Version:     1,
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-		Variants:    []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{})},
+		
 	}))
 	l := linked(t, func(h FacetHost) error {
-		return h.Serve(watcher, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return h.Serve(watcher, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			self.OnLive(func(ctx Ctx) *Handled {
 				seen <- ctx.Principal()
 				return nil
 			})
-			return contracts.Implementation{Variant: "v"}, nil
+			return contracts.MembersImplementation{}, nil
 		}, ServeOptions{})
 	}, linkedOptions{Child: guestPrincipal("S1")})
 	_, err := l.Client.Get(background, watcher, jsonObject(), GetOptions{})
@@ -1913,14 +1913,14 @@ func TestOnOnARemoteMemberWithNoValueYetAFirstValueFollowedAtOnceByAFailureCalls
 		var calls []any
 		client := newHost(t, HostOptions{OnError: func(HostError) {}})
 		mustLoad(t)(client.Load([]HostFacet{{Name: "@test/client", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(routinesViewerOnly, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(routinesViewerOnly, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				self.On(self.Get(Notes, jsonObject("session", "S1")).Member("count"), func(call chord.WatchCall[delta.JsonValue], _ Ctx) *Handled {
 					mu.Lock()
 					calls = append(calls, call.Value)
 					mu.Unlock()
 					return nil
 				})
-				return contracts.Implementation{}, nil
+				return contracts.MembersImplementation{}, nil
 			}, ServeOptions{})
 		})}}, background))
 		peer := rawParentQueued(t, client)
@@ -1931,7 +1931,7 @@ func TestOnOnARemoteMemberWithNoValueYetAFirstValueFollowedAtOnceByAFailureCalls
 		notesPart, err := link.JsonPart([]any{})
 		must(t, err)
 		peer.Send(&link.BoundMessage{Holds: []link.BoundEntry{{
-			Hold: hold, Variant: editor.Variant, Members: []link.BoundMember{{Member: editor.State["notes"], Value: notesPart}}, Failed: failed,
+			Hold: hold, Granted: editor.Granted, Members: []link.BoundMember{{Member: editor.State["notes"], Value: notesPart}}, Failed: failed,
 		}}})
 		awaitReference(t, getting)
 		value := func(n float64) []link.StateMember {
@@ -1975,13 +1975,13 @@ func TestOnFollowsRefStateAReferenceOverALinkGoingLoadingAndLiveAgain(t *testing
 		var states strs
 		client := newHost(t, HostOptions{OnError: func(HostError) {}})
 		mustLoad(t)(client.Load([]HostFacet{{Name: "@test/client", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(routinesViewerOnly, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(routinesViewerOnly, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				notes := self.Get(Notes, jsonObject("session", "S1"))
 				self.OnNative(refStateSource{notes.State()}, func(call chord.NativeWatchCall[any], _ Ctx) *Handled {
 					states.add(string(call.Value.(*RefState).Kind))
 					return nil
 				})
-				return contracts.Implementation{}, nil
+				return contracts.MembersImplementation{}, nil
 			}, ServeOptions{})
 		})}}, background))
 		connect := func() *link.MemoryLink {

@@ -61,13 +61,11 @@ var benchRelayView = mustContract(contracts.Remote("bench.view", contracts.Remot
 	HostAddress: func(params *delta.JsonObject) (contracts.Address, error) {
 		return Session.Address(jsonObject("id", params.Value("session"))), nil
 	},
-	Variants: []contracts.VariantEntry{contracts.Var("owner", contracts.VariantDeclaration{
-		State: []contracts.Property{contracts.Prop("doc", benchRelayShape)},
-		Methods: []contracts.MethodEntry{
+	State: []contracts.RemoteStateEntry{contracts.StateEntry("doc", benchRelayShape)},
+		Methods: []contracts.RemoteMethodEntry{
 			contracts.Meth("stream", contracts.NewMethod(contracts.Str())),
 			contracts.Meth("ping", contracts.NewMethod(contracts.Int(), contracts.Int())),
 		},
-	})},
 }))
 
 // relayStart is what a worker gets in its start message: its session and the payload its store begins with.
@@ -103,9 +101,9 @@ func relayWorkerFacet(start relayStart) func(host FacetHost, _ FacetSelf) error 
 		panic(err)
 	}
 	return func(host FacetHost, _ FacetSelf) error {
-		if err := host.Serve(benchRelayStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := host.Serve(benchRelayStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			state := self.State(doc).(*documents.Singleton)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"doc": Expose(state)},
 				Methods: map[string]contracts.MethodFunction{
 					"stream": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -117,13 +115,13 @@ func relayWorkerFacet(start relayStart) func(host FacetHost, _ FacetSelf) error 
 						return nil, err
 					},
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return host.Serve(benchRelayView, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return host.Serve(benchRelayView, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			store := self.Get(benchRelayStore, jsonObject())
-			return contracts.Implementation{Variant: "owner", Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"doc": Expose(store.Member("doc"))},
 				Methods: map[string]contracts.MethodFunction{
 					"stream": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -131,7 +129,7 @@ func relayWorkerFacet(start relayStart) func(host FacetHost, _ FacetSelf) error 
 					},
 					"ping": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) { return args.(float64) + 1, nil },
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}
 }
