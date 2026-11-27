@@ -11,6 +11,7 @@ import (
 	"go/parser"
 	"go/token"
 	"io"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -1138,9 +1139,7 @@ func isScratchDerivedExpr(expr ast.Expr, aliases map[string]string, tbVars, scra
 func scanTestFuncReads(fd *ast.FuncDecl, aliases map[string]string, filePathBindings map[string]string, add func(string, string), hasFileIORead *bool) {
 	tbVars := collectTestingTBParams(fd.Type, aliases)
 	localPathBindings := make(map[string]string, len(filePathBindings))
-	for k, v := range filePathBindings {
-		localPathBindings[k] = v
-	}
+	maps.Copy(localPathBindings, filePathBindings)
 	// Also collect testing.TB params from nested func literals (e.g. t.Run("x", func(t *testing.T) { ... })).
 	ast.Inspect(fd.Body, func(n ast.Node) bool {
 		if fl, ok := n.(*ast.FuncLit); ok {
