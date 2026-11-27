@@ -285,11 +285,11 @@ func Rules() []Rule {
 		},
 		{
 			ID:      RuleSettingsNotices,
-			Summary: "SettingsManager.GetShowCacheMissNotices and SetShowCacheMissNotices were replaced by GetNotices and SetNotice",
-			Remedy:  "Call `GetNotices()` to read the per-notice map (`cacheMisses`, `cacheWarming`, `compactionCosts`, `reasoningDrops`) and `SetNotice(key, shown)` to toggle an individual notice.",
+			Summary: "SettingsManager cache-miss notice methods replaced by GetNotices/SetNotice",
+			Remedy:  "Use GetNotices() and SetNotice(key, shown).",
 			Changes: []Change{
-				{Symbol: "SettingsManager.GetShowCacheMissNotices", Old: "func() (bool, error)", New: "deprecated (removed in 0.9.0); use SettingsManager.GetNotices", Since: "0.8.1"},
-				{Symbol: "SettingsManager.SetShowCacheMissNotices", Old: "func(bool) error", New: "deprecated (removed in 0.9.0); use SettingsManager.SetNotice", Since: "0.8.1"},
+				{Symbol: "SettingsManager.GetShowCacheMissNotices", Old: "func() (bool, error)", New: "use GetNotices", Since: "0.8.1"},
+				{Symbol: "SettingsManager.SetShowCacheMissNotices", Old: "func(bool) error", New: "use SetNotice", Since: "0.8.1"},
 			},
 		},
 	}

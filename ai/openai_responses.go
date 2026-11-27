@@ -14,6 +14,7 @@ import (
 	"io"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -1102,7 +1103,7 @@ func (c responsesMessageConverter) convertAnchoredWithBaseline(messages []Messag
 			anchorsToolChanges := systemIndex >= transcriptTools.FoldedSystemMessages
 			systemIndex++
 			if anchorsToolChanges {
-				additions, err := c.systemToolAdditions(&changes, message, fmt.Sprintf("system:%d", messageIndex))
+				additions, err := c.systemToolAdditions(&changes, message, "system:"+strconv.Itoa(messageIndex))
 				if err != nil {
 					return nil, "", err
 				}
@@ -1130,7 +1131,7 @@ func (c responsesMessageConverter) convertAnchoredWithBaseline(messages []Messag
 			if len(parts) == 0 {
 				continue
 			}
-			content, _ := json.Marshal(parts)
+			content, _ := json.Marshal(parts) //portlint:allow nilslicenull len(parts) > 0 checked immediately above, so parts is never nil
 			items = append(items, ResponsesInputItem{Role: "user", Content: content})
 		case ToolResultMessage:
 			callID := message.ToolCallID
@@ -1170,15 +1171,15 @@ func (c responsesMessageConverter) convertAnchoredWithBaseline(messages []Messag
 					}
 				case TextContent:
 					text := sanitizeSurrogates(block.Text)
-					id := fmt.Sprintf("msg_pi_%d", messageIndex)
+					id := "msg_pi_" + strconv.Itoa(messageIndex)
 					if textBlockIndex > 0 {
-						id = fmt.Sprintf("msg_pi_%d_%d", messageIndex, textBlockIndex)
+						id = id + "_" + strconv.Itoa(textBlockIndex)
 					}
 					phase := ""
 					if signedID, signedPhase, ok := parseResponsesTextSignature(block.TextSignature); ok {
 						if signedID != "" {
 							id = signedID
-							if len(id) > 64 {
+							if jsstring.Length(id) > 64 {
 								id = "msg_" + ShortHash(id)
 							}
 						}

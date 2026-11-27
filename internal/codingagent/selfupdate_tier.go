@@ -735,6 +735,7 @@ func checkWindowsManagedInstallFromWSL(goos, exe string) error {
 	if goos == "windows" {
 		return nil
 	}
+	//perf:ok cold self-update preflight check runs once per update invocation
 	managedRoot := strings.TrimSpace(os.Getenv("PI_MANAGED_INSTALL_ROOT"))
 	if managedRoot == "" {
 		return nil

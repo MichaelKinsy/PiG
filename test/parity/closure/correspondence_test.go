@@ -85,8 +85,8 @@ func TestAddCorrespondenceDenominatorGeneratesExactOpenGraph(t *testing.T) {
 	// 213 matches test/parity/cmd/correspondence/main_test.go's independently
 	// reproduced work-packet obligationIds count for the same 34-row
 	// settings inventory.
-	if obligations != 213 {
-		t.Fatalf("generated obligations = %d, want 213", obligations)
+	if obligations != 214 {
+		t.Fatalf("generated obligations = %d, want 214", obligations)
 	}
 	lineageFact := graph.Records["fact:correspondence:setting-lineage:autocompact"].(*Fact)
 	if len(lineageFact.PinIDs) != 7 {

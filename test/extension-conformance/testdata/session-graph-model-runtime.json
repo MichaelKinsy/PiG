@@ -32,7 +32,7 @@
 			"source": "models_json_key"
 		},
 		"storedStatus": {
-			"configured": true,
+			"configured": false,
 			"source": "stored"
 		},
 		"subscription": false,

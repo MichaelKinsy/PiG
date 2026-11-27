@@ -2264,7 +2264,7 @@ fn main() {
             match ctx.select_with_options(
                 "timeout",
                 &["a"],
-                &pig_sdk::DialogOptions {
+                pig_sdk::DialogOptions {
                     timeout: Some(1500.5),
                 },
             ) {

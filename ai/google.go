@@ -429,7 +429,7 @@ type geminiSafetyRating struct {
 type geminiPromptFeedback struct {
 	BlockReason        string               `json:"blockReason,omitempty"`
 	BlockReasonMessage string               `json:"blockReasonMessage,omitempty"`
-	SafetyRatings      []geminiSafetyRating `json:"safetyRatings,omitempty"`
+	SafetyRatings      []geminiSafetyRating `json:"safetyRatings,omitempty"` //portlint:allow emptydrop response-only decode struct, never serialized to provider
 }
 
 type geminiStreamChunk struct {

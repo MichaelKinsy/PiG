@@ -122,7 +122,7 @@ type rawCredential struct {
 	Type                        CredentialType             `json:"type"`
 	Key                         string                     `json:"key,omitempty"`
 	LegacyAPIKey                string                     `json:"apiKey,omitempty"`
-	Env                         map[string]string          `json:"env,omitempty"`
+	Env                         map[string]string          `json:"env,omitempty"` //portlint:allow emptydrop legacy rawCredential migration struct only decoded during Load()
 	Refresh                     string                     `json:"refresh,omitempty"`
 	Access                      string                     `json:"access,omitempty"`
 	Expires                     int64                      `json:"expires,omitempty"`

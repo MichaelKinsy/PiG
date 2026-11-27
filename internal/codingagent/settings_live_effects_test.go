@@ -45,7 +45,7 @@ func TestSettingsLiveEffectsClosureTrace(t *testing.T) {
 	t.Run("hide thinking", TestOnSettingAppliedTogglesThinkingVisibility)
 	writeSettingsClosureTrace(t,
 		settingsClosureTraceEvent{kind: "update", subject: "autocomplete-max-visible", value: "15"},
-		settingsClosureTraceEvent{kind: "update", subject: "cache-miss-notices", value: "visible"},
+		settingsClosureTraceEvent{kind: "update", subject: "notices", value: "visible"},
 		settingsClosureTraceEvent{kind: "update", subject: "clear-on-shrink", value: "idle-cleared"},
 		settingsClosureTraceEvent{kind: "update", subject: "editor-padding", value: "2"},
 		settingsClosureTraceEvent{kind: "update", subject: "hide-thinking", value: "true"},

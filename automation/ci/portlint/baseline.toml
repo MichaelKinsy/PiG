@@ -840,12 +840,6 @@ snippet = "Env map[string]string `json:\"env,omitempty\"`"
 
 [[hit]]
 check = "emptydrop"
-file = "ai/auth.go"
-func = "(decl)"
-snippet = "Env               map[string]string          `json:\"env,omitempty\"`"
-
-[[hit]]
-check = "emptydrop"
 file = "ai/auth_interaction.go"
 func = "(decl)"
 snippet = "Links   []AuthInfoLink `json:\"links,omitempty\"`"
@@ -2050,12 +2044,6 @@ snippet = "go func() {"
 
 [[hit]]
 check = "golifetime"
-file = "internal/codingagent/startup_ui.go"
-func = "runStartupComponentWith"
-snippet = "select {"
-
-[[hit]]
-check = "golifetime"
 file = "internal/codingagent/tools/shell_updates.go"
 func = "newShellUpdateScheduler"
 snippet = "go u.run()"
@@ -2943,12 +2931,6 @@ check = "nilslicenull"
 file = "ai/oauth_openai_chatgpt.go"
 func = "chatgptCredentialFromTokenResponse"
 snippet = "scopesJSON, _ := json.Marshal(scopes)"
-
-[[hit]]
-check = "nilslicenull"
-file = "ai/openai_responses.go"
-func = "responsesMessageConverter.convertAnchored"
-snippet = "content, _ := json.Marshal(parts)"
 
 [[hit]]
 check = "nilslicenull"
@@ -4544,12 +4526,6 @@ check = "utf16units"
 file = "ai/openai.go"
 func = "normalizeCompletionsToolCallID"
 snippet = "return id[:40]"
-
-[[hit]]
-check = "utf16units"
-file = "ai/openai_responses.go"
-func = "responsesMessageConverter.convertAnchored"
-snippet = "if len(id) > 64 {"
 
 [[hit]]
 check = "utf16units"

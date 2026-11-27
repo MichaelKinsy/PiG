@@ -57,7 +57,7 @@ func normalizeOwnRequestID(id JSONRPCID) JSONRPCID {
 			return id
 		}
 	}
-	n, err := strconv.ParseFloat(id.str, 64)
+	n, err := strconv.ParseFloat(id.str, 64) //portlint:allow numbers id.str is validated as canonical unsigned ASCII digits above, matching JS Number(str) exactly
 	if err != nil || math.IsInf(n, 0) || math.IsNaN(n) {
 		return id
 	}

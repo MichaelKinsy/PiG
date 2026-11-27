@@ -136,7 +136,7 @@ func parsePiDecisionProbabilities(raw json.RawMessage, id string, criteria []Cla
 		if _, ok := allowed[entry.key]; !ok {
 			return nil, fmt.Errorf("%s returned unknown choice \"%s\" in probabilities for %s", piDecisionLabel, entry.key, id)
 		}
-		p, err := piDecisionRequiredUnitInterval(entry.value, fmt.Sprintf("probability for %s.%s", id, entry.key))
+		p, err := piDecisionRequiredUnitInterval(entry.value, "probability for "+id+"."+entry.key)
 		if err != nil {
 			return nil, err
 		}
@@ -239,7 +239,7 @@ func ClassifyPiDecision(ctx context.Context, model ClassifierModel, request Clas
 		Model:      model.ID,
 		Answers:    ClassifierAnswers{},
 		StopReason: ClassifierStopReasonStop,
-		Timestamp:  time.Now().UnixMilli(),
+		Timestamp:  time.Now().UnixMilli(), //portlint:allow clock matches Pi Date.now() classifier result timestamp (pi-decision.ts)
 	}
 	fail := func(err error) ClassifierResult {
 		output.Answers = ClassifierAnswers{}

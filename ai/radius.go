@@ -244,7 +244,7 @@ func storedRadiusAllModels(id string, entry ModelsStoreEntry) []AnyModel {
 }
 
 func radiusAllStoreEntry(models []AnyModel) *ModelsStoreEntry {
-	checkedAt := float64(time.Now().UnixMilli())
+	checkedAt := float64(time.Now().UnixMilli()) //portlint:allow clock matches Pi Date.now() radius auth check timestamp (radius.ts)
 	entry := &ModelsStoreEntry{Models: make([]AnyModel, 0, len(models)), CheckedAt: &checkedAt}
 	entry.Models = append(entry.Models, models...)
 	return entry

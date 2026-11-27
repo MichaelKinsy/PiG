@@ -182,7 +182,7 @@ func correspondenceAssertionBindings() []correspondenceAssertionBinding {
 		},
 	}
 	for _, subject := range []string{
-		"autocomplete-max-visible", "cache-miss-notices", "clear-on-shrink", "editor-padding",
+		"autocomplete-max-visible", "notices", "clear-on-shrink", "editor-padding",
 		"output-padding", "skill-commands", "hide-thinking", "transport",
 	} {
 		bindings = append(bindings, correspondenceAssertionBinding{

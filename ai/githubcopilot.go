@@ -168,7 +168,11 @@ func LoginGitHubCopilot(ctx context.Context, cb CopilotLoginCallbacks) (Credenti
 	if err != nil {
 		return cred, err
 	}
-	cred.AvailableClassifierModelIDs, err = json.Marshal(catalog.ClassifierModelIDs)
+	classifierModelIDs := catalog.ClassifierModelIDs
+	if classifierModelIDs == nil {
+		classifierModelIDs = []string{}
+	}
+	cred.AvailableClassifierModelIDs, err = json.Marshal(classifierModelIDs) //portlint:allow nilslicenull non-nil empty slice guaranteed above so JSON always encodes []
 	return cred, err
 }
 
@@ -338,7 +342,11 @@ func refreshCopilotToken(ctx context.Context, githubToken, enterpriseDomain stri
 	if err != nil {
 		return credential, err
 	}
-	credential.AvailableClassifierModelIDs, err = json.Marshal(catalog.ClassifierModelIDs)
+	classifierModelIDs := catalog.ClassifierModelIDs
+	if classifierModelIDs == nil {
+		classifierModelIDs = []string{}
+	}
+	credential.AvailableClassifierModelIDs, err = json.Marshal(classifierModelIDs) //portlint:allow nilslicenull non-nil empty slice guaranteed above so JSON always encodes []
 	return credential, err
 }
 

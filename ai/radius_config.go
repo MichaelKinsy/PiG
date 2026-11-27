@@ -55,7 +55,7 @@ type RadiusGatewayClassifierModel struct {
 	InputLimits   *ModelInputLimits `json:"inputLimits,omitempty"`
 	Cost          ModelCost         `json:"cost"`
 	ContextWindow int               `json:"contextWindow"`
-	Headers       map[string]string `json:"headers,omitempty"`
+	Headers       map[string]string `json:"headers,omitempty"` //portlint:allow emptydrop decoded from Radius /v1/config; absent and empty headers are identical in model requests
 	Compat        *SystemOneCompat  `json:"compat,omitempty"`
 }
 
@@ -63,7 +63,7 @@ type RadiusGatewayClassifierModel struct {
 type RadiusGatewayConfig struct {
 	BaseURL     string                         `json:"baseUrl"`
 	Models      []RadiusGatewayModel           `json:"models"`
-	Classifiers []RadiusGatewayClassifierModel `json:"classifiers,omitempty"`
+	Classifiers []RadiusGatewayClassifierModel `json:"classifiers,omitempty"` //portlint:allow emptydrop decoded from Radius /v1/config; omitted when gateway advertises no classifiers
 }
 
 var radiusClassifierModelFields = []struct {
@@ -86,12 +86,15 @@ func decodeRadiusGatewayClassifierModel(raw json.RawMessage) (RadiusGatewayClass
 	var model RadiusGatewayClassifierModel
 	_ = json.Unmarshal(fields["id"], &model.ID)
 	_ = json.Unmarshal(fields["name"], &model.Name)
-	var items []any
+	var items []json.RawMessage
 	if json.Unmarshal(fields["input"], &items) == nil {
 		model.Input = make([]string, 0, len(items))
 		for _, item := range items {
-			if s, ok := item.(string); ok {
-				model.Input = append(model.Input, s)
+			if jsonKind(item) == '"' {
+				var s string
+				if json.Unmarshal(item, &s) == nil {
+					model.Input = append(model.Input, s)
+				}
 			}
 		}
 	}

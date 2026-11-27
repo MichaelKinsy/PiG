@@ -176,6 +176,8 @@ node_modules
 # (automation/gen/vendor-chord-plugins-node.sh): a package resolves from a directory named node_modules.
 !chord/nextnode/plugins/node/pi/node_modules
 !chord/nextnode/surfaces/client/pi/node_modules
+!coding/extension/host/subprocess/runtime-node/shims/**/node_modules/
+!coding/extension/host/subprocess/runtime-node/shims/**/node_modules/**
 internal/evals/.eval/
 
 # built tool binary of test/parity/interface-closure/autobind

@@ -84,6 +84,7 @@ func GitBashFromShellPath(rawOutput string, exists func(string) bool) string {
 	if !strings.HasSuffix(jsstring.ToLower(gitShell), `\`+gitForWindowsShellSuffix) {
 		return ""
 	}
+	//portlint:allow utf16units gitForWindowsShellSuffix is ASCII (usr\bin\sh.exe), so byte length equals UTF-16 code-unit length
 	root := gitShell[:len(gitShell)-len(gitForWindowsShellSuffix)]
 	bash := nodepath.Win32Join(root, "bin", "bash.exe")
 	if exists(bash) {

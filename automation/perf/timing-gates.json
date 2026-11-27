@@ -13,7 +13,7 @@
   {"package": "./internal/codingagent/compaction", "tests": ["TestCollectEntriesForBranchSummaryWithinPiTimeOnTheOwnerShape", "TestJSLengthCountsASCIIByWord"]},
   {"package": "./internal/jsstring", "tests": ["TestLengthCountsASCIIByWord", "TestStringifyChain200KBudget", "TestMarshalJSONString200KBudget", "TestUnescapeForStringifyCopiesSpans"]},
   {"package": "./internal/lazyregexp", "tests": ["TestCompilingManyDotsDoesNotWalkTheClasses"]},
-  {"package": "./internal/truncate", "tests": ["TestTailWindowAppendCostDoesNotGrowWithTheWindow"]},
+  {"package": "./internal/truncate", "tests": ["TestCutTailNonBlankOverLongLineDoesNotScanFullLine", "TestTailWindowAppendCostDoesNotGrowWithTheWindow"]},
   {"package": "./mcp", "tests": ["TestStdioSplitterLargeMessageScalesLinearly"]},
   {"package": "./test/extension-conformance", "tests": ["TestExtensionPayloadScalesLinearly", "TestExtensionRoundTripLatencyOpenLoop", "TestExtensionSoak"]},
   {"package": "./test/integration", "tags": "integration", "tests": ["TestExt_CachedBinaryUsedOnSecondStartup"]},

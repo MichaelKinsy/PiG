@@ -391,6 +391,7 @@ func (n NoticeSettings) MarshalJSON() ([]byte, error) {
 			setKey(k)
 		}
 	}
+	//perf:ok cold settings persistence path; NoticeSettings has at most 4 typed keys plus raw extras
 	return json.Marshal(encoded)
 }
 

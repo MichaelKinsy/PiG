@@ -317,6 +317,7 @@ func runStartupComponentWithBlocked(component startupComponent, opts StartupUIOp
 	dispatch(takeStartupInput())
 
 	for !component.Done() {
+		//portlint:allow golifetime startup dialog loop exits via component.Done() driven by terminal input, Esc/Ctrl+C, or closed terminal channel
 		select {
 		case <-ready:
 			asyncSelector.drainLoadUpdates()

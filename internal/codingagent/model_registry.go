@@ -1667,6 +1667,7 @@ func (r *ModelRegistry) GetProviderAuthStatus(providerID string) ai.AuthStatus {
 		if fallback.Source == ai.AuthSourceStored {
 			// A stored credential owns the provider, so it is configured only when it resolves (#12164).
 			// Commands do not run on any new path: only consult cached command results or non-command keys.
+			//portlint:allow ctxbackground synchronous GetProviderAuthStatus has no caller context; mirrors CredentialStoreAuthStatus on line 1666
 			if raw, ok, err := ai.ReadRawCredential(context.Background(), r.credentialStore, providerID); err == nil && ok && raw.Type == ai.CredentialAPIKey {
 				if !storedAPIKeyResolvesWithoutNewCommand(raw.Key, raw.Env) {
 					return ai.AuthStatus{Configured: false, Source: ai.AuthSourceStored}
