@@ -218,6 +218,7 @@ var forbiddenOSSelectors = map[string]string{
 	"UserCacheDir":  "os.UserCacheDir reads host user cache directory outside module",
 	"Hostname":      "os.Hostname depends on host identity",
 	"Executable":    "os.Executable inspects binary path on host filesystem",
+	"TempDir":       "os.TempDir reads shared ambient host temp directory outside per-test isolation",
 }
 
 // externalRuntimeEnvTokens detect string literals in test files that reference
@@ -888,36 +889,39 @@ func scanGoFile(absFile string, isTest bool, modulePath string) ([]astFinding, e
 	var hasFileIORead bool
 	var hasParentRef bool
 	var parentRefSample string
-	var hasScratchDir bool
-	var hasUnprovenRead bool
-	var unprovenReadSample string
-	// Collect identifiers assigned literal string paths in this file so
-	// `p := "/var/tmp/fixture"; os.ReadFile(p)` is caught even if another test uses t.TempDir().
-	pathBindings := make(map[string]string)
+	// Collect package-level constant/var string literal bindings so
+	// `const ext = "/var/tmp/fixture"; os.ReadFile(ext)` is caught across functions.
+	filePathBindings := make(map[string]string)
 	if isTest {
-		ast.Inspect(file, func(n ast.Node) bool {
-			switch stmt := n.(type) {
-			case *ast.AssignStmt:
-				for i := 0; i < len(stmt.Lhs) && i < len(stmt.Rhs); i++ {
-					if id, ok := stmt.Lhs[i].(*ast.Ident); ok {
-						if lit, ok := stmt.Rhs[i].(*ast.BasicLit); ok && lit.Kind == token.STRING {
-							if v, err := strconv.Unquote(lit.Value); err == nil {
-								pathBindings[id.Name] = v
-							}
-						}
-					}
+		for _, decl := range file.Decls {
+			gd, ok := decl.(*ast.GenDecl)
+			if !ok {
+				continue
+			}
+			for _, spec := range gd.Specs {
+				vs, ok := spec.(*ast.ValueSpec)
+				if !ok {
+					continue
 				}
-			case *ast.ValueSpec:
-				for i := 0; i < len(stmt.Names) && i < len(stmt.Values); i++ {
-					if lit, ok := stmt.Values[i].(*ast.BasicLit); ok && lit.Kind == token.STRING {
+				for i := 0; i < len(vs.Names) && i < len(vs.Values); i++ {
+					if lit, ok := vs.Values[i].(*ast.BasicLit); ok && lit.Kind == token.STRING {
 						if v, err := strconv.Unquote(lit.Value); err == nil {
-							pathBindings[stmt.Names[i].Name] = v
+							filePathBindings[vs.Names[i].Name] = v
 						}
 					}
 				}
 			}
-			return true
-		})
+		}
+		// Validate filesystem reads per function scope: only reads whose path expression
+		// is proven to derive from a testing.TB.TempDir() / os.MkdirTemp("", ...) /
+		// os.CreateTemp("", ...) call within the enclosing function are allowed.
+		for _, decl := range file.Decls {
+			fd, ok := decl.(*ast.FuncDecl)
+			if !ok || fd.Body == nil {
+				continue
+			}
+			scanTestFuncReads(fd, aliases, filePathBindings, add, &hasFileIORead)
+		}
 	}
 
 	ast.Inspect(file, func(n ast.Node) bool {
@@ -950,21 +954,6 @@ func scanGoFile(absFile string, isTest bool, modulePath string) ([]astFinding, e
 								}
 							}
 						}
-					}
-				}
-			}
-			if fn == "TempDir" {
-				hasScratchDir = true
-			}
-			if impPath == "os" && (fn == "MkdirTemp" || fn == "CreateTemp") {
-				hasScratchDir = true
-			}
-			if impPath == "os" {
-				switch fn {
-				case "ReadFile", "Open", "OpenFile", "ReadDir", "Stat", "Lstat":
-					hasFileIORead = true
-					if len(node.Args) > 0 {
-						classifyReadPathArg(node.Args[0], fn, pathBindings, add, &hasUnprovenRead, &unprovenReadSample)
 					}
 				}
 			}
@@ -1021,14 +1010,237 @@ func scanGoFile(absFile string, isTest bool, modulePath string) ([]astFinding, e
 	if isTest && hasFileIORead && hasParentRef {
 		add("external-fixture", fmt.Sprintf("test performs filesystem reads combined with parent-directory traversal (%q)", parentRefSample))
 	}
-	if isTest && hasUnprovenRead && !hasScratchDir {
-		add("external-path-read", fmt.Sprintf("test performs filesystem read via %s without an established scratch directory (t.TempDir/os.MkdirTemp)", unprovenReadSample))
-	}
 
 	return findings, nil
 }
 
-func classifyReadPathArg(arg ast.Expr, fn string, pathBindings map[string]string, add func(string, string), hasUnprovenRead *bool, unprovenReadSample *string) {
+// isTestingTBType reports whether expr names a testing.T, testing.B, testing.F,
+// or testing.TB type (pointer or value) imported from the standard "testing" package.
+func isTestingTBType(expr ast.Expr, aliases map[string]string) bool {
+	if star, ok := expr.(*ast.StarExpr); ok {
+		expr = star.X
+	}
+	sel, ok := expr.(*ast.SelectorExpr)
+	if !ok {
+		return false
+	}
+	id, ok := sel.X.(*ast.Ident)
+	if !ok || aliases[id.Name] != "testing" {
+		return false
+	}
+	switch sel.Sel.Name {
+	case "T", "B", "F", "TB":
+		return true
+	}
+	return false
+}
+
+// collectTestingTBParams returns the set of parameter names in ft whose declared
+// type is testing.TB / *testing.T / *testing.B / *testing.F.
+func collectTestingTBParams(ft *ast.FuncType, aliases map[string]string) map[string]bool {
+	tb := make(map[string]bool)
+	if ft == nil || ft.Params == nil {
+		return tb
+	}
+	for _, field := range ft.Params.List {
+		if !isTestingTBType(field.Type, aliases) {
+			continue
+		}
+		for _, name := range field.Names {
+			tb[name.Name] = true
+		}
+	}
+	return tb
+}
+
+// isScratchDirCall reports whether call is a verified per-test isolated scratch
+// directory constructor:
+//   - tb.TempDir() where tb is a declared testing.TB/*testing.T/*testing.B/*testing.F
+//   - os.MkdirTemp("", ...) or os.MkdirTemp(scratchVar, ...)
+//   - os.CreateTemp("", ...) or os.CreateTemp(scratchVar, ...)
+//
+// Calls like os.TempDir() or arbitraryReceiver.TempDir() return false (fail-closed).
+func isScratchDirCall(call *ast.CallExpr, aliases map[string]string, tbVars, scratchVars map[string]bool) bool {
+	sel, ok := call.Fun.(*ast.SelectorExpr)
+	if !ok {
+		return false
+	}
+	ident, ok := sel.X.(*ast.Ident)
+	if !ok {
+		return false
+	}
+	fn := sel.Sel.Name
+	if fn == "TempDir" {
+		// Reject os.TempDir() and any receiver not statically known to be testing.TB/T/B/F.
+		if aliases[ident.Name] != "" {
+			return false
+		}
+		return tbVars[ident.Name]
+	}
+	if aliases[ident.Name] == "os" && (fn == "MkdirTemp" || fn == "CreateTemp") {
+		if len(call.Args) == 0 {
+			return false
+		}
+		if lit, ok := call.Args[0].(*ast.BasicLit); ok && lit.Kind == token.STRING {
+			if v, err := strconv.Unquote(lit.Value); err == nil && v == "" {
+				return true
+			}
+		}
+		return isScratchDerivedExpr(call.Args[0], aliases, tbVars, scratchVars)
+	}
+	return false
+}
+
+// isScratchDerivedExpr reports whether expr is statically proven to be derived
+// from a per-test scratch directory (e.g. t.TempDir(), filepath.Join(dir, "x"),
+// filepath.EvalSymlinks(t.TempDir()), f.Name(), or a variable assigned from one).
+func isScratchDerivedExpr(expr ast.Expr, aliases map[string]string, tbVars, scratchVars map[string]bool) bool {
+	switch e := expr.(type) {
+	case *ast.ParenExpr:
+		return isScratchDerivedExpr(e.X, aliases, tbVars, scratchVars)
+	case *ast.Ident:
+		return scratchVars[e.Name]
+	case *ast.CallExpr:
+		if isScratchDirCall(e, aliases, tbVars, scratchVars) {
+			return true
+		}
+		sel, ok := e.Fun.(*ast.SelectorExpr)
+		if !ok {
+			return false
+		}
+		// Handle scratchFile.Name() from os.CreateTemp.
+		if sel.Sel.Name == "Name" && len(e.Args) == 0 {
+			return isScratchDerivedExpr(sel.X, aliases, tbVars, scratchVars)
+		}
+		id, ok := sel.X.(*ast.Ident)
+		if !ok {
+			return false
+		}
+		imp := aliases[id.Name]
+		if imp == "path/filepath" || imp == "path" {
+			switch sel.Sel.Name {
+			case "Join", "Clean", "Dir", "Abs", "EvalSymlinks", "ToSlash", "FromSlash":
+				if len(e.Args) > 0 && isScratchDerivedExpr(e.Args[0], aliases, tbVars, scratchVars) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	return false
+}
+
+// scanTestFuncReads validates every os.{ReadFile,Open,OpenFile,ReadDir,Stat,Lstat}
+// call inside fd (and any nested func literals such as t.Run subtests). Only reads
+// whose path argument is proven to derive from a testing.TB.TempDir() or
+// os.MkdirTemp/os.CreateTemp scratch directory within the enclosing function are
+// permitted; all other reads fail closed as external-path-read or external-fixture.
+func scanTestFuncReads(fd *ast.FuncDecl, aliases map[string]string, filePathBindings map[string]string, add func(string, string), hasFileIORead *bool) {
+	tbVars := collectTestingTBParams(fd.Type, aliases)
+	localPathBindings := make(map[string]string, len(filePathBindings))
+	for k, v := range filePathBindings {
+		localPathBindings[k] = v
+	}
+	// Also collect testing.TB params from nested func literals (e.g. t.Run("x", func(t *testing.T) { ... })).
+	ast.Inspect(fd.Body, func(n ast.Node) bool {
+		if fl, ok := n.(*ast.FuncLit); ok {
+			for name := range collectTestingTBParams(fl.Type, aliases) {
+				tbVars[name] = true
+			}
+		}
+		return true
+	})
+
+	// Collect literal string bindings and propagate scratch-derived variable bindings
+	// to a fixed point within this function body.
+	scratchVars := make(map[string]bool)
+	var assigns []struct {
+		lhs ast.Expr
+		rhs ast.Expr
+	}
+	ast.Inspect(fd.Body, func(n ast.Node) bool {
+		switch stmt := n.(type) {
+		case *ast.AssignStmt:
+			for i := 0; i < len(stmt.Lhs) && i < len(stmt.Rhs); i++ {
+				if id, ok := stmt.Lhs[i].(*ast.Ident); ok {
+					if lit, ok := stmt.Rhs[i].(*ast.BasicLit); ok && lit.Kind == token.STRING {
+						if v, err := strconv.Unquote(lit.Value); err == nil {
+							localPathBindings[id.Name] = v
+						}
+					}
+				}
+				assigns = append(assigns, struct {
+					lhs ast.Expr
+					rhs ast.Expr
+				}{lhs: stmt.Lhs[i], rhs: stmt.Rhs[i]})
+			}
+			// Handle multi-return assignments like `dir, err := os.MkdirTemp("", "p")`
+			// or `root, err := filepath.EvalSymlinks(t.TempDir())`.
+			if len(stmt.Rhs) == 1 && len(stmt.Lhs) > 1 {
+				assigns = append(assigns, struct {
+					lhs ast.Expr
+					rhs ast.Expr
+				}{lhs: stmt.Lhs[0], rhs: stmt.Rhs[0]})
+			}
+		case *ast.ValueSpec:
+			for i := 0; i < len(stmt.Names) && i < len(stmt.Values); i++ {
+				if lit, ok := stmt.Values[i].(*ast.BasicLit); ok && lit.Kind == token.STRING {
+					if v, err := strconv.Unquote(lit.Value); err == nil {
+						localPathBindings[stmt.Names[i].Name] = v
+					}
+				}
+				assigns = append(assigns, struct {
+					lhs ast.Expr
+					rhs ast.Expr
+				}{lhs: stmt.Names[i], rhs: stmt.Values[i]})
+			}
+		}
+		return true
+	})
+
+	for changed := true; changed; {
+		changed = false
+		for _, a := range assigns {
+			id, ok := a.lhs.(*ast.Ident)
+			if !ok || id.Name == "_" || scratchVars[id.Name] {
+				continue
+			}
+			if isScratchDerivedExpr(a.rhs, aliases, tbVars, scratchVars) {
+				scratchVars[id.Name] = true
+				changed = true
+			}
+		}
+	}
+
+	ast.Inspect(fd.Body, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+		ident, ok := sel.X.(*ast.Ident)
+		if !ok {
+			return true
+		}
+		if aliases[ident.Name] != "os" {
+			return true
+		}
+		fn := sel.Sel.Name
+		switch fn {
+		case "ReadFile", "Open", "OpenFile", "ReadDir", "Stat", "Lstat":
+			*hasFileIORead = true
+			if len(call.Args) > 0 {
+				classifyReadPathArg(call.Args[0], fn, aliases, tbVars, scratchVars, localPathBindings, add)
+			}
+		}
+		return true
+	})
+}
+
+func classifyReadPathArg(arg ast.Expr, fn string, aliases map[string]string, tbVars, scratchVars map[string]bool, pathBindings map[string]string, add func(string, string)) {
 	checkLiteral := func(v string) {
 		if v == ".." || strings.HasPrefix(v, "../") || strings.Contains(v, "/../") || strings.HasPrefix(v, "..\\") || strings.Contains(v, "\\..\\") {
 			add("external-fixture", fmt.Sprintf("test reads parent-directory path %q via os.%s", v, fn))
@@ -1054,10 +1266,10 @@ func classifyReadPathArg(arg ast.Expr, fn string, pathBindings map[string]string
 		add("external-path-read", fmt.Sprintf("test reads absolute path %q via os.%s (untracked by Go test cache)", pathLit, fn))
 		return
 	}
-	*hasUnprovenRead = true
-	if *unprovenReadSample == "" {
-		*unprovenReadSample = "os." + fn
+	if isScratchDerivedExpr(arg, aliases, tbVars, scratchVars) {
+		return
 	}
+	add("external-path-read", fmt.Sprintf("test performs filesystem read via os.%s on path not proven to derive from t.TempDir/os.MkdirTemp", fn))
 }
 
 func isAbsolutePathLiteral(v string) bool {

@@ -4,6 +4,8 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -93,13 +95,41 @@ func TestGitNULPathsPreserveLeadingSpaceFilenames(t *testing.T) {
 		t.Fatalf("leading-space filename must fail closed as unowned -> full, got full=%v docsOnly=%v unowned=%v", plan.Full, plan.DocsOnly, plan.Unowned)
 	}
 
-	// Also verify diff-tree -z (used by replay) preserves the leading space.
-	diffOut, err := gitOutput(context.Background(), repo, "diff-tree", "--no-commit-id", "--name-only", "--no-renames", "-z", "-r", "-m", "--first-parent", headSHA)
-	if err != nil {
-		t.Fatalf("git diff-tree -z: %v", err)
+	// Also verify runReplay itself preserves the leading space via diff-tree -z
+	// (not trimming " README.md" to docs-only "README.md").
+	if err := os.WriteFile(filepath.Join(repo, "go.mod"), []byte("module "+cidag.DefaultModule+"\n\ngo 1.26.0\n"), 0o600); err != nil {
+		t.Fatal(err)
 	}
-	replayFiles := splitGitNULPaths(diffOut)
-	if !slices.Equal(replayFiles, []string{" README.md"}) {
-		t.Fatalf("replay diff-tree -z = %#v, want [` README.md`]", replayFiles)
+	if err := os.WriteFile(filepath.Join(repo, "doc.go"), []byte("package root\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	origStdout := os.Stdout
+	rPipe, wPipe, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = wPipe
+	replayErr := runReplay(context.Background(), repo, 1, false, 0, true)
+	_ = wPipe.Close()
+	os.Stdout = origStdout
+	replayJSON, readErr := io.ReadAll(rPipe)
+	_ = rPipe.Close()
+	if replayErr != nil {
+		t.Fatalf("runReplay: %v", replayErr)
+	}
+	if readErr != nil {
+		t.Fatalf("read runReplay stdout: %v", readErr)
+	}
+	var summary replaySummary
+	if err := json.Unmarshal(replayJSON, &summary); err != nil {
+		t.Fatalf("decode runReplay JSON: %v\n%s", err, replayJSON)
+	}
+	if len(summary.Rows) != 1 {
+		t.Fatalf("runReplay rows = %d, want 1", len(summary.Rows))
+	}
+	row := summary.Rows[0]
+	if !row.Full || row.DocsOnly || row.Unowned != 1 {
+		t.Fatalf("runReplay must treat leading-space ` README.md` as unowned -> full, got full=%v docsOnly=%v unowned=%d reasons=%v",
+			row.Full, row.DocsOnly, row.Unowned, row.FullReason)
 	}
 }

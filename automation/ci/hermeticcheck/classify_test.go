@@ -608,7 +608,13 @@ esac
 		_ = os.Remove(argsLog)
 		cmd := exec.Command("bash", filepath.Join(root, "automation/ci/test-grouped.sh"), "fast-parallel")
 		cmd.Dir = root
-		env := append([]string{}, os.Environ()...)
+		env := make([]string, 0, len(os.Environ())+len(extraEnv)+4)
+		for _, kv := range os.Environ() {
+			if strings.HasPrefix(kv, "GITHUB_") || strings.HasPrefix(kv, "PIG_GO_HERMETIC_") || strings.HasPrefix(kv, "PIG_HERMETIC_") {
+				continue
+			}
+			env = append(env, kv)
+		}
 		env = append(env,
 			"PATH="+binDir+string(os.PathListSeparator)+os.Getenv("PATH"),
 			"ARGS_LOG="+argsLog,
@@ -627,11 +633,12 @@ esac
 		return strings.Split(strings.TrimSpace(string(data)), "\n")
 	}
 
-	// 1. PR with opt-in enabled: ./alpha omits -count=1, ./beta keeps -count=1.
+	// 1. PR targeting main with opt-in enabled: ./alpha omits -count=1, ./beta keeps -count=1.
 	prLines := runCase("pr-enabled", []string{
 		"PIG_GO_HERMETIC_TEST_CACHE=1",
 		"GITHUB_EVENT_NAME=pull_request",
 		"GITHUB_REF=refs/pull/42/merge",
+		"GITHUB_BASE_REF=main",
 	})
 	var sawAlphaCached, sawBetaCount1 bool
 	for _, line := range prLines {
@@ -799,6 +806,103 @@ func TestTempDirReadWrite(t *testing.T) {
 	resScratch := analyzeOne(t, rootScratch, "./pure", false)
 	if !resScratch.Hermetic {
 		t.Fatalf("test reading only from t.TempDir() should remain hermetic, got reasons: %+v", resScratch.Reasons)
+	}
+
+	// 4. os.TempDir() is shared ambient host state, NOT an isolated per-test scratch dir.
+	rootOSTemp := baseSyntheticModule(t)
+	writeFiles(t, rootOSTemp, map[string]string{
+		"pure/ostemp_test.go": `package pure
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestOSTempDirRead(t *testing.T) {
+	_, _ = os.ReadFile(filepath.Join(os.TempDir(), "pig-fixture"))
+}
+`,
+	})
+	resOSTemp := analyzeOne(t, rootOSTemp, "./pure", false)
+	if resOSTemp.Hermetic {
+		t.Fatalf("test reading from os.TempDir() must be non-hermetic")
+	}
+	foundOSTempReason := false
+	for _, r := range resOSTemp.Reasons {
+		if r.Code == "os-side-effect" || r.Code == "external-path-read" {
+			foundOSTempReason = true
+			break
+		}
+	}
+	if !foundOSTempReason {
+		t.Fatalf("expected os-side-effect or external-path-read reason for os.TempDir(), got: %+v", resOSTemp.Reasons)
+	}
+
+	// 5. One function calling t.TempDir() must NOT exempt an untracked computed read in a sibling function.
+	rootSibling := baseSyntheticModule(t)
+	writeFiles(t, rootSibling, map[string]string{
+		"pure/sibling_test.go": `package pure
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func helperPath() string { return filepath.Join("some", "fixture") }
+
+func TestScratchOnly(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "ok.txt")
+	_ = os.WriteFile(p, []byte("ok"), 0o644)
+	_, _ = os.ReadFile(p)
+}
+
+func TestSiblingUntrackedRead(t *testing.T) {
+	_, _ = os.ReadFile(helperPath())
+}
+`,
+	})
+	resSibling := analyzeOne(t, rootSibling, "./pure", false)
+	if resSibling.Hermetic {
+		t.Fatalf("sibling function reading untracked computed path must be non-hermetic even when another function uses t.TempDir()")
+	}
+	foundSiblingReason := false
+	for _, r := range resSibling.Reasons {
+		if r.Code == "external-path-read" {
+			foundSiblingReason = true
+			break
+		}
+	}
+	if !foundSiblingReason {
+		t.Fatalf("expected external-path-read reason for sibling untracked read, got: %+v", resSibling.Reasons)
+	}
+
+	// 6. Custom receiver with a TempDir() method (not testing.TB) must NOT qualify as a scratch dir.
+	rootFakeTemp := baseSyntheticModule(t)
+	writeFiles(t, rootFakeTemp, map[string]string{
+		"pure/faketemp_test.go": `package pure
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+type fakeEnv struct{}
+
+func (fakeEnv) TempDir() string { return "/tmp" }
+
+func TestFakeTempDir(t *testing.T) {
+	var env fakeEnv
+	p := filepath.Join(env.TempDir(), "pig-fixture")
+	_, _ = os.ReadFile(p)
+}
+`,
+	})
+	resFakeTemp := analyzeOne(t, rootFakeTemp, "./pure", false)
+	if resFakeTemp.Hermetic {
+		t.Fatalf("non-testing TempDir() receiver must not exempt computed path read")
 	}
 }
 

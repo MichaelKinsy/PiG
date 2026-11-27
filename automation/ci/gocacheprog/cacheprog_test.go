@@ -662,13 +662,20 @@ func TestPruneDiskStoreBoundsSizeAndPreservesLivePaths(t *testing.T) {
 }
 
 func TestS3GetRejectsOversizedStreamWithoutDraining(t *testing.T) {
+	const (
+		chunkSize  = 4096
+		totalChunk = 200
+		fullStream = chunkSize * totalChunk // 819,200 bytes
+	)
 	var bytesWritten atomic.Int64
+	handlerDone := make(chan struct{})
 	srvHTTP := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer close(handlerDone)
 		// Stream chunked response (no Content-Length) much larger than MaxObjectBytes.
 		w.WriteHeader(http.StatusOK)
 		flusher, _ := w.(http.Flusher)
-		chunk := bytes.Repeat([]byte("X"), 4096)
-		for range 200 {
+		chunk := bytes.Repeat([]byte("X"), chunkSize)
+		for range totalChunk {
 			n, err := w.Write(chunk)
 			bytesWritten.Add(int64(n))
 			if err != nil {
@@ -677,6 +684,8 @@ func TestS3GetRejectsOversizedStreamWithoutDraining(t *testing.T) {
 			if flusher != nil {
 				flusher.Flush()
 			}
+			// Yield briefly so TCP backpressure propagates when the client closes early.
+			time.Sleep(1 * time.Millisecond)
 		}
 	}))
 	t.Cleanup(srvHTTP.Close)
@@ -704,6 +713,14 @@ func TestS3GetRejectsOversizedStreamWithoutDraining(t *testing.T) {
 	}
 	if backend.CircuitOpen() {
 		t.Fatalf("oversized miss must not trip the circuit breaker")
+	}
+	// Wait for the server handler to observe the closed connection and exit.
+	<-handlerDone
+	// Verify the client closed the connection without draining the full 819,200-byte stream
+	// (and without draining the 64 KiB keep-alive drain budget).
+	const maxExpectedBytes = 1024 + int64(envelopeHeaderSz) + 32*1024
+	if written := bytesWritten.Load(); written >= fullStream || written > maxExpectedBytes {
+		t.Fatalf("client drained too much of oversized stream: server wrote %d bytes (limit %d, full %d)", written, maxExpectedBytes, fullStream)
 	}
 }
 
