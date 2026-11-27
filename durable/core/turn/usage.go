@@ -52,6 +52,7 @@ func AddUsage(total, usage *jv.Object) {
 	}
 	addCounter(total, "cacheWrite1h", usage, false)
 	addCounter(total, "reasoning", usage, false)
+	addCounter(total, "imageOutput", usage, false)
 
 	totalCost, _ := total.Get("cost")
 	usageCost, _ := usage.Get("cost")
@@ -128,6 +129,9 @@ func addUsageDraft(total *delta.Obj, usage *jv.Object) error {
 		return err
 	}
 	if err := addDraftCounter(total, "reasoning", usage, false); err != nil {
+		return err
+	}
+	if err := addDraftCounter(total, "imageOutput", usage, false); err != nil {
 		return err
 	}
 	cost, _ := usage.Get("cost")
