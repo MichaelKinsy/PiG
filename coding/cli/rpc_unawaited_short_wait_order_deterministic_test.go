@@ -31,6 +31,9 @@ import (
 // it waits until a goroutine is parked in subprocess.(*Host).awaitPostAckGate OR until an unexpected
 // record arrives on records. This distinguishes a held notification from one that proceeded past the gate
 // without relying on a fixed timer.
+//
+// Because the runtime.Stack scan for (*Host).awaitPostAckGate is process-wide, callers must not run
+// concurrently with other tests (i.e. must not call t.Parallel()).
 func waitSubprocessCallHeldInPostAckGate(t *testing.T, records <-chan rpcRecord, checkUnexpected func(rpcRecord) error) []rpcRecord {
 	t.Helper()
 	deadline := time.After(testbudget.Wait(t))
