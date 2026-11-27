@@ -279,17 +279,24 @@ func ClassifyPiDecision(ctx context.Context, model ClassifierModel, request Clas
 	if !ok {
 		return fail(errors.New(piDecisionLabel + " returned an unexpected response"))
 	}
-	if id, ok := jsonStringOf(body["responseId"]); ok && id != "" {
-		output.ResponseID = id
+	parsed := PiDecisionResponse{
+		Usage: parsePiDecisionUsage(body["usage"], model),
 	}
-	if usage := parsePiDecisionUsage(body["usage"], model); usage != nil {
-		output.Usage = usage
+	if id, ok := jsonStringOf(body["responseId"]); ok && id != "" {
+		parsed.ResponseID = id
+	}
+	if parsed.ResponseID != "" {
+		output.ResponseID = parsed.ResponseID
+	}
+	if parsed.Usage != nil {
+		output.Usage = parsed.Usage
 	}
 	answers, err := parsePiDecisionAnswers(body["answers"], request)
 	if err != nil {
 		return fail(err)
 	}
-	output.Answers = answers
+	parsed.Answers = answers
+	output.Answers = parsed.Answers
 	return output
 }
 

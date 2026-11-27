@@ -79,6 +79,10 @@
     "go": "ai/provider_kit.go#GetJSONSchemaToolParameters",
     "reason": "Pi constrained-sampling.ts:142-144 getJsonSchemaToolParameters returns the TSchema JSON object (tool.parameters, or the strict copy), whose member order JSON.stringify keeps in every request body. The Go form of TSchema is map[string]any (representations.json ai:TSchema), which has no order, so Go returns jsonSchemaToolParameters: that map as Schema plus the member order of its objects, and its MarshalJSON writes the schema in Pi's order. The exported GetJSONSchemaToolParameters (provider_kit.go) is the one function the ai/providers/bedrock package calls into ai/constrained_sampling.go getJSONSchemaToolParameters, and every provider sends the result that way (openai.go, openai_responses.go, mistral.go, anthropic.go, google.go, ai/providers/bedrock/bedrock.go convertTools). Locked by the Pi-oracle body tests TestOpenAICompletionsRequestKeysFollowPiAssignmentOrder, TestAnthropicToolsFollowPiMemberOrder, TestGoogleToolDeclarationsFollowPiMemberOrder, TestGoogleRequestBodyMatchesPi and TestBedrockRequestBodyMatchesPi, and by constrained_sampling_oracle_test.go."
   },
+  "pkg:ai/api/google-shared#formatGooglePromptBlockError::call:0": {
+    "go": "ai/google.go#formatGooglePromptBlockError",
+    "reason": "Pi packages/ai/src/api/google-shared.ts formatGooglePromptBlockError(providerName: string, feedback: GenerateContentResponsePromptFeedback): string takes the @google/genai SDK's GenerateContentResponsePromptFeedback type. PiG has no @google/genai dependency and models the decoded promptFeedback JSON object as *geminiPromptFeedback (ai/google.go), producing the identical blockReason/blockReasonMessage/safetyRatings diagnostic string (ai/google_stream_errors_test.go)."
+  },
   "pkg:ai/api/openai-responses#OpenAIResponsesOptions::property:toolChoice": {
     "go": "ai/types.go#StreamOptions.ToolChoice",
     "reason": "Pi types toolChoice per API as a compile-time union (openai-responses.ts:121); T10 cannot compare it with Go. Go carries one StreamOptions.ToolChoice (types.go, `any`) for every API with the same runtime value space, a string name or the provider's object, and each provider reads it: openai_responses.go:1062 sends a non-nil value as tool_choice (string or object); locked by openai_responses_compat_upstream_test.go. The compile-time narrowing per API has no runtime effect, and the U1 rows for the other APIs are not covered by this entry."
@@ -827,9 +831,17 @@
     "go": "coding/cli/rpc_types.go#RPCSessionState.Model",
     "reason": "Pi rpc-types.ts:97 model?: Model<any> is the Model object get_state serializes. PiG's ai.Model carries a Provider object and nested metadata that are not wire data, so get_state projects it as RPCModel (coding/cli/rpc_types.go, rpcModelValue) with every JSON member of Pi's Model, including the optional type (rpc_model_type_test.go); the member is the pointer so a nil session model reports the unknown placeholder rpc-mode.ts reports."
   },
+  "pkg:coding-agent/.#SettingsCallbacks::property:onNoticeChange::call:0": {
+    "go": "internal/codingagent/settings_selector.go#SettingsCallbacks.OnNoticeChange",
+    "reason": "Pi packages/coding-agent/src/modes/interactive/components/settings-selector.ts SettingsCallbacks.onNoticeChange(key: keyof NoticeSettings, shown: boolean): void takes the keyof union over the four notice keys. Go SettingsCallbacks.OnNoticeChange func(key NoticeKey, shown bool) uses the named string type NoticeKey over the exact same four keys (internal/codingagent/settings_notices_test.go, internal/codingagent/settings_selector_oracle_test.go)."
+  },
   "pkg:coding-agent/.#SettingsManager::property:getTransport::call:0": {
     "go": "internal/codingagent/settings.go#SettingsManager.GetTransport",
     "reason": "Pi SettingsManager.getTransport() returns TransportSetting = NonNullable<SettingsInput[\"transport\"]> = \"auto\" | \"sse\" | \"websocket\" | \"websocket-cached\" (settings-schema.ts:218-223). Go GetTransport returns the same four strings as a string. TestRenderedSchemasAreByteEqualToThePinnedPiPackage (internal/codingagent/configschema/render_test.go) proves the settings schema Pig renders is byte-equal to the one the pinned Pi package publishes. Lead assignment 2026-10-10."
+  },
+  "pkg:coding-agent/.#SettingsManager::property:setNotice::call:0": {
+    "go": "internal/codingagent/settings.go#SettingsManager.SetNotice",
+    "reason": "Pi packages/coding-agent/src/core/settings-manager.ts setNotice(key: keyof NoticeSettings, shown: boolean): void takes the keyof union ('cacheMisses' | 'cacheWarming' | 'compactionCosts' | 'reasoningDrops'). Go SettingsManager.SetNotice(key NoticeKey, shown bool) error takes the named string type NoticeKey over the exact same four keys and returns the persistence error (internal/codingagent/settings_notices_test.go)."
   },
   "pkg:coding-agent/.#SettingsManager::property:setTransport::call:0": {
     "go": "internal/codingagent/settings.go#SettingsManager.SetTransport",

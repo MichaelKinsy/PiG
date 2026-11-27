@@ -19845,6 +19845,17 @@
       "shapeHash": "sha256:25bdf06a97bfbb36acfb0ff1ac1f36b1ae7efe708f9fb0bdea184a23e94425ff"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#NewSseDecoder",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "NewSseDecoder",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *SseDecoder"
+      },
+      "shapeHash": "sha256:8bd1f1feef958d38d8a7b3c48624a3f62220f7e2e63a161814b50e0cbd9b3cb0"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#NewStreamToolCallDelta",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "NewStreamToolCallDelta",
@@ -23937,6 +23948,17 @@
       "shapeHash": "sha256:32fc59c857f3105d97b954ac0eb3613ded792cc23a115c26564fb0897f754504"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#ServerSentEvent",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "ServerSentEvent",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ServerSentEvent"
+      },
+      "shapeHash": "sha256:6719bafb92ba23706e39c21ae0335d589118d3cf51503ef1858a2f50af80fe7b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#SessionAffinityFormat",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "SessionAffinityFormat",
@@ -24100,6 +24122,72 @@
         "type": "func(message ToolResultMessage) *SplitErrorToolResult"
       },
       "shapeHash": "sha256:b507bc9a10e9b8586988ab9968fd0a8eb4752d8b31357fd6701834b52a42df59"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#SseDecoder",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "SseDecoder",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "SseDecoder"
+      },
+      "shapeHash": "sha256:96042d023218465eab2e7368b291b339ffeb0297539155970498ac0fe8e47a79"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#SseDecoder.End",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "SseDecoder.End",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() []ServerSentEvent"
+      },
+      "shapeHash": "sha256:b8b729f8edd6670bcab3750d945bbf010d54065363143418d873d6859146d580"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#SseDecoder.Push",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "SseDecoder.Push",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(bytes []byte) []ServerSentEvent"
+      },
+      "shapeHash": "sha256:bb1cbbc6e8d77dcafcb20385b06a600ad914a63dade08168e622972d5d34c18a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#SseDecoder.decodeLine",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "SseDecoder.decodeLine",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(line string) (ServerSentEvent, bool)"
+      },
+      "shapeHash": "sha256:4f0b1a0c4c4ba058dfaf67a095845dedba2441e14a6e201ec9926702205f2040"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#SseDecoder.decodeText",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "SseDecoder.decodeText",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(text string) []ServerSentEvent"
+      },
+      "shapeHash": "sha256:a063c83f13967f407dd1e55a77885138b9a173b79abfc18caa603926edfdd24d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#SseDecoder.flush",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "SseDecoder.flush",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (ServerSentEvent, bool)"
+      },
+      "shapeHash": "sha256:4d863305ea45303295063741267630218881b6ae19224ea32f2df3fe1025c97d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#StartEvent",
@@ -43759,6 +43847,17 @@
       "shapeHash": "sha256:523dd6c4adc3078588af4161019fbd766b0b38eed679f9dcd0c6e8ebbe46e0d2"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#getGoogleBudget",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "getGoogleBudget",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(model *Model, resolved ResolvedGoogleThinkingLevel, customBudgets *ThinkingBudgets) int"
+      },
+      "shapeHash": "sha256:7e0942d4f40d84602505c5f02081f1ab456a0a1d50c6d0e8bb9889f5ddec885e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#getGrammarToolInput",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "getGrammarToolInput",
@@ -43900,6 +43999,17 @@
         "type": "googleErrorDetail"
       },
       "shapeHash": "sha256:8889879d268611d429819121f270b4ccd723eb7340e8b8662a2d9f15a60f7b78"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#googleErrorResponseCallback",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "googleErrorResponseCallback",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, onResp func(context.Context, ProviderResponse, *Model) error, model *Model) func(ProviderResponse) error"
+      },
+      "shapeHash": "sha256:c9947b07cf3fd3a5530c1a1ec12693217b849e9e69846dc9d34669d918193d0c"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#googleFetchAbortError",
@@ -62908,6 +63018,17 @@
         "type": "retryErrorResponseKey"
       },
       "shapeHash": "sha256:daf9643eb818b9b2f2268bce562701db38f1a795dd04ce96790a73f20b4c3897"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#retryGoogleRequest",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "retryGoogleRequest",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func[T any](ctx context.Context, request func() (T, error), model *Model, options ...StreamOptions) (T, error)"
+      },
+      "shapeHash": "sha256:6ad0e8cea04857e4a9c90c8b203d633cef734eeea2c7fae573684197054235d8"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#retryTimerDuration",

@@ -315,11 +315,19 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/first-time-setup.ts#FirstTimeSetupComponent.handleInput",
       "ownerFamily": "startup",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
-      "divergence": "",
+      "disposition": "divergence",
+      "pigTargets": [
+        "internal/codingagent/first_time_setup.go#HandleInput"
+      ],
+      "evidence": [
+        "internal/codingagent/first_time_setup_contract_test.go#TestFirstTimeSetupBindingOverlapsMatchPi",
+        "internal/codingagent/first_time_setup_oracle_test.go#TestFirstTimeSetupMatchesPi",
+        "internal/codingagent/first_time_setup_test.go"
+      ],
+      "contracts": [
+        "coding-agent/first-time-setup/input-state-machine"
+      ],
+      "divergence": "D88",
       "rationale": ""
     },
     {
@@ -537,10 +545,18 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/settings-selector.ts#ToggleSettingsSubmenu.handleInput",
       "ownerFamily": "settings",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/settings_selector.go#HandleInput"
+      ],
+      "evidence": [
+        "internal/codingagent/settings_notices_test.go#TestSettingsSelectorNoticesSubmenu",
+        "internal/codingagent/settings_selector_oracle_test.go#TestSettingsSelectorMatchesPi",
+        "test/parity/scenarios/settings/04-settings-theme-submenu.toml"
+      ],
+      "contracts": [
+        "coding-agent/warning-settings-submenu/input-state-machine"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -1029,30 +1045,131 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.showExtensionEditor",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "coding/extension/host/subprocess/ui_bridge.go#handleCall",
+        "internal/codingagent/custom_overlay_control.go#SetFocused",
+        "internal/codingagent/ext_ui_context.go#Editor",
+        "internal/codingagent/ext_ui_context.go#runDialog",
+        "internal/codingagent/ext_ui_dialog_stack.go#finishExtensionDialog",
+        "internal/codingagent/ext_ui_dialog_stack.go#pushExtensionDialog",
+        "internal/codingagent/ext_ui_dialog_stack.go#removeExtensionDialog",
+        "internal/codingagent/ext_ui_dialog_stack.go#showTopExtensionDialog"
+      ],
+      "evidence": [
+        "coding/extension/host/subprocess/ui_bridge_test.go#TestInteractiveDialogOpensOverFocusedOverlay",
+        "coding/extension/host/subprocess/ui_bridge_test.go#TestInteractiveDialogsDoNotWaitForEachOther",
+        "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionDialogClosesTheActiveSelector",
+        "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionDialogsRequestARenderWhenTheSlotChanges",
+        "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionEditorDialogIsBuiltFromTheModeAndSettings",
+        "internal/codingagent/ext_ui_dialog_displace_test.go#TestAbortingAHiddenDialogLeavesTheShownDialog",
+        "internal/codingagent/ext_ui_dialog_displace_test.go#TestExtensionDialogStacksOverTheOpenDialog",
+        "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogStacksOverFocusedEditorSlotCustom",
+        "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogTakesFocusFromFocusedCustomOverlay",
+        "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogTakesTerminalFromFocusedRemoteOverlay",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogTimeoutOfAHiddenDialogLeavesTheVisibleDialog",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsAnswerASelectInputAndEditorMixInStackOrder",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsRemoveAHiddenDialogWhenItsSignalAborts",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsShowTheEarlierConfirmAgainAfterTheLaterIsAnswered",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestSessionReplacementDisposesEveryExtensionDialog",
+        "internal/codingagent/ext_ui_dialog_test.go#TestAC48SubprocessDialogsRunOnUILoop",
+        "internal/codingagent/ext_ui_dialog_test.go#TestExtUIContextDialogCancellationIsExplicit",
+        "test/extension-conformance/ui_concurrent_dialogs_test.go#TestConformance_ConcurrentDialogsAgreeAcrossSDKs",
+        "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
+        "test/parity/scenarios/extensions-runtime/83-extension-dialog-displacement.toml"
+      ],
+      "contracts": [
+        "coding-agent/extensions/editor-dialog-lifecycle"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.showExtensionInput",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "coding/extension/host/subprocess/ui_bridge.go#handleCall",
+        "internal/codingagent/custom_overlay_control.go#SetFocused",
+        "internal/codingagent/ext_ui_context.go#Input",
+        "internal/codingagent/ext_ui_context.go#runDialog",
+        "internal/codingagent/ext_ui_dialog_stack.go#finishExtensionDialog",
+        "internal/codingagent/ext_ui_dialog_stack.go#pushExtensionDialog",
+        "internal/codingagent/ext_ui_dialog_stack.go#removeExtensionDialog",
+        "internal/codingagent/ext_ui_dialog_stack.go#showTopExtensionDialog"
+      ],
+      "evidence": [
+        "coding/extension/host/subprocess/push_proxy_test.go#TestUIBridge_EmptyDialogSubmissionIsSuccessful",
+        "coding/extension/host/subprocess/ui_bridge_test.go#TestInteractiveDialogOpensOverFocusedOverlay",
+        "coding/extension/host/subprocess/ui_bridge_test.go#TestInteractiveDialogsDoNotWaitForEachOther",
+        "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionDialogClosesTheActiveSelector",
+        "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionDialogWithAnAbortedSignalShowsNothing",
+        "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionInputIgnoresItsPlaceholder",
+        "internal/codingagent/ext_ui_dialog_contract_test.go#TestRemovingAHiddenExtensionDialogLeavesTheSlotAlone",
+        "internal/codingagent/ext_ui_dialog_displace_test.go#TestAbortingAHiddenDialogLeavesTheShownDialog",
+        "internal/codingagent/ext_ui_dialog_displace_test.go#TestExtensionDialogStacksOverTheOpenDialog",
+        "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogStacksOverFocusedEditorSlotCustom",
+        "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogTakesFocusFromFocusedCustomOverlay",
+        "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogTakesTerminalFromFocusedRemoteOverlay",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogTimeoutOfAHiddenDialogLeavesTheVisibleDialog",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsAnswerASelectInputAndEditorMixInStackOrder",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsRemoveAHiddenDialogWhenItsSignalAborts",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsShowTheEarlierConfirmAgainAfterTheLaterIsAnswered",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestSessionReplacementDisposesEveryExtensionDialog",
+        "internal/codingagent/ext_ui_dialog_test.go#TestAC48SubprocessDialogsRunOnUILoop",
+        "internal/codingagent/ext_ui_dialog_test.go#TestExtUIContextDialogCancellationIsExplicit",
+        "test/extension-conformance/ui_concurrent_dialogs_test.go#TestConformance_ConcurrentDialogsAgreeAcrossSDKs",
+        "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
+        "test/parity/scenarios/extensions-runtime/83-extension-dialog-displacement.toml"
+      ],
+      "contracts": [
+        "coding-agent/extensions/input-dialog-lifecycle"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.showExtensionSelector",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "coding/extension/host/subprocess/ui_bridge.go#handleCall",
+        "internal/codingagent/custom_overlay_control.go#SetFocused",
+        "internal/codingagent/ext_ui_context.go#runDialog",
+        "internal/codingagent/ext_ui_context.go#Select",
+        "internal/codingagent/ext_ui_dialog_stack.go#finishExtensionDialog",
+        "internal/codingagent/ext_ui_dialog_stack.go#pushExtensionDialog",
+        "internal/codingagent/ext_ui_dialog_stack.go#removeExtensionDialog",
+        "internal/codingagent/ext_ui_dialog_stack.go#showTopExtensionDialog"
+      ],
+      "evidence": [
+        "coding/extension/host/subprocess/ui_bridge_test.go#TestInteractiveDialogOpensOverFocusedOverlay",
+        "coding/extension/host/subprocess/ui_bridge_test.go#TestInteractiveDialogsDoNotWaitForEachOther",
+        "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionDialogClosesTheActiveSelector",
+        "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionDialogWithAnAbortedSignalShowsNothing",
+        "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionDialogsRequestARenderWhenTheSlotChanges",
+        "internal/codingagent/ext_ui_dialog_contract_test.go#TestRemovingAHiddenExtensionDialogLeavesTheSlotAlone",
+        "internal/codingagent/ext_ui_dialog_displace_test.go#TestAbortingAHiddenDialogLeavesTheShownDialog",
+        "internal/codingagent/ext_ui_dialog_displace_test.go#TestExtensionDialogStacksOverTheOpenDialog",
+        "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogStacksOverFocusedEditorSlotCustom",
+        "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogTakesFocusFromFocusedCustomOverlay",
+        "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogTakesTerminalFromFocusedRemoteOverlay",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogTimeoutOfAHiddenDialogLeavesTheVisibleDialog",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsAnswerASelectInputAndEditorMixInStackOrder",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsRemoveAHiddenDialogWhenItsSignalAborts",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsShowTheEarlierConfirmAgainAfterTheLaterIsAnswered",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestSessionReplacementDisposesEveryExtensionDialog",
+        "internal/codingagent/ext_ui_dialog_test.go#TestAC48SubprocessDialogsRunOnUILoop",
+        "internal/codingagent/ext_ui_dialog_test.go#TestExtUIContextDialogCancellationIsExplicit",
+        "internal/codingagent/extension_dialog_remapping_test.go#TestExtensionDialogRemappingThroughOwnerLoop",
+        "test/extension-conformance/ui_concurrent_dialogs_test.go#TestConformance_ConcurrentDialogsAgreeAcrossSDKs",
+        "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
+        "test/parity/scenarios/extensions-runtime/12-subprocess-tool-ui-cancel.toml",
+        "test/parity/scenarios/extensions-runtime/83-extension-dialog-displacement.toml"
+      ],
+      "contracts": [
+        "coding-agent/extensions/select-dialog-lifecycle"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -1643,12 +1760,21 @@
     {
       "id": "render:packages/ai/src/api/openai-responses-shared.ts#<module>.renderResponsesTranscript",
       "ownerFamily": "providers-faux-streaming",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "ai/openai_responses.go#renderResponsesTranscript",
+        "ai/openai_responses.go#convertAnchoredWithBaseline"
+      ],
+      "evidence": [
+        "ai/openai_responses_tool_notices_oracle_test.go#TestOpenAIResponsesToolChangeNoticesMatchPi",
+        "ai/openai_responses_tool_call_replay_test.go#TestOpenAIResponsesReplaysToolCallsWithStatusCompleted",
+        "test/parity/scenarios/providers-faux-streaming/33-responses-tool-change-notices.toml"
+      ],
+      "contracts": [
+        "ai/openai-responses/tool-change-announcements"
+      ],
       "divergence": "",
-      "rationale": ""
+      "rationale": "Extracted in Pi 1.6.1 from convertResponsesMessages; ported in ai/openai_responses.go#renderResponsesTranscript with effortBaseline and tool-call status replay."
     },
     {
       "id": "render:packages/ai/src/api/openai-responses-shared.ts#<module>.renderToolRemovalNotice",
@@ -1668,8 +1794,7 @@
         "test/parity/scenarios/providers-faux-streaming/33-responses-tool-change-notices.toml"
       ],
       "contracts": [
-        "ai/openai-responses/render-tool-removal-notice",
-        "ai/openai-responses/tool-change-announcements"
+        "ai/openai-responses/render-tool-removal-notice"
       ],
       "divergence": "",
       "rationale": ""
@@ -3109,10 +3234,25 @@
     {
       "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderSessionItems",
       "ownerFamily": "interactive-input",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/interactive_transcript.go#renderSessionEntryListWithHistory"
+      ],
+      "evidence": [
+        "internal/codingagent/interactive_cache_miss_entries_test.go#TestRebuiltCacheMissNoticesScanEveryEntryInFileOrder",
+        "internal/codingagent/interactive_resume_tools_test.go#TestInteractiveMode_ResumeShellToolsShowRecordedDuration",
+        "internal/codingagent/interactive_resume_tools_test.go#TestResumeAbortedToolIgnoresOrphanedResult",
+        "internal/codingagent/markdown_message_meta_test.go#TestMarkdownTransformContextCarriesPersistedEntryIdentity",
+        "internal/codingagent/render_session_items_contract_test.go#TestRenderSessionItemsCacheMissNoticesFollowTheStopReasonAndTheSetting",
+        "internal/codingagent/render_session_items_contract_test.go#TestRenderSessionItemsExpandsCardsLikeTheToolToggle",
+        "internal/codingagent/render_session_items_contract_test.go#TestRenderSessionItemsLeavesAnAnsweredCallPendingUntilItsResult",
+        "internal/codingagent/render_session_items_contract_test.go#TestRenderSessionItemsSettlesEachToolCardByTheStopReason",
+        "internal/codingagent/render_session_items_contract_test.go#TestRenderSessionItemsSkipsAUserMessageWithoutText",
+        "test/parity/scenarios/interactive-rendering/24-resume-file-tool-previews.toml"
+      ],
+      "contracts": [
+        "coding-agent/interactive/render-session-items"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -4044,10 +4184,19 @@
     {
       "id": "render:packages/tui/src/tui-main-screen.ts#TuiMainScreen.doRender",
       "ownerFamily": "fullscreen",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tui.go#doRender",
+        "tui/tui.go#resolveFakeCursors"
+      ],
+      "evidence": [
+        "tui/main_screen_upstream_parity_test.go#TestMainScreenFramesMatchPi084LogicalHistory",
+        "tui/fake_cursor_test.go#TestMainScreenResolvesTheFakeCursorOfAnOverlayComponent",
+        "test/parity/scenarios/fullscreen/03-main-screen-history-redraw.toml"
+      ],
+      "contracts": [
+        "tui/render/main-screen-full-redraw"
+      ],
       "divergence": "",
       "rationale": ""
     },

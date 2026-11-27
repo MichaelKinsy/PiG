@@ -908,15 +908,7 @@ func buildGeminiThinkingConfig(model *Model, level ModelThinkingLevel, isReasoni
 	if usesLevel {
 		config.ThinkingLevel = string(ToGoogleSdkThinkingLevel(ToGoogleThinkingLevel(resolved)))
 	} else {
-		// Budgets stop at high, so xhigh uses the high budget.
-		budgetLevel := ModelThinkingLevel(resolved)
-		if resolved == ResolvedGoogleThinkingLevelXHigh {
-			budgetLevel = ThinkingHigh
-		}
-		budget := geminiThinkingBudget(budgetLevel, model.ID)
-		if custom, ok := customBudgets.configured(budgetLevel); ok {
-			budget = custom
-		}
+		budget := getGoogleBudget(model, resolved, customBudgets)
 		config.ThinkingBudget = &budget
 	}
 	return config, nil
@@ -963,6 +955,26 @@ func supportsMultimodalFunctionResponse(modelID string) bool {
 		return major >= 3
 	}
 	return true
+}
+
+
+// getGoogleBudget returns the token budget for Gemini models using thinkingBudget:
+// custom budgets first, then per-model defaults, else -1 (dynamic).
+// upstream: packages/ai/src/api/google-shared.ts:getGoogleBudget
+func getGoogleBudget(model *Model, resolved ResolvedGoogleThinkingLevel, customBudgets *ThinkingBudgets) int {
+	// Budgets stop at high, so xhigh uses the high budget.
+	budgetLevel := ModelThinkingLevel(resolved)
+	if resolved == ResolvedGoogleThinkingLevelXHigh {
+		budgetLevel = ThinkingHigh
+	}
+	if custom, ok := customBudgets.configured(budgetLevel); ok {
+		return custom
+	}
+	id := ""
+	if model != nil {
+		id = model.ID
+	}
+	return geminiThinkingBudget(budgetLevel, id)
 }
 
 func geminiThinkingBudget(level ModelThinkingLevel, modelID string) int {
@@ -1153,15 +1165,12 @@ func (p *googleProvider) Stream(ctx context.Context, transcript TranscriptContex
 	// @google/genai does not retry, so retryGoogleRequest is the only retry layer: the transport retry is off for each attempt, and the
 	// request's retry budget (the per-request override, else retry.provider) moves to retryGoogleRequest.
 	retryOptions := providerRetryStreamOptions(requestContext, opts)
+	var googleModel *Model
 	if retryOptions.OnResponse != nil {
-		googleModel := providerEventModel(p.cfg.ModelMetadata, p.cfg.api, p.cfg.ProviderID, p.cfg.Model)
-		userOnResp := retryOptions.OnResponse
-		retryOptions.OnResponse = func(cbCtx context.Context, r ProviderResponse, _ *Model) error {
-			return userOnResp(cbCtx, r, googleModel)
-		}
+		googleModel = providerEventModel(p.cfg.ModelMetadata, p.cfg.api, p.cfg.ProviderID, p.cfg.Model)
 	}
 	attemptContext := WithProviderMaxRetries(requestContext, 0)
-	resp, err := RetryGoogleRequest(requestContext, func() (*http.Response, error) { //nolint:bodyclose // the attempt returns the open response and the SSE goroutine below closes its body
+	resp, err := retryGoogleRequest(requestContext, func() (*http.Response, error) { //nolint:bodyclose // the attempt returns the open response and the SSE goroutine below closes its body
 		httpReq, err := newFetchRequest(attemptContext, http.MethodPost, endpoint, body.reader(), false)
 		if err != nil {
 			return nil, err
@@ -1201,7 +1210,7 @@ func (p *googleProvider) Stream(ctx context.Context, transcript TranscriptContex
 			return nil, googleHTTPError(resp, b)
 		}
 		return resp, nil
-	}, retryOptions)
+	}, googleModel, retryOptions)
 	if err != nil {
 		// retryProviderRequest throws createAbortError() once the signal is aborted (provider-retry.ts:68-72).
 		if ctx.Err() != nil && errors.Is(err, errProviderRequestAborted) {
@@ -1684,6 +1693,11 @@ func (e googleHeaderlessError) Unwrap() error              { return e.googleStat
 // headers. A status-only error is given `headers: undefined`, so it is retried by status, and the caller still receives the error it threw.
 // Retries and the delay cap come from the stream options; the context is their AbortSignal.
 func RetryGoogleRequest[T any](ctx context.Context, request func() (T, error), options ...StreamOptions) (T, error) {
+	return retryGoogleRequest(ctx, request, nil, options...)
+}
+
+// retryGoogleRequest mirrors Pi 1.6.1 packages/ai/src/api/google-shared.ts retryGoogleRequest(request, model, options).
+func retryGoogleRequest[T any](ctx context.Context, request func() (T, error), model *Model, options ...StreamOptions) (T, error) {
 	var opts StreamOptions
 	if len(options) > 0 {
 		opts = options[0]
@@ -1701,7 +1715,7 @@ func RetryGoogleRequest[T any](ctx context.Context, request func() (T, error), o
 	}, ProviderRetryOptions{
 		MaxRetries:      opts.MaxRetries,
 		MaxRetryDelayMs: opts.MaxRetryDelayMs,
-		OnErrorResponse: googleErrorResponseCallback(ctx, opts.OnResponse),
+		OnErrorResponse: googleErrorResponseCallback(ctx, opts.OnResponse, model),
 	})
 	if wrapped := (googleHeaderlessError{}); errors.As(err, &wrapped) {
 		return value, wrapped.googleStatusError
@@ -1709,13 +1723,12 @@ func RetryGoogleRequest[T any](ctx context.Context, request func() (T, error), o
 	return value, err
 }
 
-
-func googleErrorResponseCallback(ctx context.Context, onResp func(context.Context, ProviderResponse, *Model) error) func(ProviderResponse) error {
+func googleErrorResponseCallback(ctx context.Context, onResp func(context.Context, ProviderResponse, *Model) error, model *Model) func(ProviderResponse) error {
 	if onResp == nil {
 		return nil
 	}
 	return func(r ProviderResponse) error {
-		return onResp(ctx, r, nil)
+		return onResp(ctx, r, model)
 	}
 }
 
