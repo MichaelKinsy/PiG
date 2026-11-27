@@ -1919,10 +1919,11 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 }
 
 func (p *openAIProvider) streamResponse(ctx context.Context, request *http.Request, opts StreamOptions, builder *assistantStreamBuilder, grammarProps map[string]string) error {
-	responseModel := &Model{ID: p.cfg.Model, ProviderMeta: ProviderMetadata{ProviderID: p.cfg.ProviderID, API: APIOpenAICompletions}}
-	if opts.OnResponse != nil {
+	var responseModel *Model
+	if onResp := opts.OnResponse; onResp != nil {
+		responseModel = &Model{ID: p.cfg.Model, ProviderMeta: ProviderMetadata{ProviderID: p.cfg.ProviderID, API: APIOpenAICompletions}}
 		request = request.WithContext(withRetryErrorResponse(request.Context(), func(r *http.Response) error {
-			return observeProviderResponse(ctx, opts, r, responseModel)
+			return onResp(ctx, ProviderResponse{Status: r.StatusCode, Headers: headersToRecord(r.Header)}, responseModel)
 		}))
 	}
 	resp, err := providerHTTPClient(p.client, opts.Fetch).Do(request)
@@ -1933,15 +1934,19 @@ func (p *openAIProvider) streamResponse(ctx context.Context, request *http.Reque
 	_, builder.managed = resp.Body.(*observedResponseBody)
 	return builder.responseTurn(func() error {
 		if resp.StatusCode != http.StatusOK {
-			if obsErr := observeProviderResponse(ctx, opts, resp, responseModel); obsErr != nil {
-				return obsErr
+			if responseModel != nil {
+				if obsErr := observeProviderResponse(ctx, opts, resp, responseModel); obsErr != nil {
+					return obsErr
+				}
 			}
 			body, _ := readWebText(resp.Body)
 			noteFailureResponse(ctx, resp)
 			return openAIHTTPError(resp.StatusCode, body)
 		}
-		if err := observeProviderResponse(ctx, opts, resp, responseModel); err != nil {
-			return err
+		if responseModel != nil {
+			if err := observeProviderResponse(ctx, opts, resp, responseModel); err != nil {
+				return err
+			}
 		}
 		body := io.Reader(resp.Body)
 		if observed, ok := resp.Body.(*observedResponseBody); ok {

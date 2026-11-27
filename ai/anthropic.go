@@ -1269,9 +1269,9 @@ func (p *anthropicProvider) send(ctx, requestContext context.Context, client ant
 	if client.injected != nil {
 		// upstream: anthropic-messages.ts:650-658 retryProviderRequest around client.beta.messages.create(params, requestOptions).asResponse()
 		var onErrResp func(ProviderResponse) error
-		if opts.OnResponse != nil {
+		if onResp := opts.OnResponse; onResp != nil {
 			responseModel := providerEventModel(p.cfg.ModelMetadata, APIAnthropicMessages, p.cfg.ProviderID, p.cfg.Model)
-			onErrResp = func(r ProviderResponse) error { return opts.OnResponse(ctx, r, responseModel) }
+			onErrResp = func(r ProviderResponse) error { return onResp(ctx, r, responseModel) }
 		}
 		return RetryProviderRequest(requestContext, func() (*http.Response, error) {
 			return client.injected.CreateMessage(requestContext, AnthropicCreateParams{Body: outgoing.body.Bytes(), Betas: outgoing.betas, UserProfileID: outgoing.params.userProfileID, WorkspaceID: outgoing.params.workspaceID}, AnthropicRequestOptions{TimeoutMs: opts.TimeoutMs})
@@ -1282,10 +1282,10 @@ func (p *anthropicProvider) send(ctx, requestContext context.Context, client ant
 			return nil, err
 		}
 	}
-	if opts.OnResponse != nil {
+	if onResp := opts.OnResponse; onResp != nil {
 		responseModel := providerEventModel(p.cfg.ModelMetadata, APIAnthropicMessages, p.cfg.ProviderID, p.cfg.Model)
 		httpRequest = httpRequest.WithContext(withRetryErrorResponse(httpRequest.Context(), func(r *http.Response) error {
-			return observeProviderResponse(ctx, opts, r, responseModel)
+			return onResp(ctx, ProviderResponse{Status: r.StatusCode, Headers: headersToRecord(r.Header)}, responseModel)
 		}))
 	}
 	resp, err := p.do(ctx, httpRequest, opts)

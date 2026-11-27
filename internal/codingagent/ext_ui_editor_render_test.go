@@ -152,12 +152,13 @@ func TestExtUIEditorCallsRepaintCustomEditorWhileIdle(t *testing.T) {
 				t.Fatal("custom editor component did not attach")
 			}
 
-			// Initial paint, then idle.
-			tuiInst.Render()
-			out.Reset()
+			// Initial paint, then idle (cancel any pending scheduled render from attach).
+			tuiInst.CancelPendingRender()
 			for len(scheduled) > 0 {
 				<-scheduled
 			}
+			tuiInst.Render()
+			out.Reset()
 
 			bridge := subprocess.NewUIBridge(func() {})
 			bridge.SetUIContext(extUI)
@@ -179,17 +180,22 @@ func TestExtUIEditorCallsRepaintCustomEditorWhileIdle(t *testing.T) {
 				done <- err
 			}()
 
-			// Drain the posted editor task on the owner loop.
-			select {
-			case fn := <-m.uiTaskCh:
-				fn()
-			case <-t.Context().Done():
-				t.Fatalf("%s did not post its custom-editor update to uiTaskCh", tc.method)
+			// Drain posted owner-loop tasks (including any background remoteEditorEvents
+			// drain posted by SetEditorComponent) until HandleCall completes.
+			for {
+				select {
+				case fn := <-m.uiTaskCh:
+					fn()
+				case err := <-done:
+					if err != nil {
+						t.Fatalf("HandleCall(%s): %v", tc.method, err)
+					}
+					goto handled
+				case <-t.Context().Done():
+					t.Fatalf("%s did not post its custom-editor update to uiTaskCh", tc.method)
+				}
 			}
-
-			if err := <-done; err != nil {
-				t.Fatalf("HandleCall(%s): %v", tc.method, err)
-			}
+		handled:
 			if component.text != tc.wantText {
 				t.Fatalf("custom editor text = %q, want %q", component.text, tc.wantText)
 			}

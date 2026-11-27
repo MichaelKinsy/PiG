@@ -396,9 +396,7 @@ var (
 		`ResourceExhausted`,
 		`subscription_sharing_usage_unavailable`,
 		`subscription_sharing_user_unavailable`,
-		`provider finish_reason: error`,
 		`provider stopped with: error`,
-		`returned an empty response`,
 	)
 )
 

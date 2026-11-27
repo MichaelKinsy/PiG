@@ -113,24 +113,24 @@ func TestAnthropicEventReaderSuspendCounts(t *testing.T) {
 		if _, ok, err := reader.next(); !ok || err != nil {
 			t.Fatalf("next: ok=%t err=%v", ok, err)
 		}
-	}); got != 4 {
-		t.Fatalf("value: %d suspends, want 4", got)
+	}); got != 5 {
+		t.Fatalf("value: %d suspends, want 5", got)
 	}
 	// An ignored record costs H's yield and G's await only; the provider still awaits the next value.
 	if got := count([]string{"event: ping\ndata: {}\n\n" + record}, io.EOF, func(reader *anthropicEventReader) {
 		if event, ok, err := reader.next(); !ok || err != nil || event.Event != "message_start" {
 			t.Fatalf("next: %#v ok=%t err=%v", event, ok, err)
 		}
-	}); got != 6 {
-		t.Fatalf("skipped record: %d suspends, want 6", got)
+	}); got != 8 {
+		t.Fatalf("skipped record: %d suspends, want 8", got)
 	}
 	// Completion: G awaits H's done result, the provider awaits G's.
 	if got := count(nil, io.EOF, func(reader *anthropicEventReader) {
 		if _, ok, err := reader.next(); ok || err != nil {
 			t.Fatalf("next: ok=%t err=%v", ok, err)
 		}
-	}); got != 2 {
-		t.Fatalf("completion: %d suspends, want 2", got)
+	}); got != 4 {
+		t.Fatalf("completion: %d suspends, want 4", got)
 	}
 	// A thrown read error: G awaits the rejection, the provider awaits G's rejection.
 	if got := count(nil, errors.New("terminated"), func(reader *anthropicEventReader) {
@@ -145,8 +145,8 @@ func TestAnthropicEventReaderSuspendCounts(t *testing.T) {
 		if _, ok, err := reader.next(); ok || err == nil || err.Error() != "boom" {
 			t.Fatalf("next: ok=%t err=%v", ok, err)
 		}
-	}); got != 5 {
-		t.Fatalf("error event: %d suspends, want 5", got)
+	}); got != 7 {
+		t.Fatalf("error event: %d suspends, want 7", got)
 	}
 }
 

@@ -337,7 +337,7 @@ func TestCopilotCatalogMatchesPi(t *testing.T) {
 			message := err.Error()
 			got = copilotResponseAnswer{Err: &message, Syntax: errors.Is(err, errOAuthResponseNotJSON)}
 		} else {
-			encoded, _ := json.Marshal(map[string]any{"availableModelIds": append([]string{}, catalog.AvailableModelIDs...), "policyModelIds": append([]string{}, catalog.PolicyModelIDs...)})
+			encoded, _ := json.Marshal(map[string]any{"availableModelIds": append([]string{}, catalog.AvailableModelIDs...), "classifierModelIds": append([]string{}, catalog.ClassifierModelIDs...), "policyModelIds": append([]string{}, catalog.PolicyModelIDs...)})
 			got = copilotResponseAnswer{OK: encoded}
 		}
 		want := expected[i]

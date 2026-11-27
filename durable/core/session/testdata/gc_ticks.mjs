@@ -40,7 +40,7 @@ async function probe({ name, jobs, storageTicks = 0, refuseAt, rejectAt }) {
 		const result = await origCommit(batches.slice(0, cut), (index, seq) => { mark(`receive:${index}`); receive(index, seq); }, ctx);
 		stored += cut;
 		if (cut < batches.length && rejectAt !== undefined) throw new Error("rejected");
-		return cut < batches.length ? { stored: cut, refused: new Error("refused") } : result;
+		return cut < batches.length ? { kind: "refused", stored: cut, refused: new Error("refused") } : result;
 	};
 	const session = createSession(storage, { now: () => 1000 });
 	session.followCommits((p) => mark(`publish:${p.kind === "stored" ? p.seq : "held"}`));

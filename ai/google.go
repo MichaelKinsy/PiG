@@ -1701,17 +1701,22 @@ func RetryGoogleRequest[T any](ctx context.Context, request func() (T, error), o
 	}, ProviderRetryOptions{
 		MaxRetries:      opts.MaxRetries,
 		MaxRetryDelayMs: opts.MaxRetryDelayMs,
-		OnErrorResponse: func(r ProviderResponse) error {
-			if opts.OnResponse == nil {
-				return nil
-			}
-			return opts.OnResponse(ctx, r, nil)
-		},
+		OnErrorResponse: googleErrorResponseCallback(ctx, opts.OnResponse),
 	})
 	if wrapped := (googleHeaderlessError{}); errors.As(err, &wrapped) {
 		return value, wrapped.googleStatusError
 	}
 	return value, err
+}
+
+
+func googleErrorResponseCallback(ctx context.Context, onResp func(context.Context, ProviderResponse, *Model) error) func(ProviderResponse) error {
+	if onResp == nil {
+		return nil
+	}
+	return func(r ProviderResponse) error {
+		return onResp(ctx, r, nil)
+	}
 }
 
 // googleChunkJSONError is the rejection of the SDK's Response.json() for a chunk: JSON.parse's SyntaxError for text that is not JSON.

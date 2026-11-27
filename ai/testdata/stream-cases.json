@@ -1459,10 +1459,10 @@
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:976",
     "line": 976,
-    "name": "Generate E2E Tests/Mistral Provider (devstral-medium-latest)/should complete basic text generation",
+    "name": "Generate E2E Tests/Mistral Provider (mistral-medium-latest)/should complete basic text generation",
     "kind": "basicTextGeneration",
     "provider": "mistral",
-    "model": "devstral-medium-latest",
+    "model": "mistral-medium-latest",
     "api": "mistral-conversations",
     "hasCompat": false,
     "options": {}
@@ -1470,10 +1470,10 @@
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:980",
     "line": 980,
-    "name": "Generate E2E Tests/Mistral Provider (devstral-medium-latest)/should handle tool calling",
+    "name": "Generate E2E Tests/Mistral Provider (mistral-medium-latest)/should handle tool calling",
     "kind": "handleToolCall",
     "provider": "mistral",
-    "model": "devstral-medium-latest",
+    "model": "mistral-medium-latest",
     "api": "mistral-conversations",
     "hasCompat": false,
     "options": {}
@@ -1481,10 +1481,10 @@
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:984",
     "line": 984,
-    "name": "Generate E2E Tests/Mistral Provider (devstral-medium-latest)/should handle streaming",
+    "name": "Generate E2E Tests/Mistral Provider (mistral-medium-latest)/should handle streaming",
     "kind": "handleStreaming",
     "provider": "mistral",
-    "model": "devstral-medium-latest",
+    "model": "mistral-medium-latest",
     "api": "mistral-conversations",
     "hasCompat": false,
     "options": {}
@@ -1492,7 +1492,7 @@
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:988",
     "line": 988,
-    "name": "Generate E2E Tests/Mistral Provider (devstral-medium-latest)/should handle thinking mode",
+    "name": "Generate E2E Tests/Mistral Provider (mistral-medium-latest)/should handle thinking mode",
     "kind": "handleThinking",
     "provider": "mistral",
     "model": "mistral-small-2603",
@@ -1505,7 +1505,7 @@
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:993",
     "line": 993,
-    "name": "Generate E2E Tests/Mistral Provider (devstral-medium-latest)/should handle multi-turn with thinking and tools",
+    "name": "Generate E2E Tests/Mistral Provider (mistral-medium-latest)/should handle multi-turn with thinking and tools",
     "kind": "multiTurn",
     "provider": "mistral",
     "model": "mistral-small-2603",
@@ -1518,10 +1518,10 @@
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:1002",
     "line": 1002,
-    "name": "Generate E2E Tests/Mistral Provider (pixtral-12b with image support)/should complete basic text generation",
+    "name": "Generate E2E Tests/Mistral Provider (ministral-14b-latest with image support)/should complete basic text generation",
     "kind": "basicTextGeneration",
     "provider": "mistral",
-    "model": "pixtral-12b",
+    "model": "ministral-14b-latest",
     "api": "mistral-conversations",
     "hasCompat": false,
     "options": {}
@@ -1529,10 +1529,10 @@
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:1006",
     "line": 1006,
-    "name": "Generate E2E Tests/Mistral Provider (pixtral-12b with image support)/should handle tool calling",
+    "name": "Generate E2E Tests/Mistral Provider (ministral-14b-latest with image support)/should handle tool calling",
     "kind": "handleToolCall",
     "provider": "mistral",
-    "model": "pixtral-12b",
+    "model": "ministral-14b-latest",
     "api": "mistral-conversations",
     "hasCompat": false,
     "options": {}
@@ -1540,10 +1540,10 @@
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:1010",
     "line": 1010,
-    "name": "Generate E2E Tests/Mistral Provider (pixtral-12b with image support)/should handle streaming",
+    "name": "Generate E2E Tests/Mistral Provider (ministral-14b-latest with image support)/should handle streaming",
     "kind": "handleStreaming",
     "provider": "mistral",
-    "model": "pixtral-12b",
+    "model": "ministral-14b-latest",
     "api": "mistral-conversations",
     "hasCompat": false,
     "options": {}
@@ -1551,10 +1551,10 @@
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:1014",
     "line": 1014,
-    "name": "Generate E2E Tests/Mistral Provider (pixtral-12b with image support)/should handle image input",
+    "name": "Generate E2E Tests/Mistral Provider (ministral-14b-latest with image support)/should handle image input",
     "kind": "handleImage",
     "provider": "mistral",
-    "model": "pixtral-12b",
+    "model": "ministral-14b-latest",
     "api": "mistral-conversations",
     "hasCompat": false,
     "options": {}

@@ -999,9 +999,7 @@ static RETRYABLE_PROVIDER_ERROR_PATTERN: LazyLock<Pattern> = LazyLock::new(|| {
         "ResourceExhausted",
         "subscription_sharing_usage_unavailable",
         "subscription_sharing_user_unavailable",
-        "provider finish_reason: error",
         "provider stopped with: error",
-        "returned an empty response",
     ])
 });
 

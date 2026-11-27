@@ -161,12 +161,8 @@ var retryableProviderErrorPattern = buildProviderErrorPattern([]string{
 	// Sign in with ChatGPT: usage or user data temporarily unavailable. Usage failures can arrive mid-stream without an HTTP 503 in the message (utils/retry.ts).
 	"subscription_sharing_usage_unavailable",
 	"subscription_sharing_user_unavailable",
-	// An OpenAI-compatible stream that ended with `finish_reason: "error"`.
-	"provider finish_reason: error",
 	// Mistral's `finish_reason: "error"` for a transient server failure; see `mapMistralStopReason` in mistral.go (#10487, #12455).
 	"provider stopped with: error",
-	// OpenRouter: "Provider returned an empty response" and empty-stop native_finish_reason errors.
-	"returned an empty response",
 })
 
 // RetryDecision is what a custom RetryDecider chooses for one failed assistant call.

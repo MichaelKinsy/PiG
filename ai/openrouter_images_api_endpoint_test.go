@@ -130,7 +130,7 @@ func TestOpenRouterImagesAPIRequestRunsTheHooksAndJoinsTheTextInput(t *testing.T
 	if imagesBody["seed"] != float64(7) || imagesAuth != "Bearer k" {
 		t.Fatalf("images request = %v, authorization %q", imagesBody, imagesAuth)
 	}
-	if len(responses) != 1 || responses[0].Status != http.StatusOK || responses[0].Headers["x-request-id"] != "img-1" {
+	if len(responses) != 2 || responses[0].Status != http.StatusNotFound || responses[1].Status != http.StatusOK || responses[1].Headers["x-request-id"] != "img-1" {
 		t.Fatalf("onResponse calls = %+v", responses)
 	}
 }
