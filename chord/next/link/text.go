@@ -260,7 +260,11 @@ func boundEntry(entry BoundEntry) string {
 	for index, member := range entry.Members {
 		pairs[index] = "[" + strconv.Itoa(member.Member) + "," + mustPartText(member.Value) + "]"
 	}
-	return "[" + strconv.Itoa(entry.Hold) + "," + strconv.Itoa(entry.Variant) + ",[" + strings.Join(pairs, ",") + "]" + failedField(entry.Failed) + "]"
+	granted := make([]string, len(entry.Granted))
+	for i, g := range entry.Granted {
+		granted[i] = strconv.Itoa(g)
+	}
+	return "[" + strconv.Itoa(entry.Hold) + ",[" + strings.Join(granted, ",") + "],[" + strings.Join(pairs, ",") + "]" + failedField(entry.Failed) + "]"
 }
 
 // stateEntry is `[hold, [[member, ops]…], failed?, retired?]`; `failed` is `[]` when only `retired` follows.
@@ -472,7 +476,15 @@ func fromFields(fields []any, rest []byte) Message {
 			if len(entry) != 3 && len(entry) != 4 {
 				fail("text: a bound entry with %d fields", len(entry))
 			}
-			holds[index] = BoundEntry{Hold: asInt(entry[0]), Variant: asInt(entry[1])}
+			grantedRaw := list(entry[1])
+			var granted []int
+			if len(grantedRaw) > 0 {
+				granted = make([]int, len(grantedRaw))
+				for i, g := range grantedRaw {
+					granted[i] = asInt(g)
+				}
+			}
+			holds[index] = BoundEntry{Hold: asInt(entry[0]), Granted: granted}
 			for _, pair := range pairs(entry[2]) {
 				holds[index].Members = append(holds[index].Members, BoundMember{Member: asInt(pair[0]), Value: mustTextPart(pair[1])})
 			}

@@ -38,10 +38,8 @@ func PreferenceContract(name string, pick contracts.Schema) (*contracts.Contract
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) {
 			return serverKind.Address(nil), nil
 		},
-		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
-			State:   []contracts.Property{contracts.Prop("pick", pick)},
-			Methods: []contracts.MethodEntry{contracts.Meth("choose", contracts.NewMethod(pick))},
-		})},
+		State:   []contracts.RemoteStateEntry{contracts.StateEntry("pick", pick)},
+		Methods: []contracts.RemoteMethodEntry{contracts.Meth("choose", contracts.NewMethod(pick))},
 	})
 }
 

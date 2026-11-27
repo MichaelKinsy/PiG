@@ -14,7 +14,7 @@ import (
 // Ports packages/chord/src/data/errors.ts.
 
 // ProtocolVersion is the version of the error table below on links; adding or moving a code or reason bumps it.
-const ProtocolVersion = 1
+const ProtocolVersion = 2
 
 // ChordErrorCode is one of the codes of ChordErrorReasons.
 type ChordErrorCode string

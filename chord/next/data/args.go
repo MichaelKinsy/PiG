@@ -133,20 +133,17 @@ func (entry *dispatchEntry) check(ctx context.Context) (*Validator, error) {
 
 func dispatchEntries(version contracts.VersionData, mappings []contracts.Entry[contracts.MethodMapping]) map[string]*dispatchEntry {
 	entries := map[string]*dispatchEntry{}
-	// A method has one signature in every variant that has it.
-	for _, variant := range version.Variants.All() {
-		if variant.Methods == nil {
-			continue
-		}
-		for member, method := range variant.Methods.All() {
-			var mapping *contracts.MethodMapping
-			for index := range mappings {
-				if mappings[index].Name == member {
-					mapping = &mappings[index].Value
-				}
+	if version.Members == nil || version.Members.Methods == nil {
+		return entries
+	}
+	for member, method := range version.Members.Methods.All() {
+		var mapping *contracts.MethodMapping
+		for index := range mappings {
+			if mappings[index].Name == member {
+				mapping = &mappings[index].Value
 			}
-			entries[member] = dispatchEntryOf(method.Args, mapping)
 		}
+		entries[member] = dispatchEntryOf(method.Args, mapping)
 	}
 	return entries
 }

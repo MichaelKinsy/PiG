@@ -46,9 +46,9 @@ func everyKind() []link.Message {
 	origin.Origin = some(2)
 	oldOrigin := &link.CallMessage{Origin: some(2), Call: 10, Hold: 3, Method: 0, Old: true}
 	return []link.Message{
-		&link.HelloMessage{Protocol: 1, Incarnation: incarnation, Calls: 256},
+		&link.HelloMessage{Protocol: 2, Incarnation: incarnation, Calls: 256},
 		// No call window: a trusted link's.
-		&link.HelloMessage{Protocol: 1, Incarnation: incarnation},
+		&link.HelloMessage{Protocol: 2, Incarnation: incarnation},
 		first,
 		withIncarnation,
 		onlyIncarnation,
@@ -59,10 +59,10 @@ func everyKind() []link.Message {
 		&link.CallMessage{Call: 9, Hold: 0, Method: 1, Args: link.Text(`{"text":"x"}`), Old: true},
 		oldOrigin,
 		&link.AbortMessage{Call: 3},
-		&link.BoundMessage{Holds: []link.BoundEntry{{Hold: 0, Variant: 1, Members: []link.BoundMember{{Member: 0, Value: link.Text(`[1,"a"]`)}}, Failed: []link.FailedMember{{Member: 1, Error: released}}}}},
+		&link.BoundMessage{Holds: []link.BoundEntry{{Hold: 0, Granted: []int{0}, Members: []link.BoundMember{{Member: 0, Value: link.Text(`[1,"a"]`)}}, Failed: []link.FailedMember{{Member: 1, Error: released}}}}},
 		&link.BoundMessage{Holds: []link.BoundEntry{
-			{Hold: 0, Variant: 0},
-			{Hold: 5, Variant: 2, Members: []link.BoundMember{{Member: 1, Value: link.Text("null")}}},
+			{Hold: 0, Granted: []int{}},
+			{Hold: 5, Granted: []int{0, 1}, Members: []link.BoundMember{{Member: 1, Value: link.Text("null")}}},
 		}},
 		&link.StateMessage{Holds: []link.StateEntry{
 			{Hold: 0, Members: []link.StateMember{{Member: 2, Ops: link.Text(`[["s",["n"],1]]`)}}},
@@ -107,7 +107,7 @@ func everyKind() []link.Message {
 		&link.CallMessage{Origin: some(2), Call: 1, Hold: 3, Method: 0, Args: link.Text("[1]")},
 		&link.AbortMessage{Origin: some(2), Call: 1},
 		&link.RetryMessage{Origin: some(2), Hold: 3, Hops: 16},
-		&link.BoundMessage{Origin: some(2), Holds: []link.BoundEntry{{Hold: 3, Variant: 0}}},
+		&link.BoundMessage{Origin: some(2), Holds: []link.BoundEntry{{Hold: 3, Granted: []int{}}}},
 		&link.StateMessage{Origin: some(2)},
 		&link.FailedMessage{Origin: some(2), Hold: 3, Cause: link.WireCause{Kind: "broken", Error: chordError("unavailable", "m")}},
 		&link.LoadingMessage{Origin: some(2), Hold: 3},
@@ -140,7 +140,7 @@ func TestMessages(t *testing.T) {
 				params,
 				&link.CallMessage{Call: 0, Hold: 0, Method: 0, Args: deflated()},
 				&link.ResultMessage{Call: 0, Value: deflated(), Segments: [][]byte{{7}}},
-				&link.BoundMessage{Holds: []link.BoundEntry{{Hold: 0, Variant: 0, Members: []link.BoundMember{{Member: 0, Value: deflated()}}}}},
+				&link.BoundMessage{Holds: []link.BoundEntry{{Hold: 0, Granted: []int{}, Members: []link.BoundMember{{Member: 0, Value: deflated()}}}}},
 				&link.StateMessage{Holds: []link.StateEntry{{Hold: 0, Members: []link.StateMember{{Member: 0, Ops: deflated()}}}}},
 				&link.EventMessage{Origin: some(2), Events: []link.WireEvent{{Hold: 0, Member: 1, At: 5, Value: deflated()}}},
 			}
@@ -272,7 +272,7 @@ func TestTheBinaryCodec(t *testing.T) {
 	enc := func(message link.Message) []byte { return encode(t, binary, message) }
 
 	t.Run("writes ids as varints, the incarnation as 16 and the fingerprint as 8 raw bytes, no outer length", func(t *testing.T) {
-		if got := len(enc(&link.HelloMessage{Protocol: 1, Incarnation: incarnation, Calls: 1})); got != 1+1+16+1 {
+		if got := len(enc(&link.HelloMessage{Protocol: 2, Incarnation: incarnation, Calls: 1})); got != 1+1+16+1 {
 			t.Fatalf("hello = %d bytes", got)
 		}
 		if got := enc(&link.ReleaseMessage{Hold: 300}); !bytes.Equal(got, []byte{2, 0xac, 0x02}) {
@@ -288,11 +288,11 @@ func TestTheBinaryCodec(t *testing.T) {
 			t.Fatalf("ack = %v", got)
 		}
 		// No call window is written as 0 (a window is at least 1) and read back as absent.
-		none := enc(&link.HelloMessage{Protocol: 1, Incarnation: incarnation})
+		none := enc(&link.HelloMessage{Protocol: 2, Incarnation: incarnation})
 		if none[len(none)-1] != 0 || len(none) != 1+1+16+1 {
 			t.Fatalf("hello without a window = %v", none)
 		}
-		requireCanon(t, decode(t, binary, none), &link.HelloMessage{Protocol: 1, Incarnation: incarnation})
+		requireCanon(t, decode(t, binary, none), &link.HelloMessage{Protocol: 2, Incarnation: incarnation})
 		// An event ack: the kind byte's third flag, then its count (a state ack stays one byte).
 		if got := enc(&link.AckMessage{Events: some(3)}); !bytes.Equal(got, []byte{13 | 0x20, 3}) {
 			t.Fatalf("event ack = %v", got)
@@ -428,7 +428,7 @@ func TestTheBinaryCodec(t *testing.T) {
 		value, _ := link.JsonPart(strings.Repeat("x", 500_000))
 		// Small fields after the large value: they must not double the buffer the message keeps.
 		members := []link.BoundMember{{Member: 0, Value: value}, {Member: 1, Value: link.Text("1")}}
-		large := enc(&link.BoundMessage{Holds: []link.BoundEntry{{Hold: 0, Variant: 0, Members: members}}})
+		large := enc(&link.BoundMessage{Holds: []link.BoundEntry{{Hold: 0, Granted: []int{}, Members: members}}})
 		if spare := cap(large) - len(large); spare > 4096 {
 			t.Fatalf("spare = %d", spare)
 		}
@@ -479,7 +479,7 @@ func TestTheTextCodec(t *testing.T) {
 		}
 		check(&link.ReleaseMessage{Hold: 3}, `["R",3]`)
 		check(&link.CallMessage{Call: 1, Hold: 0, Method: 2}, `["c",1,0,2]`)
-		check(&link.BoundMessage{Holds: []link.BoundEntry{{Hold: 0, Variant: 1, Members: []link.BoundMember{{Member: 0, Value: link.Text("5")}}}}}, `["b",[[0,1,[[0,[0,5]]]]]]`)
+		check(&link.BoundMessage{Holds: []link.BoundEntry{{Hold: 0, Granted: []int{0}, Members: []link.BoundMember{{Member: 0, Value: link.Text("5")}}}}}, `["b",[[0,[0],[[0,[0,5]]]]]]`)
 		check(&link.RetryMessage{Hold: 2, Hops: 16}, `["T",2,16]`)
 		check(&link.LoadingMessage{Hold: 2}, `["l",2]`)
 		wire := `{"kind":"chord","error":{"code":"unavailable","message":"m"}}`
@@ -494,7 +494,7 @@ func TestTheTextCodec(t *testing.T) {
 		check(&link.EventMessage{Events: []link.WireEvent{{Hold: 1, Member: 0, At: 9, Value: link.Text(`{"y":1}`)}}}, `["E",[[1,0,9,[0,{"y":1}]]]]`)
 		check(&link.EventMessage{Origin: some(7)}, `["@",7,["E",[]]]`)
 		check(&link.AckMessage{Origin: some(300), Events: some(4000)}, `["@",300,["a",4000]]`)
-		check(&link.HelloMessage{Protocol: 1, Incarnation: incarnation}, `["h",1,"`+incarnation+`"]`)
+		check(&link.HelloMessage{Protocol: 2, Incarnation: incarnation}, `["h",2,"`+incarnation+`"]`)
 		_, err = decodeText(`["h",1,"` + incarnation + `",0]`)
 		requireErrorContains(t, err, "message schema")
 		_, err = decodeText(`["E",[[1,0,9]]]`)
@@ -610,7 +610,7 @@ func TestDescribeMessage(t *testing.T) {
 }
 
 func TestACodecMismatch(t *testing.T) {
-	hello := &link.HelloMessage{Protocol: 1, Incarnation: incarnation, Calls: 256}
+	hello := &link.HelloMessage{Protocol: 2, Incarnation: incarnation, Calls: 256}
 	if _, err := link.BinaryCodec.Decode(encode(t, link.TextCodec, hello)); err == nil {
 		t.Fatal("the binary codec decoded a text hello")
 	}
@@ -625,7 +625,7 @@ func TestTheBinaryCodecsStrings(t *testing.T) {
 			// A long value of three-byte characters, then a short one that lands at every offset around the first growth.
 			value, _ := link.JsonPart(strings.Repeat("€", length))
 			members := []link.BoundMember{{Member: 0, Value: value}, {Member: 1, Value: link.Text("1")}}
-			message := &link.BoundMessage{Holds: []link.BoundEntry{{Hold: 1, Variant: 0, Members: members}}}
+			message := &link.BoundMessage{Holds: []link.BoundEntry{{Hold: 1, Granted: []int{}, Members: members}}}
 			requireCanon(t, decode(t, link.BinaryCodec, encode(t, link.BinaryCodec, message)), message)
 		}
 	})

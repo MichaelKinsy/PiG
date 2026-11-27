@@ -89,9 +89,7 @@ func scriptsContract(name string) *contracts.Contract {
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) {
 			return serverKind.Address(nil), nil
 		},
-		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
-			State: []contracts.Property{contracts.Prop("set", ScriptSetSchema)},
-		})},
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("set", ScriptSetSchema)},
 	})
 	if err != nil {
 		panic(err)

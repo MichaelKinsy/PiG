@@ -10,8 +10,8 @@ import (
 // Ports packages/chord/test/contracts/params.test.ts. The type-level half of each case ("in the types") is
 // designed out: the Go declaration takes Schema values, so the policy is the runtime check alone.
 
-func paramsVariants() contracts.VariantEntry {
-	return variant("a", state(contracts.Prop("s", contracts.Str())))
+func paramsState() []contracts.RemoteStateEntry {
+	return rstate(contracts.StateEntry("s", contracts.Str()))
 }
 
 func TestParamsPolicy(t *testing.T) {
@@ -21,12 +21,12 @@ func TestParamsPolicy(t *testing.T) {
 			contracts.Prop("b", contracts.Int(contracts.Min(0))),
 			contracts.Prop("c", contracts.Bool()),
 			contracts.Prop("d", contracts.OneOf("chat", "agent")),
-		), paramsVariants())
+		), paramsState())
 		wantNoError(t, err)
 	})
 
 	t.Run("refuses optional fields at declaration", func(t *testing.T) {
-		_, err := declareRemote("n", 1, props(contracts.Prop("a", contracts.Opt(contracts.Str()))), paramsVariants())
+		_, err := declareRemote("n", 1, props(contracts.Prop("a", contracts.Opt(contracts.Str()))), paramsState())
 		wantError(t, err, "n.params.a: a param is a required str(), int(), bool() or oneOf(...) of strings")
 	})
 
@@ -42,7 +42,7 @@ func TestParamsPolicy(t *testing.T) {
 		{"defaults", contracts.Str(contracts.Default("x"))},
 	} {
 		t.Run("refuses "+tc.name+" at declaration", func(t *testing.T) {
-			_, err := declareRemote("n", 1, props(contracts.Prop("p", tc.schema)), paramsVariants())
+			_, err := declareRemote("n", 1, props(contracts.Prop("p", tc.schema)), paramsState())
 			wantError(t, err, "n.params.p: a param is")
 		})
 	}

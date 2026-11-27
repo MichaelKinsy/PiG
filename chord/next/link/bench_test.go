@@ -41,7 +41,7 @@ func benchMessages(b *testing.B) map[string]link.Message {
 	notes := part(delta.JsonObjectOf("entries", benchEntries(1_000, 80)))
 	document := part(delta.JsonObjectOf("entries", benchEntries(500, 960)))
 	bound := func(value link.Part) link.Message {
-		return &link.BoundMessage{Holds: []link.BoundEntry{{Hold: 0, Variant: 0, Members: []link.BoundMember{{Member: 0, Value: value}}}}}
+		return &link.BoundMessage{Holds: []link.BoundEntry{{Hold: 0, Granted: []int{}, Members: []link.BoundMember{{Member: 0, Value: value}}}}}
 	}
 	state := func(ops string) link.Message {
 		return &link.StateMessage{Holds: []link.StateEntry{{Hold: 0, Members: []link.StateMember{{Member: 0, Ops: link.Text(ops)}}, Retired: link.NoRetired}}}

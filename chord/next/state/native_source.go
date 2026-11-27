@@ -114,6 +114,14 @@ func (n *NativeSource[T]) DeriveValue() (any, error) {
 // Batch is the host's batch, nil once the source ended.
 func (n *NativeSource[T]) Batch() *Batch { return n.batch.Load() }
 
+// Flushing lists flush for the end of the commit of its host running now (one that changed it: its dependents are told
+// inside it), after its deliveries; nothing once the source ended.
+func (n *NativeSource[T]) Flushing(flush func(ctx context.Context) error) {
+	if b := n.batch.Load(); b != nil {
+		b.Flushing(flush)
+	}
+}
+
 // Changed records a change inside the current batch: every dependent marked. Pi's protected `changed`.
 func (n *NativeSource[T]) Changed() {
 	for _, dependent := range n.dependents.Snapshot() {

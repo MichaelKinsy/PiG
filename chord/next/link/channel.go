@@ -96,9 +96,20 @@ type ChannelHandler interface {
 	// error. A non-nil Handling (the message waits for an asynchronous inflate) holds every later message until it
 	// settles; a rejection is a protocol error too.
 	Message(message Message) (*Handling, error)
-	// Closed: the link closed, from either end; called once.
-	Closed()
+	// Closed: the link closed, from either end, for reason; called once.
+	Closed(reason LinkCloseReason)
 }
+
+// LinkCloseReason is why a link closed: this host (local), its heartbeat, a protocol error, or the other end or
+// transport (peer).
+type LinkCloseReason string
+
+const (
+	LinkCloseLocal     LinkCloseReason = "local"
+	LinkCloseHeartbeat LinkCloseReason = "heartbeat"
+	LinkCloseProtocol  LinkCloseReason = "protocol"
+	LinkClosePeer      LinkCloseReason = "peer"
+)
 
 // ChannelOptions is what a channel is made with besides its link and handler.
 type ChannelOptions struct {
@@ -171,6 +182,8 @@ type Channel struct {
 	heldDone chan struct{}
 	// waiting is whether a message is being handled asynchronously: the held ones wait.
 	waiting bool
+	// closing is why this end closes the link, set before it does; else the peer did.
+	closing LinkCloseReason
 }
 
 type heldMessages struct {
@@ -268,7 +281,20 @@ func (c *Channel) Send(message Message) error {
 }
 
 // Close closes the link.
-func (c *Channel) Close() { c.link.Close() }
+func (c *Channel) Close() { c.closeWith(LinkCloseLocal) }
+
+func (c *Channel) closeWith(reason LinkCloseReason) {
+	c.mu.Lock()
+	if c.state == channelClosed {
+		c.mu.Unlock()
+		return
+	}
+	if c.closing == "" {
+		c.closing = reason
+	}
+	c.mu.Unlock()
+	c.link.Close()
+}
 
 // channelFence is a fence waiting for the `pong` of its ping (the pings-th it sent).
 type channelFence struct {
@@ -334,7 +360,7 @@ func (c *Channel) Tick(now, paused, ping, close int64) {
 	sendPing := false
 	if silent >= close {
 		c.mu.Unlock()
-		c.Close()
+		c.closeWith(LinkCloseHeartbeat)
 		return
 	}
 	if silent >= ping && !c.pinged && c.state == channelOpen {
@@ -497,7 +523,7 @@ func (c *Channel) failed(err error) {
 		return
 	}
 	c.report(err)
-	c.Close()
+	c.closeWith(LinkCloseProtocol)
 }
 
 // dropHeld ends the wait of Idle for messages a closed channel will never handle: a message that was held after the link
@@ -559,6 +585,10 @@ func (c *Channel) linkClosed() {
 	c.held = nil
 	c.queued = nil
 	c.fences = nil
+	reason := c.closing
+	if reason == "" {
+		reason = LinkClosePeer
+	}
 	c.mu.Unlock()
-	c.handler.Closed()
+	c.handler.Closed(reason)
 }

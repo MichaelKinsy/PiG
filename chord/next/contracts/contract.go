@@ -2,7 +2,9 @@ package contracts
 
 import (
 	"context"
+	"maps"
 	"slices"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -10,13 +12,6 @@ import (
 
 // Ports packages/chord/src/contracts/contract.ts (contract handles: the branded, immutable value an app declares
 // and the Chord-owned data behind it).
-//
-// Forced Go differences. The WeakMap brand is the Contract itself: a *Contract holds its ContractData and a pointer to
-// itself, so a copy of the struct (upstream: a spread copy) or a hand-built value is refused by ContractDataOf; the
-// data is collected with the contract. The type-level ContractShape, ShapeOf, CurrentVariants<C>, ParamsOf<C>,
-// Implementation<C> and VariantImplementation<V> (NamedQueriesOf included) are designed out: a variant's members are Go values keyed by name
-// (VariantImplementation) and params are a *delta.JsonObject. `LOCAL` is LocalVariant, because Local declares a local
-// contract.
 
 // Kind is the kind of a contract: "remote" or "local".
 type Kind string
@@ -26,9 +21,6 @@ const (
 	KindRemote Kind = "remote"
 	KindLocal  Kind = "local"
 )
-
-// LocalVariant is the variant name of a local contract's members (upstream's `LOCAL`).
-const LocalVariant = "members"
 
 // Contract is a declared contract: a branded handle, immutable by convention. Copies and hand-built values are refused
 // (ContractDataOf). Always held by pointer; the pointer is its identity.
@@ -56,6 +48,9 @@ type ContractData struct {
 	Kinds map[string]MemberKind
 	// Admission is a remote contract's admission, as its current version declares it; nil without one, and for local.
 	Admission *AdmissionData
+	// Flags is a remote contract's flags (rights that are no member, slice 15 §1): name -> MessageData label.
+	// Never part of the fingerprint (only the flag names are).
+	Flags *NamedMap[MessageData]
 }
 
 // AdmissionData is a contract's admission (slice 14 §2.1): the schema of the value its factory is handed, and that
@@ -87,13 +82,24 @@ type HostAddress func(params *delta.JsonObject) (Address, error)
 type VersionData struct {
 	Version     int
 	Fingerprint string
-	Variants    *NamedMap[*VariantData]
+	Members     *MembersData
+	// Grantable is the set of grantable member names in this version (empty for local contracts).
+	Grantable map[string]bool
+	// Grants is the sorted list of grantable member names + flag names (indexed by wire `bound.granted`).
+	Grants []string
 	// Changes are the changes that produced this version; empty for a base.
 	Changes []Change
+
+	cache *versionCache
 }
 
-// VariantData is one variant's members at one version.
-type VariantData struct {
+type versionCache struct {
+	mu           sync.Mutex
+	grantedCache map[string]*MembersData
+}
+
+// MembersData is a contract's members at one version.
+type MembersData struct {
 	State   *NamedMap[*Snapshot]
 	Methods *NamedMap[*MethodData]
 	// Keyed holds keyed state members (slice 6a §12): only a local contract has any.
@@ -103,6 +109,9 @@ type VariantData struct {
 	// Queries holds queries members (slice 14 §3.1): only a local contract has any. Nil and empty are one: contracts
 	// without a queries member add nothing to their fingerprint.
 	Queries *NamedMap[*QueriesData]
+
+	orderOnce   sync.Once
+	cachedOrder MemberNames
 }
 
 // QueriesData is a queries member's snapshots: its items' schema, and each named query's arguments, in declaration order.
@@ -145,85 +154,154 @@ func TakesNoArgs(method *MethodData) bool {
 	return ok && normal.Value("type") == "null" && normal.Len() == 1
 }
 
-// CurrentVariants is the variants of a contract's current version; a local contract has the one variant LocalVariant.
-func CurrentVariants(contract *Contract) (*NamedMap[*VariantData], error) {
+// CurrentVersion is the current version of a contract.
+func CurrentVersion(contract *Contract) (*VersionData, error) {
 	data, err := ContractDataOf(contract)
 	if err != nil {
 		return nil, err
 	}
-	return data.Versions[len(data.Versions)-1].Variants, nil
+	return &data.Versions[len(data.Versions)-1], nil
 }
 
-// VariantsAt is the variants of version version of a contract's history (an older consumer's binding, Q10). Callers
-// name a version the provider binds: its history has it; an unknown version is an error.
-func VariantsAt(contract *Contract, version int) (*NamedMap[*VariantData], error) {
+// CurrentMembers is the members of a contract's current version.
+func CurrentMembers(contract *Contract) (*MembersData, error) {
+	v, err := CurrentVersion(contract)
+	if err != nil {
+		return nil, err
+	}
+	return v.Members, nil
+}
+
+// VersionAt is version `version` of a contract's history (an older consumer's binding, Q10).
+func VersionAt(contract *Contract, version int) (*VersionData, error) {
 	data, err := ContractDataOf(contract)
 	if err != nil {
 		return nil, err
 	}
-	for _, versionData := range data.Versions {
-		if versionData.Version == version {
-			return versionData.Variants, nil
+	for i := range data.Versions {
+		if data.Versions[i].Version == version {
+			return &data.Versions[i], nil
 		}
 	}
 	return nil, fail("%s: no version %d", data.Name, version)
 }
 
-// VariantNames is a variant's names as links index them (2b): its state members, its methods and its event members,
-// each sorted.
-type VariantNames struct {
+// NoGrants is the shared empty granted set (do not mutate).
+var NoGrants = map[string]bool{}
+
+// GrantedMembers returns the members of version a binding granted `granted` has: its plain members and the granted ones.
+func GrantedMembers(version *VersionData, granted map[string]bool) *MembersData {
+	if len(version.Grantable) == 0 {
+		return version.Members
+	}
+	var kept []string
+	for member := range version.Grantable {
+		if granted[member] {
+			kept = append(kept, member)
+		}
+	}
+	slices.SortFunc(kept, compare16)
+	key := JoinKey(kept)
+
+	if version.cache != nil {
+		version.cache.mu.Lock()
+		if cached, ok := version.cache.grantedCache[key]; ok {
+			version.cache.mu.Unlock()
+			return cached
+		}
+		version.cache.mu.Unlock()
+	}
+
+	filterSnapshots := func(src *NamedMap[*Snapshot]) *NamedMap[*Snapshot] {
+		dst := NewNamedMap[*Snapshot](src.Len())
+		for name, val := range src.All() {
+			if !version.Grantable[name] || granted[name] {
+				dst.Set(name, val)
+			}
+		}
+		return dst
+	}
+	filterMethods := func(src *NamedMap[*MethodData]) *NamedMap[*MethodData] {
+		dst := NewNamedMap[*MethodData](src.Len())
+		for name, val := range src.All() {
+			if !version.Grantable[name] || granted[name] {
+				dst.Set(name, val)
+			}
+		}
+		return dst
+	}
+	members := &MembersData{
+		State:   filterSnapshots(version.Members.State),
+		Methods: filterMethods(version.Members.Methods),
+		Keyed:   version.Members.Keyed,
+		Events:  filterSnapshots(version.Members.Events),
+		Queries: version.Members.Queries,
+	}
+
+	if version.cache != nil {
+		version.cache.mu.Lock()
+		if cached, ok := version.cache.grantedCache[key]; ok {
+			version.cache.mu.Unlock()
+			return cached
+		}
+		version.cache.grantedCache[key] = members
+		version.cache.mu.Unlock()
+	}
+	return members
+}
+
+// GrantIndexes returns the names of `granted` as the wire carries them: indexes into version.Grants (names it lacks
+// are left out), in a fresh slice.
+func GrantIndexes(version *VersionData, granted map[string]bool) []int {
+	if len(granted) == 0 || len(version.Grants) == 0 {
+		return []int{}
+	}
+	out := make([]int, 0, len(granted))
+	for i, name := range version.Grants {
+		if granted[name] {
+			out = append(out, i)
+		}
+	}
+	return out
+}
+
+// MemberNames is a contract's or binding's member names by kind: state, methods and events.
+type MemberNames struct {
 	State   []string
 	Methods []string
 	Events  []string
 }
 
-// VariantOrder is the current version's variant names in the order links index them: sorted.
-func VariantOrder(contract *Contract) ([]string, error) {
-	variants, err := CurrentVariants(contract)
-	if err != nil {
-		return nil, err
-	}
-	return sortStrings(variants.Keys()), nil
-}
-
-// VariantNamesOf is a variant's state members, methods and event members in the order links index them: each sorted; a
-// variant without event members shares one empty list (contracts without events pay nothing for them per binding)
-// (upstream's `variantNames`).
-func VariantNamesOf(variant *VariantData) VariantNames {
-	names := VariantNames{State: sortStrings(variant.State.Keys()), Methods: sortStrings(variant.Methods.Keys()), Events: noNames}
-	if variant.Events.Len() > 0 {
-		names.Events = sortStrings(variant.Events.Keys())
-	}
-	return names
+// MemberOrder returns members' names in the order links index them: each kind sorted (UTF-16 code unit order).
+func MemberOrder(members *MembersData) MemberNames {
+	members.orderOnce.Do(func() {
+		order := MemberNames{
+			State:   sortStrings(members.State.Keys()),
+			Methods: sortStrings(members.Methods.Keys()),
+			Events:  noNames,
+		}
+		if members.Events.Len() > 0 {
+			order.Events = sortStrings(members.Events.Keys())
+		}
+		members.cachedOrder = order
+	})
+	return members.cachedOrder
 }
 
 var noNames = []string{}
 
-// MemberNameLists is the member names of one variant of a contract, by kind, in declared order: the result of MemberNamesOf (Pi's
-// contract.ts `MemberNames` type; Go's MemberNames is the function of history.ts's type of the same name, so this type is named
-// for what it holds).
-type MemberNameLists struct {
-	State   []string
-	Methods []string
-	Events  []string
-}
-
-// MemberNamesOf is the names of the state members, methods and event members of variant of a contract's current version, in the
-// order declared (a local contract has the one variant LocalVariant), for code that fills an implementation from another object's
-// members; a local contract's keyed and queries members are not among them (Pi's `memberNames(contract, variant = LOCAL)`: Go
-// has no default argument, and Go's MemberNames is taken by history.ts's type, as VariantNamesOf is the name of its kind). It
-// refuses a variant the contract does not have and a copy of a contract. The lists are the caller's own: none shares an array with
-// the contract, and a kind without members is an empty list, not nil.
-func MemberNamesOf(contract *Contract, variant string) (MemberNameLists, error) {
-	variants, err := CurrentVariants(contract)
+// MemberNamesOf returns the names of the state members, methods and event members of a contract's current version, in
+// the order declared. A local contract's keyed and queries members are not among them.
+func MemberNamesOf(contract *Contract) (MemberNames, error) {
+	members, err := CurrentMembers(contract)
 	if err != nil {
-		return MemberNameLists{}, err
+		return MemberNames{}, err
 	}
-	found, ok := variants.Get(variant)
-	if !ok {
-		return MemberNameLists{}, fail("%s: no variant \"%s\"", contract.Name, variant)
-	}
-	return MemberNameLists{State: ownNames(found.State.Keys()), Methods: ownNames(found.Methods.Keys()), Events: ownNames(found.Events.Keys())}, nil
+	return MemberNames{
+		State:   ownNames(members.State.Keys()),
+		Methods: ownNames(members.Methods.Keys()),
+		Events:  ownNames(members.Events.Keys()),
+	}, nil
 }
 
 // ownNames is a copy of names that is never nil.
@@ -232,6 +310,12 @@ func ownNames(names []string) []string { return append([]string{}, names...) }
 // CreateContract is a new contract handle for data.
 func CreateContract(data ContractData) *Contract {
 	data.Versions = slices.Clone(data.Versions)
+	for i := range data.Versions {
+		if data.Versions[i].Grantable != nil {
+			data.Versions[i].Grantable = maps.Clone(data.Versions[i].Grantable)
+		}
+		data.Versions[i].Grants = slices.Clone(data.Versions[i].Grants)
+	}
 	current := data.Versions[len(data.Versions)-1]
 	contract := &Contract{Kind: data.Kind, Name: data.Name, Version: current.Version, Fingerprint: current.Fingerprint, data: &data}
 	contract.self = contract
@@ -242,16 +326,23 @@ func CreateContract(data ContractData) *Contract {
 // (TakesNoArgs); the Go function always takes it, nil then. A thrown Error is a returned error.
 type MethodFunction func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error)
 
-// VariantImplementation is one variant's members: a Watchable per state member, a function per method, an EventMember
-// per event member (an object's own EventSource, or a reference's member it re-exposes) and, in a local contract, a
-// KeyedWatchable per keyed member and, per queries member, the named queries it lists (upstream's `NamedQueriesOf`: its
-// NamedQuery per listed name), by member name and then query name.
-type VariantImplementation struct {
-	State   map[string]chord.Watchable[delta.JsonValue]
-	Methods map[string]MethodFunction
-	Keyed   map[string]KeyedWatchable[delta.JsonValue]
-	Events  map[string]EventMember[delta.JsonValue]
-	Queries map[string]map[string]NamedQuery[delta.JsonValue, delta.JsonValue]
+// StateBuilder is a lazy builder for a grantable state member (called only if granted).
+type StateBuilder func() chord.Watchable[delta.JsonValue]
+
+// EventBuilder is a lazy builder for a grantable event member (called only if granted).
+type EventBuilder func() EventMember[delta.JsonValue]
+
+// MembersImplementation is a contract's members: a Watchable (or StateBuilder for grantable) per state member, a
+// function per method, an EventMember (or EventBuilder for grantable) per event member and, in a local contract, a
+// KeyedWatchable per keyed member and, per queries member, the named queries it lists.
+type MembersImplementation struct {
+	State       map[string]chord.Watchable[delta.JsonValue]
+	StateBuild  map[string]StateBuilder
+	Methods     map[string]MethodFunction
+	Keyed       map[string]KeyedWatchable[delta.JsonValue]
+	Events      map[string]EventMember[delta.JsonValue]
+	EventsBuild map[string]EventBuilder
+	Queries     map[string]map[string]NamedQuery[delta.JsonValue, delta.JsonValue]
 }
 
 // QueryPage is a page of a named query's items and, when more follow, the cursor to continue after it (Next; nil: none).
@@ -267,8 +358,6 @@ type QueryPageOptions struct {
 }
 
 // NamedQuery is a named query (slice 14 §3.1): a query a store offers under a name, with arguments of A and items of T.
-// Read live with `self.liveQuery`, counted with `self.count`, shown as a list with `self.list`, or read a page at a time.
-// (Upstream's type-only `~args` member is designed out with the other type-level machinery.)
 type NamedQuery[T, A any] interface {
 	// Page is up to limit items for args (after options.After), and the cursor of the next page when there is one.
 	Page(args A, limit int64, ctx context.Context, options QueryPageOptions) (QueryPage[T], error)
@@ -282,15 +371,14 @@ type EventSubscription interface {
 }
 
 // EventDelivery is what an event listener gets: the emitted value and At, the emitting host's `Date.now()` at the emit
-// (unix milliseconds). Upstream's anonymous `{ readonly value: T; readonly at: number }`.
+// (unix milliseconds).
 type EventDelivery[T any] struct {
 	Value T
 	At    int64
 }
 
 // EventMember is an event member as its readers have it (decision "Events: fire-and-forget members"): a reference's,
-// which receives the values its object emits while it is bound to an instance whose variant has the member, never one
-// emitted before it bound, never replayed. Not a Watchable: no value, no derive or routine source.
+// which receives the values its object emits while it is bound, never one emitted before it bound, never replayed.
 type EventMember[T any] interface {
 	// On subscribes listener at once, bound or not: it gets every event delivered to this member from now on, At the
 	// emitting host's `Date.now()` at the emit. It returns the `released` error for a released reference and the abort
@@ -307,17 +395,8 @@ type EventSource[T any] interface {
 	Emit(value T) error
 }
 
-// Implementation is what a factory returns: for a local contract Members alone (Variant is empty), for a remote one
-// one variant with exactly that variant's members.
-type Implementation struct {
-	Variant string
-	Members VariantImplementation
-}
-
 // KeyedWatchable is a keyed state member (slice 6a §12): documents by key, each watchable on its own; a keyed document
-// handle provides it. At is valid only in a factory (it pins the key while that attempt lives). A key is a string, or an
-// Address of the member's host kind when the member is host-keyed (Pi's `KeyedWatchable<T, Key>`, whose Key parameter is
-// designed out).
+// handle provides it. At is valid only in a factory (it pins the key while that attempt lives).
 type KeyedWatchable[T any] interface {
 	// Get is the document at key; found is false when absent.
 	Get(ctx context.Context, key any) (value T, found bool, err error)

@@ -111,9 +111,10 @@ type BoundMember struct {
 
 // BoundEntry is one hold's entry of a `bound` message.
 type BoundEntry struct {
-	Hold, Variant int
-	Members       []BoundMember
-	Failed        []FailedMember
+	Hold    int
+	Granted []int
+	Members []BoundMember
+	Failed  []FailedMember
 }
 
 // StateMember is one member's ops in a StateEntry.
@@ -479,8 +480,13 @@ func conforms(message Message) bool {
 			return false
 		}
 		for _, entry := range typed.Holds {
-			if entry.Hold < 0 || entry.Variant < 0 || !validFailed(entry.Failed) {
+			if entry.Hold < 0 || !validFailed(entry.Failed) {
 				return false
+			}
+			for _, g := range entry.Granted {
+				if g < 0 {
+					return false
+				}
 			}
 			for _, member := range entry.Members {
 				if member.Member < 0 || member.Value == nil {

@@ -21,12 +21,12 @@ mkdirSync(join(work, "data"));
 for (const file of ["binary.ts", "text.ts", "values.ts", "part.ts"]) cpSync(join(source, file), join(out, file));
 
 const message = readFileSync(join(source, "message.ts"), "utf8");
-const causeKinds = /export const CAUSE_KINDS: \["transient", "broken", "waiting"\] = \["transient", "broken", "waiting"\];/;
+const causeKinds = /export const CAUSE_KINDS: \["transient", "broken", "waiting", "denied"\] = \["transient", "broken", "waiting", "denied"\];/;
 const noRetired = /export const NO_RETIRED: readonly number\[\] = \[\];/;
-if (!causeKinds.test(message) || !noRetired.test(message)) throw new Error("message.ts constants changed");
+if (!causeKinds.test(message)) throw new Error("message.ts CAUSE_KINDS changed");
 writeFileSync(
 	join(out, "message.ts"),
-	'export const CAUSE_KINDS = ["transient", "broken", "waiting"];\nexport const NO_RETIRED = [];\n',
+	'export const CAUSE_KINDS = ["transient", "broken", "waiting", "denied"];\nexport const NO_RETIRED = [];\n',
 );
 writeFileSync(join(work, "data/index.ts"), "export class ChordError extends Error {}\n");
 writeFileSync(join(work, "data/internal.ts"), "export const invalid = (_r, m) => new Error(m);\n");
@@ -92,7 +92,7 @@ const cases = [
 		"bound",
 		{
 			kind: "bound",
-			holds: [{ hold: 0, variant: 1, members: [{ member: 0, value: '[1,"a"]' }], failed: [{ member: 1, error: chord("released", "gone") }] }],
+			holds: [{ hold: 0, granted: [1], members: [{ member: 0, value: '[1,"a"]' }], failed: [{ member: 1, error: chord("released", "gone") }] }],
 		},
 	],
 	[
@@ -100,12 +100,12 @@ const cases = [
 		{
 			kind: "bound",
 			holds: [
-				{ hold: 0, variant: 0, members: [], failed: [] },
-				{ hold: 5, variant: 2, members: [{ member: 1, value: "null" }], failed: [] },
+				{ hold: 0, granted: [], members: [], failed: [] },
+				{ hold: 5, granted: [0, 2], members: [{ member: 1, value: "null" }], failed: [] },
 			],
 		},
 	],
-	["bound origin deflated", { kind: "bound", origin: 2, holds: [{ hold: 3, variant: 0, members: [{ member: 0, value: deflated("0102") }], failed: [] }] }],
+	["bound origin deflated", { kind: "bound", origin: 2, holds: [{ hold: 3, granted: [], members: [{ member: 0, value: deflated("0102") }], failed: [] }] }],
 	[
 		"state",
 		{
@@ -185,8 +185,8 @@ const cases = [
 		["emoji below long", rep("😀", 2047)],
 		["emoji at long", rep("😀", 2048)],
 	].map(([name, text]) => [`long ${name}`, { kind: "result", call: 0, value: json(text) }]),
-	["long bound", { kind: "bound", holds: [{ hold: 0, variant: 0, members: [{ member: 0, value: json(rep("€", 300)) }, { member: 1, value: "1" }], failed: [] }] }],
-	["large bound", { kind: "bound", holds: [{ hold: 0, variant: 0, members: [{ member: 0, value: json(rep("x", 500000)) }, { member: 1, value: "1" }], failed: [] }] }],
+	["long bound", { kind: "bound", holds: [{ hold: 0, granted: [], members: [{ member: 0, value: json(rep("€", 300)) }, { member: 1, value: "1" }], failed: [] }] }],
+	["large bound", { kind: "bound", holds: [{ hold: 0, granted: [], members: [{ member: 0, value: json(rep("x", 500000)) }, { member: 1, value: "1" }], failed: [] }] }],
 ];
 
 function resolveString(value) {

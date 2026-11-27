@@ -38,10 +38,10 @@ func TestQueriesMemberHoldsItsItemAndArgumentsAndRefusesAnOptionalItem(t *testin
 // Proof of the section of a queries member in a remote contract's paths (declare.ts SECTIONS.queries: "state"). Go cannot declare one in a
 // remote variant, so the section is reached only through the path function.
 func TestAQueriesMemberPathIsInTheStateSection(t *testing.T) {
-	if got := memberPath("n", KindRemote, "editor", "notes", MemberKindQueries); got != "n.editor.state.notes" {
+	if got := memberPath("n", KindRemote, "notes", MemberKindQueries); got != "n.state.notes" {
 		t.Fatalf("path = %s", got)
 	}
-	if got := memberPath("n", KindLocal, "members", "notes", MemberKindQueries); got != "n.members.notes" {
+	if got := memberPath("n", KindLocal, "notes", MemberKindQueries); got != "n.members.notes" {
 		t.Fatalf("path = %s", got)
 	}
 }

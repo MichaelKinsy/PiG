@@ -33,22 +33,14 @@ type LocaleCatalog struct {
 	Catalog Catalog
 }
 
-// MessageData is a message as data: its namespace, its key and its parameters; plain JSON (strings, numbers, booleans,
-// nil), so it crosses links.
-type MessageData struct {
-	Namespace string `json:"namespace"`
-	Key       string `json:"key"`
-	Params    []any  `json:"params"`
-}
+// MessageParam is re-exported from contracts (Pi v1.7.0 surfaces/index.ts).
+type MessageParam = contracts.MessageParam
 
-// MessageSchema is the schema of a message as data, for contract members.
-var MessageSchema = contracts.Obj(
-	contracts.Prop("namespace", contracts.Str()),
-	contracts.Prop("key", contracts.Str()),
-	contracts.Prop("params", contracts.Arr(contracts.Union([]contracts.Schema{
-		contracts.Str(), contracts.Num(), contracts.Bool(), contracts.Nul(),
-	}))),
-)
+// MessageData is re-exported from contracts (Pi v1.7.0 surfaces/index.ts).
+type MessageData = contracts.MessageData
+
+// MessageSchema is re-exported from contracts (Pi v1.7.0 surfaces/index.ts).
+var MessageSchema = contracts.MessageSchema
 
 // Messages is a plugin's messages: its namespace, its catalogs as contributions, and the renderings.
 type Messages struct {

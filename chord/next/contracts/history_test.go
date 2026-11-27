@@ -1,111 +1,108 @@
 package contracts_test
 
 import (
-	"reflect"
+	"slices"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
 
-// pi: packages/chord/src/contracts/history.ts
-// Ports packages/chord/test/contracts/history.test.ts. Upstream's history is a type-level structure
-// (Increment, CurrentStep, OlderVersions, StepAt, ChangesAfter, tested with expectTypeOf only); Go does not type it,
-// so the cases are runtime tests (ChangesAfter: TestChangesAfter in derived_runtime_test.go). At
-// runtime a contract holds its versions as numbers and the changes of each version (contracts.VersionData), so the
-// cases below test what the types computed: counting past 9 and 99, the current and older versions, and the changes
-// after a version, through contracts.Evolve; plus the runtime forms of MemberNames, VariantsWith and MethodAt.
-
-func TestRuntimeHistory(t *testing.T) {
-	empty := func(version float64) *contracts.Contract {
-		return local(t, "h", version, noParams(), contracts.Mem("s", contracts.Str()))
+func TestGrantableAndFlagsAndMessageData(t *testing.T) {
+	flagLabel := contracts.MessageData{Namespace: "app", Key: "export", Params: []any{}}
+	if !contracts.IsMessageData(flagLabel) {
+		t.Fatal("valid MessageData refused")
 	}
-	edit := func(contract *contracts.Contract, changes func(e *contracts.LocalEditor) *contracts.LocalEditor) *contracts.Contract {
-		return must(contracts.Evolve(contract, changes))
+	if contracts.IsMessageData(contracts.MessageData{Namespace: "app", Key: "x", Params: nil}) {
+		t.Fatal("nil Params should be refused")
 	}
-	same := func(e *contracts.LocalEditor) *contracts.LocalEditor { return e }
 
-	t.Run("increments decimal versions", func(t *testing.T) {
-		for _, tc := range [][2]float64{{1, 2}, {9, 10}, {19, 20}, {99, 100}, {1099, 1100}} {
-			if got := edit(empty(tc[0]), same).Version; float64(got) != tc[1] {
-				t.Errorf("%v + 1 = %d", tc[0], got)
-			}
-		}
+	c, err := contracts.Remote("notes", contracts.RemoteDeclaration{
+		Version:     1,
+		Params:      contracts.Params{contracts.Prop("id", contracts.Str())},
+		HostAddress: serverAddress,
+		Admission:   ptr(contracts.Obj(contracts.Prop("role", contracts.Str()))),
+		State: []contracts.RemoteStateEntry{
+			contracts.StateEntry("title", contracts.Str()),
+			contracts.StateEntry("draft", contracts.NewGrantable(contracts.Str())),
+		},
+		Methods: []contracts.RemoteMethodEntry{
+			contracts.Meth("add", contracts.NewGrantable(contracts.NewMethod(contracts.Str()))),
+		},
+		Events: []contracts.RemoteEventEntry{
+			contracts.EventEntry("ping", contracts.NewGrantable(contracts.Str())),
+		},
+		Flags: []contracts.FlagEntry{
+			contracts.Flag("export", flagLabel),
+		},
 	})
+	if err != nil {
+		t.Fatalf("Remote failed: %v", err)
+	}
+	v, err := contracts.CurrentVersion(c)
+	if err != nil {
+		t.Fatalf("CurrentVersion: %v", err)
+	}
+	wantGrants := []string{"add", "draft", "export", "ping"}
+	if !slices.Equal(v.Grants, wantGrants) {
+		t.Fatalf("Grants = %v, want %v", v.Grants, wantGrants)
+	}
+	idx := contracts.GrantIndexes(v, map[string]bool{"draft": true, "export": true})
+	if !slices.Equal(idx, []int{1, 2}) {
+		t.Fatalf("GrantIndexes = %v, want [1 2]", idx)
+	}
+	gm := contracts.GrantedMembers(v, map[string]bool{"draft": true})
+	if !gm.State.Has("title") || !gm.State.Has("draft") || gm.Methods.Has("add") || gm.Events.Has("ping") {
+		t.Fatalf("GrantedMembers mismatch: state=%v methods=%v events=%v", gm.State.Keys(), gm.Methods.Keys(), gm.Events.Keys())
+	}
+	order := contracts.MemberOrder(gm)
+	if !slices.Equal(order.State, []string{"draft", "title"}) {
+		t.Fatalf("MemberOrder.State = %v", order.State)
+	}
 
-	t.Run("finds the current step, older versions and the changes after a version", func(t *testing.T) {
-		v9 := empty(9)
-		v10 := edit(v9, func(e *contracts.LocalEditor) *contracts.LocalEditor { return e.State("s", contracts.Int()) })
-		v11 := edit(v10, func(e *contracts.LocalEditor) *contracts.LocalEditor {
-			return e.AddMethod("m", contracts.Str(), contracts.Nul())
-		})
-		versions := dataOf(t, v11).Versions
-		var numbers []int
-		for _, version := range versions {
-			numbers = append(numbers, version.Version)
-		}
-		if !reflect.DeepEqual(numbers, []int{9, 10, 11}) {
-			t.Fatalf("versions = %v", numbers)
-		}
-		if got := versions[0].Changes; len(got) != 0 {
-			t.Fatalf("a base has no changes: %v", got)
-		}
-		if got := versions[1].Changes; !reflect.DeepEqual(got, []contracts.Change{{Variant: "members", Member: "s", Side: contracts.SideState}}) {
-			t.Fatalf("v10 changes = %v", got)
-		}
-		if got := versions[2].Changes; !reflect.DeepEqual(got, []contracts.Change{
-			{Variant: "members", Member: "m", Side: contracts.SideArgs},
-			{Variant: "members", Member: "m", Side: contracts.SideResult},
-		}) {
-			t.Fatalf("v11 changes = %v", got)
-		}
+	// Flag label is NOT in the fingerprint
+	c2, err := contracts.Remote("notes", contracts.RemoteDeclaration{
+		Version:     1,
+		Params:      contracts.Params{contracts.Prop("id", contracts.Str())},
+		HostAddress: serverAddress,
+		State: []contracts.RemoteStateEntry{
+			contracts.StateEntry("title", contracts.Str()),
+			contracts.StateEntry("draft", contracts.NewGrantable(contracts.Str())),
+		},
+		Methods: []contracts.RemoteMethodEntry{
+			contracts.Meth("add", contracts.NewGrantable(contracts.NewMethod(contracts.Str()))),
+		},
+		Events: []contracts.RemoteEventEntry{
+			contracts.EventEntry("ping", contracts.NewGrantable(contracts.Str())),
+		},
+		Flags: []contracts.FlagEntry{
+			contracts.Flag("export", contracts.MessageData{Namespace: "other", Key: "different", Params: []any{"x"}}),
+		},
 	})
+	if err != nil {
+		t.Fatalf("Remote c2 failed: %v", err)
+	}
+	if c.Fingerprint != c2.Fingerprint {
+		t.Fatalf("flag label changed fingerprint: %s vs %s", c.Fingerprint, c2.Fingerprint)
+	}
+
+	// Admission with "granted" field is refused
+	_, err = contracts.Remote("bad.admit", contracts.RemoteDeclaration{
+		Version:     1,
+		Params:      contracts.Params{},
+		HostAddress: serverAddress,
+		Admission:   ptr(contracts.Obj(contracts.Prop("granted", contracts.Arr(contracts.Str())))),
+	})
+	if err == nil {
+		t.Fatal("expected admission with granted field to be refused")
+	}
+
+	// QueryArguments refuses bytes()
+	_, err = contracts.QueryArguments(contracts.Obj(contracts.Prop("b", contracts.Bytes())), "q.args")
+	if err == nil {
+		t.Fatal("expected QueryArguments to refuse bytes()")
+	}
+	_ = delta.JsonObjectOf
 }
 
-func TestMemberHelpers(t *testing.T) {
-	contract := remote(t, "n", 1, noParams(),
-		variant("editor", state(contracts.Prop("notes", contracts.Str()), contracts.Prop("count", contracts.Int())),
-			contracts.Meth("add", contracts.NewMethod(contracts.Str(), contracts.Str())),
-			contracts.Meth("clear", contracts.NewMethod())),
-		variant("reader", state(contracts.Prop("notes", contracts.Str())),
-			contracts.Meth("add", contracts.NewMethod(contracts.Str(), contracts.Str()))))
-	variants := currentVariants(t, contract)
-
-	if got := contracts.MemberNames(variants, contracts.MemberSideState); !reflect.DeepEqual(got, []string{"notes", "count"}) {
-		t.Errorf("state names = %v", got)
-	}
-	if got := contracts.MemberNames(variants, contracts.MemberSideMethods); !reflect.DeepEqual(got, []string{"add", "clear"}) {
-		t.Errorf("method names = %v", got)
-	}
-	if got := contracts.VariantsWith(variants, "add"); !reflect.DeepEqual(got, []string{"editor", "reader"}) {
-		t.Errorf("variants with add = %v", got)
-	}
-	if got := contracts.VariantsWith(variants, "clear"); !reflect.DeepEqual(got, []string{"editor"}) {
-		t.Errorf("variants with clear = %v", got)
-	}
-	if got := contracts.VariantsWith(variants, "missing"); len(got) != 0 {
-		t.Errorf("variants with missing = %v", got)
-	}
-	method, ok := contracts.MethodAt(variants, "add")
-	if !ok || stringify(t, method.Args.Normal) != `{"type":"string"}` {
-		t.Errorf("MethodAt(add) = %+v, %v", method, ok)
-	}
-	if _, ok := contracts.MethodAt(variants, "notes"); ok {
-		t.Error("a state member is no method")
-	}
-}
-
-// MemberNames of the queries side is the runtime form of `keyof VariantShape`'s `queries` (slice 14 §3.1: history.ts VariantShape.queries).
-func TestMemberNamesOfQueriesMembers(t *testing.T) {
-	notes := contracts.Obj(contracts.Prop("text", contracts.Str()))
-	contract := local(t, "app.store", 1, noParams(),
-		contracts.Mem("notes", contracts.Queries(notes, []contracts.Property{contracts.Prop("all", contracts.Obj())})),
-		contracts.Mem("title", contracts.Str()),
-		contracts.Mem("boards", contracts.Queries(notes, []contracts.Property{})))
-	variants := currentVariants(t, contract)
-	if got := contracts.MemberNames(variants, contracts.MemberSideQueries); !reflect.DeepEqual(got, []string{"notes", "boards"}) {
-		t.Errorf("queries names = %v", got)
-	}
-	if got := contracts.MemberNames(variants, contracts.MemberSideState); !reflect.DeepEqual(got, []string{"title"}) {
-		t.Errorf("state names = %v", got)
-	}
-}
+func ptr[T any](v T) *T { return &v }

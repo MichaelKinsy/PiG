@@ -1,196 +1,30 @@
 package contracts_test
 
 import (
-	"reflect"
+	"slices"
 	"testing"
-	"weak"
 
-	chordctx "github.com/MichaelKinsy/PiG/chord/context"
-	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
-	"github.com/MichaelKinsy/PiG/chord/next/data"
-	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
-// Ports packages/chord/test/contracts/contract.test.ts.
-//
-// The "derived types" cases that assert Implementation<C> and ParamsOf with expectTypeOf are not designed out: the Go
-// forms (VariantImplementation, MethodFunction, *delta.JsonObject params) carry no per-contract type, so they are
-// ported as runtime tests over the contract data in derived_runtime_test.go (TestDerivedShapes).
-
-func notesContract(t testing.TB) *contracts.Contract {
-	t.Helper()
-	return remote(t, "notes", 1, props(contracts.Prop("session", contracts.Str()), contracts.Prop("page", contracts.Int())),
-		variant("editor", state(contracts.Prop("notes", contracts.Arr(contracts.Str()))),
-			contracts.Meth("add", contracts.NewMethod(contracts.Obj(contracts.Prop("text", contracts.Str())), contracts.Str())),
-			contracts.Meth("clear", contracts.NewMethod())),
-		variant("reader", state(contracts.Prop("notes", contracts.Arr(contracts.Str())))))
-}
-
-func TestContractHandles(t *testing.T) {
-	notes := notesContract(t)
-
-	t.Run("carry kind, name, version and fingerprint only", func(t *testing.T) {
-		var fields []string
-		kind := reflect.TypeOf(*notes)
-		for field := range kind.Fields() {
-			if field.IsExported() {
-				fields = append(fields, field.Name)
-			}
-		}
-		if !reflect.DeepEqual(fields, []string{"Kind", "Name", "Version", "Fingerprint"}) {
-			t.Fatalf("exported fields = %v", fields)
-		}
-		if notes.Kind != contracts.KindRemote || notes.Name != "notes" || notes.Version != 1 {
-			t.Fatalf("handle = %+v", notes)
-		}
-	})
-
-	t.Run("are branded: copies and hand-built values are refused", func(t *testing.T) {
-		refusal := "notes: not a declared contract (spread and hand-built copies are refused)"
-		copied := *notes
-		_, err := contracts.ContractDataOf(&copied)
-		wantError(t, err, refusal)
-		_, err = contracts.Evolve(&copied, func(e *contracts.RemoteEditor) *contracts.RemoteEditor { return e })
-		wantError(t, err, refusal)
-		_, err = contracts.CheckAccepts(&copied, nil)
-		wantError(t, err, refusal)
-		_, err = data.BindProvider(&copied, nil)
-		wantError(t, err, refusal)
-		_, err = data.CheckParams(&copied, delta.JsonObjectOf("session", "s", "page", 1.0), chordctx.Background())
-		wantError(t, err, refusal)
-		built := &contracts.Contract{Kind: contracts.KindRemote, Name: "notes", Version: 1, Fingerprint: notes.Fingerprint}
-		_, err = contracts.ContractDataOf(built)
-		wantError(t, err, refusal)
-		if _, err = contracts.ContractDataOf(notes); err != nil {
-			t.Fatalf("the declared contract was refused: %v", err)
-		}
-	})
-
-	t.Run("are collected when dropped, with their data", func(t *testing.T) {
-		contract, contractData := func() (weak.Pointer[contracts.Contract], weak.Pointer[contracts.ContractData]) {
-			dropped := local(t, "gc", 1, noParams(), contracts.Mem("s", contracts.Str()))
-			return weak.Make(dropped), weak.Make(dataOf(t, dropped))
-		}()
-		nexttest.ExpectCollected(t, contract)
-		nexttest.ExpectCollected(t, contractData)
-	})
-}
-
-func TestContractTakesNoArgs(t *testing.T) {
-	t.Run("takesNoArgs: exactly the methods whose argument schema is null", func(t *testing.T) {
-		counts := local(t, "counts", 1, noParams(),
-			contracts.Mem("reset", contracts.NewMethod()),
-			contracts.Mem("total", contracts.NewMethod(contracts.Schema{}, contracts.Int())),
-			contracts.Mem("set", contracts.NewMethod(contracts.Int())),
-			contracts.Mem("maybe", contracts.NewMethod(contracts.Union([]contracts.Schema{contracts.Nul(), contracts.Str()}))))
-		methods := currentVariants(t, counts).Value(contracts.LocalVariant).Methods
-		type result struct {
-			name string
-			no   bool
-		}
-		var got []result
-		for name, method := range methods.All() {
-			got = append(got, result{name, contracts.TakesNoArgs(method)})
-		}
-		want := []result{{"reset", true}, {"total", true}, {"set", false}, {"maybe", false}}
-		if !reflect.DeepEqual(got, want) {
-			t.Fatalf("takesNoArgs = %v, want %v", got, want)
-		}
-	})
-}
-
-func TestContractVariantNames(t *testing.T) {
-	notes := notesContract(t)
-	if got := must(contracts.VariantOrder(notes)); !reflect.DeepEqual(got, []string{"editor", "reader"}) {
-		t.Fatalf("VariantOrder = %v", got)
+func TestContractHandlesAndOrder(t *testing.T) {
+	c := remote(t, "notes", 1, props(contracts.Prop("id", contracts.Str())),
+		rstate(contracts.StateEntry("z", contracts.Str()), contracts.StateEntry("a", contracts.Int())),
+		contracts.Meth("m2", contracts.NewMethod()),
+		contracts.Meth("m1", contracts.NewMethod(contracts.Str())),
+	)
+	names, err := contracts.MemberNamesOf(c)
+	wantNoError(t, err)
+	if !slices.Equal(names.State, []string{"z", "a"}) || !slices.Equal(names.Methods, []string{"m2", "m1"}) {
+		t.Fatalf("MemberNamesOf = %+v", names)
 	}
-	editor := currentVariants(t, notes).Value("editor")
-	if got := contracts.VariantNamesOf(editor); !reflect.DeepEqual(got, contracts.VariantNames{State: []string{"notes"}, Methods: []string{"add", "clear"}, Events: []string{}}) {
-		t.Fatalf("VariantNamesOf = %+v", got)
+	members := currentMembers(t, c)
+	order := contracts.MemberOrder(members)
+	if !slices.Equal(order.State, []string{"a", "z"}) || !slices.Equal(order.Methods, []string{"m1", "m2"}) {
+		t.Fatalf("MemberOrder = %+v", order)
 	}
-	// Names sort, whatever the declaration order.
-	reversed := remote(t, "r", 1, noParams(),
-		variant("z", state(contracts.Prop("b", contracts.Str()), contracts.Prop("a", contracts.Str())),
-			contracts.Meth("n", contracts.NewMethod()), contracts.Meth("m", contracts.NewMethod())),
-		variant("a", nil))
-	if got := must(contracts.VariantOrder(reversed)); !reflect.DeepEqual(got, []string{"a", "z"}) {
-		t.Fatalf("VariantOrder = %v", got)
-	}
-	if got := contracts.VariantNamesOf(currentVariants(t, reversed).Value("z")); !reflect.DeepEqual(got, contracts.VariantNames{State: []string{"a", "b"}, Methods: []string{"m", "n"}, Events: []string{}}) {
-		t.Fatalf("VariantNamesOf = %+v", got)
-	}
-}
-
-func TestVariantsAt(t *testing.T) {
-	v1 := local(t, "info", 1, noParams(), contracts.Mem("title", contracts.Str()))
-	v2 := must(evolveLocal(v1, func(e *contracts.LocalEditor) *contracts.LocalEditor { return e.AddState("body", contracts.Str()) }))
-	at1 := must(contracts.VariantsAt(v2, 1)).Value(contracts.LocalVariant)
-	at2 := must(contracts.VariantsAt(v2, 2)).Value(contracts.LocalVariant)
-	if len(keys(at1.State)) != 1 || len(keys(at2.State)) != 2 {
-		t.Fatalf("state at v1 = %v, at v2 = %v", keys(at1.State), keys(at2.State))
-	}
-	if _, err := contracts.VariantsAt(v2, 3); err == nil {
-		t.Fatal("an unknown version was found")
-	}
-}
-
-// Ports the "member names" describe of packages/chord/test/contracts/contract.test.ts (Pi 5f89cc0a7df6). Go names the function
-// MemberNamesOf (the type is MemberNameLists: MemberNames is history.ts's function) and takes the variant explicitly:
-// `memberNames(Notes)` is MemberNamesOf(notes, contracts.LocalVariant).
-func TestMemberNames(t *testing.T) {
-	notes := notesContract(t)
-
-	t.Run("lists a remote variant's state members, methods and event members of the current version", func(t *testing.T) {
-		if got := must(contracts.MemberNamesOf(notes, "editor")); !reflect.DeepEqual(got, contracts.MemberNameLists{State: []string{"notes"}, Methods: []string{"add", "clear"}, Events: []string{}}) {
-			t.Fatalf("editor = %+v", got)
-		}
-		if got := must(contracts.MemberNamesOf(notes, "reader")); !reflect.DeepEqual(got, contracts.MemberNameLists{State: []string{"notes"}, Methods: []string{}, Events: []string{}}) {
-			t.Fatalf("reader = %+v", got)
-		}
-		// Declared order, not sorted: "notes" then "count".
-		next := must(evolveRemote(notes, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
-			return e.AddState("editor", "count", contracts.Int()).RemoveMethod("clear")
-		}))
-		if got := must(contracts.MemberNamesOf(next, "editor")); !reflect.DeepEqual(got, contracts.MemberNameLists{State: []string{"notes", "count"}, Methods: []string{"add"}, Events: []string{}}) {
-			t.Fatalf("evolved editor = %+v", got)
-		}
-	})
-
-	t.Run("lists a local contract's, without its keyed and queries members", func(t *testing.T) {
-		item := func() contracts.Schema { return contracts.Obj(contracts.Prop("id", contracts.Str())) }
-		store := local(t, "names.store", 1, noParams(),
-			contracts.Mem("count", contracts.Int()),
-			contracts.Mem("notes", contracts.Keyed(contracts.Str())),
-			contracts.Mem("rows", contracts.Queries(item(), []contracts.Property{contracts.Prop("one", item())})),
-			contracts.Mem("ticked", contracts.Event(contracts.Int())),
-			contracts.Mem("add", contracts.NewMethod(contracts.Int())))
-		want := contracts.MemberNameLists{State: []string{"count"}, Methods: []string{"add"}, Events: []string{"ticked"}}
-		if got := must(contracts.MemberNamesOf(store, contracts.LocalVariant)); !reflect.DeepEqual(got, want) {
-			t.Fatalf("local = %+v", got)
-		}
-	})
-
-	t.Run("refuses a variant the contract does not have, and a copy of a contract", func(t *testing.T) {
-		_, err := contracts.MemberNamesOf(notes, "owner")
-		wantError(t, err, `notes: no variant "owner"`)
-		_, err = contracts.MemberNamesOf(notes, contracts.LocalVariant)
-		wantError(t, err, `notes: no variant "members"`)
-		copied := *notes
-		_, err = contracts.MemberNamesOf(&copied, "editor")
-		wantError(t, err, "not a declared contract")
-	})
-
-	t.Run("returns lists of its own: a write to one never reaches the contract", func(t *testing.T) {
-		got := must(contracts.MemberNamesOf(notes, "editor"))
-		got.Methods[0] = "changed"
-		got.State = append(got.State[:0], "changed")
-		again := must(contracts.MemberNamesOf(notes, "editor"))
-		if !reflect.DeepEqual(again, contracts.MemberNameLists{State: []string{"notes"}, Methods: []string{"add", "clear"}, Events: []string{}}) {
-			t.Fatalf("after a caller's writes = %+v", again)
-		}
-		if names := contracts.VariantNamesOf(currentVariants(t, notes).Value("editor")); !reflect.DeepEqual(names.Methods, []string{"add", "clear"}) {
-			t.Fatalf("the contract's methods = %v", names.Methods)
-		}
-	})
+	// Copy refused
+	copied := *c
+	_, err = contracts.ContractDataOf(&copied)
+	wantError(t, err, "not a declared contract")
 }

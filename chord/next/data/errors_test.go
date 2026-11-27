@@ -124,7 +124,7 @@ func TestProtocolTable(t *testing.T) {
 			}
 			table.Set(string(code), names)
 		}
-		if data.ProtocolVersion != 1 || nexttest.JSONText(t, table) != pinned {
+		if data.ProtocolVersion != 2 || nexttest.JSONText(t, table) != pinned {
 			t.Fatal("the error table changed: bump ProtocolVersion and update this pin")
 		}
 	})

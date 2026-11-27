@@ -386,6 +386,45 @@ func NewMethod(sides ...Schema) *Method {
 }
 
 // LocalMember is a local contract's member: a state schema (Schema), a *Method, a *KeyedMember, a *QueriesMember or an *EventDeclaration.
+
+// Grantable marks a member of a remote contract as grantable (slice 15 §1): a state or event schema, or a method,
+// that a caller has only if its admission granted it (`allow({ granted })`).
+type Grantable struct {
+	Member any
+}
+
+func (*Grantable) remoteStateMember()  {}
+func (*Grantable) remoteMethodMember() {}
+func (*Grantable) remoteEventMember()  {}
+
+// RemoteStateMember is a remote contract's state member: a Schema or *Grantable wrapping a Schema.
+type RemoteStateMember interface {
+	remoteStateMember()
+}
+
+// RemoteMethodMember is a remote contract's method member: a *Method or *Grantable wrapping a *Method.
+type RemoteMethodMember interface {
+	remoteMethodMember()
+}
+
+// RemoteEventMember is a remote contract's event member: a Schema or *Grantable wrapping a Schema.
+type RemoteEventMember interface {
+	remoteEventMember()
+}
+
+func (Schema) remoteStateMember()   {}
+func (Schema) remoteEventMember()   {}
+func (*Method) remoteMethodMember() {}
+
+// NewGrantable marks a member of a remote contract as grantable: NewGrantable(schema) in State and Events,
+// NewGrantable(NewMethod(...)) in Methods.
+func NewGrantable(member any) *Grantable {
+	if s, ok := member.(Schema); ok {
+		refuseOptional("NewGrantable", s)
+	}
+	return &Grantable{Member: member}
+}
+
 type LocalMember interface {
 	localMember()
 }

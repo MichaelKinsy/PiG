@@ -150,21 +150,14 @@ func serverAddress(*delta.JsonObject) (contracts.Address, error) { return server
 // PageTelemetry is the server's telemetry object for pages: any principal's page sends its batches to it, untrusted.
 var PageTelemetry = mustRemote("chord.telemetry.page", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{}, HostAddress: serverAddress,
-	Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
-		Methods: []contracts.MethodEntry{contracts.Meth("ingest", contracts.NewMethod(PageBatch, receipt))},
-	})},
+	Methods: []contracts.RemoteMethodEntry{contracts.Meth("ingest", contracts.NewMethod(PageBatch, receipt))},
 })
 
-// WorkerTelemetry is the server's telemetry object for workers: `worker` for a worker's principal (its batches written as
-// they are), `other` for everyone else (nothing to call).
+// WorkerTelemetry is the server's telemetry object for workers: `ingest` is granted to a worker's principal (its
+// batches written as they are), to nobody else.
 var WorkerTelemetry = mustRemote("chord.telemetry.worker", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{}, HostAddress: serverAddress,
-	Variants: []contracts.VariantEntry{
-		contracts.Var("worker", contracts.VariantDeclaration{
-			Methods: []contracts.MethodEntry{contracts.Meth("ingest", contracts.NewMethod(WorkerBatch, receipt))},
-		}),
-		contracts.Var("other", contracts.VariantDeclaration{}),
-	},
+	Methods: []contracts.RemoteMethodEntry{contracts.Meth("ingest", contracts.NewGrantable(contracts.NewMethod(WorkerBatch, receipt)))},
 })
 
 func mustRemote(name string, declaration contracts.RemoteDeclaration) *contracts.Contract {

@@ -91,16 +91,11 @@ func newArgsFixture(t *testing.T) *argsFixture {
 		Version:     1,
 		Params:      contracts.Params{contracts.Prop("session", contracts.Str())},
 		HostAddress: contractstest.ServerAddress,
-		Variants: []contracts.VariantEntry{
-			contracts.Var("editor", contracts.VariantDeclaration{
-				State: []contracts.Property{contracts.Prop("notes", contracts.Arr(note))},
-				Methods: []contracts.MethodEntry{
-					contracts.Meth("add", contracts.NewMethod(note, contracts.Str())),
-					contracts.Meth("clear", contracts.NewMethod()),
-					contracts.Meth("attach", contracts.NewMethod(contracts.Obj(contracts.Prop("data", contracts.Bytes(contracts.Max(4)))))),
-				},
-			}),
-			contracts.Var("reader", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("notes", contracts.Arr(note))}}),
+		State:       []contracts.RemoteStateEntry{contracts.StateEntry("notes", contracts.Arr(note))},
+		Methods: []contracts.RemoteMethodEntry{
+			contracts.Meth("add", contracts.NewGrantable(contracts.NewMethod(note, contracts.Str()))),
+			contracts.Meth("clear", contracts.NewGrantable(contracts.NewMethod())),
+			contracts.Meth("attach", contracts.NewGrantable(contracts.NewMethod(contracts.Obj(contracts.Prop("data", contracts.Bytes(contracts.Max(4))))))),
 		},
 	})
 	notesV2 := evolveRemote(t, notesV1, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {

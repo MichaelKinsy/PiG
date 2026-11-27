@@ -123,5 +123,6 @@ func rootMessage(message string) string {
 // SameCause reports whether two failure causes say the same (a wake compares causes by value): kind, code, reason and
 // message.
 func SameCause(a, b FailureCause) bool {
-	return a.Kind == b.Kind && a.Error.Code == b.Error.Code && a.Error.Reason == b.Error.Reason && a.Error.Message == b.Error.Message
+	return a.Kind == b.Kind && a.Error.Code == b.Error.Code && a.Error.Reason == b.Error.Reason && a.Error.Message == b.Error.Message &&
+		SameJson(a.Error.Details, b.Error.Details, "")
 }
