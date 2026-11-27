@@ -2,7 +2,7 @@
 
 # Extension SDK surface matrix
 
-Every extension-facing surface of Pi 1.6.0's extension API, and how each PiG extension runtime realizes it. The rows come from Pi's `packages/coding-agent/src/core/extensions/types.ts` and the declarations it re-exports or exposes through its members (`EventBus`, `ExecOptions`/`ExecResult`, `CacheWarmingDecisionEvent`, `ReadonlySessionManager`, `ModelRegistry`, `Theme`, `AgentToolResult`), read from `.upstream/v1.6.0`.
+Every extension-facing surface of Pi 1.6.1's extension API, and how each PiG extension runtime realizes it. The rows come from Pi's `packages/coding-agent/src/core/extensions/types.ts` and the declarations it re-exports or exposes through its members (`EventBus`, `ExecOptions`/`ExecResult`, `CacheWarmingDecisionEvent`, `ReadonlySessionManager`, `ModelRegistry`, `Theme`, `AgentToolResult`), read from `.upstream/v1.6.1`.
 
 A cell's status comes from the runtime itself: the Go SDK's exported identifiers, the Rust SDK's `pub` items, the Python SDK's classes, members and parameters and the Lisp SDK's exported symbols and the keyword and optional parameters of its exported functions, read from their source, and the Node runtime's objects, read by instantiating the runtime in Node (`test/parity/cmd/sdksurface/probe.mjs`), plus the properties it reads from an extension's definitions. [`test/parity/ledgers/sdk-surface.toml`](../test/parity/ledgers/sdk-surface.toml) names the symbol where a language's naming differs from the default rule and says why a realization is a stand-in; a named symbol that does not exist is `missing`. Payload, result and option fields that cross the subprocess wire are also checked against the host's Go decoding type, so a field an SDK sends but the host drops is `missing`. The PiG additive sections list surfaces PiG adds where Pi has none, such as the component kit (D107); the map names each one's symbols, and its cells are classified the same way.
 
@@ -10,7 +10,7 @@ A cell's status comes from the runtime itself: the Go SDK's exported identifiers
 - `stand-in/partial`: the symbol exists; the note says what differs and why.
 - `missing`: no symbol. Each missing cell is listed in [`test/parity/sdk-surface-exceptions.toml`](../test/parity/sdk-surface-exceptions.toml) with its reviewed reason, and `go test ./test/parity/cmd/sdksurface` fails on any other.
 
-The package sections list every runtime export of the modules Pi serves to extensions (`pi-coding-agent`, `pi-tui`, `pi-ai`, `pi-ai/compat`, `pi-ai/models`, `pi-ai/providers/all`, `pi-agent-core`), from the compiler-derived inventory of Pi's `.d.ts` files (`test/parity/interfaces/upstream-v1.6.0.json`), and every public instance member of each exported class represented by that inventory. Static factories and overload-specific reachability are outside this probe. Only the Node runtime imports these modules. The probe loads each module the runtime serves and classifies every value by where its code lives, using the V8 inspector's function locations:
+The package sections list every runtime export of the modules Pi serves to extensions (`pi-coding-agent`, `pi-tui`, `pi-ai`, `pi-ai/compat`, `pi-ai/models`, `pi-ai/providers/all`, `pi-agent-core`), from the compiler-derived inventory of Pi's `.d.ts` files (`test/parity/interfaces/upstream-v1.6.1.json`), and every public instance member of each exported class represented by that inventory. Static factories and overload-specific reachability are outside this probe. Only the Node runtime imports these modules. The probe loads each module the runtime serves and classifies every value by where its code lives, using the V8 inspector's function locations:
 
 - `Pi's own code`: the function originates in the vendored pinned modules or their dependencies; host import rewrites can still affect behavior (D73).
 - `bridged`: PiG's implementation in the extension runtime, a line-for-line port or a host bridge, locked by the D73 tests (`TestNodeRuntimeShimsExportEveryPinnedPiValue`, `TestPiTuiComponentsMatchThePinnedPackage`, `TestPiAiUtilitiesMatchThePinnedPackage`, `TestPiThemeHelpersMatchThePinnedPackage`).
@@ -21,15 +21,15 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 ## Summary
 
-525 extension API surfaces:
+528 extension API surfaces:
 
 | Runtime | implemented | stand-in/partial | missing (all with a reviewed exception) |
 |---|---|---|---|
-| Node runtime | 498 | 26 | 1 |
-| Go | 502 | 23 | 0 |
-| Rust | 500 | 25 | 0 |
-| Python | 502 | 23 | 0 |
-| Lisp | 506 | 19 | 0 |
+| Node runtime | 501 | 26 | 1 |
+| Go | 505 | 23 | 0 |
+| Rust | 503 | 25 | 0 |
+| Python | 505 | 23 | 0 |
+| Lisp | 509 | 19 | 0 |
 
 35 PiG-only surfaces:
 
@@ -1103,6 +1103,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 |---|---|---|---|---|---|---|
 | `ctx.ui.select(opts.signal)` | `ExtensionUIContext.select(opts.signal)` | implemented `RuntimeUI.select` | stand-in/partial `Context.Done`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | implemented `pig:ctx-cancelled-p` |
 | `ctx.ui.select(opts.timeout)` | `ExtensionUIContext.select(opts.timeout)` | stand-in/partial `RuntimeUI.select`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.Timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `Context.select(timeout)`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `pig:ctx-select(timeout)`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) |
+| `ctx.ui.select(opts.blockedKind)` | `ExtensionUIContext.select(opts.blockedKind)` | implemented `RuntimeUI.select` | implemented `DialogOptions.BlockedKind` | implemented `DialogPromptOptions.blocked_kind` | implemented `Context.select(blocked_kind)` | implemented `pig:ctx-select(blocked-kind)` |
 
 ## ctx.ui (ExtensionUIContext)
 
@@ -1116,6 +1117,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 |---|---|---|---|---|---|---|
 | `ctx.ui.confirm(opts.signal)` | `ExtensionUIContext.confirm(opts.signal)` | implemented `RuntimeUI.confirm` | stand-in/partial `Context.Done`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | implemented `pig:ctx-cancelled-p` |
 | `ctx.ui.confirm(opts.timeout)` | `ExtensionUIContext.confirm(opts.timeout)` | stand-in/partial `RuntimeUI.confirm`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.Timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `Context.confirm(timeout)`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `pig:ctx-confirm(timeout)`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) |
+| `ctx.ui.confirm(opts.blockedKind)` | `ExtensionUIContext.confirm(opts.blockedKind)` | implemented `RuntimeUI.confirm` | implemented `DialogOptions.BlockedKind` | implemented `DialogPromptOptions.blocked_kind` | implemented `Context.confirm(blocked_kind)` | implemented `pig:ctx-confirm(blocked-kind)` |
 
 ## ctx.ui (ExtensionUIContext)
 
@@ -1129,6 +1131,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 |---|---|---|---|---|---|---|
 | `ctx.ui.input(opts.signal)` | `ExtensionUIContext.input(opts.signal)` | implemented `RuntimeUI.input` | stand-in/partial `Context.Done`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | implemented `pig:ctx-cancelled-p` |
 | `ctx.ui.input(opts.timeout)` | `ExtensionUIContext.input(opts.timeout)` | stand-in/partial `RuntimeUI.input`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.Timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `Context.input(timeout)`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `pig:ctx-input(timeout)`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) |
+| `ctx.ui.input(opts.blockedKind)` | `ExtensionUIContext.input(opts.blockedKind)` | implemented `RuntimeUI.input` | implemented `DialogOptions.BlockedKind` | implemented `DialogPromptOptions.blocked_kind` | implemented `Context.input(blocked_kind)` | implemented `pig:ctx-input(blocked-kind)` |
 
 ## ctx.ui (ExtensionUIContext)
 
@@ -2031,6 +2034,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: SettingsManager.getLastChangelogVersion` | `SettingsManager.getLastChangelogVersion` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getMermaidRenderingMode` | `SettingsManager.getMermaidRenderingMode` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getModelThinkingLevel` | `SettingsManager.getModelThinkingLevel` | Pi's own code |
+| `pi-coding-agent: SettingsManager.getNotices` | `SettingsManager.getNotices` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getNpmCommand` | `SettingsManager.getNpmCommand` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getOrCreateDeviceId` | `SettingsManager.getOrCreateDeviceId` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getOutputPad` | `SettingsManager.getOutputPad` | Pi's own code |
@@ -2046,7 +2050,6 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: SettingsManager.getSettings` | `SettingsManager.getSettings` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getShellCommandPrefix` | `SettingsManager.getShellCommandPrefix` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getShellPath` | `SettingsManager.getShellPath` | Pi's own code |
-| `pi-coding-agent: SettingsManager.getShowCacheMissNotices` | `SettingsManager.getShowCacheMissNotices` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getShowHardwareCursor` | `SettingsManager.getShowHardwareCursor` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getShowImages` | `SettingsManager.getShowImages` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getShowTerminalProgress` | `SettingsManager.getShowTerminalProgress` | Pi's own code |
@@ -2097,6 +2100,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: SettingsManager.setLastChangelogVersion` | `SettingsManager.setLastChangelogVersion` | Pi's own code |
 | `pi-coding-agent: SettingsManager.setMermaidRenderingMode` | `SettingsManager.setMermaidRenderingMode` | Pi's own code |
 | `pi-coding-agent: SettingsManager.setModelThinkingLevel` | `SettingsManager.setModelThinkingLevel` | Pi's own code |
+| `pi-coding-agent: SettingsManager.setNotice` | `SettingsManager.setNotice` | Pi's own code |
 | `pi-coding-agent: SettingsManager.setNpmCommand` | `SettingsManager.setNpmCommand` | Pi's own code |
 | `pi-coding-agent: SettingsManager.setOutputPad` | `SettingsManager.setOutputPad` | Pi's own code |
 | `pi-coding-agent: SettingsManager.setPackages` | `SettingsManager.setPackages` | Pi's own code |
@@ -2112,7 +2116,6 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: SettingsManager.setSessionShareDestination` | `SettingsManager.setSessionShareDestination` | Pi's own code |
 | `pi-coding-agent: SettingsManager.setShellCommandPrefix` | `SettingsManager.setShellCommandPrefix` | Pi's own code |
 | `pi-coding-agent: SettingsManager.setShellPath` | `SettingsManager.setShellPath` | Pi's own code |
-| `pi-coding-agent: SettingsManager.setShowCacheMissNotices` | `SettingsManager.setShowCacheMissNotices` | Pi's own code |
 | `pi-coding-agent: SettingsManager.setShowHardwareCursor` | `SettingsManager.setShowHardwareCursor` | Pi's own code |
 | `pi-coding-agent: SettingsManager.setShowImages` | `SettingsManager.setShowImages` | Pi's own code |
 | `pi-coding-agent: SettingsManager.setShowTerminalProgress` | `SettingsManager.setShowTerminalProgress` | Pi's own code |

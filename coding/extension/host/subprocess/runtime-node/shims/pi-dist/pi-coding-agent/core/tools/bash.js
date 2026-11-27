@@ -41,6 +41,7 @@ const bashOutputSchema = Type.Object({
     output: Type.String({ description: "Combined stdout and stderr, possibly truncated" }),
     truncated: Type.Boolean(),
     full_output_path: Type.Optional(Type.String({ description: "Full output, when truncated" })),
+    full_output_error: Type.Optional(Type.String({ description: "Why the full output could not be saved, when truncated and saving failed" })),
     exit_code: Type.Number(),
     wall_time_seconds: Type.Number(),
 });
@@ -211,7 +212,7 @@ export function createShellToolDefinition(cwd, config, options) {
                     content: [{ type: "text", text: snapshot.content || "" }],
                     details: {
                         truncation: snapshot.truncation.truncated ? snapshot.truncation : undefined,
-                        fullOutputPath: snapshot.fullOutputPath,
+                        ...outputFileDetails(snapshot),
                     },
                 });
             };
@@ -250,27 +251,31 @@ export function createShellToolDefinition(cwd, config, options) {
                 output.finish();
                 clearUpdateTimer();
                 emitOutputUpdate();
-                const snapshot = output.snapshot({ persistIfTruncated: true });
+                // The file path is only final after closing: a write can still fail while the file flushes.
                 await output.closeTempFile();
-                return snapshot;
+                return output.snapshot({ persistIfTruncated: true });
             };
             const formatOutput = (snapshot, emptyText = "(no output)") => {
                 const truncation = snapshot.truncation;
                 let text = snapshot.content || emptyText;
                 let details;
                 if (truncation.truncated) {
-                    details = { truncation, fullOutputPath: snapshot.fullOutputPath };
+                    details = { truncation, ...outputFileDetails(snapshot) };
+                    const file = snapshot.fullOutputFile;
+                    const fullOutput = file?.kind === "failed"
+                        ? `Could not save the full output: ${file.error}`
+                        : `Full output: ${file?.path}`;
                     const startLine = truncation.totalLines - truncation.outputLines + 1;
                     const endLine = truncation.totalLines;
                     if (truncation.lastLinePartial) {
                         const lastLineSize = formatSize(output.getLastLineBytes());
-                        text += `\n\n[Showing last ${formatSize(truncation.outputBytes)} of line ${endLine} (line is ${lastLineSize}). Full output: ${snapshot.fullOutputPath}]`;
+                        text += `\n\n[Showing last ${formatSize(truncation.outputBytes)} of line ${startLine} (line is ${lastLineSize}). ${fullOutput}]`;
                     }
                     else if (truncation.truncatedBy === "lines") {
-                        text += `\n\n[Showing lines ${startLine}-${endLine} of ${truncation.totalLines}. Full output: ${snapshot.fullOutputPath}]`;
+                        text += `\n\n[Showing lines ${startLine}-${endLine} of ${truncation.totalLines}. ${fullOutput}]`;
                     }
                     else {
-                        text += `\n\n[Showing lines ${startLine}-${endLine} of ${truncation.totalLines} (${formatSize(DEFAULT_MAX_BYTES)} limit). Full output: ${snapshot.fullOutputPath}]`;
+                        text += `\n\n[Showing lines ${startLine}-${endLine} of ${truncation.totalLines} (${formatSize(DEFAULT_MAX_BYTES)} limit). ${fullOutput}]`;
                     }
                 }
                 return { text, details };
@@ -316,8 +321,11 @@ export function createShellToolDefinition(cwd, config, options) {
                 const structuredContent = {
                     output: fullOutput.content,
                     truncated: fullOutput.truncated,
-                    ...(fullOutput.truncated && snapshot.fullOutputPath
-                        ? { full_output_path: snapshot.fullOutputPath }
+                    ...(fullOutput.truncated && snapshot.fullOutputFile?.kind === "saved"
+                        ? { full_output_path: snapshot.fullOutputFile.path }
+                        : {}),
+                    ...(fullOutput.truncated && snapshot.fullOutputFile?.kind === "failed"
+                        ? { full_output_error: snapshot.fullOutputFile.error }
                         : {}),
                     exit_code: exitCode,
                     wall_time_seconds: wallTimeSeconds,
@@ -338,6 +346,13 @@ export function createShellToolDefinition(cwd, config, options) {
         },
         ...createShellRenderers(config.prompt),
     };
+}
+/** Where a snapshot's full output went: its file, or why it could not be saved. */
+function outputFileDetails(snapshot) {
+    const file = snapshot.fullOutputFile;
+    if (file === undefined)
+        return {};
+    return file.kind === "saved" ? { fullOutputPath: file.path } : { fullOutputError: file.error };
 }
 const bashToolConfig = {
     name: "bash",

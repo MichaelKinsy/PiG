@@ -1,4 +1,4 @@
-import { isJsonRpcRequest, isJsonRpcResponse, JSON_RPC_ERROR_CODES, McpAbortError, McpConnectionClosedError, parseJsonRpcMessage, toError, } from "../protocol/jsonrpc.js";
+import { isJsonRpcRequest, isJsonRpcResponse, JSON_RPC_ERROR_CODES, McpAbortError, McpConnectionClosedError, normalizeOwnRequestId, parseJsonRpcMessage, toError, } from "../protocol/jsonrpc.js";
 import { DEFAULT_MAX_MESSAGE_BYTES, TransportEvents, } from "./transport.js";
 const MAX_ERROR_BODY_BYTES = 8 * 1024;
 const ERROR_MESSAGE_BODY_CHARS = 500;
@@ -8,7 +8,10 @@ const DEFAULT_RECONNECT_MAX_RETRIES = 5;
 export async function consumeSseStream(stream, options) {
     const reader = stream.getReader();
     const decoder = new TextDecoder();
-    let buffered = "";
+    // The incomplete last line. Only new text is scanned and the line is read once when it ends, so a large
+    // line arriving in many chunks costs time linear in its size.
+    let pendingLine = "";
+    let pendingLineBytes = 0;
     let eventName;
     let eventId;
     let dataLines = [];
@@ -58,16 +61,18 @@ export async function consumeSseStream(stream, options) {
     };
     // SSE lines end with CRLF, LF, or a lone CR.
     let skipLeadingLf = false;
-    const consumeLines = () => {
+    const consumeLines = (text) => {
         let start = 0;
-        for (let i = 0; i < buffered.length; i++) {
-            const char = buffered[i];
+        for (let i = 0; i < text.length; i++) {
+            const char = text[i];
             if (char !== "\r" && char !== "\n")
                 continue;
-            processLine(buffered.slice(start, i));
+            processLine(pendingLine + text.slice(start, i));
+            pendingLine = "";
+            pendingLineBytes = 0;
             if (char === "\r") {
-                if (i + 1 < buffered.length) {
-                    if (buffered[i + 1] === "\n")
+                if (i + 1 < text.length) {
+                    if (text[i + 1] === "\n")
                         i++;
                 }
                 else {
@@ -76,7 +81,9 @@ export async function consumeSseStream(stream, options) {
             }
             start = i + 1;
         }
-        buffered = buffered.slice(start);
+        const rest = text.slice(start);
+        pendingLine += rest;
+        pendingLineBytes += Buffer.byteLength(rest);
     };
     try {
         while (true) {
@@ -90,18 +97,16 @@ export async function consumeSseStream(stream, options) {
                     text = text.slice(1);
                 skipLeadingLf = false;
             }
-            buffered += text;
-            consumeLines();
-            if (Buffer.byteLength(buffered) > maxEventBytes)
+            consumeLines(text);
+            if (pendingLineBytes > maxEventBytes)
                 throw new Error(`MCP SSE event exceeds ${maxEventBytes} bytes`);
         }
         let tail = decoder.decode();
         if (skipLeadingLf && tail.startsWith("\n"))
             tail = tail.slice(1);
-        buffered += tail;
-        consumeLines();
-        if (buffered)
-            processLine(buffered);
+        consumeLines(tail);
+        if (pendingLine)
+            processLine(pendingLine);
         dispatch();
     }
     catch (error) {
@@ -380,7 +385,7 @@ export class StreamableHttpTransport extends TransportEvents {
         const cursor = { lastEventId: undefined, retryMs: undefined, received: false };
         let answered = false;
         const onMessage = (message) => {
-            if (isJsonRpcResponse(message) && message.id === requestId)
+            if (isJsonRpcResponse(message) && normalizeOwnRequestId(message.id) === requestId)
                 answered = true;
         };
         let stream = body;

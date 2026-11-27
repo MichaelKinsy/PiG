@@ -1,3 +1,4 @@
+import { headersToRecord } from "./headers.js";
 const DEFAULT_MAX_RETRY_DELAY_MS = 60_000;
 function isProviderError(error) {
     if (!(error instanceof Error) || !("status" in error) || !("headers" in error))
@@ -84,6 +85,10 @@ export async function retryProviderRequest(request, options = {}) {
         catch (error) {
             if (options.signal?.aborted)
                 throw createAbortError();
+            if (isProviderError(error) && error.status !== undefined) {
+                const headers = error.headers ? headersToRecord(error.headers) : {};
+                await options.onErrorResponse?.({ status: error.status, headers });
+            }
             if (retriesRemaining <= 0 || !isProviderError(error) || !isRetryableProviderError(error))
                 throw error;
             if (error.status !== undefined && options.noRetryStatuses?.includes(error.status))

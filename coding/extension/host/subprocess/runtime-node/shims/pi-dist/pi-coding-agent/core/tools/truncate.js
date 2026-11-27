@@ -20,6 +20,9 @@ function splitLinesForCounting(content) {
     }
     return lines;
 }
+function isBlankLine(line) {
+    return line.trim().length === 0;
+}
 /**
  * Format bytes as human-readable size.
  */
@@ -152,12 +155,15 @@ export function truncateTail(content, options = {}) {
         const lineBytes = Buffer.byteLength(line, "utf-8") + (outputLinesArr.length > 0 ? 1 : 0); // +1 for newline
         if (outputBytesCount + lineBytes > maxBytes) {
             truncatedBy = "bytes";
-            // Edge case: if we haven't added ANY lines yet and this line exceeds maxBytes,
-            // take the end of the line (partial)
-            if (outputLinesArr.length === 0) {
-                const truncatedLine = truncateStringToBytesFromEnd(line, maxBytes);
+            // Edge case: if this line exceeds the limit and nothing or only blank lines come after it,
+            // take the end of the line (partial) so the output is not just the blank lines
+            const remainingBytes = maxBytes - outputBytesCount - (outputLinesArr.length > 0 ? 1 : 0);
+            if (outputLinesArr.length === 0 ||
+                (!isBlankLine(line) && outputLinesArr.every(isBlankLine) && remainingBytes > 0)) {
+                const truncatedLine = truncateStringToBytesFromEnd(line, remainingBytes);
                 outputLinesArr.unshift(truncatedLine);
-                outputBytesCount = Buffer.byteLength(truncatedLine, "utf-8");
+                outputBytesCount +=
+                    lineBytes - Buffer.byteLength(line, "utf-8") + Buffer.byteLength(truncatedLine, "utf-8");
                 lastLinePartial = true;
             }
             break;

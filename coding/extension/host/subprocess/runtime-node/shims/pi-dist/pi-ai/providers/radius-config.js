@@ -1,28 +1,35 @@
 import { ownedSlice } from "../utils/text.js";
 export const DEFAULT_RADIUS_GATEWAY = "https://radius.pi.dev";
-function isRadiusGatewayModel(value) {
+function isRadiusGatewayClassifierModel(value) {
     if (typeof value !== "object" || value === null || Array.isArray(value))
         return false;
     const model = value;
     return (typeof model.id === "string" &&
         typeof model.name === "string" &&
-        typeof model.reasoning === "boolean" &&
         Array.isArray(model.input) &&
         typeof model.cost === "object" &&
         model.cost !== null &&
         !Array.isArray(model.cost) &&
-        typeof model.contextWindow === "number" &&
-        typeof model.maxTokens === "number");
+        typeof model.contextWindow === "number");
+}
+function isRadiusGatewayModel(value) {
+    if (!isRadiusGatewayClassifierModel(value))
+        return false;
+    const model = value;
+    return typeof model.reasoning === "boolean" && typeof model.maxTokens === "number";
 }
 function sanitizeRadiusGatewayConfig(config) {
     if (typeof config !== "object" || config === null || Array.isArray(config))
         return undefined;
-    const { baseUrl, models } = config;
+    const { baseUrl, models, classifiers } = config;
     if (typeof baseUrl !== "string" || !Array.isArray(models))
         return undefined;
     return {
         baseUrl,
         models: models.filter(isRadiusGatewayModel).map((model) => ({ ...model })),
+        ...(Array.isArray(classifiers)
+            ? { classifiers: classifiers.filter(isRadiusGatewayClassifierModel).map((model) => ({ ...model })) }
+            : {}),
     };
 }
 export function normalizeRadiusGatewayUrl(value) {
@@ -39,6 +46,18 @@ export function getRadiusModelsFromConfig(providerId, config) {
         provider: providerId,
         baseUrl: config.baseUrl,
     }));
+}
+export function getRadiusAllModelsFromConfig(providerId, config) {
+    return [
+        ...getRadiusModelsFromConfig(providerId, config),
+        ...(config.classifiers ?? []).map((model) => ({
+            ...model,
+            type: "classifier",
+            api: "pi-decision",
+            provider: providerId,
+            baseUrl: config.baseUrl,
+        })),
+    ];
 }
 export function getRadiusModels(providerId, credential) {
     const config = getRadiusCredentialConfig(credential);

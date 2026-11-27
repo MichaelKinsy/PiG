@@ -6,7 +6,7 @@
  */
 import { randomBytes } from "node:crypto";
 import { createWriteStream } from "node:fs";
-import { writeFile } from "node:fs/promises";
+import { rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 /** Output can carry private data, so only the user may read the files. */
@@ -25,6 +25,41 @@ export async function writeOutputFile(prefix, extension, data) {
 /** Open a new output file for streamed output. */
 export function createOutputFileStream(prefix, extension) {
     const path = createOutputFilePath(prefix, extension);
-    return { path, stream: createWriteStream(path, { mode: OUTPUT_FILE_MODE, flags: "wx" }) };
+    const stream = createWriteStream(path, { mode: OUTPUT_FILE_MODE, flags: "wx" });
+    let result = { kind: "saved", path };
+    let opened = false;
+    let removed;
+    stream.once("open", () => {
+        opened = true;
+    });
+    stream.on("error", (cause) => {
+        if (result.kind === "saved")
+            result = { kind: "failed", error: cause.message };
+        // A partial file would pass for the full output. A failed open (`wx` found a file) leaves
+        // the path alone: whatever is there is not ours.
+        if (opened)
+            removed ??= rm(path, { force: true }).catch(() => { });
+    });
+    // `close`, not `finish`: closing the descriptor can still fail (delayed ENOSPC or EDQUOT on quota,
+    // NFS or FUSE file systems), and that error comes after `finish`. It always comes before `close`.
+    const closed = new Promise((resolve) => stream.once("close", resolve));
+    return {
+        get result() {
+            return result;
+        },
+        write(data) {
+            // Not after a failure, and not after `close()`: a write after `end()` would fail the file.
+            if (result.kind === "saved" && stream.writable)
+                stream.write(data);
+        },
+        async close() {
+            // A stream destroyed by an error is already closing; `end()` would do nothing.
+            if (!stream.destroyed)
+                stream.end();
+            await closed;
+            await removed;
+            return result;
+        },
+    };
 }
 //# sourceMappingURL=output-files.js.map

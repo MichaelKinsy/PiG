@@ -14,6 +14,7 @@ const GOOGLE_SDK_THINKING_LEVEL_MAP = {
     LOW: GoogleSdkThinkingLevel.LOW,
     MEDIUM: GoogleSdkThinkingLevel.MEDIUM,
     HIGH: GoogleSdkThinkingLevel.HIGH,
+    XHIGH: GoogleSdkThinkingLevel.XHIGH,
 };
 /** Resolve a supported pi level or model-specific Google mapping to a standard Google level. */
 export function resolveGoogleThinkingLevel(model, level) {
@@ -24,6 +25,7 @@ export function resolveGoogleThinkingLevel(model, level) {
         case "low":
         case "medium":
         case "high":
+        case "xhigh":
             return resolvedLevel;
         default:
             throw new Error(`Unsupported Google thinking level mapping for ${model.provider}/${model.id}: ${level} -> ${String(mapped)}`);
@@ -40,7 +42,6 @@ export function usesGoogleThinkingLevel(model) {
     // Match Gemini 3 Pro/Flash IDs with or without a minor version, such as
     // gemini-3-flash-preview, gemini-3.1-pro-preview, and gemini-3.8-flash.
     /gemini-3(?:\.\d+)?-(?:pro|flash)/.test(id) ||
-        // Pi fe8a6f5dc (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         // Match Gemini 4 and later, such as gemini-4-argon (#10890).
         (getGeminiMajorVersion(id) ?? 0) >= 4 ||
         id === "gemini-flash-latest" ||
@@ -58,7 +59,45 @@ export function toGoogleThinkingLevel(level) {
             return "MEDIUM";
         case "high":
             return "HIGH";
+        case "xhigh":
+            return "XHIGH";
     }
+}
+/** Token budget for Gemini models that use `thinkingBudget`: custom budgets first, then per-model defaults, else -1 (dynamic). */
+export function getGoogleBudget(model, resolvedLevel, customBudgets) {
+    // Budgets stop at high, so xhigh uses the high budget.
+    const level = resolvedLevel === "xhigh" ? "high" : resolvedLevel;
+    const customBudget = customBudgets?.[level];
+    if (customBudget !== undefined)
+        return customBudget;
+    if (model.id.includes("2.5-pro")) {
+        const budgets = {
+            minimal: 128,
+            low: 2048,
+            medium: 8192,
+            high: 32768,
+        };
+        return budgets[level];
+    }
+    if (model.id.includes("2.5-flash-lite")) {
+        const budgets = {
+            minimal: 512,
+            low: 2048,
+            medium: 8192,
+            high: 24576,
+        };
+        return budgets[level];
+    }
+    if (model.id.includes("2.5-flash")) {
+        const budgets = {
+            minimal: 128,
+            low: 2048,
+            medium: 8192,
+            high: 24576,
+        };
+        return budgets[level];
+    }
+    return -1;
 }
 export function toGoogleSdkThinkingLevel(level) {
     return GOOGLE_SDK_THINKING_LEVEL_MAP[level];
@@ -130,7 +169,6 @@ export function requiresToolCallId(modelId) {
         (geminiMajorVersion !== undefined && geminiMajorVersion >= 3));
 }
 function getGeminiMajorVersion(modelId) {
-    // Pi fe8a6f5dc (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
     // Unanchored like usesGoogleThinkingLevel: some hosts prefix the ID, e.g. randomprefix-gemini-4-argon (#12321).
     const match = modelId.toLowerCase().match(/gemini(?:-live)?-(\d+)/);
     if (!match)
@@ -409,13 +447,11 @@ export function convertTools(tools, useParameters = false, supportsStrictMode = 
         },
     ];
 }
-// Pi fe8a6f5dc (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
 /**
  * Gemini 3+ enforces required function parameters in validated tool-calling modes.
  * `compat.supportsStrictMode` overrides the model ID detection, e.g. for Gemini models served under IDs without the version.
  */
-export function supportsGoogleStrictToolSampling(modelOrId) {
-    const model = typeof modelOrId === "string" ? { id: modelOrId } : modelOrId;
+export function supportsGoogleStrictToolSampling(model) {
     const majorVersion = getGeminiMajorVersion(model.id);
     return model.compat?.supportsStrictMode ?? (majorVersion !== undefined && majorVersion >= 3);
 }
@@ -441,6 +477,19 @@ export function resolveGoogleFunctionCallingMode(tools, toolChoice, supportsStri
         return FunctionCallingConfigMode.VALIDATED;
     }
     return toolChoice ? mapToolChoice(toolChoice) : undefined;
+}
+/** Format prompt-block metadata returned instead of response candidates. */
+export function formatGooglePromptBlockError(providerName, feedback) {
+    const details = [`${providerName} prompt blocked: ${feedback.blockReason ?? "unknown reason"}`];
+    if (feedback.blockReasonMessage)
+        details.push(feedback.blockReasonMessage);
+    if (feedback.safetyRatings?.length) {
+        const ratings = feedback.safetyRatings.flatMap((rating) => rating.category ? [`${rating.category}${rating.probability ? ` (${rating.probability})` : ""}`] : []);
+        if (ratings.length > 0) {
+            details.push(`Safety rating${ratings.length === 1 ? "" : "s"}: ${ratings.join(", ")}`);
+        }
+    }
+    return details.join(". ");
 }
 /**
  * Map Gemini FinishReason to our StopReason.
@@ -469,6 +518,11 @@ export function mapStopReason(reason) {
         case FinishReason.UNEXPECTED_TOOL_CALL:
         case FinishReason.TOO_MANY_TOOL_CALLS:
         case FinishReason.NO_IMAGE:
+        case FinishReason.MISSING_THOUGHT_SIGNATURE:
+        case FinishReason.MALFORMED_RESPONSE:
+        case FinishReason.ESCALATION:
+        case FinishReason.PUP_LIMITED_DISABLED:
+        case FinishReason.MODEL_ARMOR:
             return "error";
         default: {
             const _exhaustive = reason;
@@ -483,9 +537,10 @@ export function mapStopReason(reason) {
  * retryProviderRequest. The SDK's ApiError has a `status` property but no
  * `headers` property, and retryProviderRequest only retries errors that carry
  * both, so normalize the error by adding the missing `headers` before
- * rethrowing.
+ * rethrowing. Failed attempts reach `onResponse` with their status and no
+ * headers.
  */
-export function retryGoogleRequest(request, options) {
+export function retryGoogleRequest(request, model, options) {
     return retryProviderRequest(async () => {
         try {
             return await request();
@@ -500,6 +555,7 @@ export function retryGoogleRequest(request, options) {
         maxRetries: options?.maxRetries,
         maxRetryDelayMs: options?.maxRetryDelayMs,
         signal: options?.signal,
+        onErrorResponse: (errorResponse) => options?.onResponse?.(errorResponse, model),
     });
 }
 //# sourceMappingURL=google-shared.js.map

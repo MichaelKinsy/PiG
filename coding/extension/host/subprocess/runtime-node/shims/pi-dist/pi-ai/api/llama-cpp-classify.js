@@ -183,7 +183,7 @@ async function post(request, path, body, observe) {
         "content-type": "application/json",
         ...(options?.apiKey ? { authorization: `Bearer ${options.apiKey}` } : {}),
     }, model.headers, options?.headers) ?? {};
-    const { response, json } = await retryProviderRequest(async () => {
+    return retryProviderRequest(async () => {
         const timeoutSignal = options?.timeoutMs !== undefined ? AbortSignal.timeout(options.timeoutMs) : undefined;
         const signal = options?.signal && timeoutSignal
             ? AbortSignal.any([options.signal, timeoutSignal])
@@ -195,9 +195,13 @@ async function post(request, path, body, observe) {
                 body: JSON.stringify(payload),
                 signal,
             });
+            // Reported before the body is read, so a body that fails to arrive still reports its status.
+            if (observe) {
+                await options?.onResponse?.({ status: next.status, headers: headersToRecord(next.headers) }, model);
+            }
             if (!next.ok)
                 throw httpError(next, await next.text());
-            return { response: next, json: (await next.json()) };
+            return (await next.json());
         }
         catch (error) {
             if (timeoutSignal?.aborted && !options?.signal?.aborted)
@@ -205,10 +209,6 @@ async function post(request, path, body, observe) {
             throw error;
         }
     }, { maxRetries: options?.maxRetries ?? 2, maxRetryDelayMs: options?.maxRetryDelayMs, signal: options?.signal });
-    if (observe) {
-        await options?.onResponse?.({ status: response.status, headers: headersToRecord(response.headers) }, model);
-    }
-    return json;
 }
 function tokenIds(body) {
     if (!isRecord(body) || !Array.isArray(body.tokens))

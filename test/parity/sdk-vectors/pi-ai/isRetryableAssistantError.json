@@ -1,6 +1,6 @@
 {
- "pin": "1.6.0",
- "package": "pi-ai@1.6.0",
+ "pin": "1.6.1",
+ "package": "pi-ai@1.6.1",
  "module": "pi-ai",
  "export": "isRetryableAssistantError",
  "cases": [
@@ -5157,11 +5157,11 @@
       }
      },
      "stopReason": "error",
-     "errorMessage": "OpenAI API error (429): {\"code\":\"subscription_sharing_workplace_individual_usage_limit_exceeded\",\"message\":\"Usage limit reached.\"}",
+     "errorMessage": "Claude Code's stream from Anthropic was cut short after the reply had begun",
      "timestamp": 1
     }
    ],
-   "result": false
+   "result": true
   },
   {
    "name": "case 0173",
@@ -5187,7 +5187,7 @@
       }
      },
      "stopReason": "error",
-     "errorMessage": "subscription_sharing_workplace_individual_usage_limit_exceeded",
+     "errorMessage": "OpenAI API error (429): {\"code\":\"subscription_sharing_workplace_individual_usage_limit_exceeded\",\"message\":\"Usage limit reached.\"}",
      "timestamp": 1
     }
    ],
@@ -5217,7 +5217,7 @@
       }
      },
      "stopReason": "error",
-     "errorMessage": "SUBSCRIPTION_SHARING_WORKPLACE_INDIVIDUAL_USAGE_LIMIT_EXCEEDED overloaded",
+     "errorMessage": "subscription_sharing_workplace_individual_usage_limit_exceeded",
      "timestamp": 1
     }
    ],
@@ -5247,7 +5247,7 @@
       }
      },
      "stopReason": "error",
-     "errorMessage": "401 {\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"},\"request_id\":\"req_011CU503xyz\"}",
+     "errorMessage": "SUBSCRIPTION_SHARING_WORKPLACE_INDIVIDUAL_USAGE_LIMIT_EXCEEDED overloaded",
      "timestamp": 1
     }
    ],
@@ -5277,7 +5277,7 @@
       }
      },
      "stopReason": "error",
-     "errorMessage": "400 image exceeds 5 MB maximum: 5316784 bytes > 5242880 bytes",
+     "errorMessage": "401 {\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"},\"request_id\":\"req_011CU503xyz\"}",
      "timestamp": 1
     }
    ],
@@ -5307,6 +5307,36 @@
       }
      },
      "stopReason": "error",
+     "errorMessage": "400 image exceeds 5 MB maximum: 5316784 bytes > 5242880 bytes",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0178",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
      "errorMessage": "429",
      "timestamp": 1
     }
@@ -5314,7 +5344,7 @@
    "result": true
   },
   {
-   "name": "case 0178",
+   "name": "case 0179",
    "args": [
     {
      "role": "assistant",
@@ -5344,7 +5374,7 @@
    "result": false
   },
   {
-   "name": "case 0179",
+   "name": "case 0180",
    "args": [
     {
      "role": "assistant",
@@ -5374,36 +5404,6 @@
    "result": false
   },
   {
-   "name": "case 0180",
-   "args": [
-    {
-     "role": "assistant",
-     "content": [],
-     "api": "x",
-     "provider": "p",
-     "model": "m",
-     "usage": {
-      "input": 0,
-      "output": 0,
-      "cacheRead": 0,
-      "cacheWrite": 0,
-      "totalTokens": 0,
-      "cost": {
-       "input": 0,
-       "output": 0,
-       "cacheRead": 0,
-       "cacheWrite": 0,
-       "total": 0
-      }
-     },
-     "stopReason": "error",
-     "errorMessage": "4290",
-     "timestamp": 1
-    }
-   ],
-   "result": false
-  },
-  {
    "name": "case 0181",
    "args": [
     {
@@ -5427,7 +5427,7 @@
       }
      },
      "stopReason": "error",
-     "errorMessage": "1429",
+     "errorMessage": "4290",
      "timestamp": 1
     }
    ],
@@ -5457,11 +5457,11 @@
       }
      },
      "stopReason": "error",
-     "errorMessage": "_429_",
+     "errorMessage": "1429",
      "timestamp": 1
     }
    ],
-   "result": true
+   "result": false
   },
   {
    "name": "case 0183",
@@ -5487,7 +5487,7 @@
       }
      },
      "stopReason": "error",
-     "errorMessage": "x-500-y",
+     "errorMessage": "_429_",
      "timestamp": 1
     }
    ],
@@ -5517,7 +5517,7 @@
       }
      },
      "stopReason": "error",
-     "errorMessage": "status=502,",
+     "errorMessage": "x-500-y",
      "timestamp": 1
     }
    ],
@@ -5547,7 +5547,7 @@
       }
      },
      "stopReason": "error",
-     "errorMessage": "HTTP 503.",
+     "errorMessage": "status=502,",
      "timestamp": 1
     }
    ],
@@ -5577,7 +5577,7 @@
       }
      },
      "stopReason": "error",
-     "errorMessage": "status\n504\n",
+     "errorMessage": "HTTP 503.",
      "timestamp": 1
     }
    ],
@@ -5607,7 +5607,7 @@
       }
      },
      "stopReason": "error",
-     "errorMessage": "(520)",
+     "errorMessage": "status\n504\n",
      "timestamp": 1
     }
    ],
@@ -5637,7 +5637,7 @@
       }
      },
      "stopReason": "error",
-     "errorMessage": "429.5 seconds",
+     "errorMessage": "(520)",
      "timestamp": 1
     }
    ],
@@ -5667,7 +5667,7 @@
       }
      },
      "stopReason": "error",
-     "errorMessage": "req_503 5031",
+     "errorMessage": "429.5 seconds",
      "timestamp": 1
     }
    ],
@@ -5697,6 +5697,36 @@
       }
      },
      "stopReason": "error",
+     "errorMessage": "req_503 5031",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0191",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
      "errorMessage": "4290 5003",
      "timestamp": 1
     }
@@ -5704,7 +5734,7 @@
    "result": false
   },
   {
-   "name": "case 0191",
+   "name": "case 0192",
    "args": [
     {
      "role": "assistant",
@@ -5734,7 +5764,7 @@
    "result": true
   },
   {
-   "name": "case 0192",
+   "name": "case 0193",
    "args": [
     {
      "role": "assistant",
@@ -5764,7 +5794,7 @@
    "result": true
   },
   {
-   "name": "case 0193",
+   "name": "case 0194",
    "args": [
     {
      "role": "assistant",
@@ -5794,7 +5824,7 @@
    "result": true
   },
   {
-   "name": "case 0194",
+   "name": "case 0195",
    "args": [
     {
      "role": "assistant",
@@ -5824,7 +5854,7 @@
    "result": false
   },
   {
-   "name": "case 0195",
+   "name": "case 0196",
    "args": [
     {
      "role": "assistant",
@@ -5854,7 +5884,7 @@
    "result": false
   },
   {
-   "name": "case 0196",
+   "name": "case 0197",
    "args": [
     {
      "role": "assistant",
@@ -5884,7 +5914,7 @@
    "result": false
   },
   {
-   "name": "case 0197",
+   "name": "case 0198",
    "args": [
     {
      "role": "assistant",
@@ -5914,7 +5944,7 @@
    "result": false
   },
   {
-   "name": "case 0198",
+   "name": "case 0199",
    "args": [
     {
      "role": "assistant",
@@ -5944,7 +5974,7 @@
    "result": true
   },
   {
-   "name": "case 0199",
+   "name": "case 0200",
    "args": [
     {
      "role": "assistant",
@@ -5974,7 +6004,7 @@
    "result": true
   },
   {
-   "name": "case 0200",
+   "name": "case 0201",
    "args": [
     {
      "role": "assistant",
@@ -6004,7 +6034,7 @@
    "result": true
   },
   {
-   "name": "case 0201",
+   "name": "case 0202",
    "args": [
     {
      "role": "assistant",
@@ -6034,7 +6064,7 @@
    "result": true
   },
   {
-   "name": "case 0202",
+   "name": "case 0203",
    "args": [
     {
      "role": "assistant",
@@ -6064,7 +6094,7 @@
    "result": true
   },
   {
-   "name": "case 0203",
+   "name": "case 0204",
    "args": [
     {
      "role": "assistant",
@@ -6094,7 +6124,7 @@
    "result": true
   },
   {
-   "name": "case 0204",
+   "name": "case 0205",
    "args": [
     {
      "role": "assistant",
@@ -6124,7 +6154,7 @@
    "result": false
   },
   {
-   "name": "case 0205",
+   "name": "case 0206",
    "args": [
     {
      "role": "assistant",
@@ -6154,7 +6184,7 @@
    "result": false
   },
   {
-   "name": "case 0206",
+   "name": "case 0207",
    "args": [
     {
      "role": "assistant",
@@ -6184,7 +6214,7 @@
    "result": false
   },
   {
-   "name": "case 0207",
+   "name": "case 0208",
    "args": [
     {
      "role": "assistant",
@@ -6214,7 +6244,7 @@
    "result": true
   },
   {
-   "name": "case 0208",
+   "name": "case 0209",
    "args": [
     {
      "role": "assistant",
@@ -6244,7 +6274,7 @@
    "result": true
   },
   {
-   "name": "case 0209",
+   "name": "case 0210",
    "args": [
     {
      "role": "assistant",
@@ -6274,7 +6304,7 @@
    "result": false
   },
   {
-   "name": "case 0210",
+   "name": "case 0211",
    "args": [
     {
      "role": "assistant",
@@ -6304,7 +6334,7 @@
    "result": false
   },
   {
-   "name": "case 0211",
+   "name": "case 0212",
    "args": [
     {
      "role": "assistant",
@@ -6334,7 +6364,7 @@
    "result": false
   },
   {
-   "name": "case 0212",
+   "name": "case 0213",
    "args": [
     {
      "role": "assistant",
@@ -6364,7 +6394,7 @@
    "result": false
   },
   {
-   "name": "case 0213",
+   "name": "case 0214",
    "args": [
     {
      "role": "assistant",
@@ -6394,7 +6424,7 @@
    "result": false
   },
   {
-   "name": "case 0214",
+   "name": "case 0215",
    "args": [
     {
      "role": "assistant",
@@ -6424,7 +6454,7 @@
    "result": false
   },
   {
-   "name": "case 0215",
+   "name": "case 0216",
    "args": [
     {
      "role": "assistant",
@@ -6454,7 +6484,7 @@
    "result": false
   },
   {
-   "name": "case 0216",
+   "name": "case 0217",
    "args": [
     {
      "role": "assistant",
@@ -6484,7 +6514,7 @@
    "result": true
   },
   {
-   "name": "case 0217",
+   "name": "case 0218",
    "args": [
     {
      "role": "assistant",
@@ -6514,7 +6544,7 @@
    "result": true
   },
   {
-   "name": "case 0218",
+   "name": "case 0219",
    "args": [
     {
      "role": "assistant",
@@ -6544,7 +6574,7 @@
    "result": false
   },
   {
-   "name": "case 0219",
+   "name": "case 0220",
    "args": [
     {
      "role": "assistant",
@@ -6574,7 +6604,7 @@
    "result": true
   },
   {
-   "name": "case 0220",
+   "name": "case 0221",
    "args": [
     {
      "role": "assistant",
@@ -6604,7 +6634,7 @@
    "result": false
   },
   {
-   "name": "case 0221",
+   "name": "case 0222",
    "args": [
     {
      "role": "assistant",
@@ -6634,7 +6664,7 @@
    "result": true
   },
   {
-   "name": "case 0222",
+   "name": "case 0223",
    "args": [
     {
      "role": "assistant",
@@ -6664,7 +6694,7 @@
    "result": true
   },
   {
-   "name": "case 0223",
+   "name": "case 0224",
    "args": [
     {
      "role": "assistant",
@@ -6694,7 +6724,7 @@
    "result": false
   },
   {
-   "name": "case 0224",
+   "name": "case 0225",
    "args": [
     {
      "role": "assistant",
@@ -6724,7 +6754,7 @@
    "result": true
   },
   {
-   "name": "case 0225",
+   "name": "case 0226",
    "args": [
     {
      "role": "assistant",
@@ -6754,7 +6784,7 @@
    "result": true
   },
   {
-   "name": "case 0226",
+   "name": "case 0227",
    "args": [
     {
      "role": "assistant",
@@ -6784,7 +6814,7 @@
    "result": true
   },
   {
-   "name": "case 0227",
+   "name": "case 0228",
    "args": [
     {
      "role": "assistant",
@@ -6814,7 +6844,7 @@
    "result": false
   },
   {
-   "name": "case 0228",
+   "name": "case 0229",
    "args": [
     {
      "role": "assistant",
@@ -6844,7 +6874,7 @@
    "result": true
   },
   {
-   "name": "case 0229",
+   "name": "case 0230",
    "args": [
     {
      "role": "assistant",
@@ -6874,7 +6904,7 @@
    "result": false
   },
   {
-   "name": "case 0230",
+   "name": "case 0231",
    "args": [
     {
      "role": "assistant",
@@ -6904,7 +6934,7 @@
    "result": false
   },
   {
-   "name": "case 0231",
+   "name": "case 0232",
    "args": [
     {
      "role": "assistant",
@@ -6934,7 +6964,7 @@
    "result": false
   },
   {
-   "name": "case 0232",
+   "name": "case 0233",
    "args": [
     {
      "role": "assistant",
@@ -6964,7 +6994,7 @@
    "result": false
   },
   {
-   "name": "case 0233",
+   "name": "case 0234",
    "args": [
     {
      "role": "assistant",
@@ -6988,6 +7018,966 @@
      },
      "stopReason": "error",
      "errorMessage": "websocket connection limit reached: insufficient_quota",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0235",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "525 <!DOCTYPE html><title>SSL handshake failed</title>",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0236",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "400 payload 5250000 bytes exceeds limit",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0237",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "The provider is temporarily unavailable. Retry shortly.",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0238",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "The upstream provider is temporarily unavailable. Try again shortly.",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0239",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "The provider ended the response before it was complete.",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0240",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "The connection to the provider was reset. Retry shortly.",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0241",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "The provider reported a failure while generating the response.",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0242",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Provider unavailable for this model",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0243",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "The provider is unavailable in your region",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0244",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Unable to process request. Repeat the request later.",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0245",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "waited 73.4s in queue, reaching this model's admission ceiling of 60s; retry after the hinted delay",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0246",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "{\"type\":\"error\",\"error\":{\"details\":null,\"type\":\"api_error\",\"message\":\"Unable to complete this request right now. Please try again.\"},\"request_id\":\"req_011CgfE1bTgPTDsor4TsApFv\"}",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0247",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Provider finish_reason: error",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0248",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Provider returned an empty response",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0249",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Upstream error from Relace: The model stopped before completing the response.",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0250",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "The operation was aborted",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0251",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"messages: at least one message is required\"}}",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0252",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Provider finish_reason: content_filter",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0253",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "{\"type\":\"error\",\"error\":{\"type\":\"api_error\",\"message\":\"Monthly quota exceeded\"}}",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0254",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "provider_temporarily_unavailable",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0255",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "provider-is-temporarily-unavailable",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0256",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "provider\ntemporarily unavailable",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0257",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "\"type\" :\t\"api_error\"",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0258",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "{\"code\":\"api_error\",\"message\":\"bad request\"}",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0259",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "PROVIDER FINISH_REASON: ERROR",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0260",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Your request rate increased too quickly",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0261",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Request rate increased too quickly. To ensure system stability, please adjust your client logic to scale requests more smoothly over time.",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0262",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Provider finish_reason: error (native_finish_reason: MALFORMED_FUNCTION_CALL)",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0263",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Provider stopped with: error",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0264",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Provider stopped with: content_filter",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0265",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "OpenRouter returned an empty response (native_finish_reason: MALFORMED_RESPONSE)",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0266",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Your request rate increased too quickly: insufficient_quota",
      "timestamp": 1
     }
    ],

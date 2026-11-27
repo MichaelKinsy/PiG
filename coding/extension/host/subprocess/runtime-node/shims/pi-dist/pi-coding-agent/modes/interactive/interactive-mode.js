@@ -91,7 +91,7 @@ import { UserMessageSelectorComponent } from "./components/user-message-selector
 import { editInExternalEditor } from "./external-editor.js";
 import { refreshModelCatalogs } from "./model-catalog-refresh.js";
 import { getModelSearchText } from "./model-search.js";
-import { ProgramStatusReporter } from "./program-status-reporter.js";
+import { dialogBlockedStatus, ProgramStatusReporter } from "./program-status-reporter.js";
 import { shareSession } from "./session-share.js";
 import { getAvailableThemes, getAvailableThemesWithPaths, getEditorTheme, getMarkdownTheme, getThemeByName, onThemeChange, SYSTEM_THEME_NAME, setRegisteredThemes, stopThemeWatcher, Theme, theme, } from "./theme/theme.js";
 import { InteractiveThemeController } from "./theme/theme-controller.js";
@@ -2234,8 +2234,14 @@ export class InteractiveMode {
             setHeader: (factory) => this.setExtensionHeader(factory),
             setTitle: (title) => this.ui.terminal.setTitle(title),
             custom: (factory, options) => this.showExtensionCustom(factory, options),
-            pasteToEditor: (text) => this.editor.handleInput(`\x1b[200~${text}\x1b[201~`),
-            setEditorText: (text) => this.editor.setText(text),
+            pasteToEditor: (text) => {
+                this.editor.handleInput(`\x1b[200~${text}\x1b[201~`);
+                this.ui.requestRender();
+            },
+            setEditorText: (text) => {
+                this.editor.setText(text);
+                this.ui.requestRender();
+            },
             getEditorText: () => this.editor.getExpandedText?.() ?? this.editor.getText(),
             editor: (title, prefill) => this.showExtensionEditor(title, prefill),
             addAutocompleteProvider: (factory) => {
@@ -2297,7 +2303,7 @@ export class InteractiveMode {
     /**
      * Show a selector for extensions.
      */
-    showExtensionSelector(title, options, opts, blocked = { kind: "question", message: title }) {
+    showExtensionSelector(title, options, opts) {
         return new Promise((resolve) => {
             if (opts?.signal?.aborted) {
                 resolve(undefined);
@@ -2312,16 +2318,16 @@ export class InteractiveMode {
             const onAbort = () => finish(undefined);
             opts?.signal?.addEventListener("abort", onAbort, { once: true });
             const selector = new ExtensionSelectorComponent(title, options, (option) => finish(option), () => finish(undefined), { tui: this.ui, timeout: opts?.timeout, onToggleToolsExpanded: () => this.toggleToolOutputExpansion() });
-            this.pushExtensionDialog(selector, blocked);
+            this.pushExtensionDialog(selector, dialogBlockedStatus(opts?.blockedKind ?? "question", title));
         });
     }
     /**
      * Show a confirmation dialog for extensions.
      */
     async showExtensionConfirm(title, message, opts) {
-        const result = await this.showExtensionSelector(`${title}\n${message}`, ["Yes", "No"], opts, {
-            kind: "permission",
-            message: title,
+        const result = await this.showExtensionSelector(`${title}\n${message}`, ["Yes", "No"], {
+            ...opts,
+            blockedKind: opts?.blockedKind ?? "permission",
         });
         return result === "Yes";
     }
@@ -2348,7 +2354,7 @@ export class InteractiveMode {
             const onAbort = () => finish(undefined);
             opts?.signal?.addEventListener("abort", onAbort, { once: true });
             const input = new ExtensionInputComponent(title, placeholder, (value) => finish(value), () => finish(undefined), { tui: this.ui, timeout: opts?.timeout });
-            this.pushExtensionDialog(input, { kind: "question", message: title });
+            this.pushExtensionDialog(input, dialogBlockedStatus(opts?.blockedKind ?? "question", title));
         });
     }
     /**
@@ -2361,7 +2367,7 @@ export class InteractiveMode {
                 resolve(value);
             };
             const editor = new ExtensionEditorComponent(this.ui, this.keybindings, title, prefill, (value) => finish(value), () => finish(undefined), undefined, this.settingsManager.getExternalEditorCommand());
-            this.pushExtensionDialog(editor, { kind: "question", message: title });
+            this.pushExtensionDialog(editor, dialogBlockedStatus("question", title));
         });
     }
     /**
@@ -3309,7 +3315,8 @@ export class InteractiveMode {
                 if (message.output) {
                     component.appendOutput(message.output);
                 }
-                component.setComplete(message.exitCode, message.cancelled, message.truncated ? { truncated: true } : undefined, message.fullOutputPath);
+                component.setComplete(message.exitCode, message.cancelled, message.truncated ? { truncated: true } : undefined, message.fullOutputPath, message.fullOutputError);
+                component.setExpanded(this.toolOutputExpanded);
                 this.chatContainer.addChild(component);
                 break;
             }
@@ -3386,7 +3393,7 @@ export class InteractiveMode {
         const renderedPendingTools = new Map();
         // Cache misses are not persisted, unlike successful cache-warming usage.
         // Re-derive them and inject them after the assistant messages that paid for them.
-        const cacheMisses = this.settingsManager.getShowCacheMissNotices()
+        const cacheMisses = this.settingsManager.getNotices().cacheMisses
             ? collectCacheMisses(this.sessionManager.getEntries(), this.session.modelRuntime)
             : new Map();
         if (options.updateFooter) {
@@ -3499,7 +3506,7 @@ export class InteractiveMode {
         this.renderSessionItems(items, messageMeta, options);
     }
     addCacheWarmingUsage(entry) {
-        if (!this.settingsManager.getShowCacheMissNotices())
+        if (!this.settingsManager.getNotices().cacheWarming)
             return;
         // Back-to-back warms collapse into one line with the cumulative cost.
         const previous = this.cacheWarmingNotice;
@@ -3519,7 +3526,7 @@ export class InteractiveMode {
      * from persisted summary usage and is not stored as a separate session entry.
      */
     addCompactionCostNotice(notice) {
-        if (!this.settingsManager.getShowCacheMissNotices())
+        if (!this.settingsManager.getNotices().compactionCosts)
             return;
         const { usage } = notice;
         const tokens = usage.input + usage.output + usage.cacheRead + usage.cacheWrite;
@@ -3529,7 +3536,7 @@ export class InteractiveMode {
         this.chatContainer.addChild(new ThemedText(() => theme.fg("warning", `${label}: ${formatTokens(tokens)} tokens billed${cost}`), 1, 0));
     }
     maybeShowThinkingDropNotice(message) {
-        if (!this.settingsManager.getShowCacheMissNotices())
+        if (!this.settingsManager.getNotices().reasoningDrops)
             return;
         const dropped = getDroppedReasoning(message);
         if (!dropped)
@@ -3559,7 +3566,7 @@ export class InteractiveMode {
      * a model switch, or an idle gap past the cache TTL.
      */
     maybeShowCacheMissNotice(message) {
-        if (!this.settingsManager.getShowCacheMissNotices())
+        if (!this.settingsManager.getNotices().cacheMisses)
             return;
         // Entries don't contain `message` yet: message_end fires before persistence.
         const miss = detectCacheMiss(this.sessionManager.getEntries(), message, this.session.modelRuntime);
@@ -3664,7 +3671,6 @@ export class InteractiveMode {
             await this.ui.terminal.drainInput(1000);
             this.stop();
             await flushStdout();
-            // Pi 31b407dc63 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
             killTrackedDetachedChildren();
             process.exit(0);
         }
@@ -3683,7 +3689,6 @@ export class InteractiveMode {
             process.stdout.write(`${chalk.dim("To resume this session:")}\n${resumeCommand}\n`);
         }
         await flushStdout();
-        // Pi 31b407dc63 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         // dispose() only starts killing a running `!` command, which on Windows loses the race with
         // exit. After the last await, so it also catches a shell spawned after the abort.
         killTrackedDetachedChildren();
@@ -3749,7 +3754,6 @@ export class InteractiveMode {
     }
     registerSignalHandlers() {
         this.unregisterSignalHandlers();
-        // Pi 31b407dc63 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         const signals = ["SIGTERM", "SIGHUP"];
         for (const signal of signals) {
             const handler = () => {
@@ -4249,7 +4253,6 @@ export class InteractiveMode {
                 doubleEscapeAction: this.settingsManager.getDoubleEscapeAction(),
                 treeFilterMode: this.settingsManager.getTreeFilterMode(),
                 showHardwareCursor: this.settingsManager.getShowHardwareCursor(),
-                showCacheMissNotices: this.settingsManager.getShowCacheMissNotices(),
                 defaultProjectTrust: this.settingsManager.getDefaultProjectTrust(),
                 editorPaddingX: this.settingsManager.getEditorPaddingX(),
                 outputPad: this.settingsManager.getOutputPad(),
@@ -4263,6 +4266,7 @@ export class InteractiveMode {
                 fullscreenCopyOnSelect: this.settingsManager.getFullscreenCopyOnSelect(),
                 fullscreenWheelScrollLines: this.settingsManager.getFullscreenWheelScrollLines(),
                 warnings: this.settingsManager.getWarnings(),
+                notices: this.settingsManager.getNotices(),
             }, {
                 onAutoCompactChange: (enabled) => {
                     this.session.setAutoCompactionEnabled(enabled);
@@ -4352,10 +4356,6 @@ export class InteractiveMode {
                     this.chatContainer.invalidate();
                     this.ui.requestRender();
                 },
-                onShowCacheMissNoticesChange: (shown) => {
-                    this.settingsManager.setShowCacheMissNotices(shown);
-                    this.rebuildChatFromMessages();
-                },
                 onCollapseChangelogChange: (collapsed) => {
                     this.settingsManager.setCollapseChangelog(collapsed);
                 },
@@ -4444,6 +4444,11 @@ export class InteractiveMode {
                 },
                 onWarningsChange: (warnings) => {
                     this.settingsManager.setWarnings(warnings);
+                },
+                onNoticeChange: (key, shown) => {
+                    this.settingsManager.setNotice(key, shown);
+                    // Cache miss, cache warming and compaction notices are derived when the transcript renders.
+                    this.rebuildChatFromMessages();
                 },
                 onCancel: () => {
                     done();
@@ -5018,12 +5023,14 @@ export class InteractiveMode {
         const options = [];
         for (const provider of this.session.modelRuntime.getProviders()) {
             const authStatus = this.session.modelRuntime.getProviderAuthStatus(provider.id);
-            const status = authStatus.configured
-                ? {
-                    type: this.session.modelRuntime.isUsingOAuth(provider.id) ? "oauth" : "api_key",
-                    source: authStatus.label ?? authStatus.source,
-                }
-                : undefined;
+            let status;
+            if (authStatus.configured) {
+                const type = this.session.modelRuntime.isUsingOAuth(provider.id) ? "oauth" : "api_key";
+                status = { kind: "configured", type, source: authStatus.label ?? authStatus.source };
+            }
+            else if (authStatus.source === "stored") {
+                status = { kind: "unresolved" };
+            }
             const subscription = provider.auth.oauth?.isSubscription === true;
             if ((!authType || authType === "oauth") && provider.auth.oauth) {
                 options.push({
@@ -5057,7 +5064,7 @@ export class InteractiveMode {
                 id: providerId,
                 name: provider?.name ?? providerId,
                 authType: type,
-                status: { type, source: "stored credential" },
+                status: { kind: "configured", type, source: "stored credential" },
                 subscription: provider?.auth.oauth?.isSubscription === true,
             };
         })
@@ -6074,7 +6081,7 @@ export class InteractiveMode {
             if (result.output) {
                 this.bashComponent.appendOutput(result.output);
             }
-            this.bashComponent.setComplete(result.exitCode, result.cancelled, result.truncated ? { truncated: true, content: result.output } : undefined, result.fullOutputPath);
+            this.bashComponent.setComplete(result.exitCode, result.cancelled, result.truncated ? { truncated: true, content: result.output } : undefined, result.fullOutputPath, result.fullOutputError);
             // Record the result in session
             this.session.recordBashResult(command, result, { excludeFromContext });
             this.bashComponent = undefined;
@@ -6103,7 +6110,7 @@ export class InteractiveMode {
                 }
             }, { excludeFromContext, operations: eventResult?.operations });
             if (this.bashComponent) {
-                this.bashComponent.setComplete(result.exitCode, result.cancelled, result.truncated ? { truncated: true, content: result.output } : undefined, result.fullOutputPath);
+                this.bashComponent.setComplete(result.exitCode, result.cancelled, result.truncated ? { truncated: true, content: result.output } : undefined, result.fullOutputPath, result.fullOutputError);
             }
         }
         catch (error) {

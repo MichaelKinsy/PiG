@@ -307,10 +307,9 @@ export class Editor {
     }
     /**
      * Add a prompt to history for up/down arrow navigation.
-     * Called after successful submission.
+     * A prompt already in history moves to the most recent position instead of being added twice.
      */
     addToHistory(text) {
-        // Pi 06a20368a7 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         const trimmed = text.trim();
         if (!trimmed)
             return;

@@ -240,6 +240,10 @@ export function resolveHeadersOrThrow(headers, description, env) {
     }
     return Object.keys(resolved).length > 0 ? resolved : undefined;
 }
+/** Forget the cached result of one config value, so its next resolution runs the command again. */
+export function clearConfigValueCacheEntry(config) {
+    commandResultCache.delete(config);
+}
 /** Clear the config value command cache. Exported for testing. */
 export function clearConfigValueCache() {
     commandResultCache.clear();

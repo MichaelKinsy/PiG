@@ -13,7 +13,7 @@
 // THIRD_PARTY_NOTICES, and node/host.mjs resolves the package name to it, because Node refuses to strip the types of a file under
 // node_modules. pi-telemetry's dist modules are copied as a package in node_modules.
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { stripTypeScriptTypes } from "node:module";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { applyPatches } from "./vendor-chord-patches.mjs";
@@ -71,6 +71,7 @@ const files = [];
 function copy(from, to) {
 	mkdirSync(dirname(to), { recursive: true });
 	cpSync(from, to);
+	chmodSync(to, 0o644);
 	files.push(relative(outDir, to).split(sep).join("/"));
 }
 for (const file of [...closure].sort()) copy(file, join(pi, "chord/src", relative(src, file)));

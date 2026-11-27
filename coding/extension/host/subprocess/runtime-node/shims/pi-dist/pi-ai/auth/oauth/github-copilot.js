@@ -79,11 +79,16 @@ function parseGitHubCopilotModelCatalog(raw, allowPolicyFallback) {
         return [
             {
                 id,
+                type: capabilities?.type,
                 pickerEnabled: item.model_picker_enabled === true,
                 policyState: asRecord(item.policy)?.state,
             },
         ];
     });
+    // Decision models are never picker-enabled; the catalog lists only those the account can call.
+    const classifierModelIds = accountModels
+        .filter((model) => model.type === "decisions" && model.policyState !== "disabled")
+        .map((model) => model.id);
     const pickerModelIds = accountModels
         .filter((model) => model.pickerEnabled && model.policyState !== "disabled")
         .map((model) => model.id);
@@ -96,7 +101,7 @@ function parseGitHubCopilotModelCatalog(raw, allowPolicyFallback) {
         Object.hasOwn(GITHUB_COPILOT_MODELS, model.id) &&
         (model.pickerEnabled || usePolicyFallback))
         .map((model) => model.id);
-    return { availableModelIds, policyModelIds };
+    return { availableModelIds, classifierModelIds, policyModelIds };
 }
 async function fetchWithRateLimitRetry(url, init, signal, retryPolicy) {
     const retryBudgetSignal = retryPolicy.maxRetries > 0 && retryPolicy.maxElapsedMs > 0
@@ -266,13 +271,11 @@ async function refreshGitHubCopilotAccessToken(refreshToken, enterpriseDomain, s
  */
 async function refreshGitHubCopilotToken(refreshToken, enterpriseDomain, signal) {
     const credentials = await refreshGitHubCopilotAccessToken(refreshToken, enterpriseDomain, signal);
-    const { availableModelIds } = await fetchGitHubCopilotModels(credentials.access, enterpriseDomain, signal, {
-        maxRetries: 0,
-        maxElapsedMs: 0,
-    });
+    const { availableModelIds, classifierModelIds } = await fetchGitHubCopilotModels(credentials.access, enterpriseDomain, signal, { maxRetries: 0, maxElapsedMs: 0 });
     return {
         ...credentials,
         availableModelIds,
+        availableClassifierModelIds: classifierModelIds,
     };
 }
 /**
@@ -361,6 +364,7 @@ async function loginGitHubCopilot(interaction) {
     return {
         ...credentials,
         availableModelIds: [...new Set([...models.availableModelIds, ...enabledModelIds])],
+        availableClassifierModelIds: models.classifierModelIds,
     };
 }
 function copilotEnterpriseDomain(credential) {

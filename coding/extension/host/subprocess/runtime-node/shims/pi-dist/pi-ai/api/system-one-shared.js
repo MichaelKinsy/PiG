@@ -1,4 +1,5 @@
 import { formatProviderError, normalizeProviderError } from "../utils/error-body.js";
+import { applyOpenRouterReportedCost, isOpenRouterModel, } from "../utils/openrouter-cost.js";
 import { isRecord, parseClassifierUsage, postClassifierRequest, requiredNumber } from "./classifier-shared.js";
 /** TypeSafe's opt-in header for its experimental image input. */
 const IMAGE_OPT_IN_HEADERS = { "TypeSafe-Danger-Zone-Images": "true" };
@@ -135,10 +136,16 @@ export async function classifySystemOne(transport, model, context, options) {
         }
         const body = await postClassifierRequest(transport.label, transport.url(model), model, transport.payload(model, request), requestOptions);
         const result = transport.output(body);
+        if (typeof result.id === "string" && result.id)
+            output.responseId = result.id;
         // Set before parsing answers: a request with malformed answers was still billed.
         const usage = parseClassifierUsage(result.usage, model);
-        if (usage)
+        if (usage) {
+            if (isOpenRouterModel(model)) {
+                applyOpenRouterReportedCost(usage, result.usage);
+            }
             output.usage = usage;
+        }
         output.answers = parseAnswers(transport.label, result.answers, context);
         return output;
     }

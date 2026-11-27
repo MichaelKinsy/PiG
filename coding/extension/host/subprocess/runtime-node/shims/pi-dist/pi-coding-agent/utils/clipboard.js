@@ -112,7 +112,7 @@ export async function copyToClipboard(text) {
             if (env.TERMUX_VERSION)
                 commands.push(["termux-clipboard-set", []]);
             if (env.WAYLAND_DISPLAY)
-                commands.push(["wl-copy", []]);
+                commands.push(["wl-copy", ["-t", "text/plain"]]);
             if (env.DISPLAY) {
                 commands.push(["xclip", ["-selection", "clipboard"]], ["xsel", ["--clipboard", "--input"]]);
             }

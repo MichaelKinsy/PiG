@@ -32,10 +32,18 @@ export function bashExecutionToText(msg) {
     else if (msg.exitCode !== null && msg.exitCode !== undefined && msg.exitCode !== 0) {
         text += `\n\nCommand exited with code ${msg.exitCode}`;
     }
-    if (msg.truncated && msg.fullOutputPath) {
-        text += `\n\n[Output truncated. Full output: ${msg.fullOutputPath}]`;
+    if (msg.truncated) {
+        text += `\n\n[${bashTruncationNote(msg)}]`;
     }
     return text;
+}
+/** What a truncated bash execution says about its full output: where it is, or why it could not be saved. */
+export function bashTruncationNote(msg) {
+    if (msg.fullOutputPath)
+        return `Output truncated. Full output: ${msg.fullOutputPath}`;
+    if (msg.fullOutputError)
+        return `Output truncated. Could not save the full output: ${msg.fullOutputError}`;
+    return "Output truncated";
 }
 export function createBranchSummaryMessage(summary, fromId, timestamp) {
     return {

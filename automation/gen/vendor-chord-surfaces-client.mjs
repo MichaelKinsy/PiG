@@ -14,7 +14,7 @@
 // node_modules. pi-telemetry's dist modules are copied as a package in node_modules.
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { stripTypeScriptTypes } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
@@ -95,6 +95,7 @@ const files = [];
 function copy(from, to) {
 	mkdirSync(dirname(to), { recursive: true });
 	cpSync(from, to);
+	chmodSync(to, 0o644);
 	files.push(relative(outDir, to).split(sep).join("/"));
 }
 for (const file of [...closure].sort()) {

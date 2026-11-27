@@ -289,6 +289,19 @@ export class SettingsManager {
             settings.transport = settings.websockets ? "websocket" : "sse";
             delete settings.websockets;
         }
+        // Migrate showCacheMissNotices -> notices.*; keys already set in notices win
+        if (typeof settings.showCacheMissNotices === "boolean") {
+            const shown = settings.showCacheMissNotices;
+            const notices = typeof settings.notices === "object" && settings.notices !== null ? settings.notices : {};
+            settings.notices = {
+                cacheMisses: shown,
+                cacheWarming: shown,
+                compactionCosts: shown,
+                reasoningDrops: shown,
+                ...notices,
+            };
+        }
+        delete settings.showCacheMissNotices;
         // Migrate old skills object format to new array format
         if ("skills" in settings &&
             typeof settings.skills === "object" &&
@@ -744,9 +757,6 @@ export class SettingsManager {
     getHideThinkingBlock() {
         return this.settings.hideThinkingBlock ?? SETTINGS_DEFAULTS.hideThinkingBlock;
     }
-    getShowCacheMissNotices() {
-        return this.settings.showCacheMissNotices ?? SETTINGS_DEFAULTS.showCacheMissNotices;
-    }
     getExternalEditorCommand() {
         const configuredEditor = this.settings.externalEditor;
         if (typeof configuredEditor === "string" && configuredEditor.trim() !== "") {
@@ -761,11 +771,6 @@ export class SettingsManager {
     setHideThinkingBlock(hide) {
         this.globalSettings.hideThinkingBlock = hide;
         this.markModified("hideThinkingBlock");
-        this.save();
-    }
-    setShowCacheMissNotices(show) {
-        this.globalSettings.showCacheMissNotices = show;
-        this.markModified("showCacheMissNotices");
         this.save();
     }
     getShellPath() {
@@ -1148,6 +1153,16 @@ export class SettingsManager {
     setWarnings(warnings) {
         this.globalSettings.warnings = { ...warnings };
         this.markModified("warnings");
+        this.save();
+    }
+    /** Which transcript notices to show, with defaults filled in. */
+    getNotices() {
+        return { ...SETTINGS_DEFAULTS.notices, ...this.settings.notices };
+    }
+    /** Show or hide one transcript notice. Writes only that key, so the other notices keep following their defaults. */
+    setNotice(key, shown) {
+        this.globalSettings.notices = { ...this.globalSettings.notices, [key]: shown };
+        this.markModified("notices", key);
         this.save();
     }
 }

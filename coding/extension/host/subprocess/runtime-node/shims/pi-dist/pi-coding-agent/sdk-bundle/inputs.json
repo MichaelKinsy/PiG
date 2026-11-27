@@ -47,7 +47,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/cli/project-trust.js",
-      "sha256": "f39fa54728b08d9db51e4f93615adfc1c9ee25927121885d85629c5e2e6a40c3"
+      "sha256": "60b5153d95a346a0410221e0db30afdbffd3a680326694d8c07cb57c92a8a89a"
     },
     {
       "path": "pi-dist/pi-coding-agent/cli/session-picker.js",
@@ -55,7 +55,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/cli/startup-ui.js",
-      "sha256": "43b59988eec14ce414eb4ffa4adc9a6b6dd099b725066d9ffd78f4cb748846b7"
+      "sha256": "088fd14af7bc1535eee3b01eeb6b4e750a880238bfc8bcb408ebd5415e9d6da4"
     },
     {
       "path": "pi-dist/pi-coding-agent/config.js",
@@ -71,7 +71,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/agent-session.js",
-      "sha256": "911bc6c6ba03db0f0a7adee5db6fe581839c7b6213b36aa08c9d192657c63851"
+      "sha256": "692a9a326988b7f8b487d8900caf9e7f78ddad2f6c1399a41ac67636140cfcd1"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/auth-guidance.js",
@@ -79,11 +79,11 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/auth-storage.js",
-      "sha256": "4cd362d91f9406489fdc68e9d384094cb8077c63f8c0c5c913825a153b498393"
+      "sha256": "bfa2ac24ae7b573aaa0ce160d21a34f80d01a51e95526c586bf6f5f79ad7162f"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/bash-executor.js",
-      "sha256": "26026611531b81a7fc317f0ae21d33426d279ba36fa26aa3fa2d714e5b2a37b8"
+      "sha256": "7a8ad5451f231a66834da8284422636db1490f5efff45b7190a9a8174a816f08"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/bug-report-upload.js",
@@ -175,7 +175,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/extensions/runner.js",
-      "sha256": "68444a9a5d4a94eb983282bc9cbb078088233d9c611e5c43588de729a68637e4"
+      "sha256": "f9777873c2bb2095c1de1992f5f964e264e637188c2c586d10e26cb7856719c3"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/extensions/types.js",
@@ -211,7 +211,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/messages.js",
-      "sha256": "8688b3f6eb28865f779cac998bd4754d1a4f08703200dfe0dd5a799aa0d42ef6"
+      "sha256": "47736f10fc5853e140a065b7acef7a9e59d85818b82678150b9a921f9ca0308b"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/model-config.js",
@@ -223,11 +223,11 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/model-resolver.js",
-      "sha256": "cdceb63bc3c933c1bf5a13474410abe7f30c60e9d8cec3a03492791521558753"
+      "sha256": "2b005e93401ccb185655ca96204217fb6376da82194d73f17156fa452d3e9f83"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/model-runtime.js",
-      "sha256": "62605bf7c09dce98cf18f4bf709d9f81a99b295b369a087c31f98b134735f27d"
+      "sha256": "1f53d46f4a39769ea4d92ea88fad22c818e9900323c44501c85bada6a94d9cfe"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/models-store.js",
@@ -259,7 +259,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/project-trust.js",
-      "sha256": "8000aac849fc2c876b9f5831346dca4033193e59fbf4a7dd886f4c2713e603f7"
+      "sha256": "9687c079bc0e15812668a51c9a49885ff55b3e623188bda1684c54f69ffc4334"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/prompt-templates.js",
@@ -287,7 +287,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/resolve-config-value.js",
-      "sha256": "01fdb1673990635bb419c7418eefa298b6a1c6fbb3c6193d3b05a4902e51992d"
+      "sha256": "86037ddd5c2483236f00b17915663da1366ce4e7879cb8d08573dc17df8c9bb6"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/resource-loader.js",
@@ -311,11 +311,11 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/session-manager.js",
-      "sha256": "5e318a501729372da52e584c370b8bd6326ac687024a4e000dcdd699a711abcf"
+      "sha256": "d79d85986aea173c90ff24d0b63f81175f702f1c59ad4933615069aa5080969d"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/settings-defaults.js",
-      "sha256": "56db5d275a560f6d4fbf5effbf51bc08492ddd73dfe658c46887f80b5f301516"
+      "sha256": "d8c7defb92383ed3792430061926cd9b045e2649caa6abc50fd7bead5819318c"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/settings-diagnostics.js",
@@ -323,7 +323,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/settings-manager.js",
-      "sha256": "57a63bf89ae8656334f7166c651077af67ed474f928854766c5ecab442e9d9fa"
+      "sha256": "bd7a9b71ce3dfd099dd26479e3faabcd7856871f5d9491eada1f25d2186135af"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/skills.js",
@@ -351,7 +351,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/tools/bash.js",
-      "sha256": "bcbf85dd824d16daf030a1dffc410e18bc859af32333033de3eb371c6de39228"
+      "sha256": "094dff47a3f3af3d6c03f651f9ed1be73214f8fc3e6152a4efa19a38f5a94487"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/tools/edit-diff.js",
@@ -379,7 +379,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/tools/output-accumulator.js",
-      "sha256": "994b10a6a8c04404de9f4546cf8b10ca4209b7d3964cae1b6b8c7643469c00be"
+      "sha256": "c0a41d07ce6aa75d2459b853cb77b450852763ad478f471dc3178bba71e45215"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/tools/path-utils.js",
@@ -399,7 +399,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/tools/renderers/bash.js",
-      "sha256": "74b594e427e9911bbcd89c10c2edbe34da190cfafebe04347682503bca0bb531"
+      "sha256": "15c41bd21fc740a5fda57618c0e445675ed62e38f22381a6cba03cd02a4c9c39"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/tools/renderers/edit.js",
@@ -435,7 +435,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/tools/truncate.js",
-      "sha256": "9ef2b624952e418207258418e3eda406a80f0e362ea1e442d38c482ffe838f74"
+      "sha256": "544b9c46a87e0bc2751919ce6ef37a47038cdbee5655b3723e7c24fe7a4db5ae"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/tools/write.js",
@@ -479,7 +479,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/extensions/llama/client.js",
-      "sha256": "c317fd8ef0c6cbdba2753d0ef5c54a77c936d35b7bc9f4bfb36aa4884e35ae33"
+      "sha256": "3cce497fc6e2ccc8a1219531cc523d45bc1f2253b51310205af6dcb276ca9186"
     },
     {
       "path": "pi-dist/pi-coding-agent/extensions/llama/huggingface.js",
@@ -523,7 +523,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/extensions/mcp/resources.js",
-      "sha256": "d6fec4366a1ba0dd185e2484036beaecb5d96878effdec9cfd41965c709aa6cf"
+      "sha256": "706c5a1ccf79abca33f2ce0f5177059ccf5e17bad0088d0d62b94730d74a4b30"
     },
     {
       "path": "pi-dist/pi-coding-agent/extensions/mcp/runtime.js",
@@ -535,7 +535,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/extensions/mcp/tools.js",
-      "sha256": "654dcbb4b52fd2e42c9b78ca6f193c34cb40f912b7cae0be71ea1eef700f2e61"
+      "sha256": "85345c678938d109ede4a01cd3c2d71aa068eab613a2acccbf57d58fdaa1ba61"
     },
     {
       "path": "pi-dist/pi-coding-agent/extensions/mcp/ui.js",
@@ -555,7 +555,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/main.js",
-      "sha256": "6f25465ca363445309e7c729c503520ad03d16e0c1f4c358283001ee03776bed"
+      "sha256": "093547e41eff38bf54de93be1f4d11ddf5b305264205c3563aa7fea78c882bd4"
     },
     {
       "path": "pi-dist/pi-coding-agent/migrations.js",
@@ -591,7 +591,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/bash-execution.js",
-      "sha256": "bc5008fc7d24e66e351e9ef9fa54530598484318f0db3fb5b0f88716a72efd55"
+      "sha256": "6b138505afb3c428e620ce5df00e8171729f79a13f287f27afda84c35f136b8c"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/bordered-loader.js",
@@ -659,7 +659,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/first-time-setup.js",
-      "sha256": "8322e26c90164129074f4d23a958e5b86a033fe46f7c66d194e7ca00dd446260"
+      "sha256": "ff3b29bf926be775febb83ac4f96707366b82fd544a61fac3acc4ad8607f9058"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/footer.js",
@@ -683,7 +683,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/mermaid.js",
-      "sha256": "5cf7234e1ea4b09d706e937e7d1378c82b629a36b810fd12bffab972eb2b73a6"
+      "sha256": "3506c347874395050a65a1485e5b94a9c2a366a67196aa7b02610407335894df"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/model-selector.js",
@@ -691,7 +691,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/oauth-selector.js",
-      "sha256": "3b576bf18b98a1aad0dd2ade69eff121892c042feecd7be33e679210aac18db9"
+      "sha256": "09229784bca396b78b92e3c55d6102d68c40640eb5693c4e0a68d2e6133cc631"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/pi-logo.js",
@@ -719,7 +719,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/settings-selector.js",
-      "sha256": "601cce7bcd6ba29a70539f0f8e35abc381e779b28aefec2fc60fe41d06d28542"
+      "sha256": "292d5143cd9e28a0c6235afed161ba5e34dbdf43a44d6dc8302328741105df8f"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/settings-submenu.js",
@@ -775,11 +775,11 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/external-editor.js",
-      "sha256": "7903f0d1ef8bcc4e40c7bb5242c2531ae04436c9e3dfc94516d58379b9a61ea2"
+      "sha256": "c434b823460c516b84bd8b26caaad840f82f3afefeceba0be5ce90ba99ae95f8"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/interactive-mode.js",
-      "sha256": "9951014e24dd687c11975c6868580b94b4025f5722394273935db386092c2608"
+      "sha256": "94d4926fc844e8476ddabaed74f8e455d2fcbaa1abd8ef35a62d4fbeb178d8bb"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/model-catalog-refresh.js",
@@ -791,11 +791,11 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/program-status-reporter.js",
-      "sha256": "df67168541ebcd4544f176b6976ac22aa30f6e68c7fb628338398201405e03d0"
+      "sha256": "6641f005ce01aaa66ae09883a7363c641e27e185dac3926ef22ffa36e37a7e36"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/session-share.js",
-      "sha256": "89a3787eca40d666f4fc01ec486c1609264cba717325405c8d32c11dbce2cfc2"
+      "sha256": "acf2a20ff898e20a9269b82db559763eb6f4ac301bac4003ed1e760e30ec15b5"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/theme/system-theme.js",
@@ -827,11 +827,11 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/print-mode.js",
-      "sha256": "8a4c77cb7a2d6a8d055a0d9aa74aa98bb95ba5266fab183cc1c795423c3fca09"
+      "sha256": "8cb15a868520ecc391c2ff426ff10fc992949cf402db6bfd739878afe02298ad"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/rpc/jsonl.js",
-      "sha256": "049a9f8ca4242c79f1911ed977949e8d8906b4561f424c2729687f426fabaacf"
+      "sha256": "c00e7bade41885f585ddc9bdb8cc3f2f2741f85cdfd2d65eb66ea0632a8e36df"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/rpc/rpc-client.js",
@@ -839,11 +839,11 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/rpc/rpc-mode.js",
-      "sha256": "e31b9c6da6662f5e6bb05a2bb7f2edf77bb06cf82b9dc35f5d67ea02ff87189f"
+      "sha256": "ac22c3fc51f351427a575a703706bc72a191271d736fdd213c55a7e4ca50e20e"
     },
     {
       "path": "pi-dist/pi-coding-agent/package-manager-cli.js",
-      "sha256": "10aef6213234b52c04a89a853bcc0e6f8c41597fe9dee025fdeb88a4c4f8e68b"
+      "sha256": "3f923ef65760bb36956ff98a2c6873a7ba2a92b074d2a9c654a4a618d5d289b7"
     },
     {
       "path": "pi-dist/pi-coding-agent/utils/abort.js",
@@ -871,7 +871,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/utils/clipboard.js",
-      "sha256": "4e78f8daad8fa02a618abb3dc4a485167d47b69c52eca05ef2d51d02cd763ccc"
+      "sha256": "85dc566186db039bda0825a3a4f870a602975792ff4816ad1c66071bb22ddfea"
     },
     {
       "path": "pi-dist/pi-coding-agent/utils/exif-orientation.js",
@@ -931,7 +931,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/utils/output-files.js",
-      "sha256": "a0a93a0d0a64565da7218bcc72e5a468434d9625112820586c4b97f54075775c"
+      "sha256": "96ec855bc21e3008b5c7f8ba37636a3f6c5e7bed262671f1cb8d0b90a5385a7c"
     },
     {
       "path": "pi-dist/pi-coding-agent/utils/paths.js",
@@ -947,7 +947,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/utils/shell.js",
-      "sha256": "bb1f12875f7c90aca79004e371570c2afd08fbac12baec102fe8d275164a21f9"
+      "sha256": "ff3e3a45757a600e2409ac222fffdba483d09b53a514907dd0c391fde46bae96"
     },
     {
       "path": "pi-dist/pi-coding-agent/utils/sleep.js",

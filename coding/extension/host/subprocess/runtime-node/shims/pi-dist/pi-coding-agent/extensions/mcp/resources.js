@@ -9,9 +9,9 @@
  * interfaces for hosts that render them, and so are icons. Read resources become text and images for
  * the model; binary resources are saved to temp files. Scripts get the JSON payloads.
  */
-import { limitMcpContent, } from "../../../pi-mcp/index.js";
+import { limitMcpContent, toMcpModelContent, } from "../../../pi-mcp/index.js";
 import { LIST_MCP_RESOURCE_TEMPLATES_TOOL, LIST_MCP_RESOURCES_TOOL, READ_MCP_RESOURCE_TOOL, } from "../../core/mcp-servers.js";
-import { saveToTempFile, toModelContent, toToolExposure } from "./tools.js";
+import { saveToTempFile, toToolExposure } from "./tools.js";
 export { LIST_MCP_RESOURCE_TEMPLATES_TOOL, LIST_MCP_RESOURCES_TOOL, READ_MCP_RESOURCE_TOOL };
 /** MCP App user interfaces, which only hosts that render them can use. */
 function isMcpAppResource(item) {
@@ -243,7 +243,7 @@ export function createMcpResourceToolDefinitions(options) {
                 ...(result.contents.length > 1 ? [{ type: "text", text: `${contents.uri}:` }] : []),
                 { type: "resource", resource: contents },
             ]);
-            const converted = await toModelContent(server.name, blocks);
+            const converted = await toMcpModelContent(server.name, { content: blocks }, { saveOutput: saveToTempFile });
             const { content, fullOutputPath } = await limitMcpContent(converted.length > 0 ? converted : [{ type: "text", text: `Resource ${uri} is empty.` }], saveToTempFile);
             const contents = result.contents.map(({ _meta: _ignored, ...rest }) => rest);
             return {

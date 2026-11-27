@@ -1,6 +1,6 @@
 {
- "pin": "1.6.0",
- "package": "pi-tui@1.6.0",
+ "pin": "1.6.1",
+ "package": "pi-tui@1.6.1",
  "module": "pi-tui",
  "export": "foregroundAnsi",
  "cases": [

@@ -1,6 +1,7 @@
 function isValidCost(value) {
     return typeof value === "number" && Number.isFinite(value) && value >= 0;
 }
+/** OpenRouter by provider ID, which survives baseUrl overrides, or by host, which covers regional endpoints. */
 export function isOpenRouterModel(model) {
     return model.provider === "openrouter" || model.baseUrl.includes("openrouter.ai");
 }

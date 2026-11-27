@@ -2075,7 +2075,7 @@ var Editor = class {
   }
   /**
    * Add a prompt to history for up/down arrow navigation.
-   * Called after successful submission.
+   * A prompt already in history moves to the most recent position instead of being added twice.
    */
   addToHistory(text) {
     const trimmed = text.trim();
@@ -5621,7 +5621,7 @@ function tokenizeInlineLatex(source) {
   }
   if (closingIndex < 0) {
     const pendingSource = source.slice(opening.length);
-    if (opening.startsWith("\\") || looksLikePendingDollarMath(pendingSource)) {
+    if (opening.startsWith("\\") || !/^\d/.test(pendingSource) && !pendingSource.includes("\n") && looksLikePendingDollarMath(pendingSource)) {
       return { type: "latex", raw: source, text: pendingSource, pending: true };
     }
     return void 0;
@@ -7167,6 +7167,8 @@ var StdinBuffer = class extends EventEmitter {
   escapeTimeoutMs;
   pasteMode = false;
   pasteBuffer = "";
+  /** The last characters of the paste so far, which may start an end marker split across chunks. */
+  pasteTail = "";
   pendingKittyPrintableCodepoint;
   constructor(options = {}) {
     super();
@@ -7195,14 +7197,18 @@ var StdinBuffer = class extends EventEmitter {
     }
     this.buffer += str;
     if (this.pasteMode) {
+      const searched = this.pasteTail + this.buffer;
+      const found = searched.indexOf(BRACKETED_PASTE_END);
+      const endIndex = found === -1 ? -1 : this.pasteBuffer.length - this.pasteTail.length + found;
       this.pasteBuffer += this.buffer;
+      this.pasteTail = searched.slice(1 - BRACKETED_PASTE_END.length);
       this.buffer = "";
-      const endIndex = this.pasteBuffer.indexOf(BRACKETED_PASTE_END);
       if (endIndex !== -1) {
         const pastedContent = this.pasteBuffer.slice(0, endIndex);
         const remaining = this.pasteBuffer.slice(endIndex + BRACKETED_PASTE_END.length);
         this.pasteMode = false;
         this.pasteBuffer = "";
+        this.pasteTail = "";
         this.pendingKittyPrintableCodepoint = void 0;
         this.emit("paste", pastedContent);
         if (remaining.length > 0) {
@@ -7224,6 +7230,7 @@ var StdinBuffer = class extends EventEmitter {
       this.buffer = this.buffer.slice(startIndex + BRACKETED_PASTE_START.length);
       this.pasteMode = true;
       this.pasteBuffer = this.buffer;
+      this.pasteTail = this.buffer.slice(1 - BRACKETED_PASTE_END.length);
       this.buffer = "";
       const endIndex = this.pasteBuffer.indexOf(BRACKETED_PASTE_END);
       if (endIndex !== -1) {
@@ -7231,6 +7238,7 @@ var StdinBuffer = class extends EventEmitter {
         const remaining = this.pasteBuffer.slice(endIndex + BRACKETED_PASTE_END.length);
         this.pasteMode = false;
         this.pasteBuffer = "";
+        this.pasteTail = "";
         this.pendingKittyPrintableCodepoint = void 0;
         this.emit("paste", pastedContent);
         if (remaining.length > 0) {
@@ -7291,6 +7299,7 @@ var StdinBuffer = class extends EventEmitter {
     this.buffer = "";
     this.pasteMode = false;
     this.pasteBuffer = "";
+    this.pasteTail = "";
     this.pendingKittyPrintableCodepoint = void 0;
   }
   getBuffer() {
@@ -8546,6 +8555,12 @@ var MAX_CACHED_OFFSCREEN_KITTY_DECODED_BYTES = 64 * 1024 * 1024;
 var DOUBLE_CLICK_INTERVAL_MS = 500;
 var COPY_ERROR_FLASH_DURATION_MS = 5e3;
 var TERMINAL_WORD_SELECTION_JOINERS = /* @__PURE__ */ new Set(["/", "-", "+", "\\", "~", "_", "."]);
+var RIGHT_CLICK_PASTING_TERMINALS = /* @__PURE__ */ new Set(["vscode", "tabby"]);
+function terminalPastesOnRightClick() {
+  const termProgram = process.env.TERM_PROGRAM?.toLowerCase();
+  return termProgram !== void 0 && RIGHT_CLICK_PASTING_TERMINALS.has(termProgram);
+}
+__name(terminalPastesOnRightClick, "terminalPastesOnRightClick");
 var TuiAltScreen = class extends TuiBase {
   static {
     __name(this, "TuiAltScreen");
@@ -9308,7 +9323,7 @@ var TuiAltScreen = class extends TuiBase {
     };
   }
   handleRightClickPaste(event) {
-    if (!this.onRightClickPaste || process.platform !== "win32" || process.env.TERM_PROGRAM?.toLowerCase() === "vscode" || event.release || event.button !== 2) {
+    if (!this.onRightClickPaste || process.platform !== "win32" || terminalPastesOnRightClick() || event.release || event.button !== 2) {
       return false;
     }
     try {
@@ -10432,8 +10447,13 @@ var TuiMainScreen = class extends TuiBase2 {
           ...newLines.map((l, idx) => `[${idx}] (w=${visibleWidth14(l)}) ${l}`),
           ""
         ].join("\n");
-        fs2.mkdirSync(path2.dirname(crashLogPath), { recursive: true });
-        fs2.writeFileSync(crashLogPath, crashData);
+        let crashLogStatus = `Debug log written to: ${crashLogPath}`;
+        try {
+          fs2.mkdirSync(path2.dirname(crashLogPath), { recursive: true });
+          fs2.writeFileSync(crashLogPath, crashData);
+        } catch (error) {
+          crashLogStatus = `Could not write debug log to ${crashLogPath}: ${error instanceof Error ? error.message : String(error)}`;
+        }
         this.stop();
         const errorMsg = [
           `Rendered line ${i} exceeds terminal width (${visibleWidth14(line)} > ${width}).`,
@@ -10441,7 +10461,7 @@ var TuiMainScreen = class extends TuiBase2 {
           "This is likely caused by a custom TUI component not truncating its output.",
           "Use visibleWidth() to measure and truncateToWidth() to truncate lines.",
           "",
-          `Debug log written to: ${crashLogPath}`
+          crashLogStatus
         ].join("\n");
         throw new Error(errorMsg);
       }

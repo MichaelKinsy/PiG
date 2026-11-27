@@ -9,11 +9,10 @@
  * the tool's `structuredContent`, and every MCP tool declares a `CallToolResult` output schema. MCP
  * errors (`isError`) are error results for the model, but scripts still resolve to the result.
  */
-import { limitMcpContent, normalizeMcpInputSchema, toLlmContent, } from "../../../pi-mcp/index.js";
+import { createMcpResultSchema, limitMcpContent, normalizeMcpInputSchema, toMcpModelContent, } from "../../../pi-mcp/index.js";
 import { Container, Spacer, Text } from "../../../../pi-tui.mjs";
 import { READ_MCP_RESOURCE_TOOL } from "../../core/mcp-servers.js";
 import { formatToolCallWithArgs, getTextOutput, replaceTabs } from "../../core/tools/render-utils.js";
-import { formatSize } from "../../core/tools/truncate.js";
 import { keyHint } from "../../modes/interactive/components/keybinding-hints.js";
 import { VisualLinePreview } from "../../modes/interactive/components/visual-truncate.js";
 import { writeOutputFile } from "../../utils/output-files.js";
@@ -38,133 +37,17 @@ function textOf(content) {
         .map((block) => block.text)
         .join("\n");
 }
-/**
- * MCP content blocks as one compact type with the fields of text and image blocks, which scripts
- * read most (`image(block)` takes an image block as is). Rendered into every MCP tool's declaration.
- */
-const CONTENT_BLOCK_SCHEMA = {
-    type: "object",
-    properties: {
-        type: { enum: ["text", "image", "audio", "resource_link", "resource"] },
-        text: { type: "string" },
-        data: { type: "string" },
-        mimeType: { type: "string" },
-    },
-    required: ["type"],
-    additionalProperties: true,
-};
-/** Keywords whose values are data, so a `$ref` key in them is not a reference. */
-const SCHEMA_DATA_KEYWORDS = new Set(["const", "enum", "default", "examples"]);
-/** Keywords whose values map names to schemas, so their keys are names, not keywords. */
-const SCHEMA_MAP_KEYWORDS = new Set([
-    "properties",
-    "patternProperties",
-    "dependentSchemas",
-    "dependencies",
-    "$defs",
-    "definitions",
-]);
-/**
- * `schema` as a subschema at the JSON pointer `pointer` (`#/properties/structuredContent`) of
- * another schema: its local references (`#`, `#/$defs/Item`) are rewritten to point below
- * `pointer`, so they resolve to the same subschemas as before.
- */
-function relocateSchema(schema, pointer) {
-    if (Array.isArray(schema))
-        return schema.map((item) => relocateSchema(item, pointer));
-    if (typeof schema !== "object" || schema === null)
-        return schema;
-    const relocated = {};
-    for (const [key, value] of Object.entries(schema)) {
-        if (key === "$ref" && typeof value === "string" && (value === "#" || value.startsWith("#/"))) {
-            relocated[key] = `${pointer}${value.slice(1)}`;
-        }
-        else if (SCHEMA_DATA_KEYWORDS.has(key)) {
-            relocated[key] = value;
-        }
-        else if (SCHEMA_MAP_KEYWORDS.has(key) && typeof value === "object" && value !== null && !Array.isArray(value)) {
-            relocated[key] = Object.fromEntries(Object.entries(value).map(([name, subschema]) => [name, relocateSchema(subschema, pointer)]));
-        }
-        else {
-            relocated[key] = relocateSchema(value, pointer);
-        }
-    }
-    return relocated;
-}
-/**
- * Output schema of every MCP tool: the `CallToolResult` scripts receive (without `_meta`, which
- * {@link convertMcpResult} drops), with the tool's own output schema as `structuredContent`.
- */
-export function createMcpResultSchema(structuredContentSchema) {
-    return {
-        type: "object",
-        properties: {
-            content: { type: "array", items: CONTENT_BLOCK_SCHEMA },
-            // Servers may send structured content without declaring a schema for it, and it may be any JSON value.
-            structuredContent: structuredContentSchema
-                ? relocateSchema(structuredContentSchema, "#/properties/structuredContent")
-                : {},
-            isError: { type: "boolean" },
-        },
-        required: ["content"],
-        // Fields newer protocol versions add.
-        additionalProperties: true,
-    };
-}
-/** File extension for a saved binary resource: the one its URI ends in, else `.bin`. */
-function extensionOf(uri) {
-    const path = URL.canParse(uri) ? new URL(uri).pathname : uri;
-    return /\.[A-Za-z0-9]{1,8}$/.exec(path)?.[0] ?? ".bin";
-}
-/** Blobs of these types are shown as text. */
-function isTextMimeType(mimeType) {
-    if (!mimeType)
-        return false;
-    const type = mimeType.split(";", 1)[0].trim().toLowerCase();
-    return type.startsWith("text/") || type === "application/json" || type.endsWith("+json") || type.endsWith("+xml");
-}
-/** Model-facing content of one block of `server`'s result. */
-async function blockToContent(server, block, options) {
-    if (block.type === "resource_link") {
-        const details = [block.mimeType, block.size === undefined ? undefined : formatSize(block.size)].filter(Boolean);
-        const read = options.readableResources ? `. Read it with ${READ_MCP_RESOURCE_TOOL} (server "${server}")` : "";
-        const description = block.description ? `: ${block.description}` : "";
-        return [
-            {
-                type: "text",
-                text: `[Resource ${block.uri} "${block.title ?? block.name}"${details.length > 0 ? ` (${details.join(", ")})` : ""}${description}${read}]`,
-            },
-        ];
-    }
-    if (block.type === "resource" && "blob" in block.resource && !block.resource.mimeType?.startsWith("image/")) {
-        const { uri, mimeType, blob } = block.resource;
-        const data = Buffer.from(blob, "base64");
-        if (isTextMimeType(mimeType))
-            return [{ type: "text", text: data.toString("utf8") }];
-        const kind = `${mimeType ?? "unknown type"}, ${formatSize(data.length)}`;
-        try {
-            const path = await (options.saveOutput ?? saveToTempFile)(data, extensionOf(uri));
-            return [{ type: "text", text: `[Binary resource ${uri} (${kind}) saved to ${path}]` }];
-        }
-        catch (error) {
-            const reason = error instanceof Error ? error.message : String(error);
-            return [{ type: "text", text: `[Binary resource ${uri} (${kind}) could not be saved: ${reason}]` }];
-        }
-    }
-    return toLlmContent({ content: [block] });
-}
-/** Model-facing content of `server`'s content blocks, before the output limit. */
-export async function toModelContent(server, blocks, options = {}) {
-    return (await Promise.all(blocks.map((block) => blockToContent(server, block, options)))).flat();
-}
 /** Convert an MCP result. `isError` results become error results that keep the structured result. */
 export async function convertMcpResult(server, tool, result, options = {}) {
-    // Without content blocks, toLlmContent falls back to the structured content as JSON.
-    const converted = result.content.length > 0 ? await toModelContent(server, result.content, options) : toLlmContent(result);
+    const saveOutput = options.saveOutput ?? saveToTempFile;
+    const converted = await toMcpModelContent(server, result, {
+        saveOutput,
+        ...(options.readableResources ? { readResourceTool: READ_MCP_RESOURCE_TOOL } : {}),
+    });
     if (result.isError && textOf(converted) === "") {
         converted.push({ type: "text", text: `MCP tool ${server}/${tool} returned an error` });
     }
-    const { content, fullOutputPath } = await limitMcpContent(converted, options.saveOutput ?? saveToTempFile);
+    const { content, fullOutputPath } = await limitMcpContent(converted, saveOutput);
     const { _meta: _ignored, ...scriptResult } = result;
     return {
         content,
@@ -195,6 +78,7 @@ export function createMcpToolDefinition(options) {
         description: tool.description?.trim() || title || `MCP tool ${tool.name} from server ${server}`,
         // An object schema, which is what TypeBox schemas are at runtime.
         parameters: normalizeMcpInputSchema(tool.inputSchema),
+        // A JSON schema object, which is what TypeBox schemas are at runtime.
         outputSchema: createMcpResultSchema(tool.outputSchema),
         exposure: toToolExposure(options.exposure),
         namespace: options.namespace,

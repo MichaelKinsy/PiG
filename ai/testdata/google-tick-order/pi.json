@@ -1,7 +1,7 @@
 {
- "pi": "1.6.0",
- "genai": "2.32.0",
- "node": "v24.22.2",
+ "pi": "1.6.1",
+ "genai": "3.6.1",
+ "node": "v24.19.0",
  "cap": 160,
  "note": "stamp = (seg, tick); see probe.mjs header. array order within a stamp is execution order.",
  "cases": [

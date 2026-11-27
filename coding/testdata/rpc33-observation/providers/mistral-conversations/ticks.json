@@ -1,5 +1,5 @@
 {
-  "piVersion": "1.6.0",
+  "piVersion": "1.6.1",
   "node": "v24.19.0",
   "scenarios": [
     {
@@ -2935,7 +2935,7 @@
         ]
       ],
       "stopReason": "error",
-      "errorMessage": "Provider stopped with: error (server error)",
+      "errorMessage": "Provider stopped with: error",
       "result": {
         "role": "assistant",
         "content": [
@@ -2964,7 +2964,7 @@
         "stopReason": "error",
         "responseId": "r1",
         "rawStopReason": "error",
-        "errorMessage": "Provider stopped with: error (server error)",
+        "errorMessage": "Provider stopped with: error",
         "durationMs": 0
       }
     },

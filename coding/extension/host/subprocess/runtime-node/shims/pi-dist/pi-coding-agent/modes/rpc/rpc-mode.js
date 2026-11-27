@@ -284,7 +284,6 @@ export async function runRpcMode(runtimeHost) {
         });
     };
     const registerSignalHandlers = () => {
-        // Pi 31b407dc63 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         const signals = ["SIGTERM", "SIGHUP"];
         for (const signal of signals) {
             const exitCode = signal === "SIGHUP" ? 129 : 143;
@@ -597,7 +596,6 @@ export async function runRpcMode(runtimeHost) {
         if (signal !== "SIGTERM") {
             await flushRawStdout();
         }
-        // Pi 31b407dc63 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
         // dispose() only starts killing a running `bash` command, which on Windows loses the race with
         // exit. After the last await, so it also catches a shell spawned after the abort.
         killTrackedDetachedChildren();

@@ -1,6 +1,6 @@
 {
- "pin": "1.6.0",
- "package": "pi-coding-agent@1.6.0",
+ "pin": "1.6.1",
+ "package": "pi-coding-agent@1.6.1",
  "module": "pi-coding-agent",
  "export": "keyHint",
  "cases": [
