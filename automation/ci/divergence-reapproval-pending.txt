@@ -6,4 +6,5 @@
 # approval line. A lane that changes the normative text of a record adds it here with a class and a reason and says so in
 # its pull request. Sorted by class: behaviour, scope, remove-when, owner-field, editorial, new. Within a class the
 # generator listed them in reading order: tokens-changed, large-insert, medium, owner-statement-after, small.
+D88 behaviour Pi 1.6.1 simplified first-time setup to omit the theme step (default system theme); PiG follows with two steps (sprite, then analytics)
 D662 new OSC 7577 program resume carried from Pi cf419553da ahead of pinned Pi 1.6.0
