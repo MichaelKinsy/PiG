@@ -104,7 +104,8 @@ func TestFirstTimeSetupMatchesPi(t *testing.T) {
 			OnCancel: func() { events = append(events, []any{"cancel"}) },
 		})
 		if component.step == firstTimeSetupStepSprite {
-			component.HandleInput("\n")
+			component.step = firstTimeSetupStepAnalytics
+			component.update()
 		}
 		got := firstSetupOracleResult{Steps: [][][]any{{}}, Frames: [][]string{body(component.Render(probe.Width))}}
 		for _, key := range probe.Keys {
