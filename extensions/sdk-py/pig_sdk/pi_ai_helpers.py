@@ -489,11 +489,12 @@ _RETRYABLE_PROVIDER_ERROR_PATTERN = _js_regexp("|".join([
     # Pi bb1a2b3542b5 (#12124): the Codex 60-minute WebSocket lifetime limit, as code websocket_connection_limit_reached or as text "Responses websocket connection limit reached".
     "websocket.?connection.?limit.?reached",
     "ended without", "stream ended before message_stop",
-    "stream ended before a terminal response event", "http2 request did not get a response", "provider finish_reason: error", "provider stopped with: error", "returned an empty response", "stopped before completing the response",
+    "stream ended before a terminal response event", "http2 request did not get a response", "provider finish_reason: error", "returned an empty response", "stopped before completing the response",
     # Codex CLI mid-stream disconnect, relayed by proxies that wrap the Codex CLI, e.g. "stream disconnected before completion: stream closed before response.completed" (#11057).
     "stream disconnected before completion", "cut short after the reply had begun", "ended the response before it was complete", "connection to the provider was reset", "reported a failure while generating the response",
     "pending stream has been canceled", "retry delay", "you can retry your request",
     "try your request again", "please retry your request", "repeat the request later", "ResourceExhausted", "subscription_sharing_usage_unavailable", "subscription_sharing_user_unavailable",
+    "provider stopped with: error",
 ]))
 
 
