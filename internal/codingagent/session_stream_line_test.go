@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"io"
 	"math"
 	"os"
@@ -19,6 +18,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/jsonvalid"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 )
