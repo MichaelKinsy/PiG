@@ -130384,6 +130384,17 @@
       "shapeHash": "sha256:b748010a7a5f82c889d4166c0b3eac091e5f23b5262d1e625ea5e99c3f8a88fa"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#RustBuildEnvironment",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "RustBuildEnvironment",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(env []string) ([]string, func())"
+      },
+      "shapeHash": "sha256:9ce9f01023c8c94d4911cf489acfd8a4012f0a611d9aa55895e008744befbc05"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#RustBuildFailure",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "RustBuildFailure",
@@ -130987,6 +130998,17 @@
         "type": "func(finalDir string, inputDigest string, language string) (error, bool)"
       },
       "shapeHash": "sha256:af6be1d69aabdba739b6b35de1b895b7ec54e0684cc615fa39fa47f68f9c5eeb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#cargoBuildJobs",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "cargoBuildJobs",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(env []string) string"
+      },
+      "shapeHash": "sha256:625db9458b63239be7e4d3f239c96b871ede25a4c6df7f5e1d301bf2b902a9de"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#cargoTargetDirectory",
@@ -132584,6 +132606,17 @@
       "shapeHash": "sha256:111a4680467bfc62ed8b1dea0cdf42745307d62f968cc53ea6726c97078428e6"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#newRustJobPool",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "newRustJobPool",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(jobs int) *rustJobPool"
+      },
+      "shapeHash": "sha256:ce99b642f577183f943ef16a1fd43e6d20ba57135be3cb0b8b9bc9e5315b88c8"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#newSharedDirFS",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "newSharedDirFS",
@@ -133915,6 +133948,28 @@
       "shapeHash": "sha256:cf79e4f63a71e53bc4793c566da9bd770362507be7b528d61e3e9a7757038d64"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#rustBuildEnvironment",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "rustBuildEnvironment",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(env []string, jobs *rustJobPool) ([]string, func())"
+      },
+      "shapeHash": "sha256:46ff520a089dbde1fa453203031fce14b0fdd287303c60a119b61918d9757cb2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#rustBuildJobs",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "rustBuildJobs",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "*rustJobPool"
+      },
+      "shapeHash": "sha256:6decb8a62c25a8e70c97cc57cc198dbe6b80a6a9c9831649b72ab52aa9d4983c"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#rustExtensionVerifiers",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "rustExtensionVerifiers",
@@ -133924,6 +133979,105 @@
         "type": "func(extensions []RustExtension) []func() error"
       },
       "shapeHash": "sha256:b966d60aba1d0b8b9aeb365075ed3ffa83c7f35d2c13645728774a20c4e15fc2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#rustJobBudget",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "rustJobBudget",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() int"
+      },
+      "shapeHash": "sha256:abda90b0a9dee566c1c4d8a5e69e5e1e0dc21a5f6a3f00ada27ad225d1a5f10b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#rustJobBudgetFor",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "rustJobBudgetFor",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(cores int, memory int64) int"
+      },
+      "shapeHash": "sha256:7857894d127f850403bed772ddee28ffd328b023ca915960b8cc090b3f351d50"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#rustJobCores",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "rustJobCores",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func() int"
+      },
+      "shapeHash": "sha256:abda90b0a9dee566c1c4d8a5e69e5e1e0dc21a5f6a3f00ada27ad225d1a5f10b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#rustJobMemoryAllowance",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "rustJobMemoryAllowance",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#rustJobMemoryShare",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "rustJobMemoryShare",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#rustJobPhysicalMemory",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "rustJobPhysicalMemory",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#rustJobPool",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "rustJobPool",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "rustJobPool"
+      },
+      "shapeHash": "sha256:9b0267e0ff893207edbbb2e9743654007fcf6e0c02ccc8d6ceb51d556184f12a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#rustJobPool.end",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "rustJobPool.end",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(reserved int)"
+      },
+      "shapeHash": "sha256:1a94d263eb686a3000a14f407819972fcc8a2f985fe996bb4a9834df28cf628f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#rustJobPool.take",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "rustJobPool.take",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (jobs int, reserved int)"
+      },
+      "shapeHash": "sha256:fb5459f84e421b8b4b9c72d24fa8fd5c2445c791637e62e66ab0408cf205e497"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#rustPackedCellHash",

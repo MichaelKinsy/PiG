@@ -33,6 +33,7 @@ require (
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/klauspost/compress v1.20.3
 	github.com/mattn/go-runewidth v0.0.23
+	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58
 	github.com/rivo/uniseg v0.4.7
 	github.com/stretchr/testify v1.12.1
 	github.com/tetratelabs/wazero v1.12.0

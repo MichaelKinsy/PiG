@@ -994,7 +994,9 @@ func buildRust(ctx context.Context, cacheRoot, srcDir, outPath, stagedSDK string
 	buildprogress.Phase(ctx, "Compiling Rust member", srcDir+" (dependency resolution, compile, link)")
 	cmd := linkerexec.CommandContext(ctx, "cargo", buildprogress.ToolArgs(ctx, "rust", args)...)
 	cmd.Dir = buildDir
-	cmd.Env = withoutGitEnvironmentOverrides(os.Environ())
+	buildEnv, endRustBuild := runtimecell.RustBuildEnvironment(withoutGitEnvironmentOverrides(os.Environ()))
+	defer endRustBuild()
+	cmd.Env = buildEnv
 	cargoStarted := time.Now()
 	out, err := buildprogress.CombinedOutput(ctx, cmd)
 	if err != nil {

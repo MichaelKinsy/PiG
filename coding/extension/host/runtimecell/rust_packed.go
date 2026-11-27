@@ -113,10 +113,9 @@ func BuildRustPackedCell(ctx context.Context, cacheRoot, key string, extensions 
 				buildprogress.Phase(ctx, "Compiling Rust members", strings.Join(names, ", ")+" (dependency resolution, compile, link)")
 				cmd := linkerexec.CommandContext(ctx, "cargo", buildprogress.ToolArgs(ctx, "rust", []string{"build", "--release", "--quiet"})...)
 				cmd.Dir = scratch
-				cmd.Env = cacheBuildEnvironment(scratch)
-				if os.Getenv("CARGO_BUILD_JOBS") == "" {
-					cmd.Env = append(cmd.Env, "CARGO_BUILD_JOBS=1")
-				}
+				buildEnv, endRustBuild := RustBuildEnvironment(cacheBuildEnvironment(scratch))
+				defer endRustBuild()
+				cmd.Env = buildEnv
 				//portlint:allow clock measures cargo's elapsed time for the failure record (a duration, not a date); the package's Now seam (cache_lifecycle.go:71) dates cache entries for collection
 				cargoStarted := time.Now()
 				if out, err := buildprogress.CombinedOutput(ctx, cmd); err != nil {
