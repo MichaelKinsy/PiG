@@ -65,3 +65,7 @@ beeb65ebf2 Follow-up to unreleased work: replaces direct strconv.ParseFloat and 
 e5e9f6453aa934d647c43ec23ea28e954ec65374 Follow-up to unreleased work: review repairs to the OpenAI dropped-reasoning notice that eb9075718e added on this same branch (in no release): the unchanged path no longer allocates and a present null id or reason is kept; no shipped behavior changes
 b37ff048ed Follow-up to unreleased work: switches oaiChunkChoice.UnmarshalJSON (added in unreleased pin-bump commit a7755b1fd1, in no tag) from encoding/json to jsstring.UnmarshalKeepingSurrogates; no shipped release behavior changes
 e5d83fa9b1 Follow-up to unreleased work: reverts the automaticContinuation tick folding added in unreleased pin-bump commit a7755b1fd1 (in no tag) and passes automaticContinuation: false in probe.mjs matching Pi google-generative-ai.ts:397; no shipped release behavior changes
+01f8388903fb2ae7e4cab9a67981451863f142ff Follow-up to unreleased work: review cure on unmerged Pi 1.6.1 notices port (no shipped release affected)
+673ec41d127750bed9f3de194e9ce72dc39fa74c Follow-up to unreleased work: review cure on unmerged Pi 1.6.1 TUI/settings/SDK port (no shipped release affected)
+f0422a28663fe776e2e450f81579cedad684dbe2 Follow-up to unreleased work: post-pin-bump Pi 1.6.1 oracle/microtask/alloc/SDK-retry integration cure on unmerged branch (no shipped release affected)
+c3c06b6d0add31f06d7692f96cd515c838b60502 Follow-up to unreleased work: review cure on unmerged Pi 1.6.1 staged port (no shipped release affected)

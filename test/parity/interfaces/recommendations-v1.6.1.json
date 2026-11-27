@@ -57159,21 +57159,23 @@
     {
       "id": "pkg:ai/api/google-shared#getGoogleBudget",
       "upstreamShapeHash": "sha256:49139ad194e43580de3ede58e7377cd71e67c9c059b72c017586b74a425aeeec",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#getGoogleBudget"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -57613,22 +57615,24 @@
     {
       "id": "pkg:ai/api/google-shared#retryGoogleRequest",
       "upstreamShapeHash": "sha256:24edffbaa339199985adeab0e8106bacaccf427df9673733c41fe092b0260c16",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#RetryGoogleRequest"
+        "go:github.com/MichaelKinsy/PiG/ai#RetryGoogleRequest",
+        "go:github.com/MichaelKinsy/PiG/ai#retryGoogleRequest"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -140434,22 +140438,24 @@
     {
       "id": "pkg:ai/utils/sse#ServerSentEvent",
       "upstreamShapeHash": "sha256:7c64677df2977d96d386b2e6694d58e19a6f0206fd9466aa53a71e193bcfc0e0",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#ServerSentEvent",
         "go:github.com/MichaelKinsy/PiG/ai#serverSentEvent"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -140547,22 +140553,24 @@
     {
       "id": "pkg:ai/utils/sse#SseDecoder",
       "upstreamShapeHash": "sha256:b1195e810ce67fe5ca93eda4f46b6c589dd2c5919a58bdcc1dde2091f6306db8",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#SseDecoder",
         "go:github.com/MichaelKinsy/PiG/ai#sseDecoder"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
