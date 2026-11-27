@@ -34288,6 +34288,72 @@
       "shapeHash": "sha256:a23d7da10900f623a2249d0aeaeb33c582daad94fbee97912590a86a407505fa"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogGzipPool",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "catalogGzipPool",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "sync.Pool"
+      },
+      "shapeHash": "sha256:6a409ceb1c50640bf5048fa9e0581f6319404b149e5ac6c23c128589cf1a214b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogGzipPool.Get",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "catalogGzipPool.Get",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() any"
+      },
+      "shapeHash": "sha256:6b40cbb40507b7efce1d433d06fed509e653a5671897ef0381b72bf3dce3329e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogGzipPool.Put",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "catalogGzipPool.Put",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(x any)"
+      },
+      "shapeHash": "sha256:b3c0458425ac22d36044f62b9640018449ae4ed98577c3f237817cc7ff99fa15"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogGzipPool.getSlow",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "catalogGzipPool.getSlow",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(pid int) any"
+      },
+      "shapeHash": "sha256:5e78ffbe1c5bdcff9a6de1613449f1b918a0a7568d93ac8b6db8b1a632819ea4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogGzipPool.pin",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "catalogGzipPool.pin",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (*sync.poolLocal, int)"
+      },
+      "shapeHash": "sha256:8e29662471c87a624090b974d35b3745c7898061975b31c44125e4b0ffd679b2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogGzipPool.pinSlow",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "catalogGzipPool.pinSlow",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (*sync.poolLocal, int)"
+      },
+      "shapeHash": "sha256:8e29662471c87a624090b974d35b3745c7898061975b31c44125e4b0ffd679b2"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#catalogPair",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "catalogPair",
