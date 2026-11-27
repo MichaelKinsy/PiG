@@ -7,6 +7,15 @@ import "github.com/MichaelKinsy/PiG/internal/jsstring"
 // used to catch upstream failures that OpenRouter reports as an empty `stop`.
 // Ports packages/ai/src/utils/openrouter-finish-reason.ts (Pi ddf5868d2, 9b911b409).
 
+// readOpenRouterNativeFinishReason returns OpenRouter's `native_finish_reason` from a streamed
+// chat completion choice when present, mirroring packages/ai/src/utils/openrouter-finish-reason.ts.
+func readOpenRouterNativeFinishReason(choice *oaiChunkChoice) string {
+	if choice == nil {
+		return ""
+	}
+	return choice.NativeFinishReason
+}
+
 // applyOpenRouterNativeFinishReason records a native finish reason that differs from finishReason
 // on a message whose stop reason was already mapped from finishReason: RawStopReason becomes e.g.
 // "stop.MALFORMED_RESPONSE", and an error message gets the native reason appended.

@@ -7,8 +7,8 @@ export function section(key: string, render: HostSection["render"], options?: { 
   return options?.tag === undefined ? { key, render } : { key, render, tag: options.tag }
 }
 export function hook(task: { definition: { name: string } }, handlers: HostHook["handlers"]): HostHook { return { task: task.definition.name, handlers } }
-export function wrapTool<T extends HostTool>(tool: T, wrapper: (tool: T) => T): HostWrap { return { tool: tool.name, wrap: wrapper } }
-export function wrapSection(key: string, wrapper: (section: HostSection) => HostSection): HostWrap { return { section: key, wrap: wrapper } }
+export function wrapTool<T extends HostTool>(tool: T, wrapper: (tool: T) => T): HostWrap { return { kind: "tool", tool: tool.name, wrap: wrapper } }
+export function wrapSection(key: string, wrapper: (section: HostSection) => HostSection): HostWrap { return { kind: "section", section: key, wrap: wrapper } }
 export function defineTask<T extends HostTask["definition"]>(definition: T): { definition: T } { return { definition } }
 
 /** A task a hook (`afterTools`, `onYield`, `afterRun`) asks for, its input typed by the task (define.ts hookTask). */

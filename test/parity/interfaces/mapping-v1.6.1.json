@@ -3894,7 +3894,7 @@
       "id": "pkg:agent/.#AgentToolResult",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:4219e1893ef7ff54d4d9007d478793ebf4bb83532710cead397fbfaca9bbb68b",
-      "rationale": "types.ts AgentToolResult\u003cT\u003e: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
+      "rationale": "types.ts AgentToolResult<T>: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
       "pigTargets": [
         "agent/agent.go#AgentToolResult"
       ],
@@ -3914,7 +3914,7 @@
       "id": "pkg:agent/.#AgentToolResult::property:content",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:579a485b14012a4360245c6cc7a0a043cafbe01f5504eaea352332cde98fbefa",
-      "rationale": "types.ts AgentToolResult\u003cT\u003e: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
+      "rationale": "types.ts AgentToolResult<T>: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
       "pigTargets": [
         "agent/agent.go#AgentToolResult.Content"
       ],
@@ -3934,7 +3934,7 @@
       "id": "pkg:agent/.#AgentToolResult::property:details",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:0d1eaeb3aafa9cb5b0b3a4a7581afab5d7db1aea2eefcee3c7e7530ffd21fffd",
-      "rationale": "types.ts AgentToolResult\u003cT\u003e: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
+      "rationale": "types.ts AgentToolResult<T>: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
       "pigTargets": [
         "agent/agent.go#AgentToolResult.Details"
       ],
@@ -3954,7 +3954,7 @@
       "id": "pkg:agent/.#AgentToolResult::property:isError",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:2f862a4a5bef9d233e869e5bdfdf8e328beefd9d47a88377cbb39b4441b05884",
-      "rationale": "types.ts AgentToolResult\u003cT\u003e: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
+      "rationale": "types.ts AgentToolResult<T>: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
       "pigTargets": [
         "agent/agent.go#AgentToolResult.IsError"
       ],
@@ -3974,7 +3974,7 @@
       "id": "pkg:agent/.#AgentToolResult::property:structuredContent",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:2bf50fc5a41ddef8f034a961e561cda23c7d21ded57737452fe48d3d36864cd3",
-      "rationale": "types.ts AgentToolResult\u003cT\u003e: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
+      "rationale": "types.ts AgentToolResult<T>: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
       "pigTargets": [
         "agent/agent.go#AgentToolResult.StructuredContent"
       ],
@@ -3994,7 +3994,7 @@
       "id": "pkg:agent/.#AgentToolResult::property:terminate",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:0356276fedc4675b9735bbb9bbcb319fefd7cb95da4186cc33c15b2a3f3b4a4e",
-      "rationale": "types.ts AgentToolResult\u003cT\u003e: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
+      "rationale": "types.ts AgentToolResult<T>: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
       "pigTargets": [
         "agent/agent.go#AgentToolResult.Terminate"
       ],
@@ -4014,7 +4014,7 @@
       "id": "pkg:agent/.#AgentToolResult::property:usage",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:68962e1f2cc1a23b50b8214f3dd8cebcf889a046bb37b37cac2caefab4d5ec79",
-      "rationale": "types.ts AgentToolResult\u003cT\u003e: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
+      "rationale": "types.ts AgentToolResult<T>: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
       "pigTargets": [
         "agent/agent.go#AgentToolResult.Usage"
       ],
@@ -6755,7 +6755,7 @@
       "id": "pkg:ai/.#Api",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:e94e2ceb75efedd136d719c502c3d5bc4e6bc49140f3e97a2aee725b9489c7f8",
-      "rationale": "Api: the Go named string type API declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants). The upstream open union (`| (string \u0026 {})`) is the unconstrained Go string type.",
+      "rationale": "Api: the Go named string type API declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants). The upstream open union (`| (string & {})`) is the unconstrained Go string type.",
       "pigTargets": [
         "ai/types.go#API"
       ],
@@ -10943,7 +10943,7 @@
       "id": "pkg:ai/.#ClassifierApi",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:7c4c006449011ffdc3d6dfdcd41b6063ea59cadc5c5a3794dfec394aef8da709",
-      "rationale": "ClassifierApi: the Go named string type ClassifierAPI declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants). The upstream open union (`| (string \u0026 {})`) is the unconstrained Go string type.",
+      "rationale": "ClassifierApi: the Go named string type ClassifierAPI declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants). The upstream open union (`| (string & {})`) is the unconstrained Go string type.",
       "pigTargets": [
         "ai/model_types.go#ClassifierAPI"
       ],
@@ -18349,7 +18349,7 @@
       "id": "pkg:ai/.#ImageApi",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:3035773e555bf16f08b28386de4578ea0cd57da9ef3b40e914919329f658cebd",
-      "rationale": "ImageApi: the Go named string type ImageAPI declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants). The upstream open union (`| (string \u0026 {})`) is the unconstrained Go string type.",
+      "rationale": "ImageApi: the Go named string type ImageAPI declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants). The upstream open union (`| (string & {})`) is the unconstrained Go string type.",
       "pigTargets": [
         "ai/model_types.go#ImageAPI"
       ],
@@ -52093,7 +52093,7 @@
       "id": "pkg:ai/compat#Api",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:e94e2ceb75efedd136d719c502c3d5bc4e6bc49140f3e97a2aee725b9489c7f8",
-      "rationale": "Api: the Go named string type API declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants). The upstream open union (`| (string \u0026 {})`) is the unconstrained Go string type.",
+      "rationale": "Api: the Go named string type API declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants). The upstream open union (`| (string & {})`) is the unconstrained Go string type.",
       "pigTargets": [
         "ai/types.go#API"
       ],
@@ -56598,7 +56598,7 @@
       "id": "pkg:ai/compat#ClassifierApi",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:7c4c006449011ffdc3d6dfdcd41b6063ea59cadc5c5a3794dfec394aef8da709",
-      "rationale": "ClassifierApi: the Go named string type ClassifierAPI declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants). The upstream open union (`| (string \u0026 {})`) is the unconstrained Go string type.",
+      "rationale": "ClassifierApi: the Go named string type ClassifierAPI declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants). The upstream open union (`| (string & {})`) is the unconstrained Go string type.",
       "pigTargets": [
         "ai/model_types.go#ClassifierAPI"
       ],
@@ -64788,7 +64788,7 @@
       "id": "pkg:ai/compat#ImageApi",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:3035773e555bf16f08b28386de4578ea0cd57da9ef3b40e914919329f658cebd",
-      "rationale": "ImageApi: the Go named string type ImageAPI declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants). The upstream open union (`| (string \u0026 {})`) is the unconstrained Go string type.",
+      "rationale": "ImageApi: the Go named string type ImageAPI declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants). The upstream open union (`| (string & {})`) is the unconstrained Go string type.",
       "pigTargets": [
         "ai/model_types.go#ImageAPI"
       ],
@@ -85542,7 +85542,7 @@
         "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsSubmitPollRedeemDeferredUpstream",
         "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
       ],
-      "asyncContract": "Awaiting the upstream Promise\u003cAssistantMessage\u003e is a blocking Go call that returns the final message; a stream failure is the message's error stopReason, not a returned error. AbortSignal is the context.Context argument.",
+      "asyncContract": "Awaiting the upstream Promise<AssistantMessage> is a blocking Go call that returns the final message; a stream failure is the message's error stopReason, not a returned error. AbortSignal is the context.Context argument.",
       "rationale": "Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface."
     },
     {
@@ -85564,7 +85564,7 @@
         "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsSubmitPollRedeemDeferredUpstream",
         "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
       ],
-      "asyncContract": "Awaiting the upstream Promise\u003cAssistantMessage\u003e is a blocking Go call that returns the final message; a stream failure is the message's error stopReason, not a returned error. AbortSignal is the context.Context argument.",
+      "asyncContract": "Awaiting the upstream Promise<AssistantMessage> is a blocking Go call that returns the final message; a stream failure is the message's error stopReason, not a returned error. AbortSignal is the context.Context argument.",
       "rationale": "Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface."
     },
     {
@@ -86901,7 +86901,7 @@
       "id": "pkg:ai/models#ModelsRefreshResult::property:errors",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:79a889dd355b2a71ce8c4ce2feaa10a380366ff8e7693c2eacdc7c1e29a98f25",
-      "rationale": "ReadonlyMap\u003cstring, Error\u003e is Errors map[string]error plus ErrorOrder, which keeps the Map's insertion order. Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface.",
+      "rationale": "ReadonlyMap<string, Error> is Errors map[string]error plus ErrorOrder, which keeps the Map's insertion order. Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface.",
       "pigTargets": [
         "ai/models_runtime.go#ModelsRefreshResult.Errors"
       ],
@@ -87329,7 +87329,7 @@
         "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsSubmitPollRedeemDeferredUpstream",
         "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
       ],
-      "asyncContract": "Awaiting the upstream Promise\u003cAssistantMessage\u003e is a blocking Go call that returns the final message; a stream failure is the message's error stopReason, not a returned error. AbortSignal is the context.Context argument.",
+      "asyncContract": "Awaiting the upstream Promise<AssistantMessage> is a blocking Go call that returns the final message; a stream failure is the message's error stopReason, not a returned error. AbortSignal is the context.Context argument.",
       "rationale": "Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface."
     },
     {
@@ -87351,7 +87351,7 @@
         "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsSubmitPollRedeemDeferredUpstream",
         "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
       ],
-      "asyncContract": "Awaiting the upstream Promise\u003cAssistantMessage\u003e is a blocking Go call that returns the final message; a stream failure is the message's error stopReason, not a returned error. AbortSignal is the context.Context argument.",
+      "asyncContract": "Awaiting the upstream Promise<AssistantMessage> is a blocking Go call that returns the final message; a stream failure is the message's error stopReason, not a returned error. AbortSignal is the context.Context argument.",
       "rationale": "Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface."
     },
     {
@@ -88761,7 +88761,7 @@
       "id": "pkg:ai/models#RefreshModelsContext::property:publish",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:5d5fa0d833de78dfa4fbd4f7cacdeca5d7fd076909da89118cc6cf26a5832a89",
-      "rationale": "Promise\u003cboolean\u003e is the (bool, error) return; false means a newer refresh or provider replacement superseded this one. Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface.",
+      "rationale": "Promise<boolean> is the (bool, error) return; false means a newer refresh or provider replacement superseded this one. Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface.",
       "pigTargets": [
         "ai/models_runtime.go#RefreshModelsContext.Publish"
       ],
@@ -88783,7 +88783,7 @@
       "id": "pkg:ai/models#RefreshModelsContext::property:publish::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:f24f310d03b1852c123ef88ca7b3d2fb5ef7c49c4c3d7dcd924caca8545c3b91",
-      "rationale": "Promise\u003cboolean\u003e is the (bool, error) return; false means a newer refresh or provider replacement superseded this one. Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface.",
+      "rationale": "Promise<boolean> is the (bool, error) return; false means a newer refresh or provider replacement superseded this one. Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface.",
       "pigTargets": [
         "ai/models_runtime.go#RefreshModelsContext.Publish"
       ],
@@ -103925,9 +103925,9 @@
       "id": "pkg:ai/utils/openrouter-finish-reason#readOpenRouterNativeFinishReason",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:83034d8e0f2c712ea85d6d33dc9e0eb2d28d3e91de758e6429e2ff1c3b43a92b",
-      "rationale": "Derived by the interface gap detector: readOpenRouterNativeFinishReason is Go ai/sse.go#openAIStreamErrorMessage (name rule N5), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Ported in ai/openrouter_finish_reason.go#readOpenRouterNativeFinishReason, called from ai/openai.go, verified by TestOpenRouterNativeFinishReason.",
       "pigTargets": [
-        "ai/sse.go#openAIStreamErrorMessage"
+        "ai/openrouter_finish_reason.go#readOpenRouterNativeFinishReason"
       ],
       "layers": {
         "behavior": "complete",
@@ -103935,19 +103935,19 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/sse.go#openAIStreamErrorMessage"
+        "call:ai/openrouter_finish_reason.go#readOpenRouterNativeFinishReason"
       ],
       "evidence": [
-        "test:ai/sse_error_parity_test.go#TestOpenAIStreamErrorMessageMatchesPinnedSDK"
+        "test:ai/openrouter_finish_reason_test.go#TestOpenRouterNativeFinishReason"
       ]
     },
     {
       "id": "pkg:ai/utils/openrouter-finish-reason#readOpenRouterNativeFinishReason::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:62114e7f6d7702a9934ddff0552006b07d958735deb994c17c2618d0f031d781",
-      "rationale": "Derived by the interface gap detector: readOpenRouterNativeFinishReason::call:0 is Go ai/sse.go#openAIStreamErrorMessage (name rule N5), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Ported in ai/openrouter_finish_reason.go#readOpenRouterNativeFinishReason, called from ai/openai.go, verified by TestOpenRouterNativeFinishReason.",
       "pigTargets": [
-        "ai/sse.go#openAIStreamErrorMessage"
+        "ai/openrouter_finish_reason.go#readOpenRouterNativeFinishReason"
       ],
       "layers": {
         "behavior": "complete",
@@ -103955,10 +103955,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/sse.go#openAIStreamErrorMessage"
+        "call:ai/openrouter_finish_reason.go#readOpenRouterNativeFinishReason"
       ],
       "evidence": [
-        "test:ai/sse_error_parity_test.go#TestOpenAIStreamErrorMessageMatchesPinnedSDK"
+        "test:ai/openrouter_finish_reason_test.go#TestOpenRouterNativeFinishReason"
       ]
     },
     {
@@ -182532,7 +182532,7 @@
       "id": "pkg:coding-agent/.#ExtensionAPI::property:on::call:session_start",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:7bb1b77d9e9ace784d6d6b702cf14a7fcb4923f07e719b69073affd77125d04a",
-      "rationale": "pi.on(\"session_start\", handler): () =\u003e void is the Go API member OnSessionStart, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+      "rationale": "pi.on(\"session_start\", handler): () => void is the Go API member OnSessionStart, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
       "pigTargets": [
         "coding/extension/api.go#API.OnSessionStart"
       ],
@@ -182567,7 +182567,7 @@
       "id": "pkg:coding-agent/.#ExtensionAPI::property:on::call:session_tree",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:b4f9befe1f404bee2151115e88c3a92080aa216fe0da15c87b50c0dc60d4a3e1",
-      "rationale": "pi.on(\"session_tree\", handler): () =\u003e void is the Go API member OnSessionTree, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+      "rationale": "pi.on(\"session_tree\", handler): () => void is the Go API member OnSessionTree, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
       "pigTargets": [
         "coding/extension/api.go#API.OnSessionTree"
       ],
@@ -182598,7 +182598,7 @@
       "id": "pkg:coding-agent/.#ExtensionAPI::property:on::call:thinking_level_select",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:e534eae73f45efa1d58a74b9383a03e482d05e27a6aa266f310f4eabd8a4d8a2",
-      "rationale": "pi.on(\"thinking_level_select\", handler): () =\u003e void is the Go API member OnThinkingLevelSelect, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+      "rationale": "pi.on(\"thinking_level_select\", handler): () => void is the Go API member OnThinkingLevelSelect, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
       "pigTargets": [
         "coding/extension/api.go#API.OnThinkingLevelSelect"
       ],
@@ -182632,7 +182632,7 @@
       "id": "pkg:coding-agent/.#ExtensionAPI::property:on::call:tool_call",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:c68e9f83f7bc0d4d74701c2e1ecd66bda962fb468e46815410c5865be1a185cc",
-      "rationale": "pi.on(\"tool_call\", handler): () =\u003e void is the Go API member OnToolCall, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+      "rationale": "pi.on(\"tool_call\", handler): () => void is the Go API member OnToolCall, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
       "pigTargets": [
         "coding/extension/api.go#API.OnToolCall"
       ],
@@ -182665,7 +182665,7 @@
       "id": "pkg:coding-agent/.#ExtensionAPI::property:on::call:tool_execution_end",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:bb8602a864570eb3116f5aef70ad740a9a3d26211cc88667c8b0c39965e4e6bf",
-      "rationale": "pi.on(\"tool_execution_end\", handler): () =\u003e void is the Go API member OnToolExecutionEnd, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+      "rationale": "pi.on(\"tool_execution_end\", handler): () => void is the Go API member OnToolExecutionEnd, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
       "pigTargets": [
         "coding/extension/api.go#API.OnToolExecutionEnd"
       ],
@@ -182697,7 +182697,7 @@
       "id": "pkg:coding-agent/.#ExtensionAPI::property:on::call:tool_execution_start",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:1cebe4a00fbe8f2ce989969644cf32a1d287c3a71b0a9b2c1602e20b5ab1716a",
-      "rationale": "pi.on(\"tool_execution_start\", handler): () =\u003e void is the Go API member OnToolExecutionStart, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+      "rationale": "pi.on(\"tool_execution_start\", handler): () => void is the Go API member OnToolExecutionStart, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
       "pigTargets": [
         "coding/extension/api.go#API.OnToolExecutionStart"
       ],
@@ -182729,7 +182729,7 @@
       "id": "pkg:coding-agent/.#ExtensionAPI::property:on::call:tool_execution_update",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:646ba2bac3b264e37c71cf47eecde1eab6d40099cad5ad6701f79549b9c5d844",
-      "rationale": "pi.on(\"tool_execution_update\", handler): () =\u003e void is the Go API member OnToolExecutionUpdate, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+      "rationale": "pi.on(\"tool_execution_update\", handler): () => void is the Go API member OnToolExecutionUpdate, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
       "pigTargets": [
         "coding/extension/api.go#API.OnToolExecutionUpdate"
       ],
@@ -182761,7 +182761,7 @@
       "id": "pkg:coding-agent/.#ExtensionAPI::property:on::call:tool_result",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:0fbf50c6a1f6fc1ab2c9edbffd72052dd8489d8430e4887e1b2941c4dba07f74",
-      "rationale": "pi.on(\"tool_result\", handler): () =\u003e void is the Go API member OnToolResult, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+      "rationale": "pi.on(\"tool_result\", handler): () => void is the Go API member OnToolResult, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
       "pigTargets": [
         "coding/extension/api.go#API.OnToolResult"
       ],
@@ -182793,7 +182793,7 @@
       "id": "pkg:coding-agent/.#ExtensionAPI::property:on::call:turn_end",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:af5f01185cfbebb7a81fb5e048c3d02620e1370374ea8b237968bc731382b0fb",
-      "rationale": "pi.on(\"turn_end\", handler): () =\u003e void is the Go API member OnTurnEnd, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's boundary payload and returns its mutation through the production Runner (TestTurnBoundaryMetadataMutationAndPreviewAcrossSDKs) and unsubscribes (TestConformance_EventUnsubscribeEveryEvent).",
+      "rationale": "pi.on(\"turn_end\", handler): () => void is the Go API member OnTurnEnd, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's boundary payload and returns its mutation through the production Runner (TestTurnBoundaryMetadataMutationAndPreviewAcrossSDKs) and unsubscribes (TestConformance_EventUnsubscribeEveryEvent).",
       "pigTargets": [
         "coding/extension/api.go#API.OnTurnEnd"
       ],
@@ -182824,7 +182824,7 @@
       "id": "pkg:coding-agent/.#ExtensionAPI::property:on::call:turn_start",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:b5a506924674fe94dd422916d568f6bdefc82b50d40a2f136cfb59526490ea68",
-      "rationale": "pi.on(\"turn_start\", handler): () =\u003e void is the Go API member OnTurnStart, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+      "rationale": "pi.on(\"turn_start\", handler): () => void is the Go API member OnTurnStart, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
       "pigTargets": [
         "coding/extension/api.go#API.OnTurnStart"
       ],
@@ -182857,7 +182857,7 @@
       "id": "pkg:coding-agent/.#ExtensionAPI::property:on::call:ui_prompt_end",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:153d81d24704886e0b2eb69e7fbf28a45368ead2b41ee4939e099b2b836288ae",
-      "rationale": "pi.on(\"ui_prompt_end\", handler): () =\u003e void is the Go API member OnUiPromptEnd, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+      "rationale": "pi.on(\"ui_prompt_end\", handler): () => void is the Go API member OnUiPromptEnd, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
       "pigTargets": [
         "coding/extension/api.go#API.OnUiPromptEnd"
       ],
@@ -182889,7 +182889,7 @@
       "id": "pkg:coding-agent/.#ExtensionAPI::property:on::call:ui_prompt_start",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:a679282b7a70dfd48787eeb44052919c319b867b874674982c8ccc5bf65b269d",
-      "rationale": "pi.on(\"ui_prompt_start\", handler): () =\u003e void is the Go API member OnUiPromptStart, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+      "rationale": "pi.on(\"ui_prompt_start\", handler): () => void is the Go API member OnUiPromptStart, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
       "pigTargets": [
         "coding/extension/api.go#API.OnUiPromptStart"
       ],
@@ -182921,7 +182921,7 @@
       "id": "pkg:coding-agent/.#ExtensionAPI::property:on::call:user_bash",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:e4dbf17af79a27a1e470c194e15b8c8fc3730c57e72da2a351ec50140c148011",
-      "rationale": "pi.on(\"user_bash\", handler): () =\u003e void is the Go API member OnUserBash, which returns the unsubscribe function. A handler in every SDK (Go, Rust, Python and Node isolated, Node packed, Go fused; the undefined result also packed Go, Python and Rust) receives Pi's payload, unsubscribes, and returns either a { result } (validated as runner.ts isUserBashEventResult) or { operations }: the BashOperations object stays in the extension, the reply names it by handle, and the host runs the user's command through its exec with onData, signal, timeout and env (RequestUserBashExec); Session.ExecuteBash consumes it in interactive and RPC mode (TestConformance_UserBashOperationsRunInTheExtension).",
+      "rationale": "pi.on(\"user_bash\", handler): () => void is the Go API member OnUserBash, which returns the unsubscribe function. A handler in every SDK (Go, Rust, Python and Node isolated, Node packed, Go fused; the undefined result also packed Go, Python and Rust) receives Pi's payload, unsubscribes, and returns either a { result } (validated as runner.ts isUserBashEventResult) or { operations }: the BashOperations object stays in the extension, the reply names it by handle, and the host runs the user's command through its exec with onData, signal, timeout and env (RequestUserBashExec); Session.ExecuteBash consumes it in interactive and RPC mode (TestConformance_UserBashOperationsRunInTheExtension).",
       "pigTargets": [
         "coding/extension/api.go#API.OnUserBash"
       ],
@@ -224325,7 +224325,7 @@
       "id": "pkg:coding-agent/.#SettingsManager::property:getOrCreateDeviceId",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9487e9aec06df28f64cb9c89c329cfd10eb5b623841e83c5fa96c85edf804d33",
-      "rationale": "SettingsManager.getOrCreateDeviceId is the Go method SettingsManager.GetOrCreateDeviceID (Id spelled ID); () =\u003e string on both sides; callers and tests attributed by go/types (methodrefs).",
+      "rationale": "SettingsManager.getOrCreateDeviceId is the Go method SettingsManager.GetOrCreateDeviceID (Id spelled ID); () => string on both sides; callers and tests attributed by go/types (methodrefs).",
       "pigTargets": [
         "internal/codingagent/settings.go#SettingsManager.GetOrCreateDeviceID"
       ],
@@ -224346,7 +224346,7 @@
       "id": "pkg:coding-agent/.#SettingsManager::property:getOrCreateDeviceId::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9231ea69ae1121c895c1d3b2d307df795c874c1f1f85688b3ac32e9d1e7168c4",
-      "rationale": "SettingsManager.getOrCreateDeviceId is the Go method SettingsManager.GetOrCreateDeviceID (Id spelled ID); () =\u003e string on both sides; callers and tests attributed by go/types (methodrefs).",
+      "rationale": "SettingsManager.getOrCreateDeviceId is the Go method SettingsManager.GetOrCreateDeviceID (Id spelled ID); () => string on both sides; callers and tests attributed by go/types (methodrefs).",
       "pigTargets": [
         "internal/codingagent/settings.go#SettingsManager.GetOrCreateDeviceID"
       ],
@@ -288714,7 +288714,7 @@
         "test:mcp/oauth/oauth_test.go#TestMcpOAuthProviderKeepsFailingAfterAFailedWrite",
         "test:mcp/oauth/state_store_test.go#TestMemoryOAuthStateStoreLoadsNothingUntilASaveAndCopiesBothWays"
       ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise\u003cvoid\u003e` is the single Go error."
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise<void>` is the single Go error."
     },
     {
       "id": "pkg:mcp/oauth#McpOAuthStateStore::property:load",
@@ -288735,7 +288735,7 @@
       "evidence": [
         "test:mcp/oauth/oauth_test.go#TestMcpOAuthProviderKeepsFailingAfterAFailedWrite"
       ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise\u003cvoid\u003e` is the single Go error."
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise<void>` is the single Go error."
     },
     {
       "id": "pkg:mcp/oauth#McpOAuthStateStore::property:load::call:0",
@@ -288756,7 +288756,7 @@
       "evidence": [
         "test:mcp/oauth/oauth_test.go#TestMcpOAuthProviderKeepsFailingAfterAFailedWrite"
       ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise\u003cvoid\u003e` is the single Go error."
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise<void>` is the single Go error."
     },
     {
       "id": "pkg:mcp/oauth#McpOAuthStateStore::property:save",
@@ -288777,7 +288777,7 @@
       "evidence": [
         "test:mcp/oauth/oauth_test.go#TestMcpOAuthProviderKeepsFailingAfterAFailedWrite"
       ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise\u003cvoid\u003e` is the single Go error."
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise<void>` is the single Go error."
     },
     {
       "id": "pkg:mcp/oauth#McpOAuthStateStore::property:save::call:0",
@@ -288798,7 +288798,7 @@
       "evidence": [
         "test:mcp/oauth/oauth_test.go#TestMcpOAuthProviderKeepsFailingAfterAFailedWrite"
       ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise\u003cvoid\u003e` is the single Go error."
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise<void>` is the single Go error."
     },
     {
       "id": "pkg:mcp/oauth#McpRefreshLockBusyError",
@@ -289388,7 +289388,7 @@
       "id": "pkg:mcp/oauth#MemoryOAuthStateStore::construct:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:6dcf34a3052a4f6d561c6f560be2f7082d3a3023f27b56b8da102b789e38aeac",
-      "rationale": "The constructor `new MemoryOAuthStateStore()` is the zero value `\u0026MemoryOAuthStateStore{}`.",
+      "rationale": "The constructor `new MemoryOAuthStateStore()` is the zero value `&MemoryOAuthStateStore{}`.",
       "pigTargets": [
         "mcp/oauth/provider.go#MemoryOAuthStateStore"
       ],
@@ -289634,7 +289634,7 @@
       "evidence": [
         "test:mcp/oauth/callback_server_options_test.go#TestOAuthCallbackServerRejectsAWaitWhenItTimesOutOrCloses"
       ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise\u003cvoid\u003e` is the single Go error."
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise<void>` is the single Go error."
     },
     {
       "id": "pkg:mcp/oauth#OAuthCallbackServer::property:close::call:0",
@@ -289655,7 +289655,7 @@
       "evidence": [
         "test:mcp/oauth/callback_server_options_test.go#TestOAuthCallbackServerRejectsAWaitWhenItTimesOutOrCloses"
       ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise\u003cvoid\u003e` is the single Go error."
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise<void>` is the single Go error."
     },
     {
       "id": "pkg:mcp/oauth#OAuthCallbackServer::property:redirectUrl",
@@ -292992,7 +292992,7 @@
         "test:coding/mcpext/connection_test.go#TestMCPConnectionsMarksADroppedConnectionAndReconnectsOnTheNextCall",
         "test:mcp/client_test.go#TestClientNotifiesCloseListenersOnceWhenTheTransportDrops"
       ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the error; `void | Promise\u003cvoid\u003e` is the single Go error."
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the error; `void | Promise<void>` is the single Go error."
     },
     {
       "id": "pkg:mcp/testing#InMemoryTransport::property:close::call:0",
@@ -293014,7 +293014,7 @@
         "test:coding/mcpext/connection_test.go#TestMCPConnectionsMarksADroppedConnectionAndReconnectsOnTheNextCall",
         "test:mcp/client_test.go#TestClientNotifiesCloseListenersOnceWhenTheTransportDrops"
       ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the error; `void | Promise\u003cvoid\u003e` is the single Go error."
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the error; `void | Promise<void>` is the single Go error."
     },
     {
       "id": "pkg:mcp/testing#InMemoryTransport::property:connectPeer",
@@ -304352,7 +304352,7 @@
       "id": "pkg:tui/.#fuzzyFilter",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:fb884c0d6bfe303d4016e8a901b58cf22d7f65a29aeba509881b60cc24808251",
-      "rationale": "fuzzy.ts fuzzyFilter\u003cT\u003e(items, query, getText). Go FuzzyFilter[T] has the same generic shape. Test-mapping packages/tui/test/fuzzy.test.ts records all 14 upstream cases ported with per-case citations and a compiling mutation.",
+      "rationale": "fuzzy.ts fuzzyFilter<T>(items, query, getText). Go FuzzyFilter[T] has the same generic shape. Test-mapping packages/tui/test/fuzzy.test.ts records all 14 upstream cases ported with per-case citations and a compiling mutation.",
       "pigTargets": [
         "tui/fuzzy.go#FuzzyFilter"
       ],
@@ -304373,7 +304373,7 @@
       "id": "pkg:tui/.#fuzzyFilter::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:7b6a619880c1062d4195a892ebf7d43ec653b2e59783ca8545dc1fc49d112ac2",
-      "rationale": "fuzzy.ts fuzzyFilter\u003cT\u003e(items, query, getText). Go FuzzyFilter[T] has the same generic shape. Test-mapping packages/tui/test/fuzzy.test.ts records all 14 upstream cases ported with per-case citations and a compiling mutation.",
+      "rationale": "fuzzy.ts fuzzyFilter<T>(items, query, getText). Go FuzzyFilter[T] has the same generic shape. Test-mapping packages/tui/test/fuzzy.test.ts records all 14 upstream cases ported with per-case citations and a compiling mutation.",
       "pigTargets": [
         "tui/fuzzy.go#FuzzyFilter"
       ],

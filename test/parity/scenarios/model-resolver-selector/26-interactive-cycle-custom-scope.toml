@@ -38,8 +38,8 @@ capture_start_last = true
 
 [[tmux.steps]]
 keys = ["hex:10"]
-wait_visible_contains = ["Switched to GPT-4", "gpt-4"]
-wait_not_contains = ["Switched to GPT-4 Turbo"]
+wait_visible_contains = ["Switched to GPT-4o", "gpt-4o"]
+wait_not_contains = ["Switched to GPT-4.1"]
 wait_timeout_seconds = 5
 
 [[tmux.steps]]
@@ -49,13 +49,13 @@ wait_timeout_seconds = 5
 
 [[tmux.steps]]
 keys = ["hex:10"]
-wait_visible_contains = ["Switched to GPT-4 Turbo", "gpt-4-turbo"]
+wait_visible_contains = ["Switched to GPT-4.1", "gpt-4.1"]
 wait_timeout_seconds = 5
 
 [[tmux.steps]]
 keys = ["hex:10"]
-wait_visible_contains = ["Switched to GPT-4", "gpt-4"]
-wait_not_contains = ["Switched to GPT-4 Turbo"]
+wait_visible_contains = ["Switched to GPT-4o", "gpt-4o"]
+wait_not_contains = ["Switched to GPT-4.1"]
 wait_timeout_seconds = 5
 
 [[tmux.steps]]

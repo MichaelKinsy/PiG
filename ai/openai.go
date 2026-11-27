@@ -2185,11 +2185,13 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 		}
 
 		for _, choice := range chunk.Choices[:min(1, len(chunk.Choices))] {
-			if openRouter && choice.NativeFinishReason != "" {
-				if decodedFast {
-					nativeFinishReason = strings.Clone(choice.NativeFinishReason)
-				} else {
-					nativeFinishReason = choice.NativeFinishReason
+			if openRouter {
+				if native := readOpenRouterNativeFinishReason(&choice); native != "" {
+					if decodedFast {
+						nativeFinishReason = strings.Clone(native)
+					} else {
+						nativeFinishReason = native
+					}
 				}
 			}
 			if choice.FinishReason != "" || choice.finishReasonNotString {

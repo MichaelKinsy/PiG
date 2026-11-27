@@ -23,8 +23,8 @@
  "packages/ai/catalog/families/anthropic.ts": [
   {
    "file": "internal/modelgen/family_anthropic.go",
-   "old": "\"claude-opus-5\"",
-   "new": "\"claude-opus-Z\""
+   "old": "\"sonnet-4.6\"",
+   "new": "\"sonnet-4.Z\""
   }
  ],
  "packages/ai/catalog/families/deepseek.ts": [
@@ -205,8 +205,8 @@
  "packages/ai/catalog/providers/mistral.ts": [
   {
    "file": "internal/modelgen/providers/mistral.go",
-   "old": "\"mistral-medium-3.5\"",
-   "new": "\"mistral-medium-3.Z\""
+   "old": "NoRecordReasoning: true,",
+   "new": "NoRecordReasoning: false,"
   }
  ],
  "packages/ai/catalog/providers/moonshotai-cn.ts": [
@@ -3666,8 +3666,8 @@
  "packages/coding-agent/src/extensions/mcp/tools.ts": [
   {
    "file": "coding/mcpext/tools.go",
-   "old": "\tif len(trimmed) == 0 {\n",
-   "new": "\tif len(trimmed) != 0 {\n"
+   "old": "\tif exposure == extension.McpExposureCodemode {\n",
+   "new": "\tif exposure != extension.McpExposureCodemode {\n"
   }
  ],
  "packages/coding-agent/src/extensions/mcp/ui.ts": [

@@ -52,7 +52,7 @@ const each = (fn, inputs) => inputs.map((x) => { try { return fn(x); } catch (e)
 await row("mapStopReason", () => each((r) => google.mapStopReason(r), ["STOP", "MAX_TOKENS", "CONTINUATION", "SAFETY", "FINISH_REASON_UNSPECIFIED", "MALFORMED_FUNCTION_CALL", "BOGUS"]));
 await row("mapToolChoice", () => each((c) => google.mapToolChoice(c), ["auto", "none", "any", "other"]));
 await row("thinking levels", () => ({ levels: ["minimal", "low", "medium", "high"].map((l) => google.toGoogleThinkingLevel(l)), sdk: ["THINKING_LEVEL_UNSPECIFIED", "MINIMAL", "LOW", "MEDIUM", "HIGH"].map((l) => google.toGoogleSdkThinkingLevel(l)) }));
-await row("model id helpers", () => ({ byId: ["gemini-3-pro-preview", "gemini-2.5-flash", "gemma-3-27b"].map((id) => [google.usesGoogleThinkingLevel({ id }), google.requiresToolCallId(id), google.supportsGoogleStrictToolSampling(id), google.supportsGoogleStrictToolSampling({ id })]), strictOverride: google.supportsGoogleStrictToolSampling({ id: "gemini-3-pro-preview", compat: { supportsStrictMode: false } }) }));
+await row("model id helpers", () => ({ byId: ["gemini-3-pro-preview", "gemini-2.5-flash", "gemma-3-27b"].map((id) => [google.usesGoogleThinkingLevel({ id }), google.requiresToolCallId(id), google.supportsGoogleStrictToolSampling({ id })]), strictOverride: google.supportsGoogleStrictToolSampling({ id: "gemini-3-pro-preview", compat: { supportsStrictMode: false } }) }));
 const geminiModel = { id: "gemini-3-pro-preview", name: "Gemini 3", api: "google-generative-ai", provider: "google", baseUrl: "https://generativelanguage.googleapis.com", reasoning: true, input: ["text", "image"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 1000000, maxTokens: 64000 };
 await row("convertMessages (google-shared) with a tool call and an image tool result", () => google.convertMessages(geminiModel, normalizeContext({ messages: [
   { role: "user", content: [{ type: "text", text: "Read it" }, { type: "image", data: "ZmFrZQ==", mimeType: "image/png" }], timestamp: 1 },
@@ -61,14 +61,14 @@ await row("convertMessages (google-shared) with a tool call and an image tool re
 await row("retryGoogleRequest retries a headers-less SDK error with a retryable status", async () => {
   let calls = 0;
   const apiError = (status) => Object.assign(new Error("got status: " + status), { status });
-  const result = await google.retryGoogleRequest(async () => { calls++; if (calls === 1) throw apiError(429); return "ok"; }, { maxRetries: 1 });
+  const result = await google.retryGoogleRequest(async () => { calls++; if (calls === 1) throw apiError(429); return "ok"; }, geminiModel, { maxRetries: 1 });
   return { result, calls };
 });
 await row("retryGoogleRequest does not retry without maxRetries or on a non-retryable status", async () => {
   const seen = [];
   for (const [status, options] of [[429, undefined], [400, { maxRetries: 2 }]]) {
     let calls = 0; const error = Object.assign(new Error("got status: " + status), { status });
-    try { await google.retryGoogleRequest(async () => { calls++; throw error; }, options); } catch (e) { seen.push({ same: e === error, calls }); }
+    try { await google.retryGoogleRequest(async () => { calls++; throw error; }, geminiModel, options); } catch (e) { seen.push({ same: e === error, calls }); }
   }
   return seen;
 });

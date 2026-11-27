@@ -7352,7 +7352,7 @@ mod sdk_surface_call_tests {
             timeout: Some(1500.0),
         };
         let (call, result) = roundtrip(
-            move |ctx| ctx.select_with_options("Pick", &["a", "b"], &opts),
+            move |ctx| ctx.select_with_options("Pick", &["a", "b"], opts),
             ok(Some(json!({"selected": "b", "ok": true}))),
         );
         assert_eq!(call.method, "ui.select");
@@ -7363,7 +7363,7 @@ mod sdk_surface_call_tests {
         assert_eq!(result.unwrap(), ("b".to_string(), true));
 
         let (call, result) = roundtrip(
-            move |ctx| ctx.confirm_with_options("Sure?", "Really", &opts),
+            move |ctx| ctx.confirm_with_options("Sure?", "Really", opts),
             ok(Some(json!({"confirmed": true}))),
         );
         assert_eq!(call.method, "ui.confirm");
@@ -7374,7 +7374,7 @@ mod sdk_surface_call_tests {
         assert!(result.unwrap());
 
         let (call, result) = roundtrip(
-            move |ctx| ctx.input_with_options("Name", "type", &opts),
+            move |ctx| ctx.input_with_options("Name", "type", opts),
             ok(Some(json!({"text": "", "ok": false}))),
         );
         assert_eq!(call.method, "ui.input");
@@ -7389,7 +7389,7 @@ mod sdk_surface_call_tests {
     fn dialogs_with_options_send_blocked_kind() {
         let opts = DialogPromptOptions::default().with_blocked_kind(DialogBlockedKind::Permission);
         let (call, result) = roundtrip(
-            move |ctx| ctx.select_with_options("Deploy?", &["Yes", "No"], &opts),
+            move |ctx| ctx.select_with_options("Deploy?", &["Yes", "No"], opts),
             ok(Some(json!({"selected": "Yes", "ok": true}))),
         );
         assert_eq!(call.method, "ui.select");

@@ -404,10 +404,10 @@ export class Harness {
               // writer.ts #publish: the read caches take the batch (`host.stored`) before the part's own adoption; a throw in either is the part's adoption failure.
               try { storedHook()?.(payload.batches[index] as never); transactions[index]!.adopt(seq) } catch (error) { adoption ??= { index, error } }
             }
-            let result: { stored: number; refused?: unknown } | undefined
+            let result: { kind: "stored"; stored: number } | { kind: "refused"; stored: number; refused: unknown } | undefined
             let rejected: { error: unknown } | undefined
             try {
-              result = await (storage as unknown as { commit(batches: unknown[][], receive: (index: number, seq: number) => void, context: Context): Promise<{ stored: number; refused?: unknown }> }).commit(payload.batches, receive, BACKGROUND_CONTEXT)
+              result = await (storage as unknown as { commit(batches: unknown[][], receive: (index: number, seq: number) => void, context: Context): Promise<{ kind: "stored"; stored: number } | { kind: "refused"; stored: number; refused: unknown }> }).commit(payload.batches, receive, BACKGROUND_CONTEXT)
             } catch (error) {
               rejected = { error }
               for (const [index, transaction] of transactions.entries()) if (seqs[index] === undefined) transaction.discard()
@@ -418,9 +418,9 @@ export class Harness {
             const unreceived = payload.batches.findIndex((_, index) => seqs[index] === undefined)
             if (adoption !== undefined) harness.failAfter(adoption.error, received)
             else if (rejected !== undefined) harness.failAfter(rejected.error, received)
-            else if (unreceived >= 0) harness.failAfter(unreceived === result!.stored && "refused" in result! ? result!.refused : new Error("Storage committed without adopting the batch"), received)
+            else if (unreceived >= 0) harness.failAfter(unreceived === result!.stored && result!.kind === "refused" ? result!.refused : new Error("Storage committed without adopting the batch"), received)
             if (rejected !== undefined) throw rejected.error
-            const refused = result !== undefined && "refused" in result ? { refused: wireError(result.refused) } : {}
+            const refused = result !== undefined && result.kind === "refused" ? { refused: wireError(result.refused) } : {}
             return { stored: result!.stored, ...refused, ...(adoption === undefined ? {} : { adoption: { index: adoption.index, error: wireError(adoption.error) } }) }
           },
           // session.ts #hold: the publication of a commit held in memory adopts it first (Transaction.adoptHeld); a throw is the part's failure.
@@ -1219,12 +1219,13 @@ export class Conversation {
   constructor(harness: Harness, id: number) { this.harness = harness; this.id = id }
   agent(context: Context) { return this.harness.resolveAgent(this.id, undefined, context) }
   configure(change: unknown, context: Context) { return this.harness.commitWith(tx => configure(tx, this.id, change), context) }
-  /** `submit(draft, context)` admits in its own commit; `submit(tx, draft)` admits inside the caller's commit `tx` (harness.ts ConversationImpl.submit). */
-  submit(draft: unknown, context: Context): Promise<Submission>
-  submit(tx: unknown, draft: unknown): Promise<number>
-  submit(first: unknown, second: unknown): Promise<Submission | number> {
-    if (isDraft(first)) return this.harness.submit(this.id, first, second as Context)
-    return this.harness.admit(first, this.id, second as { type: string })
+  /** `submit(draft, context)` admits in its own commit (harness.ts ConversationImpl.submit). */
+  submit(draft: unknown, context: Context): Promise<Submission> {
+    return this.harness.submit(this.id, draft, context)
+  }
+  /** `admit(tx, draft)` admits inside the caller's commit `tx` (harness.ts ConversationImpl.admit). */
+  admit(tx: unknown, draft: unknown): Promise<number> {
+    return this.harness.admit(tx, this.id, draft as { type: string })
   }
   compact(instructions: string | undefined, context: Context) { return this.harness.compactTask(this.id, instructions, context) }
   async reset(handoff: string | undefined, context: Context) {
@@ -1271,11 +1272,9 @@ function boundConversation(conversation: Conversation, binding: InvocationBindin
   const bound = <T>(operation: (context: Context) => Promise<T>) => async (context: Context): Promise<T> => { binding.check(); return operation(bind(context)) }
   return {
     id: conversation.id,
-    submit: async (first: unknown, second: unknown) => {
+    submit: async (draft: unknown, context: Context) => {
       binding.check()
-      // The overloads pair a draft with a context, and anything else (a transaction) with a draft; the caller's commit carries its own context, so the invocation's abort is checked here.
-      if (!isDraft(first)) { binding.signal?.throwIfAborted(); return conversation.submit(first, second) }
-      const submission = await conversation.submit(first, bind(second as Context))
+      const submission = await conversation.submit(draft, bind(context))
       return {
         id: submission.id,
         status: bound(callContext => submission.status(callContext)),
@@ -1283,14 +1282,15 @@ function boundConversation(conversation: Conversation, binding: InvocationBindin
         abort: bound(callContext => submission.abort(callContext)),
       }
     },
+    admit: async (tx: unknown, draft: unknown) => {
+      binding.check()
+      // The caller's commit carries its own context, so the invocation's abort is checked here.
+      binding.signal?.throwIfAborted()
+      return conversation.admit(tx, draft)
+    },
     abort: async (context: Context, options?: { background?: boolean }) => { binding.check(); return conversation.abort(bind(context), options) },
     waitForIdle: bound(callContext => conversation.waitForIdle(callContext)),
   }
-}
-
-/** A submission draft has a `type`; anything else is a transaction (the overloads pair a draft with a context, a transaction with a draft). */
-function isDraft(value: unknown): value is { type: string } {
-  return typeof value === "object" && value !== null && "type" in value
 }
 
 export { invocationApi, applyChange, runCommit }

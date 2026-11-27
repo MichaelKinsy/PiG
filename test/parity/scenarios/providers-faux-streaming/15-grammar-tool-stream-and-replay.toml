@@ -23,5 +23,5 @@ timeout_seconds = 60
 exit_code = 0
 output_equal = true
 # Pi 1.0.0 openai-responses-shared.ts:299-305 drops a replayed id that does not carry the item type's prefix, so the foreign custom_tool_call replays without an id (0.99.2 normalized it to fc_otg7yamm1iir).
-both_contain = ['"ctc_1"', '"foreignReplay":[{"call_id":"call_1","input":"abc","name":"sample_tool","type":"custom_tool_call"},', '"starts":[{"payload":"a"}]']
+both_contain = ['"ctc_1"', '"foreignReplay":[{"call_id":"call_1","input":"abc","name":"sample_tool","status":"completed","type":"custom_tool_call"},', '"starts":[{"payload":"a"}]']
 runs = 20
