@@ -329,6 +329,8 @@ func TestPostAckGateSlotCallDoesNotDeadlockPrefixSlotCall(t *testing.T) {
 	})
 }
 
+// waitPostAckGateState polls until a goroutine is (or is not) parked in (*Host).awaitPostAckGate.
+// Because the runtime.Stack scan is process-wide, callers must not call t.Parallel().
 func waitPostAckGateState(t *testing.T, wantParked bool, desc string) {
 	t.Helper()
 	deadline := time.After(testbudget.Wait(t))

@@ -1,0 +1,73 @@
+# SPDX-License-Identifier: MIT
+name: Setup GOCACHEPROG remote cache
+description: >-
+  Builds and configures PiG's zero-dependency S3/R2-backed GOCACHEPROG helper
+  with safe read-only PR enforcement and automatic fallback to local disk cache
+  when bucket configuration or credentials are absent.
+
+inputs:
+  mode:
+    description: >-
+      Cache write policy: auto (readwrite only on trusted main/release push,
+      schedule, merge_group, or workflow_dispatch; readonly on pull_request),
+      readonly, readwrite, or local.
+    required: false
+    default: auto
+  bucket:
+    description: S3/R2 bucket name. When empty, falls back cleanly to local disk cache.
+    required: false
+    default: ''
+  endpoint:
+    description: S3-compatible endpoint URL (for example an R2 or MinIO endpoint).
+    required: false
+    default: ''
+  region:
+    description: S3 region (defaults to auto when endpoint is set, else us-east-1).
+    required: false
+    default: ''
+  prefix:
+    description: Optional remote key prefix (defaults to v1/<GOOS>-<GOARCH>/<GOVERSION>).
+    required: false
+    default: ''
+  anonymous:
+    description: Allow unsigned GETs from a public-read cache bucket (always forces readonly).
+    required: false
+    default: 'false'
+  disk-dir:
+    description: Optional local backing disk cache directory for GOCACHEPROG.
+    required: false
+    default: ''
+  verbose:
+    description: Log cache hit/miss/error statistics to stderr on close.
+    required: false
+    default: 'false'
+
+outputs:
+  enabled:
+    description: "'true' if GOCACHEPROG was enabled, 'false' if local disk fallback is active."
+    value: ${{ steps.configure.outputs.enabled }}
+  mode:
+    description: Effective cache mode (remote-readonly, remote-readwrite, or local-fallback).
+    value: ${{ steps.configure.outputs.mode }}
+  gocacheprog:
+    description: Resolved GOCACHEPROG binary path (empty on local fallback).
+    value: ${{ steps.configure.outputs.gocacheprog }}
+
+runs:
+  using: composite
+  steps:
+    - name: Configure GOCACHEPROG
+      id: configure
+      shell: bash
+      env:
+        PIG_GOCACHE_MODE: ${{ inputs.mode }}
+        PIG_GOCACHE_BUCKET: ${{ inputs.bucket }}
+        PIG_GOCACHE_ENDPOINT: ${{ inputs.endpoint }}
+        PIG_GOCACHE_REGION: ${{ inputs.region }}
+        PIG_GOCACHE_PREFIX: ${{ inputs.prefix }}
+        PIG_GOCACHE_ANONYMOUS: ${{ inputs.anonymous }}
+        PIG_GOCACHE_DISK_DIR: ${{ inputs.disk-dir }}
+        PIG_GOCACHE_VERBOSE: ${{ inputs.verbose }}
+      run: |
+        set -euo pipefail
+        bash "${GITHUB_WORKSPACE}/automation/ci/setup-gocacheprog.sh"

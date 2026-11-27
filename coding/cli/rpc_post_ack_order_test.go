@@ -723,8 +723,8 @@ export default function (pi) {
 	}
 	t.Setenv("WIDGET_PORT", port)
 
-	// An in-process thinking_level_select handler registered before the Node handler pauses the batch
-	// right before Node's prefix setWidget runs, so the test can release peer, observe w-post parked in
+	// An in-process input handler on the c-hold prompt pauses the batch right before Node's
+	// thinking_level_select prefix setWidget runs, so the test can release peer, observe w-post parked in
 	// awaitPostAckGate, and ONLY THEN let Node's prefix w-prefix run while w-post is genuinely held.
 	beforePrefix := make(chan struct{})
 	allowPrefix := make(chan struct{})
@@ -759,7 +759,7 @@ export default function (pi) {
 	select {
 	case <-beforePrefix:
 	case <-time.After(testbudget.Wait(t)):
-		t.Fatal("batch did not reach thinking_level_select before-prefix barrier")
+		t.Fatal("batch did not reach c-hold input before-prefix barrier")
 	}
 
 	// Release peer so Node sends w-post, and confirm w-post is OBSERVABLY parked in awaitPostAckGate
