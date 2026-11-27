@@ -23,8 +23,8 @@
  "packages/ai/catalog/families/anthropic.ts": [
   {
    "file": "internal/modelgen/family_anthropic.go",
-   "old": "\"sonnet-4.6\"",
-   "new": "\"sonnet-4.Z\""
+   "old": "maxEffortOnly          = []string{\"opus-4-6\", \"opus-4.6\", \"sonnet-4-6\", \"sonnet-4.6\"}",
+   "new": "maxEffortOnly          = []string{\"opus-4-6\", \"opus-4.6\", \"sonnet-4-6\", \"sonnet-4.Z\"}"
   }
  ],
  "packages/ai/catalog/families/deepseek.ts": [
