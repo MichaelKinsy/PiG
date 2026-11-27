@@ -121,7 +121,7 @@ const shape = (s) => ({
 	content: s.content, truncated: s.truncation.truncated, truncatedBy: s.truncation.truncatedBy ?? "",
 	totalLines: s.truncation.totalLines, totalBytes: s.truncation.totalBytes, outputLines: s.truncation.outputLines, outputBytes: s.truncation.outputBytes,
 	lastLinePartial: s.truncation.lastLinePartial, firstLineExceedsLimit: s.truncation.firstLineExceedsLimit,
-	maxLines: s.truncation.maxLines, maxBytes: s.truncation.maxBytes, hasPath: s.fullOutputPath !== undefined,
+	maxLines: s.truncation.maxLines, maxBytes: s.truncation.maxBytes, hasPath: s.fullOutputFile?.kind === "saved",
 });
 const out = [];
 for (const p of input) {
@@ -137,7 +137,7 @@ for (const p of input) {
 	const snap = acc.snapshot();
 	const full = await acc.readFullOutput(p.fullMax);
 	let fileHex = "";
-	if (snap.fullOutputPath !== undefined) { fileHex = fs.readFileSync(snap.fullOutputPath).toString("hex"); fs.rmSync(snap.fullOutputPath, { force: true }); }
+	if (snap.fullOutputFile?.kind === "saved") { fileHex = fs.readFileSync(snap.fullOutputFile.path).toString("hex"); fs.rmSync(snap.fullOutputFile.path, { force: true }); }
 	let lateThrew = false;
 	if (p.appendLate) { try { acc.append(Buffer.from("x")); } catch { lateThrew = true; } }
 	out.push({ snapshots, final, fileHex, fullContent: full.content, fullTruncated: full.truncated, lateThrew });

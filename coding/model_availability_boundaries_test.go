@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
 func requireAvailabilityErrorIdentity(t *testing.T, got, want error) {
@@ -61,6 +62,13 @@ func TestAvailabilityCancellationPreservesLastErrorAndJoins(t *testing.T) {
 
 func TestAvailabilityProviderRefreshRetainsOtherCredentialState(t *testing.T) {
 	session, services := newAvailabilitySession(t)
+	for _, id := range []string{"other", "selected"} {
+		services.Registry().RegisterExtensionProvider(id, extension.ProviderConfig{
+			API:     "openai-completions",
+			BaseURL: "https://example.test/v1",
+			Models:  []extension.ProviderModelConfig{{ID: "model", Name: "Model", Input: []string{"text"}, ContextWindow: 128000, MaxTokens: 4096}},
+		})
+	}
 	runtime := session.ModelRuntime()
 	if err := services.Auth().Set("other", ai.Credential{Type: ai.CredentialAPIKey, Key: "other-key"}); err != nil {
 		t.Fatal(err)
