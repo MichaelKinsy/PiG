@@ -1,6 +1,6 @@
 # Units with tests that are in no nightly -race group, each with its reason (race-coverage.sh reads this file and race-packages.txt: a unit with tests is in a group, exempt there, or named here). The gate fails on a unit named in neither, on an entry that has joined a group, lost its tests or its directory, and on a count that differs from the ceiling below: the list only shrinks, and a new package goes in a group of race-packages.txt, never here. A nested Go module is one unit.
 # path   reason
-ceiling 171
+ceiling 170
 . the root package only embeds files (embed.go) and starts nothing
 ./automation/ci/allocbase no shared state: no sync, atomic, channel or cancellation in non-test code
 ./automation/ci/anytrap no shared state: no sync, atomic, channel or cancellation in non-test code
@@ -40,7 +40,6 @@ ceiling 171
 ./durable/core/abi/abitest no shared state: no sync, atomic, channel or cancellation in non-test code
 ./durable/core/abi/spec no shared state: no sync, atomic, channel or cancellation in non-test code
 ./durable/core/budget/coldhints no shared state: no sync, atomic, channel or cancellation in non-test code
-./durable/core/budget/tinygo/patchdata no shared state: no sync, atomic, channel or cancellation in non-test code
 ./durable/core/contracttest/binding no shared state: no sync, atomic, channel or cancellation in non-test code
 ./durable/core/contracttest/boundary no shared state: no sync, atomic, channel or cancellation in non-test code
 ./durable/core/contracttest/cmd/countgate no shared state: no sync, atomic, channel or cancellation in non-test code

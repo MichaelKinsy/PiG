@@ -27,8 +27,7 @@ var (
 	output   []byte
 	idText   = []byte(core.ABIID)
 	sqlTable []byte
-	// stats and allocs are the mem_stats and alloc_stats answers: counters, never pointers. The TinyGo build leaves
-	// them out of the collector's root scan (budget/tinygo/patchdata).
+	// stats and allocs are the mem_stats and alloc_stats answers: counters, never pointers (excluded automatically by TinyGo 0.43+ exact global roots).
 	stats  [64]byte
 	allocs [24]byte
 	// readReq and readAns are the request and answer buffers of the pig.read import.

@@ -11,10 +11,10 @@ go	1.27.4	linux	amd64	dl.google.com	https://dl.google.com/go/go1.27.4.linux-amd6
 # tinygo-install.sh downloads the archive and checks its digest. The pin is the version the runtime fork in
 # durable/core/budget/tinygo applies to. Changing it means porting that fork (its README lists each change). These rows are
 # not a fallback for setup.sh: no index covers them.
-tinygo	0.42.0	linux	amd64	tinygo-org/tinygo	https://github.com/tinygo-org/tinygo/releases/download/v0.42.0/tinygo0.42.0.linux-amd64.tar.gz	b87688fa2e19cee7d813cad7fd7dadb71dff3198e47125aba66ba4af5e490438
-tinygo	0.42.0	linux	arm64	tinygo-org/tinygo	https://github.com/tinygo-org/tinygo/releases/download/v0.42.0/tinygo0.42.0.linux-arm64.tar.gz	f2f3f863e63728b87772e7306bd6030df6e6c89773a7082eb0122113cf9e453d
-tinygo	0.42.0	darwin	amd64	tinygo-org/tinygo	https://github.com/tinygo-org/tinygo/releases/download/v0.42.0/tinygo0.42.0.darwin-amd64.tar.gz	ef7b96cf59de5714a7493a696e9db141a85a99459620b00c42cb3bad14be2af2
-tinygo	0.42.0	darwin	arm64	tinygo-org/tinygo	https://github.com/tinygo-org/tinygo/releases/download/v0.42.0/tinygo0.42.0.darwin-arm64.tar.gz	493da3585e66c5da677a4be39402faf2041b4e45a61eb456e4547eca753a544e
+tinygo	0.44.0	linux	amd64	tinygo-org/tinygo	https://github.com/tinygo-org/tinygo/releases/download/v0.44.0/tinygo0.44.0.linux-amd64.tar.gz	ed0f45543a49ff2a99120a5a1b8814a0750e1fda1a66f8e2a0a172576134aaf9
+tinygo	0.44.0	linux	arm64	tinygo-org/tinygo	https://github.com/tinygo-org/tinygo/releases/download/v0.44.0/tinygo0.44.0.linux-arm64.tar.gz	48cece9e1e886a176caad0918182d90f8348ad3084774e6239f42e5e11e40990
+tinygo	0.44.0	darwin	amd64	tinygo-org/tinygo	https://github.com/tinygo-org/tinygo/releases/download/v0.44.0/tinygo0.44.0.darwin-amd64.tar.gz	405b8241e20825cd3e7267706eb27c4f40fe372f3548a4d7f80ef2eb640957a7
+tinygo	0.44.0	darwin	arm64	tinygo-org/tinygo	https://github.com/tinygo-org/tinygo/releases/download/v0.44.0/tinygo0.44.0.darwin-arm64.tar.gz	696a37db149c2c37ed0da96cc1f2cca2630fca0c4dd19823a2a481c9b4a6a748
 #
 # sbcl rows pin the Steel Bank Common Lisp that builds and runs Lisp extension images (automation/ci/install-sbcl.sh). Pig's pinned SBCL is
 # the official 2.6.9 binary on Linux amd64 and Windows amd64; macOS arm64 has no 2.6.9 binary, so the release source is built there, bootstrapped by

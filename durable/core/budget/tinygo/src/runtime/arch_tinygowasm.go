@@ -153,9 +153,9 @@ var (
 	// without it, and the allocator then never keeps large ranges.
 	heapMaxKiB = "0"
 
-	// growHeapMallocs is gcMallocs at the last growHeap. Like gcMallocs it is
-	// a count that passes through the heap's addresses, so patchdata leaves it
-	// out of the root scan (gc_globals.go).
+	// growHeapMallocs is gcMallocs at the last growHeap. TinyGo 0.43+ emits
+	// compiler-generated exact global pointer tables, so this uint64 counter
+	// is excluded from the root scan automatically.
 	growHeapMallocs uint64
 	growHeapStreak  uint
 
