@@ -278,22 +278,18 @@ func (o d146Outcome) shape() d146Shape {
 	}
 	inHeldStart := false
 	heldStarted := false
+	var heldSID string
 	for _, event := range o.events {
 		switch {
 		case event.Ev == "session_start" && event.Phase == "enter" && event.Reason != "startup":
 			shape.Starts[role(event.Sid)]++
 			if !heldStarted {
 				heldStarted = true
+				heldSID = event.Sid
 				inHeldStart = true
 			}
-		case event.Ev == "session_start" && event.Phase == "exit" && event.Reason != "startup" && heldStarted && inHeldStart:
-			// The probe holds the first replacement session_start enter for D146_HOLD_MS, so when both run
-			// concurrently the unheld replacement's enter+exit happen while the held handler is still waiting.
-			// In during mode the held handler's session_shutdown arrives before the unheld handler even enters,
-			// so only a non-overlapping exit (when a single start has entered) or the second exit closes the hold.
-			if shape.Starts["first"]+shape.Starts["final"] == 1 {
-				inHeldStart = false
-			}
+		case event.Ev == "session_start" && event.Phase == "exit" && event.Reason != "startup" && inHeldStart && event.Sid == heldSID:
+			inHeldStart = false
 		case event.Ev == "session_shutdown":
 			shape.Shutdowns[role(event.Sid)] += event.Reason + ","
 			if role(event.Sid) == "first" && inHeldStart {
@@ -495,6 +491,31 @@ func TestD146PiOrderFromEntryEvents(t *testing.T) {
 				t.Fatalf("d146PiWantOrder = %q, want %q", got, tc.want)
 			}
 		})
+	}
+
+	// Shutdown of the non-final Session arriving after both replacement session_start handlers have exited
+	// must not set ShutdownInHeldStart.
+	shutdownAfterBothExits := d146Outcome{
+		order:    []string{"b", "a"},
+		finalSID: sidB,
+		events: []d146Event{
+			{Ev: "session_start", Reason: "startup", Phase: "enter", Sid: d146Source},
+			{Ev: "session_start", Reason: "startup", Phase: "exit", Sid: d146Source},
+			{Ev: "session_shutdown", Reason: "new", Sid: d146Source},
+			{Ev: "session_start", Reason: "new", Phase: "enter", Sid: sidA},
+			{Ev: "session_start", Reason: "new", Phase: "enter", Sid: sidB},
+			{Ev: "session_start", Reason: "new", Phase: "exit", Sid: sidB},
+			{Ev: "session_start", Reason: "new", Phase: "exit", Sid: sidA},
+			{Ev: "session_shutdown", Reason: "new", Sid: sidA},
+		},
+	}
+	if got := shutdownAfterBothExits.shape(); !reflect.DeepEqual(got, d146Shape{
+		Order:               "b,a",
+		Shutdowns:           map[string]string{"source": "new,", "first": "new,"},
+		Starts:              map[string]int{"first": 1, "final": 1},
+		ShutdownInHeldStart: false,
+	}) {
+		t.Fatalf("shutdownAfterBothExits shape = %+v, want ShutdownInHeldStart=false", got)
 	}
 }
 
