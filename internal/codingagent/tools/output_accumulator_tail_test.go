@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/utf8stream"
 )
 
@@ -49,8 +50,8 @@ func (r *referenceTail) snapshotText() string {
 	if i := strings.IndexByte(r.text, '\n'); i >= 0 {
 		clipped = r.text[i+1:]
 	}
-	// Pi 935f0ac0ccfc (#12092): `this.getSnapshotText() || this.tailText`, the tail itself when clipping leaves nothing.
-	if clipped == "" {
+	// Pi 935f0ac0ccfc (#12092) and Pi 9e9609216 (#12355): fall back to tailText when clipping leaves nothing or only blank lines.
+	if jsstring.Trim(clipped) == "" {
 		return r.text
 	}
 	return clipped

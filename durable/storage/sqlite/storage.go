@@ -504,7 +504,10 @@ func (storage *SqliteStorage) Commit(
 	for index, seq := range seqs {
 		receive(index, seq)
 	}
-	return durable.CommitResult{Stored: len(seqs), Refused: refused}, nil
+	if refused != nil {
+		return durable.RefusedCommit(len(seqs), refused), nil
+	}
+	return durable.StoredCommit(len(seqs)), nil
 }
 
 // readMetadata reads next_id and next_seq.

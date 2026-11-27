@@ -78,7 +78,7 @@ func TestStoreStorageOneTransactionPerCall(t *testing.T) {
 		var receipts []receipt
 		result, err := made.storage.Commit(background, batchesOf(ids), func(index int, seq durable.Seq) { receipts = append(receipts, receipt{index, seq}) })
 		must(t, err)
-		if result.Stored != 3 || result.Refused != nil {
+		if result.Kind != durable.CommitStored || result.Stored != 3 || result.Refused != nil {
 			t.Fatalf("result = %+v, want stored 3", result)
 		}
 		if after, _ := made.counts.snapshot(); after-before != 1 {
@@ -127,7 +127,7 @@ func TestStoreStorageOneTransactionPerCall(t *testing.T) {
 func durableCommit(storage *StoreStorage, meter *meter, writes ...durable.StorageWrite) (durable.Seq, error) {
 	var seq durable.Seq
 	result, err := storage.Commit(meter.ctx, [][]durable.StorageWrite{writes}, func(_ int, received durable.Seq) { seq = received })
-	if err == nil && result.Refused != nil {
+	if err == nil && result.Kind == durable.CommitRefused {
 		err = result.Refused
 	}
 	return seq, err
@@ -143,7 +143,7 @@ func TestStoreStorageRefusals(t *testing.T) {
 		result, err := made.storage.Commit(background, [][]durable.StorageWrite{{entryWrite(first)}, {entryWrite(first, "again")}, {entryWrite(after)}},
 			func(index int, _ durable.Seq) { receipts = append(receipts, index) })
 		must(t, err)
-		if result.Stored != 1 || result.Refused == nil || result.Refused.Error() != fmt.Sprintf("ID %d already belongs to entry", first) {
+		if result.Kind != durable.CommitRefused || result.Stored != 1 || result.Refused == nil || result.Refused.Error() != fmt.Sprintf("ID %d already belongs to entry", first) {
 			t.Fatalf("result = %+v", result)
 		}
 		if !reflect.DeepEqual(receipts, []int{0}) {
@@ -175,7 +175,7 @@ func TestStoreStorageRefusals(t *testing.T) {
 			{durable.DocumentRetireWrite{Id: document}, durable.DocumentRetireWrite{Id: document}},
 		}, func(index int, _ durable.Seq) { receipts = append(receipts, index) })
 		must(t, err)
-		if result.Stored != 1 || result.Refused == nil || result.Refused.Error() != fmt.Sprintf("Document %d is retired more than once", document) {
+		if result.Kind != durable.CommitRefused || result.Stored != 1 || result.Refused == nil || result.Refused.Error() != fmt.Sprintf("Document %d is retired more than once", document) {
 			t.Fatalf("result = %+v", result)
 		}
 		if !reflect.DeepEqual(receipts, []int{0}) {
@@ -259,7 +259,7 @@ func TestStoreStorageRefusals(t *testing.T) {
 			var receipts []int
 			result, err := made.storage.Commit(background, refusal.calls(document), func(index int, _ durable.Seq) { receipts = append(receipts, index) })
 			must(t, err)
-			if result.Stored != 1 || result.Refused == nil || !strings.Contains(result.Refused.Error(), refusal.message) {
+			if result.Kind != durable.CommitRefused || result.Stored != 1 || result.Refused == nil || !strings.Contains(result.Refused.Error(), refusal.message) {
 				t.Fatalf("result = %+v, want stored 1 refused %q", result, refusal.message)
 			}
 			if !reflect.DeepEqual(receipts, []int{0}) || made.store.LastSeq() != last+1 {
@@ -283,7 +283,7 @@ func TestStoreStorageRefusals(t *testing.T) {
 		result, err := made.storage.Commit(background, [][]durable.StorageWrite{{entryWrite(entry)}, {entryWrite(unsafe)}},
 			func(index int, _ durable.Seq) { receipts = append(receipts, index) })
 		must(t, err)
-		if result.Stored != 1 || result.Refused == nil || !strings.Contains(result.Refused.Error(), `column "id": 9007199254740992 is not a int value`) {
+		if result.Kind != durable.CommitRefused || result.Stored != 1 || result.Refused == nil || !strings.Contains(result.Refused.Error(), `column "id": 9007199254740992 is not a int value`) {
 			t.Fatalf("result = %+v, want stored 1 refused with the int column's refusal", result)
 		}
 		if !reflect.DeepEqual(receipts, []int{0}) {
@@ -315,7 +315,7 @@ func TestStoreStorageRefusals(t *testing.T) {
 			},
 		}, func(int, durable.Seq) {})
 		must(t, err)
-		if result.Stored != 3 || result.Refused != nil {
+		if result.Kind != durable.CommitStored || result.Stored != 3 || result.Refused != nil {
 			t.Fatalf("result = %+v, want stored 3", result)
 		}
 		if found := value(made.storage.Document(background, copied, durable.CurrentPoint)); found == nil || jsonOf(t, found.Value) != `{"n":2}` {

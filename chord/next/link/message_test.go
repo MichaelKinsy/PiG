@@ -658,3 +658,42 @@ func TestTheBinaryCodecsStrings(t *testing.T) {
 		})
 	}
 }
+
+// Pins link.OriginOf by message kind (upstream link/message.ts originOf, switched from an `in` check to `message.kind` in Pi befc2d59b; Go already switched on concrete types): hello, revoke, ping and pong carry no origin; every other message
+// kind carries its origin (Some for present, absent for none; closed always carries its origin).
+func TestOriginOfByMessageKind(t *testing.T) {
+	noOrigin := []link.Message{
+		&link.HelloMessage{},
+		&link.RevokeMessage{},
+		&link.PingMessage{},
+		&link.PongMessage{},
+	}
+	for _, msg := range noOrigin {
+		if got := link.OriginOf(msg); got.Ok {
+			t.Errorf("OriginOf(%s) = %+v, want absent", msg.Kind(), got)
+		}
+	}
+	withOrigin := []link.Message{
+		&link.HoldMessage{Origin: link.Some(1)},
+		&link.ReleaseMessage{Origin: link.Some(2)},
+		&link.CallMessage{Origin: link.Some(3)},
+		&link.AbortMessage{Origin: link.Some(4)},
+		&link.RetryMessage{Origin: link.Some(5)},
+		&link.BoundMessage{Origin: link.Some(6)},
+		&link.StateMessage{Origin: link.Some(7)},
+		&link.EventMessage{Origin: link.Some(8)},
+		&link.AckMessage{Origin: link.Some(9)},
+		&link.ClosedMessage{Origin: 10},
+		&link.FailedMessage{Origin: link.Some(11)},
+		&link.LoadingMessage{Origin: link.Some(12)},
+		&link.ResultMessage{Origin: link.Some(13)},
+		&link.ErrorMessage{Origin: link.Some(14)},
+		&link.GoneMessage{Origin: link.Some(15)},
+	}
+	for i, msg := range withOrigin {
+		got := link.OriginOf(msg)
+		if !got.Ok || got.Value != i+1 {
+			t.Errorf("OriginOf(%s) = %+v, want Some(%d)", msg.Kind(), got, i+1)
+		}
+	}
+}

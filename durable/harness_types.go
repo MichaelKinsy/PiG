@@ -128,15 +128,15 @@ type ConversationAbortOptions struct {
 }
 
 // ConversationHandle holds the invocation-bound conversation operations for tasks and tools. It fails after the
-// invocation ends. Submit and SubmitIn take any submission, in both forms of Conversation.Submit: a subagent's
+// invocation ends. Submit and Admit take any submission, in both forms of Conversation.Submit: a subagent's
 // conversation is an ordinary one, so a tool may also continue it, and a task may admit a submission in the same commit
-// as its own writes (TaskRuntime.Commit); entries the admission appends there carry the task's byTaskId. SubmitIn also
+// as its own writes (TaskRuntime.Commit); entries the admission appends there carry the task's byTaskId. Admit also
 // fails once the invocation is aborted.
 type ConversationHandle interface {
 	Id() ConversationId
 	Submit(ctx context.Context, submission SubmissionDraft) (Submission, error)
-	// SubmitIn is the transaction form of Submit (`submit(tx, submission)`).
-	SubmitIn(tx Tx, submission SubmissionDraft) (SubmissionId, error)
+	// Admit is the transaction form of Submit (`submit(tx, submission)`).
+	Admit(tx Tx, submission SubmissionDraft) (SubmissionId, error)
 	// Abort is Conversation.Abort: withdraw queued inputs, abort the ordinary ownership scope, and wait until it is
 	// idle.
 	Abort(ctx context.Context, options *ConversationAbortOptions) error
@@ -210,30 +210,31 @@ type ToolExecutionResult struct {
 	Park *ToolPark
 }
 
-// ToolParkSleep is a park's sleep: until Until, for Signals, or both.
-type ToolParkSleep struct {
+// ToolParkKind is the tag of a ToolPark: sleep or wait.
+type ToolParkKind string
+
+const (
+	// ToolParkSleep parks a tool call until Until, for Signals, or both.
+	ToolParkSleep ToolParkKind = "sleep"
+	// ToolParkWait parks a tool call on tasks the call's task owns.
+	ToolParkWait ToolParkKind = "wait"
+)
+
+// ToolPark is what Execute returns instead of a result to park the call (spec suspendable §4): Kind ToolParkSleep
+// (Until, Signals, or both) or ToolParkWait (On, Policy). The call holds no invocation meanwhile, then runs Execute
+// again with the same arguments, api.Wake saying why, and api.Checkpoint set to the park's checkpoint. Returned by
+// pointer: a wrapper's composite may return only a park its base returned.
+type ToolPark struct {
+	Kind ToolParkKind
 	// Checkpoint is what the call parks with, given back as api.Checkpoint on the next run; set only with HasCheckpoint.
 	Checkpoint    JsonValue
 	HasCheckpoint bool
-	Until         *float64
-	Signals       []SignalKey
-}
-
-// ToolParkWait is a park's wait: for tasks the call's task owns.
-type ToolParkWait struct {
-	Checkpoint    JsonValue
-	HasCheckpoint bool
-	On            []TaskId
-	Policy        JoinPolicy
-}
-
-// ToolPark is what Execute returns instead of a result to park the call (spec suspendable §4): Sleep until Until, for
-// Signals, or both; or Wait for tasks the call's task owns; exactly one. The call holds no invocation meanwhile, then runs
-// Execute again with the same arguments, api.Wake saying why, and api.Checkpoint set to the park's checkpoint. Returned
-// by pointer: a wrapper's composite may return only a park its base returned.
-type ToolPark struct {
-	Sleep *ToolParkSleep
-	Wait  *ToolParkWait
+	// Until and Signals are used when Kind is ToolParkSleep.
+	Until   *float64
+	Signals []SignalKey
+	// On and Policy are used when Kind is ToolParkWait.
+	On     []TaskId
+	Policy JoinPolicy
 }
 
 // ToolTaskOptions is the options of ToolExecutionApi.CreateTaskErased: the creation options without ConversationId, and
@@ -481,24 +482,38 @@ type HookRegistration struct {
 	Handlers any
 }
 
-// Wrap is upstream's `{ tool; wrap(tool) } | { section; wrap(section) }` (harness/types.ts:263-265): a sealed union of ToolWrap, built by WrapTool,
-// and SectionWrap, built by WrapSection. A wrap targets a tool name or a section key. Wrappers are pure.
-type Wrap interface{ isWrap() }
+// WrapKind is the tag of a Wrap: tool or section.
+type WrapKind string
 
-// ToolWrap is the `{ tool: string; wrap(tool: Tool): Tool }` member of Wrap.
+const (
+	WrapKindTool    WrapKind = "tool"
+	WrapKindSection WrapKind = "section"
+)
+
+// Wrap is upstream's `{ kind: "tool"; tool; wrap(tool) } | { kind: "section"; section; wrap(section) }`
+// (harness/types.ts): a sealed union of ToolWrap, built by WrapTool, and SectionWrap, built by WrapSection.
+// A wrap targets a tool name or a section key. Wrappers are pure.
+type Wrap interface {
+	WrapKind() WrapKind
+	isWrap()
+}
+
+// ToolWrap is the `{ kind: "tool"; tool: string; wrap(tool: Tool): Tool }` member of Wrap.
 type ToolWrap struct {
 	Tool string
 	Wrap func(tool *ToolRegistration) *ToolRegistration
 }
 
-// SectionWrap is the `{ section: string; wrap(section: PromptSection<Tool>): PromptSection<Tool> }` member of Wrap.
+// SectionWrap is the `{ kind: "section"; section: string; wrap(section: PromptSection<Tool>): PromptSection<Tool> }` member of Wrap.
 type SectionWrap struct {
 	Section string
 	Wrap    func(section *PromptSection) *PromptSection
 }
 
-func (ToolWrap) isWrap()    {}
-func (SectionWrap) isWrap() {}
+func (ToolWrap) WrapKind() WrapKind    { return WrapKindTool }
+func (SectionWrap) WrapKind() WrapKind { return WrapKindSection }
+func (ToolWrap) isWrap()               {}
+func (SectionWrap) isWrap()            {}
 
 // ToolNamespace is a named group of tools for code mode: the extension that brings the tools declares it (Ports
 // packages/durable/src/harness/types.ts, Pi 5e24c6b1f). Description is one line, shown in the `codemode` prompt section;

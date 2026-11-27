@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/outputfiles"
 	"github.com/MichaelKinsy/PiG/internal/truncate"
 	"github.com/MichaelKinsy/PiG/internal/utf8stream"
@@ -234,16 +235,20 @@ func (a *OutputAccumulator) trimTail() {
 }
 
 // snapshotText is the tail a snapshot truncates: it starts at a line boundary once the tail has been trimmed. The slice aliases the tail.
-// Clipping drops the partial first line of the retained tail. When the tail is only the end of one over-long line, that is everything, so the
-// unclipped tail is returned instead and the truncation shows the end of that line (Pi 935f0ac0ccfc, #12092).
+// Clipping drops the partial first line of the retained tail. When the tail is only the end of one over-long line (plus blank lines), nothing
+// non-blank is left, so the unclipped tail is returned instead and the truncation shows the end of that line (Pi 935f0ac0ccfc, #12092; Pi 9e9609216, #12355).
 func (a *OutputAccumulator) snapshotText() []byte {
 	tail := a.tail
 	if !a.tailStartsAtLineBoundary {
-		if i := bytes.IndexByte(tail, '\n'); i >= 0 && i+1 < len(tail) {
-			tail = tail[i+1:]
+		if _, clipped, ok := bytes.Cut(tail, newline); ok && !isBlankBytes(clipped) {
+			return clipped
 		}
 	}
 	return tail
+}
+
+func isBlankBytes(b []byte) bool {
+	return len(bytes.TrimFunc(b, jsstring.IsSpace)) == 0
 }
 
 func (a *OutputAccumulator) shouldUseTempFile() bool {

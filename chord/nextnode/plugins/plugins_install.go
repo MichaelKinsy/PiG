@@ -49,9 +49,20 @@ type InstallPluginOptions struct {
 	Roots []model.PluginRoot
 }
 
+// PluginSourceKind tags a PluginSource: a git repository or an npm package.
+type PluginSourceKind string
+
+const (
+	// PluginSourceGit installs from a git repository at a ref (branch, tag or commit).
+	PluginSourceGit PluginSourceKind = "git"
+	// PluginSourceNpm installs from an npm package at a version.
+	PluginSourceNpm PluginSourceKind = "npm"
+)
+
 // PluginSource is where InstallPlugin installs from: a git repository at a ref (a branch, tag or commit), or an npm package.
-// Upstream's `{ git, ref } | { npm, version }`: exactly one of Git and Npm is set; a source with no Npm is a git one.
+// Upstream's `{ kind: "git", git, ref } | { kind: "npm", npm, version }`.
 type PluginSource struct {
+	Kind    PluginSourceKind
 	Git     string
 	Ref     string
 	Npm     string
@@ -84,7 +95,22 @@ func InstallDependencies(plugin model.Plugin, ctx context.Context, options Insta
 // invalid name, an existing directory (no updating in place: install another ref, or delete and install), a package discovery
 // reports a problem in or finds no plugin in, a plugin name another plugin of options.Roots has. Only what this install
 // created is removed on failure. It blocks until the install ends.
+func normalizePluginSource(source PluginSource) PluginSource {
+	if source.Kind == "" {
+		hasGit := source.Git != ""
+		hasNpm := source.Npm != ""
+		switch {
+		case hasGit && !hasNpm:
+			source.Kind = PluginSourceGit
+		case hasNpm && !hasGit:
+			source.Kind = PluginSourceNpm
+		}
+	}
+	return source
+}
+
 func InstallPlugin(source PluginSource, root string, ctx context.Context, options InstallPluginOptions) ([]string, error) {
+	source = normalizePluginSource(source)
 	name, err := targetName(source)
 	if err != nil {
 		return nil, err
@@ -105,7 +131,7 @@ func InstallPlugin(source PluginSource, root string, ctx context.Context, option
 			return nil, err
 		}
 		staged := filepath.Join(staging, "package")
-		if source.Npm == "" {
+		if source.Kind == PluginSourceGit {
 			err = clone(source.Git, source.Ref, staged, ctx)
 		} else {
 			err = unpack(source.Npm, source.Version, staged, ctx, options.InstallOptions)
@@ -206,7 +232,8 @@ func refuse(value, what string) error {
 
 // targetName is the directory name a source installs into: the repository's name, or the package's (validated) name.
 func targetName(source PluginSource) (string, error) {
-	if source.Npm == "" {
+	switch source.Kind {
+	case PluginSourceGit:
 		if err := refuse(source.Git, "repository"); err != nil {
 			return "", err
 		}
@@ -218,17 +245,20 @@ func targetName(source PluginSource) (string, error) {
 			return "", errors.New(`installPlugin: "` + source.Git + `" names no repository directory`)
 		}
 		return name, nil
+	case PluginSourceNpm:
+		if err := refuse(source.Npm, "package"); err != nil {
+			return "", err
+		}
+		if err := refuse(source.Version, "version"); err != nil {
+			return "", err
+		}
+		if !host.IsPluginName(source.Npm) {
+			return "", errors.New(`installPlugin: "` + source.Npm + `" is not an npm package name`)
+		}
+		return source.Npm, nil
+	default:
+		return "", fmt.Errorf("installPlugin: source kind %q is refused", source.Kind)
 	}
-	if err := refuse(source.Npm, "package"); err != nil {
-		return "", err
-	}
-	if err := refuse(source.Version, "version"); err != nil {
-		return "", err
-	}
-	if !host.IsPluginName(source.Npm) {
-		return "", errors.New(`installPlugin: "` + source.Npm + `" is not an npm package name`)
-	}
-	return source.Npm, nil
 }
 
 // nodeBasename is Node's `path.basename(path)`: the last element of a path, ignoring trailing separators.

@@ -95,7 +95,7 @@ func specUsageSuspendableExamples(names specSuspendableNames) []any {
 				return runtime.Commit(ctx, func(tx durable.Tx, _ durable.RunningTask[specRunTestsInput, specRunPhase, string]) (*durable.NextTaskState[specRunPhase, string], error) {
 					// Admitted in this commit, before its table writes; placed when the run ends, in queue order with other input.
 					if !result.Passed {
-						if _, err := handle.SubmitIn(tx, durable.SubmissionDraft{
+						if _, err := handle.Admit(tx, durable.SubmissionDraft{
 							Type:     durable.SubmissionTypeInput,
 							Content:  ai.UserText("Tests failed:\n" + result.Output),
 							WhenBusy: durable.WhenBusyFollowUp,
@@ -174,7 +174,7 @@ func specUsageSuspendableExamples(names specSuspendableNames) []any {
 					if state == nil {
 						return &harness.BeforeToolResult{Sleep: &harness.GateSleep{Signals: []durable.SignalKey{approval.Key(key)}, Until: &until}}, nil
 					}
-					if state.Expired {
+					if state.Kind == durable.SignalStateExpired {
 						return &harness.BeforeToolResult{Block: new("No approval within a day")}, nil
 					}
 					if !state.Value.Allow {
@@ -238,7 +238,7 @@ func specUsageSuspendableExamples(names specSuspendableNames) []any {
 				if err != nil {
 					return durable.ToolExecutionResult{}, err
 				}
-				return durable.ToolExecutionResult{Park: &durable.ToolPark{Wait: &durable.ToolParkWait{Checkpoint: checkpoint, HasCheckpoint: true, On: open, Policy: durable.JoinAny}}}, nil
+				return durable.ToolExecutionResult{Park: &durable.ToolPark{Kind: durable.ToolParkWait, Checkpoint: checkpoint, HasCheckpoint: true, On: open, Policy: durable.JoinAny}}, nil
 			}
 			var texts []string
 			for _, call := range []durable.NestedToolCall{first, second} {
@@ -269,7 +269,7 @@ func specUsageSuspendableExamples(names specSuspendableNames) []any {
 			if err != nil {
 				return durable.ToolExecutionResult{}, err
 			}
-			if state != nil && !state.Expired {
+			if state != nil && state.Kind == durable.SignalStateValue {
 				failed := state.Value.Status != "passed"
 				return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{ai.TextContent{Text: fmt.Sprintf("CI %s: %s", state.Value.Status, state.Value.LogUrl)}}, IsError: &failed}, nil
 			}
@@ -302,7 +302,7 @@ func specUsageSuspendableExamples(names specSuspendableNames) []any {
 				return durable.ToolExecutionResult{}, err
 			}
 			until := api.Now() + 2*hour
-			return durable.ToolExecutionResult{Park: &durable.ToolPark{Sleep: &durable.ToolParkSleep{Checkpoint: checkpoint, HasCheckpoint: true, Signals: []durable.SignalKey{ciResult.Key("done")}, Until: &until}}}, nil
+			return durable.ToolExecutionResult{Park: &durable.ToolPark{Kind: durable.ToolParkSleep, Checkpoint: checkpoint, HasCheckpoint: true, Signals: []durable.SignalKey{ciResult.Key("done")}, Until: &until}}, nil
 		},
 		Cancel: func(ctx context.Context, _ any, api durable.ToolExecutionApi) error {
 			if checkpoint, ok := api.Checkpoint(); ok {
@@ -336,7 +336,7 @@ func specUsageSuspendableExamples(names specSuspendableNames) []any {
 					if err != nil {
 						return durable.ToolExecutionResult{}, err
 					}
-					if state != nil && !state.Expired {
+					if state != nil && state.Kind == durable.SignalStateValue {
 						settled := state.Value
 						if settled.Status != durable.SubmissionDone || settled.Type != durable.SubmissionTypeInput {
 							failed := true
@@ -375,7 +375,7 @@ func specUsageSuspendableExamples(names specSuspendableNames) []any {
 					}); err != nil {
 						return durable.ToolExecutionResult{}, err
 					}
-					return durable.ToolExecutionResult{Park: &durable.ToolPark{Sleep: &durable.ToolParkSleep{Signals: []durable.SignalKey{durable.SubmissionSettledSignal.Key("answered")}}}}, nil
+					return durable.ToolExecutionResult{Park: &durable.ToolPark{Kind: durable.ToolParkSleep, Signals: []durable.SignalKey{durable.SubmissionSettledSignal.Key("answered")}}}, nil
 				},
 			}),
 		},

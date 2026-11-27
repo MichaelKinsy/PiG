@@ -201,6 +201,8 @@ func IsRecord(value json.RawMessage) bool {
 
 // ParseClassifierUsage reads a { input_tokens, output_tokens } object and prices it from the model catalog like chat
 // usage. A missing or malformed usage object leaves the result without usage instead of failing it.
+// input_tokens_details.cached_tokens and cache_write_tokens are included in input_tokens, as in the Responses API,
+// so they are split out of input.
 func ParseClassifierUsage(raw json.RawMessage, model ClassifierModel) *Usage {
 	value, ok := jsonObjectOf(raw)
 	if !ok {
@@ -211,8 +213,22 @@ func ParseClassifierUsage(raw json.RawMessage, model ClassifierModel) *Usage {
 	if !hasInput && !hasOutput {
 		return nil
 	}
-	usage := Usage{Input: classifierTokenCount(inputRaw, hasInput), Output: classifierTokenCount(outputRaw, hasOutput)}
-	usage.TotalTokens = usage.Input + usage.Output
+	totalInput := classifierTokenCount(inputRaw, hasInput)
+	output := classifierTokenCount(outputRaw, hasOutput)
+	var cacheRead, cacheWrite int
+	if details, ok := jsonObjectOf(value["input_tokens_details"]); ok {
+		cachedRaw, hasCached := details["cached_tokens"]
+		cacheWriteRaw, hasCacheWrite := details["cache_write_tokens"]
+		cacheRead = min(classifierTokenCount(cachedRaw, hasCached), totalInput)
+		cacheWrite = min(classifierTokenCount(cacheWriteRaw, hasCacheWrite), totalInput-cacheRead)
+	}
+	usage := Usage{
+		Input:       totalInput - cacheRead - cacheWrite,
+		Output:      output,
+		CacheRead:   cacheRead,
+		CacheWrite:  cacheWrite,
+		TotalTokens: totalInput + output,
+	}
 	CalculateCost(&model, &usage)
 	return &usage
 }

@@ -97,7 +97,7 @@ func TestExample32TestsAfterEdits(t *testing.T) {
 					// Admitted with this commit, before its own table writes: placed when the run ends.
 					if !result.Passed && task.Input.Attempt < 3 {
 						requestId := "fix-" + string(rune('0'+task.Input.Attempt))
-						if _, err := conversation.SubmitIn(tx, durable.SubmissionDraft{
+						if _, err := conversation.Admit(tx, durable.SubmissionDraft{
 							Type:      durable.SubmissionTypeInput,
 							Content:   ai.UserText("The tests failed: " + result.Output + ". Fix it."),
 							WhenBusy:  durable.WhenBusyFollowUp,

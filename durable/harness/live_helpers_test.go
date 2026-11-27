@@ -160,3 +160,31 @@ func TestSettleSchedulerOutcomeOnlyTouchesWhatTheTaskOwns(t *testing.T) {
 		}
 	})
 }
+
+// FindSlot (live.ts findSlot, Pi 32c71a6d4): returns a FoundSlot tagged FoundSlotModel for a model tool slot,
+// FoundSlotNested for a nested tool slot (via binary search on ascending taskId), and nil when absent.
+func TestFindSlotTagsModelAndNestedSlots(t *testing.T) {
+	live := liveDraftOf(
+		"tools", []any{
+			delta.JsonObjectOf("taskId", float64(10), "callId", "c1", "name", "read"),
+			delta.JsonObjectOf("taskId", float64(20), "callId", "c2", "name", "write"),
+		},
+		"nestedTools", []any{
+			delta.JsonObjectOf("taskId", float64(30), "callId", "n1", "name", "bash"),
+			delta.JsonObjectOf("taskId", float64(45), "callId", "n2", "name", "grep"),
+			delta.JsonObjectOf("taskId", float64(60), "callId", "n3", "name", "edit"),
+		},
+	)
+	if got := FindSlot(live, 20); got == nil || got.Kind != FoundSlotModel || got.Slot.Get("callId") != "c2" {
+		t.Fatalf("FindSlot(20) = %+v, want FoundSlotModel c2", got)
+	}
+	if got := FindSlot(live, 45); got == nil || got.Kind != FoundSlotNested || got.Slot.Get("callId") != "n2" {
+		t.Fatalf("FindSlot(45) = %+v, want FoundSlotNested n2", got)
+	}
+	if got := FindSlot(live, 99); got != nil {
+		t.Fatalf("FindSlot(99) = %+v, want nil", got)
+	}
+	if got := FindSlot(liveDraftOf(), 10); got != nil {
+		t.Fatalf("FindSlot(empty, 10) = %+v, want nil", got)
+	}
+}

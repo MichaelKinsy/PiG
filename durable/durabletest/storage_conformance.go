@@ -324,6 +324,7 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 			refused := must(storage.Commit(ctx, [][]durable.StorageWrite{{durable.ConversationWrite{Value: durable.ConversationRecord{Id: rootId}}}}, func(_ int, received durable.Seq) {
 				events = append(events, fmt.Sprintf("receive %d", received))
 			}))
+			expect(refused.Kind).toBe(durable.CommitRefused)
 			expect(refused.Stored).toBe(0)
 			expect(refusalText(refused.Refused)).toBe(fmt.Sprintf("ID %d already belongs to conversation", rootId))
 			expect(len(events)).toBe(0)
@@ -1345,8 +1346,7 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 					}()
 				}
 			}))
-			expect(result.Stored).toBe(3)
-			expect(result.Refused).toBeUndefined()
+			expect(result).toEqual(durable.CommitResult{Kind: durable.CommitStored, Stored: 3})
 			expect(len(receipts)).toBe(3)
 			if len(receipts) != 3 {
 				return
@@ -1381,6 +1381,7 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 				},
 				{entryWrite(entry(afterId, rootId, "message"))},
 			}, func(index int, _ durable.Seq) { receipts = append(receipts, index) }))
+			expect(result.Kind).toBe(durable.CommitRefused)
 			expect(result.Stored).toBe(1)
 			expect(refusalText(result.Refused)).toBe(fmt.Sprintf("ID %d already belongs to entry", firstId))
 			expect(receipts).toEqual([]any{0})
@@ -1392,6 +1393,7 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 			refused := must(storage.Commit(ctx, [][]durable.StorageWrite{
 				{durable.ConversationWrite{Value: durable.ConversationRecord{Id: rootId}}},
 			}, func(index int, _ durable.Seq) { receipts = append(receipts, index) }))
+			expect(refused.Kind).toBe(durable.CommitRefused)
 			expect(refused.Stored).toBe(0)
 			expect(refusalText(refused.Refused)).toBe(fmt.Sprintf("ID %d already belongs to conversation", rootId))
 			expect(receipts).toEqual([]any{0})
@@ -1420,6 +1422,7 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 				},
 				{entryWrite(entry(afterId, rootId, "message"))},
 			}, func(index int, _ durable.Seq) { receipts = append(receipts, index) }))
+			expect(result.Kind).toBe(durable.CommitRefused)
 			expect(result.Stored).toBe(1)
 			expect(result.Refused != nil).toBe(true)
 			expect(receipts).toEqual([]any{0})
@@ -1449,8 +1452,7 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 					durable.DocumentCopyWrite{Record: record(copyId, childId), Source: durable.DocumentCopySource{Id: sourceId, At: durable.CurrentPoint}},
 				},
 			}, func(_ int, seq durable.Seq) { seqs = append(seqs, seq) }))
-			expect(result.Stored).toBe(3)
-			expect(result.Refused).toBeUndefined()
+			expect(result).toEqual(durable.CommitResult{Kind: durable.CommitStored, Stored: 3})
 			expect(must(storage.Document(ctx, copyId, durable.CurrentPoint)).Value).toEqual(map[string]any{"count": 2})
 			expect(must(storage.Document(ctx, sourceId, durable.AtSeq(seqs[0]))).Value).toEqual(map[string]any{"count": 1})
 
@@ -1462,6 +1464,7 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 				durable.DocumentCopyWrite{Record: record(laterCopyId, laterId), Source: durable.DocumentCopySource{Id: sourceId, At: durable.CurrentPoint}},
 				durable.DocumentChangeWrite{Id: sourceId, Content: delta(1, op("s", path("count"), 3))},
 			}}, func(int, durable.Seq) {}))
+			expect(refused.Kind).toBe(durable.CommitRefused)
 			expect(refused.Stored).toBe(0)
 			expect(refused.Refused != nil).toBe(true)
 			expect(must(storage.Conversation(ctx, laterId))).toBeUndefined()

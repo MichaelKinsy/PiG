@@ -52,10 +52,10 @@ func TestExample42ParallelChildren(t *testing.T) {
 			if err != nil {
 				return durable.ToolExecutionResult{}, err
 			}
-			if state != nil && !state.Expired {
+			if state != nil && state.Kind == durable.SignalStateValue {
 				return textResult(topic + ": " + state.Value.Text), nil
 			}
-			return durable.ToolExecutionResult{Park: &durable.ToolPark{Sleep: &durable.ToolParkSleep{Signals: []durable.SignalKey{reportSignal.Key("report")}}}}, nil
+			return durable.ToolExecutionResult{Park: &durable.ToolPark{Kind: durable.ToolParkSleep, Signals: []durable.SignalKey{reportSignal.Key("report")}}}, nil
 		},
 	}
 
@@ -109,9 +109,10 @@ func TestExample42ParallelChildren(t *testing.T) {
 				if done == nil {
 					done = []durable.TaskId{}
 				}
-				return durable.ToolExecutionResult{Park: &durable.ToolPark{Wait: &durable.ToolParkWait{
+				return durable.ToolExecutionResult{Park: &durable.ToolPark{
+					Kind:       durable.ToolParkWait,
 					Checkpoint: must(durable.ToJsonValue(researchCheckpoint{Done: done})), HasCheckpoint: true, On: open, Policy: durable.JoinAny,
-				}}}, nil
+				}}, nil
 			}
 			ra, err := a.Result(ctx)
 			if err != nil {

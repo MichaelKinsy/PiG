@@ -3,13 +3,16 @@
 //
 // Both walks cut once. truncate.ts splits its input into lines and joins the kept ones with "\n", but the lines it keeps are contiguous, so the joined
 // text is a substring of the input: the head ends where its last kept line ends, the tail starts where its first kept line starts and ends before a
-// trailing newline. The cuts find those offsets by scanning newlines from one end, read at most maxBytes+1 bytes of the input, and return substrings, so
-// a result allocates nothing.
+// trailing newline. The cuts find those offsets by scanning newlines from one end (scanning back over the overflowing line only when blank lines follow it
+// and its scanned suffix is blank) and return substrings, so a result allocates nothing.
 package truncate
 
 import (
 	"bytes"
 	"strings"
+	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // The default limits of truncateHead and truncateTail.
@@ -101,16 +104,45 @@ func FirstLineBytes(content string) int {
 	return len(content)
 }
 
-// TailCut is truncateTail's walk over content's lines: it keeps whole lines from the end while they fit in maxLines lines and maxBytes bytes. When the
-// last line alone exceeds maxBytes its end is kept, cut forward to a UTF-8 character boundary, and Partial is set. The kept text is content[Start:End];
-// End excludes a trailing newline. ByBytes reports that a line's bytes stopped the walk.
+// isBlankLine reports whether content[start:end] is blank per JS String.prototype.trim().length === 0.
+func isBlankLine[T ~string | ~[]byte](content T, start, end int) bool {
+	for i := start; i < end; {
+		c := content[i]
+		if c < utf8.RuneSelf {
+			if !jsstring.IsSpace(rune(c)) {
+				return false
+			}
+			i++
+			continue
+		}
+		r, size := decodeRuneAt(content, i, end)
+		if !jsstring.IsSpace(r) {
+			return false
+		}
+		i += size
+	}
+	return true
+}
+
+func decodeRuneAt[T ~string | ~[]byte](content T, i, end int) (rune, int) {
+	var buf [utf8.UTFMax]byte
+	n := min(end-i, utf8.UTFMax)
+	for k := range n {
+		buf[k] = content[i+k]
+	}
+	return utf8.DecodeRune(buf[:n])
+}
+
+// TailCut is truncateTail's walk over content's lines: it keeps whole lines from the end while they fit in maxLines lines and maxBytes bytes. When a
+// line exceeds maxBytes and nothing or only blank lines come after it, its end is kept, cut forward to a UTF-8 character boundary, and Partial is set.
+// The kept text is content[Start:End]; End excludes a trailing newline. ByBytes reports that a line's bytes stopped the walk.
 type TailCut struct {
 	Start, End, Lines int
 	ByBytes, Partial  bool
 }
 
-// CutTail walks content as truncateTail does; see TailCut. It reads only the bytes it keeps plus the one before them, so it takes the accumulators'
-// []byte tails as well as strings.
+// CutTail walks content as truncateTail does; see TailCut. It takes the accumulators' []byte tails as well as strings and allocates nothing; when an
+// overflowing line is followed only by blank lines and its scanned suffix is blank, it scans back to that line's start to test whether the whole line is blank.
 func CutTail[T ~string | ~[]byte](content T, maxBytes, maxLines int) TailCut {
 	if len(content) == 0 {
 		return TailCut{}
@@ -120,6 +152,7 @@ func CutTail[T ~string | ~[]byte](content T, maxBytes, maxLines int) TailCut {
 		end--
 	}
 	cut := TailCut{Start: end, End: end}
+	allKeptBlank := true
 	for cut.Lines < maxLines {
 		lineEnd, extra := end, 0
 		if cut.Lines > 0 {
@@ -141,18 +174,48 @@ func CutTail[T ~string | ~[]byte](content T, maxBytes, maxLines int) TailCut {
 		}
 		if lineEnd-lineStart > budget {
 			cut.ByBytes = true
-			if cut.Lines == 0 {
-				// The last line alone is too long: keep its end. A negative limit starts past the end, where Buffer.slice returns nothing.
-				start := lineEnd - maxBytes
-				if maxBytes < 0 {
+			// Edge case (Pi 9e9609216, #12355): if this line exceeds the limit and nothing or only blank lines
+			// come after it, take the end of the line (partial) so the output is not just the blank lines.
+			canPartial := cut.Lines == 0
+			if !canPartial && allKeptBlank && budget > 0 {
+				// Check the scanned window from its first UTF-8 character boundary; scan back to the line start
+				// only when that suffix is blank so a non-blank over-long line avoids scanning its full length.
+				winStart := lineStart
+				for winStart < lineEnd && content[winStart]&0xC0 == 0x80 {
+					winStart++
+				}
+				canPartial = !isBlankLine(content, winStart, lineEnd)
+				if !canPartial && lineStart > 0 && content[lineStart-1] != '\n' {
+					fullStart := lineStart
+					for fullStart > 0 && content[fullStart-1] != '\n' {
+						fullStart--
+					}
+					if fullStart == 0 {
+						for fullStart < winStart && content[fullStart]&0xC0 == 0x80 {
+							fullStart++
+						}
+					}
+					canPartial = !isBlankLine(content, fullStart, winStart)
+				}
+			}
+			if canPartial {
+				// Keep the last budget bytes of this line, moved forward to a UTF-8 character boundary.
+				// A negative budget starts past the end, where Buffer.slice returns nothing.
+				start := lineEnd - budget
+				if budget < 0 {
 					start = lineEnd
 				}
 				for start < lineEnd && content[start]&0xC0 == 0x80 {
 					start++
 				}
-				cut.Start, cut.Lines, cut.Partial = start, 1, true
+				cut.Start = start
+				cut.Lines++
+				cut.Partial = true
 			}
 			break
+		}
+		if allKeptBlank && !isBlankLine(content, lineStart, lineEnd) {
+			allKeptBlank = false
 		}
 		cut.Start = lineStart
 		cut.Lines++
@@ -186,8 +249,8 @@ func TruncateHead(content string, maxBytes, maxLines int) Result {
 	}
 }
 
-// TruncateTail keeps the last maxLines lines and maxBytes bytes of content, whichever limit is hit first (truncate.ts truncateTail). When the last line
-// alone exceeds maxBytes, its end is kept and LastLinePartial is set.
+// TruncateTail keeps the last maxLines lines and maxBytes bytes of content, whichever limit is hit first (truncate.ts truncateTail). When a non-blank
+// line exceeds maxBytes and nothing or only blank lines follow it (or the last line alone exceeds maxBytes), its end is kept and LastLinePartial is set.
 func TruncateTail(content string, maxBytes, maxLines int) Result {
 	totalBytes, totalLines := len(content), CountLines(content)
 	if totalLines <= maxLines && totalBytes <= maxBytes {

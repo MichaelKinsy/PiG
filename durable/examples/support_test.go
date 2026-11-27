@@ -124,17 +124,13 @@ func outcomeText(task durable.SettledTask[durable.JsonValue]) string {
 	return jsonText(task.State.Outcome)
 }
 
-// signalStateText is JSON.stringify of a signal key's state: `{"value":...}` once delivered, `{"expired":true}` once the
-// deadline came first, and "undefined" (what a template prints) while nothing came.
+// signalStateText is JSON.stringify of a signal key's state: `{"kind":"value","value":...}` once delivered,
+// `{"kind":"expired"}` once the deadline came first, and "undefined" (what a template prints) while nothing came.
 func signalStateText[T any](state *durable.SignalState[T]) string {
-	switch {
-	case state == nil:
+	if state == nil {
 		return "undefined"
-	case state.Expired:
-		return `{"expired":true}`
-	default:
-		return jsonText(map[string]any{"value": state.Value})
 	}
+	return jsonText(state)
 }
 
 // waitSleeping returns once the task is stored sleeping.

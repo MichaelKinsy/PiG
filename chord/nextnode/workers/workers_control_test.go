@@ -96,3 +96,40 @@ func TestErrorsCrossAReportsFailuresAndParkedCausesAndBack(t *testing.T) {
 		t.Fatalf("wrapped cause = %+v", cause.Error)
 	}
 }
+
+// Pi 23cba8556: a worker reload reply is kind "reloaded" (with report) or "reload_failed" (with error).
+func TestFromWorkerReloadedAndReloadFailedWireRoundTrip(t *testing.T) {
+	// Decode Pi's exact reload_failed wire bytes through controlOf[FromWorker].
+	piReloadFailed := json.RawMessage(`{"chord.workers":{"kind":"reload_failed","error":{"message":"boom","code":"unavailable"}}}`)
+	gotFailed, ok := controlOf[FromWorker](piReloadFailed)
+	if !ok {
+		t.Errorf("controlOf(Pi reload_failed wire) = _, false; want ok=true with kind %q", "reload_failed")
+	} else if string(gotFailed.Kind) != "reload_failed" || gotFailed.Error == nil || gotFailed.Error.Message != "boom" || gotFailed.Report != nil {
+		t.Errorf("controlOf(Pi reload_failed wire) = %+v, want kind=reload_failed error=boom", gotFailed)
+	}
+
+	// Decode Pi's exact reloaded wire bytes through controlOf[FromWorker].
+	piReloaded := json.RawMessage(`{"chord.workers":{"kind":"reloaded","report":{"plugins":{"added":["@a/x"],"changed":[],"removed":[]},"failed":[],"objects":[]}}}`)
+	gotReloaded, ok := controlOf[FromWorker](piReloaded)
+	if !ok || string(gotReloaded.Kind) != "reloaded" || gotReloaded.Report == nil || gotReloaded.Error != nil {
+		t.Errorf("controlOf(Pi reloaded wire) = %+v, %v; want kind=reloaded with report", gotReloaded, ok)
+	}
+
+	// Encode FromWorkerReloadFailed and verify exact wire bytes round-trip.
+	encFailed, err := envelope(FromWorker{Kind: FromWorkerReloadFailed, Error: &CrossedError{Message: "boom", Code: "unavailable"}})
+	if err != nil {
+		t.Fatalf("envelope(FromWorkerReloadFailed): %v", err)
+	}
+	if string(encFailed) != `{"chord.workers":{"kind":"reload_failed","error":{"message":"boom","code":"unavailable"}}}` {
+		t.Fatalf("envelope(FromWorkerReloadFailed) = %s", encFailed)
+	}
+	// Encode FromWorkerReloaded and verify exact wire bytes round-trip.
+	report := CrossedReport{Plugins: ReloadedPlugins{Added: []string{"@a/x"}, Changed: []string{}, Removed: []string{}}}
+	encReloaded, err := envelope(FromWorker{Kind: FromWorkerReloaded, Report: &report})
+	if err != nil {
+		t.Fatalf("envelope(FromWorkerReloaded): %v", err)
+	}
+	if got, ok := controlOf[FromWorker](json.RawMessage(encReloaded)); !ok || got.Kind != FromWorkerReloaded || got.Report == nil || got.Error != nil {
+		t.Fatalf("round-trip FromWorkerReloaded = %+v, %v", got, ok)
+	}
+}

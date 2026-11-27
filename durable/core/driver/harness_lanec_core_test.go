@@ -123,12 +123,12 @@ func laneCEntries(t *testing.T, root harness.Conversation) []durable.EntryRecord
 	return page.Items
 }
 
-// Conversation.SubmitIn admits the submission inside the caller's commit: stored with it, refused after the commit's first table write.
+// Conversation.Admit admits the submission inside the caller's commit: stored with it, refused after the commit's first table write.
 func TestCoreAdmitsASubmissionInsideTheCallersCommit(t *testing.T) {
 	h, root := laneCOpen(t, laneCAnswer("hi"))
 	var admitted durable.SubmissionId
 	if _, err := h.Commit(t.Context(), func(tx durable.Tx) (any, error) {
-		id, err := root.SubmitIn(tx, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("in a commit")})
+		id, err := root.Admit(tx, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("in a commit")})
 		admitted = id
 		return nil, err
 	}); err != nil {
@@ -146,12 +146,12 @@ func TestCoreAdmitsASubmissionInsideTheCallersCommit(t *testing.T) {
 		if _, err := tx.CreateConversation(durable.CreateConversationOptions{}); err != nil {
 			return nil, err
 		}
-		_, err := root.SubmitIn(tx, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("late")})
+		_, err := root.Admit(tx, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("late")})
 		return nil, err
 	})
 	var after *durable.ReadAfterWrite
 	if !errors.As(err, &after) || after.Operation != "submit(tx, draft)" {
-		t.Fatalf("SubmitIn after a table write: %v, want ReadAfterWrite for submit(tx, draft)", err)
+		t.Fatalf("Admit after a table write: %v, want ReadAfterWrite for submit(tx, draft)", err)
 	}
 	if !slices.Contains([]string{"submit(tx, draft)"}, after.Operation) {
 		t.Fatal("unreachable")

@@ -20,6 +20,13 @@ type Seq = int64
 // LogStart is the sequence before every commit: a store without commits is at it.
 const LogStart Seq = 0
 
+// SyncProtocol is the version of the sync rules this client follows: slots created once at the head, each recording its
+// device, and archive slots. A remote adapter sends it with every request (PiG has no HTTP sync remote, so nothing sends
+// the pi-sync-protocol header in this tree), so a remote that later changes the rules for a session (a handoff to
+// another device) can refuse writers that do not know them. Raised when the rules change, not when a body's encoding
+// does (LogVersion).
+const SyncProtocol = 1
+
 // BatchInfo is a slot of a session's remote history: the batch of outbox commits after After, up to To, uploaded by
 // Device. A store creates each slot once and never replaces it, so the device whose upload creates it continues the
 // session from After, and a device that finds it taken by another one holds a different history.

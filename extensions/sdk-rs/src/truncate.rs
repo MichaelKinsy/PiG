@@ -48,7 +48,7 @@ pub struct TruncationResult {
     pub total_bytes: usize,
     pub output_lines: usize,
     pub output_bytes: usize,
-    /// The last line was cut: the tail edge case where the final line alone exceeds the byte limit.
+    /// The first output line was cut: an over-long line at the end (possibly followed by blank lines) exceeded the byte limit.
     pub last_line_partial: bool,
     /// The first line alone exceeded the byte limit (head truncation).
     pub first_line_exceeds_limit: bool,
@@ -172,8 +172,25 @@ pub fn truncate_head(content: &str, options: TruncationOptions) -> TruncationRes
     }
 }
 
-/// Keep the last lines and bytes of `content` (command output, where errors and final results come last). When the
-/// last line alone exceeds the byte limit it keeps the end of that line and sets `last_line_partial`.
+fn is_blank_line(line: &str) -> bool {
+    line.chars().all(|c| {
+        matches!(
+            c,
+            '\t' | '\n' | '\x0b' | '\x0c' | '\r' | ' ' | '\u{00a0}' | '\u{1680}' | '\u{2000}'
+                ..='\u{200a}'
+                    | '\u{2028}'
+                    | '\u{2029}'
+                    | '\u{202f}'
+                    | '\u{205f}'
+                    | '\u{3000}'
+                    | '\u{feff}'
+        )
+    })
+}
+
+/// Keep the last lines and bytes of `content` (command output, where errors and final results come last). When an
+/// over-long line at the end (possibly followed by blank lines) exceeds the byte limit it keeps the end of that line
+/// and sets `last_line_partial`.
 pub fn truncate_tail(content: &str, options: TruncationOptions) -> TruncationResult {
     let (max_lines, max_bytes) = options.limits();
     let total_bytes = content.len();
@@ -193,9 +210,15 @@ pub fn truncate_tail(content: &str, options: TruncationOptions) -> TruncationRes
         let line_bytes = line.len() + usize::from(!kept.is_empty());
         if output_bytes + line_bytes > max_bytes {
             truncated_by = TruncatedBy::Bytes;
-            if kept.is_empty() {
-                let partial = truncate_str_to_bytes_from_end(line, max_bytes);
-                output_bytes = partial.len();
+            let extra = usize::from(!kept.is_empty());
+            let remaining_bytes = max_bytes.saturating_sub(output_bytes + extra);
+            if kept.is_empty()
+                || (!is_blank_line(line)
+                    && kept.iter().all(|l| is_blank_line(l))
+                    && max_bytes > output_bytes + extra)
+            {
+                let partial = truncate_str_to_bytes_from_end(line, remaining_bytes);
+                output_bytes += line_bytes - line.len() + partial.len();
                 kept.push(partial);
                 last_line_partial = true;
             }
@@ -344,6 +367,79 @@ mod tests {
         assert_eq!(
             truncate_line("a😀b", 2),
             ("a... [truncated]".to_string(), true)
+        );
+    }
+
+    #[test]
+    fn tail_keeps_end_of_over_long_line_followed_by_blank_line() {
+        let input = format!("first\n{}END\n\n", "y".repeat(20));
+        let r = truncate_tail(
+            &input,
+            TruncationOptions {
+                max_bytes: Some(10),
+                ..Default::default()
+            },
+        );
+        assert_eq!(
+            (
+                r.content.as_str(),
+                r.output_lines,
+                r.output_bytes,
+                r.last_line_partial,
+                r.truncated_by
+            ),
+            ("yyyyyyEND\n", 2, 10, true, Some(TruncatedBy::Bytes))
+        );
+        let r_nbsp = truncate_tail(
+            "\u{00a0}\u{00a0}\u{00a0}\n\n",
+            TruncationOptions {
+                max_bytes: Some(5),
+                ..Default::default()
+            },
+        );
+        assert_eq!(
+            (
+                r_nbsp.content.as_str(),
+                r_nbsp.output_lines,
+                r_nbsp.output_bytes,
+                r_nbsp.last_line_partial,
+                r_nbsp.truncated_by
+            ),
+            ("", 1, 0, false, Some(TruncatedBy::Bytes))
+        );
+        let r_blank = truncate_tail(
+            "    \n\n",
+            TruncationOptions {
+                max_bytes: Some(3),
+                ..Default::default()
+            },
+        );
+        assert_eq!(
+            (
+                r_blank.content.as_str(),
+                r_blank.output_lines,
+                r_blank.output_bytes,
+                r_blank.last_line_partial,
+                r_blank.truncated_by
+            ),
+            ("", 1, 0, false, Some(TruncatedBy::Bytes))
+        );
+        let r_back = truncate_tail(
+            "x    \n\n",
+            TruncationOptions {
+                max_bytes: Some(3),
+                ..Default::default()
+            },
+        );
+        assert_eq!(
+            (
+                r_back.content.as_str(),
+                r_back.output_lines,
+                r_back.output_bytes,
+                r_back.last_line_partial,
+                r_back.truncated_by
+            ),
+            ("  \n", 2, 3, true, Some(TruncatedBy::Bytes))
         );
     }
 }

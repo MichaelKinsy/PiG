@@ -102,7 +102,23 @@ func TestOpenAIDecisionsMatchesPi(t *testing.T) {
 		body := `{"answers":[` + strings.Join(answers, ",") + `]`
 		switch rng.Intn(10) {
 		case 0, 1, 2:
-			body += `,"usage":` + pick(`{"input_tokens":120,"output_tokens":40}`, `{"input_tokens":50}`, `{"output_tokens":7}`, `{"input_tokens":-4,"output_tokens":2}`, `{"input_tokens":"9","output_tokens":null}`, `{}`, `[]`, `5`, `null`, `{"input_tokens":100000,"output_tokens":100000}`)
+			body += `,"usage":` + pick(
+				`{"input_tokens":120,"output_tokens":40}`,
+				`{"input_tokens":50}`,
+				`{"output_tokens":7}`,
+				`{"input_tokens":-4,"output_tokens":2}`,
+				`{"input_tokens":"9","output_tokens":null}`,
+				`{}`, `[]`, `5`, `null`,
+				`{"input_tokens":100000,"output_tokens":100000}`,
+				`{"input_tokens":2000,"input_tokens_details":{"cached_tokens":1600,"cache_write_tokens":100},"output_tokens":0}`,
+				`{"input_tokens":200,"input_tokens_details":null,"output_tokens":10}`,
+				`{"input_tokens":200,"input_tokens_details":[],"output_tokens":10}`,
+				`{"input_tokens":200,"input_tokens_details":5,"output_tokens":10}`,
+				`{"input_tokens":100,"input_tokens_details":{"cached_tokens":250,"cache_write_tokens":50},"output_tokens":10}`,
+				`{"input_tokens":100,"input_tokens_details":{"cached_tokens":60,"cache_write_tokens":80},"output_tokens":10}`,
+				`{"input_tokens":100,"input_tokens_details":{"cached_tokens":0,"cache_write_tokens":0},"output_tokens":0}`,
+				`{"input_tokens":100,"input_tokens_details":{"cached_tokens":"50","cache_write_tokens":"25"},"output_tokens":0}`,
+			)
 		}
 		body += "}"
 		switch rng.Intn(14) {

@@ -111,9 +111,9 @@ def test_zhipu_usage_limit_1308_is_not_retryable():
 
 
 def test_connection_closed_is_retryable():
-    # Pi 9b88b94e2 packages/ai/test/retry.test.ts:106 (#12064): a gateway ends the stream with an Anthropic-style api_error event reading "Connection closed.".
+    # Pi 9b88b94e2 packages/ai/test/retry.test.ts:106 (#12064): a gateway ends the stream with an Anthropic-style error event reading "Connection closed." (type changed from api_error to gateway_notice so the row still isolates connection.?closed after Pi a00a5048d).
     for text, want in (
-        ('{"type":"error","error":{"type":"api_error","message":"Connection closed."}}', True),
+        ('{"type":"error","error":{"type":"gateway_notice","message":"Connection closed."}}', True),
         ("Connection closed by proxy server before the response completed", True),
         ('{"type":"error","error":{"type":"api_error","message":"Connection closed. insufficient_quota"}}', False),
         ("The connection was closed by the user", False),
@@ -148,6 +148,32 @@ def test_codex_websocket_connection_limit_is_retryable():
         ("websocket connection limit", False),
         ("connection limit reached on the websocket", False),
         ("websocket connection limit reached: insufficient_quota", False),
+    ):
+        assert helpers.is_retryable_assistant_error({"role": "assistant", "stopReason": "error", "errorMessage": text}) is want, text
+
+
+def test_pimain_retry_patterns_are_retryable():
+    # Pi fb62c069b, 25190b72c, a00a5048d packages/ai/test/retry.test.ts: Cloudflare HTTP 525, gateway provider-unavailable/partial-response, and admission ceiling / temporary provider failures.
+    for text, want in (
+        ("525 <!DOCTYPE html><title>SSL handshake failed</title>", True),
+        ("400 payload 5250000 bytes exceeds limit", False),
+        ("The provider is temporarily unavailable. Retry shortly.", True),
+        ("The upstream provider is temporarily unavailable. Try again shortly.", True),
+        ("The provider ended the response before it was complete.", True),
+        ("The connection to the provider was reset. Retry shortly.", True),
+        ("The provider reported a failure while generating the response.", True),
+        ("Provider unavailable for this model", False),
+        ("The provider is unavailable in your region", False),
+        ("Unable to process request. Repeat the request later.", True),
+        ("waited 73.4s in queue, reaching this model's admission ceiling of 60s; retry after the hinted delay", True),
+        ('''{"type":"error","error":{"details":null,"type":"api_error","message":"Unable to complete this request right now. Please try again."},"request_id":"req_011CgfE1bTgPTDsor4TsApFv"}''', True),
+        ("Provider finish_reason: error", True),
+        ("Provider returned an empty response", True),
+        ("Upstream error from Relace: The model stopped before completing the response.", True),
+        ("The operation was aborted", False),
+        ('''{"type":"error","error":{"type":"invalid_request_error","message":"messages: at least one message is required"}}''', False),
+        ("Provider finish_reason: content_filter", False),
+        ('''{"type":"error","error":{"type":"api_error","message":"Monthly quota exceeded"}}''', False),
     ):
         assert helpers.is_retryable_assistant_error({"role": "assistant", "stopReason": "error", "errorMessage": text}) is want, text
 

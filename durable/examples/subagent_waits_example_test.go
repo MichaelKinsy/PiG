@@ -59,13 +59,13 @@ func TestExample43SubagentWaits(t *testing.T) {
 			if err != nil {
 				return durable.ToolExecutionResult{}, err
 			}
-			if state != nil && !state.Expired {
+			if state != nil && state.Kind == durable.SignalStateValue {
 				return textResult(state.Value.Text), nil
 			}
 			askedMu.Lock()
 			asked[api.TaskId()] = question
 			askedMu.Unlock()
-			return durable.ToolExecutionResult{Park: &durable.ToolPark{Sleep: &durable.ToolParkSleep{Signals: []durable.SignalKey{answerSignal.Key("answer")}}}}, nil
+			return durable.ToolExecutionResult{Park: &durable.ToolPark{Kind: durable.ToolParkSleep, Signals: []durable.SignalKey{answerSignal.Key("answer")}}}, nil
 		},
 	}
 
@@ -86,7 +86,7 @@ func TestExample43SubagentWaits(t *testing.T) {
 			if err != nil {
 				return durable.ToolExecutionResult{}, err
 			}
-			if state != nil && !state.Expired {
+			if state != nil && state.Kind == durable.SignalStateValue {
 				settled := state.Value
 				if settled.Status != durable.SubmissionDone || settled.Type == durable.SubmissionTypeWrite {
 					isError := true
@@ -148,7 +148,7 @@ func TestExample43SubagentWaits(t *testing.T) {
 			}); err != nil {
 				return durable.ToolExecutionResult{}, err
 			}
-			return durable.ToolExecutionResult{Park: &durable.ToolPark{Sleep: &durable.ToolParkSleep{Signals: []durable.SignalKey{durable.SubmissionSettledSignal.Key("answered")}}}}, nil
+			return durable.ToolExecutionResult{Park: &durable.ToolPark{Kind: durable.ToolParkSleep, Signals: []durable.SignalKey{durable.SubmissionSettledSignal.Key("answered")}}}, nil
 		},
 	}}}
 

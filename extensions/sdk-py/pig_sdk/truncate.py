@@ -95,9 +95,16 @@ def truncate_head(content: str, max_lines: Optional[int] = None, max_bytes: Opti
     return TruncationResult(output, True, truncated_by, total_lines, total_bytes, len(kept), _byte_length(output), False, False, max_lines, max_bytes)
 
 
+_JS_WHITESPACE = "\t\n\v\f\r \u00a0\u1680\u2028\u2029\u202f\u205f\u3000\ufeff" + "".join(chr(c) for c in range(0x2000, 0x200B))
+
+
+def _is_blank_line(line: str) -> bool:
+    return len(line.strip(_JS_WHITESPACE)) == 0
+
+
 def truncate_tail(content: str, max_lines: Optional[int] = None, max_bytes: Optional[int] = None) -> TruncationResult:
-    """Keep the last lines and bytes of ``content`` (command output, where errors and final results come last). When the last line alone
-    exceeds the byte limit it keeps the end of that line and sets ``last_line_partial``."""
+    """Keep the last lines and bytes of ``content`` (command output, where errors and final results come last). When an over-long line at the end
+    (possibly followed by blank lines) exceeds the byte limit it keeps the end of that line and sets ``last_line_partial``."""
     max_lines = DEFAULT_MAX_LINES if max_lines is None else max_lines
     max_bytes = DEFAULT_MAX_BYTES if max_bytes is None else max_bytes
     total_bytes = _byte_length(content)
@@ -114,10 +121,11 @@ def truncate_tail(content: str, max_lines: Optional[int] = None, max_bytes: Opti
         line_bytes = _byte_length(lines[i]) + (1 if kept else 0)
         if output_bytes + line_bytes > max_bytes:
             truncated_by = "bytes"
-            if not kept:
-                partial = _truncate_to_bytes_from_end(lines[i], max_bytes)
+            remaining_bytes = max_bytes - output_bytes - (1 if kept else 0)
+            if not kept or (not _is_blank_line(lines[i]) and all(_is_blank_line(x) for x in kept) and remaining_bytes > 0):
+                partial = _truncate_to_bytes_from_end(lines[i], remaining_bytes)
                 kept.append(partial)
-                output_bytes = _byte_length(partial)
+                output_bytes += line_bytes - _byte_length(lines[i]) + _byte_length(partial)
                 last_line_partial = True
             break
         kept.append(lines[i])

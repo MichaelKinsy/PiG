@@ -79,8 +79,8 @@ func TestCoreToolApiHasNoWakeCheckpointSignalsOrNoWaitCalls(t *testing.T) {
 func TestCoreToolThatParksEndsWithAnInvalidParkResultAndNeverCancels(t *testing.T) {
 	until := 9000.0
 	parks := map[string]*durable.ToolPark{
-		"sleep": {Sleep: &durable.ToolParkSleep{Until: &until, Checkpoint: "c", HasCheckpoint: true}},
-		"wait":  {Wait: &durable.ToolParkWait{On: []durable.TaskId{1}, Policy: durable.JoinAllSettled}},
+		"sleep": {Kind: durable.ToolParkSleep, Until: &until, Checkpoint: "c", HasCheckpoint: true},
+		"wait":  {Kind: durable.ToolParkWait, On: []durable.TaskId{1}, Policy: durable.JoinAllSettled},
 	}
 	for name, park := range parks {
 		t.Run(name, func(t *testing.T) {
@@ -163,7 +163,7 @@ func TestCoreHarnessParkingToolResultIsTheInvalidParkError(t *testing.T) {
 	until := 1e12
 	_, root, sub := nestedCoreHarnessWith(t, &durable.Extension{Name: "park", Tools: []*durable.ToolRegistration{
 		okCoreTool(func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
-			return durable.ToolExecutionResult{Park: &durable.ToolPark{Sleep: &durable.ToolParkSleep{Until: &until}}}, nil
+			return durable.ToolExecutionResult{Park: &durable.ToolPark{Kind: durable.ToolParkSleep, Until: &until}}, nil
 		}),
 	}})
 	nestedCoreWait(t, sub, durable.SubmissionDone)
@@ -207,7 +207,7 @@ func TestCoreHarnessHookResultsOfSuspendableWorkAreReportedWithThePinError(t *te
 		{name: "an afterTool result with a park", hooks: &harness.ToolHooks{
 			AfterTool: func(_ context.Context, _ harness.ToolHookCall, result durable.ToolExecutionResult, _ harness.HookApi) (*durable.ToolExecutionResult, error) {
 				until := 5e12
-				result.Park = &durable.ToolPark{Sleep: &durable.ToolParkSleep{Until: &until}}
+				result.Park = &durable.ToolPark{Kind: durable.ToolParkSleep, Until: &until}
 				return &result, nil
 			},
 		}},
@@ -312,9 +312,9 @@ func TestCoreHarnessSignalsAndNotifyReturnThePinError(t *testing.T) {
 	_, err = root.Submit(ctx, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("x"), Notify: notify})
 	expectPinError(t, "Submit with Notify", err)
 	_, err = durable.Commit(ctx, root, func(tx durable.Tx) (durable.SubmissionId, error) {
-		return root.SubmitIn(tx, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("x"), Notify: notify})
+		return root.Admit(tx, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("x"), Notify: notify})
 	})
-	expectPinError(t, "SubmitIn with Notify", err)
+	expectPinError(t, "Admit with Notify", err)
 	_, err = durable.Commit(ctx, root, func(tx durable.Tx) (durable.SubmissionRecord, error) {
 		return tx.CreateSubmission(durable.SubmissionCreate{ConversationId: root.Id(), Notify: notify, Type: durable.SubmissionTypeInput, Status: durable.SubmissionQueued})
 	})

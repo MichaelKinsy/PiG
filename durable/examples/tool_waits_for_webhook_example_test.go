@@ -145,7 +145,7 @@ func TestExample40ToolWaitsForWebhook(t *testing.T) {
 			if err != nil {
 				return durable.ToolExecutionResult{}, err
 			}
-			if state != nil && !state.Expired {
+			if state != nil && state.Kind == durable.SignalStateValue {
 				isError := state.Value.Status != "passed"
 				return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{ai.TextContent{Text: fmt.Sprintf("CI %s: %s", state.Value.Status, state.Value.LogUrl)}}, IsError: &isError}, nil
 			}
@@ -175,10 +175,11 @@ func TestExample40ToolWaitsForWebhook(t *testing.T) {
 				return durable.ToolExecutionResult{}, context.Cause(ctx)
 			}
 			until := api.Now() + 2*hour
-			return durable.ToolExecutionResult{Park: &durable.ToolPark{Sleep: &durable.ToolParkSleep{
+			return durable.ToolExecutionResult{Park: &durable.ToolPark{
+				Kind:       durable.ToolParkSleep,
 				Checkpoint: delta.JsonObjectOf("buildId", buildId), HasCheckpoint: true,
 				Signals: []durable.SignalKey{ciResultSignal.Key("done")}, Until: &until,
-			}}}, nil
+			}}, nil
 		},
 		Cancel: func(ctx context.Context, _ any, api durable.ToolExecutionApi) error {
 			// Parked: the checkpoint names the build. Cut off before a park was stored: the idempotency key finds it.

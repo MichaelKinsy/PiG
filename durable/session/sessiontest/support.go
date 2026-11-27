@@ -179,7 +179,7 @@ func RefusingAt(
 	if commitErr != nil || result.Stored < at {
 		return result, commitErr
 	}
-	return durable.CommitResult{Stored: at, Refused: err}, nil
+	return durable.CommitResult{Kind: durable.CommitRefused, Stored: at, Refused: err}, nil
 }
 
 // Commit records and holds the call, then fails its first batch if a failure is set (a refusal: nothing stored), or commits
@@ -204,7 +204,7 @@ func (controlled *ControlledStorage) Commit(ctx context.Context, batches [][]dur
 	}
 	controlled.mu.Unlock()
 	if failure != nil {
-		return durable.CommitResult{Refused: failure}, nil
+		return durable.CommitResult{Kind: durable.CommitRefused, Refused: failure}, nil
 	}
 	first := true
 	return controlled.MemoryStorage.Commit(ctx, batches, func(index int, seq durable.Seq) {

@@ -96,7 +96,7 @@ func (host *scriptedHost) receiveAll(batches [][]durable.StorageWrite, receive f
 	for index := range batches {
 		host.receiveOne(index, receive)
 	}
-	return durable.CommitResult{Stored: len(batches)}
+	return durable.CommitResult{Kind: durable.CommitStored, Stored: len(batches)}
 }
 
 func (host *scriptedHost) receiveOne(index int, receive func(index int, seq durable.Seq)) {
@@ -377,7 +377,7 @@ func TestWriterWhatAPartAfterAStopRejectsWith(t *testing.T) {
 		refusal := errors.New("storage refused")
 		rig.host.script = func(_ context.Context, _ [][]durable.StorageWrite, receive func(int, durable.Seq)) (durable.CommitResult, error) {
 			rig.host.receiveOne(0, receive)
-			return durable.CommitResult{Stored: 1, Refused: refusal}, nil
+			return durable.CommitResult{Kind: durable.CommitRefused, Stored: 1, Refused: refusal}, nil
 		}
 		parts := rig.call(rig.part(1, true), rig.part(2, true), rig.part(3, true))
 		rig.writer.Wait()
@@ -397,7 +397,7 @@ func TestWriterWhatAPartAfterAStopRejectsWith(t *testing.T) {
 		refusal := errors.New("storage refused")
 		rig.host.script = func(context.Context, [][]durable.StorageWrite, func(int, durable.Seq)) (durable.CommitResult, error) {
 			// Nothing was received, and the refusal is of the second batch.
-			return durable.CommitResult{Stored: 1, Refused: refusal}, nil
+			return durable.CommitResult{Kind: durable.CommitRefused, Stored: 1, Refused: refusal}, nil
 		}
 		parts := rig.call(rig.part(1, true), rig.part(2, true))
 		rig.writer.Wait()
@@ -414,7 +414,7 @@ func TestWriterWhatAPartAfterAStopRejectsWith(t *testing.T) {
 		refusal := errors.New("storage refused")
 		rig.host.script = func(_ context.Context, _ [][]durable.StorageWrite, receive func(int, durable.Seq)) (durable.CommitResult, error) {
 			rig.host.receiveOne(0, receive)
-			return durable.CommitResult{Stored: 1, Refused: refusal}, nil
+			return durable.CommitResult{Kind: durable.CommitRefused, Stored: 1, Refused: refusal}, nil
 		}
 		parts := rig.call(rig.part(1, true), rig.part(2, true), rig.part(3, true))
 		rig.writer.Wait()
@@ -794,4 +794,22 @@ func TestPartSettlesOnceAndReportsItsOutcomeToALateWaiter(t *testing.T) {
 			t.Fatalf("a late waiter ran with %v, want once with %v", got, first)
 		}
 	})
+}
+
+func TestWriterHonorsUntaggedCommitResultRefusal(t *testing.T) {
+	rig := newWriterRig(t)
+	refusal := errors.New("untagged storage refusal")
+	rig.host.script = func(_ context.Context, _ [][]durable.StorageWrite, _ func(int, durable.Seq)) (durable.CommitResult, error) {
+		return durable.CommitResult{Stored: 0, Refused: refusal}, nil
+	}
+	lead := rig.writer.Admit(rig.part(1, true))
+	<-rig.host.entered
+	refused := rig.writer.Admit(rig.part(2, true))
+	close(rig.host.gate)
+	if err := lead.Wait(); err != nil {
+		t.Fatalf("lead = %v, want nil", err)
+	}
+	if err := refused.Wait(); !errors.Is(err, refusal) {
+		t.Fatalf("refused = %v, want %v", err, refusal)
+	}
 }

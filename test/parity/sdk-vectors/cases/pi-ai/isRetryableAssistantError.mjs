@@ -177,6 +177,7 @@ const failed = (errorMessage) => ({ role: "assistant", content: [], api: "x", pr
 for (const errorMessage of [
   "stream disconnected before completion: stream closed before response.completed",
   "Stream Disconnected Before Completion",
+  "Claude Code's stream from Anthropic was cut short after the reply had begun",
   'OpenAI API error (429): {"code":"subscription_sharing_workplace_individual_usage_limit_exceeded","message":"Usage limit reached."}',
   "subscription_sharing_workplace_individual_usage_limit_exceeded",
   "SUBSCRIPTION_SHARING_WORKPLACE_INDIVIDUAL_USAGE_LIMIT_EXCEEDED overloaded",
@@ -203,3 +204,18 @@ for (const errorMessage of [
   "websocket connection limit", "websocket limit reached", "websocket connection  limit reached", "connection limit reached on the websocket", "websocket connection limit reached: insufficient_quota",
 ]) cases.push({ name: `case ${String(cases.length + 1).padStart(4, "0")}`, args: [failed(errorMessage)] });
 
+
+// Pi fb62c069b, 25190b72c, a00a5048d (packages/ai/src/utils/retry.ts): Cloudflare HTTP 525, gateway provider-unavailable/partial-response, and admission ceiling / temporary provider failures.
+for (const errorMessage of [
+  "525 <!DOCTYPE html><title>SSL handshake failed</title>", "400 payload 5250000 bytes exceeds limit",
+  "The provider is temporarily unavailable. Retry shortly.", "The upstream provider is temporarily unavailable. Try again shortly.",
+  "The provider ended the response before it was complete.", "The connection to the provider was reset. Retry shortly.",
+  "The provider reported a failure while generating the response.", "Provider unavailable for this model", "The provider is unavailable in your region",
+  "Unable to process request. Repeat the request later.", "waited 73.4s in queue, reaching this model's admission ceiling of 60s; retry after the hinted delay",
+  '{"type":"error","error":{"details":null,"type":"api_error","message":"Unable to complete this request right now. Please try again."},"request_id":"req_011CgfE1bTgPTDsor4TsApFv"}',
+  "Provider finish_reason: error", "Provider returned an empty response", "Upstream error from Relace: The model stopped before completing the response.",
+  "The operation was aborted", '{"type":"error","error":{"type":"invalid_request_error","message":"messages: at least one message is required"}}',
+  "Provider finish_reason: content_filter", '{"type":"error","error":{"type":"api_error","message":"Monthly quota exceeded"}}',
+  "provider_temporarily_unavailable", "provider-is-temporarily-unavailable", "provider\ntemporarily unavailable",
+  '"type"\u00a0:\t"api_error"', '{"code":"api_error","message":"bad request"}', "PROVIDER FINISH_REASON: ERROR",
+]) cases.push({ name: `case ${String(cases.length + 1).padStart(4, "0")}`, args: [failed(errorMessage)] });

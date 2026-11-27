@@ -134,7 +134,7 @@ func (p *PublishedScripts) Step(name string) plugins.RolloutStep {
 			// Pi lists them in the order of the set they left: its names, sorted by UTF-16 code unit.
 			slices.SortFunc(changes.Removed, compareUTF16)
 			return plugins.StepResult{Hosts: []plugins.RolloutHost{{
-				Kind: plugins.RolloutReported, Host: name, Report: host.ReloadReport{Plugins: changes, Failed: failed, Objects: nil},
+				Kind: plugins.RolloutReloaded, Host: name, Report: host.ReloadReport{Plugins: changes, Failed: failed, Objects: nil},
 			}}}, nil
 		},
 	}

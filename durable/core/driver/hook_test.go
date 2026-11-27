@@ -93,7 +93,7 @@ func TestHooksReturnTheResultObjectOfEachHook(t *testing.T) {
 			}}},
 		{"beforeCompact", `{"compaction":{"reason":"overflow","entries":[],"messages":[],"firstKept":1}}`, `{"decline":true}`, &harness.CompactionHooks{
 			BeforeCompact: func(context.Context, harness.CompactionRequest, harness.HookApi) (*harness.CompactionDecision, error) {
-				return &harness.CompactionDecision{Decline: true}, nil
+				return &harness.CompactionDecision{Kind: harness.CompactionDecline}, nil
 			}}},
 		{"onYield", `{"answer":{"role":"assistant","content":[],"stopReason":"stop"}}`, `{"continue":"more"}`, &harness.GenerationHooks{
 			OnYield: func(context.Context, ai.AssistantMessage, harness.HookApi) (harness.YieldResult, error) {
@@ -135,7 +135,11 @@ func TestHooksReturnTheResultObjectOfEachHook(t *testing.T) {
 				if r.Reason != durable.CompactionManual || r.FirstKept != 9 {
 					t.Errorf("request %+v", r)
 				}
-				return &harness.CompactionDecision{Summary: &summary}, nil
+				return &harness.CompactionDecision{Kind: harness.CompactionSummary, Summary: summary}, nil
+			}}},
+		{"beforeCompact", `{"compaction":{"reason":"manual","entries":[],"messages":[],"firstKept":9}}`, `{}`, &harness.CompactionHooks{
+			BeforeCompact: func(context.Context, harness.CompactionRequest, harness.HookApi) (*harness.CompactionDecision, error) {
+				return &harness.CompactionDecision{Kind: harness.CompactionDecisionKind("unknown")}, nil
 			}}},
 		{"prepareArguments", `{"arguments":"[1,2]"}`, `[1,2]`, driver.PrepareArguments(func(args any) (any, error) {
 			var out []int

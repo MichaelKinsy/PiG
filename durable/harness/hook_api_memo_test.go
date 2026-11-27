@@ -28,7 +28,7 @@ func TestHookApiMemoReadsDurableMemoOfTheHookTask(t *testing.T) {
 		if seenAfter, presentAfter, err = api.Memo(ctx, "pick"); err != nil {
 			return nil, err
 		}
-		return &CompactionDecision{Summary: new("HOOK")}, nil
+		return &CompactionDecision{Kind: CompactionSummary, Summary: "HOOK"}, nil
 	}})
 	chat.history(t)
 	if outcome := chat.outcome(t, chat.compact(t, nil)); outcome.Status != durable.OutcomeCompleted {

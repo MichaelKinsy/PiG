@@ -470,16 +470,30 @@ func FailCompactionStatus(live *delta.Object, taskId durable.TaskId, message str
 	return RemoveCompactionStatus(live, taskId)
 }
 
-// FindToolSlot returns the slot draft of tool task taskId, model-issued in the current round or nested, or nil when
-// pi.live no longer lists it. Nested slots are found by binary search: a tool may make thousands of nested calls, each of
+// FoundSlotKind tells apart whose call a slot in pi.live belongs to: a model-issued call, or a nested call.
+type FoundSlotKind string
+
+const (
+	FoundSlotModel  FoundSlotKind = "model"
+	FoundSlotNested FoundSlotKind = "nested"
+)
+
+// FoundSlot is a tool task's slot in pi.live tagged by whose call it is (live.ts FoundSlot).
+type FoundSlot struct {
+	Kind FoundSlotKind
+	Slot *delta.Object
+}
+
+// FindSlot returns the slot draft of tool task taskId with whose call it is, or nil when pi.live no longer lists it
+// (live.ts findSlot). Nested slots are found by binary search: a tool may make thousands of nested calls, each of
 // which looks up its slot in several commits. Their task IDs ascend: each slot is appended in the commit that creates its
 // task, task IDs ascend in commit order, and removal keeps the order.
-func FindToolSlot(live *delta.Object, taskId durable.TaskId) *delta.Object {
+func FindSlot(live *delta.Object, taskId durable.TaskId) *FoundSlot {
 	if slots := live.Array("tools"); slots != nil {
 		for index := range slots.Len() {
 			slot := slots.Object(index)
 			if slot != nil && slot.Get("taskId") == float64(taskId) {
-				return slot
+				return &FoundSlot{Kind: FoundSlotModel, Slot: slot}
 			}
 		}
 	}
@@ -494,12 +508,21 @@ func FindToolSlot(live *delta.Object, taskId durable.TaskId) *delta.Object {
 		id, _ := candidate.Get("taskId").(float64)
 		switch {
 		case id == float64(taskId):
-			return candidate
+			return &FoundSlot{Kind: FoundSlotNested, Slot: candidate}
 		case id < float64(taskId):
 			low = middle + 1
 		default:
 			high = middle - 1
 		}
+	}
+	return nil
+}
+
+// FindToolSlot returns the slot draft of tool task taskId, model-issued in the current round or nested, or nil when
+// pi.live no longer lists it (live.ts toolSlot).
+func FindToolSlot(live *delta.Object, taskId durable.TaskId) *delta.Object {
+	if found := FindSlot(live, taskId); found != nil {
+		return found.Slot
 	}
 	return nil
 }

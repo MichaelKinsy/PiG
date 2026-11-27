@@ -29,7 +29,7 @@ func listed(hosts []plugins.RolloutHost) []string {
 	lines := make([]string, len(hosts))
 	for index, entry := range hosts {
 		switch entry.Kind {
-		case plugins.RolloutReported:
+		case plugins.RolloutReloaded:
 			lines[index] = fmt.Sprintf("%s added=%v changed=%v removed=%v", entry.Host, entry.Report.Plugins.Added, entry.Report.Plugins.Changed, entry.Report.Plugins.Removed)
 		case plugins.RolloutStopped:
 			lines[index] = entry.Host + " stopped"
@@ -197,7 +197,7 @@ func TestFixRound1APluginWhoseEvaluationFailedIsShippedAgainByTheNextRolloutAndS
 	until(t, func() bool { return len(f.dirty()) > 0 })
 	built := f.build(f.dirty())
 	failedPlugins := func(hosts []plugins.RolloutHost) any {
-		if len(hosts) == 0 || hosts[0].Kind != plugins.RolloutReported {
+		if len(hosts) == 0 || hosts[0].Kind != plugins.RolloutReloaded {
 			return hosts
 		}
 		var names []string
@@ -258,7 +258,7 @@ func TestFixRound1KeepsNoReloadReportOnceConsumedTheReloadQueueSettlesToNothing(
 		f.label("v2")
 		built := f.build([]string{"@test/notes"})
 		hosts := f.rollout(f.workers.Step("workers"), built)
-		if len(hosts) == 0 || hosts[0].Kind != plugins.RolloutReported {
+		if len(hosts) == 0 || hosts[0].Kind != plugins.RolloutReloaded {
 			t.Fatalf("hosts = %+v, want a report", hosts)
 		}
 		return weak.Make(&hosts[0])
@@ -328,5 +328,29 @@ func TestARolloutCallsTheRouteOutsideTheComponentLoopSoAServerSectionClosingAWor
 	}
 	for _, reference := range []interface{ Release() }{one, failed, control} {
 		reference.Release()
+	}
+}
+
+// Pi 23cba8556 (packages/chord/src/node/workers/{control,main,workers}.ts): when a real worker's reload fails,
+// it replies `reload_failed` over the control channel and the host's rollout step turns that into RolloutFailed carrying the error.
+func TestAReloadFailureInAWorkerRepliesReloadFailedAndSettlesHostAsRolloutFailed(t *testing.T) {
+	f := newFleet(t, fleetOptions{
+		start: func(contracts.Address, context.Context) (delta.JsonValue, error) {
+			return workerBehaviour{GoReload: true, ReloadError: "worker reload boom"}.json(), nil
+		},
+	})
+	// Hold a remote object at session S1 so the route starts the worker (GoReload handles reloads via the Go hook).
+	held := f.hold(fixtureNotes, "S1")
+	defer held.Release()
+	until(t, func() bool { return f.stateOf("S1") != nil && f.stateOf("S1").Status == WorkerRunning })
+
+	f.label("v2")
+	f.untilDirty()
+	hosts := f.rollout(f.workers.Step("workers"), f.build(f.dirty()))
+	if len(hosts) != 1 {
+		t.Fatalf("hosts = %+v, want 1 host", hosts)
+	}
+	if got := hosts[0]; got.Kind != plugins.RolloutFailed || got.Host != "session|S1" || got.Error == nil || got.Error.Error() != "worker reload boom" {
+		t.Fatalf("host = %+v, want kind=failed host=session|S1 error=%q", got, "worker reload boom")
 	}
 }

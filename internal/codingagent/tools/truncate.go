@@ -13,9 +13,9 @@
 //
 // "Whichever is hit first" applies to both: line cap or byte cap.
 //
-// For the bash tail-truncation edge case where the LAST line alone
-// exceeds maxBytes, we return that line truncated from its end with
-// LastLinePartial = true so the renderer can show
+// For the bash tail-truncation edge case where an over-long line at the end
+// (possibly followed by blank lines) exceeds maxBytes, we return that line
+// truncated from its end with LastLinePartial = true so the renderer can show
 // "[Showing last <bytes> of line N (line is <bytes>). ...]"
 
 package tools

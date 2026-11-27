@@ -40,7 +40,7 @@ type closedConnectionAPI struct {
 }
 
 const (
-	closedAnthropicEvent = `{"type":"error","error":{"type":"api_error","message":"Connection closed."}}`
+	closedAnthropicEvent = `{"type":"error","error":{"type":"gateway_notice","message":"Connection closed."}}`
 
 	closedAnthropicOK = "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_1\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"claude-sonnet-4-20250514\",\"content\":[],\"stop_reason\":null,\"usage\":{\"input_tokens\":1,\"output_tokens\":0}}}\n\n" +
 		"event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n" +
@@ -64,7 +64,7 @@ const (
 func closedConnectionAPIs() []closedConnectionAPI {
 	return []closedConnectionAPI{
 		{
-			// The case of the issue: Anthropic-style api_error event; the Anthropic SDK's error message is the event's JSON.
+			// The case of the issue: Anthropic-style error event (type changed from api_error to gateway_notice so the row still isolates connection.?closed after Pi a00a5048d); the Anthropic SDK's error message is the event's JSON.
 			name: "anthropic API key",
 			provider: func(u string) ai.Provider {
 				return ai.NewAnthropicProvider(ai.AnthropicConfig{BaseURL: u, APIKey: "test-key", Model: "claude-sonnet-4-20250514"})

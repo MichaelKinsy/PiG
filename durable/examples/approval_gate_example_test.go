@@ -95,7 +95,7 @@ func TestExample44ApprovalGate(t *testing.T) {
 				questionsMu.Lock()
 				delete(questions, key)
 				questionsMu.Unlock()
-				if state.Expired {
+				if state.Kind == durable.SignalStateExpired {
 					return &harness.BeforeToolResult{Block: new("No approval within a day")}, nil
 				}
 				if state.Value.Allow {

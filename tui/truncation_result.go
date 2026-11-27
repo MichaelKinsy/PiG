@@ -16,9 +16,9 @@ type TruncationResult struct {
 	TotalBytes  int    `json:"totalBytes"`
 	OutputLines int    `json:"outputLines"`
 	OutputBytes int    `json:"outputBytes"`
-	// LastLinePartial: the last line of the original output is the
-	// only one that fit (and was truncated from its end). Bash-only
-	// edge case.
+	// LastLinePartial: the first output line was partially truncated: an
+	// over-long line at the end, possibly followed by blank lines (only for
+	// tail truncation).
 	LastLinePartial bool `json:"lastLinePartial"`
 	// FirstLineExceedsLimit: head-truncation case where the first line
 	// alone exceeds maxBytes. We return empty content and let the

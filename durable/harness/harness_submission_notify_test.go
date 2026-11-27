@@ -43,7 +43,7 @@ func notifyWaiter(name string, keys ...string) stepTask {
 					return err
 				}
 				var status durable.JsonValue
-				if state != nil && !state.Expired {
+				if state != nil && state.Kind == durable.SignalStateValue {
 					status = string(state.Value.Status)
 				}
 				return runtime.Commit(ctx, func(durable.Tx, stepRecord) (*durable.NextTaskState[stepState, durable.JsonValue], error) {

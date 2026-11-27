@@ -135,7 +135,7 @@ func (host *fakeWriterHost) Commit(_ context.Context, batches [][]durable.Storag
 		host.mu.Unlock()
 		receive(index, seq)
 	}
-	return durable.CommitResult{Stored: len(batches)}, nil
+	return durable.CommitResult{Kind: durable.CommitStored, Stored: len(batches)}, nil
 }
 
 func (host *fakeWriterHost) Stored([]durable.StorageWrite) {}

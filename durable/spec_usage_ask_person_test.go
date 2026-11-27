@@ -48,12 +48,12 @@ func specAskPerson() Task[askPersonInput, askPersonCheckpoint, askPersonResult, 
 				})
 			},
 			"answered": func(ctx context.Context, _ recordOf, runtime runtimeOf) error {
-				state, err := ReadSignal(ctx, runtime, answer, "answer") // { value } when answered, { expired } after the deadline
+				state, err := ReadSignal(ctx, runtime, answer, "answer") // { kind: "value", value } when answered, { kind: "expired" } after the deadline
 				if err != nil {
 					return err
 				}
 				var result askPersonResult
-				if state != nil && !state.Expired {
+				if state != nil && state.Kind == SignalStateValue {
 					result.Text = &state.Value.Text
 				}
 				return runtime.Commit(ctx, func(Tx, recordOf) (*nextOf, error) {

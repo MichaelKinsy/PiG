@@ -36,7 +36,7 @@ var tcResearch = tcTool("research", func(ctx context.Context, args any, api dura
 	if err != nil {
 		return durable.ToolExecutionResult{}, err
 	}
-	if state != nil && !state.Expired {
+	if state != nil && state.Kind == durable.SignalStateValue {
 		return ownText(fmt.Sprintf("%v: %s", args.(map[string]any)["topic"], state.Value.Text)), nil
 	}
 	return tpSleep(tpDone.Key("done")), nil
@@ -122,9 +122,10 @@ func TestParkChildrenNestedCallsWithoutWaiting(t *testing.T) {
 				for index, id := range done {
 					checkpoint[index] = float64(id)
 				}
-				return durable.ToolExecutionResult{Park: &durable.ToolPark{Wait: &durable.ToolParkWait{
+				return durable.ToolExecutionResult{Park: &durable.ToolPark{
+					Kind:       durable.ToolParkWait,
 					Checkpoint: map[string]any{"done": checkpoint}, HasCheckpoint: true, On: open, Policy: durable.JoinAny,
-				}}}, nil
+				}}, nil
 			}
 			ra, err := a.Result(ctx)
 			if err != nil {
@@ -175,7 +176,7 @@ func TestParkChildrenNestedCallsWithoutWaiting(t *testing.T) {
 		var errs syncList[string]
 		addTool(t, setup.Registry, tcTool("woken", func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			if api.Wake() == nil {
-				return durable.ToolExecutionResult{Park: &durable.ToolPark{Sleep: &durable.ToolParkSleep{Until: new(0.0)}}}, nil
+				return durable.ToolExecutionResult{Park: &durable.ToolPark{Kind: durable.ToolParkSleep, Until: new(0.0)}}, nil
 			}
 			if _, err := api.ExecuteToolNoWait(ctx, "research", map[string]any{"topic": "x"}); err != nil {
 				errs.add(err.Error())
@@ -257,7 +258,7 @@ func TestParkChildrenAfterARestart(t *testing.T) {
 				return durable.ToolExecutionResult{}, err
 			}
 			if api.Wake() == nil {
-				return durable.ToolExecutionResult{Park: &durable.ToolPark{Wait: &durable.ToolParkWait{On: []durable.TaskId{nested.TaskId}, Policy: durable.JoinAllSettled}}}, nil
+				return durable.ToolExecutionResult{Park: &durable.ToolPark{Kind: durable.ToolParkWait, On: []durable.TaskId{nested.TaskId}, Policy: durable.JoinAllSettled}}, nil
 			}
 			result, err := nested.Result(ctx)
 			if err != nil {

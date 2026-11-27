@@ -45,3 +45,34 @@ func TestTailWindowResultCopiesOnlyTheCut(t *testing.T) {
 		t.Fatalf("Result: %v allocations, want at most 1 (the kept text)", allocs)
 	}
 }
+
+// BenchmarkCutTailOverLongLineBeforeBlank measures the blank-line back-scan on a 10 MB line followed by a blank line.
+func BenchmarkCutTailOverLongLineBeforeBlank(b *testing.B) {
+	line := strings.Repeat("y", 10<<20) + "\n\n"
+	b.ReportAllocs()
+	for b.Loop() {
+		cut := CutTail(line, DefaultMaxBytes, DefaultMaxLines)
+		if !cut.Partial {
+			b.Fatal("expected partial cut")
+		}
+	}
+}
+
+// CutTail tests the scanned window from its first UTF-8 character boundary before scanning back to the line start,
+// so a non-blank over-long line followed by blank lines must not scale with the full line length (16 MiB vs 64 KiB).
+func TestCutTailNonBlankOverLongLineDoesNotScanFullLine(t *testing.T) {
+	perCut := func(size int) float64 {
+		line := strings.Repeat("y", size) + "\n\n"
+		result := testing.Benchmark(func(b *testing.B) {
+			for b.Loop() {
+				cut := CutTail(line, DefaultMaxBytes, DefaultMaxLines)
+				if !cut.Partial {
+					b.Fatal("expected partial cut")
+				}
+			}
+		})
+		return float64(result.T.Nanoseconds()) / float64(result.N)
+	}
+	small, large := perCut(64<<10), perCut(16<<20)
+	testenv.TimingGateFatal(t, large > 8*small+50_000, "CutTail on 16 MiB line costs %.0f ns, 64 KiB line %.0f ns: back-scan scales with the full line", large, small)
+}
