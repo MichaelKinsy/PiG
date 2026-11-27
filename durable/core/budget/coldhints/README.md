@@ -1,6 +1,6 @@
 # coldhints
 
-`coldhints <module.wasm> <coldset.txt>` adds WebAssembly compilation hints for the functions that the first turn of a session runs, so that a host that enables hints compiles them with the module instead of on their first call. `build-wasm.sh` runs it on every TinyGo build, after `patchdata`. Go builds are not hinted.
+`coldhints <module.wasm> <coldset.txt>` adds WebAssembly compilation hints for the functions that the first turn of a session runs, so that a host that enables hints compiles them with the module instead of on their first call. `build-wasm.sh` runs it on every TinyGo build, after TinyGo links the module. Go builds are not hinted.
 
 ## What a runtime does with the hints
 

@@ -19,8 +19,6 @@ vet pigborrowcheck
 prefix pig_strip_ make piglet-strip-build and make piglet-strip-guard (vet of every package with every strip tag)
 other tinygo make durable-contract (the TinyGo build of the Durable core, ci-durable-contract)
 other tinygo.wasm make durable-contract (the TinyGo build of the Durable core, ci-durable-contract)
-other baremetal make durable-contract (the TinyGo build of the Durable core, ci-durable-contract)
-other uefi make durable-contract (the TinyGo build of the Durable core, ci-durable-contract)
 other gc.conservative make durable-contract (TinyGo's garbage collector choice in durable/core/budget/tinygo)
 other gc.precise make durable-contract (TinyGo's garbage collector choice in durable/core/budget/tinygo)
 other appengine no gate: Google App Engine only (third_party/goldmark/util); nothing sets it

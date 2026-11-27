@@ -32,7 +32,7 @@ const WasmMain = "cmd/corewasm"
 // NonCorePackages are the durable/core packages that are not built into the Wasm module: hosts, drivers, tooling and the
 // test-only helpers. They may use the whole standard library.
 var NonCorePackages = []string{
-	"abi/abitest", "abi/payload", "abi/spec", "abi/spec/cmd/abigen", "budget/coldhints", "budget/tinygo/patchdata", "cmd/corenative", "contracttest", "contracttest/binding", "contracttest/boundary",
+	"abi/abitest", "abi/payload", "abi/spec", "abi/spec/cmd/abigen", "budget/coldhints", "cmd/corenative", "contracttest", "contracttest/binding", "contracttest/boundary",
 	"contracttest/cmd/benchhost", "contracttest/cmd/countgate", "contracttest/cmd/replayhost", "contracttest/cmd/scprovider", "contracttest/counts",
 	"contracttest/fuel", "contracttest/guard", "contracttest/storehost", "driver",
 	"history/internal/buildcheck", "probe", "session/cmd/tgprobe", "session/sessiontest", "sqlhost", "sqlhost/cmd/bench",

@@ -69,7 +69,7 @@ jobs:
   changes:
     name: Changed paths
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     permissions:
       contents: read
       actions: read
@@ -124,6 +124,23 @@ jobs:
           # prose and repository metadata skips the product suites; the docs job
           # below still checks those files.
           automation/ci/classify-changes.sh "$EVENT" "$BASE_SHA" "$HEAD_SHA" | tee -a "$GITHUB_OUTPUT"
+      # Set up Go and restore the Go module cache when the DAG selector is active (shadow or on) on a pull_request
+      # or merge_group so cidag can load the 3-GOOS go list graph offline without touching proxy.golang.org.
+      # Disabled when PIG_CI_DAG=off or on non-PR/merge_group events so scheduled/main/docs checks pay zero setup cost.
+      - name: Set up Go for CI DAG selector
+        if: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && steps.classify.outputs.product == 'true' && (vars.PIG_CI_DAG || 'shadow') != 'off' }}
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Restore Go module cache for CI DAG selector
+        if: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && steps.classify.outputs.product == 'true' && (vars.PIG_CI_DAG || 'shadow') != 'off' }}
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
       - name: Plan the jobs this event runs
         id: plan
         env:
@@ -133,12 +150,26 @@ jobs:
           # event that started this run.
           FULL_REQUESTED: ${{ contains(github.event.pull_request.labels.*.name, 'ci:full') || github.event.action == 'ready_for_review' || steps.classify.outputs.os-specific == 'true' }}
           PORTMAP_REQUESTED: ${{ steps.classify.outputs.portmap }}
+          # DAG selector defaults to shadow on product pull_request/merge_group runs (override via vars.PIG_CI_DAG: off, shadow, or on).
+          # Shadow mode records the affected-package plan summary and artifact with zero gating changes.
+          PIG_CI_DAG: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && steps.classify.outputs.product == 'true' && (vars.PIG_CI_DAG || 'shadow') || 'off' }}
+          PIG_CI_DAG_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          PIG_CI_DAG_HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+          PIG_CI_DAG_PLAN_OUT: build/ci-dag-plan.json
         shell: bash
         # Every event but a pull request in a PIG_PR_CI_LIGHT mode runs every
         # job in automation/ci/ci-tiers.txt; the light pull-request run is the
         # table's pr rows, so a queue-only job's check name appears only where
         # it runs.
         run: automation/ci/ci-plan.sh "$EVENT" "$MODE" "$FULL_REQUESTED" | tee -a "$GITHUB_OUTPUT"
+      - name: Upload CI DAG plan artifact
+        if: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && steps.classify.outputs.product == 'true' && (vars.PIG_CI_DAG || 'shadow') != 'off' && hashFiles('build/ci-dag-plan.json') != '' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ci-dag-plan
+          path: build/ci-dag-plan.json
+          retention-days: 14
+          if-no-files-found: ignore
       # On a scheduled run ONLY (never workflow_dispatch, pull_request, push, or merge_group), skip
       # the redundant full CI suite when the newest completed full CI run for main's HEAD (either on
       # the same SHA or on a commit with the exact same git tree SHA, e.g. a squash-merged PR head)
@@ -822,6 +853,9 @@ jobs:
           # The screen writer's rule for writing a row in place rests on the lines tmux keeps (D624). internal/screenwriter/gridterm asks
           # the tmux this job installed for them; with this set that test fails where it would be skipped (no tmux, or no tmux server).
           PIG_GRIDTERM_TMUX_REQUIRED: '1'
+          # Opt-in hermetic pure-Go test-cache partition on pull_request test-fast runs (default enabled via vars.PIG_GO_HERMETIC_TEST_CACHE || '1'; set to '0' to disable).
+          # test-grouped.sh strictly restricts this to pull_request (never main, release/*, schedule, merge_group, stress, or -race) and fails closed to -count=1 for all non-hermetic packages or on any classifier error.
+          PIG_GO_HERMETIC_TEST_CACHE: ${{ matrix.shard == 'test-fast' && (vars.PIG_GO_HERMETIC_TEST_CACHE || '1') || '0' }}
         run: make "$TARGET"
       - name: Save the golangci-lint cache
         if: ${{ !cancelled() && matrix.shard == 'build' && steps.lintcache.outputs.cache-hit != 'true' && env.CACHE_SAVE == 'true' }}
