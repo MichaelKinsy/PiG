@@ -1036,7 +1036,7 @@ allocs = 0
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkResolveCatalogRecordAlternateChunks"
-allocs = 8
+allocs = 6
 
 [[benchmark]]
 package = "./ai"
@@ -1051,7 +1051,7 @@ allocs = 4
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkResolveCatalogRecordSequentialAll"
-allocs = 88
+allocs = 70
 
 [[benchmark]]
 package = "./ai"

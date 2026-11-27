@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"bytes"
 	"runtime"
 	"sync"
 	"testing"
@@ -96,4 +97,25 @@ func TestResolveCatalogRecordConcurrentInterleavedChunks(t *testing.T) {
 		})
 	}
 	wg.Wait()
+}
+
+func TestInflateCatalogChunkPoolReuseAndErrorRecovery(t *testing.T) {
+	frame, err := catalogRecordFiles.ReadFile("catalog_records/00.gz")
+	if err != nil {
+		t.Fatalf("read chunk 00: %v", err)
+	}
+	want, err := inflateCatalogChunk(frame)
+	if err != nil {
+		t.Fatalf("first inflate: %v", err)
+	}
+	if _, err := inflateCatalogChunk([]byte("not-a-gzip-frame")); err == nil {
+		t.Fatal("expected error for corrupt gzip frame")
+	}
+	got, err := inflateCatalogChunk(frame)
+	if err != nil {
+		t.Fatalf("second inflate after error: %v", err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Fatalf("inflated bytes changed after pool reuse: got %d bytes, want %d", len(got), len(want))
+	}
 }
