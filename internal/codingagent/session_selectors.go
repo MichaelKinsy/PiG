@@ -842,26 +842,28 @@ func treeSearchBody(e SessionEntry, raw json.RawMessage) searchBody {
 		parts = append(parts, "compaction")
 	case "branch_summary":
 		var ent BranchSummaryEntry
-		_ = json.Unmarshal(e.Raw(), &ent)
+		_ = json.Unmarshal(raw, &ent)
 		parts = append(parts, "branch summary", ent.Summary)
 	case "session_info":
 		var ent SessionInfoEntry
-		_ = json.Unmarshal(e.Raw(), &ent)
+		_ = json.Unmarshal(raw, &ent)
 		parts = append(parts, "title")
 		if ent.Name != "" {
 			parts = append(parts, ent.Name)
 		}
 	case "model_change":
 		var ent ModelChangeEntry
-		_ = json.Unmarshal(e.Raw(), &ent)
+		_ = json.Unmarshal(raw, &ent)
 		parts = append(parts, "model", ent.ModelID)
 	case "thinking_level_change":
 		var ent ThinkingLevelEntry
-		_ = json.Unmarshal(e.Raw(), &ent)
+		_ = json.Unmarshal(raw, &ent)
 		parts = append(parts, "thinking", ent.ThinkingLevel)
 	case "custom":
-		var ent CustomEntry
-		_ = json.Unmarshal(e.Raw(), &ent)
+		var ent struct {
+			CustomType string `json:"customType"`
+		}
+		_ = json.Unmarshal(raw, &ent)
 		parts = append(parts, "custom", ent.CustomType)
 	case "context_edit":
 		mode, targetID := contextEditSummary(e)

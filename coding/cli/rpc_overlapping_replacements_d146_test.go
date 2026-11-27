@@ -205,12 +205,62 @@ type d146Shape struct {
 	Errors              []string
 }
 
+// d146PiWantOrder returns the answer order expected from Pi given the recorded session_start entry order.
+// Because testdata/d146-overlap-probe.mjs holds the first replacement session_start handler that enters for D146_HOLD_MS,
+// the other replacement always finishes and answers first (the answer order is the reverse of the session_start entry order).
+// When during is true, command b is only written after command a's session_start has entered, so a must have entered first
+// and the expected answer order is strictly "b,a".
+// In one_write mode, Pi has no serialization between a and b, so on a loaded machine b can reach session_start before a:
+// the entry order is recovered from the two replacement session_start enter events (by distinct reason, or by monotonic
+// UUIDv7 Session id when both commands are new_session).
+func d146PiWantOrder(pair d146Pair, during bool, events []d146Event) (string, error) {
+	var enters []d146Event
+	for _, event := range events {
+		if event.Ev == "session_start" && event.Phase == "enter" && event.Reason != "startup" {
+			enters = append(enters, event)
+		}
+	}
+	if len(enters) != 2 {
+		return "", fmt.Errorf("got %d replacement session_start enter events, want 2", len(enters))
+	}
+	var aEnteredFirst bool
+	switch {
+	case pair.reasons[0] != pair.reasons[1]:
+		switch {
+		case enters[0].Reason == pair.reasons[0] && enters[1].Reason == pair.reasons[1]:
+			aEnteredFirst = true
+		case enters[0].Reason == pair.reasons[1] && enters[1].Reason == pair.reasons[0]:
+			aEnteredFirst = false
+		default:
+			return "", fmt.Errorf("replacement session_start enter reasons = [%q, %q], want a permutation of [%q, %q]",
+				enters[0].Reason, enters[1].Reason, pair.reasons[0], pair.reasons[1])
+		}
+	default:
+		// Both commands are new_session; Pi creates command a's SessionManager synchronously before command b's with monotonic uuidv7(),
+		// so a's Session id sorts lexicographically before b's.
+		if enters[0].Sid == "" || enters[1].Sid == "" || enters[0].Sid == enters[1].Sid {
+			return "", fmt.Errorf("replacement session_start enter sids = [%q, %q], want two distinct non-empty ids",
+				enters[0].Sid, enters[1].Sid)
+		}
+		aEnteredFirst = enters[0].Sid < enters[1].Sid
+	}
+	if during && !aEnteredFirst {
+		return "", fmt.Errorf("during mode expects command a to enter session_start first, got enter events %+v", enters)
+	}
+	if aEnteredFirst {
+		return "b,a", nil
+	}
+	return "a,b", nil
+}
+
 func (o d146Outcome) shape() d146Shape {
 	shape := d146Shape{Order: strings.Join(o.order, ","), Shutdowns: map[string]string{}, Starts: map[string]int{}}
-	// The first replacement's Session is the one the first handler outside startup reports.
+	// The first replacement's Session is the non-final Session reported by a replacement session_start handler
+	// (the other replacement's Session is o.finalSID). Checking Sid != o.finalSID keeps "first" vs "final"
+	// consistent even in Pi's one_write race when command b enters session_start before command a.
 	var firstSID string
 	for _, event := range o.events {
-		if event.Ev == "session_start" && event.Reason != "startup" {
+		if event.Ev == "session_start" && event.Reason != "startup" && event.Sid != o.finalSID {
 			firstSID = event.Sid
 			break
 		}
@@ -219,21 +269,26 @@ func (o d146Outcome) shape() d146Shape {
 		switch sid {
 		case d146Source:
 			return "source"
-		case firstSID:
-			return "first"
 		case o.finalSID:
 			return "final"
+		case firstSID:
+			return "first"
 		}
 		return "other:" + sid
 	}
 	inHeldStart := false
+	heldStarted := false
+	var heldSID string
 	for _, event := range o.events {
 		switch {
 		case event.Ev == "session_start" && event.Phase == "enter" && event.Reason != "startup":
 			shape.Starts[role(event.Sid)]++
-			inHeldStart = inHeldStart || shape.Starts["first"] == 1 && role(event.Sid) == "first"
-		case event.Ev == "session_start" && event.Phase == "exit" && event.Reason != "startup" && shape.Starts["first"] == 1:
-			// The held handler's exit: its ctx may be stale by now, so its Session id is not compared.
+			if !heldStarted {
+				heldStarted = true
+				heldSID = event.Sid
+				inHeldStart = true
+			}
+		case event.Ev == "session_start" && event.Phase == "exit" && event.Reason != "startup" && inHeldStart && event.Sid == heldSID:
 			inHeldStart = false
 		case event.Ev == "session_shutdown":
 			shape.Shutdowns[role(event.Sid)] += event.Reason + ","
@@ -273,10 +328,12 @@ func requireD146Final(t *testing.T, pair d146Pair, out d146Outcome) {
 }
 
 // D146, recorded from the pinned Pi, and a PIN: it goes red the day Pi changes what it does with two replacements in flight, which is when D146's remove-when is checked.
-// With the first replacement's session_start handler the longer one, Pi answers the second command first, in one write and with the second written while that handler runs, for new_session + new_session,
-// new_session + switch_session and fork + new_session. Sent in one write, Pi sends session_shutdown to the outgoing Session twice (once per command) and never to the
-// first replacement's Session, and binds each replacement's Session once. Sent while the first replacement's handler runs, the second command's session_shutdown reaches the first replacement's Session
-// while its session_start handler still runs, and a handler that uses its captured pi after that gets the stale-context extension_error.
+// Because testdata/d146-overlap-probe.mjs holds whichever replacement's session_start enters first, Pi answers the other command first (answer order is the reverse of
+// session_start entry order; strictly b,a when the second command is written while the first handler runs, and reverse of entry order in one write where Pi has no serialization
+// between a and b), for new_session + new_session, new_session + switch_session and fork + new_session. Sent in one write, Pi sends session_shutdown to the outgoing Session
+// twice (once per command) and never to the first replacement's Session, and binds each replacement's Session once. Sent while the first replacement's handler runs, the second
+// command's session_shutdown reaches the first replacement's Session while its session_start handler still runs, and a handler that uses its captured pi after that gets the
+// stale-context extension_error.
 func TestPiOverlappingReplacementsD146(t *testing.T) {
 	if testing.Short() {
 		t.Skip("runs the pinned Pi under Node")
@@ -287,12 +344,16 @@ func TestPiOverlappingReplacementsD146(t *testing.T) {
 				t.Run(fmt.Sprintf("%s/%s/touch=%v", pair.name, g.name, touch), func(t *testing.T) {
 					out := runD146(t, "pi", pair, g.during, touch)
 					requireD146Final(t, pair, out)
+					wantOrder, err := d146PiWantOrder(pair, g.during, out.events)
+					if err != nil {
+						t.Fatalf("Pi's run of %s, %s, touch=%v: %v\nevents %+v", pair.name, g.name, touch, err, out.events)
+					}
 					// Starts: Pi beffcde92dea (#12230, #10470) makes the runtime's callback the only rebind of a replacement: AgentSessionRuntime.finishSessionReplacement
 					// (agent-session-runtime.ts:187-190) calls the callback set at rpc-mode.ts:317-319, whose rebindSession (:321) binds the extensions of the Session
 					// that replacement applied, and the closing `await rebindSession()` after runtimeHost.newSession/switchSession/fork (rpc-mode.ts:456-463, :625-647) is gone.
 					// Two replacements are two rebinds, one per Session, so each Session gets one session_start: first 1, final 1. Before the commit each command
 					// also ended with that explicit rebind, which binds whichever Session is current by then (the final one): four rebinds, first 1, final 3.
-					want := d146Shape{Order: "b,a", Starts: map[string]int{"first": 1, "final": 1}}
+					want := d146Shape{Order: wantOrder, Starts: map[string]int{"first": 1, "final": 1}}
 					if !g.during {
 						want.Shutdowns = map[string]string{"source": pair.reasons[0] + "," + pair.reasons[1] + ","}
 					} else {
@@ -309,6 +370,152 @@ func TestPiOverlappingReplacementsD146(t *testing.T) {
 				})
 			}
 		}
+	}
+}
+
+func TestD146PiOrderFromEntryEvents(t *testing.T) {
+	newNew := d146Pairs[0]
+	newSwitch := d146Pairs[1]
+	forkNew := d146Pairs[2]
+
+	// Exact macOS race sequence from KNOWN-RACE-d146-pi-order-macos-2026-11-26.md:
+	// command b's session (...1d66-...2970) entered session_start before command a's (...1d65-...296e),
+	// so b was held and a answered first (Order: a,b).
+	const sidA = "019a0000-1d65-7000-8000-00000000296e"
+	const sidB = "019a0000-1d66-7000-8000-000000002970"
+
+	bFirstMacOS := d146Outcome{
+		order:    []string{"a", "b"},
+		finalSID: sidB,
+		events: []d146Event{
+			{Ev: "session_start", Reason: "startup", Phase: "enter", Sid: d146Source},
+			{Ev: "session_start", Reason: "startup", Phase: "exit", Sid: d146Source},
+			{Ev: "session_shutdown", Reason: "new", Sid: d146Source},
+			{Ev: "session_shutdown", Reason: "new", Sid: d146Source},
+			{Ev: "session_start", Reason: "new", Phase: "enter", Sid: sidB},
+			{Ev: "session_start", Reason: "new", Phase: "enter", Sid: sidA},
+			{Ev: "session_start", Reason: "new", Phase: "exit", Sid: sidA},
+			{Ev: "session_start", Reason: "new", Phase: "exit", Sid: sidB},
+		},
+	}
+	wantOrder, err := d146PiWantOrder(newNew, false, bFirstMacOS.events)
+	if err != nil {
+		t.Fatalf("d146PiWantOrder(b-first one_write) error: %v", err)
+	}
+	if wantOrder != "a,b" {
+		t.Fatalf("d146PiWantOrder(b-first one_write) = %q, want %q", wantOrder, "a,b")
+	}
+	gotShape := bFirstMacOS.shape()
+	wantShape := d146Shape{
+		Order:     "a,b",
+		Shutdowns: map[string]string{"source": "new,new,"},
+		Starts:    map[string]int{"first": 1, "final": 1},
+	}
+	if !reflect.DeepEqual(gotShape, wantShape) {
+		t.Fatalf("b-first macOS shape:\n got %+v\nwant %+v", gotShape, wantShape)
+	}
+
+	// Normal one_write case where command a enters session_start first and is held, so b answers first.
+	aFirstOneWrite := d146Outcome{
+		order:    []string{"b", "a"},
+		finalSID: sidB,
+		events: []d146Event{
+			{Ev: "session_start", Reason: "startup", Phase: "enter", Sid: d146Source},
+			{Ev: "session_start", Reason: "startup", Phase: "exit", Sid: d146Source},
+			{Ev: "session_shutdown", Reason: "new", Sid: d146Source},
+			{Ev: "session_shutdown", Reason: "new", Sid: d146Source},
+			{Ev: "session_start", Reason: "new", Phase: "enter", Sid: sidA},
+			{Ev: "session_start", Reason: "new", Phase: "enter", Sid: sidB},
+			{Ev: "session_start", Reason: "new", Phase: "exit", Sid: sidB},
+			{Ev: "session_start", Reason: "new", Phase: "exit", Sid: sidA},
+		},
+	}
+	wantOrder, err = d146PiWantOrder(newNew, false, aFirstOneWrite.events)
+	if err != nil || wantOrder != "b,a" {
+		t.Fatalf("d146PiWantOrder(a-first one_write) = (%q, %v), want (%q, nil)", wantOrder, err, "b,a")
+	}
+	if got := aFirstOneWrite.shape(); !reflect.DeepEqual(got, d146Shape{
+		Order:     "b,a",
+		Shutdowns: map[string]string{"source": "new,new,"},
+		Starts:    map[string]int{"first": 1, "final": 1},
+	}) {
+		t.Fatalf("a-first one_write shape = %+v", got)
+	}
+
+	// During mode must reject b entering first and keep strictly "b,a".
+	if _, err := d146PiWantOrder(newNew, true, bFirstMacOS.events); err == nil {
+		t.Fatalf("d146PiWantOrder(b-first during=true) succeeded, want error")
+	}
+
+	// Distinct-reason pairs in one_write mode when b enters before a.
+	for _, tc := range []struct {
+		name   string
+		pair   d146Pair
+		events []d146Event
+		want   string
+	}{
+		{
+			name: "new_session+switch_session/b_enters_first",
+			pair: newSwitch,
+			events: []d146Event{
+				{Ev: "session_start", Reason: "resume", Phase: "enter", Sid: d146Target},
+				{Ev: "session_start", Reason: "new", Phase: "enter", Sid: sidA},
+			},
+			want: "a,b",
+		},
+		{
+			name: "new_session+switch_session/a_enters_first",
+			pair: newSwitch,
+			events: []d146Event{
+				{Ev: "session_start", Reason: "new", Phase: "enter", Sid: sidA},
+				{Ev: "session_start", Reason: "resume", Phase: "enter", Sid: d146Target},
+			},
+			want: "b,a",
+		},
+		{
+			name: "fork+new_session/b_enters_first",
+			pair: forkNew,
+			events: []d146Event{
+				{Ev: "session_start", Reason: "new", Phase: "enter", Sid: sidB},
+				{Ev: "session_start", Reason: "fork", Phase: "enter", Sid: sidA},
+			},
+			want: "a,b",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := d146PiWantOrder(tc.pair, false, tc.events)
+			if err != nil {
+				t.Fatalf("d146PiWantOrder error: %v", err)
+			}
+			if got != tc.want {
+				t.Fatalf("d146PiWantOrder = %q, want %q", got, tc.want)
+			}
+		})
+	}
+
+	// Shutdown of the non-final Session arriving after both replacement session_start handlers have exited
+	// must not set ShutdownInHeldStart.
+	shutdownAfterBothExits := d146Outcome{
+		order:    []string{"b", "a"},
+		finalSID: sidB,
+		events: []d146Event{
+			{Ev: "session_start", Reason: "startup", Phase: "enter", Sid: d146Source},
+			{Ev: "session_start", Reason: "startup", Phase: "exit", Sid: d146Source},
+			{Ev: "session_shutdown", Reason: "new", Sid: d146Source},
+			{Ev: "session_start", Reason: "new", Phase: "enter", Sid: sidA},
+			{Ev: "session_start", Reason: "new", Phase: "enter", Sid: sidB},
+			{Ev: "session_start", Reason: "new", Phase: "exit", Sid: sidB},
+			{Ev: "session_start", Reason: "new", Phase: "exit", Sid: sidA},
+			{Ev: "session_shutdown", Reason: "new", Sid: sidA},
+		},
+	}
+	if got := shutdownAfterBothExits.shape(); !reflect.DeepEqual(got, d146Shape{
+		Order:               "b,a",
+		Shutdowns:           map[string]string{"source": "new,", "first": "new,"},
+		Starts:              map[string]int{"first": 1, "final": 1},
+		ShutdownInHeldStart: false,
+	}) {
+		t.Fatalf("shutdownAfterBothExits shape = %+v, want ShutdownInHeldStart=false", got)
 	}
 }
 

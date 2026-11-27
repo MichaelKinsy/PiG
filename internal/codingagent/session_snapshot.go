@@ -87,10 +87,15 @@ var cloneSessionSnapshot = func(src *os.File, path string) (*sessionSnapshot, bo
 // decoding. A failed write ends the copy: the load then reads the whole file into memory instead (loadPersistedSession) and gets no snapshot.
 type snapshotCopier struct {
 	snapshot *sessionSnapshot
-	chunks   chan []byte
+	chunks   chan snapshotCopyOp
 	free     chan []byte
 	done     chan error
 	made     int
+}
+
+type snapshotCopyOp struct {
+	data  []byte
+	flush chan error
 }
 
 // snapshotCopyBuffers bounds the chunks queued for the copier: the load waits for a free buffer rather than queue more.
@@ -98,18 +103,22 @@ type snapshotCopier struct {
 const snapshotCopyBuffers = 4
 
 func startSnapshotCopy(snapshot *sessionSnapshot) *snapshotCopier {
-	c := &snapshotCopier{snapshot: snapshot, chunks: make(chan []byte, snapshotCopyBuffers), free: make(chan []byte, snapshotCopyBuffers), done: make(chan error, 1)}
+	c := &snapshotCopier{snapshot: snapshot, chunks: make(chan snapshotCopyOp, snapshotCopyBuffers), free: make(chan []byte, snapshotCopyBuffers), done: make(chan error, 1)}
 	go func() {
 		var err error
-		for chunk := range c.chunks {
+		for op := range c.chunks {
+			if op.flush != nil {
+				op.flush <- err
+				continue
+			}
 			if err == nil {
-				if _, werr := snapshot.file.WriteAt(chunk, snapshot.size); werr != nil {
+				if _, werr := snapshot.file.WriteAt(op.data, snapshot.size); werr != nil {
 					err = werr
 				} else {
-					snapshot.size += int64(len(chunk))
+					snapshot.size += int64(len(op.data))
 				}
 			}
-			c.free <- chunk
+			c.free <- op.data
 		}
 		c.done <- err
 	}()
@@ -124,8 +133,25 @@ func (c *snapshotCopier) Write(p []byte) (int, error) {
 	} else {
 		buf = <-c.free
 	}
-	c.chunks <- append(buf[:0], p...)
+	c.chunks <- snapshotCopyOp{data: append(buf[:0], p...)}
 	return len(p), nil
+}
+
+// flush waits until every chunk queued before it has been written to the snapshot, returning any snapshot write error seen so far.
+func (c *snapshotCopier) flush() error {
+	ack := make(chan error, 1)
+	c.chunks <- snapshotCopyOp{flush: ack}
+	return <-ack
+}
+
+// ReadAt flushes queued writes into the snapshot and reads from the snapshot itself so fallback reads observe the exact bytes that were
+// copied during the sequential read rather than a concurrently edited live file. A failed snapshot write reports errSessionUnsnapshotted so
+// loadPersistedSession falls back cleanly to the resident load.
+func (c *snapshotCopier) ReadAt(buf []byte, off int64) (int, error) {
+	if err := c.flush(); err != nil {
+		return 0, errSessionUnsnapshotted
+	}
+	return c.snapshot.ReadAt(buf, off)
 }
 
 // finish waits for the queued chunks and returns the snapshot, or nil with the snapshot closed when a write failed.
@@ -138,4 +164,7 @@ func (c *snapshotCopier) finish() *sessionSnapshot {
 	return c.snapshot
 }
 
-var _ io.Writer = (*snapshotCopier)(nil)
+var (
+	_ io.Writer   = (*snapshotCopier)(nil)
+	_ io.ReaderAt = (*snapshotCopier)(nil)
+)

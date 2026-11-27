@@ -50476,6 +50476,44 @@
       ]
     },
     {
+      "id": "BF-b9253e4",
+      "title": "Opening a file-backed v3 session through `coding.SessionManagerFor` or `SessionManager.Open` now indexes…",
+      "symptom": "Opening a file-backed v3 session through `coding.SessionManagerFor` or `SessionManager.Open` now indexes `custom` and `branch_summary` entries lazily by file offset, length, hash, and base metadata instead of eagerly decoding and retaining both a cloned JSONL line and the decoded payload on the heap, streams standard-shaped oversized `custom` JSONL lines (\u003e4 MiB) in constant memory without buffering the full line (falling back to full-line indexing from the private snapshot for unusual valid shapes such as a repeated top-level `type` key or escaped top-level keys), and strips redundant raw JSON copies on canonical resident entries across all entry types (fixes #575).",
+      "rootCause": "prepareIndexLineAfter only took the offset-backed lazy path for message and custom_message, eagerly cloning and decoding custom and branch_summary lines on open",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Opening a file-backed v3 session through `coding.SessionManagerFor` or `SessionManager.Open` now indexes `custom` and `branch_summary` entries lazily by file offset, length, hash, and base metadata instead of eagerly decoding and retaining both a cloned JSONL line and the decoded payload on the heap, streams standard-shaped oversized `custom` JSONL lines (\u003e4 MiB) in constant memory without buffering the full line (falling back to full-line indexing from the private snapshot for unusual valid shapes such as a repeated top-level `type` key or escaped top-level keys), and strips redundant raw JSON copies on canonical resident entries across all entry types (fixes #575).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6d6928e61d",
+          "date": "2026-11-26"
+        },
+        {
+          "hash": "759c3fda6b",
+          "date": "2026-11-26"
+        },
+        {
+          "hash": "b9253e4219",
+          "date": "2026-11-26"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/session_custom_open_retention_test.go::TestOpenSessionDoesNotDoubleRetainBranchSummary",
+        "internal/codingagent/session_custom_open_retention_test.go::TestOpenSessionDoesNotRetainCustomPayloads",
+        "internal/codingagent/session_stream_line_test.go::FuzzStreamCustomLineMatchesFullLine",
+        "internal/codingagent/session_stream_line_test.go::TestFallbackReadsSnapshotNotEditedLiveFile",
+        "internal/codingagent/session_stream_line_test.go::TestOversizedCustomEntryEndToEnd",
+        "internal/codingagent/session_stream_line_test.go::TestResidentEntryTypesHoldNoRedundantRecord",
+        "internal/codingagent/session_stream_line_test.go::TestSlotColdPreservesOver2GiBRecordSize",
+        "internal/codingagent/session_stream_line_test.go::TestStreamCustomParserMatchesValidAndPrepare",
+        "internal/codingagent/session_stream_line_test.go::TestStreamOversizedCustomLineWhitespaceAndLateType"
+      ]
+    },
+    {
       "id": "BF-b96952c",
       "title": "fix(chord/nextnode/workers): Kill never uses a closed job handle; a worker that cannot be placed in a job…",
       "symptom": "fix(chord/nextnode/workers): Kill never uses a closed job handle; a worker that cannot be placed in a job fails its start",

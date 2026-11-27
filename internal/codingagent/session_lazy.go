@@ -29,13 +29,14 @@ func recordHash(record []byte) uint64 { return uint64(uint32(maphash.Bytes(recor
 
 // locateLocked records that slot's record is line, at off in the backing file. The caller holds s.mu for writing.
 func (s *Session) locateLocked(slot *entrySlot, off int64, line []byte) {
-	s.locateHashedLocked(slot, off, len(line), recordHash(line))
+	s.locateHashedLocked(slot, off, int64(len(line)), recordHash(line))
 }
 
 // locateHashedLocked is locateLocked of a line of size bytes whose recordHash is hash.
-func (s *Session) locateHashedLocked(slot *entrySlot, off int64, size int, hash uint64) {
+func (s *Session) locateHashedLocked(slot *entrySlot, off, size int64, hash uint64) {
 	cold := s.coldLocked(slot)
-	cold.off, cold.size, cold.hash = off, int32(size), uint32(hash)
+	cold.off, cold.hash = off, uint32(hash)
+	s.setColdSizeLocked(slot, cold, size)
 }
 
 // errRecordChanged is the reason a read gives for a record whose bytes are not the indexed ones.
@@ -76,17 +77,23 @@ func readRecordsAt(file io.ReaderAt, ats []sessionentry.RecordAt, out []json.Raw
 	slices.SortFunc(order, func(a, b int) int { return cmp.Compare(ats[a].Off, ats[b].Off) })
 	for start := 0; start < len(order); {
 		first := ats[order[start]]
-		end := first.Off + int64(first.Size) + 1
+		if first.Size < 0 || first.Size > int64(math.MaxInt)-1 {
+			return order[start], errRecordChanged
+		}
+		end := first.Off + first.Size + 1
 		stop := start + 1
 		for ; stop < len(order); stop++ {
 			next := ats[order[stop]]
-			nextEnd := max(end, next.Off+int64(next.Size)+1)
+			if next.Size < 0 || next.Size > int64(math.MaxInt)-1 {
+				break
+			}
+			nextEnd := max(end, next.Off+next.Size+1)
 			if next.Off-end > fileRunGap || nextEnd-first.Off > fileRunMax {
 				break
 			}
 			end = nextEnd
 		}
-		buf := make([]byte, end-first.Off)
+		buf := make([]byte, int(end-first.Off))
 		n, err := file.ReadAt(buf, first.Off)
 		if err != nil && !errors.Is(err, io.EOF) {
 			return order[start], err
@@ -94,7 +101,7 @@ func readRecordsAt(file io.ReaderAt, ats []sessionentry.RecordAt, out []json.Raw
 		buf = buf[:n]
 		for _, k := range order[start:stop] {
 			at := ats[k]
-			from, to := at.Off-first.Off, at.Off-first.Off+int64(at.Size)
+			from, to := at.Off-first.Off, at.Off-first.Off+at.Size
 			// The record ends its line, or the file when its line has no newline.
 			if to > int64(len(buf)) || to < int64(len(buf)) && buf[to] != '\n' && buf[to] != '\r' || recordHash(buf[from:to]) != at.Hash {
 				return k, errRecordChanged
@@ -129,7 +136,10 @@ func (b *recordBlock) ReadRecords(ats []sessionentry.RecordAt, out []json.RawMes
 	}
 	b.cache.mu.Unlock()
 	for k, at := range ats {
-		end := at.Off + int64(at.Size)
+		if at.Size < 0 {
+			return k, errRecordChanged
+		}
+		end := at.Off + at.Size
 		if end > int64(len(plain)) || recordHash(plain[at.Off:end]) != at.Hash {
 			return k, errRecordChanged
 		}
@@ -247,7 +257,7 @@ func (s *Session) newHandleLocked(i int) sessionentry.LazyEntry {
 	slot := &s.slots[i]
 	timestamp := s.timestampLocked(i)
 	cold := s.coldPart(slot)
-	at := sessionentry.RecordAt{Off: cold.off, Size: cold.size, Hash: uint64(cold.hash)}
+	at := sessionentry.RecordAt{Off: cold.off, Size: s.coldSizeLocked(slot), Hash: uint64(cold.hash)}
 	if blockNo := cold.blockOf(); blockNo != 0 {
 		at.Off = cold.blockAt()
 		return sessionentry.NewLazyEntry(s.idOf(slot), s.parentPtrLocked(i), timestamp, s.blockList[blockNo-1], at)
