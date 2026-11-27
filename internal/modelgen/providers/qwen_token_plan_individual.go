@@ -6,7 +6,7 @@ import (
 	. "github.com/MichaelKinsy/PiG/internal/modelgen" //nolint:staticcheck // ST1001: provider files mirror packages/ai/catalog/providers; the dot import keeps the definition helpers (O, Spread, MergeCompat, ...) as unqualified as the TypeScript imports of ../define.ts
 )
 
-// Token Plan Individual (Personal) text-model allowlist, verified 2026-11-09 against both regions' docs.
+// Token Plan Individual (Personal) text-model allowlist, verified 2026-11-25 against both regions' docs.
 // It shares the international endpoint with a narrower catalog; qwen-token-plan-individual-cn uses it on the China endpoint.
 // The dynamic "auto" router is not listed: it has no fixed model metadata.
 // https://docs.qwencloud.com/token-plan/personal/token-plan-personal-overview
@@ -24,7 +24,7 @@ var qwenTokenPlanIndividualModelIDs = []string{
 	"qwen3.7-plus",
 	"qwen3.8-flash",
 	"qwen3.8-max",
-	"qwen4-max-preview",
+	"qwen4-max",
 }
 
 // qwenTokenPlanIndividualModels serves the Individual allowlist from one models.dev token plan catalog.

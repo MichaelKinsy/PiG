@@ -282,7 +282,7 @@ func TestProvBQwenTokenPlans(t *testing.T) {
 	})
 
 	// The individual plan keeps its allowlist of the international models, and strict generation no longer requires exactly that list (Pi 1e34c3b4c).
-	all := []string{"deepseek-v4-flash-0731", "deepseek-v4-pro", "deepseek-v4-pro-0813", "deepseek-v4.1-flash", "deepseek-v4.1-flash-1017", "glm-5.2", "glm-5.3", "qwen3.6-flash", "qwen3.7-max", "qwen3.7-plus", "qwen3.8-flash", "qwen3.8-max", "qwen4-max-preview"}
+	all := []string{"deepseek-v4-flash-0731", "deepseek-v4-pro", "deepseek-v4-pro-0813", "deepseek-v4.1-flash", "deepseek-v4.1-flash-1017", "glm-5.2", "glm-5.3", "qwen3.6-flash", "qwen3.7-max", "qwen3.7-plus", "qwen3.8-flash", "qwen3.8-max", "qwen4-max"}
 	var allowed []provBSpec
 	for _, id := range all {
 		allowed = append(allowed, provBSpec{ID: id})
@@ -346,19 +346,19 @@ func TestProvBTogether(t *testing.T) {
 		t.Fatal(err)
 	}
 	provBIDsEqual(t, provBIDs(catalog), "meta-llama/plain", "openai/gpt-oss-20b", "openai/gpt-oss-120b", "deepseek-ai/DeepSeek-V4-Pro-0813", "zai-org/GLM-5.2")
-	oss := `{"off":null,"minimal":null}`
+	toggleLevels := `{"minimal":null,"low":null,"medium":null}`
 	provBCheck(t, provBModelsOf(catalog), []provBWant{
 		{"meta-llama/plain", "baseUrl", `"https://api.together.ai/v1"`},
 		{"meta-llama/plain", "compat", compat("false", "together")},
 		{"meta-llama/plain", "thinkingLevelMap", "undefined"},
-		{"openai/gpt-oss-20b", "compat", compat("true", "openai")},
-		{"openai/gpt-oss-20b", "thinkingLevelMap", oss},
-		{"openai/gpt-oss-120b", "compat", compat("true", "openai")},
-		{"openai/gpt-oss-120b", "thinkingLevelMap", oss},
-		{"deepseek-ai/DeepSeek-V4-Pro-0813", "compat", compat("true", "together")},
-		{"deepseek-ai/DeepSeek-V4-Pro-0813", "thinkingLevelMap", `{"minimal":null,"low":null,"medium":null,"high":"high","xhigh":null}`},
+		{"openai/gpt-oss-20b", "compat", compat("false", "together")},
+		{"openai/gpt-oss-20b", "thinkingLevelMap", toggleLevels},
+		{"openai/gpt-oss-120b", "compat", compat("false", "together")},
+		{"openai/gpt-oss-120b", "thinkingLevelMap", toggleLevels},
+		{"deepseek-ai/DeepSeek-V4-Pro-0813", "compat", compat("false", "together")},
+		{"deepseek-ai/DeepSeek-V4-Pro-0813", "thinkingLevelMap", toggleLevels},
 		{"zai-org/GLM-5.2", "compat", compat("false", "together")},
-		{"zai-org/GLM-5.2", "thinkingLevelMap", `{"minimal":null,"low":null,"medium":null}`},
+		{"zai-org/GLM-5.2", "thinkingLevelMap", toggleLevels},
 	})
 }
 

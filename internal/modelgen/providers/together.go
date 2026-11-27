@@ -18,14 +18,6 @@ func togetherToggleReasoningCompat() *Obj {
 	return Spread(togetherBaseCompat(), O("thinkingFormat", "together"))
 }
 
-func togetherReasoningEffortCompat() *Obj {
-	return Spread(togetherBaseCompat(), O("supportsReasoningEffort", true, "thinkingFormat", "openai"))
-}
-
-func togetherToggleReasoningEffortCompat() *Obj {
-	return Spread(togetherToggleReasoningCompat(), O("supportsReasoningEffort", true))
-}
-
 func together() ProviderDefinition {
 	return ProviderDefinition{
 		ID: "together",
@@ -38,19 +30,8 @@ func together() ProviderDefinition {
 					if !model.Bool("reasoning") {
 						return Spread(model, O("compat", togetherBaseCompat())), nil
 					}
-					id := model.Str("id")
-					if id == "openai/gpt-oss-20b" || id == "openai/gpt-oss-120b" {
-						return Spread(model, O(
-							"compat", togetherReasoningEffortCompat(),
-							"thinkingLevelMap", O("off", nil, "minimal", nil),
-						)), nil
-					}
-					if id == "deepseek-ai/DeepSeek-V4-Pro-0813" {
-						return Spread(model, O(
-							"compat", togetherToggleReasoningEffortCompat(),
-							"thinkingLevelMap", O("minimal", nil, "low", nil, "medium", nil, "high", "high", "xhigh", nil),
-						)), nil
-					}
+					// Every reasoning model Together lists takes its thinking toggle. (The effort-controlled ones, gpt-oss and
+					// DeepSeek V4 Pro 0813, are deprecated upstream and skipped.)
 					return Spread(model, O(
 						"compat", togetherToggleReasoningCompat(),
 						"thinkingLevelMap", O("minimal", nil, "low", nil, "medium", nil),

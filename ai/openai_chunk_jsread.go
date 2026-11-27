@@ -286,7 +286,7 @@ func normalizeOpenAIDelta(delta map[string]any, thrown *string) bool {
 			delete(delta, "content")
 		}
 	}
-	for _, field := range []string{"reasoning_content", "reasoning", "reasoning_text"} {
+	for _, field := range []string{"reasoning_content", "reasoning", "reasoning_text", "reasoning_opaque"} {
 		if _, isString := delta[field].(string); !isString {
 			delete(delta, field)
 		}

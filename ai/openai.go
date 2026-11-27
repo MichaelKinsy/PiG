@@ -113,6 +113,8 @@ type OpenAICompat struct {
 	CacheControlFormat         string `json:"cacheControlFormat,omitempty"`
 	SendSessionAffinityHeaders *bool  `json:"sendSessionAffinityHeaders,omitempty"`
 	SupportsStrictMode         *bool  `json:"supportsStrictMode,omitempty"`
+	// SupportsReasoningReplay reports whether Bedrock Converse accepts reasoning blocks from earlier assistant messages (default true).
+	SupportsReasoningReplay *bool `json:"supportsReasoningReplay,omitempty"`
 	// OpenRouterRouting contains OpenRouter-specific routing config.
 	OpenRouterRouting  OpenRouterRouting                 `json:"openRouterRouting,omitempty"`
 	ChatTemplateKwargs map[string]ChatTemplateKwargValue `json:"chatTemplateKwargs,omitempty"`
@@ -384,6 +386,7 @@ type oaiMessage struct {
 	ReasoningText    string               `json:"reasoning_text,omitempty"`
 	ToolCalls        []oaiRequestToolCall `json:"tool_calls,omitempty"`
 	ReasoningDetails []json.RawMessage    `json:"reasoning_details,omitempty"`
+	ReasoningOpaque  string               `json:"reasoning_opaque,omitempty"`
 	// Tools makes a tool-bearing system message that loads tools in place
 	// (Kimi mid-conversation tool additions).
 	Tools []oaiTool `json:"tools,omitempty"`
@@ -419,8 +422,9 @@ func (message oaiMessage) wire() any {
 			ReasoningText    string               `json:"reasoning_text,omitempty"`
 			ToolCalls        []oaiRequestToolCall `json:"tool_calls,omitempty"`        //portlint:allow emptydrop Pi sets tool_calls only when the message has calls (openai-completions.ts:1355)
 			ReasoningDetails []json.RawMessage    `json:"reasoning_details,omitempty"` //portlint:allow emptydrop Pi sets reasoning_details only when it kept some (openai-completions.ts:1378)
+			ReasoningOpaque  string               `json:"reasoning_opaque,omitempty"`
 			ReasoningContent *string              `json:"reasoning_content,omitempty"`
-		}{message.Role, message.Content, message.Reasoning, message.ReasoningText, message.ToolCalls, message.ReasoningDetails, message.ReasoningContent}
+		}{message.Role, message.Content, message.Reasoning, message.ReasoningText, message.ToolCalls, message.ReasoningDetails, message.ReasoningOpaque, message.ReasoningContent}
 	}
 	return wire(message)
 }
@@ -617,6 +621,7 @@ type oaiDelta struct {
 	ReasoningContent string            `json:"reasoning_content,omitempty"`
 	Reasoning        string            `json:"reasoning,omitempty"`
 	ReasoningText    string            `json:"reasoning_text,omitempty"`
+	ReasoningOpaque  string            `json:"reasoning_opaque,omitempty"`
 }
 
 type oaiChunkChoice struct {
@@ -891,19 +896,12 @@ func convertCompletionsMessages(messages []Message, options completionsConvertOp
 				}
 			}
 			var thinkingText []string
-			var nonEmptyThinking []ThinkingContent
 			for _, block := range thinking {
 				if trimJSWhitespace(block.Thinking) != "" {
 					thinkingText = append(thinkingText, block.Thinking)
-					nonEmptyThinking = append(nonEmptyThinking, block)
-				}
-				if converted.ReasoningDetails == nil {
-					converted.ReasoningDetails = parseOpenAIReasoningDetails(block.ThinkingSignature)
 				}
 			}
-			if converted.ReasoningDetails == nil && len(legacyReasoningDetails) > 0 {
-				converted.ReasoningDetails = legacyReasoningDetails
-			}
+			reasoningReplay := resolveOpenAICompletionsReasoningReplay(thinking, legacyReasoningDetails)
 			if thinkingAsText && len(thinkingText) > 0 {
 				sanitized := make([]string, len(thinkingText))
 				for i, text := range thinkingText {
@@ -921,10 +919,13 @@ func convertCompletionsMessages(messages []Message, options completionsConvertOp
 				if joined := joinTexts(texts); joined != "" {
 					converted.Content = joined
 				}
-				if len(converted.ReasoningDetails) == 0 && len(thinkingText) > 0 {
-					signature := nonEmptyThinking[0].ThinkingSignature
+				if (reasoningReplay == nil || reasoningReplay.kind != completionsThinkingSignatureDetails) && len(thinkingText) > 0 {
+					var field string
+					if reasoningReplay != nil {
+						field = reasoningReplay.field
+					}
 					reasoning := strings.Join(thinkingText, "\n")
-					switch signature {
+					switch field {
 					case "reasoning":
 						converted.Reasoning = reasoning
 					case "reasoning_content":
@@ -932,6 +933,14 @@ func convertCompletionsMessages(messages []Message, options completionsConvertOp
 					case "reasoning_text":
 						converted.ReasoningText = reasoning
 					}
+				}
+			}
+			if reasoningReplay != nil {
+				switch reasoningReplay.kind {
+				case completionsThinkingSignatureDetails:
+					converted.ReasoningDetails = reasoningReplay.details
+				case completionsThinkingSignatureOpaque:
+					converted.ReasoningOpaque = reasoningReplay.opaque
 				}
 			}
 			if options.reasoningContentOnAssistant && converted.ReasoningContent == nil {
@@ -1732,16 +1741,6 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 			} else if v, emit := offEffort(); emit {
 				req.Reasoning = map[string]any{"effort": v}
 			}
-		case "ant-ling":
-			// Only emits when the mapped effort is a non-null string.
-			if reasoningOn {
-				if m, ok := model.ThinkingLevelMap[ModelThinkingLevel(clamped)]; ok && m != nil {
-					req.Reasoning = map[string]any{"effort": *m}
-				}
-			} else if v, ok := model.ThinkingLevelMap[ModelThinkingLevel(ThinkingOff)]; ok && v != nil && supportsRE {
-				// The ant-ling branch (openai-completions.ts:949) needs a requested effort; without one the chain falls through to the off-value reasoning_effort at :970-975.
-				req.ReasoningEffort = new(*v)
-			}
 		case "together":
 			req.Reasoning = map[string]any{"enabled": reasoningOn}
 			if reasoningOn && supportsRE {
@@ -2054,6 +2053,8 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 	partialsByID := map[string]*partialTool{}
 	nextStreamIndex := 0
 	var streamedReasoningDetails []*openAIReasoningDetail
+	var streamedReasoningField string
+	var streamedReasoningOpaque string
 	thinkingContentIndex := -1
 	textContentIndex := -1
 	ensureThinkingBlock := func(signature string) int {
@@ -2064,11 +2065,20 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 		}
 		return thinkingContentIndex
 	}
-	// reasoning_details are replay metadata: they accumulate in memory and are serialized once, when the thinking
-	// block ends or the stream fails (openai-completions.ts applyStreamedReasoningDetails).
+	// reasoning_details and reasoning_opaque are replay metadata: they accumulate in memory and are serialized once,
+	// when the thinking block ends or the stream fails (openai-completions.ts applyStreamedReplayData).
 	applyStreamedReasoningDetails := func() {
-		if streamedReasoningDetails != nil && thinkingContentIndex >= 0 {
+		if thinkingContentIndex < 0 {
+			return
+		}
+		if streamedReasoningDetails != nil {
 			builder.thinkingBlockSignature(thinkingContentIndex, marshalOpenAIReasoningDetails(streamedReasoningDetails))
+		} else if streamedReasoningOpaque != "" {
+			builder.thinkingBlockSignature(thinkingContentIndex, encodeCompletionsThinkingSignature(completionsThinkingSignature{
+				kind:   completionsThinkingSignatureOpaque,
+				field:  streamedReasoningField,
+				opaque: streamedReasoningOpaque,
+			}))
 		}
 	}
 	finishStreamedBlocks := func() {
@@ -2227,10 +2237,16 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 					if p.cfg.ProviderID == "opencode-go" && signature == "reasoning" {
 						signature = "reasoning_content"
 					}
+					streamedReasoningField = signature
 					contentIndex := ensureThinkingBlock(signature)
 					builder.thinkingBlockDelta(contentIndex, reasoning.value)
 					break
 				}
+			}
+			if delta.ReasoningOpaque != "" {
+				ensureThinkingBlock("")
+				streamedReasoningOpaque = delta.ReasoningOpaque
+				builder.touch()
 			}
 			for _, raw := range delta.ReasoningDetails {
 				var appended bool
