@@ -205,8 +205,8 @@
  "packages/ai/catalog/providers/mistral.ts": [
   {
    "file": "internal/modelgen/providers/mistral.go",
-   "old": "NoRecordReasoning: true,",
-   "new": "NoRecordReasoning: false,"
+   "old": "BaseURL:           \"https://api.mistral.ai\",",
+   "new": "BaseURL:           \"https://api.mistral.aZ\","
   }
  ],
  "packages/ai/catalog/providers/moonshotai-cn.ts": [
@@ -3666,8 +3666,8 @@
  "packages/coding-agent/src/extensions/mcp/tools.ts": [
   {
    "file": "coding/mcpext/tools.go",
-   "old": "\tif exposure == extension.McpExposureCodemode {\n",
-   "new": "\tif exposure != extension.McpExposureCodemode {\n"
+   "old": "\tisError := result.IsError != nil && *result.IsError\n",
+   "new": "\tisError := false\n"
   }
  ],
  "packages/coding-agent/src/extensions/mcp/ui.ts": [
