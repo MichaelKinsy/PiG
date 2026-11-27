@@ -16,7 +16,7 @@ pub use crate::extension_factories::{ExtensionFactory, InlineExtensionFactory};
 
 /// Pi's `DefaultResourceLoaderOptions`. `None`, an empty list and `false` are Pi's undefined.
 ///
-/// `extension_factories` and `extensions_override` exist so code that sets them fails loudly instead of losing behavior: an inline factory runs in this process but the child session's extensions load in the host, and an override returns live extension objects. They are not supported yet (an owner decision is pending, gap `SdkSessionGraph` in test/parity/sdk-exports.toml); [`DefaultResourceLoader::new`] returns an error when either is set. `additional_extension_paths` loads extension sources, and `create_agent_session`'s custom tools serve tools from the parent extension.
+/// `extension_factories` and `extensions_override` exist so code that sets them fails loudly instead of losing behavior: an inline factory runs in this process but the child session's extensions load in the host, and an override returns live extension objects. They are not supported yet (an owner decision is pending, gap `SdkSessionGraph` in test/parity/ledgers/sdk-exports.toml); [`DefaultResourceLoader::new`] returns an error when either is set. `additional_extension_paths` loads extension sources, and `create_agent_session`'s custom tools serve tools from the parent extension.
 #[derive(Default)]
 pub struct DefaultResourceLoaderOptions<'a> {
     pub cwd: String,

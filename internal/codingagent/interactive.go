@@ -136,6 +136,8 @@ type InteractiveMode struct {
 	tuiInst     tui.TUI
 	// programStatus reports working, blocked, done and error states to terminals that support OSC 7501 (interactive-mode.ts:551).
 	programStatus *ProgramStatusReporter
+	// programResume reports how to resume the session to terminals that support OSC 7577 (interactive-mode.ts programResume). Nil without a token.
+	programResume *ProgramResumeReporter
 	newRunner     *inproc.Runner
 	// detachModelRegistry detaches the model operations wired to the current build's bridge.
 	detachModelRegistry func()
@@ -1207,6 +1209,11 @@ type InteractiveModeOptions struct {
 	Frontend frontend.Frontend
 	// Terminal is the terminal the renderer drives (interactive-mode.ts:447 `terminal?: Terminal`, passed to createInteractiveTui at :626). Nil selects the process terminal.
 	Terminal tui.Terminal
+	// ProgramResumeToken is the token the terminal set in OSC7577_TOKEN, taken out of the environment before any child process starts.
+	// When set, interactive mode reports how to resume the session after the terminal restarts (OSC 7577).
+	ProgramResumeToken string
+	// ResumeProgramName is the program name used in the exit resume hint and OSC 7577 argv[0]. Empty defaults to AppName ("pig"); a Piglet Binary passes its own name.
+	ResumeProgramName string
 	// KernelFrameDeadline lets the owner loop keep a frame's deadline on a kernel timer where the runtime's timer is coarser than a frame needs
 	// (kernelFrameTimer; Linux). The pig command sets it. Left unset, the runtime's timer keeps the deadline, whose time a testing/synctest bubble
 	// controls; a kernel timer's is the machine's.
@@ -1632,6 +1639,18 @@ func NewInteractiveMode(runtimeHost InteractiveRuntime, options InteractiveModeO
 		setting := *opts.InitialThemeSetting
 		m.themeState.currentThemeSetting.Store(&setting)
 	}
+	if opts.ProgramResumeToken != "" {
+		m.programResume = NewProgramResumeReporter(
+			opts.ProgramResumeToken,
+			func() tui.Terminal {
+				if m.tuiInst == nil {
+					return nil
+				}
+				return m.tuiInst.Terminal()
+			},
+			m.programResumeCommand,
+		)
+	}
 	return m
 }
 
@@ -1671,6 +1690,7 @@ var quoteUnsafeRE = lazyregexp.New(`[^a-zA-Z0-9_\-./~:@]`)
 
 // resumeCommandSession is the SessionManager state read when formatting a resume command.
 type resumeCommandSession struct {
+	programName           string
 	persisted             bool
 	sessionFile           string
 	sessionID             string
@@ -1678,29 +1698,54 @@ type resumeCommandSession struct {
 	usesDefaultSessionDir bool
 }
 
-// formatResumeCommand returns no command for non-TTY output, in-memory sessions, or an absent session file. stdoutIsTTY is the current stdout terminal state.
-// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts:309-321.
+// getResumeArgs returns the argv that opens the session in a new process, or nil while the session has no file to open.
+// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts getResumeArgs (Pi cf419553da).
+func getResumeArgs(sessionManager resumeCommandSession) []string {
+	if !sessionManager.persisted || sessionManager.sessionFile == "" {
+		return nil
+	}
+	//perf:ok cold session-switch/exit resume check, matching Pi getResumeArgs fs.existsSync(sessionFile); never runs on render or input hot paths
+	if _, err := os.Stat(sessionManager.sessionFile); err != nil {
+		return nil
+	}
+	program := sessionManager.programName
+	if program == "" {
+		program = AppName
+	}
+	args := []string{program}
+	if !sessionManager.usesDefaultSessionDir {
+		args = append(args, "--session-dir", sessionManager.sessionDir)
+	}
+	args = append(args, "--session", sessionManager.sessionID)
+	return args
+}
+
+// formatResumeCommand returns the resume command as shell text for the user to copy, or "" for non-TTY output, in-memory sessions, or an absent session file.
+// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts formatResumeCommand (Pi cf419553da).
 func formatResumeCommand(sessionManager resumeCommandSession, stdoutIsTTY bool) string {
-	if !stdoutIsTTY || !sessionManager.persisted {
+	if !stdoutIsTTY {
 		return ""
 	}
-	return resumeCommand(sessionManager.sessionFile, sessionManager.sessionID, sessionManager.sessionDir, !sessionManager.usesDefaultSessionDir)
+	args := getResumeArgs(sessionManager)
+	if len(args) == 0 {
+		return ""
+	}
+	quoted := make([]string, len(args))
+	for i, arg := range args {
+		quoted[i] = quoteIfNeeded(arg)
+	}
+	return strings.Join(quoted, " ")
 }
 
 // resumeCommand formats a session ID and optional custom directory only when the session file exists. includeSessionDir preserves an explicitly empty custom directory.
 func resumeCommand(sessionPath, sessionID, sessionDir string, includeSessionDir bool) string {
-	if sessionPath == "" {
-		return "" // not persisted (--no-session)
-	}
-	if _, err := os.Stat(sessionPath); err != nil {
-		return ""
-	}
-	parts := []string{AppName}
-	if includeSessionDir {
-		parts = append(parts, "--session-dir", quoteIfNeeded(sessionDir))
-	}
-	parts = append(parts, "--session", sessionID)
-	return strings.Join(parts, " ")
+	return formatResumeCommand(resumeCommandSession{
+		persisted:             sessionPath != "",
+		sessionFile:           sessionPath,
+		sessionID:             sessionID,
+		sessionDir:            sessionDir,
+		usesDefaultSessionDir: !includeSessionDir,
+	}, true)
 }
 
 var stdoutIsTTY = func() bool { return term.IsTerminal(int(os.Stdout.Fd())) }
@@ -1967,6 +2012,7 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	// Pi sets isInitialized once the TUI started (interactive-mode.ts:998-999): a later failure leaves init() done, and stop() tears the TUI down.
 	m.isInitialized = true
 	m.programStatusReporter().Report()
+	m.programResume.Report()
 	// Pi's ui.start() only requests the first frame, and init() writes the terminal color query (applyFromSettings()) before the deferred frame runs at `await waitForTerminalColors()`. The header, which bakes theme colors into its text, is built once the query completed or timed out (interactive-mode.ts init(): ui.start(), applyFromSettings(), waitForTerminalColors(), header). The color wait serves the owner loop, so it paints the requested frame: a terminal that answers nothing shows the editor and footer at once and the header after the timeout.
 	m.applyThemeFromSettings(ctx)
 	m.inputHoldOnce.Do(func() { close(m.inputHold) })

@@ -290,6 +290,14 @@ PiG reports its state with the [Program Status Protocol (OSC 7501)](https://www.
 
 Reports never contain prompts or model output. The `app` value is `pig`, where Pi sends `pi`, because PiG uses its own command identity (D2). PiG sends reports only after the terminal answers the protocol's support query; tmux and screen do not forward them. Set `PI_PROGRAM_STATUS=1` to send reports without asking, or `PI_PROGRAM_STATUS=0` to turn them off. A Piglet frontend member receives the same states instead of the terminal (D91).
 
+## Program resume
+
+PiG tells the terminal how to bring the session back after the terminal restarts, with the [Program Resume Protocol (OSC 7577)](https://www.superlogical.com/rex/docs/build/program-resume). Terminals that support it set `OSC7577_TOKEN` in the environment; PiG reports only when it is set.
+
+The command is the one PiG prints when you quit, such as `pig --session <id>` (or a Piglet Binary's own name, D2), to run in the session's directory. PiG updates it when you start, resume, or fork a session, and once a new session has its first message. A new session without messages has nothing to resume, so PiG removes the command until then. Quitting with `Ctrl+D`, `Ctrl+C` twice, or `/quit` removes it too; when the terminal itself closes or restarts (`SIGHUP`, `SIGTERM`), PiG keeps it.
+
+PiG removes `OSC7577_TOKEN` from its own environment at startup, so shells, editors, MCP servers, and extension processes it starts cannot replace its command or register commands of their own. Whether and when the terminal resumes a command is up to the terminal.
+
 ## Related
 
 - [Keybindings](/docs/latest/keybindings) lists the actions and their default keys.

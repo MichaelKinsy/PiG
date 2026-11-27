@@ -17,6 +17,7 @@ rest  ./durable/storage/store
 rest  ./coding/extension/host/subprocess
 host  ./coding/extension
 host  ./coding/extension/host/inproc
+host  ./coding/extension/host/invocation
 host  ./coding/extension/host/runtimecell
 host  ./coding/extension/host/cellpack
 host  ./coding/extension/host/tsruntime

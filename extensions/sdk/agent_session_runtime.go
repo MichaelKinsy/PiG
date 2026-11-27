@@ -64,8 +64,8 @@ func (e *MissingSessionCwdError) Error() string {
 	return fmt.Sprintf("Stored session working directory does not exist: %s%s\nCurrent working directory: %s", e.SessionCwd, file, e.FallbackCwd)
 }
 
-// withSessionUnsupported is the error of the `withSession` option: its callback takes Pi's ReplacedSessionContext, which AgentSession.createReplacedSessionContext makes, and that member is not served yet (gap C2Sessions in test/parity/sdk-exports.toml).
-var errWithSessionUnsupported = errors.New("the withSession option is not supported yet: it takes the ReplacedSessionContext of AgentSession.createReplacedSessionContext, which is a C2Sessions gap in test/parity/sdk-exports.toml; use the setup option, or read AgentSessionRuntime.Session() once the call returned")
+// withSessionUnsupported is the error of the `withSession` option: its callback takes Pi's ReplacedSessionContext, which AgentSession.createReplacedSessionContext makes, and that member is not served yet (gap C2Sessions in test/parity/ledgers/sdk-exports.toml).
+var errWithSessionUnsupported = errors.New("the withSession option is not supported yet: it takes the ReplacedSessionContext of AgentSession.createReplacedSessionContext, which is a C2Sessions gap in test/parity/ledgers/sdk-exports.toml; use the setup option, or read AgentSessionRuntime.Session() once the call returned")
 
 // NewSessionRuntimeOptions is the options object of Pi's AgentSessionRuntime.newSession. Pi's `withSession` is not served ([errWithSessionUnsupported]); a function in it fails the call before anything happens.
 type NewSessionRuntimeOptions struct {

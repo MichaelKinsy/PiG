@@ -558,6 +558,8 @@ type Host struct {
 	settleTailHandler     func(suspended int)
 	// backgroundGate is the embedder's hold on calls no request started (SetBackgroundCallGate).
 	backgroundGate atomic.Pointer[func() <-chan struct{}]
+	// postAckGate is the embedder's hold on post-acknowledgment output calls of an unawaited event (SetPostAckGate).
+	postAckGate atomic.Pointer[func(string) <-chan struct{}]
 	// syncRuns holds the Session busy for every extension while a handler that sent a triggering message has not yet yielded (sync_run_hold.go).
 	syncRuns syncRunHolds
 	// syncReports holds the reports of failed sends until the code that sent them ends its run (sync_run_report.go).
@@ -776,6 +778,7 @@ func (me *managedExt) connection() *Conn { return me.conn.Load() }
 func (me *managedExt) setConnLocked(conn *Conn) {
 	if conn != nil && me.host != nil {
 		conn.beforeCancel = func() { _ = me.host.syncRunSignal(conn) }
+		conn.postAckGate = &me.host.postAckGate
 	}
 	me.conn.Store(conn)
 }
@@ -2633,6 +2636,15 @@ func (h *Host) SetBackgroundCallGate(gate func() <-chan struct{}) {
 	h.backgroundGate.Store(&gate)
 }
 
+// SetPostAckGate installs the embedder's hold on post-acknowledgment fire-and-forget output calls made by an unawaited event handler. Pi writes the RPC command reply in the microtask checkpoint before libuv resumes the handler's awaited I/O callback; gate returns nil when no command reply is pending for event, or a channel that closes once that reply is written. The gate runs on request goroutines and must not block.
+func (h *Host) SetPostAckGate(gate func(event string) <-chan struct{}) {
+	if gate == nil {
+		h.postAckGate.Store(nil)
+		return
+	}
+	h.postAckGate.Store(&gate)
+}
+
 // SetCommandWindowHandler installs the process-owner callback that receives how many in-flight extension commands Pi's process would have left unanswered when it reads stdin's end: those that count suspended, and those of a runtime with no microtask continuation that are still running (FlushCommands applies the same rule to the flights themselves later). A Node command is not counted until its runtime reports its window closed, which it does only after runtime_input_end. The callback runs on host goroutines, must not block, and must not resume or cancel the command.
 func (h *Host) SetCommandWindowHandler(fn func(suspended int)) {
 	h.commandFlightMu.Lock()
@@ -4065,7 +4077,7 @@ func (h *Host) waitForRegister(ctx context.Context, me *managedExt, conn *Conn) 
 				return env.Register, nil
 			}
 			if env.Type == MsgCall && env.Call != nil && loadingBusCall(env.Call.Method) {
-				h.queueCallDone(me, conn, lanes, env.ID, env.Call, env.ackCounted, nil)
+				h.queueCallDone(me, conn, lanes, env.ID, env.Call, env.ackCounted, env.afterAck, env.afterAckCancel, nil)
 				continue
 			}
 			if env.Type == MsgCall {
@@ -5413,7 +5425,7 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 		if !h.acceptsNodeGeneration(me) {
 			// A generation a reload replaces still runs its command, and until the commit every handler that was in flight when the reload began; runCall answers each of its calls with Pi's stale error instead of leaving the handler that waits for the call blocked.
 			if env.Type == MsgCall && env.Call != nil && (me.replaced.Load() || h.supersedes(me)) {
-				h.queueCallDone(me, conn, lanes, env.ID, env.Call, env.ackCounted, nil)
+				h.queueCallDone(me, conn, lanes, env.ID, env.Call, env.ackCounted, env.afterAck, env.afterAckCancel, nil)
 				continue
 			}
 			if env.Type == MsgRequestState && env.RequestState != nil {
@@ -5483,11 +5495,17 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 					if holdsForLoopTurn(call.Method) && (!native || !conn.requestsInFlight()) {
 						switch {
 						case call.Tick:
-							turns.Tick(call.OriginToolCallID, func(done func()) { h.queueCallDone(me, conn, lanes, env.ID, call, env.ackCounted, done) })
+							turns.Tick(call.OriginToolCallID, func(done func()) {
+								h.queueCallDone(me, conn, lanes, env.ID, call, env.ackCounted, env.afterAck, env.afterAckCancel, done)
+							})
 						case native:
-							turns.MacrotaskDoneFor(conn, func(done func()) { h.queueCallDone(me, conn, lanes, env.ID, call, env.ackCounted, done) })
+							turns.MacrotaskDoneFor(conn, func(done func()) {
+								h.queueCallDone(me, conn, lanes, env.ID, call, env.ackCounted, env.afterAck, env.afterAckCancel, done)
+							})
 						default:
-							turns.MacrotaskDone(func(done func()) { h.queueCallDone(me, conn, lanes, env.ID, call, env.ackCounted, done) })
+							turns.MacrotaskDone(func(done func()) {
+								h.queueCallDone(me, conn, lanes, env.ID, call, env.ackCounted, env.afterAck, env.afterAckCancel, done)
+							})
 						}
 						continue
 					}
@@ -5495,7 +5513,7 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 					turns.Turn()
 				}
 			}
-			h.queueCallDone(me, conn, lanes, env.ID, call, env.ackCounted, nil)
+			h.queueCallDone(me, conn, lanes, env.ID, call, env.ackCounted, env.afterAck, env.afterAckCancel, nil)
 
 		case MsgWidgetPush:
 			if env.WidgetPush == nil {

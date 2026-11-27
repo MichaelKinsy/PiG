@@ -134,7 +134,7 @@ Real shape gaps found (pending, not closable until the Go type changes): `Sessio
 
 Left pending on review: `BeforeAgentStartEvent` (`systemPromptOptions` is a normalized options type with no Go counterpart of the same shape), `ToolDefinition` (19 properties, unreviewed), `TuiAltScreenOptions` (`copySelection` resolves a `Promise<boolean | string>` upstream; Go returns only an error), `OverlayUnfocusOptions` (no test mentions it).
 
-`handleInput` rows cannot close in this ledger: `interfaceinventory` requires a state-transition contract in `test/parity/behavior-contracts.toml` for any `handleInput` marked behavior-complete, so `Editor.handleInput` and `SettingsList.handleInput` stay pending until the behavior ledger closes them. `ModelRegistry.getAvailable`, `hasConfiguredAuth` (Go takes a provider id, upstream a model), `getProvider`, `ModelRuntime.getModels` (no provider filter in Go) and `DefaultResourceLoader.reload` (no options) differ in signature and stay pending.
+`handleInput` rows cannot close in this ledger: `interfaceinventory` requires a state-transition contract in `test/parity/ledgers/behavior-contracts.toml` for any `handleInput` marked behavior-complete, so `Editor.handleInput` and `SettingsList.handleInput` stay pending until the behavior ledger closes them. `ModelRegistry.getAvailable`, `hasConfiguredAuth` (Go takes a provider id, upstream a model), `getProvider`, `ModelRuntime.getModels` (no provider filter in Go) and `DefaultResourceLoader.reload` (no options) differ in signature and stay pending.
 
 Closed rows per package (all 0 before):
 

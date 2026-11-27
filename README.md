@@ -207,9 +207,10 @@ npx @pi-in-go/pig version
 (`@pi-in-go/pig-<os>-<cpu>`, for macOS, Linux and Windows on x64 and arm64, and Android on arm64 for Termux) as
 an optional dependency, and Node.js runs only a small launcher. Do not install
 with `--omit=optional` or `--no-optional`, which leaves the binary out. Update
-with `npm update -g @pi-in-go/pig` and uninstall with
-`npm uninstall -g @pi-in-go/pig`. `pig update` does not replace an
-npm-installed binary; update through npm.
+with `npm update -g @pi-in-go/pig` or `pig update` (which runs
+`npm install -g --ignore-scripts --min-release-age=0 @pi-in-go/pig@<version>`
+when the global install is writable), and uninstall with
+`npm uninstall -g @pi-in-go/pig`.
 
 ## Install with Go
 
@@ -226,9 +227,9 @@ Go writes the `pig` executable to `GOBIN`, or to the `bin` directory of the firs
 downloads a new enough toolchain automatically. Release binaries are built with
 Go 1.27.4.
 
-Use an exact release such as `@v0.2.0` when reproducibility matters. Update a Go
+Use an exact release such as `@v0.8.0` when reproducibility matters. Update a Go
 installation by running `go install` again. Each release tags the root module
-(`v0.2.0`) and the Go extension SDK module (`extensions/sdk/v0.2.0`) on the same
+(`v0.8.0`) and the Go extension SDK module (`extensions/sdk/v0.8.0`) on the same
 commit; `go install` needs both.
 
 ## Install with Nix

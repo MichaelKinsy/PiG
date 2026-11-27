@@ -2,7 +2,7 @@
 
 Extensions add executable behavior to PiG. They can register tools, commands, event handlers, providers, renderers, and interactive UI.
 
-PiG preserves the Pi extension model while using a process-oriented host that supports Go, Rust, Python, and Node. A compatible Go extension can also be compiled into a Piglet Binary.
+PiG preserves the Pi extension model while using a process-oriented host that supports Go, Rust, Python, Node, and Common Lisp. A compatible Go extension can also be compiled into a Piglet Binary.
 
 To show one GUI in the terminal and in a web page, mount a view: [Extension views](ui-views.md) (D614).
 
@@ -68,9 +68,9 @@ Execution placement must not change extension behavior. An extension uses the sa
 
 Three cross-process differences remain: the Provider object surface and foreign configuration identity (D78), partial-message observation (D82), and event-bus scheduling boundaries across processes (D83). See [Providers](/docs/latest/providers) and [RPC mode](/docs/latest/rpc).
 
-Every Node extension shares one `pi.events` bus, including explicitly isolated extensions and exact standalones. A listener in another process receives the emitter's original payload by reference: synchronous mutations, reentrant emits, retained and post-await aliases, and callbacks behave as in Pi. D83 names what differs across processes: independent tasks in different processes are ordered by timing, only a listener's first post-await continuation is ordered with the emitter's microtasks, reference cycles that cross processes are released when a process exits, and brand checks such as `util.types.isMap` fail on a foreign object, where `util.types.isProxy` also returns true. `util.inspect` with `customInspect: false` prints an empty placeholder object instead of a foreign payload, `util.inspect` with `showProxy: true` shows the Proxy wrapper, and on Node 26.0.0 and later `util.inspect` of a non-extensible foreign payload prints it inside `Proxy(...)`, because V8 offers no hook. Node 25 and earlier print that payload as Pi does. A listener that never returns blocks its emitter, as in Pi.
+Every Node extension shares one `pi.events` bus, including explicitly isolated extensions and exact standalones. A listener in another process receives the emitter's original payload by reference: synchronous mutations, reentrant emits, retained and post-await aliases, and callbacks behave as in Pi. Across processes, independent tasks are ordered by timing, only a listener's first post-await continuation is ordered with the emitter's microtasks, reference cycles that cross processes are released when a process exits, and brand checks such as `util.types.isMap` fail on a foreign object, where `util.types.isProxy` also returns true (D83). `util.inspect` with `customInspect: false` prints an empty placeholder object instead of a foreign payload, `util.inspect` with `showProxy: true` shows the Proxy wrapper, and on Node 26.0.0 and later `util.inspect` of a non-extensible foreign payload prints it inside `Proxy(...)`, because V8 offers no hook. Node 25 and earlier print that payload as Pi does. A listener that never returns blocks its emitter, as in Pi.
 
-Same-process configuration roots, children, callbacks and receivers must also remain Pi-exact. A foreign configuration snapshot is not a live author-held object (D78). A retained remote partial message does not advance with its producer (D82). Event order, cancellation, final results, persistence and cleanup remain required. The strict RPC33 comparison retains its raw failure.
+Same-process configuration roots, children, callbacks, and receivers behave as in Pi. A foreign configuration snapshot is not a live author-held object (D78). A retained remote partial message does not advance with its producer (D82). Event order, cancellation, final results, persistence, and cleanup match Pi.
 
 ## Extension responsibilities
 
@@ -552,7 +552,7 @@ In Go, use `sdk.Context.Done()` and return the cancellation error from owned wor
 
 An awaited handler must return only after its work finishes. Returning early changes completion ordering and loses errors.
 
-Handlers of requests that arrive together start in arrival order in every SDK, but in the Go, Rust, Python and Lisp SDKs a handler's own first statement can run after the next handler's when the operating system deschedules its thread at that moment (D658; about 5e-5 per start under one-cpu pressure, measured for Go; in Python one reorder in 100 pressured runs of a first-statement row forced on for it; Rust and Lisp by reading the code). Pi and the Node SDK never do. Do not rely on the first statements of two handlers running in order.
+Handlers of requests that arrive together start in arrival order in every SDK, but in the Go, Rust, Python, and Lisp SDKs a handler's first statement can run after the next handler's if the operating system deschedules its thread at that moment (D658). Pi and the Node SDK run them in strict arrival order. Do not rely on the first statements of two concurrent handlers running in order.
 
 Python custom-provider callbacks and the SDK's event forwarding share the request Context's cancellation signal. Check `ctx.is_cancelled()` while doing provider work. Cancellation before forwarding, during iteration, or after the iterator ends produces an aborted-operation error instead of forwarding further events.
 

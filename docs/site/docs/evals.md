@@ -4,6 +4,8 @@ Every harness below talks to the same local mock model. The mock answers each re
 
 These numbers do not measure model quality or task success. `pigeval live` runs fixed coding tasks with a real model for that.
 
+> **Historical snapshot:** The table below is a point-in-time capture from 2026-09-23 against Pi `0.87.1` on a 1-CPU host. For current release benchmark results, see [/benchmarks/](/benchmarks/) or run `make evals` locally.
+
 Measured 2026-09-23T11:11:39Z on Linux-6.18.44-fc-v37-x86_64-with-glibc2.39 (x86_64, 1 CPUs). Each scenario ran 1 warm-up run and 10 measured runs. Prompt: `Say hello`.
 
 ## Harnesses

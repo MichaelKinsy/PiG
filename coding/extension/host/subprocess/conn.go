@@ -153,6 +153,8 @@ type Conn struct {
 	onLoopTurnTaken func(args json.RawMessage)
 	// onRequestStart, when set, runs on the goroutine that sends a request, before the request is written (Host.handleIncoming sets it for a Go, Rust or Python extension: the request's handler may await a call the host holds, so the host releases those calls first).
 	onRequestStart atomic.Pointer[func()]
+	// postAckGate, wired by managedExt.setConnLocked to Host.postAckGate, returns a channel that closes once the embedder has written the reply of the command that emitted event, or nil.
+	postAckGate *atomic.Pointer[func(string) <-chan struct{}]
 	// onTimerDeferAck runs on the read loop for each NotifyTimerDeferAck frame, with its arguments.
 	onTimerDeferAck func(args json.RawMessage)
 	// onHeldNotify runs, on the host's loop and after the report_error notifications read before it were applied, for each notification the read loop held behind them (Envelope.held).
@@ -903,14 +905,21 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	if inactivity > 0 || requestReportsSuspension(ctx) {
 		stateCh = make(chan RequestStatePayload, 8)
 	}
+	event := ""
+	if env.Request != nil {
+		event = env.Request.Event
+	}
 	if invocation.Bound(ctx) {
-		ctx = withAckHold(ctx)
+		var afterAck <-chan struct{}
+		if event != "" && c.postAckGate != nil {
+			if gate := c.postAckGate.Load(); gate != nil {
+				afterAck = (*gate)(event)
+			}
+		}
+		ctx = withAckHoldGate(ctx, afterAck, invocation.AcknowledgedBySuspension(ctx))
 		c.ackHolds.Add(1)
 	}
-	sink := requestStateSink{ch: stateCh, ctx: ctx}
-	if env.Request != nil {
-		sink.event = env.Request.Event
-	}
+	sink := requestStateSink{ch: stateCh, ctx: ctx, event: event}
 	c.stateMu.Lock()
 	c.requestStates[env.ID] = sink
 	c.stateMu.Unlock()

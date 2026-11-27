@@ -6370,6 +6370,38 @@
       ]
     },
     {
+      "id": "BF-1e01e49",
+      "title": "Fixed a Piglet Binary's session-exit resume hint to print the binary's own name instead of `pig`…",
+      "symptom": "Fixed a Piglet Binary's session-exit resume hint to print the binary's own name instead of `pig` (`ResumeProgramName`).",
+      "rootCause": "exit resume hint hardcoded pig instead of the active binary name",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Fixed a Piglet Binary's session-exit resume hint to print the binary's own name instead of `pig` (`ResumeProgramName`).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1e01e497e6",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "coding/cli/program_resume_token_test.go::TestMainStripsOSC7577TokenFromChildren",
+        "coding/cli/program_resume_token_test.go::TestMainTakesProgramResumeTokenBeforeAnyCommand",
+        "internal/codingagent/interactive_program_resume_test.go::TestExternalEditorChildDoesNotReceiveOSC7577Token",
+        "internal/codingagent/interactive_program_resume_test.go::TestInteractiveProgramResumeAbsentTokenWritesZeroBytes",
+        "internal/codingagent/interactive_program_resume_test.go::TestInteractiveProgramResumeLifecycleAndPigletBinaryName",
+        "internal/codingagent/program_resume_reporter_test.go::TestProgramResumeReporterUpstream",
+        "test/extension-conformance/program_resume_token_env_test.go::TestConformance_SubprocessExtensionsDoNotReceiveOSC7577Token",
+        "test/extension-conformance/program_resume_token_env_test.go::TestOSC7577EnvHelperProcess",
+        "tui/program_resume_test.go::TestFormatProgramResumeClearUpstream",
+        "tui/program_resume_test.go::TestFormatProgramResumeUpstream",
+        "tui/program_resume_test.go::TestTakeProgramResumeTokenUpstream"
+      ]
+    },
+    {
       "id": "BF-1e2d25f",
       "title": "A `turn_end` handler's in-place edit of `event.message` (an `agent_end` handler's of `event.messages`) no…",
       "symptom": "A `turn_end` handler's in-place edit of `event.message` (an `agent_end` handler's of `event.messages`) no longer races with the consumer of `Session.Events`, and no longer reaches the `message_end` and `turn_end` events published before it.",
@@ -10386,6 +10418,50 @@
       ],
       "tests": [
         "internal/yaml12/parse_mutation_test.go::TestParseMatchesTheLibraryOnCollectionTagsOnScalars"
+      ]
+    },
+    {
+      "id": "BF-300d10b",
+      "title": "An RPC client could receive a Node extension's notification or other fire-and-forget UI call (`notify`…",
+      "symptom": "An RPC client could receive a Node extension's notification or other fire-and-forget UI call (`notify`, `setStatus`, `setWidget`, `setTitle`, `setEditorText`, `pasteToEditor`, or `entry_appended` from `pi.appendEntry`) before the reply of the command that caused it (`set_session_name`, `set_thinking_level`, `cycle_thinking_level`, or `set_model` / `cycle_model` when the thinking level changes without an awaiting `model_select` handler).",
+      "rootCause": "Conn.readLoop acknowledged unawaited Node event handlers on external I/O suspension while callLane applied post-await fire-and-forget UI calls without waiting for the RPC command response write",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An RPC client could receive a Node extension's notification or other fire-and-forget UI call (`notify`, `setStatus`, `setWidget`, `setTitle`, `setEditorText`, `pasteToEditor`, or `entry_appended` from `pi.appendEntry`) before the reply of the command that caused it (`set_session_name`, `set_thinking_level`, `cycle_thinking_level`, or `set_model` / `cycle_model` when the thinking level changes without an awaiting `model_select` handler). Post-acknowledgment fire-and-forget output calls now wait off the read loop until the originating command batch's replies are written, matching Pi's event-loop microtask ordering, release immediately if the handler makes a later call requiring a host response (preventing lane deadlocks), and drop or release cleanly on command error, stdout failure, request cancel, session close, or shutdown.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "300d10b489",
+          "date": "2026-11-25"
+        },
+        {
+          "hash": "f035287a36",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_post_ack_deadlock_trigger_test.go::TestRPCPostAckNotDeterminedCases",
+        "coding/cli/rpc_post_ack_deadlock_trigger_test.go::TestRPCPostAckReleasePathsWithActuallyHeldCall",
+        "coding/cli/rpc_post_ack_deadlock_trigger_test.go::TestRPCPostAckSecondHandlerAfterSynchronousFirstHandlerRunsAheadOfReply",
+        "coding/cli/rpc_post_ack_deadlock_trigger_test.go::TestRPCPostAckSyncBridgeCallAfterHeldStatusDoesNotDeadlockBatch",
+        "coding/cli/rpc_post_ack_deadlock_trigger_test.go::TestRPCPostAckTwoRepliesInOneBatchStayTogether",
+        "coding/cli/rpc_post_ack_order_test.go::TestRPCBatchSetWidgetSlotDoesNotDeadlock",
+        "coding/cli/rpc_post_ack_order_test.go::TestRPCModelCommandsPostAckOrder",
+        "coding/cli/rpc_post_ack_order_test.go::TestRPCPostAckGateReleasePaths",
+        "coding/cli/rpc_post_ack_order_test.go::TestRPCSingleCommandPostAckOrderThroughResponseWriteSeam",
+        "coding/cli/rpc_post_ack_order_test.go::TestRPCTwoNodeExtensionsPostAckOrder",
+        "coding/extension/host/invocation/ack_test.go::TestAcknowledgedBySuspensionDistinguishesCompleteFromAcknowledge",
+        "coding/extension/host/invocation/ack_test.go::TestAcknowledgedReportsReleaseState",
+        "coding/extension/host/subprocess/ack_hold_test.go::TestBlockedAcknowledgmentOfAnEffectCallWaitsForTheHandlersProgress",
+        "coding/extension/host/subprocess/ack_hold_test.go::TestBlockedAcknowledgmentWaitsForTheCallsReadBeforeIt",
+        "coding/extension/host/subprocess/post_ack_gate_test.go::TestPostAckGateHoldsPostBlockedCallsOnly",
+        "coding/extension/host/subprocess/post_ack_gate_test.go::TestPostAckGateNonGatedCallUnblocksEarlierHeldCallOnSameLane",
+        "coding/extension/host/subprocess/post_ack_gate_test.go::TestPostAckGateReleasesOnCancelAndShutdown",
+        "coding/extension/host/subprocess/post_ack_gate_test.go::TestPostAckGateSecondHandlerAfterPlainCompleteStartsUnsealed",
+        "coding/extension/host/subprocess/post_ack_gate_test.go::TestPostAckGateSlotCallDoesNotDeadlockPrefixSlotCall"
       ]
     },
     {
@@ -44186,6 +44262,28 @@
       ]
     },
     {
+      "id": "BF-D662",
+      "title": "Interactive mode reports session resume commands via OSC 7577 and strips `OSC7577_TOKEN` at startup (Pi…",
+      "symptom": "none; upstream added OSC 7577 in Pi PR #12557 (``, Pi main).",
+      "rootCause": "Rex and other OSC 7577 terminals restore running sessions across terminal restarts when programs report authenticated resume commands and strip the per-pane token before launching children.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D662",
+      "piIssue": "https://github.com/earendil-works/pi/pull/12557",
+      "removeWhen": "the pinned Pi release contains `cf419553da817fefd2f86f170ff3e93eff0bfd28`. Then this divergence record and the `D662` call-site markers go, and the `2048`/`64` caps cite `// upstream: packages/tui/src/program-resume.ts` directly.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "1c054b9152",
+          "date": "2026-11-25"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -70667,6 +70765,11 @@
       "id": "D661",
       "title": "After an external SIGTSTP and `fg` pig arms the terminal again; the terminal is not reset before the external…",
       "entry": "BF-f36632c"
+    },
+    {
+      "id": "D662",
+      "title": "Interactive mode reports session resume commands via OSC 7577 and strips `OSC7577_TOKEN` at startup (Pi…",
+      "entry": "BF-D662"
     }
   ],
   "exemptCommits": {

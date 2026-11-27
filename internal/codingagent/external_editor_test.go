@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -55,6 +56,9 @@ func TestEditorHelperProcess(t *testing.T) {
 		select {} // unreachable: the process is already gone
 	case "args":
 		_ = os.WriteFile(file, []byte(strings.Join(args[1:], " ")), 0o600)
+	case "dump-osc7577":
+		v, ok := os.LookupEnv("OSC7577_TOKEN")
+		_ = os.WriteFile(args[1], []byte(fmt.Sprintf("present=%t;value=%s", ok, v)), 0o600)
 	default:
 		_ = os.WriteFile(file, []byte(editorHelperContent[mode]), 0o600)
 	}

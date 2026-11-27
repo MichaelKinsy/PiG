@@ -80,7 +80,7 @@ func TestBlockedAcknowledgmentWaitsForTheCallsReadBeforeIt(t *testing.T) {
 	}
 	t.Run("the call applies after the report is read", func(t *testing.T) {
 		hold, acknowledged := newRequest()
-		hold.sent()
+		_, _, _ = hold.sent("ui.notify")
 		acknowledgeBlocked(hold.ctx)
 		if *acknowledged != 0 {
 			t.Fatal("the blocked report acknowledged the invocation before the call sent ahead of it applied")
@@ -92,7 +92,7 @@ func TestBlockedAcknowledgmentWaitsForTheCallsReadBeforeIt(t *testing.T) {
 	})
 	t.Run("the call applied before the report is read", func(t *testing.T) {
 		hold, acknowledged := newRequest()
-		hold.sent()
+		_, _, _ = hold.sent("ui.notify")
 		hold.applied(true)
 		acknowledgeBlocked(hold.ctx)
 		if *acknowledged != 1 {
@@ -101,8 +101,8 @@ func TestBlockedAcknowledgmentWaitsForTheCallsReadBeforeIt(t *testing.T) {
 	})
 	t.Run("a progress report after the first of two calls", func(t *testing.T) {
 		hold, acknowledged := newRequest()
-		hold.sent()
-		hold.sent()
+		_, _, _ = hold.sent("ui.notify")
+		_, _, _ = hold.sent("ui.notify")
 		acknowledgeBlocked(hold.ctx)
 		hold.applied(true)
 		hold.wentOn()
@@ -125,7 +125,7 @@ func TestBlockedAcknowledgmentWaitsForTheCallsReadBeforeIt(t *testing.T) {
 	})
 	t.Run("the request ends before a counted call applies", func(t *testing.T) {
 		hold, acknowledged := newRequest()
-		hold.sent()
+		_, _, _ = hold.sent("ui.notify")
 		acknowledgeBlocked(hold.ctx)
 		hold.release()
 		if *acknowledged != 1 {
@@ -149,14 +149,14 @@ func TestBlockedAcknowledgmentOfAnEffectCallWaitsForTheHandlersProgress(t *testi
 	t.Run("the first call applied before the second was read", func(t *testing.T) {
 		hold, acknowledged := newRequest()
 		hold.announce()
-		hold.sent()
+		_, _, _ = hold.sent("ui.notify")
 		acknowledgeBlocked(hold.ctx)
 		hold.applied(true)
 		if *acknowledged != 0 {
 			t.Fatal("the first effect call applied and released the acknowledgment although the handler's next call was not read")
 		}
 		hold.announce()
-		hold.sent()
+		_, _, _ = hold.sent("ui.notify")
 		hold.wentOn()
 		if *acknowledged != 0 {
 			t.Fatal("the progress report released the acknowledgment while the second call had not applied")
@@ -169,7 +169,7 @@ func TestBlockedAcknowledgmentOfAnEffectCallWaitsForTheHandlersProgress(t *testi
 	t.Run("the calls applied before the progress was read", func(t *testing.T) {
 		hold, acknowledged := newRequest()
 		hold.announce()
-		hold.sent()
+		_, _, _ = hold.sent("ui.notify")
 		acknowledgeBlocked(hold.ctx)
 		hold.applied(true)
 		hold.wentOn()
@@ -180,7 +180,7 @@ func TestBlockedAcknowledgmentOfAnEffectCallWaitsForTheHandlersProgress(t *testi
 	t.Run("the call is one the handler awaits", func(t *testing.T) {
 		hold, acknowledged := newRequest()
 		hold.announce()
-		hold.sent()
+		_, _, _ = hold.sent("ui.notify")
 		acknowledgeBlocked(hold.ctx)
 		hold.applied(false)
 		if *acknowledged != 1 {

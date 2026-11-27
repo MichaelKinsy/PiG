@@ -19,10 +19,10 @@ import (
 // extension surface: every runtime export, and every public class member, of
 // the modules Pi serves to extensions gets one disposition per PiG runtime, so
 // a Node-served export that no native SDK realizes cannot hide. It extends the
-// same generator as the API matrix; test/parity/sdk-exports.toml is its input
+// same generator as the API matrix; test/parity/ledgers/sdk-exports.toml is its input
 // and docs/extension-sdk-exports.md its readable output.
 const (
-	ledgerPath     = "test/parity/sdk-exports.toml"
+	ledgerPath     = "test/parity/ledgers/sdk-exports.toml"
 	usagePath      = "test/parity/extension-import-usage.json"
 	exportsDocPath = "docs/extension-sdk-exports.md"
 )

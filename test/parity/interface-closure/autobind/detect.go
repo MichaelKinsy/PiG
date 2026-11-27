@@ -832,7 +832,7 @@ func (d *detector) renamedMember(target, prop string) *sym {
 func (d *detector) evalProperty(prop *upstreamEntry, parts idParts, owner *sym, members []*sym, out map[string]*decision) {
 	if prop.Shape.Name == "handleInput" && !d.hasBehaviorContract(prop.ID) {
 		// B1: handleInput is an input state machine; the ledger requires a reviewed state-transition contract that no rule derives.
-		g := gap(reasonUndecided, "B1: handleInput needs a state-transition contract in test/parity/behavior-contracts.toml", owner.Target())
+		g := gap(reasonUndecided, "B1: handleInput needs a state-transition contract in test/parity/ledgers/behavior-contracts.toml", owner.Target())
 		out[prop.ID] = g
 		for _, c := range d.l.callRows(prop.ID) {
 			out[c.ID] = gap(reasonChild, "owner is a gap: "+reasonUndecided, owner.Target())

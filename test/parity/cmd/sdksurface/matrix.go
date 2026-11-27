@@ -16,7 +16,7 @@ import (
 
 const (
 	matrixPath     = "docs/extension-sdk-surface.md"
-	mapPath        = "test/parity/sdk-surface.toml"
+	mapPath        = "test/parity/ledgers/sdk-surface.toml"
 	exceptionsPath = "test/parity/sdk-surface-exceptions.toml"
 )
 
@@ -31,7 +31,7 @@ const (
 	statusMissing     = "missing"
 )
 
-// rowSpec is one entry of test/parity/sdk-surface.toml.
+// rowSpec is one entry of test/parity/ledgers/sdk-surface.toml.
 type rowSpec struct {
 	Key string `toml:"key"`
 	// Symbols per SDK. "a|b" lists alternatives; "-" means no realization

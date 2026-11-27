@@ -111,7 +111,7 @@
   pattern: '(?m)^IMAGE_TAG=\S*-pi{{ versions.pi.version }}-'
 - id: pin-pi-ledgers
   description: the parity ledgers name the Pi of variables/versions.yaml
-  paths: [test/parity/known-gaps.toml, test/parity/behavior-contracts.toml]
+  paths: [test/parity/known-gaps.toml, test/parity/ledgers/behavior-contracts.toml]
   pattern: '(?m)^(pi_version|upstream_version) = "{{ versions.pi.version }}"$'
 - id: pin-pi-readme-badge
   description: the README's Pi badge names the Pi of variables/versions.yaml
