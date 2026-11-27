@@ -686,6 +686,9 @@ class SharedStoreTests(unittest.TestCase):
         applied = []
         stack = contextlib.ExitStack()
         self.addCleanup(stack.close)
+        backports_file = self.store / "synthetic-backports.mjs"
+        backports_file.write_text("// BEGIN backport deadbeef\n// END backport deadbeef\n", encoding="utf-8")
+        stack.enter_context(mock.patch.object(oracle, "BACKPORTS", backports_file))
         stack.enter_context(mock.patch.object(pinlib, "committed", lambda: pin))
         stack.enter_context(mock.patch.object(oracle, "apply_backports", applied.append))
         stack.enter_context(mock.patch.object(oracle, "carried_dependencies", lambda *_a: []))  # the fake closure installs no dependency to replace
