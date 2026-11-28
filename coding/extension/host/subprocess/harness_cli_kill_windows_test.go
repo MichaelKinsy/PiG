@@ -119,16 +119,43 @@ func windowsHandleAlive(h windows.Handle) (alive bool, exitCode uint32, waitEven
 	return ev == uint32(windows.WAIT_TIMEOUT) || code == winProcessStillActive, code, ev, nil
 }
 
-func windowsPIDAlive(pid int) (bool, uint32) {
+type windowsParentProcess struct {
+	pid       int
+	createdAt uint64 // FILETIME ticks (100ns); 0 disables lower-bound filter
+}
+
+func fileTimeUint64(ft windows.Filetime) uint64 {
+	return uint64(ft.HighDateTime)<<32 | uint64(ft.LowDateTime)
+}
+
+func windowsHandleCreationTime(t *testing.T, h windows.Handle, pid int, what string) uint64 {
+	t.Helper()
+	var creation, exit, kernel, user windows.Filetime
+	if err := windows.GetProcessTimes(h, &creation, &exit, &kernel, &user); err != nil {
+		t.Fatalf("GetProcessTimes(%s pid=%d): %v", what, pid, err)
+	}
+	return fileTimeUint64(creation)
+}
+
+func windowsPIDAliveWithCreationTime(pid int) (alive bool, exitCode uint32, createdAt uint64) {
 	h, err := windows.OpenProcess(windows.SYNCHRONIZE|windows.PROCESS_QUERY_LIMITED_INFORMATION, false, uint32(pid))
 	if err != nil {
-		return false, 0
+		return false, 0, 0
 	}
 	defer func() { _ = windows.CloseHandle(h) }()
 	alive, code, _, err := windowsHandleAlive(h)
 	if err != nil {
-		return false, 0
+		return false, 0, 0
 	}
+	var creation, exit, kernel, user windows.Filetime
+	if err := windows.GetProcessTimes(h, &creation, &exit, &kernel, &user); err != nil {
+		return false, 0, 0
+	}
+	return alive, code, fileTimeUint64(creation)
+}
+
+func windowsPIDAlive(pid int) (bool, uint32) {
+	alive, code, _ := windowsPIDAliveWithCreationTime(pid)
 	return alive, code
 }
 
@@ -153,8 +180,16 @@ func awaitWindowsHandleExit(t *testing.T, h windows.Handle, pid int, what string
 	}
 }
 
-func awaitWindowsNoChildren(t *testing.T, what string, parentPIDs ...int) {
+func awaitWindowsNoChildren(t *testing.T, what string, parents ...windowsParentProcess) {
 	t.Helper()
+	parentPIDs := make([]int, 0, len(parents))
+	parentCreated := make(map[int]uint64, len(parents))
+	for _, p := range parents {
+		if p.pid > 0 {
+			parentPIDs = append(parentPIDs, p.pid)
+			parentCreated[p.pid] = p.createdAt
+		}
+	}
 	budget := testbudget.Wait(t)
 	start := time.Now()
 	for {
@@ -164,9 +199,18 @@ func awaitWindowsNoChildren(t *testing.T, what string, parentPIDs ...int) {
 		}
 		var live []harnessProcessSnapshotEntry
 		for _, child := range harnessChildrenByParent(entries, parentPIDs...) {
-			if alive, _ := windowsPIDAlive(child.PID); alive {
-				live = append(live, child)
+			alive, _, childCreated := windowsPIDAliveWithCreationTime(child.PID)
+			if !alive {
+				continue
 			}
+			// Windows does not reparent orphans when a parent exits (e.g. boot smss.exe
+			// spawning csrss.exe/wininit.exe/winlogon.exe). If the test process reused
+			// that dead parent's PID, any pre-existing process with createdAt < parent's
+			// createdAt is unrelated and cannot be a child of this parent.
+			if minCreated := parentCreated[child.PPID]; minCreated > 0 && childCreated < minCreated {
+				continue
+			}
+			live = append(live, child)
 		}
 		if len(live) == 0 {
 			return
@@ -211,12 +255,15 @@ func TestHarnessEntryTerminateEndsItsBinary(t *testing.T) {
 	cmd.Stderr = &stderr
 	startHarnessEntry(t, cmd)
 	entryPID := cmd.Process.Pid
+	entryHandle := openWindowsProcessHandle(t, entryPID, "entry")
+	entryCreated := windowsHandleCreationTime(t, entryHandle, entryPID, "entry")
 	entryEnded := harnessEntryEnds(cmd)
 
 	binaryPID := waitHarnessChildPID(t, pidFile)
 	binaryHandle := openWindowsProcessHandle(t, binaryPID, "binary")
 	supervisorPID := harnessSupervisorWindows(t, binaryPID, entryPID)
 	supervisorHandle := openWindowsProcessHandle(t, supervisorPID, "supervisor")
+	supervisorCreated := windowsHandleCreationTime(t, supervisorHandle, supervisorPID, "supervisor")
 
 	rawArgs, err := os.ReadFile(argsFile)
 	if err != nil {
@@ -251,7 +298,10 @@ func TestHarnessEntryTerminateEndsItsBinary(t *testing.T) {
 
 	binExitCode, binElapsed := awaitWindowsHandleExit(t, binaryHandle, binaryPID, "binary", entryPID, supervisorPID)
 	supExitCode, supElapsed := awaitWindowsHandleExit(t, supervisorHandle, supervisorPID, "supervisor", entryPID, binaryPID)
-	awaitWindowsNoChildren(t, fmt.Sprintf("terminated entry pid=%d / supervisor pid=%d", entryPID, supervisorPID), entryPID, supervisorPID)
+	awaitWindowsNoChildren(t, fmt.Sprintf("terminated entry pid=%d / supervisor pid=%d", entryPID, supervisorPID),
+		windowsParentProcess{pid: entryPID, createdAt: entryCreated},
+		windowsParentProcess{pid: supervisorPID, createdAt: supervisorCreated},
+	)
 
 	t.Logf("entry(pid=%d, exit=%d) terminated; binary(pid=%d, exit=%d) gone in %s; supervisor(pid=%d, exit=%d) gone in %s (total %s)",
 		entryPID, exitErr.ExitCode(),
@@ -273,6 +323,8 @@ func TestHarnessEntryKeepsBinaryExitStatusWindows(t *testing.T) {
 	cmd.Stderr = &stderr
 	startHarnessEntry(t, cmd)
 	entryPID := cmd.Process.Pid
+	entryHandle := openWindowsProcessHandle(t, entryPID, "entry")
+	entryCreated := windowsHandleCreationTime(t, entryHandle, entryPID, "entry")
 	entryEnded := harnessEntryEnds(cmd)
 
 	binaryPID := waitHarnessChildPID(t, pidFile)
@@ -293,7 +345,9 @@ func TestHarnessEntryKeepsBinaryExitStatusWindows(t *testing.T) {
 		t.Fatalf("binary (pid=%d) still alive (code=%d) after entry exited 7; processes: %s",
 			binaryPID, code, windowsProcessDiagnostics(entryPID, binaryPID))
 	}
-	awaitWindowsNoChildren(t, fmt.Sprintf("exited entry pid=%d", entryPID), entryPID)
+	awaitWindowsNoChildren(t, fmt.Sprintf("exited entry pid=%d", entryPID),
+		windowsParentProcess{pid: entryPID, createdAt: entryCreated},
+	)
 }
 
 // TestHarnessEntryNormalExitLeavesNoProcess verifies that a normal exit (code 0)
@@ -311,6 +365,8 @@ func TestHarnessEntryNormalExitLeavesNoProcess(t *testing.T) {
 	cmd.Stderr = &stderr
 	startHarnessEntry(t, cmd)
 	entryPID := cmd.Process.Pid
+	entryHandle := openWindowsProcessHandle(t, entryPID, "entry")
+	entryCreated := windowsHandleCreationTime(t, entryHandle, entryPID, "entry")
 	entryEnded := harnessEntryEnds(cmd)
 
 	binaryPID := waitHarnessChildPID(t, pidFile)
@@ -336,5 +392,7 @@ func TestHarnessEntryNormalExitLeavesNoProcess(t *testing.T) {
 		t.Fatalf("binary (pid=%d) still alive (code=%d) after normal entry exit; processes: %s",
 			binaryPID, code, windowsProcessDiagnostics(entryPID, binaryPID))
 	}
-	awaitWindowsNoChildren(t, fmt.Sprintf("normally exited entry pid=%d", entryPID), entryPID)
+	awaitWindowsNoChildren(t, fmt.Sprintf("normally exited entry pid=%d", entryPID),
+		windowsParentProcess{pid: entryPID, createdAt: entryCreated},
+	)
 }

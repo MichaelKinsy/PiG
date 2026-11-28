@@ -401,6 +401,9 @@ func termRandomMix(seed uint64) termScenario {
 			case action < 0.8 && len(text.lines) > 0:
 				text.lines[rng.IntN(len(text.lines))] = styled(fmt.Sprintf("changed %d %s", step, strings.Repeat("wide 日本語 ", rng.IntN(8))))
 			case action < 0.9:
+				if s.quiet != nil {
+					s.quiet()
+				}
 				s.ui.ScrollBy((1 + rng.IntN(5)) * []int{-1, 1}[rng.IntN(2)])
 			default:
 				dock.lines = []string{fmt.Sprintf("dock %d", step)}
