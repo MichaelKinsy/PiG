@@ -1,3 +1,5 @@
+//go:build !pig_strip_node_extensions
+
 // SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 

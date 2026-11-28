@@ -88,8 +88,13 @@ func (keysStartupTerminal) Write(string) {}
 // The hint line uses Pi's keyHint, whose keys are lowercase keyText (keybinding-hints.ts keyHint), not keyDisplayText.
 func TestFirstTimeSetupHintUsesLowercaseKeyText(t *testing.T) {
 	c := NewFirstTimeSetupComponent(FirstTimeSetupOptions{})
-	if text := firstTimeSetupText(c); !strings.Contains(text, " ↑↓ navigate  enter continue  escape/ctrl+c skip setup") {
-		t.Fatalf("hint line differs from Pi's:\n%s", text)
+	confirm := "continue"
+	if c.step == firstTimeSetupStepAnalytics {
+		confirm = "finish"
+	}
+	want := " ↑↓ navigate  enter " + confirm + "  escape/ctrl+c skip setup"
+	if text := firstTimeSetupText(c); !strings.Contains(text, want) {
+		t.Fatalf("hint line differs from Pi's (want %q):\n%s", want, text)
 	}
 }
 

@@ -54,20 +54,42 @@ func TestTilingAPageThatBeginsAtACutRunsLastRowIsLoadedAgain(t *testing.T) {
 	}
 	tiling.patch(retired, cutRows, true)
 	after := append([]*tilingPage(nil), tiling.pages...)
+	var (
+		midSame      = len(after) == 3 && after[1] == pages[1]
+		midRan       = len(after) == 3 && after[1].ran
+		midMore      = len(after) == 3 && after[1].more
+		midRows      = 0
+		openSame     = len(after) == 3 && after[2] == pages[2]
+		openRan      = len(after) == 3 && after[2].ran
+		openMore     = len(after) == 3 && after[2].more
+		openRows     = 0
+		openAfter    store.Position
+		openThru     store.Position
+		oldOpenAfter = pages[2].after
+		oldOpenRan   = pages[2].ran
+		oldOpenRows  = len(pages[2].rows)
+		oldOpenMore  = pages[2].more
+	)
+	if len(after) == 3 {
+		midRows = len(after[1].rows)
+		openRows = len(after[2].rows)
+		openAfter = after[2].after
+		openThru = after[2].through
+	}
 	tiling.mu.Unlock()
 
 	if len(after) != 3 {
 		t.Fatalf("pages after the patch = %d, want 3", len(after))
 	}
-	if after[1] != pages[1] || !after[1].ran || after[1].more || len(after[1].rows) != 2 {
-		t.Fatalf("the page the cut run ends in (s4, s2] = %+v, want it as it was: its rows are all inside the cut run's interval", after[1])
+	if !midSame || !midRan || midMore || midRows != 2 {
+		t.Fatalf("the page the cut run ends in (s4, s2] (same=%v ran=%v more=%v rows=%d), want it as it was: its rows are all inside the cut run's interval", midSame, midRan, midMore, midRows)
 	}
-	if after[2] == pages[2] || after[2].ran || len(after[2].rows) != 0 || after[2].more {
+	if openSame || openRan || openRows != 0 || openMore {
 		t.Fatalf("the open page that begins at the cut run's last row was patched in place (ran %v, rows %d, more %v), want a new page that has not run",
-			pages[2].ran, len(pages[2].rows), pages[2].more)
+			oldOpenRan, oldOpenRows, oldOpenMore)
 	}
-	if !reflect.DeepEqual(after[2].after, pages[2].after) || after[2].through != nil {
-		t.Fatalf("the page loaded again = (%v, %v), want the open page's own interval (%v, open)", after[2].after, after[2].through, pages[2].after)
+	if !reflect.DeepEqual(openAfter, oldOpenAfter) || openThru != nil {
+		t.Fatalf("the page loaded again = (%v, %v), want the open page's own interval (%v, open)", openAfter, openThru, oldOpenAfter)
 	}
 	// The page loads its rows itself: the list shows all five again, and the page is a live read (a touch moves its row).
 	lsSettled(w.host)

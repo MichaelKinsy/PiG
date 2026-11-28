@@ -55,9 +55,11 @@ func TestHarnessEntryKillAcrossIsolationModesWindows(t *testing.T) {
 				entryPID := waitHarnessChildPID(t, entryPIDFile)
 				binaryPID := waitHarnessChildPID(t, binaryPIDFile)
 				entryHandle := openWindowsProcessHandle(t, entryPID, "entry")
+				entryCreated := windowsHandleCreationTime(t, entryHandle, entryPID, "entry")
 				binaryHandle := openWindowsProcessHandle(t, binaryPID, "binary")
 				supervisorPID := harnessSupervisorWindows(t, binaryPID, entryPID)
 				supervisorHandle := openWindowsProcessHandle(t, supervisorPID, "supervisor")
+				supervisorCreated := windowsHandleCreationTime(t, supervisorHandle, supervisorPID, "supervisor")
 
 				rawArgs, err := os.ReadFile(argsFile)
 				if err != nil {
@@ -95,7 +97,10 @@ func TestHarnessEntryKillAcrossIsolationModesWindows(t *testing.T) {
 						binaryPID, binCode, binElapsed.Round(time.Millisecond),
 						supervisorPID, supCode, supElapsed.Round(time.Millisecond))
 				}
-				awaitWindowsNoChildren(t, fmt.Sprintf("%s/%s entry pid=%d supervisor pid=%d", isolation, mode, entryPID, supervisorPID), entryPID, supervisorPID)
+				awaitWindowsNoChildren(t, fmt.Sprintf("%s/%s entry pid=%d supervisor pid=%d", isolation, mode, entryPID, supervisorPID),
+					windowsParentProcess{pid: entryPID, createdAt: entryCreated},
+					windowsParentProcess{pid: supervisorPID, createdAt: supervisorCreated},
+				)
 			})
 		}
 	}
