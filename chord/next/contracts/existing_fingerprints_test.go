@@ -18,6 +18,7 @@ import (
 //	node --conditions=source --disable-warning=ExperimentalWarning chord/next/contracts/testdata/queries_fingerprint_oracle.mjs <export dir>
 //
 // with node_modules/@earendil-works/pi-schema linked to the exported packages/schema.
+// pi: packages/chord/src/contracts/fingerprint.ts
 func TestFingerprintsOfContractsWithoutQueriesMatchPi(t *testing.T) {
 	note := func() contracts.Schema { return contracts.Obj(contracts.Prop("text", contracts.Str())) }
 	store := func(members ...contracts.LocalEntry) *contracts.Contract {

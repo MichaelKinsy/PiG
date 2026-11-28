@@ -2,6 +2,7 @@
 
 package codingagent
 
+// pi: packages/coding-agent/src/modes/interactive/program-resume-reporter.ts
 // Ports packages/coding-agent/test/program-resume-reporter.test.ts (Pi PR #12557, commit cf419553da817fefd2f86f170ff3e93eff0bfd28).
 
 import (

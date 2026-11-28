@@ -20,7 +20,7 @@ driver = "interactive-tmux"
 model = "test-faux/faux-1"
 
 [env]
-pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home", "SHUTDOWN_AT=session_before_fork"]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-home/agent", "SHUTDOWN_AT=session_before_fork"]
 pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1", "SHUTDOWN_AT=session_before_fork"]
 pig_args = ["--no-extensions"]
 pig_extensions = ["testdata/ext/shutdown-in-awaited-phase.mjs"]
@@ -59,6 +59,6 @@ runs = 3
 
 # normalize-rationale: the resume command names each binary and the session's random id.
 [[assert.normalize_replace]]
-pattern = 'pig? --session [0-9a-f-]{36}'
-with = '<bin> --session <session-id>'
-reason = "D2: the resume command names the host executable; the session id is random per run. The rest of the line and the session_shutdown line stay compared."
+pattern = 'pig? --agent-dir /tmp/parity-snap-PIG?_CODING_AGENT_DIR-[0-9]+ --session [0-9a-f-]{36}'
+with = '<bin> --agent-dir <agent-dir> --session <session-id>'
+reason = "D2: the resume command names the host executable and each run's ephemeral snapshot agent directory; the session id is random per run. The --agent-dir and --session flags and the session_shutdown line stay compared."

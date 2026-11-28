@@ -150,6 +150,7 @@ func rhBindPlaced(t testing.TB, peer *RawPeer, hold *link.HoldMessage) {
 	}}})
 }
 
+// pi: packages/chord/src/remote/bindings.ts
 func TestHostLinkTwoSidedLinks(t *testing.T) {
 	forEachCodec(t, func(t *testing.T) {
 		// host-link.test.ts: two-sided links › carry the server's holds of a worker type and the worker's holds of a server type over one route link

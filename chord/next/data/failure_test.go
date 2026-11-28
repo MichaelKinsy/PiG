@@ -12,6 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
+// pi: packages/chord/src/data/plain-json.ts
 // Ports packages/chord/test/data/failure.test.ts.
 
 func TestFailureCauses(t *testing.T) {

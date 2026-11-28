@@ -30312,12 +30312,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/pi_image.go#GenerateImagesPiImage"
+        "call:ai/identity_models.go#identityCatalog.GenerateImages"
       ],
       "evidence": [
-        "test:ai/pi_image_test.go#TestPiImageAbortedAndRetry",
-        "test:ai/pi_image_test.go#TestPiImageComputesCatalogCostWhenProviderOmitsCost",
-        "test:ai/pi_image_test.go#TestPiImageGenerateImagesSuccess"
+        "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
+        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi",
+        "test:ai/images_registry_dispatch_upstream_test.go#TestImagesAPIRegistryDispatchesByModelAPI"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -30564,9 +30564,9 @@
       "id": "pkg:ai/.#PiImageOptions::property:sessionId",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:05bb3a898457e7f7a43d9278dc446068484a9f578a57221738d038b9c8ddbe15",
-      "rationale": "Derived by the interface gap detector: PiImageOptions::property:sessionId is Go ai/pi_image.go#PiImageOptions.SessionID (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: PiImageOptions::property:sessionId is Go ai/images.go#ImagesOptions.SessionID (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "ai/pi_image.go#PiImageOptions.SessionID"
+        "ai/images.go#ImagesOptions.SessionID"
       ],
       "layers": {
         "behavior": "complete",
@@ -30689,8 +30689,23 @@
     },
     {
       "id": "pkg:ai/.#PiImageResponse",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f094db78b418ec39a2b593e7803cddfbd2cec67eaa36a5b0f8fff6f04a5b66c5"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f094db78b418ec39a2b593e7803cddfbd2cec67eaa36a5b0f8fff6f04a5b66c5",
+      "rationale": "Derived by the interface gap detector: PiImageResponse is Go ai/pi_image.go#PiImageResponse (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/pi_image.go#PiImageResponse"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:ai/pi_image.go#PiImageResponse"
+      ],
+      "evidence": [
+        "test:ai/pi_image_test.go#TestPiImageResponseWireJSON"
+      ]
     },
     {
       "id": "pkg:ai/.#PiMessagesEvent",
@@ -40298,7 +40313,11 @@
     },
     {
       "id": "pkg:ai/api/classifier-shared#ClassifierHttpError",
-      "disposition": "pending",
+      "disposition": "designed-out",
+      "pigTargets": [
+        "ai/classifier_http.go#ClassifierHTTPError"
+      ],
+      "rationale": "Pi packages/ai/src/api/classifier-shared.ts:8 ClassifierHttpError (Pi 1.7.0) is `type ClassifierHttpError = JsonHttpError`, where JsonHttpError extends Error. Every runtime member of JsonHttpError (status, headers, body, message, name) is ported on ai/classifier_http.go#ClassifierHTTPError (and aliased by ai/json_request.go#JsonHttpError); only Error.cause and Error.stack are absent, and JsonHttpError::property:cause is already designed out (unset: no constructor passes ErrorOptions; D103). Designed out as a TypeScript alias carrying only Error's unset cause.",
       "upstreamShapeHash": "sha256:7fa32307a140c81366db94f465d6bfa07a651f3d670647e14080f5a51e4174ae"
     },
     {
@@ -43892,12 +43911,32 @@
     },
     {
       "id": "pkg:ai/api/json-request#postJsonRequest",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d986cb825b907e7e7e231998d229a4acbbe5060e67430f26285a85f37262b927"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d986cb825b907e7e7e231998d229a4acbbe5060e67430f26285a85f37262b927",
+      "rationale": "Derived by the interface gap detector: postJsonRequest is Go ai/json_request.go#postJsonRequest (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/json_request.go#postJsonRequest"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/json_request.go#postJsonRequest"
+      ],
+      "evidence": [
+        "reach:ai/json_request.go#postJsonRequest"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:ai/api/json-request#postJsonRequest::call:0",
-      "disposition": "pending",
+      "disposition": "designed-out",
+      "pigTargets": [
+        "ai/json_request.go#postJsonRequest"
+      ],
+      "rationale": "Pi packages/ai/src/api/json-request.ts:44 postJsonRequest::call:0 (Pi 1.7.0) is generic over `TModel extends AnyModel` and reads `model.provider`, `model.baseUrl`, and `model.headers` beside `options` (ProviderRequestOptions<TModel>). In Go, ImageModel and ClassifierModel are distinct structs whose common AnyModel interface carries identity/cost only, so ai/json_request.go#postJsonRequest takes `(ctx, label, endpoint, provider, baseURL, modelHeaders, body, options, noRetryStatuses...)` (S4: 6 upstream params vs 8 Go params after ctx) with pre-bound OnPayload/OnResponse closures. Exercised by ai/pi_image_test.go and ai/pi_decision_test.go.",
       "upstreamShapeHash": "sha256:6e0f8e5459211bc388ed8f4720ea7c6ba4d140ca536d7e0c1059f8ac1dc750b3"
     },
     {
@@ -46411,12 +46450,31 @@
     },
     {
       "id": "pkg:ai/api/openai-completions-reasoning#appendOpenAIReasoningDetail",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2dd0b3b317631042f00499c54f0d3428c7fc3eed5f43f777778a8e2876cfef52"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2dd0b3b317631042f00499c54f0d3428c7fc3eed5f43f777778a8e2876cfef52",
+      "rationale": "Derived by the interface gap detector: appendOpenAIReasoningDetail is Go ai/openai.go#appendOpenAIReasoningDetail (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/openai.go#appendOpenAIReasoningDetail"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/openai.go#appendOpenAIReasoningDetail"
+      ],
+      "evidence": [
+        "reach:ai/openai.go#appendOpenAIReasoningDetail"
+      ]
     },
     {
       "id": "pkg:ai/api/openai-completions-reasoning#appendOpenAIReasoningDetail::call:0",
-      "disposition": "pending",
+      "disposition": "designed-out",
+      "pigTargets": [
+        "ai/openai.go#appendOpenAIReasoningDetail"
+      ],
+      "rationale": "Pi packages/ai/src/api/openai-completions-reasoning.ts:145 appendOpenAIReasoningDetail::call:0 (Pi 1.7.0) mutates the passed JS Array in place (`details.push(...)`) and returns void. In Go, slice headers are passed by value, so appending to a slice must return the updated slice (`([]*openAIReasoningDetail, bool)` in ai/openai.go#appendOpenAIReasoningDetail; S5: upstream returns nothing, Go returns the updated slice and validity flag). Designed out as a Go slice-value mechanic; exercised by ai/openai_completions_reasoning_test.go.",
       "upstreamShapeHash": "sha256:cfad0a4429e6ebcc43bcc7e673c30d5a0075e86f640596e37e83195809ec3ffa"
     },
     {
@@ -46639,7 +46697,11 @@
     },
     {
       "id": "pkg:ai/api/openai-completions-reasoning#OpenAIReasoningDetail",
-      "disposition": "pending",
+      "disposition": "designed-out",
+      "pigTargets": [
+        "ai/openai.go#openAIReasoningDetail"
+      ],
+      "rationale": "Pi packages/ai/src/api/openai-completions-reasoning.ts:33 OpenAIReasoningDetail (Pi 1.7.0) is a TypeScript union of three open object types (`OpenAIReasoningSummaryDetail | OpenAIEncryptedReasoningDetail | OpenAIReasoningTextDetail`, each extending `Record<string, JsonValue>`). Go has no union types, so ai/openai.go#openAIReasoningDetail holds the discriminant `typ` and ordered raw JSON fields of all three variants verbatim (preserving unknown fields and key order on replay). Designed out as a TypeScript union alias; exercised by ai/openai_completions_reasoning_test.go.",
       "upstreamShapeHash": "sha256:4f10b0e8551184bad9e0ecb4136e2a7b6b5958c55068dd6a42b9cceef3fc6f44"
     },
     {
@@ -49488,13 +49550,49 @@
     },
     {
       "id": "pkg:ai/api/pi-image#generateImages",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1d11cc1fc443e0dca9d643c560f05cbab970ffbab08a4c6cbab2a714c0b50993"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1d11cc1fc443e0dca9d643c560f05cbab970ffbab08a4c6cbab2a714c0b50993",
+      "rationale": "Derived by the interface gap detector: generateImages is Go ai/pi_image.go#GenerateImagesPiImage (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/pi_image.go#GenerateImagesPiImage"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/pi_image.go#GenerateImagesPiImage"
+      ],
+      "evidence": [
+        "test:ai/pi_image_test.go#TestPiImageAbortedAndRetry",
+        "test:ai/pi_image_test.go#TestPiImageComputesCatalogCostWhenProviderOmitsCost",
+        "test:ai/pi_image_test.go#TestPiImageGenerateImagesSuccess"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:ai/api/pi-image#generateImages::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d23051eab7785ce130a0a0be26ff807e0edbc2e02e187476f0f0c3c15d4bca2f"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d23051eab7785ce130a0a0be26ff807e0edbc2e02e187476f0f0c3c15d4bca2f",
+      "rationale": "Derived by the interface gap detector: generateImages::call:0 is Go ai/pi_image.go#GenerateImagesPiImage (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/pi_image.go#GenerateImagesPiImage"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/pi_image.go#GenerateImagesPiImage"
+      ],
+      "evidence": [
+        "test:ai/pi_image_test.go#TestPiImageAbortedAndRetry",
+        "test:ai/pi_image_test.go#TestPiImageComputesCatalogCostWhenProviderOmitsCost",
+        "test:ai/pi_image_test.go#TestPiImageGenerateImagesSuccess"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:ai/api/pi-image#PiImageOptions",
@@ -49510,12 +49608,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/pi_image.go#GenerateImagesPiImage"
+        "call:ai/identity_models.go#identityCatalog.GenerateImages"
       ],
       "evidence": [
-        "test:ai/pi_image_test.go#TestPiImageAbortedAndRetry",
-        "test:ai/pi_image_test.go#TestPiImageComputesCatalogCostWhenProviderOmitsCost",
-        "test:ai/pi_image_test.go#TestPiImageGenerateImagesSuccess"
+        "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
+        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi",
+        "test:ai/images_registry_dispatch_upstream_test.go#TestImagesAPIRegistryDispatchesByModelAPI"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -49762,9 +49860,9 @@
       "id": "pkg:ai/api/pi-image#PiImageOptions::property:sessionId",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:05bb3a898457e7f7a43d9278dc446068484a9f578a57221738d038b9c8ddbe15",
-      "rationale": "Derived by the interface gap detector: PiImageOptions::property:sessionId is Go ai/pi_image.go#PiImageOptions.SessionID (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: PiImageOptions::property:sessionId is Go ai/images.go#ImagesOptions.SessionID (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "ai/pi_image.go#PiImageOptions.SessionID"
+        "ai/images.go#ImagesOptions.SessionID"
       ],
       "layers": {
         "behavior": "complete",
@@ -49887,8 +49985,23 @@
     },
     {
       "id": "pkg:ai/api/pi-image#PiImageResponse",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6ced36f313777c23bb0a78634a0836fe38ba9e8149f70f380877425dffe4330b"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6ced36f313777c23bb0a78634a0836fe38ba9e8149f70f380877425dffe4330b",
+      "rationale": "Derived by the interface gap detector: PiImageResponse is Go ai/pi_image.go#PiImageResponse (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/pi_image.go#PiImageResponse"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:ai/pi_image.go#PiImageResponse"
+      ],
+      "evidence": [
+        "test:ai/pi_image_test.go#TestPiImageResponseWireJSON"
+      ]
     },
     {
       "id": "pkg:ai/api/pi-messages.lazy#piMessagesApi",
@@ -78353,12 +78466,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/pi_image.go#GenerateImagesPiImage"
+        "call:ai/identity_models.go#identityCatalog.GenerateImages"
       ],
       "evidence": [
-        "test:ai/pi_image_test.go#TestPiImageAbortedAndRetry",
-        "test:ai/pi_image_test.go#TestPiImageComputesCatalogCostWhenProviderOmitsCost",
-        "test:ai/pi_image_test.go#TestPiImageGenerateImagesSuccess"
+        "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
+        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi",
+        "test:ai/images_registry_dispatch_upstream_test.go#TestImagesAPIRegistryDispatchesByModelAPI"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -78605,9 +78718,9 @@
       "id": "pkg:ai/compat#PiImageOptions::property:sessionId",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:05bb3a898457e7f7a43d9278dc446068484a9f578a57221738d038b9c8ddbe15",
-      "rationale": "Derived by the interface gap detector: PiImageOptions::property:sessionId is Go ai/pi_image.go#PiImageOptions.SessionID (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: PiImageOptions::property:sessionId is Go ai/images.go#ImagesOptions.SessionID (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "ai/pi_image.go#PiImageOptions.SessionID"
+        "ai/images.go#ImagesOptions.SessionID"
       ],
       "layers": {
         "behavior": "complete",
@@ -78730,8 +78843,23 @@
     },
     {
       "id": "pkg:ai/compat#PiImageResponse",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f094db78b418ec39a2b593e7803cddfbd2cec67eaa36a5b0f8fff6f04a5b66c5"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f094db78b418ec39a2b593e7803cddfbd2cec67eaa36a5b0f8fff6f04a5b66c5",
+      "rationale": "Derived by the interface gap detector: PiImageResponse is Go ai/pi_image.go#PiImageResponse (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/pi_image.go#PiImageResponse"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:ai/pi_image.go#PiImageResponse"
+      ],
+      "evidence": [
+        "test:ai/pi_image_test.go#TestPiImageResponseWireJSON"
+      ]
     },
     {
       "id": "pkg:ai/compat#piMessagesApi",
@@ -95006,7 +95134,11 @@
     },
     {
       "id": "pkg:ai/providers/compat-schema#ProviderCompat",
-      "disposition": "pending",
+      "disposition": "designed-out",
+      "pigTargets": [
+        "internal/codingagent/model_registry.go#providerCompat"
+      ],
+      "rationale": "Owner re-approved 2026-11-08 (restated for Pi 1.7.0: compat-schema.ts added BedrockCompat.supportsReasoningReplay and documented ant-ling as a deprecated alias of deepseek; Go carries SupportsReasoningReplay on ai.OpenAICompat and compat_b.go ProviderCompatSchema matches Pi byte-for-byte). Pi packages/ai/src/providers/compat-schema.ts:720 ProviderCompat: `ProviderCompat = Static<typeof ProviderCompatSchema>` is the models.json provider and model compat object. ProviderCompatSchema (:713) is openObject(ProviderCompatProperties, { additionalProperties: true }), merging every API's compat properties. PiG declares it as `type providerCompat ai.OpenAICompat` (internal/codingagent/model_registry.go:339), keeping typed OpenAI/Anthropic/Bedrock fields on OpenAICompat and every other API's field (including System One imageInput and sendImageOptInHeader) verbatim in OpenAICompat.Extra (ai/model_compat_json.go, overlaySystemOneCompat in internal/codingagent/native_provider_composer.go), while internal/codingagent/configschema/compat_b.go ProviderCompatSchema validates all fields identically to Pi (TestCompatSchemaExportsMatchPi). Designed out so typed fields and verbatim members stay one open object.",
       "upstreamShapeHash": "sha256:db5bec297b702198c05b1480022b7e3666fab3451e021b539aaedf775537f954"
     },
     {
@@ -99498,8 +99630,25 @@
     },
     {
       "id": "pkg:ai/providers/openrouter-api#OpenRouterPricing",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:52599f8f87227aeb6b43fb6cb381045737ecc617051b4b76f877e52889418b7a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:52599f8f87227aeb6b43fb6cb381045737ecc617051b4b76f877e52889418b7a",
+      "rationale": "Derived by the interface gap detector: OpenRouterPricing is Go ai/openrouter_api.go#OpenRouterPricing (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/openrouter_api.go#OpenRouterPricing"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/openrouter_api.go#OpenRouterCost"
+      ],
+      "evidence": [
+        "test:ai/openrouter_cost_oracle_test.go#TestOpenRouterCostMatchesPi",
+        "test:ai/openrouter_api_test.go#TestOpenRouterCostConvertsPricesAndFallsBackOnMissingInvalidAndNegativeRates",
+        "test:ai/pi_image_test.go#TestOpenRouterImageCostHelper"
+      ]
     },
     {
       "id": "pkg:ai/providers/openrouter-api#OpenRouterPricing::property:completion",
@@ -99523,8 +99672,23 @@
     },
     {
       "id": "pkg:ai/providers/openrouter-api#OpenRouterPricing::property:image_output",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:84ee34c80d5a07e0575ba3f44ed9f71dc769a4a65181ed578952481ab3951b46"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:84ee34c80d5a07e0575ba3f44ed9f71dc769a4a65181ed578952481ab3951b46",
+      "rationale": "Derived by the interface gap detector: OpenRouterPricing::property:image_output is Go ai/openrouter_api.go#OpenRouterPricing.ImageOutput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/openrouter_api.go#OpenRouterPricing.ImageOutput"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:ai/openrouter_api.go#OpenRouterPricing.ImageOutput"
+      ],
+      "evidence": [
+        "test:ai/pi_image_test.go#TestOpenRouterImageCostHelper"
+      ]
     },
     {
       "id": "pkg:ai/providers/openrouter-api#OpenRouterPricing::property:input_cache_read",
@@ -122677,8 +122841,26 @@
     },
     {
       "id": "pkg:chord/.#Self",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:90ae7d56f0e9d4b2bd437c3de5b89499946d69b776df74962bfe7f3dc6e0b719"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:90ae7d56f0e9d4b2bd437c3de5b89499946d69b776df74962bfe7f3dc6e0b719",
+      "rationale": "Derived by the interface gap detector: Self is Go chord/next/host/host_attempt.go#Self (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_attempt.go#Self"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/surfaces/surfaces_preference.go#PreferenceFacet"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_activity_test.go#TestHostActivityFeedsDerivesWhichRecomputeInThePublishingBatch",
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
+        "test:chord/next/host/host_adapted_test.go#TestAnInstancesMappingDetachesOnlyWhatItMadeKeepsAnUnchangedMemberTheInstancesOwnDeriveWhenTheLastOlderReferenceLeaves"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/.#Self::property:count",
@@ -122806,8 +122988,25 @@
     },
     {
       "id": "pkg:chord/.#Self::property:follow",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:83e7a4a903db62f303e4214be445b73be976f5395db3639ac6a12599d32c4b75"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:83e7a4a903db62f303e4214be445b73be976f5395db3639ac6a12599d32c4b75",
+      "rationale": "Derived by the interface gap detector: Self::property:follow is Go chord/next/host/host_attempt.go#Self.Follow (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_attempt.go#Self.Follow"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/app/files.go#FilesFacet"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_follow_hold_test.go#TestFollowObserverSectionHoldsTheDeliverySchedulerSoTwoCommitsOfOneSectionAreOneCall",
+        "test:chord/next/host/host_follow_test.go#TestHostFollowAnEndWhileTheObjectActivatesAfterItsSourcesAttachedFailsTheActivationTransient",
+        "test:chord/next/host/host_query_reader_test.go#TestQueryReaderArgumentsThatHaveNoValueWhenTheReaderOpens"
+      ]
     },
     {
       "id": "pkg:chord/.#Self::property:follow::call:0",
@@ -122833,8 +123032,23 @@
     },
     {
       "id": "pkg:chord/.#Self::property:follow::call:1",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4d978a822703a57b49eeca12889ec2351640dd101e23c19a989c808feada223f"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4d978a822703a57b49eeca12889ec2351640dd101e23c19a989c808feada223f",
+      "rationale": "Derived by the interface gap detector: Self::property:follow::call:1 is Go chord/next/host/host_attempt.go#Self.FollowOver (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_attempt.go#Self.FollowOver"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/host/host_attempt.go#Self.FollowOver"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_v170_test.go#TestFollowOverChangingSource"
+      ]
     },
     {
       "id": "pkg:chord/.#Self::property:get",
@@ -124689,8 +124903,26 @@
     },
     {
       "id": "pkg:chord/.#Store",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5f02c7cc8d24f669630821bb0e0a366c61447def614148cfc9c51e067e0703ba"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5f02c7cc8d24f669630821bb0e0a366c61447def614148cfc9c51e067e0703ba",
+      "rationale": "Derived by the interface gap detector: Store is Go chord/next/store/store.go#Store (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/store/store.go#Store"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/store/host_data.go#ExportHostData"
+      ],
+      "evidence": [
+        "test:chord/next/store/outbox_test.go#TestOutbox",
+        "test:chord/next/store/read_index_shared_test.go#TestChordStoreSetOutbox",
+        "test:chord/next/store/store_test.go#TestStore"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/.#Store::property:close",
@@ -124840,19 +125072,51 @@
       ],
       "evidence": [
         "test:chord/next/store/outbox_test.go#TestOutbox",
-        "test:chord/next/store/store_test.go#TestStore",
-        "test:chord/sync/sync_test.go#TestRemoteBodies"
+        "test:chord/next/store/read_index_shared_test.go#TestChordStoreSetOutbox",
+        "test:chord/next/store/store_test.go#TestStore"
       ]
     },
     {
       "id": "pkg:chord/.#Store::property:setOutbox",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:7a40b16c58f617c59b1dfb3e85d64e88f1415bf71c07a4b8a6f708a15d57e8ba"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:7a40b16c58f617c59b1dfb3e85d64e88f1415bf71c07a4b8a6f708a15d57e8ba",
+      "rationale": "Derived by the interface gap detector: Store::property:setOutbox is Go chord/next/store/store.go#Store.SetOutbox (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/store/store.go#Store.SetOutbox"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/store/store.go#Store.SetOutbox"
+      ],
+      "evidence": [
+        "test:chord/next/store/read_index_shared_test.go#TestChordStoreSetOutbox"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/.#Store::property:setOutbox::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0492fc492d87e1844617cf7a0ef8f4ed86e0ea8694429244e75675f680d862cc"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:0492fc492d87e1844617cf7a0ef8f4ed86e0ea8694429244e75675f680d862cc",
+      "rationale": "Derived by the interface gap detector: Store::property:setOutbox::call:0 is Go chord/next/store/store.go#Store.SetOutbox (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/store/store.go#Store.SetOutbox"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/store/store.go#Store.SetOutbox"
+      ],
+      "evidence": [
+        "test:chord/next/store/read_index_shared_test.go#TestChordStoreSetOutbox"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/.#StoredDocument",
@@ -125075,8 +125339,26 @@
     },
     {
       "id": "pkg:chord/.#StoreSelf",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ec5ea0579aa729f1cef38b9653226dc7c7c27d328875cf3ab1c0b584c9c48e48"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:ec5ea0579aa729f1cef38b9653226dc7c7c27d328875cf3ab1c0b584c9c48e48",
+      "rationale": "Derived by the interface gap detector: StoreSelf is Go chord/next/host/host_attempt.go#StoreSelf (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_attempt.go#StoreSelf"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/surfaces/surfaces_preference.go#PreferenceFacet"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_activity_test.go#TestHostActivityFeedsDerivesWhichRecomputeInThePublishingBatch",
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
+        "test:chord/next/host/host_adapted_test.go#TestAnInstancesMappingDetachesOnlyWhatItMadeKeepsAnUnchangedMemberTheInstancesOwnDeriveWhenTheLastOlderReferenceLeaves"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/.#StoreSelf::property:contribute",
@@ -125248,8 +125530,25 @@
     },
     {
       "id": "pkg:chord/.#StoreSelf::property:follow",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:83e7a4a903db62f303e4214be445b73be976f5395db3639ac6a12599d32c4b75"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:83e7a4a903db62f303e4214be445b73be976f5395db3639ac6a12599d32c4b75",
+      "rationale": "Derived by the interface gap detector: StoreSelf::property:follow is Go chord/next/host/host_attempt.go#Self.Follow (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_attempt.go#Self.Follow"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/app/files.go#FilesFacet"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_follow_hold_test.go#TestFollowObserverSectionHoldsTheDeliverySchedulerSoTwoCommitsOfOneSectionAreOneCall",
+        "test:chord/next/host/host_follow_test.go#TestHostFollowAnEndWhileTheObjectActivatesAfterItsSourcesAttachedFailsTheActivationTransient",
+        "test:chord/next/host/host_query_reader_test.go#TestQueryReaderArgumentsThatHaveNoValueWhenTheReaderOpens"
+      ]
     },
     {
       "id": "pkg:chord/.#StoreSelf::property:follow::call:0",
@@ -125275,8 +125574,23 @@
     },
     {
       "id": "pkg:chord/.#StoreSelf::property:follow::call:1",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4d978a822703a57b49eeca12889ec2351640dd101e23c19a989c808feada223f"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4d978a822703a57b49eeca12889ec2351640dd101e23c19a989c808feada223f",
+      "rationale": "Derived by the interface gap detector: StoreSelf::property:follow::call:1 is Go chord/next/host/host_attempt.go#Self.FollowOver (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_attempt.go#Self.FollowOver"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/host/host_attempt.go#Self.FollowOver"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_v170_test.go#TestFollowOverChangingSource"
+      ]
     },
     {
       "id": "pkg:chord/.#StoreSelf::property:get",
@@ -143278,18 +143592,67 @@
     },
     {
       "id": "pkg:chord/sync#SyncStateStore",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:12a455592acb31840099cb33831dc461ba07001800a1438c5f5492155f87dd55"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:12a455592acb31840099cb33831dc461ba07001800a1438c5f5492155f87dd55",
+      "rationale": "Derived by the interface gap detector: SyncStateStore is Go chord/sync/client.go#SyncStateStore (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/client.go#SyncStateStore"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/client.go#PullSession"
+      ],
+      "evidence": [
+        "test:chord/sync/proof_chord_test.go#TestFileSyncStateStoreKeepsEachSessionsStateUntilDeleted",
+        "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SyncStateStore::property:delete",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3ac3bf14938241f61e58afdb77ca3fc136e5b983385dd1b4103d885cf204958b"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:3ac3bf14938241f61e58afdb77ca3fc136e5b983385dd1b4103d885cf204958b",
+      "rationale": "Derived by the interface gap detector: SyncStateStore::property:delete is Go chord/sync/client.go#SyncStateStore.Delete (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/client.go#SyncStateStore.Delete"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/sync/client.go#SyncStateStore.Delete"
+      ],
+      "evidence": [
+        "test:chord/sync/proof_chord_test.go#TestFileSyncStateStoreKeepsEachSessionsStateUntilDeleted"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SyncStateStore::property:delete::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6856cd62f79348ba05390232fc713f1b6ed321750e32002cf34b6b4dc4ad9167"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6856cd62f79348ba05390232fc713f1b6ed321750e32002cf34b6b4dc4ad9167",
+      "rationale": "Derived by the interface gap detector: SyncStateStore::property:delete::call:0 is Go chord/sync/client.go#SyncStateStore.Delete (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/client.go#SyncStateStore.Delete"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/sync/client.go#SyncStateStore.Delete"
+      ],
+      "evidence": [
+        "test:chord/sync/proof_chord_test.go#TestFileSyncStateStoreKeepsEachSessionsStateUntilDeleted"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SyncStateStore::property:get",
@@ -216842,8 +217205,25 @@
     },
     {
       "id": "pkg:coding-agent/.#RpcSessionState",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9b6d23f0c6c58d9c3b3e248c36fd15aa8aaf79c8130c792148f82060dc93034c"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9b6d23f0c6c58d9c3b3e248c36fd15aa8aaf79c8130c792148f82060dc93034c",
+      "rationale": "Derived by the interface gap detector: RpcSessionState is Go coding/rpcclient/types.go#RpcSessionState (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "coding/rpcclient/types.go#RpcSessionState"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:coding/rpcclient/types.go#RpcSessionState"
+      ],
+      "evidence": [
+        "test:coding/rpcclient/rpc_client_upstream_wire_test.go#TestRpcClientCommandMethodsMatchPiWireAndResults",
+        "test:coding/rpcclient/rpc_client_methods_test.go#TestRpcClientAbortCommandsAreAcceptedWhileIdle",
+        "test:coding/rpcclient/rpc_client_methods_test.go#TestRpcClientForkMessagesForkAndSwitchSession"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#RpcSessionState::property:autoCompactionEnabled",
@@ -216953,8 +217333,25 @@
     },
     {
       "id": "pkg:coding-agent/.#RpcSessionState::property:model",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cb86e02ed04ce553dcdd3556a942f319d9d7041d72facada38d3a00caa5e3908"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:cb86e02ed04ce553dcdd3556a942f319d9d7041d72facada38d3a00caa5e3908",
+      "rationale": "Derived by the interface gap detector: RpcSessionState::property:model is Go coding/cli/rpc_types.go#RPCSessionState.Model (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "coding/cli/rpc_types.go#RPCSessionState.Model"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:coding/cli/rpc_mode.go#serveRPCMode"
+      ],
+      "evidence": [
+        "test:coding/cli/rpc_mode_test.go#TestRPCSessionStateExpanded",
+        "test:coding/cli/rpc_mode_test.go#TestRPCSessionStateJSONShape",
+        "test:coding/cli/rpc_mode_test.go#TestRPCStateCommand"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#RpcSessionState::property:pendingMessageCount",
@@ -320251,12 +320648,34 @@
     },
     {
       "id": "pkg:tui/.#takeProgramResumeToken",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9bfd600cf6b658e52444d09af937d0bc4a7faa5c4d74e7fb5e246a76df2915ae"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9bfd600cf6b658e52444d09af937d0bc4a7faa5c4d74e7fb5e246a76df2915ae",
+      "rationale": "Derived by the interface gap detector: takeProgramResumeToken is Go tui/program_resume.go#TakeProgramResumeToken (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "tui/program_resume.go#TakeProgramResumeToken"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:tui/program_resume.go#TakeProgramResumeToken"
+      ],
+      "evidence": [
+        "test:test/extension-conformance/program_resume_token_env_test.go#TestConformance_SubprocessExtensionsDoNotReceiveOSC7577Token",
+        "test:internal/codingagent/interactive_program_resume_test.go#TestExternalEditorChildDoesNotReceiveOSC7577Token",
+        "test:tui/program_resume_test.go#TestTakeProgramResumeTokenUpstream"
+      ]
     },
     {
       "id": "pkg:tui/.#takeProgramResumeToken::call:0",
-      "disposition": "pending",
+      "disposition": "designed-out",
+      "pigTargets": [
+        "tui/program_resume.go#TakeProgramResumeToken",
+        "tui/program_resume.go#TakeProgramResumeTokenFromMap"
+      ],
+      "rationale": "Pi packages/tui/src/program-resume.ts:35 takeProgramResumeToken::call:0 (Pi 1.7.0) has one optional parameter with a default value (`env: NodeJS.ProcessEnv = process.env`), reading and deleting OSC7577_TOKEN from process.env by default or from a test env object when passed. Go has no default parameter values, so tui/program_resume.go provides TakeProgramResumeToken() for the process environment (called in coding/cli/main.go) and TakeProgramResumeTokenFromMap(env map[string]string) for explicit env maps (S4: upstream takes 1 optional param, Go splits into 0-arg and 1-arg forms). Exercised by tui/program_resume_test.go and coding/cli/program_resume_token_test.go.",
       "upstreamShapeHash": "sha256:3a54f9ed899af9e3bffb05a974d5d922fef81ffaf7982a76cf7e6424b4aaaffa"
     },
     {
@@ -329501,8 +329920,28 @@
     },
     {
       "id": "cli:pi/--agent-dir",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:aa4cf65d676a640f57fc9c2b3531b9a20d24353cd7eda02a945de1704e706b53"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:aa4cf65d676a640f57fc9c2b3531b9a20d24353cd7eda02a945de1704e706b53",
+      "rationale": "Reviewed command-line row (Pi 1.7.0 packages/coding-agent/src/cli/agent-dir-arg.ts): `--agent-dir <dir>` is stripped and applied before parseArgs by coding/cli/agent_dir_arg.go#ApplyAgentDirArg (called from coding/cli/main.go#Main), documented in coding/cli/help_upstream.txt via coding/cli/args.go#printHelp, and verified by coding/cli/agent_dir_arg_test.go, coding/cli/cli_inventory_test.go, and coding/cli/help_oracle_test.go.",
+      "pigTargets": [
+        "coding/cli/agent_dir_arg.go#ApplyAgentDirArg",
+        "coding/cli/args.go#printHelp"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "consumer": "complete",
+        "help": "complete",
+        "parser": "complete",
+        "production": "complete"
+      },
+      "production": [
+        "call:coding/cli/agent_dir_arg.go#ApplyAgentDirArg"
+      ],
+      "evidence": [
+        "test:coding/cli/agent_dir_arg_test.go#TestApplyAgentDirArg",
+        "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
+      ]
     },
     {
       "id": "cli:pi/--api-key",

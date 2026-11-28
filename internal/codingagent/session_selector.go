@@ -191,7 +191,11 @@ func (s *SessionSelectorComponent) renderList(width int) []string {
 		case s.scope == sessionScopeAll:
 			msg = "  No sessions found"
 		default:
-			msg = "  No sessions in current folder. Press " + sessionKeyText(tui.KBInputTab) + " to view all."
+			if tabKey := tui.ActionKeyText(tui.KBInputTab); tabKey == "tab" {
+				msg = "  No sessions in current folder. Press tab to view all."
+			} else {
+				msg = "  No sessions in current folder. Press " + tabKey + " to view all."
+			}
 		}
 		return append(lines, sessionFg(tui.ActiveTheme().Muted, widthx.TruncateToWidth(msg, width, "…", false)))
 	}

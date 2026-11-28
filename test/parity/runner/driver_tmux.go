@@ -1081,10 +1081,23 @@ func tmuxEnvPrefix(coverDir string) string {
 	return prefix
 }
 
+// tmuxEscapeKeyGap waits past StdinBuffer's 10ms lone-ESC flush timeout so a
+// scenario step like ["Escape", "Enter"] delivers Escape and Enter as two
+// separate keys rather than collapsing into legacy Alt+Enter (ESC CR).
+const tmuxEscapeKeyGap = 40 * time.Millisecond
+
 func sendTmuxKeys(ctx context.Context, session string, keys []string) error {
-	for _, key := range coalesceTmuxKeys(keys) {
+	coalesced := coalesceTmuxKeys(keys)
+	for i, key := range coalesced {
 		if err := sendTmuxKey(ctx, session, key); err != nil {
 			return fmt.Errorf("send key %q: %w", key, err)
+		}
+		if key == "Escape" && i+1 < len(coalesced) {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(tmuxEscapeKeyGap):
+			}
 		}
 	}
 	return nil

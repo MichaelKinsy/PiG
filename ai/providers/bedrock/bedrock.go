@@ -1192,29 +1192,31 @@ func buildBedrockAdditionalFieldsWithBudget(model *ai.Model, modelName string, o
 	if !opts.IsReasoning || model == nil {
 		return nil
 	}
-	candidates := bedrockModelMatchCandidates(model.ID, modelName)
-	isOpenAIGPT := slices.ContainsFunc(candidates, func(s string) bool { return strings.Contains(s, "gpt-") })
-	if !isAnthropicClaudeBedrockModel(model.ID, modelName) && !isOpenAIGPT {
-		// Other families (Kimi K3, GLM 5.3) take a flat reasoning_effort. Converse forwards it without
-		// validating it, so send only values the model's thinkingLevelMap lists. Off is sent too:
-		// without a value, models such as Kimi K3.1 reason at max.
-		// Nova and Grok also land here but have no thinkingLevelMap in the catalog, so they send
-		// nothing: Nova 2 takes effort as reasoningConfig.maxReasoningEffort, and Grok documents
-		// no effort field for Converse.
-		level := ai.ModelThinkingLevel(opts.Thinking)
-		if level == "" {
-			level = ai.ThinkingOff
+	if !isAnthropicClaudeBedrockModel(model.ID, modelName) {
+		candidates := bedrockModelMatchCandidates(model.ID, modelName)
+		if !slices.ContainsFunc(candidates, func(s string) bool { return strings.Contains(s, "gpt-") }) {
+			// Other families (Kimi K3, GLM 5.3) take a flat reasoning_effort. Converse forwards it without
+			// validating it, so send only values the model's thinkingLevelMap lists. Off is sent too:
+			// without a value, models such as Kimi K3.1 reason at max.
+			// Nova and Grok also land here but have no thinkingLevelMap in the catalog, so they send
+			// nothing: Nova 2 takes effort as reasoningConfig.maxReasoningEffort, and Grok documents
+			// no effort field for Converse.
+			level := ai.ModelThinkingLevel(opts.Thinking)
+			if level == "" {
+				level = ai.ThinkingOff
+			}
+			if effort := model.ThinkingLevelMap[level]; effort != nil {
+				return map[string]any{"reasoning_effort": *effort}
+			}
+			return nil
 		}
-		if effort := model.ThinkingLevelMap[level]; effort != nil {
-			return map[string]any{"reasoning_effort": *effort}
+		if opts.Thinking == "" {
+			return nil
 		}
-		return nil
+		return bedrockOpenAIReasoningFields(model, modelName, ai.ModelThinkingLevel(opts.Thinking))
 	}
 	if opts.Thinking == "" {
 		return nil
-	}
-	if !isAnthropicClaudeBedrockModel(model.ID, modelName) {
-		return bedrockOpenAIReasoningFields(model, modelName, ai.ModelThinkingLevel(opts.Thinking))
 	}
 
 	thinking := map[string]any{}

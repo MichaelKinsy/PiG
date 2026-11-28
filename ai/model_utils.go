@@ -10,11 +10,12 @@ func (m *Model) CostRates() ModelCost {
 	}
 	c := m.Capabilities
 	return ModelCost{
-		Input:      c.InputCostPer1M,
-		Output:     c.OutputCostPer1M,
-		CacheRead:  c.CacheReadCostPer1M,
-		CacheWrite: c.CacheWriteCostPer1M,
-		Tiers:      c.CostTiers,
+		Input:       c.InputCostPer1M,
+		Output:      c.OutputCostPer1M,
+		CacheRead:   c.CacheReadCostPer1M,
+		CacheWrite:  c.CacheWriteCostPer1M,
+		ImageOutput: c.ImageOutputCostPer1M,
+		Tiers:       c.CostTiers,
 	}
 }
 

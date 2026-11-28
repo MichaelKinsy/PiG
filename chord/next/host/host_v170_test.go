@@ -17,12 +17,14 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 )
 
+// pi: packages/chord/src/host/follow-over.ts
 // Tests for v1.7.0 host additions:
 //   - ERNDL-1191: self.FollowOver(over, attach) over changing registry value / writable, follow_failed, backoff retries
 //   - ERNDL-1190: transaction cancel attribution (own object end does NOT report transaction_cancelled; caller cancel DOES)
 //   - JSON-only named query args (reject NaN/Inf with invalid/args, canonical JSON sharing)
 //   - Lazy ReferenceQuery creation on references
 
+// Ports packages/chord/src/host/attempt.ts:192 (Self.follow over a changing source).
 func TestFollowOverChangingSource(t *testing.T) {
 	reg, err := registries.DefineRegistry[any, any]("app.follow.reg", registries.DefineRegistryOptions{Version: 1})
 	if err != nil {

@@ -8,6 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
 
+// pi: packages/chord/src/contracts/history.ts
 func TestGrantableAndFlagsAndMessageData(t *testing.T) {
 	flagLabel := contracts.MessageData{Namespace: "app", Key: "export", Params: []any{}}
 	if !contracts.IsMessageData(flagLabel) {

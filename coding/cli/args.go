@@ -436,7 +436,7 @@ func parseArgs(args []string) Args {
 		default:
 			flags.Messages = append(flags.Messages, arg)
 		}
-		if resumeFlagsSet[arg] {
+		if isResumeFlag(arg) {
 			flags.ResumeFlags = append(flags.ResumeFlags, args[flagStart:i+1]...)
 		}
 		i++
@@ -611,37 +611,20 @@ func validateForkFlags(flags Args) []argDiagnostic {
 	return []argDiagnostic{{Type: "error", Message: "--fork cannot be combined with " + strings.Join(conflicts, ", ")}}
 }
 
-// resumeFlagsSet lists the restriction and resource flags repeated in the OSC 7577 resume command.
+// isResumeFlag reports whether arg is a restriction or resource flag repeated in the OSC 7577 resume command.
 // Ports packages/coding-agent/src/cli/args.ts RESUME_FLAGS (Pi 145785f0d).
-var resumeFlagsSet = map[string]bool{
-	"--tools":                true,
-	"-t":                     true,
-	"--exclude-tools":        true,
-	"-xt":                    true,
-	"--no-tools":             true,
-	"-nt":                    true,
-	"--no-builtin-tools":     true,
-	"-nbt":                   true,
-	"--extension":            true,
-	"-e":                     true,
-	"--no-extensions":        true,
-	"-ne":                    true,
-	"--no-mcp":               true,
-	"--skill":                true,
-	"--no-skills":            true,
-	"-ns":                    true,
-	"--prompt-template":      true,
-	"--no-prompt-templates":  true,
-	"-np":                    true,
-	"--theme":                true,
-	"--no-themes":            true,
-	"--no-context-files":     true,
-	"-nc":                    true,
-	"--system-prompt":        true,
-	"--append-system-prompt": true,
-	"--approve":              true,
-	"-a":                     true,
-	"--no-approve":           true,
-	"-na":                    true,
-	"--models":               true,
+func isResumeFlag(arg string) bool {
+	switch arg {
+	case "--tools", "-t", "--exclude-tools", "-xt", "--no-tools", "-nt", "--no-builtin-tools", "-nbt",
+		"--extension", "-e", "--no-extensions", "-ne", "--no-mcp",
+		"--skill", "--no-skills", "-ns",
+		"--prompt-template", "--no-prompt-templates", "-np",
+		"--theme", "--no-themes",
+		"--no-context-files", "-nc",
+		"--system-prompt", "--append-system-prompt",
+		"--approve", "-a", "--no-approve", "-na",
+		"--models":
+		return true
+	}
+	return false
 }

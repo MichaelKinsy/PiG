@@ -5,7 +5,7 @@
 # (model-runtime.ts:340-355), and cloudflare-auth.ts resolveCloudflareEnv returns undefined unless CLOUDFLARE_API_KEY and
 # CLOUDFLARE_ACCOUNT_ID (plus CLOUDFLARE_GATEWAY_ID for AI Gateway) are all set. With only CLOUDFLARE_API_KEY:
 #
-#   pi --offline --no-extensions --no-session --model cloudflare-workers-ai/@cf/deepseek-ai/deepseek-v4-flash-0731 -p hello
+#   pi --offline --no-extensions --no-session --model cloudflare-workers-ai/@cf/deepseek-ai/deepseek-v4.1-flash-1017 -p hello
 #
 # prints "No API key found for cloudflare-workers-ai." with the login guidance and exits 1. PiG counted the key alone as
 # configured auth, skipped the auth check and sent the request ("Connection error." after a network attempt).
@@ -24,7 +24,7 @@ tags = ["hermetic", "fast", "cli"]
 driver = "cli-mode"
 
 [cli]
-args = ["--offline", "--no-extensions", "--no-context-files", "--no-skills", "--no-session", "--model", "cloudflare-workers-ai/@cf/deepseek-ai/deepseek-v4-flash-0731", "-p", "hello"]
+args = ["--offline", "--no-extensions", "--no-context-files", "--no-skills", "--no-session", "--model", "cloudflare-workers-ai/@cf/deepseek-ai/deepseek-v4.1-flash-1017", "-p", "hello"]
 timeout_seconds = 20
 
 [env]

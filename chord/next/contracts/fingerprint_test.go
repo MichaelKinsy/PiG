@@ -6,6 +6,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
 
+// pi: packages/chord/src/contracts/fingerprint.ts
 func TestFingerprintStability(t *testing.T) {
 	c1 := remote(t, "fp", 1, props(contracts.Prop("id", contracts.Str())),
 		rstate(contracts.StateEntry("a", contracts.Str()), contracts.StateEntry("b", contracts.Int())),

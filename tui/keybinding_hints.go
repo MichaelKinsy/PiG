@@ -65,21 +65,13 @@ func AppKeyText(action, fallback string) string {
 // capitalized and joined by "/", or "" when none is bound. Mirrors upstream
 // keyDisplayText (coding-agent keybinding-hints.ts).
 func ActionKeyDisplayText(action string) string {
-	keys := GetTUIKeybindings().GetKeys(action)
-	if len(keys) == 0 {
-		return ""
-	}
-	return FormatKeyText(strings.Join(keys, "/"), true)
+	return GetTUIKeybindings().formatActionKeyText(action, true)
 }
 
 // ActionKeyText formats every key the registry binds to action, joined by "/", or "" when none is bound. Mirrors upstream
 // keyText (coding-agent keybinding-hints.ts:34); ActionKeyDisplayText is keyDisplayText, its capitalized form.
 func ActionKeyText(action string) string {
-	keys := GetTUIKeybindings().GetKeys(action)
-	if len(keys) == 0 {
-		return ""
-	}
-	return FormatKeyText(strings.Join(keys, "/"), false)
+	return GetTUIKeybindings().formatActionKeyText(action, false)
 }
 
 // ActionKeyTextOr is ActionKeyText for an action that may not be registered

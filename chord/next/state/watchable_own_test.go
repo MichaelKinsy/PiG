@@ -13,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
+// pi: packages/chord/src/state/dependents.ts
 // Go tests of Source, its watches and subscribers on a document the test supplies: the scenarios of watchable.test.ts
 // "watches" and "subscribers", which upstream runs on a ChordHost with a defineState counter (those tests wait for the
 // host, contracts and documents packages).

@@ -27,23 +27,23 @@ ready_pattern_pi = "Warning: No models available."
 ready_timeout_seconds = 25
 capture_start = "Theme"
 capture_start_last = true
-capture_end = "Enter to select · Esc to go back"
+capture_end = "enter to select · escape/ctrl+c to go back"
 
 [[tmux.steps]]
 keys = ["/settings", "Enter"]
-wait_visible_contains = [">", "Type to search · Enter/Space to change · Esc to cancel"]
+wait_visible_contains = [">", "Type to search · enter/space to change · escape/ctrl+c to cancel"]
 wait_timeout_seconds = 5
 settle_seconds = 1
 
 [[tmux.steps]]
 keys = ["Space", "t", "h", "e", "m", "e"]
-wait_visible_contains = ["> theme", "Type to search · Enter/Space to change · Esc to cancel"]
+wait_visible_contains = ["> theme", "Type to search · enter/space to change · escape/ctrl+c to cancel"]
 wait_timeout_seconds = 5
 settle_seconds = 1
 
 [[tmux.steps]]
 keys = ["Enter"]
-wait_visible_contains = ["Theme", "Enter to select · Esc to go back"]
+wait_visible_contains = ["Theme", "enter to select · escape/ctrl+c to go back"]
 wait_timeout_seconds = 5
 settle_seconds = 1
 

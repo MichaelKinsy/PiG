@@ -187,12 +187,19 @@ func buildCatalogSnapshot() map[string]any {
 			"reasoningCount":  reasoningCount,
 		}
 	}
+	var runtimeImageProviderIDs []string
+	for _, provider := range ai.BuiltinModels().GetProviders() {
+		if provider.GenerateImages != nil {
+			runtimeImageProviderIDs = append(runtimeImageProviderIDs, provider.ID)
+		}
+	}
+	slices.Sort(runtimeImageProviderIDs)
 	return map[string]any{
 		"byProvider":              byProvider,
 		"compatImageProviderIDs":  ai.GetImageProviders(),
 		"compatProviderIDs":       providers,
 		"providers":               providers,
-		"runtimeImageProviderIDs": ai.GetImageProviders(),
+		"runtimeImageProviderIDs": runtimeImageProviderIDs,
 		"runtimeProviderIDs":      runtimeProviders,
 		"totalModels":             total,
 	}

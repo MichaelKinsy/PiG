@@ -4,11 +4,11 @@ Generated from `1191` PORT_MAP entries and `1035` parity scenarios.
 
 ## Status
 
-- **Porting:** 1065 / 1068 intended-portable entries ✅ (99.7%).
-- **Behavior verification:** 827 / 1065 ported entries (77.7%); 0 weak-only, 238 untested.
+- **Porting:** 1064 / 1067 intended-portable entries ✅ (99.7%).
+- **Behavior verification:** 826 / 1064 ported entries (77.6%); 0 weak-only, 238 untested.
 - **Upstream test porting:** 1060 ported / 0 partial / 0 pending (10 other dispositions; [file mapping](../interfaces/test-mapping-v1.7.0.json)). Of the partial/pending files, 0 deferred to 0.3.x by the [release policy](../interfaces/test-porting-policy-v1.7.0.json) (`deferred-0.3.x`).
 
-Raw PORT_MAP rows: 1191. Breakdown: 123 n/a (designed out) · 3 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
+Raw PORT_MAP rows: 1191. Breakdown: 124 n/a (designed out) · 3 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
 
 ## Packages
 
@@ -16,7 +16,7 @@ Raw PORT_MAP rows: 1191. Breakdown: 123 n/a (designed out) · 3 🟡 partial. Se
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `agent` | 6 | 1 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
 | `ai` | 280 | 26 | 254 | 254 | 0 | 0 | 100.0% | 94.9% |
-| `chord` | 359 | 44 | 315 | 315 | 0 | 0 | 100.0% | 54.6% |
+| `chord` | 359 | 45 | 314 | 314 | 0 | 0 | 100.0% | 54.5% |
 | `codemode` | 17 | 4 | 13 | 13 | 0 | 0 | 100.0% | 100.0% |
 | `coding-agent` | 267 | 27 | 240 | 239 | 1 | 0 | 99.6% | 94.6% |
 | `durable` | 103 | 10 | 93 | 93 | 0 | 0 | 100.0% | 83.9% |
@@ -29,8 +29,8 @@ Raw PORT_MAP rows: 1191. Breakdown: 123 n/a (designed out) · 3 🟡 partial. Se
 
 - **Four core packages (agent, ai, coding-agent, tui):** 544 / 545 intended-portable files ✅ (99.8%) from 600 rows; 517 behavioral (95.0%), 0 weak-only, 27 untested.
 - **Shipped surface (agent, ai, codemode, coding-agent, mcp, schema, telemetry, tui; coding-agent without ):** 631 / 632 intended-portable files ✅ (99.8%) from 698 rows; 552 behavioral (87.5%), 0 weak-only, 79 untested.
-- **Whole monorepo (12 packages):** 1065 / 1068 intended-portable files ✅ (99.7%) from 1191 rows; 827 behavioral (77.7%), 0 weak-only, 238 untested.
-- **Interface closure:** 15562 of 15593 semantic interface IDs closed (577 designed-out, 31 pending, 14985 ported). A file-level ✅ does not close an interface ID.
+- **Whole monorepo (12 packages):** 1064 / 1067 intended-portable files ✅ (99.7%) from 1191 rows; 826 behavioral (77.6%), 0 weak-only, 238 untested.
+- **Interface closure:** 15593 of 15593 semantic interface IDs closed (583 designed-out, 15010 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven Go unit tests. Unit tests are listed separately; last run refers only to paired scenarios, not unit execution or exhaustive parity.
 
@@ -713,7 +713,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/chord/src/contracts/declare.ts` | ✅ | 0 | 1 (unit:./chord/next/contracts:TestDeclareRemoteAndLocal) | not run | ./chord/next/contracts:TestDeclareRemoteAndLocal |
 | `packages/chord/src/contracts/evolve.ts` | ✅ | 0 | 1 (unit:./chord/next/contracts:TestEvolveRemoteAndGrantable) | not run | ./chord/next/contracts:TestEvolveRemoteAndGrantable |
 | `packages/chord/src/contracts/fingerprint.ts` | ✅ | 0 | 1 (unit:./chord/next/contracts:TestFingerprintStability) | not run | ./chord/next/contracts:TestFingerprintStability |
-| `packages/chord/src/contracts/history.ts` | ✅ | 0 | 1 (unit:./chord/next/contracts:TestContractHandlesAndOrder) | not run | ./chord/next/contracts:TestContractHandlesAndOrder |
+| `packages/chord/src/contracts/history.ts` | n/a | 0 | 1 (unit:./chord/next/contracts:TestContractHandlesAndOrder) | not run | ./chord/next/contracts:TestContractHandlesAndOrder |
 | `packages/chord/src/contracts/host-kind.ts` | ✅ | 0 | 1 (unit:./chord/next/contracts:TestHostKinds) | not run | ./chord/next/contracts:TestHostKinds |
 | `packages/chord/src/contracts/index.ts` | n/a | 0 | 0 | not run |  |
 | `packages/chord/src/contracts/internal.ts` | n/a | 0 | 0 | not run |  |

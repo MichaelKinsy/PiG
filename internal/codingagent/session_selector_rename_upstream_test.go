@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 func TestUpstreamSessionSelectorRename(t *testing.T) {
@@ -49,10 +51,25 @@ func TestUpstreamSessionSelectorRename(t *testing.T) {
 		}
 		renameCaseRecord(t, 79, "enters rename mode on Ctrl+R and submits with Enter")
 	})
-	// .upstream/v1.6.0/packages/coding-agent/test/session-selector-rename.test.ts:112
+	// .upstream/v1.7.0/packages/coding-agent/test/session-selector-rename.test.ts:112
+	t.Run("names the key that submits the rename", func(t *testing.T) {
+		sessions := []SessionInfo{{Path: "/tmp/a.jsonl", ID: "a", Created: time.UnixMilli(0), Modified: time.UnixMilli(0), MessageCount: 1, FirstMessage: "hello", AllMessagesText: "hello"}}
+		previous := tui.GetTUIKeybindings()
+		t.Cleanup(func() { tui.SetKeybindings(previous) })
+		bindings := NewKeybindingsManagerFromBindings(map[string][]KeyID{"tui.input.submit": {"ctrl+s"}}, "")
+		bindings.syncToTUI()
+		sel := newLoadedSessionSelector(func() ([]SessionInfo, error) { return sessions, nil }, func() ([]SessionInfo, error) { return nil, nil }, func(string, string) error { return nil }, nil, "", bindings)
+		sel.HandleInput("\x1b[114;5u")
+		output := strings.Join(sel.Render(120), "\n")
+		if !strings.Contains(output, "ctrl+s to save") {
+			t.Fatalf("rename hint output=%q, want ctrl+s to save", output)
+		}
+		renameCaseRecord(t, 112, "names the key that submits the rename")
+	})
+	// .upstream/v1.7.0/packages/coding-agent/test/session-selector-rename.test.ts:132
 	t.Run("keeps the renamed session selected when the reload starts with another session", func(t *testing.T) {
 		TestUpstreamSessionSelectorKeepsTheRenamedSessionSelectedWhenTheReloadStartsWithAnotherSession(t)
-		renameCaseRecord(t, 112, "keeps the renamed session selected when the reload starts with another session")
+		renameCaseRecord(t, 132, "keeps the renamed session selected when the reload starts with another session")
 	})
 }
 

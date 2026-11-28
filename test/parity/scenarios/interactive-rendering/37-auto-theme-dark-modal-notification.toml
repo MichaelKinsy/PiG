@@ -37,7 +37,7 @@ capture_end = "Resume marker end"
 
 [[tmux.steps]]
 keys = ["/settings", "Enter"]
-wait_visible_contains = ["Type to search · Enter/Space to change · Esc to cancel"]
+wait_visible_contains = ["Type to search · enter/space to change · escape/ctrl+c to cancel"]
 
 [[tmux.steps]]
 keys = ["hex:1b 5b 3f 39 39 37 3b 31 6e"]

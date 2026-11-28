@@ -415,6 +415,10 @@
     "go": "chord/next/host/host_attempt.go#Self.Derive",
     "reason": "Pi packages/chord/src/host/attempt.ts `derive<const S extends readonly Watchable<unknown>[], R>(sources: S, compute: (values: {readonly [I in keyof S]: S[I] extends Watchable<infer V> ? V : never}) => R)` types the values tuple from the sources' tuple type; that mapped type is a compile-time computation Go generics cannot express. Go's Self.Derive(sources []any, compute func(values []any) (delta.JsonValue, error)) takes the sources as a slice of watchables or natives (each unwrapped by unwrapMember, host_attempt.go) and passes compute their values in order, as Pi's runtime does; the computed type is carried by the values' dynamic types. Exercised by TestExample03Derives (chord/next/host/host_example_03_test.go) and TestMemberCheckNamesADeriveInErrorsByItsMemberWhenExposedElseByItsPosition (chord/next/host/host_members_test.go)."
   },
+  "pkg:chord/.#Self::property:follow::call:1": {
+    "go": "chord/next/host/host_attempt.go#Self.FollowOver",
+    "reason": "Pi packages/chord/src/host/attempt.ts:192 follow<S, T>(over: NativeWatchable<S | undefined>, attach: FollowOverAttach<S, T>) is the second overload of Self.follow. Go has no method overloading or covariant generic interface parameter for both registry values and writables, so Self.FollowOver(over any, attach FollowOverAttach[any, delta.JsonValue]) takes `over` as `any` and validates it at runtime in followedOver (chord/next/host/host_follow_over.go). Exercised by TestFollowOverChangingSource (chord/next/host/host_v170_test.go)."
+  },
   "pkg:chord/.#Self::property:get::call:0": {
     "go": "chord/next/host/host_attempt.go#Self.Get",
     "reason": "Pi `get<C extends Contract>(type: C, params: {[F in keyof ShapeOf<C>[\"params\"]]: Static<ShapeOf<C>[\"params\"][F]>}): Reference<C>` computes the params object's shape from the contract's declared params; a mapped type over a type parameter that Go generics cannot express. Go's Self.Get(typ *contracts.Contract, params *delta.JsonObject) takes the params as the JSON object, which the attempt checks against the contract's declared params at run time (checkedParams, the same refusals as Pi's runtime check: unknown, missing and mistyped fields) before it binds. Exercised by TestHostGetChecksParamsWithL1 (chord/next/host/host_host_test.go)."
@@ -458,6 +462,10 @@
   "pkg:chord/.#StoreSelf::property:derive::call:0": {
     "go": "chord/next/host/host_attempt.go#Self.Derive",
     "reason": "Pi packages/chord/src/host/attempt.ts `derive<const S extends readonly Watchable<unknown>[], R>(sources: S, compute: (values: {readonly [I in keyof S]: S[I] extends Watchable<infer V> ? V : never}) => R)` types the values tuple from the sources' tuple type; that mapped type is a compile-time computation Go generics cannot express. Go's Self.Derive(sources []any, compute func(values []any) (delta.JsonValue, error)) takes the sources as a slice of watchables or natives (each unwrapped by unwrapMember, host_attempt.go) and passes compute their values in order, as Pi's runtime does; the computed type is carried by the values' dynamic types. Exercised by TestExample03Derives (chord/next/host/host_example_03_test.go) and TestMemberCheckNamesADeriveInErrorsByItsMemberWhenExposedElseByItsPosition (chord/next/host/host_members_test.go)."
+  },
+  "pkg:chord/.#StoreSelf::property:follow::call:1": {
+    "go": "chord/next/host/host_attempt.go#Self.FollowOver",
+    "reason": "Pi packages/chord/src/host/attempt.ts:192 follow<S, T>(over: NativeWatchable<S | undefined>, attach: FollowOverAttach<S, T>) is inherited by StoreSelf from Self. Go has no method overloading or covariant generic interface parameter for both registry values and writables, so Self.FollowOver(over any, attach FollowOverAttach[any, delta.JsonValue]) takes `over` as `any` and validates it at runtime in followedOver (chord/next/host/host_follow_over.go). Exercised by TestFollowOverChangingSource (chord/next/host/host_v170_test.go)."
   },
   "pkg:chord/.#StoreSelf::property:get::call:0": {
     "go": "chord/next/host/host_attempt.go#Self.Get",
@@ -846,6 +854,10 @@
   "pkg:coding-agent/.#ReadonlyFooterDataProvider": {
     "go": "coding/extension/ui_factories.go#ReadonlyFooterDataProvider",
     "reason": "Pi coding-agent/src/core/footer-data-provider.ts:385 declares `type ReadonlyFooterDataProvider = Pick<FooterDataProvider, \"getGitBranch\" | \"getExtensionStatuses\" | \"getAvailableProviderCount\" | \"onBranchChange\">`: a view of the FooterDataProvider class that leaves out setExtensionStatus, setAvailableProviderCount and dispose. A4/T9 cannot decide a Pick over a class. Go declares the view as an interface of exactly those four members (GetGitBranch, GetExtensionStatuses, GetAvailableProviderCount, OnBranchChange), implemented by *codingagent.FooterDataProvider (footer_data_provider.go:48-87), which the host passes as the third argument of an extension's footer factory (ext_ui_context.go:446, interactive-mode.ts setExtensionFooter). A Pick of a class is an interface of the picked members in Go (the consumer-owned small interface), not a struct. Evidence: internal/codingagent/ext_ui_factories_test.go (the factory receives the footer's own provider) and coding/extension/host/subprocess/ctx_mode_test.go:201 (the subprocess footer factory reads the same four members)."
+  },
+  "pkg:coding-agent/.#RpcSessionState::property:model": {
+    "go": "coding/cli/rpc_types.go#RPCSessionState.Model",
+    "reason": "Pi rpc-types.ts:97 model?: Model<any> is the Model object get_state serializes. PiG's ai.Model carries a Provider object and nested metadata that are not wire data, so get_state projects it as RPCModel (coding/cli/rpc_types.go, rpcModelValue) with every JSON member of Pi's Model, including the optional type and cost.imageOutput (rpc_model_type_test.go); the member is the pointer so a nil session model reports the unknown placeholder rpc-mode.ts reports."
   },
   "pkg:coding-agent/.#SettingsCallbacks::property:onNoticeChange::call:0": {
     "go": "internal/codingagent/settings_selector.go#SettingsCallbacks.OnNoticeChange",

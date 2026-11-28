@@ -6,7 +6,7 @@
 # "Light theme" opens createThemeSelect (settings-selector.ts:401-420, SelectSubmenu "Light Theme"),
 # which tui settings-list.ts:97-99 renders in place of the list while the heading stays in the
 # parent container. themeItems (settings-selector.ts:198-203) marks the configured "✓ dark", and
-# settings-submenu.ts:85-90 adds the "Enter to select · Esc to go back" hint.
+# settings-submenu.ts:85-90 adds the "enter to select · escape/ctrl+c to go back" hint.
 name = "12-settings-automatic-theme-child"
 description = "The automatic-theme child picker retains its parent heading and configured marker."
 covers = ["packages/coding-agent/src/modes/interactive/components/settings-selector.ts"]
@@ -22,11 +22,11 @@ ready_pattern_pi = "$0.000"
 ready_timeout_seconds = 25
 capture_start = "Automatic Theme"
 capture_start_last = true
-capture_end = "Enter to select · Esc to go back"
+capture_end = "enter to select · escape/ctrl+c to go back"
 
 [[tmux.steps]]
 keys = ["/settings", "Enter"]
-wait_contains = ["Type to search · Enter/Space to change · Esc to cancel"]
+wait_contains = ["Type to search · enter/space to change · escape/ctrl+c to cancel"]
 wait_timeout_seconds = 5
 
 [[tmux.steps]]
@@ -37,7 +37,7 @@ wait_timeout_seconds = 5
 [[tmux.steps]]
 keys = ["Enter"]
 # The parent heading is retained, not newly rendered text. Its presence remains a strict final assertion.
-wait_contains = ["Light Theme", "→ ✓ dark", "Enter to select · Esc to go back"]
+wait_contains = ["Light Theme", "→ ✓ dark", "enter to select · escape/ctrl+c to go back"]
 wait_timeout_seconds = 5
 
 [env]

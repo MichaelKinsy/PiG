@@ -1,5 +1,6 @@
 package cli
 
+// pi: packages/coding-agent/src/cli/agent-dir-arg.ts
 // Ports packages/coding-agent/test/agent-dir-arg.test.ts (Pi dd71a6fc7)
 // and packages/coding-agent/test/args.test.ts resumeFlags (Pi 145785f0d).
 
@@ -42,7 +43,7 @@ func TestApplyAgentDirArg(t *testing.T) {
 	t.Run("last --agent-dir wins", func(t *testing.T) {
 		t.Setenv(envName, "")
 		ApplyAgentDirArg([]string{"--agent-dir", "/a", "--agent-dir", "/b"})
-		want, _ := filepath.Abs("/b")
+		want, _ := filepath.Abs(codingagent.ExpandTildePath("/b"))
 		if got := os.Getenv(envName); got != want {
 			t.Fatalf("env = %q, want %q", got, want)
 		}

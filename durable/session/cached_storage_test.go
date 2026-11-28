@@ -334,6 +334,9 @@ func TestCachedStorageKeepsWrittenRecordItselfShared(t *testing.T) {
 		t.Fatal(err)
 	}
 	second, _ := storage.Task(ctx, 2)
+	if first == nil {
+		t.Fatal("cached read returned nil task record")
+	}
 	if first != second {
 		t.Fatal("two reads returned different records")
 	}

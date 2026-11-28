@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/ai/src/api/pi-image.ts
+// pi: packages/ai/src/api/json-request.ts
 // Ports packages/ai/test/pi-image.test.ts (Pi 39bfcfca1, a512c3fe2, d02145c49) and
 // the Pi v1.7.0 additions in openrouter-images.test.ts, radius-provider.test.ts, and models-runtime.test.ts.
 
@@ -353,6 +355,33 @@ func TestRadiusProviderImageModelsSupport(t *testing.T) {
 	}
 }
 
+// Ports packages/ai/src/api/pi-image.ts:43 PiImageResponse wire shape.
+func TestPiImageResponseWireJSON(t *testing.T) {
+	resp := PiImageResponse{
+		Output: []ImagesOutputContent{
+			TextContent{Text: "done"},
+			ImageContent{Data: "AQID", MimeType: "image/png"},
+		},
+		Usage:      &Usage{Input: 10, Output: 20, TotalTokens: 30},
+		ResponseID: "resp_wire_1",
+	}
+	raw, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("marshal PiImageResponse: %v", err)
+	}
+	var decoded map[string]any
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		t.Fatalf("unmarshal PiImageResponse: %v", err)
+	}
+	if decoded["responseId"] != "resp_wire_1" {
+		t.Fatalf("responseId = %v, want resp_wire_1", decoded["responseId"])
+	}
+	if out, ok := decoded["output"].([]any); !ok || len(out) != 2 {
+		t.Fatalf("output = %v, want 2 blocks", decoded["output"])
+	}
+}
+
+// Ports packages/ai/src/providers/openrouter-api.ts:10 and :87 (OpenRouterPricing.image_output / openRouterImageCost).
 func TestOpenRouterImageCostHelper(t *testing.T) {
 	imgRate := OpenRouterRate("0.00003")
 	cost := OpenRouterImageCost(&OpenRouterPricing{

@@ -44001,6 +44001,17 @@
       "shapeHash": "sha256:338d321da93775308e862ae71c260f79224959fb46d1c6653710e6e347cfa841"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#generatedImageOutputRates",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "generatedImageOutputRates",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "[42]float64"
+      },
+      "shapeHash": "sha256:6d36d9a9c4c63c9c51371a11c65640dd9c9c8a60845f57139389395c66bdf6b2"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedInputLimits",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "generatedInputLimits",
@@ -58521,6 +58532,17 @@
       "shapeHash": "sha256:0b20aea589952ee7c9b17bf7b9589280092b2a46e68558d8537b94b1a08164cc"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#parseUsageFast",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "parseUsageFast",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(data []byte) (Usage, bool)"
+      },
+      "shapeHash": "sha256:42e7a2a1e3f03d81536bcde3f35160aac5487adb9a0b8191db93d3df73454139"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#parseValidJSONObject",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "parseValidJSONObject",
@@ -63999,6 +64021,50 @@
       "shapeHash": "sha256:b65d83d34e1503aa1e89250093cb713fe8a596d184ed3262aacbc71dbaecc118"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#scanUsageCost",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "scanUsageCost",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(data []byte, i int) (UsageCost, int, bool)"
+      },
+      "shapeHash": "sha256:47b4d0ea654fcadaf0e90d03bd62e406f03bd74d4e82cde142cd519f4e4d21f0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#scanUsageFloat",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "scanUsageFloat",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(data []byte, i int) (float64, int, bool)"
+      },
+      "shapeHash": "sha256:94a236a64db21fc5f097da6f1704c78e56b78d2f7c6265222ac17813258d725f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#scanUsageInt",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "scanUsageInt",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(data []byte, i int) (int, int, bool)"
+      },
+      "shapeHash": "sha256:23208a41a06563a681d6993f3d6ec4ebb5c3b073f301ead5df826435c4608bea"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#scanUsageKey",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "scanUsageKey",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(data []byte, i int) ([]byte, int, bool)"
+      },
+      "shapeHash": "sha256:ff8c404057cfc94b261cb670ed2ae4566ac19fe984bf44d94a59329de017a275"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#schemaContainer",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "schemaContainer",
@@ -64371,6 +64437,17 @@
         "type": "func(s string, i int) int"
       },
       "shapeHash": "sha256:aef5a8ca8a7be8b8128af587f1329616371dc117ade7fdfa99aaed065eea42a1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#skipUsageSpace",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "skipUsageSpace",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(data []byte, i int) int"
+      },
+      "shapeHash": "sha256:c3185ea4e540dc8b7d3fa53a6db35d7a8823ce7420eba246049b6f84bde35dd5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#skipValue",
@@ -85361,6 +85438,17 @@
       "shapeHash": "sha256:7515c47833e42f8f312233a18314671c4e7690bd197edb0eb001ed7b8a301c67"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#cloneFloatPtr",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "cloneFloatPtr",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(in *float64) *float64"
+      },
+      "shapeHash": "sha256:9fb7a049aeef98401f317b9d736aa7aad17fddece4e96f2e0d0fbdac919ce9ab"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#cloneSamplingParamsByThinkingLevel",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "cloneSamplingParamsByThinkingLevel",
@@ -99342,6 +99430,17 @@
       "shapeHash": "sha256:4a5055322e6f75d7ee10cc59b4814e22cbd33d6a19d2b99d3e00212a527e3abf"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#isResumeFlag",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "isResumeFlag",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(arg string) bool"
+      },
+      "shapeHash": "sha256:d8f6aa90b36706159c28c8baac808d8cb5e58bd5ce43533a9a0d74a22f60d6d8"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#isSelfUpdateTarget",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "isSelfUpdateTarget",
@@ -103982,17 +104081,6 @@
         "type": "func(report *extensionUpgradeReport, changed []github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan.FileChange) string"
       },
       "shapeHash": "sha256:fd930445d30acf0e911c3a3b56f198f9fcdbc1122285b0c3be070502fa15710e"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#resumeFlagsSet",
-      "package": "github.com/MichaelKinsy/PiG/coding/cli",
-      "name": "resumeFlagsSet",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "map[string]bool"
-      },
-      "shapeHash": "sha256:3af528a2ba91555bb23ee8186a48c3c9201b3cf65594c81b5d32e417b99fd811"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#retryableAcceptError",
@@ -381072,6 +381160,17 @@
         "type": "func(bindings KeybindingsConfig)"
       },
       "shapeHash": "sha256:538295b4e661d05f1262aafde9d60735649e29e99bcd58706d9d3b4670f1a12f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TUIKeybindingsManager.formatActionKeyText",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TUIKeybindingsManager.formatActionKeyText",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(action TUIKeybinding, capitalize bool) string"
+      },
+      "shapeHash": "sha256:08fe6fdc0ce3d0d15042ce499128cb2170ee901ade12e91afac043767048be5f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TUIKeybindingsManager.rebuild",

@@ -997,8 +997,9 @@ type ModelCapabilities struct {
 	// CacheReadCostPer1M / CacheWriteCostPer1M are the separate cache rates
 	// upstream models expose; the write rate is for 5m (short) writes. 1h
 	// writes bill at 2x base input (see CalculateCost).
-	CacheReadCostPer1M  float64 // USD per 1M cache-read tokens
-	CacheWriteCostPer1M float64 // USD per 1M cache-write tokens
+	CacheReadCostPer1M   float64  // USD per 1M cache-read tokens
+	CacheWriteCostPer1M  float64  // USD per 1M cache-write tokens
+	ImageOutputCostPer1M *float64 // USD per 1M image output tokens (optional)
 	// CostTiers overrides the base rates for high-volume requests: the highest
 	// matching InputTokensAbove threshold applies to the whole request.
 	// Mirrors upstream ModelCost.tiers, presence included: nil is no tiers member, empty is tiers: [] (see ModelCost).

@@ -15,11 +15,7 @@ import (
 const piImageLabel = "Pi Image"
 
 // PiImageOptions configures a pi-image generation request.
-type PiImageOptions struct {
-	ImagesOptions
-	// SessionID is an optional session identifier for gateway correlation/analytics.
-	SessionID *string
-}
+type PiImageOptions = ImagesOptions
 
 // PiImageRequestOptions is the nested options object on the wire.
 type PiImageRequestOptions struct {
@@ -51,7 +47,7 @@ type PiImageResponse struct {
 func PiImageAPI() *ProviderImages {
 	return &ProviderImages{
 		GenerateImages: func(ctx context.Context, model *ImageModel, request ImagesContext, options ImagesOptions) (AssistantImages, error) {
-			return GenerateImagesPiImage(ctx, *model, request, PiImageOptions{ImagesOptions: options}), nil
+			return GenerateImagesPiImage(ctx, *model, request, options), nil
 		},
 	}
 }

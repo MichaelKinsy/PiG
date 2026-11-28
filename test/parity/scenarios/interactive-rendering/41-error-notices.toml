@@ -26,7 +26,7 @@ wait_visible_contains = ["Error: Compaction failed:"]
 
 [[tmux.steps]]
 keys = ["unhandled-error-probe", "Enter"]
-wait_visible_contains = ["/bug sends a report to the developers."]
+wait_visible_contains = ["use /bug to send a report to the developers."]
 
 # The crop ends at the first "completed-error-probe", the echoed user message. That word is also visible while it is typed in the editor, and Pi
 # echoes the message asynchronously (the editor clears before message_start), so waiting for the word alone let the capture land between the two:
@@ -38,7 +38,7 @@ wait_visible_contains = ["reply with exactly: completed-error-probe\n\n\n comple
 
 [assert]
 runs = 3
-both_contain = [" Error: Compaction failed:", " Error: test-faux: unhandled request", "/bug sends a report to the developers."]
+both_contain = [" Error: Compaction failed:", " Error: test-faux: unhandled request", "use /bug to send a report to the developers."]
 both_not_contain = ["Provider request failed"]
 output_equal = true
 

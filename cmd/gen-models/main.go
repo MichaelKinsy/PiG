@@ -949,14 +949,35 @@ func systemOneCompatLiteral(compat *ModelCompat) string {
 func emitImages(path, src string, rows []modelRow) error {
 	var b strings.Builder
 	writeCatalogHeader(&b, src, len(rows))
+	var imageRates []string
+	rateIndex := map[string]int{}
+	internRate := func(v float64) string {
+		lit := floatLit(v)
+		i, ok := rateIndex[lit]
+		if !ok {
+			i = len(imageRates)
+			rateIndex[lit] = i
+			imageRates = append(imageRates, lit)
+		}
+		return fmt.Sprintf("&generatedImageOutputRates[%d]", i)
+	}
 	fmt.Fprintf(&b, "// GeneratedImageModels is the static image model catalog (%d entries).\n", len(rows))
 	b.WriteString("var GeneratedImageModels = []ImageModel{\n")
 	for _, row := range rows {
 		fmt.Fprintf(&b, "\t{ID: %q, Name: %q, API: ImageAPI(%q), Provider: %q, BaseURL: %q,", row.ID, row.Name, row.API, row.Provider, row.BaseURL)
 		writeBaseModelFields(&b, row)
-		fmt.Fprintf(&b, " Output: %s, Cost: %s},\n", stringSliceLiteral(row.Output), modelCostLiteral(row))
+		cost := costLiteralWithRate(jsonCost{Input: row.InputCost, Output: row.OutputCost, CacheRead: row.CacheRead, CacheWrite: row.CacheWrite, ImageOutput: row.ImageOutput, Tiers: row.Tiers}, internRate)
+		fmt.Fprintf(&b, " Output: %s, Cost: %s},\n", stringSliceLiteral(row.Output), cost)
 	}
 	b.WriteString("}\n")
+	if len(imageRates) > 0 {
+		b.WriteString("\n// generatedImageOutputRates holds the static imageOutput rates Referenced by GeneratedImageModels without per-entry init allocations.\n")
+		b.WriteString("var generatedImageOutputRates = [...]float64{\n")
+		for _, lit := range imageRates {
+			fmt.Fprintf(&b, "\t%s,\n", lit)
+		}
+		b.WriteString("}\n")
+	}
 	return writeGoSource(path, b.String())
 }
 
@@ -1067,9 +1088,17 @@ func modelCostLiteral(row modelRow) string {
 
 // costLiteral is a ModelCost literal for cost: one with no tiers member has no Tiers, and one with tiers: [] an empty Tiers.
 func costLiteral(cost jsonCost) string {
+	return costLiteralWithRate(cost, nil)
+}
+
+func costLiteralWithRate(cost jsonCost, ratePtr func(float64) string) string {
 	literal := fmt.Sprintf("ModelCost{Input: %s, Output: %s, CacheRead: %s, CacheWrite: %s", floatLit(cost.Input), floatLit(cost.Output), floatLit(cost.CacheRead), floatLit(cost.CacheWrite))
 	if cost.ImageOutput != nil {
-		literal += fmt.Sprintf(", ImageOutput: new(float64(%s))", floatLit(*cost.ImageOutput))
+		if ratePtr != nil {
+			literal += ", ImageOutput: " + ratePtr(*cost.ImageOutput)
+		} else {
+			literal += fmt.Sprintf(", ImageOutput: new(float64(%s))", floatLit(*cost.ImageOutput))
+		}
 	}
 	if cost.Tiers != nil {
 		literal += ", Tiers: " + tiersLiteral(cost.Tiers)

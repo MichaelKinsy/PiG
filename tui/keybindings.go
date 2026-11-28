@@ -13,6 +13,7 @@ import (
 	"slices"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 )
@@ -442,6 +443,22 @@ func (m *TUIKeybindingsManager) Matches(data string, action TUIKeybinding) bool 
 func (m *TUIKeybindingsManager) GetKeys(action TUIKeybinding) []string {
 	keys := m.keysById[action]
 	return slices.Clone(keys)
+}
+
+// formatActionKeyText formats the resolved keys for action without cloning the slice.
+func (m *TUIKeybindingsManager) formatActionKeyText(action TUIKeybinding, capitalize bool) string {
+	keys := m.keysById[action]
+	if len(keys) == 0 {
+		return ""
+	}
+	if len(keys) == 1 {
+		k := keys[0]
+		if !capitalize && (runtime.GOOS != "darwin" || (!strings.Contains(k, "+") && !strings.EqualFold(k, "alt"))) {
+			return k
+		}
+		return FormatKeyText(k, capitalize)
+	}
+	return FormatKeyText(strings.Join(keys, "/"), capitalize)
 }
 
 // HasBinding reports whether the manager owns an action, including an explicit

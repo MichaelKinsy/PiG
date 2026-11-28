@@ -18,6 +18,13 @@ func (r *ModelRegistry) radiusComposedModelsLocked(provider *ai.RadiusProvider) 
 // radiusCompositionFailureLocked is the error applyModelsJson throws for the provider's models.json definitions, or "". Pi records it as a
 // composition error and keeps the provider's catalog models without the configuration; getError() reports it as `Provider "<id>": <error>`.
 func (r *ModelRegistry) radiusCompositionFailureLocked(provider *ai.RadiusProvider) string {
+	if r.config == nil {
+		return ""
+	}
+	configured, ok := r.config.Providers[provider.ID()]
+	if !ok || len(configured.Models) == 0 {
+		return ""
+	}
 	_, failure := r.radiusComposeLocked(provider)
 	return failure
 }

@@ -183,7 +183,9 @@ func TestFileSyncStateStoreKeepsEachSessionsStateUntilDeleted(t *testing.T) {
 	if _, err := store.Get(ctx, "s3"); err == nil {
 		t.Fatal("Get of a corrupt state file did not fail")
 	}
-	if err := store.Delete(ctx, "s1"); err != nil {
+	// packages/chord/src/sync/client.ts:68 SyncStateStore.delete
+	var iface SyncStateStore = store
+	if err := iface.Delete(ctx, "s1"); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.Delete(ctx, "s1"); err != nil {

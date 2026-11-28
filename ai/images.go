@@ -59,7 +59,9 @@ type ImagesOptions struct {
 	// AspectRatio is the desired aspect ratio, e.g. "1:1", "16:9", "4:3", "9:16". Sent to the provider unchanged.
 	AspectRatio string
 	// Size is the desired resolution, e.g. "1K", "2K", "4K". Sent to the provider unchanged.
-	Size      string
+	Size string
+	// SessionID is an optional session identifier for gateway correlation/analytics (pi-image.ts PiImageOptions.sessionId).
+	SessionID *string
 	Metadata  map[string]any
 	TimeoutMs int
 	// MaxRetries is the retry budget after a retryable failure. Nil uses retry.provider.maxRetries; an explicit zero disables retries.

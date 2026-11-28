@@ -10,6 +10,8 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
+// pi: packages/chord/src/store/read-index.ts
+// pi: packages/chord/src/store/shared-read.ts
 // Tests for v1.7.0 store additions:
 //   - ReadIndex commit index (eq / inArray + kept row keys, chord.query.skips)
 //   - SharedReads identical live-read sharing (rows + count, unsubscribe/close)
@@ -200,12 +202,14 @@ func TestSharedReadsIdenticalLiveReadsShareOneRead(t *testing.T) {
 	}
 }
 
+// Ports packages/chord/src/store/store.ts:38 and :254 (Store.setOutbox).
 func TestChordStoreSetOutbox(t *testing.T) {
 	s := openStoreAt(t, t.TempDir()+"/outbox.sqlite")
-	if s.Outbox() != nil {
-		t.Fatalf("initial outbox = %v, want nil", s.Outbox())
+	var st Store = s
+	if st.Outbox() != nil {
+		t.Fatalf("initial outbox = %v, want nil", st.Outbox())
 	}
-	must(t, s.SetOutbox(true, background))
+	must(t, st.SetOutbox(true, background))
 	if s.Outbox() == nil || s.Outbox().Floor() != s.LastSeq() {
 		t.Fatalf("outbox after SetOutbox(true) = %v", s.Outbox())
 	}

@@ -2,7 +2,7 @@
 # settings-selector.ts:757-796 hides Show images and Image width, but retains
 # Auto-resize images and Block images. Reproduced with Herdr graphics forwarded
 # to the outer terminal; tmux is still the immediate terminal boundary.
-# Pi 1.2.0+3daa2028 shows (1/33) rows here: its roster adds share-destination (settings-selector.ts:516) and tmux hides the two image-only rows. PiG omits that row by approved divergence D64 and adds D80's Mask secret input row, so both sides show (1/33) with no count normalization.
+# Pi 1.2.0+3daa2028 shows (1/32) rows here: its roster adds share-destination (settings-selector.ts:516) and tmux hides the two image-only rows. PiG omits that row by approved divergence D64 and adds D80's Mask secret input row, so both sides show (1/32) with no count normalization.
 name = "09-settings-tmux-image-capability"
 description = "Tmux hides terminal image controls even inside an image-capable Herdr pane"
 covers = [
@@ -19,11 +19,11 @@ ready_pattern_pig = "(auto)"
 ready_pattern_pi = "(auto)"
 ready_timeout_seconds = 20
 capture_start = "Auto-compact"
-capture_end = "Type to search · Enter/Space to change · Esc to cancel"
+capture_end = "Type to search · enter/space to change · escape/ctrl+c to cancel"
 
 [[tmux.steps]]
 keys = ["/settings", "Enter"]
-wait_contains = ["Type to search · Enter/Space to change · Esc to cancel"]
+wait_contains = ["Type to search · enter/space to change · escape/ctrl+c to cancel"]
 wait_timeout_seconds = 5
 settle_seconds = 1
 
@@ -40,5 +40,5 @@ both_not_contain = ["Show images", "Image width"]
 output_equal = true
 escaped_output_equal = true
 runs = 3
-pig_contains = ["(1/33)"]
-pi_contains = ["(1/33)"]
+pig_contains = ["(1/32)"]
+pi_contains = ["(1/32)"]

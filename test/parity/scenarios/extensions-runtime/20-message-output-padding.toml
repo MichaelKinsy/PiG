@@ -39,7 +39,7 @@ wait_timeout_seconds = 20
 
 [[tmux.steps]]
 keys = ["/settings", "Enter"]
-wait_contains = ["Type to search · Enter/Space to change · Esc to cancel"]
+wait_contains = ["Type to search · enter/space to change · escape/ctrl+c to cancel"]
 wait_timeout_seconds = 10
 settle_seconds = 1
 

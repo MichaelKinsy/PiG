@@ -942,9 +942,10 @@ func TestBenchSlice14Exact(t *testing.T) {
 		mix := b14Mixed(t, 1)
 		defer mix.close()
 		runs, probes, skips := b14Touched(mix, 400)
-		// Pi: `expectExactly("runs a touch causes", touch.runs, 9)` (:565), probes 101 (:566), skips `mix.reads - 9` (:567).
-		if runs != 9 || probes != 101 || skips != float64(mix.reads-9) {
-			t.Fatalf("a touch: %v runs, %v probes, %v skipped of %d reads, want 9, 101, %d", runs, probes, skips, mix.reads, mix.reads-9)
+		// Pi v1.7.0 slice-14.ts:565-569: the commit index (slice 15 §3) leaves out the 41 reads whose bucket the
+		// touched row is not in (another app's lists, other teams' pages): 9 runs, 79 probes, `mix.reads - 9 - 41` skips.
+		if runs != 9 || probes != 79 || skips != float64(mix.reads-9-41) {
+			t.Fatalf("a touch: %v runs, %v probes, %v skipped of %d reads, want 9, 79, %d", runs, probes, skips, mix.reads, mix.reads-9-41)
 		}
 		// A write to another session: the worker following its own session runs nothing (:583-588).
 		before := mix.counts()

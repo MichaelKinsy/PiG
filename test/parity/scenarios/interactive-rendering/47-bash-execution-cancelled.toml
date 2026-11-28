@@ -40,7 +40,7 @@ capture_end_regex = '─{100}'
 
 [[tmux.steps]]
 keys = ["!sleep 30", "Enter"]
-wait_visible_contains = ["Running... (escape/ctrl+c to cancel)"]
+wait_visible_contains = ["Running... (escape to cancel)"]
 wait_timeout_seconds = 10
 
 [[tmux.steps]]

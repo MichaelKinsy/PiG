@@ -4,7 +4,7 @@
 # Upstream evidence (pi v0.69.0, modal selector, current loop probe):
 #   command: PI_CODING_AGENT_DIR=test/parity/scenarios/session/testdata/pi-agent pi --session-dir {{TEMP}}/sessions
 #   keys: /resume Enter
-#   crop: start="Resume Session (Current Folder)" end="  No sessions in current folder. Press Tab to view all."
+#   crop: start="Resume Session (Current Folder)" end="  No sessions in current folder. Press tab to view all."
 #   raw cropped upstream block:
 #
 #     Resume Session (Current Folder)                  ◉ Current Folder | ○ All  Name: All  Sort: Threaded
@@ -13,7 +13,7 @@
 #
 #     >
 #
-#       No sessions in current folder. Press Tab to view all.
+#       No sessions in current folder. Press tab to view all.
 
 name = "01-session-selector"
 description = "Both binaries render the empty /resume selector block exactly."
@@ -35,11 +35,11 @@ ready_pattern_pig = "Warning: No models available."
 ready_pattern_pi = "Warning: No models available."
 ready_timeout_seconds = 25
 capture_start = "Resume Session (Current Folder)"
-capture_end = "  No sessions in current folder. Press Tab to view all."
+capture_end = "  No sessions in current folder. Press tab to view all."
 
 [[tmux.steps]]
 keys = ["/resume", "Enter"]
-wait_contains = ["Resume Session (Current Folder)", "  No sessions in current folder. Press Tab to view all."]
+wait_contains = ["Resume Session (Current Folder)", "  No sessions in current folder. Press tab to view all."]
 wait_timeout_seconds = 5
 settle_seconds = 1
 

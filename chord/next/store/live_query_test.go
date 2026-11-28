@@ -15,6 +15,7 @@ import (
 )
 
 // pi: packages/chord/src/store/live-query.ts
+// pi: packages/chord/src/store/decoded-rows.ts
 // Ports packages/chord/test/store/live-query.test.ts as slice 14 changed it (Pi 92e1db6ca): "a refresh applied again" now
 // runs on the store's reads (`ReadRefresh`, `Reads`); the other cases of that file run on a host
 // (chord/next/host/host_live_query_test.go). The cases below are this port's own contract tests of live-query.ts over an

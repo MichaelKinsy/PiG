@@ -551,10 +551,11 @@ func TestSkipOwnTable(t *testing.T) {
 		wantCost(t, cost(func(changes changesOf) {
 			must(t, changes(d.Sessions).Update(Row{"id": "s04"}, Row{"title": "renamed"}))
 		}), 1, 0, 0)
-		// Ben's session touched: an order column, so it might enter; the probe says it does not.
+		// Ben's session touched: neither in the read before nor in its bucket (anna's) after, so the commit index
+		// (slice 15 §3) leaves the read out: not even skip-tested (Pi v1.7.0 skip.test.ts:114-120).
 		wantCost(t, cost(func(changes changesOf) {
 			must(t, changes(d.Sessions).Update(Row{"id": "s06"}, Row{"lastTouch": int64(999)}))
-		}), 0, 1, 1)
+		}), 0, 0, 0)
 		// A row past the window touched to the top: the probe finds it.
 		wantCost(t, cost(func(changes changesOf) {
 			must(t, changes(d.Sessions).Update(Row{"id": "s01"}, Row{"lastTouch": int64(1000)}))
@@ -563,8 +564,8 @@ func TestSkipOwnTable(t *testing.T) {
 		wantCost(t, cost(func(changes changesOf) {
 			must(t, changes(d.Sessions).Put(oracleSession("s07", Row{"lastTouch": int64(1)})))
 		}), 0, 1, 1)
-		// A delete of a row that was not fetched needs no probe; of the row past the bound it runs.
-		wantCost(t, cost(func(changes changesOf) { must(t, changes(d.Sessions).Delete(Row{"id": "s07"})) }), 0, 0, 1)
+		// A delete of a row that was not fetched concerns no read (the commit index); of the row past the bound it runs (Pi v1.7.0 skip.test.ts:133-138).
+		wantCost(t, cost(func(changes changesOf) { must(t, changes(d.Sessions).Delete(Row{"id": "s07"})) }), 0, 0, 0)
 		wantCost(t, cost(func(changes changesOf) { must(t, changes(d.Sessions).Delete(Row{"id": "s03"})) }), 1, 0, 0)
 	})
 
@@ -685,15 +686,24 @@ func TestSkipCost(t *testing.T) {
 	type changesOf = func(*TableDefinition) *TableChanges
 
 	t.Run("a transaction writing many rows asks a read a few probes, then runs it", func(t *testing.T) {
-		// Fable S5: a bulk of puts must not probe one read once per row.
+		// Fable S5: a bulk of puts must not probe one read once per row (Pi v1.7.0 skip.test.ts:264-279).
 		_, cost := d.measured(t, []string{"created by anna"}, func(changes changesOf) {
-			must(t, changes(d.Sessions).Put(oracleSession("s01", nil)))
+			for _, id := range []string{"s01", "s02", "s03", "s04"} {
+				must(t, changes(d.Sessions).Put(oracleSession(id, nil)))
+			}
 		})
+		// Anna's rows behind the window's last one: each a candidate, each probe a miss.
 		wantCost(t, cost(func(changes changesOf) {
 			for index := range 100 {
-				must(t, changes(d.Sessions).Put(oracleSession(fmt.Sprintf("b%d", index), Row{"creator": "ben"})))
+				must(t, changes(d.Sessions).Put(oracleSession(fmt.Sprintf("b%d", index), Row{"lastTouch": int64(1)})))
 			}
 		}), 1, 8, 0)
+		// Rows of another person's bucket are no candidates (slice 15 §3): the limit counts the read's candidate rows.
+		wantCost(t, cost(func(changes changesOf) {
+			for index := range 100 {
+				must(t, changes(d.Sessions).Put(oracleSession(fmt.Sprintf("c%d", index), Row{"creator": "ben"})))
+			}
+		}), 0, 0, 0)
 	})
 
 	t.Run("builds no change of a transaction whose tables nothing reads", func(t *testing.T) {
