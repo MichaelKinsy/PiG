@@ -1,9 +1,0 @@
-{
-  "upstreamVersion": "1.6.1",
-  "owners": [
-    {
-      "id": "input:packages/coding-agent/src/modes/interactive/components/settings-selector.ts#ToggleSettingsSubmenu.handleInput",
-      "ownerFamily": "settings"
-    }
-  ]
-}
