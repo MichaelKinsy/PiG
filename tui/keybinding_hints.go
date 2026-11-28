@@ -74,6 +74,22 @@ func ActionKeyText(action string) string {
 	return GetTUIKeybindings().formatActionKeyText(action, false)
 }
 
+// formatActionKeyText formats the resolved keys for action without cloning the slice.
+func (m *TUIKeybindingsManager) formatActionKeyText(action TUIKeybinding, capitalize bool) string {
+	keys := m.keysById[action]
+	if len(keys) == 0 {
+		return ""
+	}
+	if len(keys) == 1 {
+		k := keys[0]
+		if !capitalize && (runtime.GOOS != "darwin" || (!strings.Contains(k, "+") && !strings.EqualFold(k, "alt"))) {
+			return k
+		}
+		return FormatKeyText(k, capitalize)
+	}
+	return FormatKeyText(strings.Join(keys, "/"), capitalize)
+}
+
 // ActionKeyTextOr is ActionKeyText for an action that may not be registered
 // (app actions outside the interactive mode, such as in component tests),
 // falling back to the upstream default keys.

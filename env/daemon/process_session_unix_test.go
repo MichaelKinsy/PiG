@@ -89,11 +89,13 @@ func TestPtyShellSelfExitKillsBackgroundJobInOwnGroup(t *testing.T) {
 	}
 	defer proc.close()
 
-	done := make(chan struct{})
+	// Drain the PTY before closing done: wait() can return before the reader goroutine
+	// is scheduled, and closing done first would make proc.read return before reading
+	// the buffered line (EIO closes the master once the shell exits and all bytes are read).
 	outCh := make(chan string, 1)
 	go func() {
 		var buf strings.Builder
-		proc.read(done, func(b []byte) bool {
+		proc.read(nil, func(b []byte) bool {
 			buf.Write(b)
 			return !strings.Contains(buf.String(), "\n")
 		})
@@ -101,7 +103,6 @@ func TestPtyShellSelfExitKillsBackgroundJobInOwnGroup(t *testing.T) {
 	}()
 
 	code, err := proc.wait()
-	close(done)
 	if err != nil || code != 0 {
 		t.Fatalf("pty wait = (%d, %v), want (0, nil)", code, err)
 	}
