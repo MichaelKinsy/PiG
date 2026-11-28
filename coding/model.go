@@ -210,16 +210,17 @@ func modelFromEntry(entry icodingagent.ModelEntry, provider ai.Provider) *ai.Mod
 	model.DisplayName = displayName
 	model.Provider = provider
 	model.Capabilities = ai.ModelCapabilities{
-		MaxThinking:         thinkingMaxLevelForEntry(entry),
-		SupportsImages:      slices.Contains(entry.Input, "image"),
-		SupportsToolUse:     true,
-		ContextWindow:       entry.ContextWindow,
-		MaxOutputTokens:     entry.MaxTokens,
-		InputCostPer1M:      entry.InputCost,
-		OutputCostPer1M:     entry.OutputCost,
-		CacheReadCostPer1M:  entry.CacheReadCost,
-		CacheWriteCostPer1M: entry.CacheWriteCost,
-		CostTiers:           slices.Clone(entry.CostTiers),
+		MaxThinking:          thinkingMaxLevelForEntry(entry),
+		SupportsImages:       slices.Contains(entry.Input, "image"),
+		SupportsToolUse:      true,
+		ContextWindow:        entry.ContextWindow,
+		MaxOutputTokens:      entry.MaxTokens,
+		InputCostPer1M:       entry.InputCost,
+		OutputCostPer1M:      entry.OutputCost,
+		CacheReadCostPer1M:   entry.CacheReadCost,
+		CacheWriteCostPer1M:  entry.CacheWriteCost,
+		ImageOutputCostPer1M: cloneFloatPtr(entry.ImageOutputCost),
+		CostTiers:            slices.Clone(entry.CostTiers),
 	}
 	model.Input = input
 	model.InputLimits = entry.InputLimits.Clone()
@@ -531,6 +532,14 @@ func googleAPIVersionForBaseURL(baseURL string) string {
 		return ""
 	}
 	return "v1beta"
+}
+
+func cloneFloatPtr(in *float64) *float64 {
+	if in == nil {
+		return nil
+	}
+	v := *in
+	return &v
 }
 
 func cloneStringMap(in map[string]string) map[string]string {

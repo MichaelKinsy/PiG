@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
@@ -50,6 +51,9 @@ const (
 	ErrDrainTimeout HostErrorKind = "drain_timeout"
 	// ErrProtocolError: a link's peer broke the protocol (Error).
 	ErrProtocolError HostErrorKind = "protocol_error"
+	// ErrLinkClosed: the heartbeat closed a link whose peer stayed silent past `close` (slice 15 §4): a stalled or gone
+	// peer. Its holders here are `loading` until another link holds them again; once per closed link (Reason, Role).
+	ErrLinkClosed HostErrorKind = "link_closed"
 	// ErrResolveFailed: a route's `resolve` rejected (Address, Error).
 	ErrResolveFailed HostErrorKind = "resolve_failed"
 	// ErrDeriveFailed: a derive's compute threw (Object, Member when it is an exposed state member, Error), once per
@@ -63,6 +67,10 @@ const (
 	// run ends it): the query is a failed member until then (Object, Query, Error; `self.query`, and the named queries of
 	// slice 14).
 	ErrQueryFailed HostErrorKind = "query_failed"
+	// ErrFollowFailed: a source followed over a changing source (`self.follow(over, attach)`) failed while live: the
+	// attach to the value given rejected, or its runtime failed its observer. Once per failure episode (its next
+	// attachment ends it): the member is failed until then, the object stays live. Also a runtime's detach that threw.
+	ErrFollowFailed HostErrorKind = "follow_failed"
 	// ErrRoutineFailed: a routine's call threw, or its source failed for good (Object, Routine, Error).
 	ErrRoutineFailed HostErrorKind = "routine_failed"
 	// ErrJobFailed: a job's `run` threw, not after an abort (Object, Job, ID, Error): its outcome is `failed { threw }`.
@@ -99,7 +107,10 @@ type HostError struct {
 	Native  Position
 	Routine Position
 	Address string
-	Member  string
+	// Reason and Role are a link_closed error's close reason (`heartbeat`) and link role (`parent`, `child`, `route`).
+	Reason link.LinkCloseReason
+	Role   string
+	Member string
 	// Query is a query_failed's query: the table's name for `self.query`, the named query's label for `self.liveQuery`,
 	// `self.count` and `self.list` (slice 14).
 	Query    string

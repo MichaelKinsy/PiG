@@ -365,13 +365,6 @@ export class SettingsSelectorComponent extends Container {
                 values: ["true", "header", "false"],
             },
             {
-                id: "install-telemetry",
-                label: "Install telemetry",
-                description: "Send an anonymous version/update ping after changelog-detected updates",
-                currentValue: config.enableInstallTelemetry ? "true" : "false",
-                values: ["true", "false"],
-            },
-            {
                 id: "default-project-trust",
                 label: "Default project trust",
                 description: "Fallback behavior when no extension or saved trust decision decides project trust",
@@ -531,7 +524,7 @@ export class SettingsSelectorComponent extends Container {
             {
                 id: "fullscreen-copy-on-select",
                 label: "Fullscreen copy on select",
-                description: "Automatically copy selected text in fullscreen mode; disable to copy selections with Ctrl+X",
+                description: `Automatically copy selected text in fullscreen mode; disable to copy selections with ${keyDisplayText("app.message.copy")}`,
                 currentValue: config.fullscreenCopyOnSelect ? "true" : "false",
                 values: ["true", "false"],
             },
@@ -709,9 +702,6 @@ export class SettingsSelectorComponent extends Container {
                     break;
                 case "quiet-startup":
                     callbacks.onQuietStartupChange(newValue === "header" ? "header" : newValue === "true");
-                    break;
-                case "install-telemetry":
-                    callbacks.onEnableInstallTelemetryChange(newValue === "true");
                     break;
                 case "default-project-trust": {
                     const defaultProjectTrust = DEFAULT_PROJECT_TRUST_BY_LABEL.get(newValue);

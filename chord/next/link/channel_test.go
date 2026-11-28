@@ -38,7 +38,7 @@ func (handler *recordingHandler) Opened() {
 	handler.opened++
 }
 
-func (handler *recordingHandler) Closed() {
+func (handler *recordingHandler) Closed(reason link.LinkCloseReason) {
 	handler.mu.Lock()
 	defer handler.mu.Unlock()
 	handler.closed++

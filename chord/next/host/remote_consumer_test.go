@@ -108,8 +108,8 @@ func TestConsumerReferencesOverALink(t *testing.T) {
 			addNote(t, l.Server, "S1", "a")
 			notes, err := l.Client.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
-			if variant, _, _ := notes.Variant(); variant != "reader" {
-				t.Fatalf("variant = %q, want reader", variant)
+			if granted, _ := notes.Granted(); granted["add"] {
+				t.Fatalf("granted = %v, want no add", granted)
 			}
 			nexttest.RequireJSONEqual(t, memberValue(t, notes, "notes"), []any{jsonObject("text", "a")})
 			nexttest.RequireJSONEqual(t, memberValue(t, notes, "count"), 1.0)
@@ -141,9 +141,9 @@ func TestConsumerReferencesOverALink(t *testing.T) {
 			must(t, l.Server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
 			must(t, client.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
 			mustLoad(t)(client.Load([]HostFacet{{Name: "@test/view", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-				return h.Serve(View, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+				return h.Serve(View, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 					notes := self.Get(Notes, jsonObject("session", "S1"))
-					return contracts.Implementation{Members: contracts.VariantImplementation{
+					return contracts.MembersImplementation{
 						State: map[string]chord.Watchable[delta.JsonValue]{
 							"pair": self.Derive([]any{notes.Member("notes"), notes.Member("count")}, func(values []any) (delta.JsonValue, error) {
 								pair := formatNumber(float64(len(values[0].([]any)))) + "/" + formatNumber(values[1].(float64))
@@ -151,7 +151,7 @@ func TestConsumerReferencesOverALink(t *testing.T) {
 								return pair, nil
 							}),
 						},
-					}}, nil
+					}, nil
 				}, ServeOptions{})
 			})}}, background))
 			view, err := client.Get(background, View, jsonObject(), GetOptions{})
@@ -180,8 +180,8 @@ func TestConsumerReferencesOverALink(t *testing.T) {
 			l := linked(t, func(h FacetHost) error { _, err := serveNotes(h, nil); return err }, linkedOptions{})
 			notes, err := l.Client.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
-			if variant, _, _ := notes.Variant(); variant != "editor" {
-				t.Fatalf("variant = %q, want the editor", variant)
+			if granted, _ := notes.Granted(); !granted["add"] {
+				t.Fatalf("granted = %v, want add", granted)
 			}
 			added, err := notes.Call("add", jsonObject("text", "x"), background)
 			must(t, err)
@@ -322,7 +322,7 @@ func TestConsumerRaces(t *testing.T) {
 				t.Fatalf("late get error = %v, want did not become live", result.err)
 			}
 			p.Peer.Send(&link.BoundMessage{Holds: []link.BoundEntry{{
-				Hold: hold, Variant: editor.Variant, Members: boundMembers(t, link.Text("[]"), link.Text("0")), Failed: []link.FailedMember{},
+				Hold: hold, Granted: editor.Granted, Members: boundMembers(t, link.Text("[]"), link.Text("0")), Failed: []link.FailedMember{},
 			}}})
 			p.Peer.Send(&link.StateMessage{Holds: []link.StateEntry{stateEntry(hold,
 				[]link.StateMember{{Member: editor.State["count"], Ops: mustJSONPart(t, []any{[]any{"r", 1.0}})}}, nil)}})
@@ -485,8 +485,8 @@ func TestConsumerWireFormatOfAHold(t *testing.T) {
 			})
 			editor := editorWire(t)
 			bound := peer.Next("bound").(*link.BoundMessage).Holds[0]
-			if bound.Variant != editor.Variant {
-				t.Fatalf("variant = %d, want %d", bound.Variant, editor.Variant)
+			if !slices.Equal(bound.Granted, editor.Granted) {
+				t.Fatalf("granted = %v, want %v", bound.Granted, editor.Granted)
 			}
 			nexttest.RequireJSONEqual(t, editor.NamedBound(t, bound.Members), map[string]any{"notes": []any{}, "count": 0.0})
 			addNote(t, l.Server, "S1", "a")
@@ -593,10 +593,10 @@ func pairOf(t testing.TB) *pairHost {
 	must(t, client.Connect(a, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
 	peer := newRawPeer(t, b, rawPeerOptions{})
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(Pair, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(Pair, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			one := self.Get(Notes, jsonObject("session", "S1"))
 			two := self.Get(Notes, jsonObject("session", "S2"))
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"pair": self.Derive([]any{one.Member("count"), two.Member("count")}, func(values []any) (delta.JsonValue, error) {
 						pair := formatNumber(values[0].(float64)) + "/" + formatNumber(values[1].(float64))
@@ -604,7 +604,7 @@ func pairOf(t testing.TB) *pairHost {
 						return pair, nil
 					}),
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})
 	loading := make(chan error, 1)
@@ -670,16 +670,16 @@ func TestConsumerBytesOutsideMethodsWithBytes(t *testing.T) {
 	forEachCodec(t, func(t *testing.T) {
 		// Ports "$bytes outside methods with bytes › is plain data: {$bytes: 0} round-trips unchanged through a method without bytes".
 		t.Run("is plain data: {$bytes: 0} round-trips unchanged through a method without bytes", func(t *testing.T) {
-			Echo := remoteOneVariant("app.echo", contracts.Params{}, contracts.VariantDeclaration{
-				Methods: []contracts.MethodEntry{contracts.Meth("echo", contracts.NewMethod(contracts.Map(contracts.Int()), contracts.Map(contracts.Int())))},
+			Echo := remoteOneVariant("app.echo", contracts.Params{}, contracts.RemoteDeclaration{
+				Methods: []contracts.RemoteMethodEntry{contracts.Meth("echo", contracts.NewMethod(contracts.Map(contracts.Int()), contracts.Map(contracts.Int())))},
 			})
 			l := linked(t, func(h FacetHost) error {
-				return h.Serve(Echo, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
-					return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+				return h.Serve(Echo, func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {
+					return contracts.MembersImplementation{
 						Methods: map[string]contracts.MethodFunction{
 							"echo": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) { return args, nil },
 						},
-					}}, nil
+					}, nil
 				}, ServeOptions{})
 			}, linkedOptions{})
 			echo, err := l.Client.Get(background, Echo, jsonObject(), GetOptions{})
@@ -872,8 +872,8 @@ func TestConsumerLimitsPerPart(t *testing.T) {
 			must(t, err)
 			one, two := p.Peer.Next("hold").(*link.HoldMessage), p.Peer.Next("hold").(*link.HoldMessage)
 			p.Peer.Send(&link.BoundMessage{Holds: []link.BoundEntry{
-				{Hold: one.Hold, Variant: editor.Variant, Members: members(bigNotes()), Failed: []link.FailedMember{}},
-				{Hold: two.Hold, Variant: editor.Variant, Members: members(link.Text(`[{"text":"a"}]`)), Failed: []link.FailedMember{}},
+				{Hold: one.Hold, Granted: editor.Granted, Members: members(bigNotes()), Failed: []link.FailedMember{}},
+				{Hold: two.Hold, Granted: editor.Granted, Members: members(link.Text(`[{"text":"a"}]`)), Failed: []link.FailedMember{}},
 			}})
 			if released := p.Peer.Next("release").(*link.ReleaseMessage); released.Hold != one.Hold {
 				t.Fatalf("released hold = %d, want %d", released.Hold, one.Hold)
@@ -910,7 +910,7 @@ func TestConsumerLimitsPerPart(t *testing.T) {
 			must(t, err)
 			hold := p.Peer.Next("hold").(*link.HoldMessage).Hold
 			p.Peer.Send(&link.BoundMessage{Holds: []link.BoundEntry{{
-				Hold: hold, Variant: editor.Variant, Members: boundMembers(t, deflatedList(), link.Text("1")), Failed: []link.FailedMember{},
+				Hold: hold, Granted: editor.Granted, Members: boundMembers(t, deflatedList(), link.Text("1")), Failed: []link.FailedMember{},
 			}}})
 			p.Peer.Send(&link.StateMessage{Holds: []link.StateEntry{stateEntry(hold,
 				[]link.StateMember{{Member: editor.State["count"], Ops: mustJSONPart(t, []any{[]any{"r", 2.0}})}}, nil)}})
@@ -930,7 +930,7 @@ func TestConsumerLimitsPerPart(t *testing.T) {
 			must(t, err)
 			hold := p.Peer.Next("hold").(*link.HoldMessage).Hold
 			p.Peer.Send(&link.BoundMessage{Holds: []link.BoundEntry{{
-				Hold: hold, Variant: editor.Variant, Members: boundMembers(t, deflatedList(), link.Text("1")), Failed: []link.FailedMember{},
+				Hold: hold, Granted: editor.Granted, Members: boundMembers(t, deflatedList(), link.Text("1")), Failed: []link.FailedMember{},
 			}}})
 			p.Peer.Close()
 			for range 20 {
@@ -985,7 +985,7 @@ func TestConsumerLimitsPerPart(t *testing.T) {
 				hold := p.Peer.Next("hold").(*link.HoldMessage).Hold
 				corrupt := repeatBytes(255, 20)
 				p.Peer.Send(&link.BoundMessage{Holds: []link.BoundEntry{{
-					Hold: hold, Variant: editor.Variant, Members: boundMembers(t, link.NewDeflatedPart(corrupt), link.Text("1")), Failed: []link.FailedMember{},
+					Hold: hold, Granted: editor.Granted, Members: boundMembers(t, link.NewDeflatedPart(corrupt), link.Text("1")), Failed: []link.FailedMember{},
 				}}})
 				if released := p.Peer.Next("release").(*link.ReleaseMessage); released.Hold != hold {
 					t.Fatalf("released hold = %d, want %d", released.Hold, hold)
@@ -1007,7 +1007,7 @@ func TestConsumerLimitsPerPart(t *testing.T) {
 			must(t, err)
 			hold := p.Peer.Next("hold").(*link.HoldMessage).Hold
 			p.Peer.Send(&link.BoundMessage{Holds: []link.BoundEntry{{
-				Hold: hold, Variant: editor.Variant, Members: members(bigNotes()), Failed: []link.FailedMember{},
+				Hold: hold, Granted: editor.Granted, Members: members(bigNotes()), Failed: []link.FailedMember{},
 			}}})
 			p.Peer.Next("release")
 			p.Peer.Close()
@@ -1044,7 +1044,7 @@ func TestConsumerLimitsPerPart(t *testing.T) {
 				must(t, err)
 				hold := p.Peer.Next("hold").(*link.HoldMessage).Hold
 				p.Peer.Send(&link.BoundMessage{Holds: []link.BoundEntry{{
-					Hold: hold, Variant: editor.Variant,
+					Hold: hold, Granted: editor.Granted,
 					Members: boundMembers(t, link.NewDeflatedPart(nextnode.NodeCompression.Deflate([]byte("[]"))), link.Text("1")),
 					Failed:  []link.FailedMember{},
 				}}})
@@ -1122,19 +1122,19 @@ func backCall(t *testing.T, side string, raised, dependentFirst bool) (string, t
 	other := map[string]string{"server": "worker", "worker": "server"}[side]
 	provider := mustContract(contracts.Remote("app.provider-"+side, contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{}, HostAddress: address(side),
-		Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{Methods: []contracts.MethodEntry{
+		Methods: []contracts.RemoteMethodEntry{
 			contracts.Meth("work", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
 			contracts.Meth("x", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
-		}})},
+		},
 	}))
 	providerV2 := mustContract(contracts.Evolve(provider, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
-		return e.AddState("v", "more", contracts.Str())
+		return e.AddState("more", contracts.Str())
 	}))
 	dependent := mustContract(contracts.Remote("app.dependent-"+other, contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{}, HostAddress: address(other),
-		Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{Methods: []contracts.MethodEntry{
+		Methods: []contracts.RemoteMethodEntry{
 			contracts.Meth("ping", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
-		}})},
+		},
 	}))
 	gates := make(chan *reloadGate, 1)
 	serve := func(h FacetHost, onSide, code string) error {
@@ -1147,8 +1147,8 @@ func backCall(t *testing.T, side string, raised, dependentFirst bool) (string, t
 			if typ == providerV2 {
 				state["more"] = constant("m")
 			}
-			return h.Serve(typ, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
-				return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{State: state, Methods: map[string]contracts.MethodFunction{
+			return h.Serve(typ, func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {
+				return contracts.MembersImplementation{State: state, Methods: map[string]contracts.MethodFunction{
 					"work": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 						select {
 						case gate := <-gates:
@@ -1160,18 +1160,18 @@ func backCall(t *testing.T, side string, raised, dependentFirst bool) (string, t
 						return code + " work -> " + got, err
 					},
 					"x": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return code + " x", nil },
-				}}}, nil
+				}}, nil
 			}, ServeOptions{})
 		}
-		return h.Serve(dependent, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return h.Serve(dependent, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			held := self.Get(typ, jsonObject())
-			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				"ping": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					value, err := held.Call("x", nil, ctx)
 					text, _ := value.(string)
 					return code + " ping -> " + text, err
 				},
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	}
 	workerFacet := func(code string) Facet {

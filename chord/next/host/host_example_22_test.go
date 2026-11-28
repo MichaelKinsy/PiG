@@ -41,7 +41,7 @@ func TestExample22Migrations(t *testing.T) {
 	// facetOf is the facet of one deployment: its newest table version, and how it writes a row.
 	facetOf := func(definition *store.TableDefinition, columns []string, row func(id string, at int64) store.Row) func(FacetHost, FacetSelf) error {
 		return func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(history, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(history, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				edits := self.(StoreSelf).Table(definition)
 				return exImpl(nil, map[string]contracts.MethodFunction{
 					"record": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {

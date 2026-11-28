@@ -69,17 +69,17 @@ func unicodeUpstreamCases() []unicodeUpstreamCase {
 		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:495
 		{"should handle unpaired high surrogate (0xD83D) in tool results", "cerebras", "gpt-oss-120b", 2, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:503
-		{"should handle emoji in tool results", "cloudflare-workers-ai", "@cf/moonshotai/kimi-k2.6", 0, false, ""},
+		{"should handle emoji in tool results", "cloudflare-workers-ai", "@cf/zai-org/glm-5.3", 0, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:507
-		{"should handle real-world LinkedIn comment data with emoji", "cloudflare-workers-ai", "@cf/moonshotai/kimi-k2.6", 1, false, ""},
+		{"should handle real-world LinkedIn comment data with emoji", "cloudflare-workers-ai", "@cf/zai-org/glm-5.3", 1, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:511
-		{"should handle unpaired high surrogate (0xD83D) in tool results", "cloudflare-workers-ai", "@cf/moonshotai/kimi-k2.6", 2, false, ""},
+		{"should handle unpaired high surrogate (0xD83D) in tool results", "cloudflare-workers-ai", "@cf/zai-org/glm-5.3", 2, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:519
-		{"should handle emoji in tool results", "cloudflare-ai-gateway", "workers-ai/@cf/moonshotai/kimi-k2.6", 0, false, ""},
+		{"should handle emoji in tool results", "cloudflare-ai-gateway", "workers-ai/@cf/zai-org/glm-5.3", 0, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:523
-		{"should handle real-world LinkedIn comment data with emoji", "cloudflare-ai-gateway", "workers-ai/@cf/moonshotai/kimi-k2.6", 1, false, ""},
+		{"should handle real-world LinkedIn comment data with emoji", "cloudflare-ai-gateway", "workers-ai/@cf/zai-org/glm-5.3", 1, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:527
-		{"should handle unpaired high surrogate (0xD83D) in tool results", "cloudflare-ai-gateway", "workers-ai/@cf/moonshotai/kimi-k2.6", 2, false, ""},
+		{"should handle unpaired high surrogate (0xD83D) in tool results", "cloudflare-ai-gateway", "workers-ai/@cf/zai-org/glm-5.3", 2, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:535
 		{"should handle emoji in tool results", "huggingface", "moonshotai/Kimi-K2.5", 0, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:539

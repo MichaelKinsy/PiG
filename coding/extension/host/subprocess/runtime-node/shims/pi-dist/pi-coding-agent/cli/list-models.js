@@ -2,7 +2,6 @@
  * List available models with optional fuzzy search
  */
 import { fuzzyFilter } from "../../../pi-tui.mjs";
-import chalk from "../../../chalk/source/index.js";
 import { formatNoModelsAvailableMessage } from "../core/auth-guidance.js";
 /**
  * Format a number as human-readable (e.g., 200000 -> "200K", 1000000 -> "1M")
@@ -22,10 +21,6 @@ function formatTokenCount(count) {
  * List available models, optionally filtered by search pattern
  */
 export async function listModels(modelRuntime, searchPattern, signal) {
-    const loadError = modelRuntime.getError();
-    if (loadError) {
-        console.error(chalk.yellow(`Warning: errors loading models.json:\n${loadError}`));
-    }
     const models = [...(await modelRuntime.getAvailable(undefined, { signal }))];
     if (models.length === 0) {
         console.log(formatNoModelsAvailableMessage());

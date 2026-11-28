@@ -13,10 +13,12 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/internal/jsclock"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
@@ -55,14 +57,14 @@ const minuteMs = 60_000
 // batch).
 func IngestFacet(options IngestOptions) host.Facet {
 	return host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		if err := h.Serve(PageTelemetry, func(_ *delta.JsonObject, principal data.Principal, _ host.Self) (contracts.Implementation, error) {
+		if err := h.Serve(PageTelemetry, func(_ *delta.JsonObject, principal data.Principal, _ host.Self) (contracts.MembersImplementation, error) {
 			if !options.Admit(principal) {
-				return contracts.Implementation{}, data.Forbidden("chord.telemetry.page: not admitted")
+				return contracts.MembersImplementation{}, data.Forbidden("chord.telemetry.page: not admitted")
 			}
 			// Per span, as for every span Chord records with a principal: caching is the hook's own.
 			who := func() telemetry.SpanAttributes { return options.PrincipalAttributes(principal) }
 			budgets := &pageBudgets{budgets: map[string]*budget{}}
-			return contracts.Implementation{Variant: "main", Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				Methods: map[string]contracts.MethodFunction{
 					"ingest": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 						incarnation := ctx.(host.Ctx).Incarnation()
@@ -72,16 +74,14 @@ func IngestFacet(options IngestOptions) host.Facet {
 						return receiptOf(written, len(spans)-written), nil
 					},
 				},
-			}}, nil
+			}, nil
 		}, host.ServeOptions{Untraced: true}); err != nil {
 			return err
 		}
-		return h.Serve(WorkerTelemetry, func(_ *delta.JsonObject, principal data.Principal, _ host.Self) (contracts.Implementation, error) {
-			worker, ok := options.WorkerHost(principal)
-			if !ok {
-				return contracts.Implementation{Variant: "other"}, nil
-			}
-			return contracts.Implementation{Variant: "worker", Members: contracts.VariantImplementation{
+		return h.Serve(WorkerTelemetry, func(_ *delta.JsonObject, principal data.Principal, _ host.AdmittedValue, _ host.Self) (contracts.MembersImplementation, error) {
+			// Granted to a worker's principal only (its admission): its host stamps its spans.
+			worker, _ := options.WorkerHost(principal)
+			return contracts.MembersImplementation{
 				Methods: map[string]contracts.MethodFunction{
 					"ingest": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
 						batch := args.(*delta.JsonObject)
@@ -94,8 +94,16 @@ func IngestFacet(options IngestOptions) host.Facet {
 						return receiptOf(written, len(spans)-written), nil
 					},
 				},
-			}}, nil
-		}, host.ServeOptions{Untraced: true})
+			}, nil
+		}, host.ServeOptions{
+			Untraced: true,
+			Admit: func(_ *delta.JsonObject, principal data.Principal, _ host.AdmitSelf) (chord.Watchable[delta.JsonValue], error) {
+				if _, ok := options.WorkerHost(principal); !ok {
+					return host.Expose(state.NewConstant(host.Allow(delta.NewJsonObject(0)))), nil
+				}
+				return host.Expose(state.NewConstant(host.Allow(delta.JsonObjectOf("granted", []delta.JsonValue{"ingest"})))), nil
+			},
+		})
 	})
 }
 

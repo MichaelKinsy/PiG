@@ -96,7 +96,7 @@ func qrNoteJSON(id int64, text any) *delta.JsonObject {
 
 // qrServeStore is Pi's `serveStore(h, probe, declare)`.
 func qrServeStore(h FacetHost, probe *qrProbe) error {
-	return h.Serve(qrNoteStore, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+	return h.Serve(qrNoteStore, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 		self := plain.(StoreSelf)
 		table := self.Table(qrNotes)
 		notes := self.Queries(table, QueriesOptions{
@@ -128,7 +128,7 @@ func qrServeStore(h FacetHost, probe *qrProbe) error {
 			_, err := self.Tx(func(tx documents.Tx) (any, error) { return nil, write(tx) }, ctx)
 			return nil, err
 		}
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			Queries: map[string]map[string]contracts.NamedQuery[delta.JsonValue, delta.JsonValue]{"notes": notes},
 			Methods: map[string]contracts.MethodFunction{
 				"put": exMethod(func(row *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
@@ -149,7 +149,7 @@ func qrServeStore(h FacetHost, probe *qrProbe) error {
 					return tx(ctx, func(tx documents.Tx) error { return tx.Delete(table, store.Row{"id": qrInt(arg)}) })
 				},
 			},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 }
 
@@ -179,15 +179,15 @@ func (l *qrLive) last(n int) []weak.Pointer[store.LiveQuery] {
 
 // qrServeBoard is Pi's `serveBoard(h, first)`.
 func qrServeBoard(h FacetHost, first int64, live *qrLive) error {
-	return h.Serve(qrBoard, func(params *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+	return h.Serve(qrBoard, func(params *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 		args := jsonObject("board", params.Value("board"))
 		ofBoard := plain.Get(qrNoteStore, jsonObject()).Queries("notes")["ofBoard"]
 		notes, count := plain.LiveQuery(ofBoard, args, first), plain.Count(ofBoard, args)
 		live.note(notes)
 		live.note(count)
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{"notes": notes, "count": count},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 }
 
@@ -330,27 +330,27 @@ var (
 // qrServeFiltered is Pi's `serveFiltered(h, factories)`: a filter whose `board` a method sets, and a view whose arguments
 // follow it.
 func qrServeFiltered(h FacetHost, factories *[]string) error {
-	if err := h.Serve(qrFilter, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+	if err := h.Serve(qrFilter, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 		board := plain.Writable("a")
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{"board": plain.Derive([]any{board}, func(values []any) (delta.JsonValue, error) { return values[0], nil })},
 			Methods: map[string]contracts.MethodFunction{"show": func(arg delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
 				return nil, board.Set(arg)
 			}},
-		}}, nil
+		}, nil
 	}, ServeOptions{}); err != nil {
 		return err
 	}
-	return h.Serve(qrFiltered, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+	return h.Serve(qrFiltered, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 		if factories != nil {
 			*factories = append(*factories, "filtered")
 		}
 		filter := plain.Get(qrFilter, jsonObject())
 		args := plain.Derive([]any{filter.Member("board")}, func(values []any) (delta.JsonValue, error) { return jsonObject("board", values[0]), nil })
 		ofBoard := plain.Get(qrNoteStore, jsonObject()).Queries("notes")["ofBoard"]
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{"notes": plain.LiveQuery(ofBoard, args, 5)},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 }
 
@@ -456,12 +456,12 @@ func TestQueryReaderFailures(t *testing.T) {
 		host := newHost(t, HostOptions{Store: chordStore, OnError: errs.push})
 		broken := mustContract(contracts.Local("app.broken", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("notes", qrPage)}}))
 		_, err := host.Load([]HostFacet{qrStoreFacet, {Name: "@test/views", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(broken, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+			return h.Serve(broken, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 				// Plugin code is bundled without type checks: a wrong argument reaches the schema.
 				one := plain.Get(qrNoteStore, jsonObject()).Queries("notes")["one"]
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{"notes": plain.LiveQuery(one, jsonObject("id", "x"), 1)},
-				}}, nil
+				}, nil
 			}, ServeOptions{})
 		})}}, background)
 		must(t, err)
@@ -484,11 +484,11 @@ func TestQueryReaderFailures(t *testing.T) {
 		host := newHost(t, HostOptions{Store: chordStore, OnError: errs.push})
 		broken := mustContract(contracts.Local("app.thrower", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("notes", qrPage)}}))
 		_, err := host.Load([]HostFacet{qrStoreFacet, {Name: "@test/views", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(broken, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+			return h.Serve(broken, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 				ofBoard := plain.Get(qrNoteStore, jsonObject()).Queries("notes")["ofBoard"]
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{"notes": plain.LiveQuery(ofBoard, jsonObject("board", "broken"), 1)},
-				}}, nil
+				}, nil
 			}, ServeOptions{})
 		})}}, background)
 		must(t, err)
@@ -517,7 +517,7 @@ func TestQueryReaderFailures(t *testing.T) {
 		own := mustContract(contracts.Local("app.own", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())}}))
 		var thrown []string
 		_, err := host.Load([]HostFacet{{Name: "@test/own", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(own, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+			return h.Serve(own, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 				table := plain.(StoreSelf).Table(qrNotes)
 				named := plain.(StoreSelf).Queries(table, QueriesOptions{Map: func(row store.Row, _ PartnerRow) (delta.JsonValue, error) { return float64(qrInt(row["id"])), nil }},
 					map[string]QueryBuilder{"all": {Args: contracts.Obj(), Build: func(delta.JsonValue) *store.Query { return store.NewQuery(qrNotes) }}})
@@ -531,7 +531,7 @@ func TestQueryReaderFailures(t *testing.T) {
 				}
 				attempt(func() { plain.LiveQuery(nqForeign{}, jsonObject(), 1) })
 				attempt(func() { plain.LiveQuery(named["all"], jsonObject(), 0) })
-				return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"n": plain.Count(named["all"], jsonObject())}}}, nil
+				return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"n": plain.Count(named["all"], jsonObject())}}, nil
 			}, ServeOptions{})
 		})}}, background)
 		must(t, err)
@@ -567,23 +567,23 @@ var (
 )
 
 func qrServeTags(h FacetHost) error {
-	return h.Serve(qrTagStore, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+	return h.Serve(qrTagStore, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 		table := plain.(StoreSelf).Table(qrTags)
-		return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+		return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 			"tag": exMethod(func(row *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
 				_, err := plain.Tx(func(tx documents.Tx) (any, error) {
 					return nil, tx.Put(table, store.Row{"note": qrInt(row.Value("note")), "tag": row.Value("tag")})
 				}, ctx)
 				return nil, err
 			}),
-		}}}, nil
+		}}, nil
 	}, ServeOptions{})
 }
 
 // qrServeTagged is Pi's `serveTagged`: a store whose query tests `exists` in the tags' column set (another plugin's), and
 // a view of it.
 func qrServeTagged(h FacetHost, extra func(self Self)) error {
-	if err := h.Serve(qrTaggedNotes, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+	if err := h.Serve(qrTaggedNotes, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 		table := plain.(StoreSelf).Table(qrMine)
 		notes := plain.(StoreSelf).Queries(table, QueriesOptions{Map: func(row store.Row, _ PartnerRow) (delta.JsonValue, error) {
 			return qrNoteJSON(qrInt(row["id"]), row["text"]), nil
@@ -594,7 +594,7 @@ func qrServeTagged(h FacetHost, extra func(self Self)) error {
 					return store.Exists(qrTagSet, store.Match{{Column: "note", Ref: n["id"]}}, func(t store.ColumnRefs) store.Condition { return store.Eq(t["tag"], tag) })
 				})
 			}}})
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			Queries: map[string]map[string]contracts.NamedQuery[delta.JsonValue, delta.JsonValue]{"notes": notes},
 			Methods: map[string]contracts.MethodFunction{"put": exMethod(func(row *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
 				_, err := plain.Tx(func(tx documents.Tx) (any, error) {
@@ -602,15 +602,15 @@ func qrServeTagged(h FacetHost, extra func(self Self)) error {
 				}, ctx)
 				return nil, err
 			})},
-		}}, nil
+		}, nil
 	}, ServeOptions{}); err != nil {
 		return err
 	}
-	return h.Serve(qrTagged, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+	return h.Serve(qrTagged, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 		tagged := plain.Get(qrTaggedNotes, jsonObject()).Queries("notes")["tagged"]
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{"notes": plain.LiveQuery(tagged, jsonObject("tag", "red"), 5)},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 }
 
@@ -685,13 +685,13 @@ func TestQueryReaderReadersBeforeNatives(t *testing.T) {
 		watching := mustContract(contracts.Local("app.watching", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("notes", qrPage)}}))
 		tagged := HostFacet{Name: "@test/tagged", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return qrServeTagged(h, nil) })}
 		watcher := HostFacet{Name: "@test/watching", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(watching, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+			return h.Serve(watching, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 				plain.Open(func(context.Context) (any, error) { note("open"); return nil, nil },
 					func(any, NativeCloseReason, context.Context) error { note("close"); return nil })
 				tagged := plain.Get(qrTaggedNotes, jsonObject()).Queries("notes")["tagged"]
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{"notes": plain.LiveQuery(tagged, jsonObject("tag", "red"), 5)},
-				}}, nil
+				}, nil
 			}, ServeOptions{})
 		})}
 		_, err := host.Load([]HostFacet{tagged, watcher}, background)
@@ -731,7 +731,7 @@ func TestQueryReaderArgumentsThatHaveNoValueWhenTheReaderOpens(t *testing.T) {
 			if err := qrServeStore(h, &qrProbe{}); err != nil {
 				return err
 			}
-			return h.Serve(following, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+			return h.Serve(following, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 				board := plain.Follow(func(FollowObserver[any], context.Context) (*FollowAttachment[delta.JsonValue], error) {
 					return &FollowAttachment[delta.JsonValue]{Value: jsonObject("board", "a"), Detach: func() {}}, nil
 				})
@@ -739,9 +739,9 @@ func TestQueryReaderArgumentsThatHaveNoValueWhenTheReaderOpens(t *testing.T) {
 					return jsonObject("board", values[0].(*delta.JsonObject).Value("board")), nil
 				})
 				ofBoard := plain.Get(qrNoteStore, jsonObject()).Queries("notes")["ofBoard"]
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{"notes": plain.LiveQuery(ofBoard, args, 5)},
-				}}, nil
+				}, nil
 			}, ServeOptions{})
 		})}}, background)
 		must(t, err)

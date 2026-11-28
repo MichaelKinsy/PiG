@@ -68,7 +68,7 @@ func NewExtensionEditorComponent(ui tui.TUI, keybindings *KeybindingsManager, ti
 	c.Add(c.externalEditorStatus)
 	c.Add(tui.NewSpacer(1))
 	// keyHint resolves each action against the bindings of the moment (defaults: "enter", "shift+enter/ctrl+j", "escape/ctrl+c").
-	hint := tui.KeyHint(tui.ActionKeyText(tui.KBSelectConfirm), "submit") + "  " + tui.KeyHint(tui.ActionKeyText(tui.KBInputNewLine), "newline") + "  " + tui.KeyHint(tui.ActionKeyText(tui.KBSelectCancel), "cancel") +
+	hint := tui.KeyHint(tui.ActionKeyText(tui.KBInputSubmit), "submit") + "  " + tui.KeyHint(tui.ActionKeyText(tui.KBInputNewLine), "newline") + "  " + tui.KeyHint(tui.ActionKeyText(tui.KBSelectCancel), "cancel") +
 		"  " + tui.KeyHint(tui.AppKeyText("app.editor.external", "ctrl+g"), "external editor")
 	c.Add(tui.NewPaddedText(hint, 1, 0, nil))
 	c.Add(tui.NewSpacer(1))

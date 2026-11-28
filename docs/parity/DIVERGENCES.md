@@ -262,7 +262,7 @@ Kept as Pi sends them, by design: GitHub Copilot's `GitHubCopilotChat/0.35.0`, `
 
 Why: every upstream identity value is pi-branded (`pi.dev`, `pi`, `Pi`, `pi-coding-agent`). A rebranded port must not misattribute its traffic to Pi, so PiG substitutes its own branding host-for-host and header-for-header instead of narrowing upstream's provider set, and sends nothing to a service PiG does not operate on the user's behalf. The Node extension runtime ships Pi's own JavaScript, which is a second way out of the process; the owner directive for 0.3.1 is that no path identify as Pi. Only the literal values and the disabled Pi-only uploads change; the provider and host matching, the telemetry gate and the OpenCode session pair are unchanged from upstream.
 
-`IsInstallTelemetryEnabled` mirrors upstream `isInstallTelemetryEnabled` (telemetry.ts:8): `PIG_TELEMETRY` env truthiness decides when set (PiG's name, which wins over Pi's, D2), otherwise `PI_TELEMETRY`'s, otherwise the `enableInstallTelemetry` setting (default true). This is the same gate that also covers the install/update ping, sent to PiG's own `pi-in-go.dev` endpoint instead of pi.dev (D64; `internal/codingagent/install_telemetry.go`).
+`IsInstallTelemetryEnabled` mirrors upstream `isInstallTelemetryEnabled` (telemetry.ts:8): `PIG_TELEMETRY` env truthiness decides when set (PiG's name, which wins over Pi's, D2), otherwise `PI_TELEMETRY`'s, otherwise the `enableInstallTelemetry` setting (default true). Pi 1.7.0 removed the install/update ping (`packages/coding-agent/src/core/telemetry.ts`); PiG removed `install_telemetry.go` accordingly.
 
 Unverified against the live services: OpenAI's Codex backend and login and xAI's device-code endpoint accept an `originator`/`referrer` other than `pi` (Pi's own client and other Codex clients use their own names). No credentials were available to run them.
 
@@ -987,7 +987,6 @@ Call sites:
 - `internal/codingagent/settings.go`: `GetSessionShareDestination` (read but not used by `/share`).
 - `internal/codingagent/settings_selector.go`: the omitted "share-destination" item after "transport".
 - `internal/codingagent/slash_commands.go`: the `/share` destination and retention description.
-- `internal/codingagent/install_telemetry.go`: `defaultInstallTelemetryURL`, `installTelemetryURL`, and `sendInstallTelemetry`.
 - `internal/codingagent/remote_catalog_provider.go`: `DefaultCatalogBaseURL` and `builtinModelDataGeneratedAt`.
 - `internal/codingagent/interactive.go`: the startup changelog/install-telemetry block in `Run`.
 - `automation/gen/gen-help.sh`: drops `PI_SHARE_VIEWER_URL` from the rendered `coding/cli/help_upstream.txt`.
@@ -1019,7 +1018,7 @@ Call sites:
 - `ai/openai.go`, `ai/openai_responses.go` (also reached by `ai/azure_openai_responses.go` and `ai/openai_codex_responses.go`, which delegate to the same request builder), `ai/google.go` (also reached by `ai/google_vertex.go`), `ai/mistral.go`: the `User-Agent` header construction. Model and request headers override the default, as upstream; Codex builds its `originator` and `User-Agent` defaults before them and passes them in as `defaultHeaders` of `buildBaseCodexHeaders` (`openai-codex-responses.ts:293` and :1661, Pi 1.4.0).
 - `internal/codingagent/bug_report.go`: `codingAgentUserAgent`, used for the local bug-report metadata field retained by D62.
 - `internal/codingagent/selfupdate.go`: `FetchUpdateManifest`, which sends the identity with the update-manifest request as upstream `getLatestPiRelease` sends its `User-Agent` and `accept` headers to the version-check API.
-- `internal/codingagent/install_telemetry.go` (the install ping), `internal/codingagent/remote_catalog_provider.go` (the model-catalog request) and `internal/codingagent/tools/tools_manager.go` (the tool-release lookup): each sets `User-Agent` from `ai.FormatUserAgent`, where Pi sends `getPiUserAgent(...)` from `interactive-mode.ts:1483`, `core/remote-catalog-provider.ts:88` and `utils/tools-manager.ts:103`.
+- `internal/codingagent/remote_catalog_provider.go` (the model-catalog request) and `internal/codingagent/tools/tools_manager.go` (the tool-release lookup): each sets `User-Agent` from `ai.FormatUserAgent`, where Pi sends `getPiUserAgent(...)` from `core/remote-catalog-provider.ts:88` and `utils/tools-manager.ts:103`.
 
 Locked by: `ai/identity_test.go` (`TestFormatUserAgentForms`), `ai/user_agent_test.go` (`TestPiUserAgentFormat`, `TestProviderDefaultUserAgent`, `TestProviderUserAgentOverridePrecedence`), `ai/anthropic_oauth_test.go` `TestAnthropicClientUserAgent`, `internal/codingagent/bug_report_test.go` `TestBugReportEnvironmentUsesPiGUserAgent`, and `internal/codingagent/version_check_upstream_test.go` `TestVersionChecks` (the update-manifest request).
 
@@ -4520,29 +4519,3 @@ Call-site markers (`pig divergence (D661): ...`): `tui/continue_signal.go` (`con
 Evidence: `tui/continue_signal_unix_test.go` (the seven cases of `packages/tui/test/suspend-signal.test.ts` listed in `docs/parity/suspend.md`, including both `TuiMainScreen` and `TuiAltScreen` in `TestContinueSignalListenerLastsUntilStopHasRestored`, plus `TestContinueSignalRawModeOwnershipSpansMakeRawAndRestoreCooked`, `TestRearmRawModeBalancesKittyKeyboardStack`, `TestContinueSignalOwnershipFollowsEachRenderer`, `TestContinueSignalRemoveClearsOnlyItsOwnRegistration`, `TestContinueSignalStartStopDoesNotLeakGoroutines`, `TestContinueSignalTuiSurfaceSuspendAndResume`, `TestContinueSignalIgnoresRendererNotOnProcessTerminal`, `TestContinueSignalIgnoresWriterBackedRendererWithNilTerminal`); `internal/codingagent/interactive_continue_unix_test.go` (`TestContinueHandlerRearmsOnTheOwnerLoopWhileTheTerminalIsOwned`, `TestContinueHandlerStopDoesNotHangWhenUITaskChannelIsFull`, `TestRearmTerminalDoesNotRestoreCookedOrDeadlockOnBlockedReader`, `TestRearmWithOpsRunsStopStartRenderOnlyWhenForeground`); `internal/codingagent/startup_continue_pty_linux_test.go` (`TestInitInstallsContinueHandlerBeforeTerminalStart`, `TestInitOwnsTerminalForSIGCONTAsSoonAsStartTerminalArmsIt`, `TestSIGCONTUnderRawTermiosRestoringShellRearmsAndRedraws`, `TestFrontendSurfaceRearmBalancesKittyStack`); `test/integration/external_sigtstp_pty_linux_test.go` under job-control bash 5.2 and dash 0.5.12 on a pseudo-terminal (`TestExternalSIGTSTPSuspendsLikeCtrlZ`, `TestExternalSIGTSTPUnderDashJobControl`, `TestSIGTSTPInStartupWindowRearmsTerminal`, `TestExternalSIGTSTPAndBareSIGCONTDoNotDumpScrollbackInFullscreen`, `TestExternalSIGTSTPBackgroundContinueTouchesNothing`, and regression guards `TestCtrlZKeyKeepsItsModeSequences`, `TestExternalSIGTSTPKeepsARunGoing`, `TestSIGTSTPWhileAnExternalEditorOwnsTheTerminal`).
 
 Parity allowance: no parity scenario compares external `kill -TSTP` or `TUI.setSuspendSignalHandler`. The pinned Pi 1.6.0 (`faac585884ae`) oracle carries `e4f50d76` and `3107a58d`, and parity scenarios run no external job control; the Ctrl+Z key scenarios (`40-suspend-resume-session`, `43-suspend-signal-order`) are unchanged.
-
-## D662 Interactive mode reports session resume commands via OSC 7577 and strips `OSC7577_TOKEN` at startup (Pi `cf419553da`, ahead of pinned Pi 1.6.0)
-
-What: PiG ports Pi PR #12557 (commit `cf419553da817fefd2f86f170ff3e93eff0bfd28`), implementing the Program Resume Protocol (OSC 7577, `https://www.superlogical.com/rex/docs/build/program-resume`), ahead of the pinned Pi 1.6.0 (`faac585884ae`) release. At startup in every mode, `coding/cli.Main` calls `tui.TakeProgramResumeToken()` to read and remove `OSC7577_TOKEN` from the process environment before any child process (bash tool, MCP stdio server, external editor, or subprocess extension) can start. When the token was set, `internal/codingagent.ProgramResumeReporter` writes authenticated OSC 7577 sequences (`pid`, `time`, base64 `argv` and `cwd`, plain SHA-256 `mac` over `<body>:<token>`, 2048-byte sequence limit, 64-element argv limit) on startup, session switch/rebind, first persisted message, and suspend/resume, clears on unpersisted session or user quit, and keeps the command on `SIGHUP`/`SIGTERM`. With `OSC7577_TOKEN` unset, zero bytes are written. `argv[0]` uses `pig` or a Piglet Binary's own name (D2). Pinned Pi 1.6.0 does not implement OSC 7577 or remove `OSC7577_TOKEN`.
-
-Audience: interactive users running PiG in terminals that support OSC 7577 (such as Rex) and any child process spawned by PiG when `OSC7577_TOKEN` is set in the parent terminal environment.
-
-Why: Rex and other OSC 7577 terminals restore running sessions across terminal restarts when programs report authenticated resume commands and strip the per-pane token before launching children.
-
-Pi bug: none; upstream added OSC 7577 in Pi PR #12557 (`cf419553da`, Pi main).
-
-Pi issue: https://github.com/earendil-works/pi/pull/12557
-
-Scope: `tui/program_resume.go` (`FormatProgramResume`, `FormatProgramResumeClear`, `TakeProgramResumeToken`, `TakeProgramResumeTokenFromMap`, 2048-byte and 64-argv limits), `internal/codingagent/program_resume_reporter.go`, interactive mode startup/rebind/events/suspend/quit hooks, and `coding/cli/main.go`.
-
-Owner decision: requested by owner on 2026-11-26 (channel line 24201) ahead of the Pi main pin move; record text awaits owner approval stamp (`make divergence-approve ID=D662`).
-
-SCRUTINIZED:approved
-
-Remove when: the pinned Pi release contains `cf419553da817fefd2f86f170ff3e93eff0bfd28`. Then this divergence record and the `D662` call-site markers go, and the `2048`/`64` caps cite `// upstream: packages/tui/src/program-resume.ts` directly.
-
-Call-site markers (`pig divergence (D662): ...`): `tui/program_resume.go` (`programResumeMaxSequenceBytes`, `programResumeMaxArgvElements`).
-
-Evidence: `tui/program_resume_test.go` (spec Neovim, lazygit, wrapper, empty-arg, unreportable-limit, clear, and token-take vectors from `packages/tui/test/program-resume.test.ts`), `internal/codingagent/program_resume_reporter_test.go` (all 8 cases from `packages/coding-agent/test/program-resume-reporter.test.ts`), `internal/codingagent/interactive_program_resume_test.go` (lifecycle, Piglet Binary name, absent-token zero-bytes, external editor child isolation), `coding/cli/program_resume_token_test.go` (AST order + real bash tool and MCP stdio child isolation), and `test/extension-conformance/program_resume_token_env_test.go` (real child isolation across Go, Node, Rust, Python, and Lisp subprocess SDK runtimes).
-
-Parity allowance: no parity scenario sets `OSC7577_TOKEN`, so with the token absent PiG emits zero extra bytes and matches pinned Pi 1.6.0 byte-for-byte.

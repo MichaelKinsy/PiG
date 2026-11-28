@@ -19,19 +19,19 @@ import (
 const languagePlugin = `import { defineFacet, hostKind, method, nul, obj, remote, str, union } from "@test/app/v1";
 const Server = hostKind("server");
 const Pick = union([str({ max: 35, pattern: "^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$" }), nul()]);
-const LocaleChoice = remote("chord.locale.choice", { version: 1, params: {}, hostAddress: () => Server(), variants: { main: { state: { pick: Pick }, methods: { choose: method(Pick) } } } });
+const LocaleChoice = remote("chord.locale.choice", { version: 1, params: {}, hostAddress: () => Server(), state: { pick: Pick }, methods: { choose: method(Pick) } });
 const ThemeId = union([str({ max: 128 }), nul()]);
 const ThemePick = obj({ dark: ThemeId, light: ThemeId });
-const ThemeChoice = remote("chord.themes.choice", { version: 1, params: {}, hostAddress: () => Server(), variants: { main: { state: { pick: ThemePick }, methods: { choose: method(ThemePick) } } } });
-const Lang = remote("probe.lang", { version: 1, params: {}, hostAddress: () => Server(), variants: { main: { state: { pick: str(), theme: str() }, methods: { choose: method(Pick) } } } });
+const ThemeChoice = remote("chord.themes.choice", { version: 1, params: {}, hostAddress: () => Server(), state: { pick: ThemePick }, methods: { choose: method(ThemePick) } });
+const Lang = remote("probe.lang", { version: 1, params: {}, hostAddress: () => Server(), state: { pick: str(), theme: str() }, methods: { choose: method(Pick) } });
 export default defineFacet((host) => host.serve(Lang, (_params, _principal, self) => {
 	const choice = self.get(LocaleChoice, {});
 	const theme = self.get(ThemeChoice, {});
-	return { variant: "main", members: {
+	return {
 		pick: self.derive([choice.pick], ([pick]) => "pick=" + String(pick)),
 		theme: self.derive([theme.pick], ([pick]) => JSON.stringify(pick)),
 		choose: (value, ctx) => choice.choose(value, ctx),
-	} };
+	};
 }));
 `
 
@@ -40,8 +40,8 @@ const languageWeb = `import { defineFacet, hostKind, method, nul, remote, str, u
 import { probe } from "@test/app/v1/web";
 const Server = hostKind("server");
 const Pick = union([str({ max: 35, pattern: "^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$" }), nul()]);
-probe.contracts.choice = remote("chord.locale.choice", { version: 1, params: {}, hostAddress: () => Server(), variants: { main: { state: { pick: Pick }, methods: { choose: method(Pick) } } } });
-probe.contracts.lang = remote("probe.lang", { version: 1, params: {}, hostAddress: () => Server(), variants: { main: { state: { pick: str(), theme: str() }, methods: { choose: method(Pick) } } } });
+probe.contracts.choice = remote("chord.locale.choice", { version: 1, params: {}, hostAddress: () => Server(), state: { pick: Pick }, methods: { choose: method(Pick) } });
+probe.contracts.lang = remote("probe.lang", { version: 1, params: {}, hostAddress: () => Server(), state: { pick: str(), theme: str() }, methods: { choose: method(Pick) } });
 export default defineFacet(() => {});
 `
 

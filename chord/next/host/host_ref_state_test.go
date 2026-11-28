@@ -330,7 +330,7 @@ func flakyGated(t *testing.T, left int32, broken bool, loop sectionLoop) (Host, 
 	gate := make(chan struct{})
 	var once sync.Once
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(refFlaky, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(refFlaky, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			id := params.Value("id")
 			self.Open(func(ctx context.Context) (any, error) {
 				select {
@@ -346,12 +346,12 @@ func flakyGated(t *testing.T, left int32, broken bool, loop sectionLoop) (Host, 
 				}
 				return nil, errors.New("offline")
 			}, func(any, NativeCloseReason, context.Context) error { return nil })
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(id)},
 				Methods: map[string]contracts.MethodFunction{
 					"get": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return id, nil },
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, loadedOptions{Loop: loop})
 	return host, func() { once.Do(func() { close(gate) }) }
@@ -541,23 +541,23 @@ func TestRefStateOfARemoteReference(t *testing.T) {
 			}
 		})
 
-		// "variant: undefined before the first binding, the last bound one while loading or failed".
-		t.Run("variant: undefined before the first binding, the last bound one while loading or failed", func(t *testing.T) {
+		// "granted: empty before the first binding, the last bound one while loading or failed".
+		t.Run("granted: empty before the first binding, the last bound one while loading or failed", func(t *testing.T) {
 			p := rawProvider(t, rawLinkedOptions{})
 			notes := mustHold(t, p.Client, Notes, jsonObject("session", "S1"))
-			if _, bound, err := notes.Variant(); err != nil || bound {
-				t.Fatalf("variant before binding: bound %v, err %v, want unbound", bound, err)
+			if granted, err := notes.Granted(); err != nil || len(granted) != 0 {
+				t.Fatalf("granted before binding: %v, err %v, want empty", granted, err)
 			}
 			bindNext(t, p.Peer, jsonObject("text", "a"))
 			untilKind(t, notes, RefStateLive)
-			if variant, bound, _ := notes.Variant(); !bound || variant != "editor" {
-				t.Fatalf("variant = %q (bound %v), want editor", variant, bound)
+			if granted, _ := notes.Granted(); !granted["add"] {
+				t.Fatalf("granted = %v, want add", granted)
 			}
 			p.Peer.Close()
 			untilKind(t, notes, RefStateLoading)
-			variant, _, _ := notes.Variant()
-			if count, err := notes.Member("count").Value(); variant != "editor" || err != nil || count != 1.0 {
-				t.Fatalf("variant %q, count %v (%v), want editor and 1", variant, count, err)
+			granted, _ := notes.Granted()
+			if count, err := notes.Member("count").Value(); !granted["add"] || err != nil || count != 1.0 {
+				t.Fatalf("granted %v, count %v (%v), want add and 1", granted, count, err)
 			}
 			next := rawParent(t, p.Client, link.PartLimits{})
 			hold := next.Next("hold").(*link.HoldMessage).Hold
@@ -566,16 +566,16 @@ func TestRefStateOfARemoteReference(t *testing.T) {
 			if failed.RetryAt != nil {
 				t.Fatalf("retryAt = %v, want none", failed.RetryAt)
 			}
-			if variant, _, _ := notes.Variant(); variant != "editor" {
-				t.Fatalf("variant while failed = %q, want editor", variant)
+			if granted, _ := notes.Granted(); !granted["add"] {
+				t.Fatalf("granted while failed = %v, want add", granted)
 			}
 			// Its replica's last value stays readable while the hold is failed (rule 5).
 			if count, err := notes.Member("count").Value(); err != nil || count != 1.0 {
 				t.Fatalf("count while failed = %v (%v), want 1", count, err)
 			}
 			notes.Release()
-			if _, _, err := notes.Variant(); err == nil || err.Error() != "app.notes: released" {
-				t.Fatalf("variant after release = %v, want released", err)
+			if _, err := notes.Granted(); err == nil || err.Error() != "app.notes: released" {
+				t.Fatalf("granted after release = %v, want released", err)
 			}
 		})
 	})

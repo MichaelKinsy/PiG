@@ -49,7 +49,7 @@ func TestStoreOnDurableObjectTellsCheckByMessage(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		chordStore := opened.(*store.ChordStore)
+		chordStore := opened
 		if _, err := store.Read(chordStore, func(executor chordsqlite.SqliteExecutor) (struct{}, error) {
 			return struct{}{}, executor.Exec(`CREATE TABLE "checked" (n INTEGER CHECK (n < 10))`)
 		}, ctx); err != nil {

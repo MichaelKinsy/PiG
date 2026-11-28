@@ -37,7 +37,6 @@ type SettingsConfig struct {
 	HideThinkingBlock       bool
 	MermaidRenderingMode    MermaidRenderingMode
 	CollapseChangelog       bool
-	EnableInstallTelemetry  bool
 	DoubleEscapeAction      string
 	TreeFilterMode          string
 	ShowHardwareCursor      bool
@@ -81,7 +80,6 @@ type SettingsCallbacks struct {
 	OnHideThinkingBlockChange          func(hidden bool)
 	OnMermaidRenderingModeChange       func(mode MermaidRenderingMode)
 	OnCollapseChangelogChange          func(collapsed bool)
-	OnEnableInstallTelemetryChange     func(enabled bool)
 	OnDoubleEscapeActionChange         func(action string)
 	OnTreeFilterModeChange             func(mode string)
 	OnShowHardwareCursorChange         func(enabled bool)
@@ -613,7 +611,6 @@ func NewSettingsSelectorComponent(config SettingsConfig, callbacks SettingsCallb
 		cycle("mermaid-rendering", "Mermaid diagrams", "Render Mermaid code blocks as Unicode diagrams", string(config.MermaidRenderingMode), string(MermaidRenderingOff), string(MermaidRenderingFinal), string(MermaidRenderingStreaming)),
 		toggle("collapse-changelog", "Collapse changelog", "Show condensed changelog after updates", config.CollapseChangelog),
 		cycle("quiet-startup", "Quiet startup", "Disable verbose printing at startup (header: keep only the startup header)", config.QuietStartup.String(), "true", "header", "false"),
-		toggle("install-telemetry", "Install telemetry", "Send an anonymous version/update ping after changelog-detected updates", config.EnableInstallTelemetry),
 		cycle("default-project-trust", "Default project trust", "Fallback behavior when no extension or saved trust decision decides project trust", defaultProjectTrustLabel(config.DefaultProjectTrust), trustLabels...),
 		cycle("double-escape-action", "Double-escape action", "Action when pressing Escape twice with empty editor", config.DoubleEscapeAction, doubleEscapeActions()...),
 		cycle("tree-filter-mode", "Tree filter mode", "Default filter when opening /tree", config.TreeFilterMode, "default", "no-tools", "user-only", "labeled-only", "all"),
@@ -677,7 +674,7 @@ func NewSettingsSelectorComponent(config SettingsConfig, callbacks SettingsCallb
 		cycle("tui-mode", "TUI mode", "Interface layout; regular mode uses the terminal's normal scrollback", config.TuiMode, "regular", "fullscreen"),
 		cycle("fullscreen-exit-output", "Fullscreen exit output", "Print the transcript or only a session resume hint when exiting fullscreen mode", string(config.FullscreenExitOutput), string(FullscreenExitOutputTranscript), string(FullscreenExitOutputResumeHint)),
 		cycle("fullscreen-scrollbar", "Fullscreen scrollbar", "Scrollbar behavior in fullscreen mode; has no effect in regular mode", config.FullscreenScrollbar, "auto", "always", "hidden"),
-		toggle("fullscreen-copy-on-select", "Fullscreen copy on select", "Automatically copy selected text in fullscreen mode; disable to copy selections with Ctrl+X", config.FullscreenCopyOnSelect),
+		toggle("fullscreen-copy-on-select", "Fullscreen copy on select", "Automatically copy selected text in fullscreen mode; disable to copy selections with "+tui.ActionKeyDisplayTextOr("app.message.copy", "ctrl+x"), config.FullscreenCopyOnSelect),
 		cycle("fullscreen-wheel-scroll-lines", "Fullscreen wheel scrolling", "Lines per mouse-wheel event in fullscreen mode; 'auto' speeds up fast wheel spins where the terminal does not", wheelScrollLinesLabel(config.FullscreenWheelScrollLines), wheelScrollLinesValues(config.FullscreenWheelScrollLines)...),
 		tui.SettingItem{
 			ID: "theme", Label: "Theme", Description: "Color theme for the interface", CurrentValue: config.CurrentTheme,
@@ -783,10 +780,6 @@ func (s *SettingsSelectorComponent) dispatch(callbacks SettingsCallbacks, id, ne
 				quiet = QuietStartupTrue
 			}
 			callbacks.OnQuietStartupChange(quiet)
-		}
-	case "install-telemetry":
-		if callbacks.OnEnableInstallTelemetryChange != nil {
-			callbacks.OnEnableInstallTelemetryChange(newValue == "true")
 		}
 	case "default-project-trust":
 		for _, entry := range defaultProjectTrustLabels {

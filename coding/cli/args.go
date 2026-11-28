@@ -160,6 +160,9 @@ type Args struct {
 	TuiMode  string
 	// Diagnostics mirrors Pi parseArgs diagnostics. Any error exits before
 	// version or mode handling.
+	// ResumeFlags holds restriction and resource flags with their values, as typed and in order (OSC 7577).
+	// Ports packages/coding-agent/src/cli/args.ts Args.resumeFlags (Pi 145785f0d).
+	ResumeFlags []string
 	Diagnostics []argDiagnostic
 }
 
@@ -227,6 +230,7 @@ func parseArgs(args []string) Args {
 	i := 0
 	for i < len(args) {
 		arg := args[i]
+		flagStart := i
 		switch {
 		case arg == "--":
 			for _, positionalArg := range args[i+1:] {
@@ -432,6 +436,9 @@ func parseArgs(args []string) Args {
 		default:
 			flags.Messages = append(flags.Messages, arg)
 		}
+		if isResumeFlag(arg) {
+			flags.ResumeFlags = append(flags.ResumeFlags, args[flagStart:i+1]...)
+		}
 		i++
 	}
 	if flags.Listen != "" {
@@ -602,4 +609,22 @@ func validateForkFlags(flags Args) []argDiagnostic {
 		return nil
 	}
 	return []argDiagnostic{{Type: "error", Message: "--fork cannot be combined with " + strings.Join(conflicts, ", ")}}
+}
+
+// isResumeFlag reports whether arg is a restriction or resource flag repeated in the OSC 7577 resume command.
+// Ports packages/coding-agent/src/cli/args.ts RESUME_FLAGS (Pi 145785f0d).
+func isResumeFlag(arg string) bool {
+	switch arg {
+	case "--tools", "-t", "--exclude-tools", "-xt", "--no-tools", "-nt", "--no-builtin-tools", "-nbt",
+		"--extension", "-e", "--no-extensions", "-ne", "--no-mcp",
+		"--skill", "--no-skills", "-ns",
+		"--prompt-template", "--no-prompt-templates", "-np",
+		"--theme", "--no-themes",
+		"--no-context-files", "-nc",
+		"--system-prompt", "--append-system-prompt",
+		"--approve", "-a", "--no-approve", "-na",
+		"--models":
+		return true
+	}
+	return false
 }

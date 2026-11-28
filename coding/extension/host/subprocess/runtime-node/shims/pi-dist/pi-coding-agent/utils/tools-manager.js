@@ -7,7 +7,6 @@ import { pipeline } from "stream/promises";
 import { getBinDir, VERSION } from "../config.js";
 import { fetchWithRetry } from "./management-http.js";
 import { getPiUserAgent } from "./pi-user-agent.js";
-const TOOLS_DIR = getBinDir();
 const NETWORK_TIMEOUT_MS = 10_000;
 const DOWNLOAD_TIMEOUT_MS = 120_000;
 function isOfflineModeEnabled() {
@@ -59,13 +58,14 @@ function commandExists(cmd) {
         return false;
     }
 }
-// Get the path to a tool (system-wide or in our tools dir)
+// Get the path to a tool (system-wide or in our tools dir).
+// Reads the agent dir: do not call it while modules load, before main() has applied --agent-dir.
 export function getToolPath(tool) {
     const config = TOOLS[tool];
     if (!config)
         return null;
     // Check our tools directory first
-    const localPath = join(TOOLS_DIR, config.binaryName + (platform() === "win32" ? ".exe" : ""));
+    const localPath = join(getBinDir(), config.binaryName + (platform() === "win32" ? ".exe" : ""));
     if (existsSync(localPath)) {
         return localPath;
     }
@@ -226,17 +226,17 @@ async function downloadTool(tool) {
     // fd is pinned on darwin/x64, so skip the version lookup there.
     const version = tool === "fd" && plat === "darwin" && architecture === "x64" ? "10.3.0" : await getLatestVersion(config.repo);
     const assetName = config.getAssetName(version, target);
-    // Create tools directory
-    mkdirSync(TOOLS_DIR, { recursive: true });
+    const toolsDir = getBinDir();
+    mkdirSync(toolsDir, { recursive: true });
     const downloadUrl = `https://github.com/${config.repo}/releases/download/${config.tagPrefix}${version}/${assetName}`;
-    const archivePath = join(TOOLS_DIR, assetName);
+    const archivePath = join(toolsDir, assetName);
     const binaryExt = plat === "win32" ? ".exe" : "";
-    const binaryPath = join(TOOLS_DIR, config.binaryName + binaryExt);
+    const binaryPath = join(toolsDir, config.binaryName + binaryExt);
     // Download
     await downloadFile(downloadUrl, archivePath);
     // Extract into a unique temp directory. fd and rg downloads can run concurrently
     // during startup, so sharing a fixed directory causes races.
-    const extractDir = join(TOOLS_DIR, `extract_tmp_${config.binaryName}_${process.pid}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`);
+    const extractDir = join(toolsDir, `extract_tmp_${config.binaryName}_${process.pid}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`);
     mkdirSync(extractDir, { recursive: true });
     try {
         if (assetName.endsWith(".tar.gz")) {
@@ -284,6 +284,7 @@ const TERMUX_PACKAGES = {
  * Ensure a tool is available, downloading if necessary.
  * Reports progress through `onStatus`; status messages are otherwise silent.
  * Returns the tool path, or undefined if unavailable.
+ * Reads the agent dir: do not call it while modules load, before main() has applied --agent-dir.
  */
 export async function ensureTool(tool, onStatus) {
     const existingPath = getToolPath(tool);

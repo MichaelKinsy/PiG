@@ -67,9 +67,9 @@ func kcFacet() host.Facet { return kcFacetOf(kcDocs) }
 // first (no attempt declares it) and serves a new one.
 func kcFacetOf(definition *documents.StateDefinition) host.Facet {
 	return host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		return h.Serve(kcCore, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+		return h.Serve(kcCore, func(_ *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
 			docs := self.State(definition).(*documents.Keyed)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				Keyed: map[string]contracts.KeyedWatchable[delta.JsonValue]{"docs": host.ExposeKeyed(docs)},
 				Methods: map[string]contracts.MethodFunction{
 					"put": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -83,7 +83,7 @@ func kcFacetOf(definition *documents.StateDefinition) host.Facet {
 						return nil, docs.Retire(ctx, args.(string))
 					},
 				},
-			}}, nil
+			}, nil
 		}, host.ServeOptions{})
 	})
 }

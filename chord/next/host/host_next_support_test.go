@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"math"
-	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -47,8 +46,8 @@ import (
 //     `HostOptions{Address *contracts.Address, Principal, Telemetry, OnError, CloseTimeout/ReadyTimeout
 //     *time.Duration, RevokedBy, Compression link.Compression, Store store.Store}`.
 //   - Assumed factory shape (AttemptObject): a served local type's factory is
-//     `func(params *delta.JsonObject, self Self) (contracts.Implementation, error)`; a remote one's
-//     `func(params *delta.JsonObject, principal data.Principal, self Self) (contracts.Implementation, error)`.
+//     `func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error)`; a remote one's
+//     `func(params *delta.JsonObject, principal data.Principal, self Self) (contracts.MembersImplementation, error)`.
 
 var background = chordctx.Background()
 
@@ -267,13 +266,13 @@ func restartableOf(
 		if options.Serve != nil {
 			options.Serve(h)
 		}
-		return h.Serve(typ, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(typ, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			started++
 			factory(started, self)
 			attempts.add(self)
-			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				"touch": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil },
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	}, options)
 	get := func() *Reference {
@@ -369,7 +368,7 @@ func openMemoryStore(t testing.TB, wrap func(sqlite.SqliteDatabase) sqlite.Sqlit
 	if err != nil {
 		t.Fatalf("OpenStore: %v", err)
 	}
-	opened2 := opened.(*store.ChordStore)
+	opened2 := opened
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -955,21 +954,34 @@ func partValue(t testing.TB, part link.Part) any {
 
 // wireIndexes is Pi's `wireNames(Type, variant)`: the wire's indexes of a remote contract's variant (2b).
 type wireIndexes struct {
-	Variant int
+	Granted []int
 	State   map[string]int
 	Methods map[string]int
 	Events  map[string]int
-	names   contracts.VariantNames
+	names   contracts.MemberNames
 }
 
-// wireNames is the variant's indexes, and its state members' and methods' by name.
-func wireNames(t testing.TB, typ *contracts.Contract, variant string) wireIndexes {
+// wireNames is the granted set's wire indexes, and its state members', methods' and events' by name.
+// Passing "editor" grants all grantable members of typ; passing "reader" or "" grants none; otherwise each name in granted is granted.
+func wireNames(t testing.TB, typ *contracts.Contract, grantSpec ...string) wireIndexes {
 	t.Helper()
-	variants, err := contracts.CurrentVariants(typ)
+	ver, err := contracts.CurrentVersion(typ)
 	must(t, err)
-	order, err := contracts.VariantOrder(typ)
-	must(t, err)
-	names := contracts.VariantNamesOf(variants.Value(variant))
+	granted := map[string]bool{}
+	switch {
+	case len(grantSpec) == 1 && (grantSpec[0] == "editor" || grantSpec[0] == "main" || grantSpec[0] == "player" || grantSpec[0] == "all"):
+		for _, g := range ver.Grants {
+			granted[g] = true
+		}
+	case len(grantSpec) == 1 && (grantSpec[0] == "reader" || grantSpec[0] == "" || grantSpec[0] == "none"):
+		// no grants
+	default:
+		for _, g := range grantSpec {
+			granted[g] = true
+		}
+	}
+	members := contracts.GrantedMembers(ver, granted)
+	names := contracts.MemberOrder(members)
 	indexes := func(list []string) map[string]int {
 		out := make(map[string]int, len(list))
 		for index, name := range list {
@@ -977,7 +989,13 @@ func wireNames(t testing.TB, typ *contracts.Contract, variant string) wireIndexe
 		}
 		return out
 	}
-	return wireIndexes{Variant: slices.Index(order, variant), State: indexes(names.State), Methods: indexes(names.Methods), Events: indexes(names.Events), names: names}
+	return wireIndexes{
+		Granted: contracts.GrantIndexes(ver, granted),
+		State:   indexes(names.State),
+		Methods: indexes(names.Methods),
+		Events:  indexes(names.Events),
+		names:   names,
+	}
 }
 
 // Named is a message's members by index as an object by name, their parts parsed (`ops` or `value` per member).
@@ -1069,36 +1087,32 @@ func rawLinked(t testing.TB, setup func(host FacetHost) error, options rawLinked
 	return &rawLinkedHost{Server: server, Peer: newRawPeer(t, b, rawPeerOptions{NoHello: options.NoHello, NoAck: options.NoAck}), Errors: errs}
 }
 
-// notesVariants are the variants of the notes types: an editor variant for owners, a reader one for guests.
-func notesVariants() []contracts.VariantEntry {
+func notesState() []contracts.RemoteStateEntry {
 	text := contracts.Obj(contracts.Prop("text", contracts.Str()))
-	state := func() []contracts.Property {
-		return []contracts.Property{contracts.Prop("notes", contracts.Arr(text)), contracts.Prop("count", contracts.Int())}
-	}
-	return []contracts.VariantEntry{
-		contracts.Var("editor", contracts.VariantDeclaration{
-			State: state(),
-			Methods: []contracts.MethodEntry{
-				contracts.Meth("add", contracts.NewMethod(text, contracts.Int())),
-				contracts.Meth("fail", contracts.NewMethod(contracts.Obj(contracts.Prop("how", contracts.Str())))),
-				contracts.Meth("wait", contracts.NewMethod()),
-				contracts.Meth("echo", contracts.NewMethod(
-					contracts.Obj(contracts.Prop("data", contracts.Bytes())), contracts.Bytes())),
-			},
-		}),
-		contracts.Var("reader", contracts.VariantDeclaration{
-			State:   state(),
-			Methods: []contracts.MethodEntry{contracts.Meth("wait", contracts.NewMethod())},
-		}),
+	return []contracts.RemoteStateEntry{
+		contracts.StateEntry("notes", contracts.Arr(text)),
+		contracts.StateEntry("count", contracts.Int()),
 	}
 }
 
-// Notes is the remote type of the link tests: notes per session, an editor variant for owners, a reader one for guests.
+func notesMethods() []contracts.RemoteMethodEntry {
+	text := contracts.Obj(contracts.Prop("text", contracts.Str()))
+	return []contracts.RemoteMethodEntry{
+		contracts.Meth("add", contracts.NewGrantable(contracts.NewMethod(text, contracts.Int()))),
+		contracts.Meth("fail", contracts.NewGrantable(contracts.NewMethod(contracts.Obj(contracts.Prop("how", contracts.Str()))))),
+		contracts.Meth("wait", contracts.NewMethod()),
+		contracts.Meth("echo", contracts.NewGrantable(contracts.NewMethod(
+			contracts.Obj(contracts.Prop("data", contracts.Bytes())), contracts.Bytes()))),
+	}
+}
+
+// Notes is the remote type of the link tests: notes per session; owners are granted add/fail/echo, guests get none.
 var Notes = mustContract(contracts.Remote("app.notes", contracts.RemoteDeclaration{
 	Version:     1,
 	Params:      contracts.Params{contracts.Prop("session", contracts.Str())},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-	Variants:    notesVariants(),
+	State:       notesState(),
+	Methods:     notesMethods(),
 }))
 
 // PlacedNotes is Notes placed on the session's worker: the relay tests' type.
@@ -1109,7 +1123,8 @@ var PlacedNotes = mustContract(contracts.Remote("app.placed-notes", contracts.Re
 		session, _ := params.Value("session").(string)
 		return Session.Address(jsonObject("id", session)), nil
 	},
-	Variants: notesVariants(),
+	State:   notesState(),
+	Methods: notesMethods(),
 }))
 
 var notesDoc = func() *documents.StateDefinition {
@@ -1190,9 +1205,9 @@ func serveNotes(host FacetHost, typ *contracts.Contract) (*notesProbe, error) {
 		typ = Notes
 	}
 	probe := &notesProbe{}
-	err := host.Serve(NoteStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+	err := host.Serve(NoteStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 		doc := stateOf(self, notesDoc)
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{
 				"list": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) {
 					return values[0].(*delta.JsonObject).Value("list"), nil
@@ -1207,12 +1222,12 @@ func serveNotes(host FacetHost, typ *contracts.Contract) (*notesProbe, error) {
 					return float64(len(doc.Value().Value("list").([]any))), nil
 				},
 			},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 	if err != nil {
 		return nil, err
 	}
-	err = host.Serve(typ, func(params *delta.JsonObject, principal data.Principal, self Self) (contracts.Implementation, error) {
+	err = host.Serve(typ, func(params *delta.JsonObject, principal data.Principal, _ AdmittedValue, self Self) (contracts.MembersImplementation, error) {
 		session, _ := params.Value("session").(string)
 		probe.mu.Lock()
 		probe.factories = append(probe.factories, session+" "+principalKind(principal))
@@ -1234,12 +1249,7 @@ func serveNotes(host FacetHost, typ *contracts.Contract) (*notesProbe, error) {
 			return nil, nil
 		}
 		members := map[string]chord.Watchable[delta.JsonValue]{"notes": notes, "count": count}
-		if principalKind(principal) == "guest" {
-			return contracts.Implementation{Variant: "reader", Members: contracts.VariantImplementation{
-				State: members, Methods: map[string]contracts.MethodFunction{"wait": wait},
-			}}, nil
-		}
-		return contracts.Implementation{Variant: "editor", Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			State: members,
 			Methods: map[string]contracts.MethodFunction{
 				"wait": wait,
@@ -1259,8 +1269,15 @@ func serveNotes(host FacetHost, typ *contracts.Contract) (*notesProbe, error) {
 					return args.(*delta.JsonObject).Value("data"), nil
 				},
 			},
-		}}, nil
-	}, ServeOptions{})
+		}, nil
+	}, ServeOptions{
+		Admit: func(_ *delta.JsonObject, principal data.Principal, _ AdmitSelf) (chord.Watchable[delta.JsonValue], error) {
+			if principalKind(principal) == "guest" {
+				return Expose(state.NewConstant(Allow(delta.NewJsonObject(0)))), nil
+			}
+			return Expose(state.NewConstant(Allow(delta.JsonObjectOf("granted", []delta.JsonValue{"add", "fail", "echo"})))), nil
+		},
+	})
 	return probe, err
 }
 
@@ -1395,7 +1412,7 @@ func bindHold(t testing.TB, peer *RawPeer, hold int, notes ...*delta.JsonObject)
 	must(t, err)
 	peer.Send(&link.BoundMessage{Holds: []link.BoundEntry{{
 		Hold:    hold,
-		Variant: editor.Variant,
+		Granted: editor.Granted,
 		Members: []link.BoundMember{{Member: editor.State["notes"], Value: notesPart}, {Member: editor.State["count"], Value: countPart}},
 		Failed:  []link.FailedMember{},
 	}}})
@@ -1786,7 +1803,7 @@ func (c *countingCompression) Bytes() int {
 
 // MatchV2 is `Match` with the paddle's values carrying a sample time: an older consumer gets them mapped.
 var MatchV2 = mustContract(contracts.Evolve(Match, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
-	return e.Event("player", "paddle", contracts.Obj(contracts.Prop("y", contracts.Num()), contracts.Prop("t", contracts.Num())))
+	return e.Event("paddle", contracts.Obj(contracts.Prop("y", contracts.Num()), contracts.Prop("t", contracts.Num())))
 }))
 
 // matchProbe is what a test reaches of each match attempt: its paddle source, its score's writable and its `self`.
@@ -1817,7 +1834,7 @@ func (p *matchProbe) self(index int) Self {
 
 // serveMatch serves `Match`; guests get the watcher variant.
 func serveMatch(host FacetHost, probe *matchProbe) error {
-	return host.Serve(Match, func(_ *delta.JsonObject, principal data.Principal, self Self) (contracts.Implementation, error) {
+	return host.Serve(Match, func(_ *delta.JsonObject, _ data.Principal, _ AdmittedValue, self Self) (contracts.MembersImplementation, error) {
 		paddle := self.Events()
 		ball := self.Events()
 		writable := self.Writable(0.0)
@@ -1827,15 +1844,18 @@ func serveMatch(host FacetHost, probe *matchProbe) error {
 		probe.selves = append(probe.selves, self)
 		probe.mu.Unlock()
 		score := self.Derive([]any{writable}, func(values []any) (delta.JsonValue, error) { return values[0], nil })
-		if principalKind(principal) == "guest" {
-			return contracts.Implementation{Variant: "watcher", Members: contracts.VariantImplementation{
-				State: map[string]chord.Watchable[delta.JsonValue]{"score": score},
-			}}, nil
-		}
-		return contracts.Implementation{Variant: "player", Members: contracts.VariantImplementation{
-			State:   map[string]chord.Watchable[delta.JsonValue]{"score": score},
-			Events:  map[string]contracts.EventMember[delta.JsonValue]{"paddle": paddle, "ball": ball},
+		return contracts.MembersImplementation{
+			State: map[string]chord.Watchable[delta.JsonValue]{"score": score},
+			EventsBuild: map[string]contracts.EventBuilder{
+				"paddle": func() contracts.EventMember[delta.JsonValue] { return paddle },
+				"ball":   func() contracts.EventMember[delta.JsonValue] { return ball },
+			},
 			Methods: map[string]contracts.MethodFunction{"bump": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil }},
-		}}, nil
-	}, ServeOptions{})
+		}, nil
+	}, ServeOptions{Admit: func(_ *delta.JsonObject, principal data.Principal, _ AdmitSelf) (chord.Watchable[delta.JsonValue], error) {
+		if principalKind(principal) == "guest" {
+			return Expose(state.NewConstant(Allow(delta.NewJsonObject(0)))), nil
+		}
+		return Expose(state.NewConstant(Allow(delta.JsonObjectOf("granted", []delta.JsonValue{"ball", "bump", "paddle"})))), nil
+	}})
 }

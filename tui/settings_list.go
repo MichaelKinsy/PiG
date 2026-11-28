@@ -333,9 +333,12 @@ func (s *SettingsList) renderMainList(width int) []string {
 
 // hintLines mirrors upstream addHintLine.
 func (s *SettingsList) hintLines(width int) []string {
-	hint := "  Enter/Space to change · Esc to cancel"
+	kb := GetKeybindings()
+	confirmKeys := append(append([]string(nil), kb.GetKeys("tui.select.confirm")...), "space")
+	keysHint := strings.Join(confirmKeys, "/") + " to change · " + strings.Join(kb.GetKeys("tui.select.cancel"), "/") + " to cancel"
+	hint := "  " + keysHint
 	if s.searchEnabled {
-		hint = "  Type to search · Enter/Space to change · Esc to cancel"
+		hint = "  Type to search · " + keysHint
 	}
 	return []string{"", clipOverflow(widthx.TruncateToWidth(s.theme().Hint(hint), width, "...", false), width)}
 }

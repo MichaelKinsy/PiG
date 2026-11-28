@@ -208,6 +208,8 @@ func ClassifyDiagnostic(diagnostic Diagnostic, source FileSource, files map[stri
 			{"TransformHeaders", "ProviderStreamOptions", RuleTransformHeaders, "ProviderStreamOptions.TransformHeaders"},
 			{"GetShowCacheMissNotices", "SettingsManager", RuleSettingsNotices, "SettingsManager.GetShowCacheMissNotices"},
 			{"SetShowCacheMissNotices", "SettingsManager", RuleSettingsNotices, "SettingsManager.SetShowCacheMissNotices"},
+			{"GetEnableInstallTelemetry", "SettingsManager", RuleInstallTelemetryRemoved, "SettingsManager.GetEnableInstallTelemetry"},
+			{"SetEnableInstallTelemetry", "SettingsManager", RuleInstallTelemetryRemoved, "SettingsManager.SetEnableInstallTelemetry"},
 		} {
 			if strings.Contains(message, r.a) && strings.Contains(message, r.b) {
 				return r.rule, r.sym, true

@@ -22,7 +22,7 @@ if (process.argv[2] === "pig") {
     const credentials = AuthStorage.inMemory({ "cloudflare-ai-gateway": { type: "api_key", key: "test-token", env: { CLOUDFLARE_ACCOUNT_ID: "test-account", CLOUDFLARE_GATEWAY_ID: "test-gateway" } } });
     const runtime = await ModelRuntime.create({ credentials, modelsPath: null, allowModelNetwork: false });
     const registry = new ModelRegistry(runtime);
-    const model = runtime.getModel("cloudflare-ai-gateway", "workers-ai/@cf/moonshotai/kimi-k2.6");
+    const model = runtime.getModel("cloudflare-ai-gateway", "workers-ai/@cf/zai-org/glm-5.3");
     assert.ok(model);
     let calls = 0;
     const fetch = async (input, init) => {

@@ -49,7 +49,6 @@ func session(t testing.TB) *contracts.Contract {
 			contracts.Prop("open", contracts.Bool()),
 		},
 		HostAddress: contractstest.ServerAddress,
-		Variants:    []contracts.VariantEntry{contracts.Var("owner", contracts.VariantDeclaration{})},
 	})
 }
 

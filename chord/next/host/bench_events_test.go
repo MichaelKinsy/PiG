@@ -28,21 +28,19 @@ import (
 var benchEventsPaddle = contracts.Obj(
 	contracts.Prop("peer", contracts.Str()), contracts.Prop("t", contracts.Num()), contracts.Prop("y", contracts.Num()))
 
-func benchEventsVariants() []contracts.VariantEntry {
-	return []contracts.VariantEntry{contracts.Var("player", contracts.VariantDeclaration{
-		Events: []contracts.Property{contracts.Prop("paddle", benchEventsPaddle)},
-	})}
+func benchEventsList() []contracts.RemoteEventEntry {
+	return []contracts.RemoteEventEntry{contracts.EventEntry("paddle", benchEventsPaddle)}
 }
 
 var benchEventsMatch = mustContract(contracts.Remote("bench.match", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Str())},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-	Variants:    benchEventsVariants(),
+	Events:      benchEventsList(),
 }))
 
 // benchEventsMatchV2: the paddle gains a velocity; version 1 consumers get it mapped away.
 var benchEventsMatchV2 = mustContract(contracts.Evolve(benchEventsMatch, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
-	return e.Event("player", "paddle", contracts.Obj(
+	return e.Event("paddle", contracts.Obj(
 		contracts.Prop("peer", contracts.Str()), contracts.Prop("t", contracts.Num()),
 		contracts.Prop("y", contracts.Num()), contracts.Prop("v", contracts.Num())))
 }))
@@ -53,7 +51,7 @@ var benchEventsPlaced = mustContract(contracts.Remote("bench.placed", contracts.
 	HostAddress: func(params *delta.JsonObject) (contracts.Address, error) {
 		return Session.Address(jsonObject("id", params.Value("id"))), nil
 	},
-	Variants: benchEventsVariants(),
+	Events: benchEventsList(),
 }))
 
 // benchEventsKind is what a run measures: holders of the current version, of an older one, or through a relay.
@@ -85,30 +83,28 @@ func benchEventsProviderOf(tb testing.TB, address contracts.Address, recorder *t
 	provider.host = newHost(tb, HostOptions{
 		Address: &address, Principal: serverPrincipal(), Telemetry: telemetryOf(recorder), OnError: func(HostError) {},
 	})
-	serve := func(self Self) (contracts.Implementation, error) {
+	serve := func(self Self) (contracts.MembersImplementation, error) {
 		paddle := self.Events()
 		provider.mu.Lock()
 		provider.sources = append(provider.sources, paddle)
 		provider.mu.Unlock()
-		return contracts.Implementation{Variant: "player", Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			Events: map[string]contracts.EventMember[delta.JsonValue]{"paddle": paddle},
-		}}, nil
+		}, nil
 	}
 	provider.facet = DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		mapping := func(value delta.JsonValue) (delta.JsonValue, error) {
 			sample := value.(*delta.JsonObject)
 			return jsonObject("peer", sample.Value("peer"), "t", sample.Value("t"), "y", sample.Value("y")), nil
 		}
-		if err := h.Serve(benchEventsMatchV2, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(benchEventsMatchV2, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			return serve(self)
 		}, ServeOptions{Accepts: contracts.AcceptsTable{{Name: "1", Value: contracts.VersionMappings{
-			VariantEvents: []contracts.Entry[[]contracts.Entry[contracts.EventMapping]]{{
-				Name: "player", Value: []contracts.Entry[contracts.EventMapping]{{Name: "paddle", Value: contracts.EventMapping{Func: mapping}}},
-			}},
+			Events: []contracts.Entry[contracts.EventMapping]{{Name: "paddle", Value: contracts.EventMapping{Func: mapping}}},
 		}}}}); err != nil {
 			return err
 		}
-		return h.Serve(benchEventsPlaced, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return h.Serve(benchEventsPlaced, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			return serve(self)
 		}, ServeOptions{})
 	})

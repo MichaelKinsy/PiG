@@ -23,7 +23,7 @@ func TestExample03Derives(t *testing.T) {
 	badge := exLocal("example.badge", contracts.Params{exProp("user", exStr())}, contracts.Mem("label", exStr()))
 	var computed exCollector
 	host, _ := exOpenHost(t, loadedOptions{}, func(host FacetHost, _ FacetSelf) error {
-		if err := host.Serve(notes, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := host.Serve(notes, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			doc := stateOf(self, exNotesDoc)
 			// mapShared calls its function once per note object.
 			title := state.MapShared(func(note any) any {
@@ -54,7 +54,7 @@ func TestExample03Derives(t *testing.T) {
 			return err
 		}
 		// A derive over another object's member, through a reference declared with self.get.
-		return host.Serve(badge, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return host.Serve(badge, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			user := exParam(params, "user")
 			count := self.Get(notes, jsonObject())
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{

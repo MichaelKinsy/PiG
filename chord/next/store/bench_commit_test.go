@@ -28,7 +28,7 @@ func BenchmarkCommit(b *testing.B) {
 				b.Fatal(err)
 			}
 			b.Cleanup(func() { _ = opened.Close(background) })
-			return opened.(*ChordStore)
+			return opened
 		}
 		create := func(n int64) []StagedWrite {
 			key := fmt.Sprintf("k%d", n)

@@ -658,16 +658,16 @@ type followServed struct {
 
 func followSetup(s *followServed) func(h FacetHost, _ FacetSelf) error {
 	return func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(followView, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(followView, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			left := self.Follow(s.A.attach)
 			right := self.Follow(s.B.attach)
 			sum := self.Derive([]any{left, right}, func(values []any) (delta.JsonValue, error) {
 				s.computes.Add(1)
 				return values[0].(*delta.JsonObject).Value("n").(float64) + values[1].(*delta.JsonObject).Value("n").(float64), nil
 			})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"a": left, "sum": sum},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}
 }
@@ -915,7 +915,7 @@ func TestHostFollowAnEndWhileTheObjectActivatesAfterItsSourcesAttachedFailsTheAc
 	host := newHost(t, HostOptions{OnError: errs.push, loop: loop})
 	view := followView
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(view, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(view, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			left := self.Follow(a.attach)
 			// The activation computes the derives after the follows attached: the runtime ends then.
 			sum := self.Derive([]any{left}, func(values []any) (delta.JsonValue, error) {
@@ -924,9 +924,9 @@ func TestHostFollowAnEndWhileTheObjectActivatesAfterItsSourcesAttachedFailsTheAc
 				}
 				return values[0].(*delta.JsonObject).Value("n"), nil
 			})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"a": left, "sum": sum},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})}}, background))
 	if _, err := host.Get(background, view, jsonObject(), GetOptions{ReadyTimeout: followMs(50)}); err == nil {

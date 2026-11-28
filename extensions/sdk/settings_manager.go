@@ -426,15 +426,6 @@ func (s SettingsManager) SetCollapseChangelog(collapse bool) error {
 	return err
 }
 
-func (s SettingsManager) GetEnableInstallTelemetry() (bool, error) {
-	return graphMethodCall[bool](s.object, "getEnableInstallTelemetry")
-}
-
-func (s SettingsManager) SetEnableInstallTelemetry(enabled bool) error {
-	_, err := graphMethodCall[graphDone](s.object, "setEnableInstallTelemetry", enabled)
-	return err
-}
-
 func (s SettingsManager) GetEnableAnalytics() (bool, error) {
 	return graphMethodCall[bool](s.object, "getEnableAnalytics")
 }

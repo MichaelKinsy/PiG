@@ -196,7 +196,7 @@ func TestBashCommandWhileAnotherRunsIsRefused(t *testing.T) {
 	m.abortCtx, m.abortFn = context.WithCancel(t.Context())
 	m.handleSubmit(t.Context(), "!true")
 	chat := widthx.StripAnsi(strings.Join(m.chatContainer.Render(100), "\n"))
-	if !strings.Contains(chat, "A bash command is already running. Press Esc to cancel it first.") {
+	if !strings.Contains(chat, "A bash command is already running. Press escape to cancel it first.") {
 		t.Fatalf("chat lacks the already-running warning:\n%s", chat)
 	}
 	if got := m.editor.Text(); got != "!true" {

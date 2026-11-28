@@ -305,16 +305,9 @@ export const Todos = remote("todo.todos", {
 	version: 1,
 	params: { list: str() },
 	hostAddress: ({ list }) => List({ id: list }),
-	variants: {
-		member: {
-			state: { items: arr(Item), notice: Notice },
-			methods: { add: method(str()), tick: method(obj({ id: int(), done: bool() })) },
-		},
-		owner: {
-			state: { items: arr(Item), notice: Notice },
-			methods: { add: method(str()), tick: method(obj({ id: int(), done: bool() })), clear: method() },
-		},
-	},
+	state: { items: arr(Item), notice: Notice },
+	// `clear` is grantable: the list's admission grants it to the owner only.
+	methods: { add: method(str()), tick: method(obj({ id: int(), done: bool() })), clear: grantable(method()) },
 });
 ```
 
@@ -326,19 +319,20 @@ Its `notice` is a message as data, which chapter VIII renders in each viewer's l
 // version and schema bind. Its objects live at a list's address, on that list's worker.
 var todos = func() *contracts.Contract {
 	notice := contracts.Union([]contracts.Schema{surfaces.MessageSchema, contracts.Nul()})
-	state := []contracts.Property{contracts.Prop("items", contracts.Arr(item)), contracts.Prop("notice", notice)}
 	add := contracts.Meth("add", contracts.NewMethod(contracts.Str()))
 	tick := contracts.Meth("tick", contracts.NewMethod(contracts.Obj(contracts.Prop("id", contracts.Int()), contracts.Prop("done", contracts.Bool()))))
+	clear := contracts.Meth("clear", contracts.NewGrantable(contracts.NewMethod()))
 	contract, err := contracts.Remote("todo.todos", contracts.RemoteDeclaration{
 		Version: 1,
 		Params:  contracts.Params{contracts.Prop("list", contracts.Str())},
 		HostAddress: func(params *delta.JsonObject) (contracts.Address, error) {
 			return listKind.Address(delta.JsonObjectOf("id", params.Value("list"))), nil
 		},
-		Variants: []contracts.VariantEntry{
-			contracts.Var("member", contracts.VariantDeclaration{State: state, Methods: []contracts.MethodEntry{add, tick}}),
-			contracts.Var("owner", contracts.VariantDeclaration{State: state, Methods: []contracts.MethodEntry{add, tick, contracts.Meth("clear", contracts.NewMethod())}}),
+		State: []contracts.RemoteStateEntry{
+			contracts.StateEntry("items", contracts.Arr(item)),
+			contracts.StateEntry("notice", notice),
 		},
+		Methods: []contracts.RemoteMethodEntry{add, tick, clear},
 	})
 	if err != nil {
 		panic(err)
@@ -448,19 +442,26 @@ A todo without text is refused with `invalid("args", …)`, from the API: the er
 
 <!-- quote: plugins/lists/worker.ts -->
 ```ts
-	host.serve(Todos, (_params, principal, self) => {
-		const store = self.get(Store, {});
-		// Who adds a todo comes from the principal the link stamped, never from the arguments.
-		const by = principal.kind === "user" ? principal.name : principal.kind;
-		const members = {
-			items: self.derive([store.items], ([items]) => items),
-			notice: self.derive([store.notice], ([notice]) => notice),
-			add: (text: string, ctx: Ctx) => store.add({ text, by }, ctx),
-			tick: (tick: { id: number; done: boolean }, ctx: Ctx) => store.tick(tick, ctx),
-		};
-		if (principal.kind !== "owner") return { variant: "member", members };
-		return { variant: "owner", members: { ...members, clear: (ctx: Ctx) => store.clear({ by }, ctx) } };
-	});
+	host.serve(
+		Todos,
+		(_params, principal, _admitted, self) => {
+			const store = self.get(Store, {});
+			// Who adds a todo comes from the principal the link stamped, never from the arguments.
+			const by = principal.kind === "user" ? principal.name : principal.kind;
+			return {
+				items: self.derive([store.items], ([items]) => items),
+				notice: self.derive([store.notice], ([notice]) => notice),
+				add: (text: string, ctx: Ctx) => store.add({ text, by }, ctx),
+				tick: (tick: { id: number; done: boolean }, ctx: Ctx) => store.tick(tick, ctx),
+				// Exposed only to a caller granted it: the owner.
+				clear: (ctx: Ctx) => store.clear({ by }, ctx),
+			};
+		},
+		{
+			admit: (_params, principal) =>
+				constant(principal.kind === "owner" ? allow({ granted: ["clear"] }) : allow({})),
+		},
+	);
 ```
 
 `self.get(Store, {})` declares a dependency: the view goes live once the store is, and holds a **reference** to it for its whole life. `by` comes from the principal. A client could put anything in the arguments of `add`; it cannot change what its link stamped. That is the rule for every plugin: identity from the principal, never from arguments.
@@ -489,8 +490,12 @@ Step 2 asks for the groceries list twice, from a root acting as the owner and fr
 		if err != nil {
 			return err
 		}
-		variant, _, err := todos.Variant()
-		_, _ = fmt.Fprintln(s.out, "2. as the owner:", variant, "|", show(items))
+		granted, err := todos.Granted()
+		role := "member"
+		if granted["clear"] {
+			role = "owner"
+		}
+		_, _ = fmt.Fprintln(s.out, "2. as the owner:", role, "|", show(items))
 		return err
 	})
 	if err != nil {
@@ -508,8 +513,12 @@ Step 2 asks for the groceries list twice, from a root acting as the owner and fr
 		if err != nil {
 			return err
 		}
-		variant, _, err := todos.Variant()
-		_, _ = fmt.Fprintln(s.out, "   as the server:", variant, "|", show(items[2:]))
+		granted, err := todos.Granted()
+		role := "member"
+		if granted["clear"] {
+			role = "owner"
+		}
+		_, _ = fmt.Fprintln(s.out, "   as the server:", role, "|", show(items[2:]))
 ```
 
 <!-- output: main -->
@@ -670,7 +679,8 @@ function TodoList() {
 	const { t } = useMessages(messages);
 	const host = useHost();
 	const list = location.hash.slice(1) || "groceries";
-	const todos = useHold(Todos, { list });
+	// Live or nothing: `clear` comes and goes with what the list's admission grants, in the same render.
+	const todos = useLive(useHold(Todos, { list }));
 	const items = useWatch(todos?.items) ?? [];
 	const notice = useWatch(todos?.notice);
 	// Kept by the page, not the component: the new code's component finds the half-typed todo.
@@ -713,9 +723,9 @@ function TodoList() {
 				onChange: (event: { target: { value: string } }) => setText(event.target.value),
 			}),
 		),
-		todos?.variant === "owner"
-			? h("button", { type: "button", onClick: () => void todos.clear(context) }, t("clearDone"))
-			: null,
+		todos?.clear === undefined
+			? null
+			: h("button", { type: "button", onClick: () => void todos.clear?.(context) }, t("clearDone")),
 		notice === undefined || notice === null ? null : h("p", { className: "lists-notice" }, t.render(notice)),
 	);
 }
@@ -1063,8 +1073,12 @@ type socket struct {
 	if _, err := s.adas.Call("add", "coffee", s.ctx); err != nil {
 		return err
 	}
-	variant, _, err := s.adas.Variant()
-	_, _ = fmt.Fprintln(s.out, "   ada's variant:", variant)
+	granted, err := s.adas.Granted()
+	role := "member"
+	if granted["clear"] {
+		role = "owner"
+	}
+	_, _ = fmt.Fprintln(s.out, "   ada's variant:", role)
 	if err != nil {
 		return err
 	}
@@ -1083,7 +1097,7 @@ type socket struct {
 ```text
 7. ada's hold before load: todo.todos: the host has not loaded; call host.load first (a host with nothing to load calls load([]))
    ada's variant: member
-   ada's clear: invalid/member
+   ada's clear: forbidden/
    the server's reference sees: [ ] coffee (ada)
 ```
 
@@ -1977,8 +1991,8 @@ Each test runs code as a principal of its choice with `root`:
 func TestTheListsPluginLetsTheOwnerClearTheDoneTodos(t *testing.T) {
 	l := testList(t)
 	l.root(t, ownerPrincipal, func(list *host.Reference, ctx host.Ctx) error {
-		if variant, _, err := list.Variant(); err != nil || variant != "owner" {
-			t.Errorf("the owner got %q, %v", variant, err)
+		if granted, err := list.Granted(); err != nil || !granted["clear"] {
+			t.Errorf("the owner got %v, %v", granted, err)
 		}
 		for _, text := range []string{"milk", "eggs"} {
 			if _, err := list.Call("add", text, ctx); err != nil {

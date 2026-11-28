@@ -55,11 +55,9 @@ var shServer = mustKind(contracts.NewHostKind("server"))
 var shCounter = mustContract(contracts.Remote("test.shared-counter", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return shServer.Address(nil), nil },
-	Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{
-		State: []contracts.Property{contracts.Prop("n", contracts.Int())},
-		Methods: []contracts.MethodEntry{contracts.Meth("slow", contracts.NewMethod(
-			contracts.Obj(contracts.Prop("who", contracts.Str())), contracts.Str()))},
-	})},
+	State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
+	Methods: []contracts.RemoteMethodEntry{contracts.Meth("slow", contracts.NewMethod(
+		contracts.Obj(contracts.Prop("who", contracts.Str())), contracts.Str()))},
 }))
 
 // shConsumer is the consumer's script over a vendored tree: Pi's chord, a link over the process's pipes, a host connected
@@ -144,13 +142,14 @@ const Counter = remote("test.shared-counter", {
 	version: 1,
 	params: {},
 	hostAddress: () => Server(),
-	variants: { v: { state: { n: int() }, methods: { slow: method(obj({ who: str() }), str()) } } },
+	state: { n: int() },
+	methods: { slow: method(obj({ who: str() }), str()) },
 });
 
 const a = await host.get(Counter, {}, BACKGROUND_CONTEXT);
 const b = await host.get(Counter, {}, BACKGROUND_CONTEXT);
 assert.notEqual(a, b, "two references");
-assert.deepEqual([a.variant, a.n.value, b.variant, b.n.value], ["v", 1, "v", 1]);
+assert.deepEqual([a.n.value, b.n.value], [1, 1]);
 await turn();
 say("got twice");
 
@@ -464,8 +463,8 @@ func TestTheVendoredHostsReferencesOfOneObjectShareOneWireHoldOfAGoProvider(t *t
 			proceed := make(chan struct{})
 			release := sync.OnceFunc(func() { close(proceed) })
 			facet := host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-				return h.Serve(shCounter, func(*delta.JsonObject, *delta.JsonObject, host.Self) (contracts.Implementation, error) {
-					return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+				return h.Serve(shCounter, func(*delta.JsonObject, *delta.JsonObject, host.Self) (contracts.MembersImplementation, error) {
+					return contracts.MembersImplementation{
 						State: map[string]chord.Watchable[delta.JsonValue]{"n": host.Expose(state.NewConstant(1.0))},
 						Methods: map[string]contracts.MethodFunction{
 							"slow": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -483,7 +482,7 @@ func TestTheVendoredHostsReferencesOfOneObjectShareOneWireHoldOfAGoProvider(t *t
 								}
 							},
 						},
-					}}, nil
+					}, nil
 				}, host.ServeOptions{})
 			})
 			session := shStart(t, each.tree(t), facet, func(func(string) string) string { return shSharingSteps })

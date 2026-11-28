@@ -415,11 +415,12 @@ type RPCModelCostTier struct {
 
 // RPCModelCost is a model's cost; a nil Tiers is a cost with no tiers member and an empty one a cost with tiers: [].
 type RPCModelCost struct {
-	Input      float64            `json:"input"`
-	Output     float64            `json:"output"`
-	CacheRead  float64            `json:"cacheRead"`
-	CacheWrite float64            `json:"cacheWrite"`
-	Tiers      []RPCModelCostTier `json:"tiers,omitzero"`
+	Input       float64            `json:"input"`
+	Output      float64            `json:"output"`
+	CacheRead   float64            `json:"cacheRead"`
+	CacheWrite  float64            `json:"cacheWrite"`
+	ImageOutput *float64           `json:"imageOutput,omitempty"`
+	Tiers       []RPCModelCostTier `json:"tiers,omitzero"`
 }
 
 type RPCModel struct {
@@ -797,11 +798,17 @@ func rpcModelValue(model *ai.Model) *RPCModel {
 	} else if model.Capabilities.SupportsImages {
 		input = append(input, "image")
 	}
+	var imageOutput *float64
+	if model.Capabilities.ImageOutputCostPer1M != nil {
+		v := *model.Capabilities.ImageOutputCostPer1M
+		imageOutput = &v
+	}
 	cost := RPCModelCost{
-		Input:      model.Capabilities.InputCostPer1M,
-		Output:     model.Capabilities.OutputCostPer1M,
-		CacheRead:  model.Capabilities.CacheReadCostPer1M,
-		CacheWrite: model.Capabilities.CacheWriteCostPer1M,
+		Input:       model.Capabilities.InputCostPer1M,
+		Output:      model.Capabilities.OutputCostPer1M,
+		CacheRead:   model.Capabilities.CacheReadCostPer1M,
+		CacheWrite:  model.Capabilities.CacheWriteCostPer1M,
+		ImageOutput: imageOutput,
 	}
 	if model.Capabilities.CostTiers != nil {
 		cost.Tiers = make([]RPCModelCostTier, len(model.Capabilities.CostTiers))

@@ -38,7 +38,7 @@ wait_timeout_seconds = 15
 
 [[tmux.steps]]
 keys = ["/settings", "Enter"]
-wait_contains = ["Type to search · Enter/Space to change · Esc to cancel"]
+wait_contains = ["Type to search · enter/space to change · escape/ctrl+c to cancel"]
 wait_timeout_seconds = 15
 
 [[tmux.steps]]
@@ -48,7 +48,7 @@ wait_timeout_seconds = 15
 
 [[tmux.steps]]
 keys = ["Enter"]
-wait_contains = ["Enter to select · Esc to go back"]
+wait_contains = ["enter to select · escape/ctrl+c to go back"]
 wait_timeout_seconds = 15
 
 [[tmux.steps]]

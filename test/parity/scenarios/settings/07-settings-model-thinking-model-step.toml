@@ -21,11 +21,11 @@ ready_pattern_pi = "$0.000"
 ready_timeout_seconds = 25
 capture_start = "Per-Model Thinking Level"
 capture_start_last = true
-capture_end = "Type to filter · Enter to select · Esc to go back"
+capture_end = "Type to filter · enter to select · escape/ctrl+c to go back"
 
 [[tmux.steps]]
 keys = ["/settings", "Enter"]
-wait_contains = ["Type to search · Enter/Space to change · Esc to cancel"]
+wait_contains = ["Type to search · enter/space to change · escape/ctrl+c to cancel"]
 wait_timeout_seconds = 5
 settle_seconds = 1
 

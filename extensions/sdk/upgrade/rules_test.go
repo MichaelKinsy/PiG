@@ -731,6 +731,22 @@ func TestClassifyNamesTheReplacedShowCacheMissNotices(t *testing.T) {
 	}
 }
 
+func TestClassifyNamesTheRemovedInstallTelemetry(t *testing.T) {
+	for _, tc := range []struct {
+		method string
+		symbol string
+	}{
+		{"GetEnableInstallTelemetry", "SettingsManager.GetEnableInstallTelemetry"},
+		{"SetEnableInstallTelemetry", "SettingsManager.SetEnableInstallTelemetry"},
+	} {
+		output := "# example.com/x\n./x.go:9:4: sm." + tc.method + " undefined (type sdk.SettingsManager has no field or method " + tc.method + ")\n"
+		drifts := upgrade.Classify(upgrade.ParseDiagnostics([]byte(output)), nil)
+		if len(drifts) != 1 || drifts[0].Rule != upgrade.RuleInstallTelemetryRemoved || drifts[0].Symbol != tc.symbol || drifts[0].Rewrites || drifts[0].New != "removed" {
+			t.Fatalf("%s: drifts = %+v", tc.method, drifts)
+		}
+	}
+}
+
 func TestEveryRuleSymbolIsUnique(t *testing.T) {
 	seen := map[string]string{}
 	for _, rule := range upgrade.Rules() {

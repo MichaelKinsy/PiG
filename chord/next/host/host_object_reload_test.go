@@ -88,12 +88,12 @@ func (q *reloadGateQueue) shift() *reloadGate {
 
 // reloadPureImplementation is what `reloadServePure` returns: n (a derive of the counter document), label, and `bump` adding `by` after
 // the gate it takes.
-func reloadPureImplementation(t testing.TB, self Self, label string, by float64, queue *reloadGateQueue, extra func(doc *singletonDoc)) contracts.Implementation {
+func reloadPureImplementation(t testing.TB, self Self, label string, by float64, queue *reloadGateQueue, extra func(doc *singletonDoc)) contracts.MembersImplementation {
 	doc := stateOf(self, reloadCounterDoc)
 	if extra != nil {
 		extra(doc)
 	}
-	return contracts.Implementation{Members: contracts.VariantImplementation{
+	return contracts.MembersImplementation{
 		State: map[string]chord.Watchable[delta.JsonValue]{
 			"n": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) {
 				return values[0].(*delta.JsonObject).Value("n"), nil
@@ -110,12 +110,12 @@ func reloadPureImplementation(t testing.TB, self Self, label string, by float64,
 			}
 			return doc.Value().Value("n"), nil
 		}},
-	}}
+	}
 }
 
 // reloadServePure serves `Pure` labelled label; `bump` adds by, first waiting for the gate queued when there is one.
 func reloadServePure(t testing.TB, h FacetHost, label string, by float64, queue *reloadGateQueue) error {
-	return h.Serve(reloadPure, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+	return h.Serve(reloadPure, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 		return reloadPureImplementation(t, self, label, by, queue, nil), nil
 	}, ServeOptions{})
 }
@@ -237,14 +237,14 @@ func TestReloadFatesShowsTheOldAttemptLiveWhileItDrainsClosesItsNativesWithReaso
 		closes = append(closes, text)
 	}
 	serve := func(h FacetHost, label string, queue *reloadGateQueue) error {
-		return h.Serve(reloadPure, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(reloadPure, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			doc := stateOf(self, reloadCounterDoc)
 			self.Open(func(context.Context) (any, error) { return label, nil },
 				func(value any, reason NativeCloseReason, _ context.Context) error {
 					push(fmt.Sprintf("%v %s", value, reason.Kind))
 					return nil
 				})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"n": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) {
 						return values[0].(*delta.JsonObject).Value("n"), nil
@@ -262,7 +262,7 @@ func TestReloadFatesShowsTheOldAttemptLiveWhileItDrainsClosesItsNativesWithReaso
 					push("bump done on " + label)
 					return doc.Value().Value("n"), nil
 				}},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}
 	held := newReloadGate()
@@ -319,13 +319,13 @@ func TestReloadFatesShowsTheOldAttemptLiveOnlyToTheConsumersItsVersionBindsNotTo
 	running := startReloadCall(pure, "bump", nil)
 	held.entered.wait(t)
 	reloadMust(t)(reloadApp(host, func(h FacetHost) error {
-		return h.Serve(next, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+		return h.Serve(next, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(jsonObject("value", 5.0)), "label": constant("v2")},
 				Methods: map[string]contracts.MethodFunction{"bump": func(delta.JsonValue, context.Context) (delta.JsonValue, error) {
 					return 1.0, nil
 				}},
-			}}, nil
+			}, nil
 		}, ServeOptions{Accepts: contracts.AcceptsTable{{Name: "1", Value: contracts.VersionMappings{
 			State: []contracts.Entry[contracts.StateMapping]{{Name: "n", Value: contracts.StateMapping{
 				Func: func(v delta.JsonValue) (delta.JsonValue, error) { return v.(*delta.JsonObject).Value("value"), nil },
@@ -393,11 +393,11 @@ func TestReloadFatesALiveLocalDependentOfARemovedTypeKeepsItsLastValueServedAgai
 		Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("text", contracts.Str())},
 	}))
 	panel := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(panelType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(panelType, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			label := self.Get(reloadPure, jsonObject()).Member("label")
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 				"text": self.Derive([]any{label}, func(values []any) (delta.JsonValue, error) { return "panel " + values[0].(string), nil }),
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	})
 	host := newHost(t, HostOptions{OnError: func(HostError) {}})
@@ -430,8 +430,8 @@ func TestReloadFatesALiveLocalDependentOfARemovedTypeKeepsItsLastValueServedAgai
 
 func TestReloadFatesRetriesAFailedObjectOnTheNewCode(t *testing.T) {
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(reloadPure, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{}, errors.New("bug")
+		return h.Serve(reloadPure, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{}, errors.New("bug")
 		}, ServeOptions{})
 	}, loadedOptions{})
 	defer closeHosts(t, host)
@@ -454,9 +454,9 @@ func TestReloadFatesReportsARestartParkedWhoseNewFactoryNeedsAMissingDependencyI
 	defer closeHosts(t, host)
 	pure := mustGet(t, host, reloadPure, jsonObject())
 	needsDep := func(h FacetHost) error {
-		return h.Serve(reloadPure, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(reloadPure, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			name := self.Get(dep, jsonObject()).Member("name")
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"n": constant(0.0),
 					"label": self.Derive([]any{name}, func(values []any) (delta.JsonValue, error) {
@@ -466,7 +466,7 @@ func TestReloadFatesReportsARestartParkedWhoseNewFactoryNeedsAMissingDependencyI
 				Methods: map[string]contracts.MethodFunction{"bump": func(delta.JsonValue, context.Context) (delta.JsonValue, error) {
 					return 0.0, nil
 				}},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}
 	report := reloadMust(t)(reloadApp(host, needsDep))
@@ -482,10 +482,10 @@ func TestReloadFatesReportsARestartParkedWhoseNewFactoryNeedsAMissingDependencyI
 	reloadMust(t)(host.Reload([]HostFacet{
 		{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return needsDep(h) })},
 		{Name: "@test/dep", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(dep, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-				return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+			return h.Serve(dep, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+				return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 					"name": constant("dep"),
-				}}}, nil
+				}}, nil
 			}, ServeOptions{})
 		})},
 	}, background, ReloadOptions{}))
@@ -529,9 +529,9 @@ func TestReloadARestartOldWorkWritesADocumentWhoseVersionTheReloadRaisesTheNewCo
 	})
 	must(t, err)
 	serve := func(h FacetHost, definition *documents.StateDefinition, queue *reloadGateQueue) error {
-		return h.Serve(reloadPure, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(reloadPure, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			doc := stateOf(self, definition)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"n": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) {
 						return values[0].(*delta.JsonObject).Value("n"), nil
@@ -556,7 +556,7 @@ func TestReloadARestartOldWorkWritesADocumentWhoseVersionTheReloadRaisesTheNewCo
 					}
 					return doc.Value().Value("n"), nil
 				}},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}
 	held := newReloadGate()
@@ -591,9 +591,9 @@ func TestReloadARestartBindsTheNewAttemptsRequestsBeforeReleasingTheOldOnesADepe
 		},
 	}))
 	dep := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(depType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(depType, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			doc := stateOf(self, reloadCounterDoc)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"n": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) {
 						return values[0].(*delta.JsonObject).Value("n"), nil
@@ -603,14 +603,14 @@ func TestReloadARestartBindsTheNewAttemptsRequestsBeforeReleasingTheOldOnesADepe
 					n := args.(*delta.JsonObject).Value("n")
 					return nil, doc.Change(func(draft *delta.Object) { _ = draft.Set("n", n) }, ctx)
 				}},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})
 	app := func(label string) Facet {
 		return DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(reloadPure, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(reloadPure, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				held := self.Get(depType, jsonObject("id", 1.0))
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{
 						"n":     self.Derive([]any{held.Member("n")}, func(values []any) (delta.JsonValue, error) { return values[0], nil }),
 						"label": constant(label),
@@ -619,7 +619,7 @@ func TestReloadARestartBindsTheNewAttemptsRequestsBeforeReleasingTheOldOnesADepe
 						_, err := held.Call("set", jsonObject("n", 7.0), ctx)
 						return 7.0, err
 					}},
-				}}, nil
+				}, nil
 			}, ServeOptions{})
 		})
 	}
@@ -670,7 +670,7 @@ func TestReloadARestartStopsItsRoutinesAtOnceTheirCallsDrainBeforeTheNewOnesStar
 	}
 	release := newSignal()
 	serve := func(h FacetHost, label string) error {
-		return h.Serve(reloadPure, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(reloadPure, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			self.OnLive(func(ctx Ctx) *Handled {
 				push(label + " started")
 				return Awaiting(ctx.(*callContext).host.loop(), func() error {
@@ -682,10 +682,10 @@ func TestReloadARestartStopsItsRoutinesAtOnceTheirCallsDrainBeforeTheNewOnesStar
 					return nil
 				})
 			})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State:   map[string]chord.Watchable[delta.JsonValue]{"n": constant(0.0), "label": constant(label)},
 				Methods: map[string]contracts.MethodFunction{"bump": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return 0.0, nil }},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return serve(h, "v1") }, loadedOptions{})
@@ -731,15 +731,15 @@ func TestReloadARestartStartsAWritableAtItsNewInitialValueAndReplacesTheContribu
 	})
 	app := func(tool string) Facet {
 		return DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(reloadPure, func(_ *delta.JsonObject, own Self) (contracts.Implementation, error) {
+			return h.Serve(reloadPure, func(_ *delta.JsonObject, own Self) (contracts.MembersImplementation, error) {
 				list := own.Writable([]any{tool})
 				own.(StoreSelf).Contribute(tools, list)
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(0.0), "label": constant(tool)},
 					Methods: map[string]contracts.MethodFunction{"bump": func(delta.JsonValue, context.Context) (delta.JsonValue, error) {
 						return float64(len(list.Value().([]any))), nil
 					}},
-				}}, nil
+				}, nil
 			}, ServeOptions{})
 		})
 	}
@@ -779,7 +779,7 @@ func TestReloadAStuckRoutineCallPastTheDrainAnOldRoutineCallStuckPastTheReloadDr
 	loop := newScopeLoop()
 	closeTimeout := time.Second
 	serve := func(h FacetHost, label string) error {
-		return h.Serve(reloadPure, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(reloadPure, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			doc := stateOf(self, reloadCounterDoc)
 			self.OnLive(func(ctx Ctx) *Handled {
 				if label != "v1" {
@@ -798,7 +798,7 @@ func TestReloadAStuckRoutineCallPastTheDrainAnOldRoutineCallStuckPastTheReloadDr
 					return nil
 				})
 			})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"n": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) {
 						return values[0].(*delta.JsonObject).Value("n"), nil
@@ -806,7 +806,7 @@ func TestReloadAStuckRoutineCallPastTheDrainAnOldRoutineCallStuckPastTheReloadDr
 					"label": constant(label),
 				},
 				Methods: map[string]contracts.MethodFunction{"bump": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return 0.0, nil }},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}
 	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error { return serve(h, "v1") },
@@ -917,7 +917,7 @@ func TestReloadAParkedAttemptsHandoverKeepsADependencyHeldOnlyByAParkedAttemptAl
 	}
 	host := newHost(t, HostOptions{OnError: func(HostError) {}})
 	depFacet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(dep, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(dep, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			self.Open(func(context.Context) (any, error) {
 				mu.Lock()
 				opens++
@@ -929,15 +929,15 @@ func TestReloadAParkedAttemptsHandoverKeepsADependencyHeldOnlyByAParkedAttemptAl
 				mu.Unlock()
 				return nil
 			})
-			return contracts.Implementation{}, nil
+			return contracts.MembersImplementation{}, nil
 		}, ServeOptions{})
 	})
 	aFacet := func() Facet {
 		return DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(a, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(a, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				self.Get(dep, jsonObject("id", 1.0))
 				self.Get(missing, jsonObject())
-				return contracts.Implementation{}, nil
+				return contracts.MembersImplementation{}, nil
 			}, ServeOptions{})
 		})
 	}
@@ -967,7 +967,7 @@ func TestReloadAParkedAttemptsHandoverBindsReplacementRequestsBeforeReleasingThe
 		return [2]int{opens, closes}
 	}
 	bFacet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(b, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(b, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			self.Open(func(context.Context) (any, error) {
 				mu.Lock()
 				opens++
@@ -979,15 +979,15 @@ func TestReloadAParkedAttemptsHandoverBindsReplacementRequestsBeforeReleasingThe
 				mu.Unlock()
 				return nil
 			})
-			return contracts.Implementation{}, nil
+			return contracts.MembersImplementation{}, nil
 		}, ServeOptions{})
 	})
 	aFacet := func() Facet {
 		return DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(a, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(a, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				self.Get(b, jsonObject("id", 1.0))
 				self.Get(missing, jsonObject())
-				return contracts.Implementation{}, nil
+				return contracts.MembersImplementation{}, nil
 			}, ServeOptions{})
 		})
 	}
@@ -1050,12 +1050,12 @@ func TestReloadAReferenceDetachingFromAParkedRestartsOldAttemptFollowsTheOldInst
 	bumping := startReloadCall(pure, "bump", nil)
 	held.entered.wait(t)
 	parked := func(h FacetHost) error {
-		return h.Serve(reloadPure, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(reloadPure, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			self.Get(missing, jsonObject())
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State:   map[string]chord.Watchable[delta.JsonValue]{"n": constant(9.0), "label": constant("v2")},
 				Methods: map[string]contracts.MethodFunction{"bump": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return 0.0, nil }},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}
 	report := reloadMust(t)(reloadApp(host, parked))
@@ -1099,14 +1099,14 @@ func TestALiveFailureAnOlderVersionsMappingFollowsTheAdmittedCommitsStopsAnOlder
 	var own *singletonDoc
 	var self Self
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(v2, func(_ *delta.JsonObject, declared Self) (contracts.Implementation, error) {
+		return h.Serve(v2, func(_ *delta.JsonObject, declared Self) (contracts.MembersImplementation, error) {
 			mu.Lock()
 			defer mu.Unlock()
 			self = declared
 			own = &singletonDoc{s: declared.(StoreSelf).State(state).(*documents.Singleton)}
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 				"n": own.Member(),
-			}}}, nil
+			}}, nil
 		}, ServeOptions{Accepts: contracts.AcceptsTable{{Name: "1", Value: contracts.VersionMappings{
 			State: []contracts.Entry[contracts.StateMapping]{{Name: "n", Value: contracts.StateMapping{
 				Func: func(value delta.JsonValue) (delta.JsonValue, error) { return value.(*delta.JsonObject).Value("n"), nil },
@@ -1161,16 +1161,16 @@ func TestANativeRestartReferencesTakeTheirLastValuesAfterTheAdmittedCommitsKeeps
 	t.Cleanup(opening.fire)
 	facet := func(open func(ctx context.Context) error) Facet {
 		return DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(typ, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(typ, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				mu.Lock()
 				counter = &singletonDoc{s: self.(StoreSelf).State(objCounterPersisted).(*documents.Singleton)}
 				current := counter
 				mu.Unlock()
 				self.Open(func(ctx context.Context) (any, error) { return nil, open(ctx) },
 					func(any, NativeCloseReason, context.Context) error { return nil })
-				return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+				return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 					"x": current.Member(),
-				}}}, nil
+				}}, nil
 			}, ServeOptions{})
 		})
 	}
@@ -1221,38 +1221,38 @@ func TestObjectParkedWalksADiamondOnOneHostOnceASharedParkedDependencyPassesARet
 	left := typed("app.left", contracts.Params{contracts.Prop("id", contracts.Int())})
 	var mu sync.Mutex
 	cores := 0
-	reads := func(self Self, typ *contracts.Contract, params *delta.JsonObject) contracts.Implementation {
-		return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+	reads := func(self Self, typ *contracts.Contract, params *delta.JsonObject) contracts.MembersImplementation {
+		return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 			"n": Expose(self.Get(typ, params).Member("n")),
-		}}}
+		}}
 	}
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(objCore, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+		if err := h.Serve(objCore, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
 			mu.Lock()
 			defer mu.Unlock()
 			if cores++; cores == 1 {
-				return contracts.Implementation{}, errors.New("bug")
+				return contracts.MembersImplementation{}, errors.New("bug")
 			}
 			return nOnly(float64(cores)), nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		if err := h.Serve(mid, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(mid, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			return reads(self, objCore, jsonObject()), nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		if err := h.Serve(left, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(left, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			return reads(self, mid, jsonObject()), nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(top, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(top, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			a := self.Get(left, jsonObject("id", 1.0)).Member("n")
 			b := self.Get(left, jsonObject("id", 2.0)).Member("n")
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 				"n": self.Derive([]any{a, b}, func(values []any) (delta.JsonValue, error) { return values[0].(float64) + values[1].(float64), nil }),
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	defer closeHosts(t, host)
@@ -1286,16 +1286,16 @@ func TestReloadReadinessShowsAFailedRequestWhileItLastsARequestThatRecoversShows
 	var failing atomic.Bool
 	failing.Store(true)
 	flaky := func(h FacetHost) error {
-		return h.Serve(flakyType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(flakyType, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			selfOpen(self, func(context.Context) error {
 				if failing.Load() {
 					return errors.New("flaky is down")
 				}
 				return nil
 			}, func(NativeCloseReason) {})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"name": constant("flaky")},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}
 	gate := newReloadGate()
@@ -1314,12 +1314,12 @@ func TestReloadReadinessShowsAFailedRequestWhileItLastsARequestThatRecoversShows
 	running := startReloadCall(pure, "bump", nil)
 	gate.entered.wait(t)
 	needsFlaky := func(h FacetHost) error {
-		return h.Serve(reloadPure, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(reloadPure, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			self.Get(flakyType, jsonObject("id", 1.0))
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State:   map[string]chord.Watchable[delta.JsonValue]{"n": constant(0.0), "label": constant("v2")},
 				Methods: map[string]contracts.MethodFunction{"bump": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return 2.0, nil }},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}
 	reloadMust(t)(host.Reload([]HostFacet{
@@ -1389,7 +1389,7 @@ func TestReloadOldWorkStartsAJobWritesDocumentsAndTablesAndReadsOnTheOldCodeTheN
 		},
 	}))
 	serve := func(h FacetHost, code string, notesDef *documents.StateDefinition, jobDef *JobDefinition) error {
-		return h.Serve(storeType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(storeType, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			selfOpen(self, func(context.Context) error { opened.add(code); return nil }, func(NativeCloseReason) {})
 			notes := stateOf(self, notesDef)
 			job := self.Job(jobDef, JobImplementation{Run: func(args any, _ JobCtx) (any, error) {
@@ -1449,7 +1449,7 @@ func TestReloadOldWorkStartsAJobWritesDocumentsAndTablesAndReadsOnTheOldCodeTheN
 			} else {
 				methods["work"] = func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return "v2", nil }
 			}
-			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: methods}}, nil
+			return contracts.MembersImplementation{Methods: methods}, nil
 		}, ServeOptions{})
 	}
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return serve(h, "v1", notes1, job1) }, loadedOptions{Store: chordStore})

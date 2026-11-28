@@ -103,21 +103,21 @@ func desk(t *testing.T) (Host, *deskSeen, *Reference) {
 	t.Helper()
 	seen := &deskSeen{late: make(chan error, 1), lateGate: make(chan struct{})}
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(ctxItem, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(ctxItem, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			seen.mu.Lock()
 			seen.factories++
 			seen.mu.Unlock()
 			if params.Value("id") == float64(3) {
 				selfOpen(self, func(context.Context) error { <-seen.lateGate; return nil }, func(NativeCloseReason) {})
 			}
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"id": constant(params.Value("id"))},
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(ctxDesk, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+		return h.Serve(ctxDesk, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				"use": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					item, err := ctx.(Ctx).Get(ctxItem, jsonObject("id", float64(1)), GetOptions{})
 					if err != nil {
@@ -148,7 +148,7 @@ func desk(t *testing.T) (Host, *deskSeen, *Reference) {
 					return nil, nil
 				},
 				"who": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) { return whoIs(ctx), nil },
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	ref, err := host.Get(background, ctxDesk, jsonObject(), GetOptions{})
@@ -203,18 +203,18 @@ func TestCtxGetOfAHandlerWhoseCallWasAbortedChecksTheSignalFirstNothingIsCreated
 	got := make(chan error, 1)
 	started := make(chan bool, 1)
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(ctxItem, func(params *delta.JsonObject, _ Self) (contracts.Implementation, error) {
+		if err := h.Serve(ctxItem, func(params *delta.JsonObject, _ Self) (contracts.MembersImplementation, error) {
 			mu.Lock()
 			factories++
 			mu.Unlock()
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"id": constant(params.Value("id"))},
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(ctxDesk, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+		return h.Serve(ctxDesk, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				"use": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					close(entered)
 					// Pi: `await gate.promise`, then `await untilAborted(ctx)`.
@@ -231,7 +231,7 @@ func TestCtxGetOfAHandlerWhoseCallWasAbortedChecksTheSignalFirstNothingIsCreated
 				"leak": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil },
 				"late": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil },
 				"who":  func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return "", nil },
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	defer closeHosts(t, host)
@@ -301,7 +301,7 @@ func TestCtxAGetStillWaitingWhenItsHandlerSettlesGivesUpItsReferenceIsReleasedAt
 	far := mustContract(declareRemote("app.far", contracts.RemoteDeclaration{
 		Version:     1,
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-		Variants:    []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("n", contracts.Int())}})},
+		State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 	}))
 	starter := mustContract(declareLocal("app.starter", contracts.LocalDeclaration{Params: contracts.Params{},
 		Version: 1,
@@ -311,8 +311,8 @@ func TestCtxAGetStillWaitingWhenItsHandlerSettlesGivesUpItsReferenceIsReleasedAt
 	var parent *RawPeer
 	holds := make(chan *link.HoldMessage, 1)
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(starter, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+		return h.Serve(starter, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				"start": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					c := ctx.(Ctx)
 					go func() { _, err := c.Get(far, jsonObject(), GetOptions{}); pending <- err }()
@@ -321,7 +321,7 @@ func TestCtxAGetStillWaitingWhenItsHandlerSettlesGivesUpItsReferenceIsReleasedAt
 					holds <- parent.Next("hold").(*link.HoldMessage)
 					return nil, nil
 				},
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	defer closeHosts(t, host)
@@ -358,21 +358,21 @@ func TestLocalHandlersActAsTheHostALocalObjectCalledFromARemoteHandlersCtxGetRun
 	gate := mustContract(declareRemote("app.gate", contracts.RemoteDeclaration{
 		Version:     1,
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-		Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{Methods: []contracts.MethodEntry{
+		Methods: []contracts.RemoteMethodEntry{
 			contracts.Meth("who", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
 			contracts.Meth("through", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
-		}})},
+		},
 	}))
 	l := linked(t, func(h FacetHost) error {
-		if err := h.Serve(store, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+		if err := h.Serve(store, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				"who": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) { return whoIs(ctx), nil },
-			}}}, nil
+			}}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(gate, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+		return h.Serve(gate, func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				"who": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) { return whoIs(ctx), nil },
 				"through": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					item, err := ctx.(Ctx).Get(store, jsonObject(), GetOptions{})
@@ -381,7 +381,7 @@ func TestLocalHandlersActAsTheHostALocalObjectCalledFromARemoteHandlersCtxGetRun
 					}
 					return item.Call("who", nil, ctx)
 				},
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	}, linkedOptions{})
 	defer closeHosts(t, l.Client, l.Server)
@@ -532,9 +532,9 @@ func TestCallChainAMethodsCtxIsItsOwnChainNodeAboveItTheChainOfTheCallThatMadeIt
 	outer := mustContract(declareLocal("app.outer", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{run()}}))
 	var mu sync.Mutex
 	var seenInner, seenOuter context.Context
-	impl := func(record func(context.Context), next func(Ctx) error) func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-		return func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+	impl := func(record func(context.Context), next func(Ctx) error) func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+		return func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				"run": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					mu.Lock()
 					record(ctx)
@@ -544,7 +544,7 @@ func TestCallChainAMethodsCtxIsItsOwnChainNodeAboveItTheChainOfTheCallThatMadeIt
 					}
 					return nil, nil
 				},
-			}}}, nil
+			}}, nil
 		}
 	}
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
@@ -609,18 +609,18 @@ func ctxProbeHost(t *testing.T, seen *deskSeen, far func(ctx Ctx) error) Host {
 func ctxProbeHostOn(t *testing.T, seen *deskSeen, far func(ctx Ctx) error, loop sectionLoop) Host {
 	t.Helper()
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(ctxItem, func(params *delta.JsonObject, _ Self) (contracts.Implementation, error) {
+		if err := h.Serve(ctxItem, func(params *delta.JsonObject, _ Self) (contracts.MembersImplementation, error) {
 			seen.mu.Lock()
 			seen.factories++
 			seen.mu.Unlock()
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"id": constant(params.Value("id"))},
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(ctxProbe, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+		return h.Serve(ctxProbe, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				"idle": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					seen.mu.Lock()
 					seen.ctx = ctx.(Ctx)
@@ -641,7 +641,7 @@ func ctxProbeHostOn(t *testing.T, seen *deskSeen, far func(ctx Ctx) error, loop 
 					return nil, nil
 				},
 				"far": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) { return nil, far(ctx.(Ctx)) },
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{Loop: loop})
 	return host
@@ -693,7 +693,7 @@ func TestCtxGetRejectsWithTheAcquireErrorWhileItsHandlerRuns(t *testing.T) {
 	far := mustContract(declareRemote("app.far-away", contracts.RemoteDeclaration{
 		Version:     1,
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-		Variants:    []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("n", contracts.Int())}})},
+		State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 	}))
 	var got error
 	var reference *Reference
@@ -738,27 +738,27 @@ func TestCtxGetMakesTheReferenceForTheCallerPrincipalAndIncarnation(t *testing.T
 	peer := mustContract(declareRemote("app.ctx-peer", contracts.RemoteDeclaration{
 		Version:     1,
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-		Variants:    []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("n", contracts.Int())}})},
+		State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 	}))
 	door := mustContract(declareRemote("app.ctx-door", contracts.RemoteDeclaration{
 		Version:     1,
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-		Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{Methods: []contracts.MethodEntry{
+		Methods: []contracts.RemoteMethodEntry{
 			contracts.Meth("enter", contracts.NewMethod()),
-		}})},
+		},
 	}))
 	var server Host
 	var listed []any
 	l := linked(t, func(h FacetHost) error {
-		if err := h.Serve(peer, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+		if err := h.Serve(peer, func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(1.0)},
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(door, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+		return h.Serve(door, func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				"enter": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					if _, err := ctx.(Ctx).Get(peer, jsonObject(), GetOptions{}); err != nil {
 						return nil, err
@@ -766,7 +766,7 @@ func TestCtxGetMakesTheReferenceForTheCallerPrincipalAndIncarnation(t *testing.T
 					listed = presenceList(t, server, peer)
 					return nil, nil
 				},
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	}, linkedOptions{})
 	defer closeHosts(t, l.Client, l.Server)

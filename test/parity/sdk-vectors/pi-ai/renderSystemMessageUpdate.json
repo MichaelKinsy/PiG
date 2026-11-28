@@ -1,6 +1,6 @@
 {
- "pin": "1.6.1",
- "package": "pi-ai@1.6.1",
+ "pin": "1.7.0",
+ "package": "pi-ai@1.7.0",
  "module": "pi-ai",
  "export": "renderSystemMessageUpdate",
  "cases": [

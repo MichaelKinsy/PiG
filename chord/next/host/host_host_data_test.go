@@ -145,17 +145,17 @@ func hdRowsOf(ctx context.Context, table store.Table, definition *store.TableDef
 // reload takes it again with another table version.
 func (w *hdWorld) setup(metaDefinition *documents.StateDefinition, labelsDefinition *store.TableDefinition) func(FacetHost, FacetSelf) error {
 	return func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(hdBoard, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+		if err := h.Serve(hdBoard, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 			self := plain.(StoreSelf)
 			meta := self.State(metaDefinition).(*documents.Keyed)
 			// Version 2 adds a defaulted column only: version 1's puts and queries fit both.
 			labels := self.Table(labelsDefinition)
 			pinned, err := meta.At(hdS1)
 			if err != nil {
-				return contracts.Implementation{}, err
+				return contracts.MembersImplementation{}, err
 			}
 			rows := self.Query(labels, store.NewQuery(labelsDefinition).Where(func(t, _ store.ColumnRefs) store.Condition { return store.Eq(t["session"], hdS1) }), 10)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"meta":   Expose(pinned),
 					"labels": rows,
@@ -193,19 +193,19 @@ func (w *hdWorld) setup(metaDefinition *documents.StateDefinition, labelsDefinit
 						return found.Value("title"), nil
 					},
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		if err := h.Serve(hdView, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(hdView, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			at, err := self.Get(hdBoard, jsonObject()).Keyed("metas").At(Session.Address(jsonObject("id", exParam(params, "id"))))
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"meta": Expose(at)},
-			}}, err
+			}, err
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(hdLedger, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+		return h.Serve(hdLedger, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 			self := plain.(StoreSelf)
 			entries := self.Table(hdEntries)
 			return exImpl(nil, map[string]contracts.MethodFunction{
@@ -814,7 +814,7 @@ func TestHostDataLifecycleAHostWithoutAStoreRefusesEveryHostDataCall(t *testing.
 func hdBoardV2Host(t *testing.T, chordStore *store.ChordStore) Host {
 	t.Helper()
 	h, _ := loaded(t, func(facet FacetHost, _ FacetSelf) error {
-		return facet.Serve(hdBoardV2, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+		return facet.Serve(hdBoardV2, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 			labels := plain.(StoreSelf).Table(hdLabelsV2)
 			return exImpl(nil, map[string]contracts.MethodFunction{
 				"colors": func(id delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -1118,7 +1118,7 @@ func TestHostDataReviewRound3ReleasesTheOwnersItActivatedHoweverTheImportEndsHer
 	mustGet(t, first, hdBoard, jsonObject())
 	closeHosts(t, first)
 	h, _ := loaded(t, func(facet FacetHost, _ FacetSelf) error {
-		return facet.Serve(hdBoardV2, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+		return facet.Serve(hdBoardV2, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
 			return exImpl(nil, map[string]contracts.MethodFunction{
 				"colors": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return []any{}, nil },
 			}), nil
@@ -1174,11 +1174,11 @@ func TestHostDataAnActivationWaitingAtTheGateWhoseObjectEndedMeanwhileFailsRelea
 		if err := w.setup(hdMeta, hdLabelsV2)(h, self); err != nil {
 			return err
 		}
-		return h.Serve(hdScratch, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+		return h.Serve(hdScratch, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 			counter := plain.State(hdScratchDoc).(*documents.Singleton)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": Expose(counter)},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}
 	h, _ := loaded(t, setup, loadedOptions{Store: memoryStore(t)})

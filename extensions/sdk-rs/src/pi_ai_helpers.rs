@@ -133,7 +133,9 @@ pub fn clamp_thinking_level(model: &Value, level: &str) -> String {
 
 /// pi-ai's `calculateCost`: it prices `usage` at the model's per-million-token rates and stores the result in `usage["cost"]` (an object the caller supplies, as in Pi), which it
 /// also returns. The rates are the model's cost, or those of the tier with the highest `inputTokensAbove` that the request's input (input, cacheRead and cacheWrite tokens)
-/// exceeds. Cache writes that `usage["cacheWrite1h"]` reports are charged at twice the input rate. `usage["cost"]` that is not an object is a `TypeError` in Pi and an `Err` here.
+/// exceeds. Cache writes that `usage["cacheWrite1h"]` reports are charged at twice the input rate. When `model["cost"]["imageOutput"]` is set, up to `usage["output"]` image
+/// output tokens (`usage["imageOutput"]`, or all output tokens when omitted) are charged at that rate and the rest of output at `output`. `usage["cost"]` that is not an object
+/// is a `TypeError` in Pi and an `Err` here.
 pub fn calculate_cost(model: &Value, usage: &mut Value) -> Result<Value, String> {
     let get = |key: &str| usage.get(key);
     let input_tokens = number(get("input")) + number(get("cacheRead")) + number(get("cacheWrite"));
@@ -164,8 +166,27 @@ pub fn calculate_cost(model: &Value, usage: &mut Value) -> Result<Value, String>
     }
     let rate = |key: &str| number(rates.and_then(|rates| rates.get(key)));
     let short_write = cache_write - long_write;
+    // Image models price image tokens at `imageOutput` and the rest of output at `output`. Without the
+    // provider's split, all output counts as image tokens: the image price never undercharges.
+    let (image_rate, image_tokens) = match model_cost.and_then(|cost| cost.get("imageOutput")) {
+        None | Some(Value::Null) => (0.0, 0.0),
+        raw_rate => {
+            let image_rate = number(raw_rate);
+            let usage_image_output = match get("imageOutput") {
+                None | Some(Value::Null) => output,
+                value => number(value),
+            };
+            let image_tokens = if output.is_nan() || usage_image_output.is_nan() {
+                f64::NAN
+            } else {
+                output.min(usage_image_output)
+            };
+            (image_rate, image_tokens)
+        }
+    };
     let cost_input = (rate("input") / 1000000.0) * input;
-    let cost_output = (rate("output") / 1000000.0) * output;
+    let cost_output =
+        (rate("output") * (output - image_tokens) + image_rate * image_tokens) / 1000000.0;
     let cost_cache_read = (rate("cacheRead") / 1000000.0) * cache_read;
     let cost_cache_write =
         (rate("cacheWrite") * short_write + rate("input") * 2.0 * long_write) / 1000000.0;

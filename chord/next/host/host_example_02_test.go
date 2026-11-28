@@ -32,7 +32,7 @@ func TestExample02Documents(t *testing.T) {
 		contracts.Mem("note", contracts.NewMethod(exObj(exProp("id", exInt())), exStr())),
 		contracts.Mem("clear", contracts.NewMethod()))
 	host, _ := exOpenHost(t, loadedOptions{}, func(host FacetHost, _ FacetSelf) error {
-		return host.Serve(store, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return host.Serve(store, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			todos := stateOf(self, todosDoc)
 			notes := self.State(notesDoc).(*documents.Keyed)
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"todos": todos.Member()}, map[string]contracts.MethodFunction{

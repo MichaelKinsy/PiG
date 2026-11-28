@@ -13685,8 +13685,6 @@
         }
       ],
       "tests": [
-        "chord/next/contracts/normalform_test.go::TestNormalFormOfALocalContractHasItsMembersAsASortedDictionary",
-        "chord/next/contracts/normalform_test.go::TestNormalFormOfARemoteContractIsWhatItsFingerprintHashes",
         "chord/next/host/host_link_deliveries_test.go::TestDeliveryAwaiterIsTakenOnceBeforeTheHostSendsOnTheLinkOrListensToIt",
         "chord/next/link/channel_idle_test.go::TestIdleReturnsAtOnceWhenNothingWaitsBehindAnAsynchronousHandling",
         "chord/next/link/channel_idle_test.go::TestIdleReturnsWhenTheChannelClosedWithAMessageHeld",
@@ -13723,8 +13721,6 @@
         }
       ],
       "tests": [
-        "chord/next/contracts/normalform_test.go::TestNormalFormOfALocalContractHasItsMembersAsASortedDictionary",
-        "chord/next/contracts/normalform_test.go::TestNormalFormOfARemoteContractIsWhatItsFingerprintHashes",
         "chord/next/host/host_link_deliveries_test.go::TestDeliveryAwaiterIsTakenOnceBeforeTheHostSendsOnTheLinkOrListensToIt",
         "chord/next/link/channel_idle_test.go::TestIdleReturnsAtOnceWhenNothingWaitsBehindAnAsynchronousHandling",
         "chord/next/link/channel_idle_test.go::TestIdleReturnsWhenTheChannelClosedWithAMessageHeld",
@@ -13761,8 +13757,6 @@
         }
       ],
       "tests": [
-        "chord/next/contracts/normalform_test.go::TestNormalFormOfALocalContractHasItsMembersAsASortedDictionary",
-        "chord/next/contracts/normalform_test.go::TestNormalFormOfARemoteContractIsWhatItsFingerprintHashes",
         "chord/next/host/host_link_deliveries_test.go::TestDeliveryAwaiterIsTakenOnceBeforeTheHostSendsOnTheLinkOrListensToIt",
         "chord/next/link/channel_idle_test.go::TestIdleReturnsAtOnceWhenNothingWaitsBehindAnAsynchronousHandling",
         "chord/next/link/channel_idle_test.go::TestIdleReturnsWhenTheChannelClosedWithAMessageHeld",
@@ -45042,28 +45036,6 @@
       ]
     },
     {
-      "id": "BF-D662",
-      "title": "Interactive mode reports session resume commands via OSC 7577 and strips `OSC7577_TOKEN` at startup (Pi…",
-      "symptom": "none; upstream added OSC 7577 in Pi PR #12557 (``, Pi main).",
-      "rootCause": "Rex and other OSC 7577 terminals restore running sessions across terminal restarts when programs report authenticated resume commands and strip the per-pane token before launching children.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D662",
-      "piIssue": "https://github.com/earendil-works/pi/pull/12557",
-      "removeWhen": "the pinned Pi release contains `cf419553da817fefd2f86f170ff3e93eff0bfd28`. Then this divergence record and the `D662` call-site markers go, and the `2048`/`64` caps cite `// upstream: packages/tui/src/program-resume.ts` directly.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "1c054b9152",
-          "date": "2026-11-25"
-        }
-      ],
-      "tests": []
-    },
-    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -71989,11 +71961,6 @@
       "id": "D661",
       "title": "After an external SIGTSTP and `fg` pig arms the terminal again; the terminal is not reset before the external…",
       "entry": "BF-f36632c"
-    },
-    {
-      "id": "D662",
-      "title": "Interactive mode reports session resume commands via OSC 7577 and strips `OSC7577_TOKEN` at startup (Pi…",
-      "entry": "BF-D662"
     }
   ],
   "exemptCommits": {

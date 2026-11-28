@@ -54,19 +54,48 @@ type AdmitSelf interface {
 	LiveQuery(query contracts.NamedQuery[delta.JsonValue, delta.JsonValue], args any, first int64) chord.Watchable[delta.JsonValue]
 }
 
-// Allow allows the caller: value is what the factory is handed about it, plain JSON the contract's `admission` schema
-// describes (never validated). Small and rarely changing (a mode, a role): another value rebuilds the caller's object.
+// AdmittedValue is an object's admitted value as its factory gets it: the admitted data (all fields except `granted`),
+// and `Granted` as a set of granted names (grantable members and flags, slice 15 §1.2).
+// It also provides Data (the *delta.JsonObject without `granted`) and Get(field) for reading admitted fields.
+type AdmittedValue struct {
+	Data    *delta.JsonObject
+	Granted map[string]bool
+}
+
+// Get returns the admitted data field named `field`, or (nil, false) if absent.
+func (a AdmittedValue) Get(field string) (delta.JsonValue, bool) {
+	if a.Data == nil {
+		return nil, false
+	}
+	return a.Data.Get(field)
+}
+
+// Allow allows the caller: value is what the factory is handed about it, plain JSON: the names in `granted` (the
+// grantable members and flags the caller gets, slice 15 §1.2) and the data the contract's `admission` schema describes
+// (never validated). Small and rarely changing (a role): another value rebuilds the caller's object.
 func Allow(value delta.JsonValue) delta.JsonValue {
 	return delta.JsonObjectOf("kind", "allow", "value", value)
 }
 
-// Deny denies the caller. reason reaches it as the message of its `forbidden` error: it is user-facing.
-func Deny(reason string) delta.JsonValue { return delta.JsonObjectOf("kind", "deny", "reason", reason) }
+// Deny denies the caller. reason is English, for logs and errors; optional message is the user-facing MessageData
+// carried in the `forbidden` error's Details (`{ message }`, slice 15 §2).
+func Deny(reason string, message ...contracts.MessageData) delta.JsonValue {
+	if len(message) == 0 {
+		return delta.JsonObjectOf("kind", "deny", "reason", reason)
+	}
+	m := message[0]
+	params := m.Params
+	if params == nil {
+		params = []delta.JsonValue{}
+	}
+	msgObj := delta.JsonObjectOf("namespace", m.Namespace, "key", m.Key, "params", params)
+	return delta.JsonObjectOf("kind", "deny", "reason", reason, "message", msgObj)
+}
 
-// AdmittedFactory is the factory of an admitted remote type (one whose contract declares an `admission`): a RemoteFactory that
-// is also handed what its admission allowed (`Allow(value)`'s value, plain JSON the admission schema describes). An alias of
-// the function type, as LocalFactory and RemoteFactory.
-type AdmittedFactory = func(params *delta.JsonObject, principal data.Principal, admitted delta.JsonValue, self Self) (contracts.Implementation, error)
+// AdmittedFactory is the factory of an admitted remote type (one whose contract declares an `admission`, grantable
+// members or flags): a RemoteFactory that is also handed what its admission allowed (`AdmittedValue`, with `Granted`
+// as a set and `Data` holding the admitted fields). An alias of the function type, as LocalFactory and RemoteFactory.
+type AdmittedFactory = func(params *delta.JsonObject, principal data.Principal, admitted AdmittedValue, self Self) (contracts.MembersImplementation, error)
 
 // verdictKind is what a decision says at one check.
 type verdictKind uint8
@@ -88,8 +117,12 @@ const (
 // decision keeps them (`decide`), so the same object as before means nothing changed. Only the fields of its kind are set.
 type verdict struct {
 	kind verdictKind
-	// value is an allow's value, what the factory is handed.
+	// value is a route allow's raw value (or an object allow's Data).
 	value delta.JsonValue
+	// admitted is an object allow's AdmittedValue (with Granted set).
+	admitted AdmittedValue
+	// granted is an allow's granted set (contracts.NoGrants for routes or when empty).
+	granted map[string]bool
 	// err is a denial's `forbidden` error (the denied object shows it as it is; its calls get `revoked(label, err)`), or what
 	// a broken verdict broke with.
 	err *data.ChordError
@@ -108,14 +141,22 @@ type decisionOwner struct {
 	caller caller
 	// dependent is the object whose attempt it admits (its references' dependent: cycles, the start barrier); nil for a route.
 	dependent *chordObject
+	// grants is an object's contract grants (grantable members and flags, slice 15 §1.2), against which an allowed value
+	// is read; nil for a route (hasGrants == false), whose value is passed on as it is.
+	hasGrants bool
+	grants    []string
 	// moved: something it reads changed (a source's state, the decision's value, in that change's batch): check it again.
 	moved func()
 }
 
-// decided is the last allow or denial a decision read, with an allow's value as canonical JSON: an equal one is the same object.
+// decided is the last allow or denial a decision read: an equal one returns the same *verdict object.
 type decided struct {
+	kind    verdictKind
 	verdict *verdict
-	key     string
+	value   delta.JsonValue
+	names   []string
+	reason  string
+	message delta.JsonValue
 }
 
 // Decision is Pi's `Decision` (the name `decision` is the reference's `until`): one decision: the `self` its `Admit` declares with, the requests it made (held until `release`), and what it
@@ -493,23 +534,119 @@ func (d *Decision) read(ctx context.Context) *verdict {
 		kind, _ := object.Get("kind")
 		value, hasValue := object.Get("value")
 		reason, _ := object.Get("reason")
+		message, hasMessage := object.Get("message")
 		if kind == "allow" && hasValue {
-			return d.decide("allow "+data.CanonicalJson(value, ctx), func() *verdict { return &verdict{kind: verdictAllow, value: value} })
+			if !d.owner.hasGrants {
+				d.countWalk()
+				return d.allowRoute(value)
+			}
+			return d.allowObject(ctx, value, label)
 		}
 		if text, ok := reason.(string); ok && kind == "deny" {
-			return d.decide("deny "+text, func() *verdict { return &verdict{kind: verdictDeny, err: data.Forbidden(text)} })
+			if hasMessage && message != nil && !contracts.IsMessageData(message) {
+				return brokenRead(fmt.Sprintf("its denial's message is no message as data (MessageSchema): %s", text), label)
+			}
+			d.countWalk()
+			if !hasMessage {
+				message = nil
+			}
+			return d.deny(text, message)
 		}
 	}
-	broke := fmt.Errorf("its admission's value is neither allow(value) nor deny(reason)")
-	return &verdict{kind: verdictBroken, err: data.AsChordError(broke, label)}
+	return brokenRead("its admission's value is neither allow(value) nor deny(reason)", label)
 }
 
-// decide is the decision with key: the one it had when the key is the same, else the one build makes.
-func (d *Decision) decide(key string, build func() *verdict) *verdict {
-	if d.decided == nil || d.decided.key != key {
-		d.decided = &decided{verdict: build(), key: key}
+func (d *Decision) countWalk() {
+	if d.owner.host != nil && d.owner.host.metrics != nil {
+		d.owner.host.metrics.Counter("chord.data.walks").Add(1, nil)
 	}
-	return d.decided.verdict
+}
+
+func brokenRead(message, label string) *verdict {
+	return &verdict{kind: verdictBroken, err: data.AsChordError(errors.New(message), label)}
+}
+
+func (d *Decision) allowObject(ctx context.Context, value delta.JsonValue, label string) *verdict {
+	obj, ok := value.(*delta.JsonObject)
+	if !ok || obj == nil {
+		return brokenRead("its admission's value is an object (allow({ granted, ...data }))", label)
+	}
+	grants := d.owner.grants
+	var names []string
+	if listedRaw, hasGranted := obj.Get("granted"); hasGranted && listedRaw != nil {
+		listed, ok := listedRaw.([]delta.JsonValue)
+		if !ok {
+			return brokenRead("its admission's granted is a list of names", label)
+		}
+		if len(listed) > 0 {
+			seen := make(map[string]struct{}, len(listed))
+			for _, item := range listed {
+				name, ok := item.(string)
+				if !ok || !slices.Contains(grants, name) {
+					return brokenRead(fmt.Sprintf("its admission granted %s: no grantable member or flag of its contract", jsStringifyAny(ctx, item)), label)
+				}
+				if _, dup := seen[name]; !dup {
+					seen[name] = struct{}{}
+					names = append(names, name)
+				}
+			}
+			slices.Sort(names)
+		}
+	}
+	d.countWalk()
+	if d.decided != nil && d.decided.kind == verdictAllow && slices.Equal(d.decided.names, names) && data.SameJson(d.decided.value, obj, "granted") {
+		d.decided.value = obj
+		return d.decided.verdict
+	}
+	// Build Data without "granted"
+	dataObj := delta.NewJsonObject(obj.Len())
+	for k, v := range obj.All() {
+		if k != "granted" {
+			dataObj.Set(k, v)
+		}
+	}
+	granted := contracts.NoGrants
+	if len(names) > 0 {
+		granted = make(map[string]bool, len(names))
+		for _, name := range names {
+			granted[name] = true
+		}
+	}
+	admitted := AdmittedValue{Data: dataObj, Granted: granted}
+	v := &verdict{kind: verdictAllow, value: dataObj, admitted: admitted, granted: granted}
+	d.decided = &decided{kind: verdictAllow, verdict: v, value: obj, names: names}
+	return v
+}
+
+func (d *Decision) allowRoute(value delta.JsonValue) *verdict {
+	if d.decided != nil && d.decided.kind == verdictAllow && data.SameJson(d.decided.value, value, "") {
+		d.decided.value = value
+		return d.decided.verdict
+	}
+	v := &verdict{kind: verdictAllow, value: value, granted: contracts.NoGrants}
+	d.decided = &decided{kind: verdictAllow, verdict: v, value: value}
+	return v
+}
+
+func (d *Decision) deny(reason string, message delta.JsonValue) *verdict {
+	if d.decided != nil && d.decided.kind == verdictDeny && d.decided.reason == reason && data.SameJson(d.decided.message, message, "") {
+		d.decided.message = message
+		return d.decided.verdict
+	}
+	var details *delta.JsonObject
+	if message != nil {
+		details = delta.JsonObjectOf("message", message)
+	}
+	v := &verdict{kind: verdictDeny, err: data.Forbidden(reason, details)}
+	d.decided = &decided{kind: verdictDeny, verdict: v, reason: reason, message: message}
+	return v
+}
+
+func jsStringifyAny(ctx context.Context, value any) string {
+	if s, ok := value.(string); ok {
+		return jsStringify(s)
+	}
+	return data.CanonicalJson(value, ctx)
 }
 
 // assertDeclaring is the context `Admit` runs under; outside it, a declaration is refused.
@@ -550,7 +687,7 @@ func refuseAdmittedJob(s *served, label string) error {
 // revoked is what a denial rejects the calls running for the denied caller with (slice 14 §2.2): `forbidden/revoked`,
 // naming label and the denial's reason. The denied object itself shows denial, `forbidden` with the reason alone.
 func revoked(label string, denial *data.ChordError) *data.ChordError {
-	return data.NewChordError(data.ChordErrorInit{Code: data.CodeForbidden, Reason: data.ReasonRevoked, Message: label + ": " + denial.Message}, nil)
+	return data.NewChordError(data.ChordErrorInit{Code: data.CodeForbidden, Reason: data.ReasonRevoked, Message: label + ": " + denial.Message, Details: denial.Details}, nil)
 }
 
 // What follows is the admission half of Pi's `Attempt` (attempt.ts, `#runAdmission` .. `releaseAdmission`) and `ChordObject`
@@ -571,11 +708,17 @@ func (a *attempt) runAdmission(admission *servedAdmission, dl *deadline) *keyedP
 			return
 		}
 		object := a.object
+		curVer, err := contracts.CurrentVersion(object.served.contract)
+		if err != nil {
+			broken := a.broken(err)
+			result.resolve(&broken)
+			return
+		}
 		decision := newDecision(decisionOwner{
-			host: object.host, label: object.text, caller: a.caller(), dependent: object, moved: a.admissionMoved,
+			host: object.host, label: object.text, caller: a.caller(), dependent: object, hasGrants: true, grants: curVer.Grants, moved: a.admissionMoved,
 		})
 		// A remote object's identity has its principal.
-		err := decision.declare(func(self AdmitSelf) (any, error) { return admission.admit(object.params, object.principal, self) }, a.opening)
+		err = decision.declare(func(self AdmitSelf) (any, error) { return admission.admit(object.params, object.principal, self) }, a.opening)
 		if err != nil {
 			decision.release()
 			broken := a.broken(err)
@@ -822,11 +965,12 @@ func (o *chordObject) admittedValue() *objectAdmitted {
 	if allowed == nil || entry.kind != servedRemote || entry.admission == nil {
 		return nil
 	}
-	return &objectAdmitted{value: allowed.value, fingerprint: entry.admission.fingerprint}
+	return &objectAdmitted{admitted: allowed.admitted, granted: allowed.granted, fingerprint: entry.admission.fingerprint}
 }
 
 // objectAdmitted is `ChordObject.admitted`'s result.
 type objectAdmitted struct {
-	value       delta.JsonValue
+	admitted    AdmittedValue
+	granted     map[string]bool
 	fingerprint string
 }

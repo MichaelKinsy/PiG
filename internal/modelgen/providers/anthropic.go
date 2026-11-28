@@ -67,7 +67,7 @@ func anthropic() ProviderDefinition {
 			if SupportsClaudeMidConvoEffort(id) {
 				EnableClaudeMidConvoEffort(model)
 			}
-			if SupportsClaudeMidConvoSystemMessages(id) {
+			if SupportsClaudeMidConvoChanges(id) {
 				MergeCompat(model, O("supportsMidConvoSystemMessages", true, "supportsMidConvoToolChanges", true))
 			}
 			MergeCompat(model, O("supportsStrictTools", true))

@@ -20,11 +20,15 @@ var builtinImageModels struct {
 // builtinImageModelsOf returns the shared built-in image model pointers of one provider, so repeated reads see the same models.
 func builtinImageModelsOf(providerID string) []*ai.ImageModel {
 	builtinImageModels.once.Do(func() {
-		builtinImageModels.byID = map[string][]*ai.ImageModel{}
-		for _, provider := range ai.GetImageProviders() {
-			for _, model := range ai.GetImageModels(provider) {
-				builtinImageModels.byID[string(provider)] = append(builtinImageModels.byID[string(provider)], new(model))
+		providers := ai.GetImageProviders()
+		builtinImageModels.byID = make(map[string][]*ai.ImageModel, len(providers))
+		for _, provider := range providers {
+			list := ai.GetImageModels(provider)
+			ptrs := make([]*ai.ImageModel, len(list))
+			for i := range list {
+				ptrs[i] = &list[i]
 			}
+			builtinImageModels.byID[string(provider)] = ptrs
 		}
 	})
 	return builtinImageModels.byID[providerID]

@@ -375,13 +375,13 @@ func TestHostRevokeAbandonsAnActivationInProgress(t *testing.T) {
 		slow := mustContract(declareRemote("app.slow", contracts.RemoteDeclaration{
 			Version:     1,
 			HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-			Variants:    []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("n", contracts.Int())}})},
+			State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 		}))
 		var mu sync.Mutex
 		var aborted []error
 		started := make(chan struct{})
 		host, parent, ends, _ := revocationWorker(t, func(h FacetHost) error {
-			return h.Serve(slow, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+			return h.Serve(slow, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 				selfOpen(self, func(opening context.Context) error {
 					close(started)
 					<-opening.Done()
@@ -390,9 +390,9 @@ func TestHostRevokeAbandonsAnActivationInProgress(t *testing.T) {
 					mu.Unlock()
 					return context.Cause(opening)
 				}, func(NativeCloseReason) {})
-				return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(float64(1))},
-				}}, nil
+				}, nil
 			}, ServeOptions{})
 		})
 		defer closeHosts(t, host)
@@ -457,11 +457,11 @@ func TestHostRevokeEndsAHoldTheParentSentBeforeItsRevokeWhileItStillWaitsForLoad
 						return err
 					}
 					if delayed {
-						return h.Serve(barrierType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+						return h.Serve(barrierType, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 							selfOpen(self, func(context.Context) error { <-opened; return nil }, func(NativeCloseReason) {})
-							return contracts.Implementation{Members: contracts.VariantImplementation{
+							return contracts.MembersImplementation{
 								State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(float64(0))},
-							}}, nil
+							}, nil
 						}, ServeOptions{})
 					}
 					return nil
@@ -793,7 +793,6 @@ var thereKind = mustKind(contracts.NewHostKind("app-there"))
 var remoteThere = mustContract(declareRemote("app.remote", contracts.RemoteDeclaration{
 	Version:     1,
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return thereKind.Address(nil), nil },
-	Variants:    []contracts.VariantEntry{contracts.Var("view", contracts.VariantDeclaration{})},
 }))
 
 // Mirrors "revocation of this host's own requests over its paths (fix round 1) › ends a guest's ctx.get waiting for its route before any link exists, at once (Astra 1, Sol 1)".
@@ -877,8 +876,8 @@ func TestHostRevokeNeverLetsTheRevokedRequestBindOnTheRoutesLaterLink(t *testing
 	up, down := link.MemoryLinkPair()
 	must(t, worker.Connect(up, LinkOptions{Principal: jsonObject("kind", "owner"), Trusted: true}, background))
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(remoteThere, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Variant: "view"}, nil
+		return h.Serve(remoteThere, func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{}, nil
 		}, ServeOptions{})
 	})
 	mustLoad(t)(worker.Load([]HostFacet{{Name: "@test/late", Facet: facet}}, background))

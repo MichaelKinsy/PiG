@@ -164,6 +164,9 @@ func MergeOpenAICompat(base, override *OpenAICompat) *OpenAICompat {
 	if ovr.RequiresReasoningContentOnAssistantMessages != nil {
 		merged.RequiresReasoningContentOnAssistantMessages = ovr.RequiresReasoningContentOnAssistantMessages
 	}
+	if ovr.SupportsReasoningReplay != nil {
+		merged.SupportsReasoningReplay = ovr.SupportsReasoningReplay
+	}
 	if ovr.SupportsOpenAIGrammarTools != nil {
 		merged.SupportsOpenAIGrammarTools = ovr.SupportsOpenAIGrammarTools
 	}

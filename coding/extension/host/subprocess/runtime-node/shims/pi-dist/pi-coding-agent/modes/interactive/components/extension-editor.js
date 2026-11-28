@@ -1,6 +1,6 @@
 /**
  * Multi-line editor component for extensions.
- * Supports Ctrl+G for external editor.
+ * Supports the app.editor.external keybinding for an external editor.
  */
 import { Container, Editor, getKeybindings, Spacer, Text, } from "../../../../../pi-tui.mjs";
 import { editInExternalEditor } from "../external-editor.js";
@@ -59,7 +59,7 @@ export class ExtensionEditorComponent extends Container {
         this.addChild(this.externalEditorStatus);
         this.addChild(new Spacer(1));
         // Add hint
-        const hint = keyHint("tui.select.confirm", "submit") +
+        const hint = keyHint("tui.input.submit", "submit") +
             "  " +
             keyHint("tui.input.newLine", "newline") +
             "  " +

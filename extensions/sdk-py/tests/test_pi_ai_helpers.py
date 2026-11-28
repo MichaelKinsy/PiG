@@ -291,3 +291,23 @@ def test_read_stored_credential_matches_the_pinned_package(tmp_path):
             path.write_text(text, encoding="utf-8")
         got = pig_sdk.read_stored_credential(provider, str(path))
         assert _json_stringify(got) == _json_stringify(case["result"]["credential"]), case["name"]
+
+
+def test_calculate_cost_image_output():
+    # Pi v1.7.0 packages/ai/src/models.ts:calculateCost: imageOutput prices image output tokens separately from text output tokens.
+    model = {
+        "id": "img",
+        "provider": "p",
+        "api": "x",
+        "reasoning": False,
+        "cost": {"input": 3, "output": 10, "imageOutput": 40, "cacheRead": 0, "cacheWrite": 0},
+    }
+    for usage, want_output, want_total in (
+        ({"input": 1000, "output": 1000, "imageOutput": 600, "cacheRead": 0, "cacheWrite": 0, "cost": {}}, 0.028, 0.031),
+        ({"input": 1000, "output": 1000, "cacheRead": 0, "cacheWrite": 0, "cost": {}}, 0.04, 0.043000000000000003),
+        ({"input": 0, "output": 500, "imageOutput": 900, "cacheRead": 0, "cacheWrite": 0, "cost": {}}, 0.02, 0.02),
+        ({"input": 0, "output": 1000, "imageOutput": 0, "cacheRead": 0, "cacheWrite": 0, "cost": {}}, 0.01, 0.01),
+    ):
+        got = helpers.calculate_cost(model, usage)
+        assert got["output"] == want_output and got["total"] == want_total, (usage, got)
+

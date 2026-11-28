@@ -195,3 +195,45 @@ func compareUTF16(left, right string) int {
 	leftUnits, rightUnits := jsstring.ToUTF16(left), jsstring.ToUTF16(right)
 	return slices.Compare(leftUnits, rightUnits)
 }
+
+// CanonicalJsonOnly is CanonicalJson of a value that must be strict JSON (refusing bytes, non-finite numbers, and
+// non-JSON types with invalid/args): a named query's arguments.
+func CanonicalJsonOnly(value any, ctx context.Context) (string, error) {
+	if err := checkStrictJson(value); err != nil {
+		return "", err
+	}
+	return CanonicalJson(value, ctx), nil
+}
+
+func checkStrictJson(value any) error {
+	switch v := value.(type) {
+	case nil, bool, string:
+		return nil
+	case float64:
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			return Invalid(ReasonArgs, "a query's arguments are JSON only, not non-finite number")
+		}
+		return nil
+	case []byte:
+		return Invalid(ReasonArgs, "a query's arguments are JSON only, not bytes")
+	case []any:
+		for _, item := range v {
+			if err := checkStrictJson(item); err != nil {
+				return err
+			}
+		}
+		return nil
+	case *delta.JsonObject:
+		if v == nil {
+			return nil
+		}
+		for _, key := range v.Keys() {
+			if err := checkStrictJson(v.Value(key)); err != nil {
+				return err
+			}
+		}
+		return nil
+	default:
+		return Invalid(ReasonArgs, "a query's arguments are JSON only, not an unsupported value")
+	}
+}

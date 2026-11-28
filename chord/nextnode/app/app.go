@@ -375,9 +375,8 @@ type App struct {
 	build   func(names []string, ctx context.Context) (*plugins.Built, error)
 	rollout func(steps []plugins.RolloutStep, built *plugins.Built, ctx context.Context) (plugins.RolloutResult, error)
 
-	applyMu sync.Mutex
-	close   sync.Once
-	closed  error
+	close  sync.Once
+	closed error
 	// closing is set when the close starts: what runs after the start (the bases' builds, the scan) stops reporting there.
 	closing atomic.Bool
 	// basesStarted is set once startBases started the goroutine basesBuilt and baseWatched are closed by: Wait joins it.
@@ -946,14 +945,9 @@ func (a *App) installPlugin(ctx context.Context, source plugins.PluginSource) ([
 }
 
 // ApplyChanges builds the dirty plugins and rolls them out: the server, every worker kind, then the web and terminal surfaces;
-// never by itself. Calls run one after another (a later one builds after the earlier one rolled out).
+// never by itself. Calls run one after another (a later one builds after the earlier one rolled out); one whose context aborts
+// while it waits stops waiting and builds nothing (Plugins.Apply).
 func (a *App) ApplyChanges(ctx context.Context) (plugins.RolloutResult, error) {
-	a.applyMu.Lock()
-	defer a.applyMu.Unlock()
-	built, err := a.build(a.Plugins.Component.Marks().Dirty, ctx)
-	if err != nil {
-		return plugins.RolloutResult{}, err
-	}
 	server, err := a.Plugins.Component.Step("server", a.Node)
 	if err != nil {
 		return plugins.RolloutResult{}, err
@@ -965,7 +959,7 @@ func (a *App) ApplyChanges(ctx context.Context) (plugins.RolloutResult, error) {
 	for _, each := range a.surfaces {
 		steps = append(steps, each.step(each.name))
 	}
-	return a.rollout(steps, built, ctx)
+	return a.Plugins.Component.ApplyWith(steps, ctx, a.build, a.rollout)
 }
 
 func (a *App) workersFor(address contracts.Address) (*workers.Workers, error) {

@@ -238,8 +238,12 @@ func TestAnthropicCopilotStrictToolsSerializedRequest(t *testing.T) {
 		if err := json.Unmarshal(payload["tools"], &got); err != nil {
 			t.Fatalf("unmarshal tools (%s): %v", payload["tools"], err)
 		}
-		if len(got) != 2 {
-			t.Fatalf("got %d tools, want 2: %s", len(got), payload["tools"])
+		wantTools := 2
+		if model.ProviderMeta.Compat != nil && model.ProviderMeta.Compat.SupportsMidConvoToolChanges != nil && *model.ProviderMeta.Compat.SupportsMidConvoToolChanges {
+			wantTools = 3
+		}
+		if len(got) != wantTools {
+			t.Fatalf("got %d tools, want %d: %s", len(got), wantTools, payload["tools"])
 		}
 		return got
 	}

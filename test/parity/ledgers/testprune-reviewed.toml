@@ -1702,3 +1702,143 @@ commit = "904cc8fad25ce532bf589e0df04e43f0658485b5"
 class = "CITE"
 cite = "packages/coding-agent/src/modes/interactive/components/mermaid.ts:1"
 reason = "Pi v1.6.1 mermaid.ts keeps oversized source unchanged while streaming and appends the column-width explanation once complete."
+
+[[entry]]
+path = "ai/anthropic_strict_tool_schema_upstream_test.go"
+commit = "f65387f83466f58bd798de293ddf19b4690da614"
+class = "CITE"
+cite = "packages/ai/src/api/anthropic-messages.ts:1"
+reason = "Pi v1.7.0 enables supportsMidConvoToolChanges on GitHub Copilot Claude models, appending __pi_deferred_placeholder__ to the serialized tool list."
+
+[[entry]]
+path = "ai/usage_cost_test.go"
+commit = "f65387f83466f58bd798de293ddf19b4690da614"
+class = "CITE"
+cite = "packages/ai/src/models.ts:1303"
+reason = "Pi v1.7.0 calculateCost prices output as (rates.output * (usage.output - imageTokens) + (imageRate ?? 0) * imageTokens) / 1000000, changing float rounding for claude-opus-4-8."
+
+[[entry]]
+path = "internal/codingagent/interactive_prompt_routing_test.go"
+commit = "f65387f83466f58bd798de293ddf19b4690da614"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/interactive-mode.ts:3566"
+reason = "Pi v1.7.0 interactive-mode.ts formats the running-bash warning with keyText('app.interrupt') ('escape') instead of hardcoded 'Esc'."
+
+[[entry]]
+path = "internal/codingagent/interactive_whole_markdown_test.go"
+commit = "f65387f83466f58bd798de293ddf19b4690da614"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/interactive-mode.ts:1"
+reason = "Pi v1.7.0 splits the /hotkeys row into Cancel autocomplete and Abort streaming or running bash command, changing the rendered /hotkeys SHA-256 hashes."
+
+[[entry]]
+path = "internal/codingagent/reload_trust_models_test.go"
+commit = "f65387f83466f58bd798de293ddf19b4690da614"
+class = "CITE"
+cite = "packages/coding-agent/src/core/agent-session-services.ts:199"
+reason = "Pi v1.7.0 reports models.json load errors as Warning diagnostics ('Warning: models.json error:') rather than Error notices."
+
+[[entry]]
+path = "internal/codingagent/session_selector_contract_test.go"
+commit = "f65387f83466f58bd798de293ddf19b4690da614"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/components/session-selector.ts:442"
+reason = "Pi v1.7.0 session-selector.ts uses keyText('tui.input.tab') ('tab') and keyText('tui.input.submit') ('enter') in empty-state and rename hints."
+
+[[entry]]
+path = "internal/codingagent/settings_warnings_submenu_test.go"
+commit = "f65387f83466f58bd798de293ddf19b4690da614"
+class = "CITE"
+cite = "packages/tui/src/components/settings-list.ts:325"
+reason = "Pi v1.7.0 settings-list.ts renders configured lowercase key hints ('enter/space to change · escape/ctrl+c to cancel')."
+
+[[entry]]
+path = "internal/codingagent/w3_sessions_test.go"
+commit = "f65387f83466f58bd798de293ddf19b4690da614"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/interactive-mode.ts:2383"
+reason = "Pi v1.7.0 rewords the /bug hint to 'If this looks like a pi bug, use /bug to send a report to the developers.'."
+
+[[entry]]
+path = "tui/select_submenu_test.go"
+commit = "f65387f83466f58bd798de293ddf19b4690da614"
+class = "CITE"
+cite = "packages/tui/src/components/settings-list.ts:325"
+reason = "Pi v1.7.0 renders configured lowercase key hints ('enter to select · escape/ctrl+c to go back') in select submenus."
+
+[[entry]]
+path = "tui/settings_list_test.go"
+commit = "f65387f83466f58bd798de293ddf19b4690da614"
+class = "CITE"
+cite = "packages/tui/src/components/settings-list.ts:325"
+reason = "Pi v1.7.0 settings-list.ts renders configured lowercase key hints ('enter/space to change · escape/ctrl+c to cancel')."
+
+[[entry]]
+path = "tui/settings_list_theme_upstream_test.go"
+commit = "f65387f83466f58bd798de293ddf19b4690da614"
+class = "CITE"
+cite = "packages/tui/src/components/settings-list.ts:325"
+reason = "Pi v1.7.0 settings-list.ts renders configured lowercase key hints ('enter/space to change · escape/ctrl+c to cancel')."
+
+[[entry]]
+path = "tui/settings_submenu_test.go"
+commit = "f65387f83466f58bd798de293ddf19b4690da614"
+class = "CITE"
+cite = "packages/tui/src/components/settings-list.ts:325"
+reason = "Pi v1.7.0 renders configured lowercase key hints ('Type to filter · enter to select · escape/ctrl+c to go back')."
+
+[[entry]]
+path = "chord/next/contracts/accepts_test.go"
+commit = "787a4186fc33de65801292ae9205267b5ec8b9af"
+class = "CITE"
+cite = "packages/chord/src/contracts/accepts.ts:1"
+reason = "Pi v1.7.0 Chord Protocol v2 replaces contract variants with grantable fields and flat contract shapes."
+
+[[entry]]
+path = "chord/next/contracts/contract_test.go"
+commit = "787a4186fc33de65801292ae9205267b5ec8b9af"
+class = "CITE"
+cite = "packages/chord/src/contracts/contract.ts:1"
+reason = "Pi v1.7.0 Chord Protocol v2 removes contract variants and adds grantable/admission contract shapes."
+
+[[entry]]
+path = "chord/next/contracts/declare_test.go"
+commit = "787a4186fc33de65801292ae9205267b5ec8b9af"
+class = "CITE"
+cite = "packages/chord/src/contracts/declare.ts:1"
+reason = "Pi v1.7.0 Chord Protocol v2 replaces variants with local/remote declarations and grantable state."
+
+[[entry]]
+path = "chord/next/contracts/derived_runtime_test.go"
+commit = "787a4186fc33de65801292ae9205267b5ec8b9af"
+class = "CITE"
+cite = "packages/chord/src/contracts/contract.ts:1"
+reason = "Pi v1.7.0 Chord Protocol v2 updates derived contract runtime fixtures to Protocol v2."
+
+[[entry]]
+path = "chord/next/contracts/events_test.go"
+commit = "787a4186fc33de65801292ae9205267b5ec8b9af"
+class = "CITE"
+cite = "packages/chord/src/contracts/declare.ts:1"
+reason = "Pi v1.7.0 Chord Protocol v2 updates contract event declarations from v1 variants to v2."
+
+[[entry]]
+path = "chord/next/contracts/evolve_test.go"
+commit = "787a4186fc33de65801292ae9205267b5ec8b9af"
+class = "CITE"
+cite = "packages/chord/src/contracts/evolve.ts:1"
+reason = "Pi v1.7.0 Chord Protocol v2 updates contract evolution for grantable fields and Protocol v2."
+
+[[entry]]
+path = "chord/next/contracts/history_test.go"
+commit = "787a4186fc33de65801292ae9205267b5ec8b9af"
+class = "CITE"
+cite = "packages/chord/src/contracts/history.ts:1"
+reason = "Pi v1.7.0 Chord Protocol v2 updates contract history assertions for Protocol v2 admission and grantable members."
+
+[[entry]]
+path = "chord/next/contracts/normalform_test.go"
+commit = "787a4186fc33de65801292ae9205267b5ec8b9af"
+class = "CITE"
+cite = "packages/chord/src/contracts/fingerprint.ts:1"
+reason = "Pi v1.7.0 Chord Protocol v2 updates contract normal form and fingerprint expectations."

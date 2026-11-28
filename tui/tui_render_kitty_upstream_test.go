@@ -38,15 +38,38 @@ func TestUpstreamTUIRenderKittyCleanup(t *testing.T) {
 		lines = append(lines, "after")
 		upstreamContains(t, h.render(lines), "\x1b[2J")
 	})
-	// .upstream/v0.87.1/packages/tui/test/tui-render.test.ts:340
-	t.Run("reserves Kitty image rows before drawing during full redraw fallbacks", func(t *testing.T) {
+	// .upstream/v1.7.0/packages/tui/test/tui-render.test.ts:434 (#12548)
+	t.Run("appends Kitty images that scroll the screen without a full redraw", func(t *testing.T) {
 		rows := upstreamKittyImageRows(t, 3)
 		h := newUpstreamRenderHarness(t, 40, 5)
 		before := []string{"l0", "l1", "l2", "l3", "l4"}
 		h.render(before)
+		redrawsBefore := h.ui.FullRedraws()
 		lines := append(append([]string{}, before...), rows...)
 		lines = append(lines, "after")
 		writes := h.render(lines)
+		if got := h.ui.FullRedraws(); got != redrawsBefore {
+			t.Fatalf("full redraws = %d, want %d (appended image should stay differential)", got, redrawsBefore)
+		}
+		upstreamExcludes(t, writes, "\x1b[2J")
+		upstreamExcludes(t, writes, "\x1b[3J")
+		upstreamContains(t, writes, "\x1b[2K\r\n\x1b[2K\r\n\x1b[2K\x1b[2A"+rows[0]+"\x1b[2B")
+	})
+	// .upstream/v1.7.0/packages/tui/test/tui-render.test.ts:488
+	t.Run("reserves Kitty image rows before drawing during full redraws", func(t *testing.T) {
+		rows := upstreamKittyImageRows(t, 3)
+		h := newUpstreamRenderHarness(t, 40, 5)
+		before := []string{"l0", "l1", "l2", "l3", "l4"}
+		h.render(before)
+		redrawsBefore := h.ui.FullRedraws()
+		lines := append(append([]string{}, before...), rows...)
+		lines = append(lines, "after")
+		h.ui.afterFunc = func(time.Duration, func()) stoppableTimer { return stoppedOracleTimer{} }
+		h.ui.RequestRender(true)
+		writes := h.render(lines)
+		if got := h.ui.FullRedraws(); got <= redrawsBefore {
+			t.Fatalf("full redraws = %d, want > %d", got, redrawsBefore)
+		}
 		upstreamContains(t, writes, "\x1b[2J")
 		upstreamContains(t, writes, "\r\n\r\n\x1b[2A"+rows[0]+"\x1b[2B")
 		upstreamExcludes(t, writes, rows[0]+"\r\n\x1b[0m")

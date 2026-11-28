@@ -33,9 +33,9 @@ func BenchmarkWritableSet(b *testing.B) {
 	var writable state.Writable[any]
 	host := newHost(b, HostOptions{OnError: func(err HostError) { b.Errorf("onError %s", err.Kind) }})
 	mustLoad(b)(host.Load([]HostFacet{{Name: "@bench/writable", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(benchWritable, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(benchWritable, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			writable = self.Writable(0.0)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"n": self.Derive([]any{writable}, func(values []any) (delta.JsonValue, error) { return values[0].(float64), nil }),
 				},
@@ -57,7 +57,7 @@ func BenchmarkWritableSet(b *testing.B) {
 						return nil, nil
 					},
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})}}, background))
 	object, err := host.Get(background, benchWritable, jsonObject(), GetOptions{})

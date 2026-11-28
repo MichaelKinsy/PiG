@@ -8,6 +8,7 @@ import (
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/remote/host-link.ts. One link of a host (§3, §22): its channel, its role, the peer's
@@ -285,9 +286,10 @@ func (l *hostLink) revokeUnbound(revoked func(principal data.Principal) bool, er
 }
 
 // Closed implements link.ChannelHandler: the link closed, from either end.
-func (l *hostLink) Closed() {
+func (l *hostLink) Closed(reason link.LinkCloseReason) {
 	l.host.loop().Run(func() {
 		l.host.metrics.UpDownCounter("chord.links.open").Add(-1, nil)
+		l.host.metrics.Counter("chord.links.closed").Add(1, telemetry.SpanAttributes{telemetry.Attr("reason", string(reason))})
 		l.closingCancel(nil)
 		for _, provider := range l.providers.values() {
 			provider.closed()
@@ -295,6 +297,10 @@ func (l *hostLink) Closed() {
 		l.providers.clear()
 		l.consumer.closed()
 		l.host.unlink(l)
+		// Often a stalled peer: holders here wait for another link, which nothing else would tell (slice 15 §4).
+		if reason == link.LinkCloseHeartbeat {
+			l.host.report(HostError{Kind: ErrLinkClosed, Reason: reason, Role: string(l.role)})
+		}
 	})
 }
 

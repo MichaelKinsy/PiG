@@ -967,8 +967,8 @@ func TestNodeACoreModuleImportsChordByItsPackageName(t *testing.T) {
 	source := `import { defineFacet, hostKind, method, remote, str } from "@earendil-works/chord";
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 const Worker = hostKind("test.worker");
-const Hello = remote("test.hello", { version: 1, params: {}, hostAddress: () => Worker(), variants: { main: { state: {}, methods: { hi: method(str(), str()) } } } });
-export default defineFacet((host) => host.serve(Hello, () => ({ variant: "main", members: { hi: async (name) => "hi " + name + (BACKGROUND_CONTEXT === undefined ? "?" : "") } })));
+const Hello = remote("test.hello", { version: 1, params: {}, hostAddress: () => Worker(), methods: { hi: method(str(), str()) } });
+export default defineFacet((host) => host.serve(Hello, () => ({ hi: async (name) => "hi " + name + (BACKGROUND_CONTEXT === undefined ? "?" : "") })));
 `
 	if err := os.WriteFile(module, []byte(source), 0o644); err != nil {
 		t.Fatal(err)
@@ -984,9 +984,7 @@ export default defineFacet((host) => host.serve(Hello, () => ({ variant: "main",
 	hello := mustContract(contracts.Remote("test.hello", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return workerKind.Address(nil), nil },
-		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
-			Methods: []contracts.MethodEntry{contracts.Meth("hi", contracts.NewMethod(contracts.Str(), contracts.Str()))},
-		})},
+		Methods:     []contracts.RemoteMethodEntry{contracts.Meth("hi", contracts.NewMethod(contracts.Str(), contracts.Str()))},
 	}))
 	ref, err := serverFor(t, workerRoute(node)).Get(background, hello, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {

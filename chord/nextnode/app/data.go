@@ -39,9 +39,9 @@ var HostData = mustRemote("chord.app.data", contracts.RemoteDeclaration{
 		text, _ := params.Value("address").(string)
 		return parseAddress(text)
 	},
-	Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{Methods: []contracts.MethodEntry{
+	Methods: []contracts.RemoteMethodEntry{
 		contracts.Meth("exportTo", contracts.NewMethod(contracts.Obj(contracts.Prop("path", contracts.Str()), contracts.Prop("manifest", contracts.Str()), contracts.Prop("server", contracts.Str())))),
-	}})},
+	},
 })
 
 func mustRemote(name string, declaration contracts.RemoteDeclaration) *contracts.Contract {
@@ -115,8 +115,8 @@ func hostDataModule(server data.Principal, token string) string {
 // directory files, to the caller that has token.
 func HostDataFacet(dir string, kit store.Store, token string) host.Facet {
 	return host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		return h.Serve(HostDataExport, func(_ *delta.JsonObject, _ host.Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+		return h.Serve(HostDataExport, func(_ *delta.JsonObject, _ host.Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				Methods: map[string]contracts.MethodFunction{
 					"exportTo": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 						object := args.(*delta.JsonObject)
@@ -133,7 +133,7 @@ func HostDataFacet(dir string, kit store.Store, token string) host.Facet {
 						return nil, PackRunning(ctx, dir, kit, manifest, object.Value("server").(string), object.Value("path").(string))
 					},
 				},
-			}}, nil
+			}, nil
 		}, host.ServeOptions{})
 	})
 }

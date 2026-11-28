@@ -23,7 +23,7 @@ func TestCrossProviderHandoffUpstream(t *testing.T) {
 		{"openai-codex", "gpt-6.1-sol", "openai-codex-gpt-6.1-sol", ""}, {"github-copilot", "claude-sonnet-4.5", "copilot-claude-sonnet-4.5", ""}, {"github-copilot", "gpt-5.1-codex", "copilot-gpt-5.1-codex", ""},
 		{"github-copilot", "gemini-3-flash-preview", "copilot-gemini-3-flash-preview", ""}, {"github-copilot", "grok-code-fast-1", "copilot-grok-code-fast-1", ""},
 		{"amazon-bedrock", "global.anthropic.claude-sonnet-4-5-20250929-v1:0", "bedrock-claude-sonnet-4-5", ""}, {"xai", "grok-4.3", "xai-grok-4.3", ""}, {"cerebras", "zai-glm-4.7", "cerebras-zai-glm-4.7", ""},
-		{"cloudflare-workers-ai", "@cf/moonshotai/kimi-k2.6", "cloudflare-kimi-k2.6", ""}, {"cloudflare-ai-gateway", "workers-ai/@cf/moonshotai/kimi-k2.6", "cloudflare-gateway-kimi-k2.6", ""},
+		{"cloudflare-workers-ai", "@cf/zai-org/glm-5.3", "cloudflare-glm-5.3", ""}, {"cloudflare-ai-gateway", "workers-ai/@cf/zai-org/glm-5.3", "cloudflare-gateway-glm-5.3", ""},
 		{"cloudflare-ai-gateway", "claude-sonnet-4-5", "cloudflare-gateway-claude-sonnet-4-5", ""}, {"cloudflare-ai-gateway", "gpt-5.1", "cloudflare-gateway-gpt-5.1", ""},
 		{"groq", "openai/gpt-oss-120b", "groq-gpt-oss-120b", ""}, {"huggingface", "moonshotai/Kimi-K2.5", "huggingface-kimi-k2.5", ""}, {"together", "moonshotai/Kimi-K3", "together-kimi-k3", ""},
 		{"baseten", "zai-org/GLM-5.2", "baseten-glm-5.2", ""}, {"kimi-coding", "kimi-for-coding", "kimi-for-coding", ""}, {"meta", "muse-spark-1.3", "meta-muse-spark-1.3", ""}, {"mistral", "mistral-medium-latest", "mistral-medium", ""},

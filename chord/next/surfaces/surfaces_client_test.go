@@ -45,10 +45,10 @@ var (
 
 func serving(contract *contracts.Contract, text string) host.Facet {
 	return host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		return h.Serve(contract, func(*delta.JsonObject, host.Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+		return h.Serve(contract, func(*delta.JsonObject, host.Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 				"text": host.Expose(state.NewConstant(text)),
-			}}}, nil
+			}}, nil
 		}, host.ServeOptions{})
 	})
 }
@@ -72,11 +72,11 @@ func script(plugin, digest, text string, failing ...int) RegisteredScript {
 		}
 		if text == "routinefail" {
 			module.Exports = ModuleExports{Default: host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-				return h.Serve(greeting, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+				return h.Serve(greeting, func(_ *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
 					self.OnLive(func(host.Ctx) *host.Handled { return host.Threw(errors.New("the routine failed")) })
-					return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+					return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 						"text": host.Expose(state.NewConstant("live")),
-					}}}, nil
+					}}, nil
 				}, host.ServeOptions{})
 			})}
 			return nil

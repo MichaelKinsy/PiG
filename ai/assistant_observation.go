@@ -59,10 +59,11 @@ func (cell *assistantMessageCell) publishSharing(message *AssistantMessage, repl
 	cell.mu.RUnlock()
 	// The snapshot's optional usage counters are copied by value, and an unchanged one keeps the previous snapshot's copy, which nothing writes through.
 	snapshot := *message
-	snapshot.Usage.CacheWrite1h, snapshot.Usage.Reasoning = nil, nil
+	snapshot.Usage.CacheWrite1h, snapshot.Usage.Reasoning, snapshot.Usage.ImageOutput = nil, nil, nil
 	next := cloneAssistantMessageSharing(snapshot, previous, streamed)
 	next.Usage.CacheWrite1h = sharedCounter(message.Usage.CacheWrite1h, previousUsage.CacheWrite1h)
 	next.Usage.Reasoning = sharedCounter(message.Usage.Reasoning, previousUsage.Reasoning)
+	next.Usage.ImageOutput = sharedCounter(message.Usage.ImageOutput, previousUsage.ImageOutput)
 	cell.mu.Lock()
 	defer cell.mu.Unlock()
 	// Absent optional properties are not object references; adding or removing one is an assignment even without an explicit replacement flag.
@@ -286,25 +287,42 @@ type deliveredMessage struct {
 	message     AssistantMessage
 	observation assistantMessageObservation
 	blocks      [deliveredInlineBlocks]AssistantContentBlock
-	// cacheWrite1h and reasoning are the copies of the usage's optional counters.
-	cacheWrite1h, reasoning int
+}
+
+// deliveredMessageWithCounters extends deliveredMessage with inline copies of Usage's optional counters when any is set.
+type deliveredMessageWithCounters struct {
+	deliveredMessage
+	cacheWrite1h, reasoning, imageOutput int
 }
 
 // newDeliveredMessage is the independently owned copy of the cell publication current, at publication seq, that keeps its link to cell.
 func newDeliveredMessage(current AssistantMessage, cell *assistantMessageCell, shallow *assistantMessageReferences, seq uint64) *AssistantMessage {
-	holder := new(deliveredMessage)
 	content, usage := current.Content, current.Usage
+	var holder *deliveredMessage
+	var withCounters *deliveredMessageWithCounters
+	if usage.CacheWrite1h != nil || usage.Reasoning != nil || usage.ImageOutput != nil {
+		withCounters = new(deliveredMessageWithCounters)
+		holder = &withCounters.deliveredMessage
+	} else {
+		holder = new(deliveredMessage)
+	}
 	current.Content = nil
-	current.Usage.CacheWrite1h, current.Usage.Reasoning = nil, nil
+	current.Usage.CacheWrite1h, current.Usage.Reasoning, current.Usage.ImageOutput = nil, nil, nil
 	holder.message = cloneAssistantMessageWith(current, clonePublishedJSONValue)
 	holder.message.Usage = usage
-	if usage.CacheWrite1h != nil {
-		holder.cacheWrite1h = *usage.CacheWrite1h
-		holder.message.Usage.CacheWrite1h = &holder.cacheWrite1h
-	}
-	if usage.Reasoning != nil {
-		holder.reasoning = *usage.Reasoning
-		holder.message.Usage.Reasoning = &holder.reasoning
+	if withCounters != nil {
+		if usage.CacheWrite1h != nil {
+			withCounters.cacheWrite1h = *usage.CacheWrite1h
+			holder.message.Usage.CacheWrite1h = &withCounters.cacheWrite1h
+		}
+		if usage.Reasoning != nil {
+			withCounters.reasoning = *usage.Reasoning
+			holder.message.Usage.Reasoning = &withCounters.reasoning
+		}
+		if usage.ImageOutput != nil {
+			withCounters.imageOutput = *usage.ImageOutput
+			holder.message.Usage.ImageOutput = &withCounters.imageOutput
+		}
 	}
 	switch {
 	case content == nil:

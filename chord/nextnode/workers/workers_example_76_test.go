@@ -40,9 +40,9 @@ import (
 // its text once its transaction ended: `committed` or the code.
 func lastReportsFacet(gate *atomic.Pointer[chan struct{}], log *reportLog) host.HostFacet {
 	return host.HostFacet{Name: "@example/reports", Facet: host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		if err := h.Serve(fixtureJournal, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+		if err := h.Serve(fixtureJournal, func(_ *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
 			document := self.State(fixtureLines).(*documents.Singleton)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"lines": self.Derive([]any{document}, func(values []any) (delta.JsonValue, error) {
 						return values[0].(*delta.JsonObject).Value("lines"), nil
@@ -57,13 +57,13 @@ func lastReportsFacet(gate *atomic.Pointer[chan struct{}], log *reportLog) host.
 						return nil, err
 					},
 				},
-			}}, nil
+			}, nil
 		}, host.ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(fixtureReports, func(_ *delta.JsonObject, _ data.Principal, self host.Self) (contracts.Implementation, error) {
+		return h.Serve(fixtureReports, func(_ *delta.JsonObject, _ data.Principal, self host.Self) (contracts.MembersImplementation, error) {
 			journal := self.Get(fixtureJournal, delta.NewJsonObject(0))
-			return contracts.Implementation{Variant: "main", Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				// No check that the worker still runs: a report of a worker that exited never gets this far, or is aborted
 				// before its transaction (under `ctx`) commits.
 				"report": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -84,7 +84,7 @@ func lastReportsFacet(gate *atomic.Pointer[chan struct{}], log *reportLog) host.
 					log.outcomes.add(text + " " + outcome)
 					return nil, nil
 				},
-			}}}, nil
+			}}, nil
 		}, host.ServeOptions{})
 	})}
 }

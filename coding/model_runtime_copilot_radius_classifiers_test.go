@@ -83,7 +83,7 @@ func TestModelRuntimeRadiusClassifierListingAndClassify(t *testing.T) {
 						"contextWindow": 128000, "maxTokens": 4096,
 					},
 				},
-				"classifiers": []map[string]any{
+				"decision": []map[string]any{
 					{
 						"id": "radius-decider-1", "name": "Radius Decider 1",
 						"input": []string{"text"}, "cost": map[string]any{"input": 0.05, "output": 0, "cacheRead": 0, "cacheWrite": 0},

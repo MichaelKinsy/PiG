@@ -21,13 +21,13 @@ func TestStagingHandsOutAnInertEventSourceAnEmitInStagingDeliversNothing(t *test
 	host := newHost(t, HostOptions{OnError: func(HostError) {}})
 	facet := func(label string) []HostFacet {
 		return []HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(stagingTicks, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(stagingTicks, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				ticks := self.Events()
 				// Staging runs this against a recording self: its handle is inert, the emit does nothing.
 				_ = ticks.Emit(jsonObject("y", float64(len(label))))
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					Events: map[string]contracts.EventMember[delta.JsonValue]{"ticks": ticks},
-				}}, nil
+				}, nil
 			}, ServeOptions{})
 		})}}
 	}

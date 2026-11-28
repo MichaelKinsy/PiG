@@ -28,24 +28,22 @@ var benchBindingCounter = mustContract(contracts.Local("bench.counter", contract
 var benchBindingView = mustContract(contracts.Remote("bench.view", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Str())},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-	Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{
-		State: []contracts.Property{contracts.Prop("n", contracts.Int())},
-	})},
+	State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 }))
 
 func benchBindingFacet() Facet {
 	return DefineFacet(func(host FacetHost, _ FacetSelf) error {
-		if err := host.Serve(benchBindingCounter, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+		if err := host.Serve(benchBindingCounter, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(1.0)},
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return host.Serve(benchBindingView, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+		return host.Serve(benchBindingView, func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(1.0)},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})
 }
@@ -113,7 +111,7 @@ func BenchmarkStateBinding(b *testing.B) {
 		hold := peer.Next("hold").(*link.HoldMessage).Hold
 		bound := func() {
 			peer.Send(&link.BoundMessage{Holds: []link.BoundEntry{{
-				Hold: hold, Variant: 0, Failed: []link.FailedMember{},
+				Hold: hold, Granted: []int{}, Failed: []link.FailedMember{},
 				Members: []link.BoundMember{{Member: 0, Value: link.Text("1")}},
 			}}})
 		}

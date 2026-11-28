@@ -49,6 +49,17 @@ type RemoteListing struct {
 	Snapshots []Seq
 }
 
+// RefusalReason is why a remote refused a slot for good, so that sending the same upload again cannot help:
+// content_mismatch, this device created the slot before with other bytes; next_id_regression, the batch's id allocator
+// is behind the remote's at its head; protocol_too_old, the session needs a newer SyncProtocol than this client's.
+type RefusalReason string
+
+const (
+	RefusalContentMismatch  RefusalReason = "content_mismatch"
+	RefusalNextIDRegression RefusalReason = "next_id_regression"
+	RefusalProtocolTooOld   RefusalReason = "protocol_too_old"
+)
+
 // PutBatchType is how PutBatch ended.
 type PutBatchType string
 
@@ -60,6 +71,8 @@ const (
 	// PutNotHead: no slot starts at After, and the history does not end there (Head): a slot there would branch the chain
 	// inside a batch or leave a gap. The uploader's history is not the remote's from After on.
 	PutNotHead PutBatchType = "not_head"
+	// PutRefused: the remote refused the slot for good (Reason).
+	PutRefused PutBatchType = "refused"
 )
 
 // PutBatchResult is the outcome of PutBatch; the members its Type names are set.
@@ -68,6 +81,7 @@ type PutBatchResult struct {
 	To     Seq
 	Device string
 	Head   Seq
+	Reason RefusalReason
 }
 
 // PutBatchOptions are what an upload tells the remote besides its slot.

@@ -2861,8 +2861,9 @@ func (t *TuiMainScreen) drawFrame(gate frameGate) (began bool) {
 		if widthx.IsImageLine(line) {
 			reservedRows := t.kittyImageReservedRows(newLines, i, renderEnd)
 			if reservedRows > 1 {
-				imageStartScreenRow := i - prevViewportTop
-				if imageStartScreenRow < 0 || imageStartScreenRow+reservedRows > height {
+				// Pre-clearing may scroll the screen when the image is appended at the bottom, like any appended line.
+				// Moving back up to the image's first row only fails when the image is taller than the screen.
+				if reservedRows > height {
 					t.fullRender(newLines, width, height, true)
 					t.positionHardwareCursor(cursorPos, hasCursorPos, len(newLines))
 					return
@@ -2927,21 +2928,13 @@ func (t *TuiMainScreen) drawFrame(gate frameGate) (began bool) {
 // checked, image rows are exempt, and only rows firstChanged..renderEnd are
 // written.
 func (t *TuiMainScreen) differentialOverflowRow(newLines []string, firstChanged, lastChanged int, appendStart bool, prevViewportTop, height, width int) int {
-	viewportTop := prevViewportTop
-	moveTargetRow := firstChanged
-	if appendStart {
-		moveTargetRow = firstChanged - 1
-	}
-	if prevViewportBottom := prevViewportTop + height - 1; moveTargetRow > prevViewportBottom {
-		viewportTop += moveTargetRow - prevViewportBottom
-	}
+	_, _ = appendStart, prevViewportTop
 	renderEnd := min(lastChanged, len(newLines)-1)
 	for i := firstChanged; i <= renderEnd; i++ {
 		line := newLines[i]
 		if widthx.IsImageLine(line) {
 			if reserved := t.kittyImageReservedRows(newLines, i, renderEnd); reserved > 1 {
-				start := i - viewportTop
-				if start < 0 || start+reserved > height {
+				if reserved > height {
 					return -1
 				}
 				i += reserved - 1

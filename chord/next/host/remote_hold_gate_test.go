@@ -58,26 +58,24 @@ var gateSlow = mustContract(declareLocal("app.gate-slow", contracts.LocalDeclara
 // gateGated is `Gated`: a remote object over the provider; `bump` answers its code's number.
 var gateGated = mustContract(declareRemote("app.gated", contracts.RemoteDeclaration{
 	Version: 1, HostAddress: exServerAddress,
-	Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{
-		State:   []contracts.Property{rhProp("label", contracts.Str())},
-		Methods: []contracts.MethodEntry{contracts.Meth("bump", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
-	})},
+	State:   []contracts.RemoteStateEntry{contracts.StateEntry("label", contracts.Str())},
+	Methods: []contracts.RemoteMethodEntry{contracts.Meth("bump", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
 }))
 
 // gateServeSlow serves `Slow`, whose native opens once opened fires.
 func gateServeSlow(t testing.TB, h FacetHost, opened signal) error {
-	return h.Serve(gateSlow, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+	return h.Serve(gateSlow, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 		self.Open(func(ctx context.Context) (any, error) { opened.await(t, ctx); return nil, nil },
 			func(any, NativeCloseReason, context.Context) error { return nil })
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{"name": constant("slow")},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 }
 
 // gateServeProvider serves the provider labelled name, needing `Slow` when slow, its keys persisted when persisted.
 func gateServeProvider(h FacetHost, name string, slow, persisted bool) error {
-	return h.Serve(gateProvider, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+	return h.Serve(gateProvider, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 		if slow {
 			self.Get(gateSlow, jsonObject())
 		}
@@ -86,14 +84,14 @@ func gateServeProvider(h FacetHost, name string, slow, persisted bool) error {
 			definition = gatePersistedEntriesDoc
 		}
 		entries := self.State(definition).(*documents.Keyed)
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{"name": constant(name)},
 			Keyed: map[string]contracts.KeyedWatchable[delta.JsonValue]{"entries": ExposeKeyed(entries)},
 			Methods: map[string]contracts.MethodFunction{"set": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 				_, err := entries.Change(ctx, "x", func(draft *delta.Object) (any, error) { return nil, draft.Set("n", args) })
 				return nil, err
 			}},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 }
 
@@ -103,7 +101,7 @@ func gateServeProvider(h FacetHost, name string, slow, persisted bool) error {
 // the test fires, and learn that it arrived from a second one (`entered`), so no test waits on time.Sleep and a call's
 // position (at the gate, in flight, answered) is a received event rather than a poll of timing.
 func gateServeGated(t testing.TB, h FacetHost, code int, gate, entered signal, pin, slow bool) error {
-	return h.Serve(gateGated, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+	return h.Serve(gateGated, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 		provider := self.Get(gateProvider, jsonObject())
 		if slow {
 			self.Get(gateSlow, jsonObject())
@@ -112,7 +110,7 @@ func gateServeGated(t testing.TB, h FacetHost, code int, gate, entered signal, p
 		if pin {
 			entry, err := provider.Keyed("entries").At("k")
 			if err != nil {
-				return contracts.Implementation{}, err
+				return contracts.MembersImplementation{}, err
 			}
 			label = self.Derive([]any{Expose(entry)}, func(values []any) (delta.JsonValue, error) {
 				return "v" + strconv.Itoa(code) + " " + strconv.Itoa(int(values[0].(*delta.JsonObject).Value("n").(float64))), nil
@@ -122,7 +120,7 @@ func gateServeGated(t testing.TB, h FacetHost, code int, gate, entered signal, p
 				return "v" + strconv.Itoa(code) + " " + values[0].(string), nil
 			})
 		}
-		return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{"label": label},
 			Methods: map[string]contracts.MethodFunction{"bump": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 				if entered != nil {
@@ -133,7 +131,7 @@ func gateServeGated(t testing.TB, h FacetHost, code int, gate, entered signal, p
 				}
 				return float64(code), nil
 			}},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 }
 

@@ -113,12 +113,12 @@ func TestReferenceEventSubscriptionsKeepGettingAnOldAttemptsEmitsWhileAReloadDra
 	open, running := make(chan struct{}), newSignal()
 	facets := func() []HostFacet {
 		return []HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(pulse, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(pulse, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				beats := self.Events()
 				mu.Lock()
 				sources = append(sources, beats)
 				mu.Unlock()
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					Events: map[string]contracts.EventMember[delta.JsonValue]{"beats": beats},
 					Methods: map[string]contracts.MethodFunction{
 						"slow": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -129,7 +129,7 @@ func TestReferenceEventSubscriptionsKeepGettingAnOldAttemptsEmitsWhileAReloadDra
 							return nil, beats.Emit(sample(1))
 						},
 					},
-				}}, nil
+				}, nil
 			}, ServeOptions{})
 		})}}
 	}
@@ -183,17 +183,17 @@ func TestReferenceEventSubscriptionsGetNothingOfAnEmitInTheTurnTheirReferenceWas
 	var mu sync.Mutex
 	var sources []contracts.EventSource[delta.JsonValue]
 	facets := []HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(pulse, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(pulse, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			beats := self.Events()
 			mu.Lock()
 			sources = append(sources, beats)
 			mu.Unlock()
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				Events: map[string]contracts.EventMember[delta.JsonValue]{"beats": beats},
 				Methods: map[string]contracts.MethodFunction{
 					"slow": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil },
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})}}
 	host := newHost(t, HostOptions{OnError: func(HostError) {}})
@@ -297,15 +297,15 @@ func TestReferenceEventSubscriptionsKeepNoNodeOfAnInstanceAReloadReplacedWhileRe
 	var sourceSelves, viewerSelves []Self
 	facets := func() []HostFacet {
 		return []HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			err := h.Serve(sourceV2, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			err := h.Serve(sourceV2, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				ticks := self.Events()
 				mu.Lock()
 				sources = append(sources, ticks)
 				sourceSelves = append(sourceSelves, self)
 				mu.Unlock()
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					Events: map[string]contracts.EventMember[delta.JsonValue]{"ticks": ticks},
-				}}, nil
+				}, nil
 			}, ServeOptions{Accepts: contracts.AcceptsTable{{Name: "1", Value: contracts.VersionMappings{
 				Events: []contracts.Entry[contracts.EventMapping]{{Name: "ticks", Value: contracts.EventMapping{
 					Func: func(current delta.JsonValue) (delta.JsonValue, error) {
@@ -316,13 +316,13 @@ func TestReferenceEventSubscriptionsKeepNoNodeOfAnInstanceAReloadReplacedWhileRe
 			if err != nil {
 				return err
 			}
-			return h.Serve(viewer, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(viewer, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				mu.Lock()
 				viewerSelves = append(viewerSelves, self)
 				mu.Unlock()
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					Events: map[string]contracts.EventMember[delta.JsonValue]{"ticks": self.Get(sourceV2, jsonObject()).Events("ticks")},
-				}}, nil
+				}, nil
 			}, ServeOptions{})
 		})}}
 	}

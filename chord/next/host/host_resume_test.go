@@ -24,8 +24,8 @@ func TestResumeRunsAfterAHandlerSuspendedInASectionOfTheLoop(t *testing.T) {
 	h := newHost(t, HostOptions{OnError: func(err HostError) { t.Errorf("onError %s", err.Kind) }})
 	loop := h.(*chordHost).events.(*Loop)
 	mustLoad(t)(h.Load([]HostFacet{{Name: "@test/resume", Facet: DefineFacet(func(fh FacetHost, _ FacetSelf) error {
-		return fh.Serve(resumeContract, func(_ *delta.JsonObject, _ Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+		return fh.Serve(resumeContract, func(_ *delta.JsonObject, _ Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				Methods: map[string]contracts.MethodFunction{
 					"probe": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 						var inline bool
@@ -57,7 +57,7 @@ func TestResumeRunsAfterAHandlerSuspendedInASectionOfTheLoop(t *testing.T) {
 						return answer, nil
 					},
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})}}, background))
 	object, err := h.Get(background, resumeContract, jsonObject(), GetOptions{})

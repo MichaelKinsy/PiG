@@ -148,8 +148,6 @@ whenever the manager reads or writes a scope: it runs FN on the scope's current 
   (set-npm-command (&optional command))
   (get-collapse-changelog () :bool t)
   (set-collapse-changelog (collapse) :bool-args (collapse))
-  (get-enable-install-telemetry () :bool t)
-  (set-enable-install-telemetry (enabled) :bool-args (enabled))
   (get-enable-analytics () :bool t)
   (get-tracking-id ())
   (set-enable-analytics (enabled) :bool-args (enabled))

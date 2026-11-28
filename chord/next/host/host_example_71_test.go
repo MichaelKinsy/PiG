@@ -63,7 +63,7 @@ var (
 
 func ex71StoreFacet(clock, nextID *int64) Facet {
 	return DefineFacet(func(host FacetHost, _ FacetSelf) error {
-		return host.Serve(ex71Children, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+		return host.Serve(ex71Children, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 			self := plain.(StoreSelf)
 			rows := self.Table(ex71ChildRows)
 			children := self.Queries(rows, QueriesOptions{
@@ -79,7 +79,7 @@ func ex71StoreFacet(clock, nextID *int64) Facet {
 						OrderBy(func(r, _ store.ColumnRefs) *store.ColumnRef { return r["lastTouch"] }, "desc")
 				}},
 			})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				Queries: map[string]map[string]contracts.NamedQuery[delta.JsonValue, delta.JsonValue]{"children": children},
 				Methods: map[string]contracts.MethodFunction{
 					"spawn": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
@@ -105,7 +105,7 @@ func ex71StoreFacet(clock, nextID *int64) Facet {
 						return nil, err
 					},
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})
 }
@@ -113,18 +113,18 @@ func ex71StoreFacet(clock, nextID *int64) Facet {
 // ex71ListFacet is Pi's `listFacet()`: one list object per screen, `view` its own id.
 func ex71ListFacet() Facet {
 	return DefineFacet(func(host FacetHost, _ FacetSelf) error {
-		return host.Serve(ex71Subagents, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return host.Serve(ex71Subagents, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			source := ListSource{
 				Query: self.Get(ex71Children, jsonObject()).Queries("children")["ofSession"],
 				Args:  jsonObject("session", params.Value("session")),
 			}
 			list := self.List("children", []ListSource{source}, ListOptions{First: 4})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"list": list.Value()},
 				Methods: map[string]contracts.MethodFunction{
 					"more": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) { return nil, list.More(ctx) },
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})
 }

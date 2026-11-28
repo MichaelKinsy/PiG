@@ -353,7 +353,10 @@ func encodeFields(message Message, writer *writer) {
 		writer.varint(len(typed.Holds))
 		for _, entry := range typed.Holds {
 			writer.varint(entry.Hold)
-			writer.varint(entry.Variant)
+			writer.varint(len(entry.Granted))
+			for _, name := range entry.Granted {
+				writer.varint(name)
+			}
 			writer.varint(len(entry.Members))
 			for _, member := range entry.Members {
 				writer.varint(member.Member)
@@ -491,7 +494,12 @@ func decodeFields(kind int, reader *reader) Message {
 		for index := range holds {
 			entry := &holds[index]
 			entry.Hold = reader.varint()
-			entry.Variant = reader.varint()
+			if granted := reader.count(); granted > 0 {
+				entry.Granted = make([]int, granted)
+				for at := range entry.Granted {
+					entry.Granted[at] = reader.varint()
+				}
+			}
 			if members := reader.count(); members > 0 {
 				entry.Members = make([]BoundMember, members)
 				for at := range entry.Members {

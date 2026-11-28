@@ -515,7 +515,6 @@ type settingsWire struct {
 	NpmCommand             []string                 `json:"npmCommand,omitzero"`
 	SelfUpdateCommand      []string                 `json:"selfUpdateCommand,omitzero"`
 	CollapseChangelog      *bool                    `json:"collapseChangelog,omitempty"`
-	EnableInstallTelemetry *bool                    `json:"enableInstallTelemetry,omitempty"`
 	EnableAnalytics        *bool                    `json:"enableAnalytics,omitempty"`
 	TrackingID             string                   `json:"trackingId,omitempty"`
 	Packages               []PackageSource          `json:"packages,omitzero"`
@@ -824,13 +823,6 @@ type Settings struct {
 	// Note: this is a *bool so false can explicitly disable (vs absent=true default).
 	// Use GetEnableSkillCommands() instead of reading directly.
 	EnableSkillCommands *bool `json:"enableSkillCommands,omitempty"`
-
-	// EnableInstallTelemetry controls whether package-install telemetry may be sent
-	// by pig-specific install telemetry hooks when they are configured.
-	// Default: true.
-	// Mirrors upstream settings.enableInstallTelemetry (settings-manager.ts), but
-	// the transport itself is a separate implementation concern.
-	EnableInstallTelemetry *bool `json:"enableInstallTelemetry,omitempty"`
 
 	// EnableAnalytics is the opt-in analytics data sharing setting (default
 	// false). Mirrors upstream settings plumbing only: nothing sends data.
@@ -1211,7 +1203,6 @@ func cloneSettings(s Settings) Settings {
 		collapseChangelogSet:           s.collapseChangelogSet,
 		ShowCacheMissNotices:           s.ShowCacheMissNotices,
 		EnableSkillCommands:            cloneBoolPtr(s.EnableSkillCommands),
-		EnableInstallTelemetry:         cloneBoolPtr(s.EnableInstallTelemetry),
 		EnableAnalytics:                cloneBoolPtr(s.EnableAnalytics),
 		TrackingID:                     s.TrackingID,
 		Retry:                          cloneRetrySettings(s.Retry),
@@ -1279,7 +1270,6 @@ func (s Settings) MarshalJSON() ([]byte, error) {
 		ShellPath:                   optionalString(s.ShellPath, s.emptyStrings.shellPath),
 		NpmCommand:                  s.NpmCommand,
 		SelfUpdateCommand:           s.SelfUpdateCommand,
-		EnableInstallTelemetry:      s.EnableInstallTelemetry,
 		EnableAnalytics:             s.EnableAnalytics,
 		TrackingID:                  s.TrackingID,
 		Packages:                    s.Packages,
@@ -1486,7 +1476,6 @@ func (s *Settings) UnmarshalJSON(data []byte) error {
 		s.CollapseChangelog = *w.CollapseChangelog
 		s.collapseChangelogSet = true
 	}
-	s.EnableInstallTelemetry = w.EnableInstallTelemetry
 	s.EnableAnalytics = w.EnableAnalytics
 	s.TrackingID = w.TrackingID
 	s.Packages = w.Packages
@@ -3165,57 +3154,6 @@ func (sm *SettingsManager) SetEnableAnalytics(enabled bool) error {
 	})
 }
 
-// GetEnableInstallTelemetry returns whether package-install telemetry is enabled.
-// Default: true. This only answers the setting/env gate; it does not imply a
-// transport is configured or that telemetry will actually be delivered.
-func (sm *SettingsManager) GetEnableInstallTelemetry() bool {
-	return readMerged(sm, func(s *Settings) bool { return s.EnableInstallTelemetry == nil || *s.EnableInstallTelemetry })
-}
-
-// IsInstallTelemetryEnabled reports whether install/attribution telemetry is
-// enabled, honoring the PIG_TELEMETRY / PI_TELEMETRY env override first and otherwise the
-// enableInstallTelemetry setting (default true). Mirrors upstream
-// isInstallTelemetryEnabled (telemetry.ts:8): when PI_TELEMETRY is set its
-// truthiness wins; otherwise the setting decides. Gates provider attribution
-// headers (provider-attribution.ts) in addition to package-install telemetry.
-// pig divergence (D26): gates the OpenRouter/NVIDIA/Cloudflare attribution headers in coding/model.go.
-func (sm *SettingsManager) IsInstallTelemetryEnabled() bool {
-	if value, ok := InstallTelemetryEnvOverride(); ok {
-		return isTruthyTelemetryEnvFlag(value)
-	}
-	return sm.GetEnableInstallTelemetry()
-}
-
-// InstallTelemetryEnvOverride is the one place that resolves the telemetry environment override: PIG_TELEMETRY, PiG's name, when it is
-// set, otherwise Pi's PI_TELEMETRY. ok is false when neither is set and the enableInstallTelemetry setting decides. The value is returned
-// as written; both names share one grammar (Pi's isTruthyEnvFlag). The reader of the setting and `pig`'s export to the Node extension
-// runtime both call it.
-// pig divergence (D2): PIG_TELEMETRY wins over PI_TELEMETRY when both are set (owner decision 2026-11-17).
-func InstallTelemetryEnvOverride() (value string, ok bool) {
-	//perf:ok one environment lookup per provider request or start-up; read on each call as Pi's default parameter reads process.env.PI_TELEMETRY (telemetry.ts:8, called from sdk.ts:352 per request), so a changed variable applies at once; a cached value would not
-	if value, ok = os.LookupEnv("PIG_TELEMETRY"); ok {
-		return value, true
-	}
-	//perf:ok the same per-call read (telemetry.ts:8), reached only when PIG_TELEMETRY is unset
-	return os.LookupEnv("PI_TELEMETRY")
-}
-
-// isTruthyTelemetryEnvFlag mirrors upstream isTruthyEnvFlag (telemetry.ts:3):
-// "1", "true", or "yes" (case-insensitive) are truthy; everything else, including
-// empty, is falsy.
-// pig divergence (D26): telemetry gate feeding the attribution-header decision.
-func isTruthyTelemetryEnvFlag(value string) bool {
-	if value == "" {
-		return false
-	}
-	switch strings.ToLower(value) {
-	case "1", "true", "yes":
-		return true
-	default:
-		return false
-	}
-}
-
 // GetPackages returns the configured package sources, or an empty list.
 func (sm *SettingsManager) GetPackages() []PackageSource {
 	return readMerged(sm, func(s *Settings) []PackageSource {
@@ -3623,12 +3561,6 @@ func (sm *SettingsManager) SetCollapseChangelog(collapse bool) error {
 		s.CollapseChangelog = collapse
 		s.collapseChangelogSet = true
 	})
-}
-
-// SetEnableInstallTelemetry sets whether package-install telemetry is enabled.
-// This toggles the gate only; delivery depends on the configured sender.
-func (sm *SettingsManager) SetEnableInstallTelemetry(enabled bool) error {
-	return sm.UpdateGlobal(func(s *Settings) { s.EnableInstallTelemetry = &enabled })
 }
 
 // SetEnableSkillCommands sets whether skill commands are enabled.
@@ -4574,9 +4506,6 @@ func mergeSettings(global, project Settings) Settings {
 
 	if project.EnableSkillCommands != nil {
 		m.EnableSkillCommands = cloneBoolPtr(project.EnableSkillCommands)
-	}
-	if project.EnableInstallTelemetry != nil {
-		m.EnableInstallTelemetry = cloneBoolPtr(project.EnableInstallTelemetry)
 	}
 	// deepMergeSettings lets a project file override enableAnalytics and trackingId too (getEnableAnalytics and getTrackingId read the merged view).
 	if project.EnableAnalytics != nil {

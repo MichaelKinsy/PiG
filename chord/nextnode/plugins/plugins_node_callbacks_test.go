@@ -35,17 +35,14 @@ const Probe = remote("test.probe", {
 	version: 1,
 	params: {},
 	hostAddress: () => Worker(),
-	variants: { main: { state: {}, methods: { call: method(str(), str()) } } },
+	methods: { call: method(str(), str()) },
 });
 const ops = { `+ops+` };
 module.exports = { default: defineFacet((host) =>
 	host.serve(Probe, () => ({
-		variant: "main",
-		members: {
-			call: async (request, ctx) => {
-				const { op, args } = JSON.parse(request);
-				return JSON.stringify((await ops[op](args, ctx)) ?? null);
-			},
+		call: async (request, ctx) => {
+			const { op, args } = JSON.parse(request);
+			return JSON.stringify((await ops[op](args, ctx)) ?? null);
 		},
 	})),
 ) };

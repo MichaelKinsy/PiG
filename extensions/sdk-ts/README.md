@@ -1,14 +1,14 @@
 # PiG TypeScript extension declarations
 
 This package adds PiG-specific declarations to the exact TypeScript extension
-API from Pi 1.6.1. It contains no runtime implementation.
+API from Pi 1.7.0. It contains no runtime implementation.
 
 Install the declarations from this source tree with the pinned Pi package:
 
 ```bash
 npm install --save-dev --install-links \
   /path/to/PiG/extensions/sdk-ts \
-  @earendil-works/pi-coding-agent@1.6.1
+  @earendil-works/pi-coding-agent@1.7.0
 ```
 
 ## What you type-check against

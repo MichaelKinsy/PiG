@@ -37,23 +37,24 @@ type Rule = impl.Rule
 
 // Rule IDs.
 const (
-	RuleContextGetters      = impl.RuleContextGetters
-	RuleOptionalBool        = impl.RuleOptionalBool
-	RuleContextUsage        = impl.RuleContextUsage
-	RuleEditorComponent     = impl.RuleEditorComponent
-	RuleConstrainedSampling = impl.RuleConstrainedSampling
-	RuleAutocompleteFactory = impl.RuleAutocompleteFactory
-	RuleNotComparable       = impl.RuleNotComparable
-	RuleTransformHeaders    = impl.RuleTransformHeaders
-	RuleProviderCredential  = impl.RuleProviderCredential
-	RuleSystemPromptGetter  = impl.RuleSystemPromptGetter
-	RuleReadonlySession     = impl.RuleReadonlySession
-	RuleModelRegistryFind   = impl.RuleModelRegistryFind
-	RuleDialogResults       = impl.RuleDialogResults
-	RuleHostHighlightCode   = impl.RuleHostHighlightCode
-	RuleMarkdownTransformer = impl.RuleMarkdownTransformer
-	RuleSetModelObject      = impl.RuleSetModelObject
-	RuleSettingsNotices     = impl.RuleSettingsNotices
+	RuleContextGetters          = impl.RuleContextGetters
+	RuleOptionalBool            = impl.RuleOptionalBool
+	RuleContextUsage            = impl.RuleContextUsage
+	RuleEditorComponent         = impl.RuleEditorComponent
+	RuleConstrainedSampling     = impl.RuleConstrainedSampling
+	RuleAutocompleteFactory     = impl.RuleAutocompleteFactory
+	RuleNotComparable           = impl.RuleNotComparable
+	RuleTransformHeaders        = impl.RuleTransformHeaders
+	RuleProviderCredential      = impl.RuleProviderCredential
+	RuleSystemPromptGetter      = impl.RuleSystemPromptGetter
+	RuleReadonlySession         = impl.RuleReadonlySession
+	RuleModelRegistryFind       = impl.RuleModelRegistryFind
+	RuleDialogResults           = impl.RuleDialogResults
+	RuleHostHighlightCode       = impl.RuleHostHighlightCode
+	RuleMarkdownTransformer     = impl.RuleMarkdownTransformer
+	RuleSetModelObject          = impl.RuleSetModelObject
+	RuleSettingsNotices         = impl.RuleSettingsNotices
+	RuleInstallTelemetryRemoved = impl.RuleInstallTelemetryRemoved
 )
 
 // Rules returns every rule, in the order the SDK changed.

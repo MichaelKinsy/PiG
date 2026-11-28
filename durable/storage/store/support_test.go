@@ -221,7 +221,7 @@ func counted(t testing.TB, path string) *rig {
 	outbox := true
 	opened, err := chordstore.OpenStore(chordstore.SqliteBackend(db), background, chordstore.StoreOptions{Outbox: &outbox})
 	must(t, err)
-	store := opened.(*chordstore.ChordStore)
+	store := opened
 	storage, err := Open(background, store, "harness")
 	must(t, err)
 	made := &rig{store: store, storage: storage, counts: db.counts, db: db}
@@ -239,7 +239,7 @@ func reopen(t testing.TB, path string) (*chordstore.ChordStore, *StoreStorage) {
 	must(t, err)
 	storage, err := Open(background, opened, "harness")
 	must(t, err)
-	return opened.(*chordstore.ChordStore), storage
+	return opened, storage
 }
 
 // commitWrites is durabletest.CommitWrites on one batch: it returns the batch's seq, a refusal as the error.

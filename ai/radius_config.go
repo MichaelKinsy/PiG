@@ -59,11 +59,22 @@ type RadiusGatewayClassifierModel struct {
 	Compat        *SystemOneCompat  `json:"compat,omitempty"`
 }
 
+// RadiusGatewayImageModel is one image model advertised by a Radius gateway's /v1/config.
+type RadiusGatewayImageModel struct {
+	ID      string            `json:"id"`
+	Name    string            `json:"name"`
+	Input   []string          `json:"input"`
+	Output  []string          `json:"output"`
+	Cost    ModelCost         `json:"cost"`
+	Headers map[string]string `json:"headers,omitempty"` //portlint:allow emptydrop decoded from Radius /v1/config; absent and empty headers are identical in model requests
+}
+
 // RadiusGatewayConfig is the sanitized /v1/config document of a gateway.
 type RadiusGatewayConfig struct {
-	BaseURL     string                         `json:"baseUrl"`
-	Models      []RadiusGatewayModel           `json:"models"`
-	Classifiers []RadiusGatewayClassifierModel `json:"classifiers,omitempty"` //portlint:allow emptydrop decoded from Radius /v1/config; omitted when gateway advertises no classifiers
+	BaseURL  string                         `json:"baseUrl"`
+	Models   []RadiusGatewayModel           `json:"models"`
+	Decision []RadiusGatewayClassifierModel `json:"decision,omitempty"` //portlint:allow emptydrop decoded from Radius /v1/config; omitted when gateway advertises no decision models
+	Images   []RadiusGatewayImageModel      `json:"images,omitempty"`   //portlint:allow emptydrop decoded from Radius /v1/config; omitted when gateway advertises no image models
 }
 
 var radiusClassifierModelFields = []struct {
@@ -222,6 +233,60 @@ func jsNumberToInt(number float64) int {
 	return int(number)
 }
 
+func sanitizeRadiusModalities(values []json.RawMessage) []string {
+	out := make([]string, 0, len(values))
+	for _, item := range values {
+		if jsonKind(item) == '"' {
+			var s string
+			if json.Unmarshal(item, &s) == nil && (s == "text" || s == "image") {
+				out = append(out, s)
+			}
+		}
+	}
+	return out
+}
+
+var radiusImageModelFields = []struct {
+	name string
+	kind byte
+}{
+	{"id", '"'}, {"name", '"'}, {"input", '['}, {"output", '['}, {"cost", '{'},
+}
+
+func decodeRadiusGatewayImageModel(raw json.RawMessage) (RadiusGatewayImageModel, bool) {
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(raw, &fields) != nil || fields == nil {
+		return RadiusGatewayImageModel{}, false
+	}
+	for _, field := range radiusImageModelFields {
+		if jsonKind(fields[field.name]) != field.kind {
+			return RadiusGatewayImageModel{}, false
+		}
+	}
+	var rawOut []json.RawMessage
+	if json.Unmarshal(fields["output"], &rawOut) != nil {
+		return RadiusGatewayImageModel{}, false
+	}
+	output := sanitizeRadiusModalities(rawOut)
+	if !slices.Contains(output, "image") {
+		return RadiusGatewayImageModel{}, false
+	}
+	var rawIn []json.RawMessage
+	if json.Unmarshal(fields["input"], &rawIn) != nil {
+		return RadiusGatewayImageModel{}, false
+	}
+	var model RadiusGatewayImageModel
+	_ = json.Unmarshal(fields["id"], &model.ID)
+	_ = json.Unmarshal(fields["name"], &model.Name)
+	model.Input = sanitizeRadiusModalities(rawIn)
+	model.Output = output
+	_ = json.Unmarshal(fields["cost"], &model.Cost)
+	if jsonKind(fields["headers"]) == '{' {
+		_ = json.Unmarshal(fields["headers"], &model.Headers)
+	}
+	return model, true
+}
+
 // sanitizeRadiusGatewayConfig mirrors upstream sanitizeRadiusGatewayConfig: it
 // requires a string baseUrl and a models array, and drops invalid models. It reads
 // baseUrl and models by their exact keys.
@@ -243,13 +308,24 @@ func sanitizeRadiusGatewayConfig(raw json.RawMessage) (RadiusGatewayConfig, bool
 			config.Models = append(config.Models, model)
 		}
 	}
-	if jsonKind(fields["classifiers"]) == '[' {
+	if jsonKind(fields["decision"]) == '[' {
 		var clsCandidates []json.RawMessage
-		if json.Unmarshal(fields["classifiers"], &clsCandidates) == nil {
-			config.Classifiers = make([]RadiusGatewayClassifierModel, 0, len(clsCandidates))
+		if json.Unmarshal(fields["decision"], &clsCandidates) == nil {
+			config.Decision = make([]RadiusGatewayClassifierModel, 0, len(clsCandidates))
 			for _, candidate := range clsCandidates {
 				if cls, ok := decodeRadiusGatewayClassifierModel(candidate); ok {
-					config.Classifiers = append(config.Classifiers, cls)
+					config.Decision = append(config.Decision, cls)
+				}
+			}
+		}
+	}
+	if jsonKind(fields["images"]) == '[' {
+		var imgCandidates []json.RawMessage
+		if json.Unmarshal(fields["images"], &imgCandidates) == nil {
+			config.Images = make([]RadiusGatewayImageModel, 0, len(imgCandidates))
+			for _, candidate := range imgCandidates {
+				if img, ok := decodeRadiusGatewayImageModel(candidate); ok {
+					config.Images = append(config.Images, img)
 				}
 			}
 		}
@@ -308,71 +384,76 @@ func GetRadiusModelsFromConfig(providerID string, config RadiusGatewayConfig) []
 	return models
 }
 
-// GetRadiusAllModelsFromConfig binds both chat and classifier models from a gateway catalog to providerID.
-func GetRadiusAllModelsFromConfig(providerID string, config RadiusGatewayConfig) []AnyModel {
-	chat := GetRadiusModelsFromConfig(providerID, config)
-	all := make([]AnyModel, 0, len(chat)+len(config.Classifiers))
-	for _, m := range chat {
-		all = append(all, m)
-	}
-	for _, c := range config.Classifiers {
+// GetRadiusClassifierModelsFromConfig binds decision/classifier models from a gateway catalog to providerID.
+func GetRadiusClassifierModelsFromConfig(providerID string, config RadiusGatewayConfig) []*ClassifierModel {
+	models := make([]*ClassifierModel, 0, len(config.Decision))
+	for _, c := range config.Decision {
 		cost := c.Cost
 		cost.Tiers = slices.Clone(c.Cost.Tiers)
-		var compat *SystemOneCompat
-		if c.Compat != nil {
-			cp := *c.Compat
-			if c.Compat.SendImageOptInHeader != nil {
-				v := *c.Compat.SendImageOptInHeader
-				cp.SendImageOptInHeader = &v
-			}
-			compat = &cp
+		if c.Cost.ImageOutput != nil {
+			v := *c.Cost.ImageOutput
+			cost.ImageOutput = &v
 		}
-		all = append(all, &ClassifierModel{
+		models = append(models, &ClassifierModel{
 			ID:            c.ID,
 			Name:          c.Name,
 			API:           ClassifierAPIPiDecision,
 			Provider:      providerID,
 			BaseURL:       config.BaseURL,
-			Headers:       maps.Clone(c.Headers),
-			Input:         append([]string(nil), c.Input...),
+			Input:         slices.Clone(c.Input),
 			InputLimits:   c.InputLimits.Clone(),
 			Cost:          cost,
 			ContextWindow: c.ContextWindow,
-			Compat:        compat,
+			Headers:       maps.Clone(c.Headers),
+			Compat:        cloneRadiusSystemOneCompat(c.Compat),
 		})
+	}
+	return models
+}
+
+// GetRadiusImageModelsFromConfig binds image models from a gateway catalog to providerID.
+func GetRadiusImageModelsFromConfig(providerID string, config RadiusGatewayConfig) []*ImageModel {
+	models := make([]*ImageModel, 0, len(config.Images))
+	for _, img := range config.Images {
+		cost := img.Cost
+		cost.Tiers = slices.Clone(img.Cost.Tiers)
+		if img.Cost.ImageOutput != nil {
+			v := *img.Cost.ImageOutput
+			cost.ImageOutput = &v
+		}
+		models = append(models, &ImageModel{
+			ID:       img.ID,
+			Name:     img.Name,
+			API:      APIImagesPiImage,
+			Provider: providerID,
+			BaseURL:  config.BaseURL,
+			Input:    slices.Clone(img.Input),
+			Output:   slices.Clone(img.Output),
+			Cost:     cost,
+			Headers:  maps.Clone(img.Headers),
+		})
+	}
+	return models
+}
+
+// GetRadiusAllModelsFromConfig binds chat, classifier, and image models from a gateway catalog to providerID.
+func GetRadiusAllModelsFromConfig(providerID string, config RadiusGatewayConfig) []AnyModel {
+	chat := GetRadiusModelsFromConfig(providerID, config)
+	classifiers := GetRadiusClassifierModelsFromConfig(providerID, config)
+	images := GetRadiusImageModelsFromConfig(providerID, config)
+	all := make([]AnyModel, 0, len(chat)+len(classifiers)+len(images))
+	for _, m := range chat {
+		all = append(all, m)
+	}
+	for _, c := range classifiers {
+		all = append(all, c)
+	}
+	for _, img := range images {
+		all = append(all, img)
 	}
 	return all
 }
 
-// GetRadiusModels returns the legacy credential catalog bound to providerID (radius-config.ts:70).
-func GetRadiusModels(providerID string, credential *Credential) []*Model {
-	config, ok := GetRadiusCredentialConfig(credential)
-	if !ok {
-		return []*Model{}
-	}
-	return GetRadiusModelsFromConfig(providerID, config)
-}
-
-func cloneRadiusClassifierModel(model *ClassifierModel) *ClassifierModel {
-	cp := *model
-	cp.Input = append([]string(nil), model.Input...)
-	cp.InputLimits = model.InputLimits.Clone()
-	cp.Cost.Tiers = slices.Clone(model.Cost.Tiers)
-	if model.Headers != nil {
-		cp.Headers = maps.Clone(model.Headers)
-	}
-	if model.Compat != nil {
-		c := *model.Compat
-		if model.Compat.SendImageOptInHeader != nil {
-			v := *model.Compat.SendImageOptInHeader
-			c.SendImageOptInHeader = &v
-		}
-		cp.Compat = &c
-	}
-	return &cp
-}
-
-// piMessagesModel is the spread of getRadiusModelsFromConfig: the gateway model with api "pi-messages", the provider and the gateway base URL.
 func piMessagesModel(providerID, baseURL string, gateway RadiusGatewayModel) *Model {
 	return ownedPiMessagesModel(providerID, baseURL, cloneRadiusGatewayModel(gateway))
 }
@@ -514,4 +595,25 @@ func newRadiusRequest(ctx context.Context, method, endpoint string, body io.Read
 		return nil, fmt.Errorf("Request cannot be constructed from a URL that includes credentials: %s", endpoint)
 	}
 	return request, nil
+}
+
+// GetRadiusModels binds legacy cached OAuth gateway models to providerID.
+func GetRadiusModels(providerID string, credential *Credential) []*Model {
+	config, ok := GetRadiusCredentialConfig(credential)
+	if !ok {
+		return nil
+	}
+	return GetRadiusModelsFromConfig(providerID, config)
+}
+
+func cloneRadiusSystemOneCompat(compat *SystemOneCompat) *SystemOneCompat {
+	if compat == nil {
+		return nil
+	}
+	cp := *compat
+	if compat.SendImageOptInHeader != nil {
+		v := *compat.SendImageOptInHeader
+		cp.SendImageOptInHeader = &v
+	}
+	return &cp
 }

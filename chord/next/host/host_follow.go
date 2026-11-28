@@ -114,7 +114,11 @@ type followSource struct {
 	state    followState
 	value    delta.JsonValue
 	hasValue bool
-	// queued is the calls not applied yet: before the attachment resolved, and outside a batch until the next microtask.
+	// isLive is whether its attempt went live: before, a failed call is the activation's failure, as a failed end.
+	isLive bool
+	// failed is its failure while it is a failed member (a failed call), its last value kept.
+	failed error
+	// queued is the calls not applied yet: before the attachment resolved (only the last), and outside a batch until the next microtask.
 	queued []chord.WatchCall[delta.JsonValue]
 	// scheduled is whether a microtask is queued to apply queued in a batch of its own.
 	scheduled bool
@@ -137,6 +141,9 @@ func newFollowSource(attach FollowAttach[delta.JsonValue], owner followOwner, ba
 
 // Value is the runtime's value; it fails before the source attached.
 func (s *followSource) Value() (delta.JsonValue, error) {
+	if s.failed != nil {
+		return nil, s.failed
+	}
 	if !s.hasValue {
 		return nil, data.NewChordError(data.ChordErrorInit{
 			Code:    data.CodeNotReady,
@@ -145,6 +152,21 @@ func (s *followSource) Value() (delta.JsonValue, error) {
 	}
 	return s.value, nil
 }
+
+// Start is its value, or while it is a failed member its failure and last value.
+func (s *followSource) Start() state.WatchStart {
+	if s.failed != nil {
+		return state.WatchStart{Kind: state.StartFailed, Error: s.failed, HasLast: s.hasValue, Last: s.value}
+	}
+	v, err := s.Value()
+	if err != nil {
+		return state.WatchStart{Kind: state.StartFailed, Error: err}
+	}
+	return state.WatchStart{Kind: state.StartValue, Value: v}
+}
+
+// live marks that its attempt went live: a failed call fails the member from now on.
+func (s *followSource) live() { s.isLive = true }
 
 // followObserverOf is the observer a followed source gives its runtime.
 type followObserverOf struct{ source *followSource }
@@ -192,6 +214,7 @@ func (s *followSource) attach(ctx context.Context) error {
 			Message: s.owner.label + ": the followed address is absent",
 		}, nil)
 	}
+	var attachErr error
 	s.loop.Run(func() {
 		current := s.state
 		if current.kind != followAttaching {
@@ -199,20 +222,29 @@ func (s *followSource) attach(ctx context.Context) error {
 			return
 		}
 		s.value, s.hasValue = attached.Value, true
-		// Nothing watches it yet (members are checked after this): the queued calls only move the value on.
-		for _, call := range s.queued {
-			if call.Kind == chord.WatchCallValue {
-				s.value = call.Value
-			}
+		// Nothing watches it yet (members are checked after this): the last call before it resolved decides.
+		var last *chord.WatchCall[delta.JsonValue]
+		if len(s.queued) > 0 {
+			last = &s.queued[len(s.queued)-1]
 		}
 		s.queued = nil
+		if last != nil && last.Kind == chord.WatchCallFailed {
+			// Discarded before its cleanup runs: an end the cleanup makes changes nothing, the error stays this one.
+			s.state = followState{kind: followDetached}
+			attached.Detach()
+			attachErr = last.Error
+			return
+		}
+		if last != nil && last.Kind == chord.WatchCallValue {
+			s.value = last.Value
+		}
 		if current.end != nil && current.end.Kind == chord.WatchEnded {
 			s.state = followState{kind: followEnded, detach: attached.Detach}
 		} else {
 			s.state = followState{kind: followAttached, detach: attached.Detach}
 		}
 	})
-	return nil
+	return attachErr
 }
 
 // detach is its attempt ended: the observer is detached (also after the runtime ended it) and its watches end `ended`.
@@ -257,7 +289,11 @@ func (s *followSource) Deliver(ctx context.Context) error {
 	if len(ops) == 0 {
 		ops = followNoOps
 	}
-	s.Publish(s.value, ops, retired, ctx)
+	if s.failed != nil {
+		s.FailWatches(s.failed, ctx)
+	} else {
+		s.Publish(s.value, ops, retired, ctx)
+	}
 	if s.ending == endingFrame {
 		s.ending = endingNone
 		s.EndWatchesAfterDelivery()
@@ -278,11 +314,20 @@ func (s *followSource) advance(call chord.WatchCall[delta.JsonValue]) {
 	if kind == followEnded || kind == followDetached {
 		return
 	}
-	if kind == followAttaching || !s.Batch().Running() {
+	// Never a member failed from the start (a derive over it would break the activation): the activation fails.
+	// Before the attachment resolved the last call decides, as it is folded (attach).
+	if call.Kind == chord.WatchCallFailed && !s.isLive && kind != followAttaching {
+		s.owner.ended(chord.WatchEnd{Kind: chord.WatchFailed, Error: call.Error})
+		return
+	}
+	if kind == followAttaching {
+		// Before the attachment resolved only the last call counts (attach): one kept, the rest let go of.
+		s.queued = append(s.queued[:0], call)
+		return
+	}
+	if !s.Batch().Running() {
 		s.queued = append(s.queued, call)
-		if kind == followAttached {
-			s.schedule()
-		}
+		s.schedule()
 		return
 	}
 	s.applyQueued()
@@ -356,29 +401,39 @@ func (s *followSource) applyQueued() {
 	}
 }
 
-// apply applies one value call inside the running batch: the new value, its ops for the frame, the source marked once.
+// apply applies one call inside the running batch: the new value and its ops for the frame, or the failure of a failed
+// member, the source marked once.
 func (s *followSource) apply(call chord.WatchCall[delta.JsonValue]) {
-	// The runtime's failures are final: it ends its observer instead of sending one.
 	if call.Kind != chord.WatchCallValue {
+		s.failed = call.Error
+		s.ops = nil
+		s.mark()
 		return
 	}
+	// A failed member's next value replaces the value whole, whatever its ops (W1).
+	ops := call.Ops
+	if s.failed != nil {
+		ops = []delta.Op{{"r", call.Value}}
+	}
 	s.value = call.Value
+	s.failed = nil
 	if call.Retired {
 		s.retired = true
 	}
-	if !s.Watched() {
-		s.Changed()
-		if call.Retired {
-			s.RetiredInBatch()
-		}
-		return
+	if s.Watched() {
+		s.ops = append(s.ops, ops...)
 	}
-	s.ops = append(s.ops, call.Ops...)
-	if !s.listed {
-		s.listed = true
-		s.Changed()
-	}
+	s.mark()
 	if call.Retired {
 		s.RetiredInBatch()
 	}
+}
+
+// mark marks a change in the running batch: listed once for its frame when watched, its dependents marked.
+func (s *followSource) mark() {
+	if s.Watched() && s.listed {
+		return
+	}
+	s.listed = s.Watched()
+	s.Changed()
 }

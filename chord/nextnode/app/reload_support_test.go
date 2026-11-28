@@ -140,11 +140,11 @@ func controlContract(placement string) *contracts.Contract {
 	}
 	return mustRemote(name, contracts.RemoteDeclaration{
 		Version: 1, Params: params, HostAddress: counterAddress(placement),
-		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{Methods: []contracts.MethodEntry{
+		Methods: []contracts.RemoteMethodEntry{
 			contracts.Meth("entered", contracts.NewMethod(contracts.Str(), contracts.Bool())),
 			contracts.Meth("open", contracts.NewMethod(contracts.Str())),
 			contracts.Meth("natives", contracts.NewMethod(contracts.Schema{}, contracts.Obj(contracts.Prop("opens", contracts.Arr(contracts.Str())), contracts.Prop("closes", contracts.Arr(contracts.Str()))))),
-		}})},
+		},
 	})
 }
 

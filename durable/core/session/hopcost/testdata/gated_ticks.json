@@ -1,6 +1,6 @@
 {
 	"source": "durable/contract/scenarios/gated-ticks.mjs",
-	"pin": "ef4a1cfcca62b77ad3558337ff3e1c7f6beeadfe",
+	"pin": "fb0fe823539f6d04850f6e34748c01f01f212e1f",
 	"profiles": {
 		"gate": {
 			"runtime.commit (async, no writes)": 16,

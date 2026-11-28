@@ -29,14 +29,9 @@ var Match = mustContract(contracts.Remote("app.match", contracts.RemoteDeclarati
 	Version:     1,
 	Params:      contracts.Params{contracts.Prop("id", contracts.Int())},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-	Variants: []contracts.VariantEntry{
-		contracts.Var("player", contracts.VariantDeclaration{
-			State:   []contracts.Property{contracts.Prop("score", contracts.Int())},
-			Events:  []contracts.Property{contracts.Prop("paddle", Sample), contracts.Prop("ball", Sample)},
-			Methods: []contracts.MethodEntry{contracts.Meth("bump", contracts.NewMethod())},
-		}),
-		contracts.Var("watcher", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("score", contracts.Int())}}),
-	},
+	State:       []contracts.RemoteStateEntry{contracts.StateEntry("score", contracts.Int())},
+	Events:      []contracts.RemoteEventEntry{contracts.EventEntry("paddle", contracts.NewGrantable(Sample)), contracts.EventEntry("ball", contracts.NewGrantable(Sample))},
+	Methods:     []contracts.RemoteMethodEntry{contracts.Meth("bump", contracts.NewGrantable(contracts.NewMethod()))},
 }))
 
 // tickerCounter is the state the ticker counts in.
@@ -112,14 +107,14 @@ func (p *tickerProbe) lastNamedSelf() Self {
 
 // serveTickers serves the ticker (its sources and selves recorded in probe), named tickers and their views.
 func serveTickers(host FacetHost, probe *tickerProbe) error {
-	err := host.Serve(Ticker, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+	err := host.Serve(Ticker, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 		ticks := self.Events()
 		counter := stateOf(self, tickerCounter)
 		probe.mu.Lock()
 		probe.sources = append(probe.sources, ticks)
 		probe.selves = append(probe.selves, self)
 		probe.mu.Unlock()
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			Events: map[string]contracts.EventMember[delta.JsonValue]{"ticks": ticks},
 			State: map[string]chord.Watchable[delta.JsonValue]{
 				"count": self.Derive([]any{counter.s}, func(values []any) (delta.JsonValue, error) {
@@ -142,31 +137,31 @@ func serveTickers(host FacetHost, probe *tickerProbe) error {
 					return nil, err
 				},
 			},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 	if err != nil {
 		return err
 	}
-	err = host.Serve(NamedTicker, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+	err = host.Serve(NamedTicker, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 		ticks := self.Events()
 		probe.mu.Lock()
 		probe.named = append(probe.named, ticks)
 		probe.namedSelves = append(probe.namedSelves, self)
 		probe.mu.Unlock()
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			Events: map[string]contracts.EventMember[delta.JsonValue]{"ticks": ticks},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 	if err != nil {
 		return err
 	}
-	return host.Serve(TickerView, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+	return host.Serve(TickerView, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 		name, _ := params.Value("name").(string)
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			Events: map[string]contracts.EventMember[delta.JsonValue]{
 				"ticks": self.Get(NamedTicker, jsonObject("name", name)).Events("ticks"),
 			},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 }
 

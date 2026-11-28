@@ -16,7 +16,9 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/next/store"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
+	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
 )
 
 // Ports packages/chord/src/node/plugins/testing.ts (`testPlugin`, slice 12 §6, "Testing a plugin alone"): a plugin built as
@@ -64,6 +66,9 @@ type TestPluginOptions struct {
 	Platform model.Platform
 	// Stubs are Go facets serving what the plugin uses (other plugins' contracts, core objects), bridged to its host.
 	Stubs []TestStub
+	// HostStubs are stubs that need the test's Go stubs host or its store (an app's registry of process values, as its
+	// production host serves one), made once the host exists and loaded beside Stubs.
+	HostStubs func(h host.Host, s store.Store) []TestStub
 	// Core are JavaScript facets loaded beside the plugin on its host: stubs that serve or contribute to registries, or
 	// serve remote types.
 	Core []CoreFacet
@@ -90,7 +95,8 @@ type TestedPlugin struct {
 	// call them, watch their state.
 	Host *NodeHost
 	// Stubs is the Go host the Go stubs are loaded on.
-	Stubs host.Host
+	Stubs      host.Host
+	stubsStore store.Store
 	// Plugin is the plugin as discovered.
 	Plugin model.Plugin
 
@@ -217,19 +223,44 @@ func TestPlugin(dir string, options TestPluginOptions, ctx context.Context) (*Te
 // loadStubs loads the Go stubs on a new Go host and returns it with the bridged facets for the plugin's host and the stubs'
 // setup failures: the plugin is still loaded and the failures are joined with its own (setupFailed), as one `host.load` reports them.
 func (t *TestedPlugin) loadStubs(options TestPluginOptions, principal data.Principal, ctx context.Context) (host.Host, []BridgedFacet, []host.PluginFailure, error) {
-	stubs, err := host.CreateHost(host.HostOptions{Principal: principal, OnError: func(host.HostError) {}})
+	var memStore store.Store
+	if options.HostStubs != nil {
+		db, err := node.OpenNodeSqliteDatabase(":memory:", node.NodeSqliteDatabaseOptions{})
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		memStore, err = store.OpenStore(store.SqliteBackend(db), ctx, store.StoreOptions{})
+		if err != nil {
+			_ = db.Close()
+			return nil, nil, nil, err
+		}
+		t.stubsStore = memStore
+	}
+	stubs, err := host.CreateHost(host.HostOptions{Principal: principal, Store: memStore, OnError: func(host.HostError) {}})
 	if err != nil {
+		if memStore != nil {
+			_ = memStore.Close(context.WithoutCancel(ctx))
+			t.stubsStore = nil
+		}
 		return nil, nil, nil, err
 	}
-	facets := make([]host.HostFacet, len(options.Stubs))
-	bridged := make([]BridgedFacet, len(options.Stubs))
-	for i, stub := range options.Stubs {
+	allStubs := slices.Clone(options.Stubs)
+	if options.HostStubs != nil {
+		allStubs = append(allStubs, options.HostStubs(stubs, memStore)...)
+	}
+	facets := make([]host.HostFacet, len(allStubs))
+	bridged := make([]BridgedFacet, len(allStubs))
+	for i, stub := range allStubs {
 		facets[i] = host.HostFacet{Name: stub.Name, Facet: stub.Facet}
 		bridged[i] = BridgedFacet{Name: stub.Name, Host: stubs, Contracts: stub.Contracts}
 	}
 	report, err := stubs.Load(facets, ctx)
 	if err != nil {
 		_ = stubs.Close(context.WithoutCancel(ctx))
+		if memStore != nil {
+			_ = memStore.Close(context.WithoutCancel(ctx))
+			t.stubsStore = nil
+		}
 		return nil, nil, nil, err
 	}
 	return stubs, bridged, report.Failed, nil
@@ -500,6 +531,9 @@ func (t *TestedPlugin) Close(ctx context.Context) error {
 	}
 	if t.Stubs != nil {
 		errs = append(errs, t.Stubs.Close(ctx))
+	}
+	if t.stubsStore != nil {
+		errs = append(errs, t.stubsStore.Close(ctx))
 	}
 	if t.runtime != nil {
 		errs = append(errs, t.runtime.Close(ctx))

@@ -24,7 +24,7 @@ func TestSelectSubmenuSearchMatchesDescriptionsAndResetsSelection(t *testing.T) 
 	if got := menu.CurrentValue(); got != "two" {
 		t.Fatalf("up did not wrap: %q", got)
 	}
-	if got := strings.Join(menu.Render(100), "\n"); !strings.Contains(got, "> ") || !strings.Contains(got, "Type to filter · Enter to select · Esc to go back") {
+	if got := strings.Join(menu.Render(100), "\n"); !strings.Contains(got, "> ") || !strings.Contains(got, "Type to filter · enter to select · escape/ctrl+c to go back") {
 		t.Fatalf("search UI = %s", got)
 	}
 	menu.HandleInput("no-match")

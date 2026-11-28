@@ -21,7 +21,7 @@ allocs = 136
 [[benchmark]]
 package = "./agent"
 benchmark = "BenchmarkAgentMessageUnmarshalJSON"
-allocs = 155
+allocs = 134
 
 [[benchmark]]
 package = "./agent"
@@ -896,7 +896,7 @@ allocs = 3
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkPiMessagesConverterLongStream"
-allocs = 171943
+allocs = 148120
 
 [[benchmark]]
 package = "./ai"
@@ -2551,7 +2551,7 @@ allocs = 65
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNativeProviderStream"
-allocs = 469
+allocs = 437
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2656,7 +2656,7 @@ allocs = 120
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeTurnEndEventEdit"
-allocs = 138
+allocs = 124
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"

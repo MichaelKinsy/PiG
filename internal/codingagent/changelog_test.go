@@ -293,7 +293,7 @@ func TestRecordChangelogVersionRecordsCurrentVersionForUnreadableLastSeen(t *tes
 	t.Setenv("PI_OFFLINE", "1")
 	sm := NewInMemorySettingsManager(Settings{LastChangelogVersion: "latest"})
 	entries := []ChangelogEntry{{Major: 0, Minor: 2, Patch: 0, Content: "## [0.2.0]\nnew"}}
-	if got := recordChangelogVersionAndMaybeReportInstall(sm, "0.2.0", entries); got != nil {
+	if got := recordChangelogVersion(sm, "0.2.0", entries); got != nil {
 		t.Errorf("unreadable last seen must show nothing, got %v", got)
 	}
 	if v := sm.GetLastChangelogVersion(); v != "0.2.0" {

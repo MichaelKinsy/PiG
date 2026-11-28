@@ -15,6 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
+	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
@@ -31,9 +32,7 @@ var providerTickSource = mustContract(contracts.Local("app.tick-source", contrac
 
 var providerTickView = mustContract(contracts.Remote("app.tick-view", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{}, HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-	Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{
-		Events: []contracts.Property{contracts.Prop("ticks", Sample)},
-	})},
+	Events: []contracts.RemoteEventEntry{contracts.EventEntry("ticks", Sample)},
 }))
 
 // matchEvents are the event members' wire indexes of Match's player variant (sorted).
@@ -284,22 +283,22 @@ func TestProviderEvents(t *testing.T) {
 			var sources []contracts.EventSource[delta.JsonValue]
 			var selves []Self
 			s := rawLinked(t, func(host FacetHost) error {
-				if err := host.Serve(providerTickSource, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+				if err := host.Serve(providerTickSource, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 					ticks := self.Events()
 					mu.Lock()
 					sources = append(sources, ticks)
 					selves = append(selves, self)
 					mu.Unlock()
-					return contracts.Implementation{Members: contracts.VariantImplementation{
+					return contracts.MembersImplementation{
 						Events: map[string]contracts.EventMember[delta.JsonValue]{"ticks": ticks},
-					}}, nil
+					}, nil
 				}, ServeOptions{}); err != nil {
 					return err
 				}
-				return host.Serve(providerTickView, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
-					return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+				return host.Serve(providerTickView, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
+					return contracts.MembersImplementation{
 						Events: map[string]contracts.EventMember[delta.JsonValue]{"ticks": self.Get(providerTickSource, jsonObject()).Events("ticks")},
-					}}, nil
+					}, nil
 				}, ServeOptions{})
 			}, rawLinkedOptions{})
 			provHold(t, s.Peer, 0, specOf(providerTickView), jsonObject())
@@ -405,22 +404,27 @@ func TestProviderEvents(t *testing.T) {
 			var mu sync.Mutex
 			var paddles []contracts.EventSource[delta.JsonValue]
 			s := rawLinked(t, func(host FacetHost) error {
-				return host.Serve(MatchV2, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+				return host.Serve(MatchV2, func(_ *delta.JsonObject, _ data.Principal, _ AdmittedValue, self Self) (contracts.MembersImplementation, error) {
 					paddle := self.Events()
 					mu.Lock()
 					paddles = append(paddles, paddle)
 					mu.Unlock()
-					return contracts.Implementation{Variant: "player", Members: contracts.VariantImplementation{
-						State:   map[string]chord.Watchable[delta.JsonValue]{"score": self.Derive([]any{self.Writable(0.0)}, func(values []any) (delta.JsonValue, error) { return values[0], nil })},
-						Events:  map[string]contracts.EventMember[delta.JsonValue]{"paddle": paddle, "ball": self.Events()},
+					return contracts.MembersImplementation{
+						State: map[string]chord.Watchable[delta.JsonValue]{"score": self.Derive([]any{self.Writable(0.0)}, func(values []any) (delta.JsonValue, error) { return values[0], nil })},
+						EventsBuild: map[string]contracts.EventBuilder{
+							"paddle": func() contracts.EventMember[delta.JsonValue] { return paddle },
+							"ball":   func() contracts.EventMember[delta.JsonValue] { return self.Events() },
+						},
 						Methods: map[string]contracts.MethodFunction{"bump": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil }},
-					}}, nil
-				}, ServeOptions{Accepts: contracts.AcceptsTable{{Name: "1", Value: contracts.VersionMappings{
-					VariantEvents: []contracts.Entry[[]contracts.Entry[contracts.EventMapping]]{{Name: "player", Value: []contracts.Entry[contracts.EventMapping]{{
+					}, nil
+				}, ServeOptions{Admit: func(*delta.JsonObject, data.Principal, AdmitSelf) (chord.Watchable[delta.JsonValue], error) {
+					return Expose(state.NewConstant(Allow(delta.JsonObjectOf("granted", []delta.JsonValue{"ball", "bump", "paddle"})))), nil
+				}, Accepts: contracts.AcceptsTable{{Name: "1", Value: contracts.VersionMappings{
+					Events: []contracts.Entry[contracts.EventMapping]{{
 						Name: "paddle", Value: contracts.EventMapping{Func: func(current delta.JsonValue) (delta.JsonValue, error) {
 							return jsonObject("y", current.(*delta.JsonObject).Value("y")), nil
 						}},
-					}}}},
+					}},
 				}}}})
 			}, rawLinkedOptions{Telemetry: meter.Telemetry})
 			encodes := func(y float64) float64 {

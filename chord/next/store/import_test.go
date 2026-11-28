@@ -38,7 +38,7 @@ func importedStore(t *testing.T, parts PartSource, outbox bool) *ChordStore {
 	if err != nil {
 		t.Fatalf("ImportStore: %v", err)
 	}
-	store := imported.(*ChordStore)
+	store := imported
 	t.Cleanup(func() { _ = store.Close(chordctx.Background()) })
 	return store
 }
@@ -606,7 +606,7 @@ func TestImportRefusals(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ImportStore: %v", err)
 		}
-		if err := imported.(*ChordStore).Close(ctx); err != nil {
+		if err := imported.Close(ctx); err != nil {
 			t.Fatalf("close: %v", err)
 		}
 		_, err = ImportStore(open(), partSource(parts), ctx, StoreOptions{})

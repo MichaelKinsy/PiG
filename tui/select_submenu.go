@@ -57,9 +57,10 @@ func NewSelectSubmenu(title, description string, items []SelectItem, currentValu
 	s.buildSelectList(title, items, currentValue)
 	s.Add(s.list)
 	s.Add(NewSpacer(1))
-	hint := "  Enter to select · Esc to go back"
+	keysHint := ActionKeyText(KBSelectConfirm) + " to select · " + ActionKeyText(KBSelectCancel) + " to go back"
+	hint := "  " + keysHint
 	if s.searchInput != nil {
-		hint = "  Type to filter · Enter to select · Esc to go back"
+		hint = "  Type to filter · " + keysHint
 	}
 	s.Add(NewPaddedText(th.Fg("dim", hint), 0, 0, nil))
 	return s

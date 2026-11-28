@@ -215,10 +215,15 @@ type PluginsLoad struct {
 }
 
 // CreatePlugins creates the plugins component (and its plugin runtime) and starts the watcher. Discovery runs at first use.
-func CreatePlugins(options PluginsOptions, _ context.Context) *Plugins {
+func CreatePlugins(options PluginsOptions, ctx context.Context) *Plugins {
 	if options.Build == nil {
 		panic("plugins: PluginsOptions.Build is required (build.BuildFacet)")
 	}
+	if ctx == nil {
+		//portlint:allow ctxmapping nil-context default when caller omits optional ctx (plugins.ts createPlugins takes no AbortSignal)
+		ctx = context.Background()
+	}
+	ownCtx, ownCancel := context.WithCancelCause(context.WithoutCancel(ctx))
 	c := &Plugins{
 		options:   options,
 		kindNames: make([]string, len(options.Kinds)),
@@ -228,6 +233,10 @@ func CreatePlugins(options PluginsOptions, _ context.Context) *Plugins {
 		loop:      host.NewLoop(),
 		built:     map[string]model.BuiltFacet{},
 		current:   map[string]*scriptSet{},
+		making:    map[string]*makingSet{},
+		applyTail: closedChan(),
+		ownCtx:    ownCtx,
+		ownCancel: ownCancel,
 	}
 	for i, kind := range options.Kinds {
 		c.kindNames[i] = kind.Name
@@ -306,7 +315,35 @@ type Plugins struct {
 	built map[string]model.BuiltFacet
 	// current is the current set of each kind used so far.
 	current map[string]*scriptSet
+	// making is each kind's first set while it is made: every first use meanwhile waits for the same builds.
+	making map[string]*makingSet
+	// applyMu guards applyTail: the latest apply's done channel, so applies run one at a time.
+	applyMu   sync.Mutex
+	applyTail chan struct{}
+	// ownCtx is the component's own context (for a first making, not any caller's): cancelled by Close.
+	ownCtx    context.Context
+	ownCancel context.CancelCauseFunc
+	// applyBuild and applyRollout default to Build and Rollout; tests may override them to observe or hold an apply.
+	applyBuild   func(names []string, ctx context.Context) (*Built, error)
+	applyRollout func(steps []RolloutStep, built *Built, ctx context.Context) (RolloutResult, error)
 }
+
+// makingSet is one shared first-making of a kind's current set.
+type makingSet struct {
+	done     chan struct{}
+	doneOnce sync.Once
+	set      *scriptSet
+	err      error
+}
+
+func closedChan() chan struct{} {
+	ch := make(chan struct{})
+	close(ch)
+	return ch
+}
+
+// errPluginsClosed is why a first making still under way fails when Close is called.
+var errPluginsClosed = errors.New("plugins: the component closed")
 
 // section runs work as a section of the component's loop.
 func (c *Plugins) section(work func()) { c.loop.Run(work) }
@@ -625,6 +662,63 @@ func (c *Plugins) Rollout(steps []RolloutStep, built *Built, ctx context.Context
 	return RolloutResult{Steps: done}, nil
 }
 
+// Apply builds the dirty plugins and rolls them out with steps, one apply at a time: a call starts once the previous one
+// ended (a later build rolled out before an earlier one would leave the older code deployed, nothing dirty). A caller whose
+// context aborts while it waits stops waiting and its build never starts; the next call still waits for the one before.
+func (c *Plugins) Apply(steps []RolloutStep, ctx context.Context) (RolloutResult, error) {
+	return c.ApplyWith(steps, ctx, nil, nil)
+}
+
+// ApplyWith is Apply with optional build/rollout hooks (nil uses c.Build and c.Rollout), serialized on the same queue.
+func (c *Plugins) ApplyWith(
+	steps []RolloutStep,
+	ctx context.Context,
+	buildFn func(names []string, ctx context.Context) (*Built, error),
+	rolloutFn func(steps []RolloutStep, built *Built, ctx context.Context) (RolloutResult, error),
+) (RolloutResult, error) {
+	if buildFn == nil {
+		buildFn = c.applyBuild
+	}
+	if buildFn == nil {
+		buildFn = c.Build
+	}
+	if rolloutFn == nil {
+		rolloutFn = c.applyRollout
+	}
+	if rolloutFn == nil {
+		rolloutFn = c.Rollout
+	}
+	done := make(chan struct{})
+	c.applyMu.Lock()
+	previous := c.applyTail
+	// A caller that stops waiting ran nothing: the next one still waits for previous, so next waits for both previous and done.
+	nextTail := make(chan struct{})
+	c.applyTail = nextTail
+	c.applyMu.Unlock()
+
+	go func() {
+		<-previous
+		<-done
+		close(nextTail)
+	}()
+	defer close(done)
+
+	select {
+	case <-previous:
+	case <-ctx.Done():
+		return RolloutResult{}, context.Cause(ctx)
+	}
+	// Aborted as its turn came (the wait resolved first): rejected as a wait is, nothing built.
+	if ctx.Err() != nil {
+		return RolloutResult{}, context.Cause(ctx)
+	}
+	built, err := buildFn(c.Marks().Dirty, ctx)
+	if err != nil {
+		return RolloutResult{}, err
+	}
+	return rolloutFn(steps, built, ctx)
+}
+
 // rollStep applies built to the current set of step's kinds (all of them in one section, with no wait between the ship and
 // the step), then runs step with the sets it applied: an error from either stops the rollout.
 func (c *Plugins) rollStep(step RolloutStep, built *Built, ctx context.Context) (StepResult, error) {
@@ -708,6 +802,7 @@ func (c *Plugins) Warm(ctx context.Context) error { return c.runtime.Warm(ctx) }
 // anything, and Close, as Pi's `plugins.close()`, returns nothing.
 func (c *Plugins) Close() {
 	c.section(c.watcher.close)
+	c.ownCancel(errPluginsClosed)
 	c.watcher.join()
 	c.loop.Wait()
 	c.mappings.close()
@@ -738,14 +833,58 @@ func (c *Plugins) discover(ctx context.Context) error {
 	return nil
 }
 
-// set is kind's current set, made at its first use from every discovered plugin's facet of it (built if needed).
+// set is kind's current set, made at its first use from every discovered plugin's facet of it (built if needed). First uses
+// at once (a server's start resuming many workers) share one making: each facet is built once, not once per caller. It runs
+// in the component's own context, each caller waiting in its own: a caller going away fails only its own wait. A making that
+// failed is forgotten: the next use tries again.
 func (c *Plugins) set(kind string, ctx context.Context) (*scriptSet, error) {
 	var set *scriptSet
-	var discovered bool
-	c.section(func() { set, discovered = c.current[kind], c.discovered })
+	var making *makingSet
+	var start bool
+	c.section(func() {
+		if existing := c.current[kind]; existing != nil {
+			set = existing
+			return
+		}
+		making = c.making[kind]
+		if making == nil {
+			making = &makingSet{done: make(chan struct{})}
+			c.making[kind] = making
+			start = true
+		}
+	})
 	if set != nil {
 		return set, nil
 	}
+	if start {
+		c.loop.Go(func() {
+			builtSet, err := c.makeSet(kind, c.ownCtx)
+			making.set = builtSet
+			making.err = err
+			c.section(func() {
+				if c.making[kind] == making {
+					delete(c.making, kind)
+				}
+			})
+			making.doneOnce.Do(func() { close(making.done) })
+		})
+	}
+	select {
+	case <-making.done:
+		if ctx.Err() != nil {
+			return nil, context.Cause(ctx)
+		}
+		return making.set, making.err
+	case <-ctx.Done():
+		return nil, context.Cause(ctx)
+	}
+}
+
+// makeSet makes kind's first set and keeps it as the current one, unless ctx (the component's) aborted meanwhile: a close
+// during the making publishes nothing, also when every build it needed was done already.
+func (c *Plugins) makeSet(kind string, ctx context.Context) (*scriptSet, error) {
+	var discovered bool
+	c.section(func() { discovered = c.discovered })
 	if !discovered {
 		if err := c.discover(ctx); err != nil {
 			return nil, err
@@ -781,17 +920,25 @@ func (c *Plugins) set(kind string, ctx context.Context) (*scriptSet, error) {
 	for j, i := range at {
 		scripts[i] = PluginScript{Plugin: plugins[i], Built: built[j]}
 	}
-	// Built concurrently: a set made meanwhile (by a concurrent first use) wins.
+	if ctx.Err() != nil {
+		return nil, context.Cause(ctx)
+	}
+	var set *scriptSet
+	var aborted error
 	c.section(func() {
-		set = c.current[kind]
-		if set == nil {
-			set = newScriptSet()
-			for _, script := range scripts {
-				set.set(script.Plugin.Name, script)
-			}
-			c.current[kind] = set
+		if ctx.Err() != nil {
+			aborted = context.Cause(ctx)
+			return
 		}
+		set = newScriptSet()
+		for _, script := range scripts {
+			set.set(script.Plugin.Name, script)
+		}
+		c.current[kind] = set
 	})
+	if aborted != nil {
+		return nil, aborted
+	}
 	return set, nil
 }
 

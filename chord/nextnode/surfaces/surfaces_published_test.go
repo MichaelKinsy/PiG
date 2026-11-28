@@ -302,6 +302,9 @@ func TestPublishedScriptsTheRolloutStepReportsAddedChangedAndRemovedInPisOrderAn
 	}); err != nil {
 		t.Fatal(err)
 	}
+	if err := f.published.Push(chordctx.Background()); err != nil {
+		t.Fatal(err)
+	}
 	step := f.published.Step("web")
 	if step.Name != "web" || !slices.Equal(step.Kinds, []string{"web"}) {
 		t.Fatalf("step = %q %v, want one \"web\" host of the web kind", step.Name, step.Kinds)

@@ -58,9 +58,9 @@ var (
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) {
 			return fixtureServer.Address(nil), nil
 		},
-		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{Methods: []contracts.MethodEntry{
+		Methods: []contracts.RemoteMethodEntry{
 			contracts.Meth("report", contracts.NewMethod(contracts.Str())),
-		}})},
+		},
 	}))
 
 	fixtureControl = mustFixture(contracts.Remote("test.control", contracts.RemoteDeclaration{
@@ -70,12 +70,12 @@ var (
 			id, _ := params.Value("id").(string)
 			return fixtureSession.Address(delta.JsonObjectOf("id", id)), nil
 		},
-		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{Methods: []contracts.MethodEntry{
+		Methods: []contracts.RemoteMethodEntry{
 			contracts.Meth("crash", contracts.NewMethod(contracts.Int())),
 			contracts.Meth("busy", contracts.NewMethod(contracts.Int())),
 			contracts.Meth("block", contracts.NewMethod(contracts.Str())),
 			contracts.Meth("localCalls", contracts.NewMethod(contracts.Int(), contracts.Int())),
-		}})},
+		},
 	}))
 
 	// fixtureReporter is Pi's `Control.report` and `Control.reportAndExit`, a type of its own at the same address: the module of the
@@ -88,12 +88,12 @@ var (
 			id, _ := params.Value("id").(string)
 			return fixtureSession.Address(delta.JsonObjectOf("id", id)), nil
 		},
-		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{Methods: []contracts.MethodEntry{
+		Methods: []contracts.RemoteMethodEntry{
 			// Sends the server a report and returns without waiting for its answer.
 			contracts.Meth("report", contracts.NewMethod(contracts.Str())),
 			// Sends the server a report and exits (code 7) in the same turn.
 			contracts.Meth("reportAndExit", contracts.NewMethod(contracts.Str())),
-		}})},
+		},
 	}))
 
 	// fixtureNotes is the fixture plugin's notes at a worker: test/next-node/workers/support.ts `Notes`.
@@ -104,7 +104,7 @@ var (
 			id, _ := params.Value("id").(string)
 			return fixtureSession.Address(delta.JsonObjectOf("id", id)), nil
 		},
-		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("label", contracts.Str())}})},
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("label", contracts.Str())},
 	}))
 
 	// fixtureBusy is the Go core facet's `Busy`: the app's keep-alive counts, a local type of the worker's Go host that the
@@ -334,13 +334,13 @@ const fixtureGoCoreName = "@test/core-go"
 // is busy for a time and clears itself) and `Echo`, the types the worker.ts `core` serves beside `Control`.
 func fixtureGoCore() host.Facet {
 	return host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		if err := h.Serve(fixtureBusy, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+		if err := h.Serve(fixtureBusy, func(_ *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
 			doc := self.State(fixtureCounts).(*documents.Singleton)
 			setTasks := func(n float64, ctx context.Context) error {
 				_, err := doc.Change(ctx, func(draft *delta.Object) (any, error) { return nil, draft.Set("tasks", n) })
 				return err
 			}
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"counts": self.Derive([]any{doc}, func(values []any) (delta.JsonValue, error) { return values[0], nil }),
 				},
@@ -357,14 +357,14 @@ func fixtureGoCore() host.Facet {
 						return nil, nil
 					},
 				},
-			}}, nil
+			}, nil
 		}, host.ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(fixtureEcho, func(*delta.JsonObject, host.Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+		return h.Serve(fixtureEcho, func(*delta.JsonObject, host.Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				"echo": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) { return args, nil },
-			}}}, nil
+			}}, nil
 		}, host.ServeOptions{})
 	})
 }

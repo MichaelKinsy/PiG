@@ -35,6 +35,7 @@ func oaiMessageKey(k *messageKey, m *oaiMessage) bool {
 	k.present(m.reasoningContentLast)
 	k.text(m.Reasoning)
 	k.text(m.ReasoningText)
+	k.text(m.ReasoningOpaque)
 	k.length(len(m.Tools), m.Tools == nil)
 	for i := range m.Tools {
 		if !k.oaiTool(&m.Tools[i]) {

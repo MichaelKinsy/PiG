@@ -51,19 +51,17 @@ var tutorialItem = contracts.Obj(
 // name, version and schema bind), served on a list's worker and addressed to it.
 func tutorialTodos(list *contracts.HostKind) *contracts.Contract {
 	notice := contracts.Union([]contracts.Schema{surfaces.MessageSchema, contracts.Nul()})
-	state := []contracts.Property{contracts.Prop("items", contracts.Arr(tutorialItem)), contracts.Prop("notice", notice)}
 	add := contracts.Meth("add", contracts.NewMethod(contracts.Str()))
 	tick := contracts.Meth("tick", contracts.NewMethod(contracts.Obj(contracts.Prop("id", contracts.Int()), contracts.Prop("done", contracts.Bool()))))
+	clear := contracts.Meth("clear", contracts.NewGrantable(contracts.NewMethod()))
 	return mustContract(contracts.Remote("todo.todos", contracts.RemoteDeclaration{
 		Version: 1,
 		Params:  contracts.Params{contracts.Prop("list", contracts.Str())},
 		HostAddress: func(params *delta.JsonObject) (contracts.Address, error) {
 			return list.Address(delta.JsonObjectOf("id", params.Value("list"))), nil
 		},
-		Variants: []contracts.VariantEntry{
-			contracts.Var("member", contracts.VariantDeclaration{State: state, Methods: []contracts.MethodEntry{add, tick}}),
-			contracts.Var("owner", contracts.VariantDeclaration{State: state, Methods: []contracts.MethodEntry{add, tick, contracts.Meth("clear", contracts.NewMethod())}}),
-		},
+		State:   []contracts.RemoteStateEntry{contracts.StateEntry("items", contracts.Arr(tutorialItem)), contracts.StateEntry("notice", notice)},
+		Methods: []contracts.RemoteMethodEntry{add, tick, clear},
 	}))
 }
 
@@ -184,8 +182,8 @@ func TestTutorialListsPluginOnAListsWorker(t *testing.T) {
 	t.Run("adds a todo as the principal that called", func(t *testing.T) {
 		l := tutorialListOf(t)
 		l.root(t, ada, func(todos *host.Reference, ctx host.Ctx) {
-			if variant, _, err := todos.Variant(); err != nil || variant != "member" {
-				t.Fatalf("variant = %q, %v; want member", variant, err)
+			if granted, err := todos.Granted(); err != nil || granted["clear"] {
+				t.Fatalf("granted = %v, %v; want no clear", granted, err)
 			}
 			if _, err := todos.Call("add", "coffee", ctx); err != nil {
 				t.Fatal(err)
@@ -212,8 +210,8 @@ func TestTutorialListsPluginOnAListsWorker(t *testing.T) {
 	t.Run("lets the owner clear the done todos", func(t *testing.T) {
 		l := tutorialListOf(t)
 		l.root(t, owner, func(todos *host.Reference, ctx host.Ctx) {
-			if variant, _, err := todos.Variant(); err != nil || variant != "owner" {
-				t.Fatalf("the owner got %q, %v", variant, err)
+			if granted, err := todos.Granted(); err != nil || !granted["clear"] {
+				t.Fatalf("the owner got %v, %v", granted, err)
 			}
 			for _, text := range []string{"milk", "eggs"} {
 				if _, err := todos.Call("add", text, ctx); err != nil {

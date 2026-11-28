@@ -70,7 +70,7 @@ func rvTotalOf(table registries.RegistryTable[any]) rvTotal {
 // rvSetter serves Setter, contributing a writable number to Sum.
 func rvSetter(initial float64) func(h FacetHost, _ FacetSelf) error {
 	return func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(rvSetterType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(rvSetterType, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			value := self.Writable(initial)
 			self.(StoreSelf).Contribute(rvSum, value)
 			return rvSetterImpl(value), nil
@@ -78,7 +78,7 @@ func rvSetter(initial float64) func(h FacetHost, _ FacetSelf) error {
 	}
 }
 
-func rvSetterImpl(value state.Writable[any]) contracts.Implementation {
+func rvSetterImpl(value state.Writable[any]) contracts.MembersImplementation {
 	return exImpl(nil, map[string]contracts.MethodFunction{
 		"set": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
 			return nil, value.Set(args.(float64))
@@ -88,7 +88,7 @@ func rvSetterImpl(value state.Writable[any]) contracts.Implementation {
 
 // rvServeReader serves Reader: `total` follows a registry's total.
 func rvServeReader(h FacetHost, registry registries.Registry[any, any]) error {
-	return h.Serve(rvReaderType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+	return h.Serve(rvReaderType, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 		return exImpl(map[string]chord.Watchable[delta.JsonValue]{
 			"total": self.Derive([]any{self.Registry(registry)}, func(values []any) (delta.JsonValue, error) {
 				return values[0].(rvTotal).total, nil
@@ -196,14 +196,14 @@ func TestOlderReadersWithoutAValueMappingAndForAReaderNewerThanTheProviderParkRe
 		if err := rvServeSum(h, rvTotalCompose, nil); err != nil {
 			return err
 		}
-		if err := h.Serve(newer, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(newer, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{
 				"total": self.Derive([]any{self.Registry(rvSumV3)}, func(values []any) (delta.JsonValue, error) { return 0.0, nil }),
 			}, nil), nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(older, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(older, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{
 				"total": self.Derive([]any{self.Registry(rvSumV1)}, func(values []any) (delta.JsonValue, error) { return 0.0, nil }),
 			}, nil), nil
@@ -377,7 +377,7 @@ func TestOlderReadersDropAnOlderReadersLastGoodMappingAfterAContributorItWasBuil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(contributor, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(contributor, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			self.(StoreSelf).Contribute(current, 42.0)
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{
 				"n": self.Follow(func(observer FollowObserver[any], _ context.Context) (*FollowAttachment[delta.JsonValue], error) {
@@ -429,7 +429,7 @@ func TestOlderReadersNeverHandOutAMappedNativeWhoseContributorFailedAndClosedItS
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(owner, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(owner, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			native := self.Open(
 				func(context.Context) (any, error) { return resource, nil },
 				func(any, NativeCloseReason, context.Context) error { resource.closed.Store(true); return nil },
@@ -442,7 +442,7 @@ func TestOlderReadersNeverHandOutAMappedNativeWhoseContributorFailedAndClosedItS
 				}
 				return &FollowAttachment[delta.JsonValue]{Value: 1.0, Detach: func() {}}, nil
 			})
-			return contracts.Implementation{}, nil
+			return contracts.MembersImplementation{}, nil
 		}, ServeOptions{})
 	}))
 	reader, err := host.Registry(background, old, GetOptions{})
@@ -593,7 +593,7 @@ func TestReadersMemoryAnEndedReaderIsCollectedWhileTheRegistryLivesItsDeriveAndI
 		if err := rvServeSum(h, rvTotalCompose, func(current any) (any, error) { return current.(rvTotal).total, nil }); err != nil {
 			return err
 		}
-		if err := h.Serve(reader, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(reader, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			made = weak.Make(self.(*attempt))
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{
 				"total": self.Derive([]any{self.Registry(rvSum), self.Registry(rvSumV1)}, func(values []any) (delta.JsonValue, error) {
@@ -637,7 +637,7 @@ func TestValuesMemoryDropsAnOlderVersionsMappingOnceItsLastReaderEndedSol(t *tes
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(reader, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(reader, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{
 				"n": self.Derive([]any{self.Registry(old)}, func(values []any) (delta.JsonValue, error) { return values[0].(*rvOldValue).n, nil }),
 			}, nil), nil
@@ -674,16 +674,16 @@ func TestValuesMemoryKeepsNoOldCompositionOnceItsReadersStoppedWaitingAndNobodyF
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		if err := h.Serve(counter, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(counter, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			value := self.Writable(0.0)
 			self.(StoreSelf).Contribute(big, value)
 			return rvSetterImpl(value), nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(waiting, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(waiting, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			self.Registry(big)
-			return contracts.Implementation{}, nil
+			return contracts.MembersImplementation{}, nil
 		}, ServeOptions{})
 	}))
 	ref := mustGet(t, host, counter, jsonObject())

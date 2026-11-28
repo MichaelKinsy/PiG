@@ -193,19 +193,15 @@ var providerKept = mustContract(contracts.Remote("app.kept", contracts.RemoteDec
 	Version:     1,
 	Params:      contracts.Params{contracts.Prop("id", contracts.Int())},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-	Variants: []contracts.VariantEntry{
-		contracts.Var("v", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("n", contracts.Int())}}),
-	},
+	State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 }))
 
 // remoteOneVariant declares a remote type of the server with the one variant v.
-func remoteOneVariant(name string, params contracts.Params, variant contracts.VariantDeclaration) *contracts.Contract {
-	return mustContract(contracts.Remote(name, contracts.RemoteDeclaration{
-		Version:     1,
-		Params:      params,
-		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-		Variants:    []contracts.VariantEntry{contracts.Var("v", variant)},
-	}))
+func remoteOneVariant(name string, params contracts.Params, declaration contracts.RemoteDeclaration) *contracts.Contract {
+	declaration.Version = 1
+	declaration.Params = params
+	declaration.HostAddress = func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil }
+	return mustContract(contracts.Remote(name, declaration))
 }
 
 func constantNumber(value float64) chord.Watchable[delta.JsonValue] {
@@ -245,7 +241,7 @@ func TestProviderHoldsArrivingOnALink(t *testing.T) {
 			addNote(t, s.Server, "S1", "a")
 			provHold(t, s.Peer, 0, specOf(Notes), jsonObject("session", "S1"))
 			bound := s.Peer.Next("bound").(*link.BoundMessage).Holds[0]
-			if bound.Hold != 0 || bound.Variant != reader.Variant || len(bound.Failed) != 0 {
+			if bound.Hold != 0 || !slices.Equal(bound.Granted, reader.Granted) || len(bound.Failed) != 0 {
 				t.Fatalf("bound = %+v, want hold 0, the reader variant, nothing failed", bound)
 			}
 			nexttest.RequireJSONEqual(t, reader.NamedBound(t, bound.Members),
@@ -312,7 +308,7 @@ func TestProviderHoldsArrivingOnALink(t *testing.T) {
 				return err
 			})}}, background))
 			bound := peer.Next("bound").(*link.BoundMessage).Holds[0]
-			if bound.Hold != 0 || bound.Variant != editorWire(t).Variant {
+			if bound.Hold != 0 || !slices.Equal(bound.Granted, editorWire(t).Granted) {
 				t.Fatalf("bound = %+v, want hold 0 of the editor variant", bound)
 			}
 		})
@@ -367,18 +363,18 @@ func TestProviderCallsArrivingOnALink(t *testing.T) {
 
 		// Ports "before bound are refused not_ready (race 3)".
 		t.Run("before bound are refused not_ready (race 3)", func(t *testing.T) {
-			Slow := remoteOneVariant("app.slow", contracts.Params{}, contracts.VariantDeclaration{
-				State: []contracts.Property{contracts.Prop("n", contracts.Int())},
+			Slow := remoteOneVariant("app.slow", contracts.Params{}, contracts.RemoteDeclaration{
+				State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 			})
 			s := rawLinked(t, func(h FacetHost) error {
-				return h.Serve(Slow, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+				return h.Serve(Slow, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 					self.Open(func(ctx context.Context) (any, error) {
 						<-ctx.Done()
 						return nil, context.Cause(ctx)
 					}, func(any, NativeCloseReason, context.Context) error { return nil })
-					return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+					return contracts.MembersImplementation{
 						State: map[string]chord.Watchable[delta.JsonValue]{"n": constantNumber(1)},
-					}}, nil
+					}, nil
 				}, ServeOptions{})
 			}, rawLinkedOptions{})
 			provHold(t, s.Peer, 0, specOf(Slow), jsonObject())
@@ -507,21 +503,21 @@ func TestProviderOneMessagePerLinkPerCommit(t *testing.T) {
 		// (Pi 36c709e720b6..f6600b58f347). Go forms: the commit is `server.batch.commit` run on the host's section loop; the
 		// contract's one variant is the helper's `v`.
 		t.Run("a derive read between two changes of its source in one commit travels once: no protocol error, the link stays open", func(t *testing.T) {
-			gauge := remoteOneVariant("test.gauge", contracts.Params{}, contracts.VariantDeclaration{
-				State: []contracts.Property{contracts.Prop("reading", contracts.Obj(contracts.Prop("n", contracts.Int())))},
+			gauge := remoteOneVariant("test.gauge", contracts.Params{}, contracts.RemoteDeclaration{
+				State: []contracts.RemoteStateEntry{contracts.StateEntry("reading", contracts.Obj(contracts.Prop("n", contracts.Int())))},
 			})
 			var level state.Writable[any]
 			var reading chord.Watchable[delta.JsonValue]
 			l := linked(t, func(h FacetHost) error {
-				return h.Serve(gauge, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+				return h.Serve(gauge, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 					source := self.Writable(float64(1))
 					derived := self.Derive([]any{source}, func(values []any) (delta.JsonValue, error) {
 						return jsonObject("n", values[0]), nil
 					})
 					level, reading = source, derived
-					return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+					return contracts.MembersImplementation{
 						State: map[string]chord.Watchable[delta.JsonValue]{"reading": derived},
-					}}, nil
+					}, nil
 				}, ServeOptions{})
 			}, linkedOptions{})
 			held := mustGet(t, l.Client, gauge, jsonObject())
@@ -591,7 +587,7 @@ func TestProviderOneMessagePerLinkPerCommit(t *testing.T) {
 
 // serveKept serves providerKept, recording each factory run and each native close.
 func serveKept(host FacetHost, events *eventLog) error {
-	return host.Serve(providerKept, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+	return host.Serve(providerKept, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 		id := params.Value("id").(float64)
 		events.add("factory " + formatNumber(id))
 		self.Open(func(context.Context) (any, error) { return nil, nil },
@@ -599,9 +595,9 @@ func serveKept(host FacetHost, events *eventLog) error {
 				events.add("close " + string(reason.Kind))
 				return nil
 			})
-		return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{"n": constantNumber(id)},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 }
 
@@ -668,13 +664,13 @@ func TestProviderRaces(t *testing.T) {
 
 		// Ports "a release while activating unholds; bound is never sent (race 6)".
 		t.Run("a release while activating unholds; bound is never sent (race 6)", func(t *testing.T) {
-			Slow := remoteOneVariant("app.slow", contracts.Params{contracts.Prop("id", contracts.Int())}, contracts.VariantDeclaration{
-				State: []contracts.Property{contracts.Prop("n", contracts.Int())},
+			Slow := remoteOneVariant("app.slow", contracts.Params{contracts.Prop("id", contracts.Int())}, contracts.RemoteDeclaration{
+				State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 			})
 			aborted := newEventLog()
 			started := newEventLog()
 			s := rawLinked(t, func(h FacetHost) error {
-				return h.Serve(Slow, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+				return h.Serve(Slow, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 					id := formatNumber(params.Value("id").(float64))
 					self.Open(func(ctx context.Context) (any, error) {
 						started.add(id)
@@ -682,9 +678,9 @@ func TestProviderRaces(t *testing.T) {
 						aborted.add(id)
 						return nil, context.Cause(ctx)
 					}, func(any, NativeCloseReason, context.Context) error { return nil })
-					return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+					return contracts.MembersImplementation{
 						State: map[string]chord.Watchable[delta.JsonValue]{"n": constantNumber(1)},
-					}}, nil
+					}, nil
 				}, ServeOptions{})
 			}, rawLinkedOptions{})
 			provHold(t, s.Peer, 0, specOf(Slow), jsonObject("id", 1.0))
@@ -698,13 +694,13 @@ func TestProviderRaces(t *testing.T) {
 
 		// Ports "a hold while the previous instance of its identity tears down waits for it (race 7)".
 		t.Run("a hold while the previous instance of its identity tears down waits for it (race 7)", func(t *testing.T) {
-			Closing := remoteOneVariant("app.closing", contracts.Params{contracts.Prop("id", contracts.Int())}, contracts.VariantDeclaration{
-				State: []contracts.Property{contracts.Prop("n", contracts.Int())},
+			Closing := remoteOneVariant("app.closing", contracts.Params{contracts.Prop("id", contracts.Int())}, contracts.RemoteDeclaration{
+				State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 			})
 			events := newEventLog()
 			finish := make(chan struct{})
 			s := rawLinked(t, func(h FacetHost) error {
-				return h.Serve(Closing, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+				return h.Serve(Closing, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 					self.Open(func(context.Context) (any, error) {
 						events.add("open")
 						return nil, nil
@@ -714,9 +710,9 @@ func TestProviderRaces(t *testing.T) {
 						events.add("closed")
 						return nil
 					})
-					return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+					return contracts.MembersImplementation{
 						State: map[string]chord.Watchable[delta.JsonValue]{"n": constantNumber(params.Value("id").(float64))},
-					}}, nil
+					}, nil
 				}, ServeOptions{})
 			}, rawLinkedOptions{})
 			provHold(t, s.Peer, 0, specOf(Closing), jsonObject("id", 1.0))
@@ -766,9 +762,9 @@ func TestProviderRaces(t *testing.T) {
 
 		// Ports "closing a link during a batch drops its state message and releases its holds (race 9)".
 		t.Run("closing a link during a batch drops its state message and releases its holds (race 9)", func(t *testing.T) {
-			Counter := remoteOneVariant("app.counter", contracts.Params{contracts.Prop("id", contracts.Int())}, contracts.VariantDeclaration{
-				State:   []contracts.Property{contracts.Prop("n", contracts.Int()), contracts.Prop("seen", contracts.Int())},
-				Methods: []contracts.MethodEntry{contracts.Meth("bump", contracts.NewMethod())},
+			Counter := remoteOneVariant("app.counter", contracts.Params{contracts.Prop("id", contracts.Int())}, contracts.RemoteDeclaration{
+				State:   []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int()), contracts.StateEntry("seen", contracts.Int())},
+				Methods: []contracts.RemoteMethodEntry{contracts.Meth("bump", contracts.NewMethod())},
 			})
 			N, err := documents.DefineState("n", documents.StateOptions{
 				Schema: contracts.Obj(contracts.Prop("n", contracts.Int())), Version: 1,
@@ -781,7 +777,7 @@ func TestProviderRaces(t *testing.T) {
 			during.Store(&noop)
 			ends := newEventLog()
 			s := rawLinked(t, func(h FacetHost) error {
-				return h.Serve(Counter, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+				return h.Serve(Counter, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 					id := formatNumber(params.Value("id").(float64))
 					n := self.State(N).(*documents.Singleton)
 					self.Open(func(context.Context) (any, error) { return nil, nil },
@@ -789,7 +785,7 @@ func TestProviderRaces(t *testing.T) {
 							ends.add("counter " + id + " ended")
 							return nil
 						})
-					return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+					return contracts.MembersImplementation{
 						State: map[string]chord.Watchable[delta.JsonValue]{
 							"n": self.Derive([]any{n}, func(values []any) (delta.JsonValue, error) {
 								return values[0].(*delta.JsonObject).Value("n"), nil
@@ -810,7 +806,7 @@ func TestProviderRaces(t *testing.T) {
 								return nil, err
 							},
 						},
-					}}, nil
+					}, nil
 				}, ServeOptions{})
 			}, rawLinkedOptions{})
 			a, b := link.MemoryLinkPair()
@@ -839,10 +835,10 @@ func TestProviderLocalTypesOverALinkNeverCrossOne(t *testing.T) {
 			Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
 		}))
 		s := rawLinked(t, func(h FacetHost) error {
-			return h.Serve(Store, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+			return h.Serve(Store, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{"n": constantNumber(1)},
-				}}, nil
+				}, nil
 			}, ServeOptions{})
 		}, rawLinkedOptions{})
 		provHold(t, s.Peer, 0, specOf(Store), jsonObject())
@@ -855,12 +851,12 @@ func TestProviderLocalTypesOverALinkNeverCrossOne(t *testing.T) {
 }
 
 // Grid is a remote type whose `fill` sets `cells[0..n)` to a value in one commit: `n` leaf ops on distinct paths.
-var Grid = remoteOneVariant("app.grid", contracts.Params{}, contracts.VariantDeclaration{
-	State: []contracts.Property{
-		contracts.Prop("grid", contracts.Obj(contracts.Prop("cells", contracts.Map(contracts.Int())))),
-		contracts.Prop("one", contracts.Int()),
+var Grid = remoteOneVariant("app.grid", contracts.Params{}, contracts.RemoteDeclaration{
+	State: []contracts.RemoteStateEntry{
+		contracts.StateEntry("grid", contracts.Obj(contracts.Prop("cells", contracts.Map(contracts.Int())))),
+		contracts.StateEntry("one", contracts.Int()),
 	},
-	Methods: []contracts.MethodEntry{contracts.Meth("fill", contracts.NewMethod(
+	Methods: []contracts.RemoteMethodEntry{contracts.Meth("fill", contracts.NewMethod(
 		contracts.Obj(contracts.Prop("n", contracts.Int()), contracts.Prop("value", contracts.Int()))))},
 })
 
@@ -877,9 +873,9 @@ var gridDoc = func() *documents.StateDefinition {
 }()
 
 func serveGrid(host FacetHost) error {
-	return host.Serve(Grid, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+	return host.Serve(Grid, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 		grid := self.State(gridDoc).(*documents.Singleton)
-		return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{"grid": Expose(grid), "one": constantNumber(1)},
 			Methods: map[string]contracts.MethodFunction{
 				"fill": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -897,7 +893,7 @@ func serveGrid(host FacetHost) error {
 					return nil, err
 				},
 			},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 }
 
@@ -1178,7 +1174,7 @@ func TestProviderOrigins(t *testing.T) {
 
 		// Ports "carry constants and failed members, and an empty variant's binding, in a first bound (race 24)".
 		t.Run("carry constants and failed members, and an empty variant's binding, in a first bound (race 24)", func(t *testing.T) {
-			Empty := remoteOneVariant("app.empty", contracts.Params{}, contracts.VariantDeclaration{})
+			Empty := remoteOneVariant("app.empty", contracts.Params{}, contracts.RemoteDeclaration{})
 			N, err := documents.DefineState("n", documents.StateOptions{
 				Schema: contracts.Obj(contracts.Prop("n", contracts.Int())), Version: 1,
 				Initial: func() *delta.JsonObject { return jsonObject("n", 0.0) },
@@ -1186,14 +1182,14 @@ func TestProviderOrigins(t *testing.T) {
 			must(t, err)
 			halves := wireNames(t, Halves, "v")
 			s := rawLinked(t, func(h FacetHost) error {
-				if err := h.Serve(Empty, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
-					return contracts.Implementation{Variant: "v"}, nil
+				if err := h.Serve(Empty, func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {
+					return contracts.MembersImplementation{}, nil
 				}, ServeOptions{}); err != nil {
 					return err
 				}
-				return h.Serve(Halves, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+				return h.Serve(Halves, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 					n := self.State(N).(*documents.Singleton)
-					return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+					return contracts.MembersImplementation{
 						State: map[string]chord.Watchable[delta.JsonValue]{
 							"one": constantNumber(1),
 							"half": self.Derive([]any{n}, func(values []any) (delta.JsonValue, error) {
@@ -1210,7 +1206,7 @@ func TestProviderOrigins(t *testing.T) {
 								return nil, err
 							},
 						},
-					}}, nil
+					}, nil
 				}, ServeOptions{})
 			}, rawLinkedOptions{})
 			provHold(t, s.Peer, 0, specOf(Halves), jsonObject())
@@ -1230,10 +1226,10 @@ func TestProviderOrigins(t *testing.T) {
 				return link.BoundEntry{}
 			}
 			empty, withHalves := find(1), find(2)
-			if empty.Variant != 0 || len(empty.Members) != 0 || len(empty.Failed) != 0 {
+			if len(empty.Granted) != 0 || len(empty.Members) != 0 || len(empty.Failed) != 0 {
 				t.Fatalf("empty binding = %+v, want variant 0 with no members", empty)
 			}
-			if withHalves.Variant != 0 || len(withHalves.Members) != 1 || withHalves.Members[0].Member != halves.State["one"] {
+			if len(withHalves.Granted) != 0 || len(withHalves.Members) != 1 || withHalves.Members[0].Member != halves.State["one"] {
 				t.Fatalf("halves members = %+v, want only `one`", withHalves.Members)
 			}
 			if len(withHalves.Failed) != 1 || withHalves.Failed[0].Member != halves.State["half"] {
@@ -1246,9 +1242,9 @@ func TestProviderOrigins(t *testing.T) {
 }
 
 // Halves is a constant, and a member that fails once `set(2)`.
-var Halves = remoteOneVariant("app.halves", contracts.Params{}, contracts.VariantDeclaration{
-	State:   []contracts.Property{contracts.Prop("one", contracts.Int()), contracts.Prop("half", contracts.Int())},
-	Methods: []contracts.MethodEntry{contracts.Meth("set", contracts.NewMethod(contracts.Int()))},
+var Halves = remoteOneVariant("app.halves", contracts.Params{}, contracts.RemoteDeclaration{
+	State:   []contracts.RemoteStateEntry{contracts.StateEntry("one", contracts.Int()), contracts.StateEntry("half", contracts.Int())},
+	Methods: []contracts.RemoteMethodEntry{contracts.Meth("set", contracts.NewMethod(contracts.Int()))},
 })
 
 func TestProviderCallLimit(t *testing.T) {
@@ -1658,15 +1654,15 @@ func TestProviderOldWorkFromAnotherHost(t *testing.T) {
 		Version:     1,
 		Params:      contracts.Params{},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-		Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{Methods: []contracts.MethodEntry{
+		Methods: []contracts.RemoteMethodEntry{
 			contracts.Meth("slow", contracts.NewMethod(contracts.Schema{}, contracts.Int())),
 			contracts.Meth("ping", contracts.NewMethod(contracts.Schema{}, contracts.Int())),
-		}})},
+		},
 	}))
 	names := wireNames(t, coded, "v")
 	serveCoded := func(h FacetHost, code float64, gate *reloadGate) error {
-		return h.Serve(coded, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+		return h.Serve(coded, func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				"slow": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					if gate != nil {
 						gate.entered.fire()
@@ -1675,7 +1671,7 @@ func TestProviderOldWorkFromAnotherHost(t *testing.T) {
 					return code, nil
 				},
 				"ping": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return code, nil },
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	}
 	// pingDuringDrain holds `coded` on a server restarting it while its call `slow` drains, then sends `ping` (marked old when

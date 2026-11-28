@@ -41,6 +41,8 @@ allow = [
 	# 106,262 B on linux_amd64, 83,104 B on darwin_arm64 and 107,712 B on windows_amd64: the plugin UI registry of D614 with its amendment (claims and alternatives, drawing checks, notices, attachments, RFC 8785 digests). subprocess.NewUIBridge makes the registry, so every binary that hosts extensions links it, and RPC mode's carrier (internal/viewcarrier, below heavy_bytes) calls the attachment API, so that is linked too.
 	"github.com/MichaelKinsy/PiG/coding/uiview",
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json",
+	# 32,840 B on windows_amd64 (72 B over heavy_bytes=32,768 after RuleInstallTelemetryRemoved for Pi v1.7.0; under 32 KiB on linux/darwin): SDK drift classification rules linked by pig upgrade via extensions/sdk/upgrade/plan.
+	"github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
 	"github.com/MichaelKinsy/PiG/internal/codingagent",
 	"github.com/MichaelKinsy/PiG/internal/codingagent/compaction",
 	"github.com/MichaelKinsy/PiG/internal/codingagent/configschema",

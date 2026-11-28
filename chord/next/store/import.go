@@ -62,7 +62,7 @@ func (source *slicePartSource[T]) Close() error { return nil }
 // ImportStore is a store holding the archive `parts` on `backend`, which must not hold a store yet: at the manifest's
 // `lastSeq`, its outbox (when `options.Outbox`) starting after it. A refused archive, a stalled input cancelled by
 // `ctx` or a backend error is returned; the backend is closed then (rule 12).
-func ImportStore(backend *Backend, parts PartSource, ctx context.Context, options StoreOptions) (Store, error) {
+func ImportStore(backend *Backend, parts PartSource, ctx context.Context, options StoreOptions) (*ChordStore, error) {
 	store, err := importStore(backend.DB, parts, ctx, options)
 	if err != nil {
 		// The import's own failure is the one to report.

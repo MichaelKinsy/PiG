@@ -167,7 +167,8 @@ func (p *BedrockProvider) Stream(ctx context.Context, transcript ai.TranscriptCo
 		if err != nil {
 			return nil, false, fmt.Errorf("amazon-bedrock: convert tools: %w", err)
 		}
-		convertedMessages, err := convertBedrockMessages(conversation, p.model, p.modelName, cacheRetention, opts.Env)
+		supportsReasoningReplay := modelMeta == nil || modelMeta.ProviderMeta.Compat == nil || modelMeta.ProviderMeta.Compat.SupportsReasoningReplay == nil || *modelMeta.ProviderMeta.Compat.SupportsReasoningReplay
+		convertedMessages, err := convertBedrockMessages(conversation, p.model, p.modelName, cacheRetention, opts.Env, supportsReasoningReplay)
 		if err != nil {
 			return nil, false, fmt.Errorf("amazon-bedrock: convert messages: %w", err)
 		}
@@ -722,7 +723,7 @@ func bedrockCacheTTL(retention bedrockCacheRetention) btypes.CacheTTL {
 // convertBedrockMessages mirrors upstream convertMessages + the
 // transformMessages tool-id normalization + the consecutive-toolResult
 // coalescing into a single user message that Bedrock requires. User, assistant and tool-result text uses ECMAScript emptiness checks without trimming nonblank payloads. System messages are skipped: the caller has already folded them into the leading prompt.
-func convertBedrockMessages(msgs []ai.Message, modelID, modelName string, cacheRetention bedrockCacheRetention, env ai.ProviderEnv) ([]btypes.Message, error) {
+func convertBedrockMessages(msgs []ai.Message, modelID, modelName string, cacheRetention bedrockCacheRetention, env ai.ProviderEnv, supportsReasoningReplay ...bool) ([]btypes.Message, error) {
 	out := make([]btypes.Message, 0, len(msgs))
 	// pig divergence (D116): Pi pushes every user message and run of tool results as its own message, so two user messages can sit side by side (a prompt after tool results, a dropped assistant turn); Converse requires alternating roles, so adjacent messages of one role share a message.
 	push := func(role btypes.ConversationRole, blocks []btypes.ContentBlock) {
@@ -746,7 +747,8 @@ func convertBedrockMessages(msgs []ai.Message, modelID, modelName string, cacheR
 			push(btypes.ConversationRoleUser, blocks)
 
 		case ai.AssistantMessage:
-			blocks, err := bedrockAssistantContent(message.Content, modelID, modelName)
+			replayReasoning := len(supportsReasoningReplay) == 0 || supportsReasoningReplay[0]
+			blocks, err := bedrockAssistantContent(message.Content, modelID, modelName, replayReasoning)
 			if err != nil {
 				return nil, err
 			}
@@ -828,7 +830,7 @@ func bedrockUserContent(content ai.UserContent) ([]btypes.ContentBlock, error) {
 	}
 }
 
-func bedrockAssistantContent(blocks []ai.AssistantContentBlock, modelID, modelName string) ([]btypes.ContentBlock, error) {
+func bedrockAssistantContent(blocks []ai.AssistantContentBlock, modelID, modelName string, supportsReasoningReplay ...bool) ([]btypes.ContentBlock, error) {
 	out := make([]btypes.ContentBlock, 0, len(blocks))
 	for _, block := range blocks {
 		switch block := block.(type) {
@@ -858,6 +860,9 @@ func bedrockAssistantContent(blocks []ai.AssistantContentBlock, modelID, modelNa
 			}})
 		case ai.ThinkingContent:
 			// upstream: packages/ai/src/api/bedrock-converse-stream.ts:convertMessages
+			if len(supportsReasoningReplay) > 0 && !supportsReasoningReplay[0] {
+				continue
+			}
 			if block.Redacted {
 				if data := decodeBedrockRedactedContent(block.ThinkingSignature); len(data) > 0 {
 					out = append(out, &btypes.ContentBlockMemberReasoningContent{
@@ -1184,14 +1189,34 @@ var bedrockAdditionalFieldsOrder = ai.SchemaObjectOrder{
 }
 
 func buildBedrockAdditionalFieldsWithBudget(model *ai.Model, modelName string, opts ai.StreamOptions, budgetOverride *int) map[string]any {
-	if opts.Thinking == "" || !opts.IsReasoning {
-		return nil
-	}
-	if model == nil {
+	if !opts.IsReasoning || model == nil {
 		return nil
 	}
 	if !isAnthropicClaudeBedrockModel(model.ID, modelName) {
+		candidates := bedrockModelMatchCandidates(model.ID, modelName)
+		if !slices.ContainsFunc(candidates, func(s string) bool { return strings.Contains(s, "gpt-") }) {
+			// Other families (Kimi K3, GLM 5.3) take a flat reasoning_effort. Converse forwards it without
+			// validating it, so send only values the model's thinkingLevelMap lists. Off is sent too:
+			// without a value, models such as Kimi K3.1 reason at max.
+			// Nova and Grok also land here but have no thinkingLevelMap in the catalog, so they send
+			// nothing: Nova 2 takes effort as reasoningConfig.maxReasoningEffort, and Grok documents
+			// no effort field for Converse.
+			level := ai.ModelThinkingLevel(opts.Thinking)
+			if level == "" {
+				level = ai.ThinkingOff
+			}
+			if effort := model.ThinkingLevelMap[level]; effort != nil {
+				return map[string]any{"reasoning_effort": *effort}
+			}
+			return nil
+		}
+		if opts.Thinking == "" {
+			return nil
+		}
 		return bedrockOpenAIReasoningFields(model, modelName, ai.ModelThinkingLevel(opts.Thinking))
+	}
+	if opts.Thinking == "" {
+		return nil
 	}
 
 	thinking := map[string]any{}

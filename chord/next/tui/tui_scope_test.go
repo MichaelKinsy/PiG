@@ -61,10 +61,10 @@ func newHost(t testing.TB) host.Host {
 		}
 	})
 	facet := host.DefineFacet(func(fh host.FacetHost, self host.FacetSelf) error {
-		err := fh.Serve(Notes, func(_ *delta.JsonObject, object host.Self) (contracts.Implementation, error) {
+		err := fh.Serve(Notes, func(_ *delta.JsonObject, object host.Self) (contracts.MembersImplementation, error) {
 			text := object.Writable("first")
 			written := object.Events()
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				Events: map[string]contracts.EventMember[delta.JsonValue]{"written": written},
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"text": object.Derive([]any{text}, func(values []any) (delta.JsonValue, error) { return values[0], nil }),
@@ -77,7 +77,7 @@ func newHost(t testing.TB) host.Host {
 						return nil, written.Emit(next)
 					},
 				},
-			}}, nil
+			}, nil
 		}, host.ServeOptions{})
 		if err != nil {
 			return err
@@ -335,39 +335,33 @@ func (s *TuiScope) followedStates() int {
 	return len(s.states)
 }
 
-func TestScopeReferenceInOneVariantReadsItNarrowedWhileLiveInTheVariantAChangeOfItsVariantCallsChangedOncePerState(t *testing.T) {
+func TestScopeReferenceLiveReadsItWhileLiveAndCallsChangedOncePerState(t *testing.T) {
 	desk := deskfix.New(t)
 	var changes atomic.Int64
 	scope := scopeOn(desk.Client, func() { changes.Add(1) })
-	// Hold Desk loading until the before-bind reader() check has run: Pi holds and reads in one turn,
-	// while Go's memory link delivers on a goroutine and may bind before reader() runs.
 	open := desk.Gate()
 	held, err := scope.Hold(deskfix.Desk, delta.JsonObjectOf())
 	if err != nil {
 		t.Fatal(err)
 	}
-	editor := scope.Variant(held, "editor")
-	reader := scope.Variant(held, "reader")
-	if reader() != nil {
-		t.Fatal("reader() before it binds is not nil")
+	live := scope.Live(held)
+	if live() != nil {
+		t.Fatal("live() before it binds is not nil")
 	}
 	open()
-	until(t, func() bool { return reader() == held })
-	if editor() != nil {
-		t.Fatal("editor() while live as a reader is not nil")
+	until(t, func() bool { return live() == held })
+	if deskfix.HasGrant(held, "write") {
+		t.Fatal("write granted while live as a reader")
 	}
 	settle(&changes)
 	before := changes.Load()
-	// Another allowed value while it is held: loading, then live in the other variant.
+	// Another allowed value while it is held: loading, then live with write granted.
 	if err := desk.Admit("editor"); err != nil {
 		t.Fatal(err)
 	}
-	until(t, func() bool { return editor() == held })
-	if _, err := editor().Call("write", "edited", bg); err != nil {
+	until(t, func() bool { return live() == held && deskfix.HasGrant(held, "write") })
+	if _, err := live().Call("write", "edited", bg); err != nil {
 		t.Fatal(err)
-	}
-	if reader() != nil {
-		t.Fatal("reader() while live as an editor is not nil")
 	}
 	settle(&changes)
 	// One watch of the reference's state, whoever asked for it: a redraw per state.
@@ -378,16 +372,16 @@ func TestScopeReferenceInOneVariantReadsItNarrowedWhileLiveInTheVariantAChangeOf
 		t.Fatal(err)
 	}
 	until(t, func() bool { return held.State().Value().Kind == host.RefStateFailed })
-	if editor() != nil {
-		t.Fatal("editor() once denied is not nil")
+	if live() != nil {
+		t.Fatal("live() once denied is not nil")
 	}
 	scope.Dispose()
-	if editor() != nil {
-		t.Fatal("editor() after dispose is not nil")
+	if live() != nil {
+		t.Fatal("live() after dispose is not nil")
 	}
 }
 
-func TestScopeReferenceInOneVariantFollowsAReferenceTheScopeDoesNotHoldUntilDispose(t *testing.T) {
+func TestScopeReferenceLiveFollowsAReferenceTheScopeDoesNotHoldUntilDispose(t *testing.T) {
 	desk := deskfix.New(t)
 	var changes atomic.Int64
 	scope := scopeOn(desk.Client, func() { changes.Add(1) })
@@ -395,31 +389,31 @@ func TestScopeReferenceInOneVariantFollowsAReferenceTheScopeDoesNotHoldUntilDisp
 	if err != nil {
 		t.Fatal(err)
 	}
-	editor := scope.Variant(held, "editor")
+	live := scope.Live(held)
 	deskfix.UntilState(t, held, func() bool { return held.State().Value().Kind == host.RefStateLive })
 	before := changes.Load()
 	if err := desk.Admit("editor"); err != nil {
 		t.Fatal(err)
 	}
-	until(t, func() bool { return editor() == held && changes.Load() > before })
+	until(t, func() bool { return live() == held && deskfix.HasGrant(held, "write") && changes.Load() > before })
 	scope.Dispose()
 	after := changes.Load()
 	if err := desk.Admit("reader"); err != nil {
 		t.Fatal(err)
 	}
 	deskfix.UntilState(t, held, func() bool {
-		return deskfix.VariantName(held) == "reader" && held.State().Value().Kind == host.RefStateLive
+		return !deskfix.HasGrant(held, "write") && held.State().Value().Kind == host.RefStateLive
 	})
 	if got := changes.Load(); got != after {
 		t.Fatalf("changed called after dispose: %d -> %d", after, got)
 	}
-	if editor() != nil {
-		t.Fatal("editor() after dispose is not nil")
-	}
 	held.Release()
+	if live() != nil {
+		t.Fatal("live() after release is not nil")
+	}
 }
 
-func TestScopeReferenceInOneVariantKeepsNoReferenceItsHolderReleasedWhileTheScopeLivesGC(t *testing.T) {
+func TestScopeReferenceLiveKeepsNoReferenceItsHolderReleasedWhileTheScopeLivesGC(t *testing.T) {
 	desk := deskfix.New(t)
 	scope := scopeOn(desk.Client, func() {})
 	const n = 8
@@ -430,10 +424,10 @@ func TestScopeReferenceInOneVariantKeepsNoReferenceItsHolderReleasedWhileTheScop
 			if err != nil {
 				t.Fatal(err)
 			}
-			reader := scope.Variant(held, "reader")
-			until(t, func() bool { return reader() == held })
+			live := scope.Live(held)
+			until(t, func() bool { return live() == held })
 			if scope.followedStates() == 0 {
-				t.Fatal("the scope follows nothing after Variant")
+				t.Fatal("the scope follows nothing after Live")
 			}
 			held.Release()
 			refs = append(refs, weak.Make(held))
@@ -446,7 +440,7 @@ func TestScopeReferenceInOneVariantKeepsNoReferenceItsHolderReleasedWhileTheScop
 	if err != nil {
 		t.Fatal(err)
 	}
-	scope.Variant(probe, "reader")
+	scope.Live(probe)
 	if got := scope.followedStates(); got != 1 {
 		t.Fatalf("followed after the others were collected = %d, want 1", got)
 	}

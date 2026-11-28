@@ -60,7 +60,6 @@ func readAll(s sdk.SettingsManager) map[string]any {
 		"getShellCommandPrefix":          orNil(ok(s.GetShellCommandPrefix())),
 		"getNpmCommand":                  ok(s.GetNpmCommand()),
 		"getCollapseChangelog":           ok(s.GetCollapseChangelog()),
-		"getEnableInstallTelemetry":      ok(s.GetEnableInstallTelemetry()),
 		"getEnableAnalytics":             ok(s.GetEnableAnalytics()),
 		"getPackages":                    ok(s.GetPackages()),
 		"getExtensionPaths":              ok(s.GetExtensionPaths()),
@@ -165,7 +164,6 @@ func settingsScript(ctx sdk.Context, args map[string]any) map[string]any {
 	check(s.SetImageAutoResize(false))
 	check(s.SetShowTerminalProgress(true))
 	check(s.SetEnableSkillCommands(false))
-	check(s.SetEnableInstallTelemetry(false))
 	check(s.SetNotice("cacheMisses", false))
 	check(s.SetDefaultModelAndProvider("anthropic", "opus"))
 	check(s.SetProjectPackages([]any{"npm:proj"}))

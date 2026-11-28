@@ -365,7 +365,7 @@ class SessionList {
                     emptyMessage = `  No named sessions found. Press ${toggleKey} to show all.`;
                 }
                 else {
-                    emptyMessage = `  No named sessions in current folder. Press ${toggleKey} to show all, or Tab to view all.`;
+                    emptyMessage = `  No named sessions in current folder. Press ${toggleKey} to show all, or ${keyText("tui.input.tab")} to view all.`;
                 }
             }
             else if (this.showCwd) {
@@ -374,7 +374,7 @@ class SessionList {
             }
             else {
                 // "Current folder" scope - hint to try "all"
-                emptyMessage = "  No sessions in current folder. Press Tab to view all.";
+                emptyMessage = `  No sessions in current folder. Press ${keyText("tui.input.tab")} to view all.`;
             }
             lines.push(theme.fg("muted", truncateToWidth(emptyMessage, width, "…")));
             return lines;
@@ -773,7 +773,7 @@ export class SessionSelectorComponent extends Container {
         panel.addChild(new Spacer(1));
         panel.addChild(this.renameInput);
         panel.addChild(new Spacer(1));
-        panel.addChild(new Text(theme.fg("muted", `${keyText("tui.select.confirm")} to save · ${keyText("tui.select.cancel")} to cancel`), 1, 0));
+        panel.addChild(new Text(theme.fg("muted", `${keyText("tui.input.submit")} to save · ${keyText("tui.select.cancel")} to cancel`), 1, 0));
         this.buildBaseLayout(panel, { showHeader: false });
         this.requestRender();
     }

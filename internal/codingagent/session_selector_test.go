@@ -149,7 +149,7 @@ func TestSessionSelectorRenderEmptyCurrentScopeMatchesUpstreamEmptyStateCopy(t *
 		"",
 		">",
 		"",
-		"  No sessions in current folder. Press Tab to view all.",
+		"  No sessions in current folder. Press tab to view all.",
 		"",
 		strings.Repeat("─", 100),
 	}

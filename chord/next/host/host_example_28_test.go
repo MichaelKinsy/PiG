@@ -50,7 +50,7 @@ func TestExample28PersistedJobs(t *testing.T) {
 		handle JobHandle
 	}
 	facet := func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(notes, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(notes, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			imports := self.Job(importJob, JobImplementation{
 				Run: func(args any, ctx JobCtx) (any, error) {
 					logs.add(fmt.Sprintf("run %s: from done = %v", exParam(args.(*delta.JsonObject), "path"), mustState(ctx).Value("done")))

@@ -188,7 +188,6 @@ def read_all(s):
         "getShellCommandPrefix": s.get_shell_command_prefix(),
         "getNpmCommand": s.get_npm_command(),
         "getCollapseChangelog": s.get_collapse_changelog(),
-        "getEnableInstallTelemetry": s.get_enable_install_telemetry(),
         "getEnableAnalytics": s.get_enable_analytics(),
         "getPackages": s.get_packages(),
         "getExtensionPaths": s.get_extension_paths(),
@@ -338,7 +337,6 @@ def settings_script(ctx, args):
     s.set_image_auto_resize(False)
     s.set_show_terminal_progress(True)
     s.set_enable_skill_commands(False)
-    s.set_enable_install_telemetry(False)
     s.set_notice("cacheMisses", False)
     s.set_default_model_and_provider("anthropic", "opus")
     s.set_project_packages(["npm:proj"])

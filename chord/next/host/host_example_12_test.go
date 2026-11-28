@@ -13,26 +13,22 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
+	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
 // --- 12-routes.ts --------------------------------------------------------------------------------------------------
 
 func TestExample12Routes(t *testing.T) {
-	notes := exRemote("example.notes", contracts.Params{exProp("session", exStr())}, exSessionAddress,
-		contracts.Var("editor", contracts.VariantDeclaration{
-			State: []contracts.Property{exProp("notes", exArr(exStr()))},
-			Methods: []contracts.MethodEntry{
-				contracts.Meth("add", contracts.NewMethod(exObj(exProp("text", exStr())), exInt())),
-				contracts.Meth("whoami", contracts.NewMethod(contracts.Schema{}, exStr())),
-			},
-		}),
-		contracts.Var("reader", contracts.VariantDeclaration{
-			State:   []contracts.Property{exProp("notes", exArr(exStr()))},
-			Methods: []contracts.MethodEntry{contracts.Meth("whoami", contracts.NewMethod(contracts.Schema{}, exStr()))},
-		}))
-	lobby := exRemote("example.lobby", contracts.Params{}, exServerAddress, contracts.Var("visitor", contracts.VariantDeclaration{
-		Methods: []contracts.MethodEntry{contracts.Meth("peek", contracts.NewMethod(exObj(exProp("session", exStr())), exStr()))},
-	}))
+	notes := exRemote("example.notes", contracts.Params{exProp("session", exStr())}, exSessionAddress, contracts.RemoteDeclaration{
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("notes", exArr(exStr()))},
+		Methods: []contracts.RemoteMethodEntry{
+			contracts.Meth("add", contracts.NewGrantable(contracts.NewMethod(exObj(exProp("text", exStr())), exInt()))),
+			contracts.Meth("whoami", contracts.NewMethod(contracts.Schema{}, exStr())),
+		},
+	})
+	lobby := exRemote("example.lobby", contracts.Params{}, exServerAddress, contracts.RemoteDeclaration{
+		Methods: []contracts.RemoteMethodEntry{contracts.Meth("peek", contracts.NewMethod(exObj(exProp("session", exStr())), exStr()))},
+	})
 	noteStore := exLocal("example.note-store", contracts.Params{},
 		contracts.Mem("list", exArr(exStr())), contracts.Mem("add", contracts.NewMethod(exObj(exProp("text", exStr())), exInt())))
 	doc := exStringListDoc("notes")
@@ -41,7 +37,7 @@ func TestExample12Routes(t *testing.T) {
 	}
 	// The worker's facet: an owner edits, anyone else reads; `whoami` shows whom a call acts for.
 	workerFacet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(noteStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(noteStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			notesDoc := stateOf(self, doc)
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{
 				"list": self.Derive([]any{notesDoc.s}, func(values []any) (delta.JsonValue, error) {
@@ -55,12 +51,8 @@ func TestExample12Routes(t *testing.T) {
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(notes, func(_ *delta.JsonObject, principal data.Principal, self Self) (contracts.Implementation, error) {
+		return h.Serve(notes, func(_ *delta.JsonObject, _ data.Principal, _ AdmittedValue, self Self) (contracts.MembersImplementation, error) {
 			store := self.Get(noteStore, jsonObject())
-			if principalKind(principal) != "owner" {
-				return exVariant("reader", map[string]chord.Watchable[delta.JsonValue]{"notes": Expose(store.Member("list"))},
-					map[string]contracts.MethodFunction{"whoami": whoami}), nil
-			}
 			return exVariant("editor", map[string]chord.Watchable[delta.JsonValue]{"notes": Expose(store.Member("list"))},
 				map[string]contracts.MethodFunction{
 					"add": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -68,10 +60,15 @@ func TestExample12Routes(t *testing.T) {
 					},
 					"whoami": whoami,
 				}), nil
-		}, ServeOptions{})
+		}, ServeOptions{Admit: func(_ *delta.JsonObject, principal data.Principal, _ AdmitSelf) (chord.Watchable[delta.JsonValue], error) {
+			if principalKind(principal) != "owner" {
+				return Expose(state.NewConstant(Allow(delta.NewJsonObject(0)))), nil
+			}
+			return Expose(state.NewConstant(Allow(delta.JsonObjectOf("granted", []delta.JsonValue{"add"})))), nil
+		}})
 	})
 	serverFacet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(lobby, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
+		return h.Serve(lobby, func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {
 			return exVariant("visitor", nil, map[string]contracts.MethodFunction{
 				// `ctx.get` acts as the caller: over the route, the worker sees the guest, not the server.
 				"peek": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
@@ -83,7 +80,12 @@ func TestExample12Routes(t *testing.T) {
 					if err != nil {
 						return nil, err
 					}
-					return fmt.Sprintf("%s variant, %v", exVariantName(reference), who), nil
+					return fmt.Sprintf("%s variant, %v", func() string {
+						if exHasGrant(reference, "add") {
+							return "editor"
+						}
+						return "reader"
+					}(), who), nil
 				}),
 			}), nil
 		}, ServeOptions{})
@@ -119,8 +121,8 @@ func TestExample12Routes(t *testing.T) {
 	// 2. The owner's tab gets S1's notes: tab -> server (relays) -> route -> worker. A second get shares the worker.
 	owner := exAccept(t, server, ownerPrincipal())
 	ownerNotes := exGet(t, owner.Host, notes, jsonObject("session", "S1"))
-	if exVariantName(ownerNotes) != "editor" {
-		t.Fatalf("owner variant = %q", exVariantName(ownerNotes))
+	if !exHasGrant(ownerNotes, "add") {
+		t.Fatalf("owner was not granted add")
 	}
 	exCall(t, ownerNotes, "add", jsonObject("text", "milk"))
 	again := exGet(t, owner.Host, notes, jsonObject("session", "S1"))
@@ -131,8 +133,8 @@ func TestExample12Routes(t *testing.T) {
 	// 3. A guest of S1 reads S1 and is refused S2 by `authorize` (no worker is started for it).
 	guest := exAccept(t, server, guestPrincipal("S1"))
 	read := exGet(t, guest.Host, notes, jsonObject("session", "S1"))
-	if exVariantName(read) != "reader" {
-		t.Fatalf("guest variant = %q", exVariantName(read))
+	if exHasGrant(read, "add") {
+		t.Fatalf("guest was granted add")
 	}
 	exEqual(t, "guest notes", exValue(t, read, "notes"), exJSON(t, `["milk"]`))
 	exEqual(t, "guest acts as", exCall(t, read, "whoami", nil), `{"kind":"guest","session":"S1"}`)

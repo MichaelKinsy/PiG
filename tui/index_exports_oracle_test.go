@@ -34,7 +34,7 @@ var barrelGo = map[string]any{
 	"colorToOkhsl": ColorToOkhsl, "colorToOklch": ColorToOklch, "colorToRgb": ColorToRgb, "compositeTuiLine": CompositeTuiLine,
 	"decodeKittyPrintable": DecodeKittyPrintable, "deleteAllKittyImages": DeleteAllKittyImages, "deleteKittyImage": DeleteKittyImage,
 	"detectCapabilities": DetectCapabilities, "encodeITerm2": EncodeITerm2, "encodeKitty": EncodeKitty, "foregroundAnsi": ForegroundAnsi,
-	"formatProgramStatus": FormatProgramStatus, "fuzzyFilter": FuzzyFilter[string], "fuzzyMatch": FuzzyMatchScore, "getCapabilities": GetCapabilities,
+	"formatProgramResume": FormatProgramResume, "formatProgramResumeClear": FormatProgramResumeClear, "formatProgramStatus": FormatProgramStatus, "fuzzyFilter": FuzzyFilter[string], "fuzzyMatch": FuzzyMatchScore, "getCapabilities": GetCapabilities,
 	"getCellDimensions": GetCellDimensions, "getGifDimensions": GetGIFDimensions, "getImageDimensions": GetImageDimensions,
 	"getJpegDimensions": GetJPEGDimensions, "getKeybindings": GetKeybindings, "getNativeClipboard": GetNativeClipboard,
 	"getOsc8LinkAtColumn": widthx.GetOsc8LinkAtColumn, "getPngDimensions": GetPNGDimensions, "getSelectPageIndex": GetSelectPageIndex,
@@ -48,7 +48,7 @@ var barrelGo = map[string]any{
 	"setCapabilities": SetCapabilities, "setCapabilityOverrides": SetCapabilityOverrides, "setCellDimensions": SetCellDimensions,
 	"setImageTranscoder": SetImageTranscoder, "setKeybindings": SetKeybindings, "setKittyProtocolActive": SetKittyProtocolActive,
 	"sliceByColumn": widthx.SliceByColumn, "stripTerminalSequences": widthx.StripTerminalSequences, "styleText": StyleText,
-	"styleTextWithAnsi": StyleTextWithAnsi, "truncateToWidth": widthx.TruncateToWidth, "visibleWidth": widthx.VisibleWidth,
+	"styleTextWithAnsi": StyleTextWithAnsi, "takeProgramResumeToken": TakeProgramResumeToken, "truncateToWidth": widthx.TruncateToWidth, "visibleWidth": widthx.VisibleWidth,
 	"wrapTextWithAnsi": widthx.WrapTextWithAnsi,
 }
 

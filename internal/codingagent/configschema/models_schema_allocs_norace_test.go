@@ -8,8 +8,8 @@ import "testing"
 // ModelCostSchema, ThinkingLevelMapSchema and the other shared schemas once and references them from the provider, model and
 // override schemas; the tree shares them the same way. It measured 1,108 objects; with a copy per reference, 2,832. Pi v1.4.0's SystemOneCompatSchema (imageInput, sendImageOptInHeader)
 // merges into the provider compat union and takes it to 1,166. Pi main's requiresNonNullAssistantContent, requiresToolsWithToolHistory and
-// promptCacheKeyMode (14b804d80, 7a6bd5a97, 0f4d5e960) take it to 1,223.
-const modelsConfigSchemaObjectsCeiling = 1_250
+// promptCacheKeyMode (14b804d80, 7a6bd5a97, 0f4d5e960) take it to 1,223. Pi v1.7.0 adds ModelCostSchema.imageOutput and takes it to 1,251.
+const modelsConfigSchemaObjectsCeiling = 1_270
 
 func TestModelsConfigSchemaSharesPiConstants(t *testing.T) {
 	objects := testing.AllocsPerRun(10, func() { ModelsConfigSchema() })

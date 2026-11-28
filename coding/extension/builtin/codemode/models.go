@@ -226,15 +226,29 @@ func (r *run) modelGlobals(models modelRuntime) []sandbox.Tool {
 		},
 		"models.generateImages": func(ctx context.Context, args []json.RawMessage) (any, error) {
 			var request ai.ImagesContext
+			var rawOptions json.RawMessage
+			if len(args) > 2 {
+				rawOptions = args[2]
+			}
+			var imageOpts *codemodeImagesOptions
 			result, err := runModelCall("models.generateImages", ai.ModelTypeImage, args, func(context json.RawMessage) error {
 				if err := checkImagesContext(context); err != nil {
 					return err
+				}
+				var optErr error
+				imageOpts, optErr = checkImagesOptions(rawOptions)
+				if optErr != nil {
+					return optErr
 				}
 				request = imagesContextOf(context)
 				return nil
 			}, func(resolved ai.AnyModel) modelCallResult {
 				image, _ := resolved.(*ai.ImageModel)
-				generated := models.GenerateImages(ctx, image, request)
+				var callOpts []ai.ModelsImagesOptions
+				if imageOpts != nil {
+					callOpts = []ai.ModelsImagesOptions{{AspectRatio: imageOpts.AspectRatio, Size: imageOpts.Size}}
+				}
+				generated := models.GenerateImages(ctx, image, request, callOpts...)
 				count := 0
 				for _, block := range generated.Output {
 					if _, ok := block.(ai.ImageContent); ok {

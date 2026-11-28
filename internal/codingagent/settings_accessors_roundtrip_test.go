@@ -60,7 +60,6 @@ func TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent(t *testing.T) {
 	expectSetting(t, "default NpmCommand", empty.GetNpmCommand(), []string(nil))
 	expectSetting(t, "default CollapseChangelog", empty.GetCollapseChangelog(), false)
 	expectSetting(t, "default Notices.CacheMisses", empty.GetNotices().CacheMisses, false)
-	expectSetting(t, "default EnableInstallTelemetry", empty.GetEnableInstallTelemetry(), true)
 	expectSetting(t, "default TrackingID", empty.GetTrackingID(), "")
 	expectSetting(t, "default SkillPaths", empty.GetSkillPaths(), []string{})
 	expectSetting(t, "default PromptTemplatePaths", empty.GetPromptTemplatePaths(), []string{})
@@ -95,7 +94,7 @@ func TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent(t *testing.T) {
 	set, _, _ := settingsAccessorsManager(t, `{
 	  "lastChangelogVersion":"1.2.3","defaultProvider":"prov","defaultThinkingLevel":"high","transport":"sse",
 	  "steeringMode":"all","followUpMode":"all","hideThinkingBlock":true,"quietStartup":"header","npmCommand":["pnpm","x"],
-	  "collapseChangelog":true,"showCacheMissNotices":true,"enableInstallTelemetry":false,"trackingId":"track-1",
+	  "collapseChangelog":true,"showCacheMissNotices":true,"trackingId":"track-1",
 	  "skills":["s1"],"prompts":["p1"],"themes":["t1"],"enableSkillCommands":false,
 	  "terminal":{"showImages":false,"imageWidthCells":40,"clearOnShrink":true,"showTerminalProgress":true},
 	  "images":{"autoResize":false,"blockImages":true},
@@ -115,7 +114,6 @@ func TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent(t *testing.T) {
 	expectSetting(t, "NpmCommand", set.GetNpmCommand(), []string{"pnpm", "x"})
 	expectSetting(t, "CollapseChangelog", set.GetCollapseChangelog(), true)
 	expectSetting(t, "Notices.CacheMisses", set.GetNotices().CacheMisses, true)
-	expectSetting(t, "EnableInstallTelemetry", set.GetEnableInstallTelemetry(), false)
 	expectSetting(t, "TrackingID", set.GetTrackingID(), "track-1")
 	expectSetting(t, "SkillPaths", set.GetSkillPaths(), []string{"s1"})
 	expectSetting(t, "PromptTemplatePaths", set.GetPromptTemplatePaths(), []string{"p1"})
@@ -175,7 +173,6 @@ func TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack(t *testing
 	must(manager.SetDefaultProjectTrust(DefaultProjectTrustAlways))
 	must(manager.SetDoubleEscapeAction("fork"))
 	must(manager.SetEnableAnalytics(true))
-	must(manager.SetEnableInstallTelemetry(false))
 	must(manager.SetEnableSkillCommands(false))
 	must(manager.SetHideThinkingBlock(true))
 	must(manager.SetHttpIdleTimeoutMs(4000))
@@ -200,7 +197,7 @@ func TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack(t *testing
 	file := settingsAccessorsFile(t, global)
 	for key, want := range map[string]any{
 		"defaultProvider": "prov", "defaultModel": "mod", "defaultProjectTrust": "always", "doubleEscapeAction": "fork",
-		"enableAnalytics": true, "enableInstallTelemetry": false, "enableSkillCommands": false, "hideThinkingBlock": true,
+		"enableAnalytics": true, "enableSkillCommands": false, "hideThinkingBlock": true,
 		"httpIdleTimeoutMs": float64(4000), "collapseChangelog": true, "autocompleteMaxVisible": float64(20),
 		"modelThinkingLevels": map[string]any{"p/m": "high"}, "prompts": []any{"p1"}, "skills": []any{"s1"}, "themes": []any{"t1"},
 		"notices": map[string]any{"cacheMisses": true}, "quietStartup": true, "showHardwareCursor": true, "treeFilterMode": "labeled-only",
@@ -222,7 +219,6 @@ func TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack(t *testing
 	expectSetting(t, "reloaded DefaultProjectTrust", reloaded.GetDefaultProjectTrust(), DefaultProjectTrustAlways)
 	expectSetting(t, "reloaded DoubleEscapeAction", reloaded.GetDoubleEscapeAction(), "fork")
 	expectSetting(t, "reloaded TrackingID", reloaded.GetTrackingID(), file["trackingId"])
-	expectSetting(t, "reloaded EnableInstallTelemetry", reloaded.GetEnableInstallTelemetry(), false)
 	expectSetting(t, "reloaded AutocompleteMaxVisible", reloaded.GetAutocompleteMaxVisible(), 20)
 	expectSetting(t, "reloaded ModelThinkingLevel", reloaded.GetModelThinkingLevel("p", "m"), ai.ThinkingLevel("high"))
 	expectSetting(t, "reloaded TreeFilterMode", reloaded.GetTreeFilterMode(), "labeled-only")

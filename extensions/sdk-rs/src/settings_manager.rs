@@ -597,17 +597,6 @@ impl SettingsManager {
             .map(|_| ())
     }
 
-    pub fn get_enable_install_telemetry(&self) -> io::Result<bool> {
-        let value = self.object.call("getEnableInstallTelemetry", vec![])?;
-        Ok(value.as_bool().unwrap_or(false))
-    }
-
-    pub fn set_enable_install_telemetry(&self, enabled: bool) -> io::Result<()> {
-        self.object
-            .call("setEnableInstallTelemetry", vec![json!(enabled)])
-            .map(|_| ())
-    }
-
     pub fn get_enable_analytics(&self) -> io::Result<bool> {
         let value = self.object.call("getEnableAnalytics", vec![])?;
         Ok(value.as_bool().unwrap_or(false))

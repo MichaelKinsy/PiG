@@ -44,7 +44,6 @@ type lessSwap struct {
 	Swap func(i, j int)
 }
 
-
 // insertionSort_func sorts data[a:b] using insertion sort.
 func insertionSort_func(data lessSwap, a, b int) {
 	for i := a + 1; i < b; i++ {

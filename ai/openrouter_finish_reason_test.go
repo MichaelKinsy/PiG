@@ -6,6 +6,7 @@ import (
 	"testing"
 )
 
+// pi: packages/ai/src/utils/openrouter-finish-reason.ts
 // Port of Pi main ddf5868d2866394b6b90109ea7151812d85019d5 and 9b911b409c8fcc6e6232ab37a3ffc512331852f1 (#11931, #12407).
 func TestOpenRouterNativeFinishReason(t *testing.T) {
 	check := func(t *testing.T, newProvider func() Provider, chunks []string, assertFn func(t *testing.T, msg *AssistantMessage)) {

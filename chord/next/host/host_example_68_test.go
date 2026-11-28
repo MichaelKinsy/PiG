@@ -55,10 +55,10 @@ func (c *ex68Counted) get(kind string) int {
 
 func TestExample68SharedHolds(t *testing.T) {
 	// A counter on the server: its count, and a method that adds one.
-	counter := exRemote("example.shared-counter", contracts.Params{}, exServerAddress, contracts.Var("v", contracts.VariantDeclaration{
-		State:   []contracts.Property{exProp("count", exInt())},
-		Methods: []contracts.MethodEntry{contracts.Meth("bump", contracts.NewMethod())},
-	}))
+	counter := exRemote("example.shared-counter", contracts.Params{}, exServerAddress, contracts.RemoteDeclaration{
+		State:   []contracts.RemoteStateEntry{contracts.StateEntry("count", exInt())},
+		Methods: []contracts.RemoteMethodEntry{contracts.Meth("bump", contracts.NewMethod())},
+	})
 	count := exDefineState("count", documents.StateOptions{
 		Schema: exObj(exProp("n", exInt())), Initial: func() *delta.JsonObject { return jsonObject("n", 0.0) },
 	})
@@ -68,7 +68,7 @@ func TestExample68SharedHolds(t *testing.T) {
 	errs := &hostErrors{}
 	server := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), Telemetry: recorder, OnError: errs.push})
 	mustLoad(t)(server.Load([]HostFacet{{Name: "@example/counter", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
-		return host.Serve(counter, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return host.Serve(counter, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			doc := stateOf(self, count)
 			return exVariant("v", map[string]chord.Watchable[delta.JsonValue]{
 				"count": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) {

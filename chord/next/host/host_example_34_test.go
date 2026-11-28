@@ -20,12 +20,12 @@ import (
 
 func TestExample34Versions(t *testing.T) {
 	// The shared contract, as every plugin bundles it: v1, then v2 where a note gained a tag.
-	notesV1 := exRemote("example.notes", contracts.Params{}, exServerAddress, contracts.Var("editor", contracts.VariantDeclaration{
-		State:   []contracts.Property{exProp("notes", exArr(exStr()))},
-		Methods: []contracts.MethodEntry{contracts.Meth("add", contracts.NewMethod(exObj(exProp("text", exStr())), exInt()))},
-	}))
+	notesV1 := exRemote("example.notes", contracts.Params{}, exServerAddress, contracts.RemoteDeclaration{
+		State:   []contracts.RemoteStateEntry{contracts.StateEntry("notes", exArr(exStr()))},
+		Methods: []contracts.RemoteMethodEntry{contracts.Meth("add", contracts.NewMethod(exObj(exProp("text", exStr())), exInt()))},
+	})
 	notesV2, err := contracts.Evolve(notesV1, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
-		return e.State("editor", "notes", exArr(exObj(exProp("text", exStr()), exProp("tag", exStr())))).
+		return e.State("notes", exArr(exObj(exProp("text", exStr()), exProp("tag", exStr())))).
 			Method("add", exObj(exProp("text", exStr()), exProp("tag", exStr())), exObj(exProp("count", exInt())))
 	})
 	must(t, err)
@@ -40,7 +40,7 @@ func TestExample34Versions(t *testing.T) {
 	// The server's notes plugin at v2: what a v1 consumer sees is the provider's `accepts[1]`.
 	serveV2 := func(h FacetHost, _ FacetSelf) error {
 		accepts := contracts.AcceptsTable{{Name: "1", Value: contracts.VersionMappings{
-			VariantState: []contracts.Entry[[]contracts.Entry[contracts.StateMapping]]{{Name: "editor", Value: []contracts.Entry[contracts.StateMapping]{{Name: "notes", Value: contracts.StateMapping{
+			State: []contracts.Entry[contracts.StateMapping]{{Name: "notes", Value: contracts.StateMapping{
 				Func: func(current delta.JsonValue) (delta.JsonValue, error) {
 					texts := []any{}
 					for _, note := range current.([]any) {
@@ -48,7 +48,7 @@ func TestExample34Versions(t *testing.T) {
 					}
 					return texts, nil
 				},
-			}}}}},
+			}}},
 			Methods: []contracts.Entry[contracts.MethodMapping]{{Name: "add", Value: contracts.MethodMapping{
 				Args: func(old delta.JsonValue) (delta.JsonValue, error) {
 					return jsonObject("text", old.(*delta.JsonObject).Value("text"), "tag", "untagged"), nil
@@ -58,7 +58,7 @@ func TestExample34Versions(t *testing.T) {
 				},
 			}}},
 		}}}
-		return h.Serve(notesV2, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return h.Serve(notesV2, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			doc := stateOf(self, list)
 			return exVariant("editor", map[string]chord.Watchable[delta.JsonValue]{
 				"notes": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) {
@@ -76,7 +76,7 @@ func TestExample34Versions(t *testing.T) {
 	}
 	// The server's notes plugin at v1.
 	serveV1 := func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(notesV1, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return h.Serve(notesV1, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			doc := stateOf(self, list)
 			return exVariant("editor", map[string]chord.Watchable[delta.JsonValue]{
 				"notes": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) {
@@ -167,7 +167,7 @@ func TestExample34Versions(t *testing.T) {
 	// The exports plugin with `job` (v1 or v2): its `run` waits for `release` once, its `finish` records the outcome.
 	exportsPlugin := func(code string, job *JobDefinition) Facet {
 		return DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(exports, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(exports, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				handle := self.Job(job, JobImplementation{
 					Run: func(args any, ctx JobCtx) (any, error) {
 						if _, err := chordctx.Receive(ctx, release); err != nil {

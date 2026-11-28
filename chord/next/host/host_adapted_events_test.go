@@ -62,15 +62,15 @@ func newAdaptedTicker(t *testing.T, mapping contracts.Mapping) *adaptedTicker {
 	made.Host = newHost(t, HostOptions{OnError: made.Errors.push})
 	eventMapping := contracts.EventMapping{Func: mapping, Refuse: mapping == nil}
 	_, err := made.Host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(adaptedTickerV2, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(adaptedTickerV2, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			ticks := self.Events()
 			made.mu.Lock()
 			made.sources = append(made.sources, ticks)
 			made.selves = append(made.selves, self)
 			made.mu.Unlock()
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				Events: map[string]contracts.EventMember[delta.JsonValue]{"ticks": ticks, "extra": self.Events()},
-			}}, nil
+			}, nil
 		}, ServeOptions{Accepts: contracts.AcceptsTable{{Name: "1", Value: contracts.VersionMappings{
 			Events: []contracts.Entry[contracts.EventMapping]{{Name: "ticks", Value: eventMapping}},
 		}}}})
@@ -179,14 +179,14 @@ func TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedO
 	var beats []contracts.EventSource[delta.JsonValue]
 	host := newHost(t, HostOptions{OnError: func(HostError) {}})
 	_, err = host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(pulseV2, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(pulseV2, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			beat := self.Events()
 			mu.Lock()
 			beats = append(beats, beat)
 			mu.Unlock()
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				Events: map[string]contracts.EventMember[delta.JsonValue]{"beat": beat},
-			}}, nil
+			}, nil
 		}, ServeOptions{Accepts: contracts.AcceptsTable{{Name: "1", Value: contracts.VersionMappings{}}}})
 	})}}, background)
 	must(t, err)

@@ -40,6 +40,16 @@ var githubCopilotEagerToolInputStreamingUnsupportedModelIDs = map[string]bool{
 	"claude-sonnet-4.5": true,
 }
 
+// Copilot-served Responses models outside OpenAI's verified list that follow a developer message sent
+// mid-conversation and keep the prompt cache with it; folded into the leading prompt, the flash models
+// and gpt-5.3-codex ignored it (#12316, checked 2026-11-25).
+var githubCopilotMidConvoSystemMessageModelIDs = map[string]bool{
+	"gpt-5.3-codex":      true,
+	"mai-code-1.1-flash": true,
+	"mai-code-2":         true,
+	"mai-code-2-flash":   true,
+}
+
 // Checked manually against the authenticated GitHub Copilot /models endpoint on 2026-06-15.
 // Keep this to narrow corrections over models.dev metadata instead of snapshotting Copilot's catalog.
 func githubCopilotThinkingLevelOverride(modelID string) *Obj {
@@ -177,11 +187,18 @@ func githubCopilot() ProviderDefinition {
 				MergeThinking(model, override)
 			}
 			if model.Str("api") == "anthropic-messages" {
-				// Copilot forwards mid-conversation system messages but rejects
-				// `tool_addition`/`tool_removal` blocks, so tool changes stay top-level.
-				if SupportsClaudeMidConvoSystemMessages(id) {
-					MergeCompat(model, O("supportsMidConvoSystemMessages", true))
+				// Copilot forwards per-message `output_config` effort, mid-conversation system messages, and
+				// `tool_addition`/`tool_removal` blocks with their betas (#12316, checked 2026-11-23 on
+				// Opus, Sonnet, and Haiku 5.5).
+				if SupportsClaudeMidConvoEffort(id) {
+					EnableClaudeMidConvoEffort(model)
 				}
+				if SupportsClaudeMidConvoChanges(id) {
+					MergeCompat(model, O("supportsMidConvoSystemMessages", true, "supportsMidConvoToolChanges", true))
+				}
+				// Copilot keeps Anthropic's cache lifetimes: a default entry was hit after 270 s and missed
+				// after 330 s, a `ttl: "1h"` entry was hit after 420 s (#12316, checked 2026-11-23).
+				model.Set("promptCache", O("short", 300, "long", 3600))
 				if githubCopilotEagerToolInputStreamingUnsupportedModelIDs[id] {
 					MergeCompat(model, O("supportsEagerToolInputStreaming", false))
 				}
@@ -193,7 +210,15 @@ func githubCopilot() ProviderDefinition {
 			// Copilot passes mid-conversation developer messages and `additional_tools`
 			// through to OpenAI unchanged; tool search is not verified through it.
 			EnableOpenAIMidConvoSystemMessages(model, true)
+			if model.Str("api") == "openai-responses" && githubCopilotMidConvoSystemMessageModelIDs[id] {
+				MergeCompat(model, O("supportsMidConvoSystemMessages", true))
+			}
 			EnableOpenAIGrammarTools(model)
+			// Copilot applies `configuration_update` effort items and keeps the prompt cache across
+			// effort changes, which a changed `reasoning.effort` drops (#12316, checked 2026-11-23).
+			if model.Str("api") == "openai-responses" && OpenAIMidConvoEffortModelIDs[id] {
+				MergeCompat(model, O("supportsMidConvoEffort", true))
+			}
 		},
 	}
 }

@@ -570,9 +570,9 @@ func TestBuildMakesTheSameScriptsAsPisBuildFacetForTheFixtures(t *testing.T) {
 		digest string
 		length int
 	}{
-		{"@test/files", "worker"}: {"6a76b7e834b8e1c1e467391c1825087a0cfc0d7fcabf6e122c25b9aba016e902", 2475},
-		{"@test/notes", "server"}: {"ec32aefe6f7925a78b7270f8acc8e5658594b83c9ed7101dd295bb56b5398279", 2207},
-		{"@test/notes", "worker"}: {"d512b27c88da03587a0aaddd928fd3d72314a2bd0fd413864b9d6f5205c06969", 3033},
+		{"@test/files", "worker"}: {"abc2629b54f134fedb2175c9aa3a8af0248a8c8f5f32c843018ccfb11bb298fb", 2417},
+		{"@test/notes", "server"}: {"784707cfed7697568f9e2f80d31947886e3e77b2e61a379812107cdc68f895ca", 2153},
+		{"@test/notes", "worker"}: {"6549c0dca6a9cf68a03ef0bba1702629275695a23270c3b7e8ab4556e1bfbd69", 2918},
 	}
 	got := 0
 	for _, plugin := range discovery.Plugins {

@@ -2,7 +2,7 @@
 
 PiG reads these variables at startup. Each one has a setting or a default that covers the normal case, so set a variable only when you need to change PiG from outside its configuration: in a container, in CI, or while debugging.
 
-Variables named `PI_*` are read for compatibility with Pi 1.6.1 ([Pi's environment variable reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/environment-variables.md)). Directory variables use the spellings selected by `PIG_USE_PI_DIRS`; other paired variables accept both spellings. Provider credential variables, such as `ANTHROPIC_API_KEY`, are listed in [Providers](/docs/latest/providers) and in `pig --help`.
+Variables named `PI_*` are read for compatibility with Pi 1.7.0 ([Pi's environment variable reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/environment-variables.md)). Directory variables use the spellings selected by `PIG_USE_PI_DIRS`; other paired variables accept both spellings. Provider credential variables, such as `ANTHROPIC_API_KEY`, are listed in [Providers](/docs/latest/providers) and in `pig --help`.
 
 ## Location
 
@@ -66,7 +66,6 @@ One mistake to avoid: a shell that already has `PIG_CODING_AGENT_DIR` set keeps 
 | `PI_SHARE_GATEWAY_URL` | Artifact upload endpoint used only when you run `/share`. Default `https://pi-in-go.dev/v1/artifacts?visibility=unlisted&title=PiG+session`. PiG does not read Pi's `PI_SHARE_VIEWER_URL`, because `/share` uploads to PiG's own host (D64) |
 | `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY` | Proxy outbound HTTP requests. The `httpProxy` setting sets the first two when they are not set |
 | `PIG_TELEMETRY` / `PI_TELEMETRY` | Override the `enableInstallTelemetry` setting: `1`, `true` or `yes` enables it, anything else disables it. Gates the install/update ping to `https://pi-in-go.dev/api/report-install?version=<version>` (sent only after a fresh install or an update with new changelog entries) and the OpenRouter/NVIDIA/Cloudflare attribution headers. When both are set, `PIG_TELEMETRY` decides; `pig` passes the choice on as `PI_TELEMETRY` to its extension runtime and to every process it starts. `PIG_OFFLINE` or `PI_OFFLINE` also stops the ping regardless of this setting. |
-| `PIG_INSTALL_TELEMETRY_URL` | Overrides the install/update ping's destination URL. No upstream equivalent; tests use it to point at a local server instead of the network. |
 
 Set `PIG_OFFLINE` in CI. Without it, every run checks for updates and fails slowly when the network is blocked.
 

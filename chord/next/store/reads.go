@@ -55,6 +55,7 @@ type Reads struct {
 	watchers map[string][]*watcher
 	// offered are the open queries by who offers them (`QuerySpec.owner`): closed when that one retires.
 	offered map[any][]Retirable
+	index   *ReadIndex
 	// lifetime is the context every task of the index runs under (with its parent's): `Close` cancels it. tasks counts the
 	// tasks running, idle is closed when the last of them ended (nil while none runs), closed is that `Close` was called.
 	lifetime context.Context
@@ -74,6 +75,7 @@ func NewReads() *Reads {
 		held:     map[string]bool{},
 		watchers: map[string][]*watcher{},
 		offered:  map[any][]Retirable{},
+		index:    &ReadIndex{tables: map[string]*tableIndex{}, filings: map[*RegisteredRead]*readFiling{}},
 		lifetime: lifetime,
 		stop:     stop,
 	}
@@ -154,7 +156,6 @@ func (reads *Reads) isClosed() bool {
 // Add enters read under every table it uses: every commit writing one of them tests it from now on.
 func (reads *Reads) Add(read *RegisteredRead) {
 	reads.mu.Lock()
-	defer reads.mu.Unlock()
 	for _, use := range read.Plan.Uses {
 		on, found := reads.byTable[use.Table]
 		if !found {
@@ -164,12 +165,16 @@ func (reads *Reads) Add(read *RegisteredRead) {
 			reads.byTable[use.Table] = append(on, read)
 		}
 	}
+	idx := reads.index
+	reads.mu.Unlock()
+	if idx != nil {
+		idx.Add(read)
+	}
 }
 
 // Delete removes read: no commit runs it again.
 func (reads *Reads) Delete(read *RegisteredRead) {
 	reads.mu.Lock()
-	defer reads.mu.Unlock()
 	for _, use := range read.Plan.Uses {
 		on, found := reads.byTable[use.Table]
 		if !found {
@@ -181,6 +186,11 @@ func (reads *Reads) Delete(read *RegisteredRead) {
 		} else {
 			reads.byTable[use.Table] = on
 		}
+	}
+	idx := reads.index
+	reads.mu.Unlock()
+	if idx != nil {
+		idx.Delete(read)
 	}
 }
 
@@ -220,6 +230,55 @@ func (reads *Reads) Retire(owner any) {
 	for _, query := range queries {
 		query.Close()
 	}
+}
+
+// candidates returns the reads a step's changes to tables can concern (slice 15 §3), each with the writes its skip
+// test takes: an indexed read the writes it is a candidate of, any other every write. A bulk write concerns every read
+// of its table.
+func (reads *Reads) candidates(tables []string, changes []Change, step *Step) ([]*RegisteredRead, map[*RegisteredRead][]Change, error) {
+	chosen := map[*RegisteredRead][]Change{}
+	var order []*RegisteredRead
+	indexed := map[*RegisteredRead][]Change{}
+	var indexedOrder []*RegisteredRead
+	for _, table := range tables {
+		onTable := reads.On(table)
+		if len(onTable) == 0 {
+			continue
+		}
+		var written, keyed []Change
+		for _, ch := range changes {
+			if ch.Table == table {
+				written = append(written, ch)
+				if ch.Kind != ChangeBulk {
+					keyed = append(keyed, ch)
+				}
+			}
+		}
+		var every []*RegisteredRead
+		if len(keyed) == len(written) && reads.index != nil {
+			var err error
+			every, err = reads.index.Candidates(table, keyed, step, indexed, &indexedOrder)
+			if err != nil {
+				return nil, nil, err
+			}
+		} else {
+			every = onTable
+		}
+		for _, read := range every {
+			if _, seen := chosen[read]; !seen {
+				order = append(order, read)
+			}
+			chosen[read] = changes
+		}
+	}
+	// A read unindexed on another written table is tested against every write already.
+	for _, read := range indexedOrder {
+		if _, seen := chosen[read]; !seen {
+			order = append(order, read)
+			chosen[read] = indexed[read]
+		}
+	}
+	return order, chosen, nil
 }
 
 // On is the reads over table, if any (a snapshot, in the order they entered; nil when there is none).
@@ -480,25 +539,28 @@ func (refresh *ReadRefresh) run(step *Step) error {
 	defer refresh.mu.Unlock()
 	// A grouped commit that rolled back applies again alone (store.go): only the last application's runs count.
 	refresh.runs = refresh.runs[:0]
-	var chosen []*RegisteredRead
+	hasAny := false
 	for _, table := range refresh.tables {
-		for _, read := range refresh.reads.On(table) {
-			if !slices.Contains(chosen, read) {
-				chosen = append(chosen, read)
-			}
+		if len(refresh.reads.On(table)) > 0 {
+			hasAny = true
+			break
 		}
 	}
-	if len(chosen) == 0 {
+	if !hasAny {
 		return nil
 	}
 	changes := refresh.changes()
+	chosenOrder, chosenChanges, err := refresh.reads.candidates(refresh.tables, changes, step)
+	if err != nil {
+		return err
+	}
 	metrics := chordctx.Telemetry(refresh.ctx).Metrics()
-	for _, read := range chosen {
+	for _, read := range chosenOrder {
 		// Held: a table it reads is being created or migrated; it runs once when the table is ready.
 		if slices.ContainsFunc(read.Plan.Uses, func(use Use) bool { return refresh.reads.IsHeld(use.Table) }) {
 			continue
 		}
-		skipped, err := Skips(read, changes, step, refresh.ctx)
+		skipped, err := Skips(read, chosenChanges[read], step, refresh.ctx)
 		if err != nil {
 			return err
 		}

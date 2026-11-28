@@ -496,16 +496,16 @@ func (o *chordObject) holders() []holder {
 	return o.holderList
 }
 
-// variant is the variant a live remote object's factory chose (a restart's open old attempt's meanwhile); not bound for a
-// local object and before it is live.
-func (o *chordObject) variant() (string, bool) {
+// granted is the set of names granted to its live attempt (a restart's open old attempt's meanwhile);
+// contracts.NoGrants for a local object, before it is live, or while denied.
+func (o *chordObject) granted() map[string]bool {
 	if o.phase.kind == objectLive {
-		return o.phase.attempt.variantName()
+		return o.phase.attempt.grantedSet()
 	}
 	if old := o.openOldAttempt(); old != nil {
-		return old.variantName()
+		return old.grantedSet()
 	}
-	return "", false
+	return contracts.NoGrants
 }
 
 // stateMembers are the live object's state members, as Chord follows them.
@@ -834,7 +834,11 @@ func (o *chordObject) listMemory(name string) *ListMemory {
 }
 
 // queryMember is the named query `name` of queries member `member` of the live object (slice 14 §3.1).
-func (o *chordObject) queryMember(member, name string) (*OwnQuery, error) {
+func (o *chordObject) queryMember(member, name string, contract *contracts.Contract) (*OwnQuery, error) {
+	// A restart's old attempt serves no query to a version it does not serve (stateFor): it waits for the successor.
+	if o.phase.kind == objectActivating && contract != nil && !o.oldServes(contract.Version, contract.Fingerprint) {
+		return nil, data.NewChordError(data.ChordErrorInit{Code: data.CodeNotReady, Message: o.text + ": not live yet"}, nil)
+	}
 	live, err := o.live()
 	if err != nil {
 		return nil, err
@@ -1585,7 +1589,7 @@ func (o *chordObject) unfit(h holder, a *attempt) *data.ChordError {
 		return nil
 	}
 	if data.Binds(provider, consumer.version, consumer.fingerprint) {
-		return refusal(o.served, consumer.version, a.variant)
+		return refusal(o.served, consumer.version)
 	}
 	return notServedHere(contract, consumer.version)
 }

@@ -71,22 +71,24 @@ func membersLocal(t *testing.T, name string, params contracts.Params, members ..
 	return contract
 }
 
-func membersRemote(t *testing.T, name string, variants ...contracts.VariantEntry) *contracts.Contract {
+func membersRemote(t *testing.T, name string, decl contracts.RemoteDeclaration) *contracts.Contract {
 	t.Helper()
-	contract, err := contracts.Remote(name, contracts.RemoteDeclaration{
-		Version:     1,
-		Params:      contracts.Params{},
-		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return contracts.Address{}, nil },
-		Variants:    variants,
-	})
+	decl.Version = 1
+	decl.Params = contracts.Params{}
+	decl.HostAddress = func(*delta.JsonObject) (contracts.Address, error) { return contracts.Address{}, nil }
+	contract, err := contracts.Remote(name, decl)
 	if err != nil {
 		t.Fatalf("declare %s: %v", name, err)
 	}
 	return contract
 }
 
-func membersCheck(contract *contracts.Contract, result factoryResult) (*string, *members, error) {
-	return checkImplementation(contract, result, nil)
+func membersCheck(contract *contracts.Contract, impl implementation, granted ...map[string]bool) (*members, error) {
+	g := contracts.NoGrants
+	if len(granted) > 0 && granted[0] != nil {
+		g = granted[0]
+	}
+	return checkImplementation(contract, impl, nil, g)
 }
 
 func wantMembersError(t *testing.T, err error, want string) {
@@ -109,11 +111,11 @@ func (membersOwner) AssertUsable() error      { return nil }
 // Go form: the implementation lists only the members it owns.) The host adds the object's label to the error.
 func TestMemberCheckRefusesAMethodTheImplementationDoesNotOwn(t *testing.T) {
 	named := membersLocal(t, "app.named", contracts.Params{}, contracts.Mem("toString", contracts.NewMethod()))
-	_, _, err := membersCheck(named, factoryResult{})
+	_, err := membersCheck(named, nil)
 	wantMembersError(t, err, "toString: a method is a function")
 	// A nil function is no function either.
 	var none contracts.MethodFunction
-	_, _, err = membersCheck(named, factoryResult{members: implementation{{name: "toString", value: none}}})
+	_, err = membersCheck(named, implementation{{name: "toString", value: none}})
 	wantMembersError(t, err, "toString: a method is a function")
 }
 
@@ -199,9 +201,9 @@ func TestCheckImplementationChecksALocalContractsMembersAsGiven(t *testing.T) {
 	good := implementation{
 		{"notes", notes}, {"list", list}, {"count", count}, {"add", membersPlainMethod},
 	}
-	variant, checked, err := membersCheck(store, factoryResult{members: good})
-	if err != nil || variant != nil {
-		t.Fatalf("check = %v, %v, want no variant and no error", variant, err)
+	checked, err := membersCheck(store, good)
+	if err != nil {
+		t.Fatalf("check = %v, want no error", err)
 	}
 	expectEqual(t, "methods", checked.methods.Keys(), []string{"add"})
 	expectEqual(t, "state", checked.state.Keys(), []string{"count", "list"})
@@ -216,7 +218,7 @@ func TestCheckImplementationChecksALocalContractsMembersAsGiven(t *testing.T) {
 	}
 	// The same function typed as a plain function value is a method too.
 	plain := func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil }
-	if _, _, err := membersCheck(store, factoryResult{members: implementation{{"notes", notes}, {"list", list}, {"count", count}, {"add", plain}}}); err != nil {
+	if _, err := membersCheck(store, implementation{{"notes", notes}, {"list", list}, {"count", count}, {"add", plain}}); err != nil {
 		t.Fatalf("a plain function value: %v", err)
 	}
 
@@ -234,7 +236,7 @@ func TestCheckImplementationChecksALocalContractsMembersAsGiven(t *testing.T) {
 		{"a state getter of a reference that never bound (its reads fail, resolving does not)", implementation{{"notes", notes}, {"list", list}, {"count", membersHeld(t).Member("n")}, {"add", membersPlainMethod}}, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, _, err := membersCheck(store, factoryResult{members: tc.members})
+			_, err := membersCheck(store, tc.members)
 			if tc.want == "" {
 				if err != nil {
 					t.Fatalf("check = %v, want a never-bound reference's member accepted", err)
@@ -248,23 +250,23 @@ func TestCheckImplementationChecksALocalContractsMembersAsGiven(t *testing.T) {
 
 // Own test of checkImplementation (members.ts): a remote factory returns `{ variant, members }` naming one of the
 // contract's current variants; the members are checked against that variant's.
-func TestCheckImplementationChecksARemoteContractsVariant(t *testing.T) {
-	two := membersRemote(t, "app.two",
-		contracts.Var("full", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("n", contracts.Int())}}),
-		contracts.Var("view", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("m", contracts.Int())}}),
-	)
-	full, view := "full", "view"
-	variant, checked, err := membersCheck(two, factoryResult{variant: &view, members: implementation{{"m", state.NewConstant(float64(2))}}})
-	if err != nil || *variant != "view" || checked.state.Keys()[0] != "m" {
-		t.Fatalf("view = %v, %v, %v", variant, checked, err)
+func TestCheckImplementationChecksARemoteContractsGrantedMembers(t *testing.T) {
+	two := membersRemote(t, "app.two", contracts.RemoteDeclaration{
+		State: []contracts.RemoteStateEntry{
+			contracts.StateEntry("m", contracts.Int()),
+			contracts.StateEntry("n", contracts.NewGrantable(contracts.Int())),
+		},
+	})
+	checked, err := membersCheck(two, implementation{{"m", state.NewConstant(float64(2))}})
+	if err != nil || len(checked.state.Keys()) != 1 || checked.state.Keys()[0] != "m" {
+		t.Fatalf("plain = %v, %v", checked, err)
 	}
-	_, _, err = membersCheck(two, factoryResult{variant: &full, members: implementation{{"m", state.NewConstant(float64(2))}}})
-	wantMembersError(t, err, "m: not a member")
-	unknown := `we"ird`
-	_, _, err = membersCheck(two, factoryResult{variant: &unknown})
-	wantMembersError(t, err, `variant "we\"ird": not a variant of app.two`)
-	_, _, err = membersCheck(two, factoryResult{})
-	wantMembersError(t, err, "variant undefined: not a variant of app.two")
+	_, err = membersCheck(two, implementation{{"m", state.NewConstant(float64(2))}, {"n", state.NewConstant(float64(1))}})
+	wantMembersError(t, err, "n: not a member")
+	checked, err = membersCheck(two, implementation{{"m", state.NewConstant(float64(2))}, {"n", state.NewConstant(float64(1))}}, map[string]bool{"n": true})
+	if err != nil || len(checked.state.Keys()) != 2 {
+		t.Fatalf("granted = %v, %v", checked, err)
+	}
 }
 
 // Own test of contributionOf and its content (members.ts): a Chord watchable is followed, a native source is followed, any
@@ -324,8 +326,8 @@ func TestHostGetRefusesAnInheritedPropertyForAMember(t *testing.T) {
 	}))
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
 		// Pi's `{}`: no own member, whatever the prototype has.
-		return h.Serve(named, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{}, nil
+		return h.Serve(named, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	_, err := host.Get(background, named, jsonObject("id", float64(1)), GetOptions{})
@@ -343,7 +345,7 @@ func TestHostGetNamesADeriveInErrorsByItsMemberWhenExposedElseByItsPosition(t *t
 	}))
 	bad := struct{ value int }{1}
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(named, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(named, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			compute := func(value float64) func([]any) (delta.JsonValue, error) {
 				return func([]any) (delta.JsonValue, error) { return value, nil }
 			}
@@ -356,9 +358,9 @@ func TestHostGetNamesADeriveInErrorsByItsMemberWhenExposedElseByItsPosition(t *t
 				inner = self.Derive([]any{bad}, compute(1))
 				label = self.Derive([]any{inner}, compute(2))
 			}
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"label": label},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	for _, tc := range []struct {
@@ -395,9 +397,9 @@ var (
 // factory; strings refused.
 func TestHostKeyedKeyedMembersAreReadByAddressThroughAReferencePinnedByAtAddressInAnotherFactoryStringsRefused(t *testing.T) {
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(hkStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(hkStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			meta := self.State(hkMeta).(*documents.Keyed)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				Keyed: map[string]contracts.KeyedWatchable[delta.JsonValue]{"meta": ExposeKeyed(meta)},
 				Methods: map[string]contracts.MethodFunction{
 					"set": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
@@ -407,15 +409,15 @@ func TestHostKeyedKeyedMembersAreReadByAddressThroughAReferencePinnedByAtAddress
 						return nil, err
 					}),
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(hkView, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(hkView, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			at, err := self.Get(hkStore, jsonObject()).Keyed("meta").At(Session.Address(jsonObject("id", exParam(params, "id"))))
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"meta": Expose(at)},
-			}}, err
+			}, err
 		}, ServeOptions{})
 	}, loadedOptions{})
 	defer closeHosts(t, host)
@@ -442,11 +444,11 @@ func TestHostKeyedKeyedMembersAreReadByAddressThroughAReferencePinnedByAtAddress
 // members.test.ts › host-keyed keyed members › refuse a handle keyed otherwise.
 func TestHostKeyedKeyedMembersRefuseAHandleKeyedOtherwise(t *testing.T) {
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(hkStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+		return h.Serve(hkStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				Keyed:   map[string]contracts.KeyedWatchable[delta.JsonValue]{"meta": ExposeKeyed(self.State(hkPlain))},
 				Methods: map[string]contracts.MethodFunction{"set": membersPlainMethod},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	defer closeHosts(t, host)

@@ -499,6 +499,12 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 		startupRegistrationRefreshReady.Store(true)
 	}
 	services.ModelRuntime().Refresh(ctx, ai.ModelsRefreshOptions{AllowNetwork: new(false)})
+	// Pi v1.7.0 (agent-session-services.ts:195-200): report models.json load errors as a warning diagnostic
+	// so the runtime keeps working without the file's models and CLI modes/metadata commands report it once.
+	var modelsJSONDiagnostics []codingagent.AgentSessionRuntimeDiagnostic
+	if modelsJSONError := services.ModelRuntime().GetError(); modelsJSONError != "" {
+		modelsJSONDiagnostics = append(modelsJSONDiagnostics, codingagent.AgentSessionRuntimeDiagnostic{Type: "warning", Message: "models.json error: " + modelsJSONError})
+	}
 	if b.mode == appModeInteractive {
 		// Upstream /reload rediscovers extensions even when none loaded at
 		// startup, so interactive mode keeps a reload-capable host.
@@ -578,7 +584,7 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	conflicts := codingagent.DetectExtensionConflicts(build.Extensions)
 	extensionWarnings := mergeExtensionWarnings(packageWarnings, replacementWarnings)
 	build.ExtensionWarnings = toCodingAgentWarnings(extensionWarnings)
-	build.ExtensionDiagnostics = slices.Concat(sdkDiagnostics, build.PreTrustExtensionDiagnostics, registrationDiagnostics, flagDiagnostics, extensionLoadDiagnostics(withUpgradeHints(extensionLoadErrs, build.SDKDrift)), extensionErrorDiagnostics(builtinErrs), extensionConflictDiagnostics(conflicts), staleCopyDiagnostics(codingagent.DetectToolConflicts(build.Extensions), finalExtConfigs), extensionWarningDiagnostics(extensionWarnings))
+	build.ExtensionDiagnostics = slices.Concat(sdkDiagnostics, build.PreTrustExtensionDiagnostics, registrationDiagnostics, modelsJSONDiagnostics, flagDiagnostics, extensionLoadDiagnostics(withUpgradeHints(extensionLoadErrs, build.SDKDrift)), extensionErrorDiagnostics(builtinErrs), extensionConflictDiagnostics(conflicts), staleCopyDiagnostics(codingagent.DetectToolConflicts(build.Extensions), finalExtConfigs), extensionWarningDiagnostics(extensionWarnings))
 	trace.Mark("extensions-loaded")
 
 	build.Flags = flags

@@ -279,7 +279,7 @@ func (h configSelectorHeader) Render(width int) []string {
 	}
 	title := ChalkBold(titleText)
 	sep := t.Fg("muted", " · ")
-	hint := RawKeyHint("space", action) + sep + RawKeyHint("esc", "close")
+	hint := RawKeyHint("space", action) + sep + KeyHint(ActionKeyText(KBSelectCancel), "close")
 	if cs.projectModeAvailable {
 		hint = KeyHint(ActionKeyText(KBInputTab), "switch mode") + sep + hint
 	}

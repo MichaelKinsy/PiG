@@ -36,21 +36,21 @@ var (
 )
 
 // readsN is `{ n: self.get(Type, params).n }`: a state member `n` following another reference's.
-func readsN(self Self, typ *contracts.Contract, params *delta.JsonObject, member string) contracts.Implementation {
+func readsN(self Self, typ *contracts.Contract, params *delta.JsonObject, member string) contracts.MembersImplementation {
 	return readsAs(self, typ, params, member, "n")
 }
 
 // readsAs is `{ [as]: self.get(Type, params)[member] }`.
-func readsAs(self Self, typ *contracts.Contract, params *delta.JsonObject, member, as string) contracts.Implementation {
+func readsAs(self Self, typ *contracts.Contract, params *delta.JsonObject, member, as string) contracts.MembersImplementation {
 	n := self.Get(typ, params).Member(member)
-	return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+	return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 		as: self.Derive([]any{n}, func(values []any) (delta.JsonValue, error) { return values[0], nil }),
-	}}}
+	}}
 }
 
 // serveViewOfNotes serves View reading Notes `S1`'s `count`.
 func serveViewOfNotes(h FacetHost, _ FacetSelf) error {
-	return h.Serve(depView, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+	return h.Serve(depView, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 		return readsN(self, Notes, jsonObject("session", "S1"), "count"), nil
 	}, ServeOptions{})
 }
@@ -79,17 +79,17 @@ func TestTheDependencyCheckBreaksADependentOffACycleWithTheCyclesError(t *testin
 	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
 		for _, serve := range []func() error{
 			func() error {
-				return h.Serve(depPing, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+				return h.Serve(depPing, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 					return readsN(self, depPong, jsonObject(), "n"), nil
 				}, ServeOptions{})
 			},
 			func() error {
-				return h.Serve(depPong, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+				return h.Serve(depPong, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 					return readsN(self, depPing, jsonObject(), "n"), nil
 				}, ServeOptions{})
 			},
 			func() error {
-				return h.Serve(depView, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+				return h.Serve(depView, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 					return readsN(self, depPing, jsonObject(), "n"), nil
 				}, ServeOptions{})
 			},
@@ -150,14 +150,14 @@ func TestTheDependencyCheckGoesLiveOnceEveryDependencyIs(t *testing.T) {
 	defer closeHosts(t, client)
 	peer, ends := rawParentLinks(t, client)
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(depView, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(depView, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			a := self.Get(Notes, jsonObject("session", "S1")).Member("count")
 			b := self.Get(Notes, jsonObject("session", "S2")).Member("count")
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 				"n": self.Derive([]any{a, b}, func(values []any) (delta.JsonValue, error) {
 					return values[0].(float64) + values[1].(float64), nil
 				}),
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	})
 	mustLoad(t)(client.Load([]HostFacet{{Name: "@test/view", Facet: facet}}, background))
@@ -208,7 +208,7 @@ func TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound(t *testin
 		return mustContract(declareRemote(name, contracts.RemoteDeclaration{
 			Version:     1,
 			HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return address(), nil },
-			Variants:    []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("n", contracts.Int())}})},
+			State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 		}))
 	}
 	a := remoteN("app.a", func() contracts.Address { return Server.Address(nil) })
@@ -218,17 +218,16 @@ func TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound(t *testin
 	}
 	x, kick, front, back := localN("app.x"), localN("app.kick"), localN("app.front"), localN("app.back")
 	local := func(h FacetHost, typ *contracts.Contract, read *contracts.Contract) error {
-		return h.Serve(typ, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(typ, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			return readsN(self, read, jsonObject(), "n"), nil
 		}, ServeOptions{})
 	}
 	remoteImpl := func(h FacetHost, typ *contracts.Contract, deps ...*contracts.Contract) error {
-		return h.Serve(typ, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return h.Serve(typ, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			implementation := readsN(self, deps[0], jsonObject(), "n")
 			for _, dep := range deps[1:] {
 				self.Get(dep, jsonObject())
 			}
-			implementation.Variant = "v"
 			return implementation, nil
 		}, ServeOptions{})
 	}
@@ -290,7 +289,7 @@ var depMissing = mustContract(declareLocal("app.missing", contracts.LocalDeclara
 
 // serveViewOfMissing serves View reading Missing's `n`.
 func serveViewOfMissing(h FacetHost, _ FacetSelf) error {
-	return h.Serve(depView, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+	return h.Serve(depView, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 		return readsN(self, depMissing, jsonObject(), "n"), nil
 	}, ServeOptions{})
 }
@@ -333,14 +332,14 @@ func TestParkedLongNamesTheFirstBlockerInDeclarationOrderWithItsStateItsClockRun
 	client := newHost(t, HostOptions{ReadyTimeout: &ready, OnError: errs.push, loop: loop})
 	defer closeHosts(t, client)
 	mustLoad(t)(client.Load([]HostFacet{{Name: "@test/view", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(depView, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(depView, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			count := self.Get(Notes, jsonObject("session", "S1")).Member("count")
 			missing := self.Get(depMissing, jsonObject()).Member("n")
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 				"n": self.Derive([]any{count, missing}, func(values []any) (delta.JsonValue, error) {
 					return values[0].(float64) + values[1].(float64), nil
 				}),
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	})}}, background))
 	view := mustHold(t, client, depView, jsonObject("id", float64(1)))
@@ -362,7 +361,7 @@ func TestParkedLongKeepsDeclarationOrderAcrossRegistriesAndReferencesTheParkedCa
 	loop := newScopeLoop()
 	ready := time.Second
 	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(depView, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(depView, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			self.Registry(registries.Registry[any, any](missingRegistry))
 			return readsN(self, depMissing, jsonObject(), "n"), nil
 		}, ServeOptions{})
@@ -402,20 +401,20 @@ func TestParkedLongNamesAReferenceWhosePinnedKeyStillLoadsTheEpisodesClockInclud
 	t.Cleanup(gate.Release)
 	var memos atomic.Pointer[documents.Keyed]
 	facet := func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(keys, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(keys, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			notes := self.State(rows).(*documents.Keyed)
 			memos.Store(notes)
-			return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(notes)}}, nil
+			return contracts.MembersImplementation{Keyed: kmKeyed(notes)}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(depView, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(depView, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			row, err := self.Get(keys, jsonObject()).Keyed("notes").At("a")
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 				"n": self.Derive([]any{Expose(row)}, func(values []any) (delta.JsonValue, error) {
 					return values[0].(*delta.JsonObject).Value("n"), nil
 				}),
-			}}}, err
+			}}, err
 		}, ServeOptions{})
 	}
 	// The key is stored by an earlier host: the second one finds it cold, and its pin loads it from the store.

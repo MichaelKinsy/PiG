@@ -165,7 +165,7 @@ func b14ItemOf(id, title, state any, lastTouch int64) delta.JsonValue {
 
 func b14Facet() Facet {
 	return DefineFacet(func(host FacetHost, _ FacetSelf) error {
-		return host.Serve(b14Store, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+		return host.Serve(b14Store, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 			self := plain.(StoreSelf)
 			sessions, teams, shares, marks, notes := self.Table(b14SessionRows), self.Table(b14TeamRows), self.Table(b14ShareRows),
 				self.Table(b14MarkRows), self.Table(b14NoteRows)
@@ -285,7 +285,7 @@ func b14Facet() Facet {
 				_, err := self.Tx(func(tx documents.Tx) (any, error) { return nil, write(tx) }, ctx)
 				return nil, err
 			}
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				Queries: map[string]map[string]contracts.NamedQuery[delta.JsonValue, delta.JsonValue]{
 					"sessions": sessionsQueries, "teams": teamsQueries, "shares": sharesQueries, "marks": marksQueries, "notes": notesQueries,
 				},
@@ -334,7 +334,7 @@ func b14Facet() Facet {
 						})
 					}),
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})
 }
@@ -384,7 +384,7 @@ func b14Access(person, app string, teams []string) (rule, condition delta.JsonVa
 
 func b14ScreenFacet() Facet {
 	return DefineFacet(func(host FacetHost, _ FacetSelf) error {
-		return host.Serve(b14Screen, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return host.Serve(b14Screen, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			kind, person, app := params.Value("kind").(string), params.Value("person").(string), params.Value("app").(string)
 			arg := params.Value("arg").(string)
 			teams := []string{}
@@ -399,12 +399,12 @@ func b14ScreenFacet() Facet {
 			rule, condition := b14Access(person, app, teams)
 			none := exConstant(0.0)
 			nothing := exConstant(jsonObject("rows", []any{}, "more", false))
-			listed := func(query contracts.NamedQuery[delta.JsonValue, delta.JsonValue], args delta.JsonValue, count chord.Watchable[delta.JsonValue]) contracts.Implementation {
+			listed := func(query contracts.NamedQuery[delta.JsonValue, delta.JsonValue], args delta.JsonValue, count chord.Watchable[delta.JsonValue]) contracts.MembersImplementation {
 				list := self.List("rows", []ListSource{{Query: query, Args: args}}, ListOptions{First: b14Page})
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State:   map[string]chord.Watchable[delta.JsonValue]{"list": list.Value(), "one": nothing, "count": count},
 					Methods: map[string]contracts.MethodFunction{"more": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) { return nil, list.More(ctx) }},
-				}}
+				}
 			}
 			switch kind {
 			case "team":
@@ -429,15 +429,15 @@ func b14ScreenFacet() Facet {
 				// A worker following its session (`principal.kind === "worker"`: nothing is hidden from it).
 				all, err := store.Compile(b14SessionColumns, store.And())
 				if err != nil {
-					return contracts.Implementation{}, err
+					return contracts.MembersImplementation{}, err
 				}
 				one := self.LiveQuery(bench.Queries("sessions")["one"], jsonObject("id", arg, "condition", all.JSON()), 1)
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{
 						"list": exConstant(jsonObject("rows", []any{}, "moreAfter", false)), "one": one, "count": none,
 					},
 					Methods: map[string]contracts.MethodFunction{"more": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil }},
-				}}, nil
+				}, nil
 			}
 		}, ServeOptions{})
 	})
@@ -793,7 +793,7 @@ var (
 
 func b14SubagentsFacet() Facet {
 	return DefineFacet(func(host FacetHost, _ FacetSelf) error {
-		if err := host.Serve(b14Children, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+		if err := host.Serve(b14Children, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 			self := plain.(StoreSelf)
 			rows := self.Table(b14ChildRows)
 			children := self.Queries(rows, QueriesOptions{
@@ -809,7 +809,7 @@ func b14SubagentsFacet() Facet {
 						OrderBy(func(c, _ store.ColumnRefs) *store.ColumnRef { return c["lastTouch"] }, "desc")
 				}},
 			})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				Queries: map[string]map[string]contracts.NamedQuery[delta.JsonValue, delta.JsonValue]{"children": children},
 				Methods: map[string]contracts.MethodFunction{
 					"spawn": func(count delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -830,17 +830,17 @@ func b14SubagentsFacet() Facet {
 						return nil, err
 					}),
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return host.Serve(b14Subs, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return host.Serve(b14Subs, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			list := self.List("children", []ListSource{{Query: self.Get(b14Children, jsonObject()).Queries("children")["ofSession"], Args: jsonObject("session", "s")}},
 				ListOptions{First: b14Page})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State:   map[string]chord.Watchable[delta.JsonValue]{"list": list.Value()},
 				Methods: map[string]contracts.MethodFunction{"more": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) { return nil, list.More(ctx) }},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})
 }
@@ -942,9 +942,10 @@ func TestBenchSlice14Exact(t *testing.T) {
 		mix := b14Mixed(t, 1)
 		defer mix.close()
 		runs, probes, skips := b14Touched(mix, 400)
-		// Pi: `expectExactly("runs a touch causes", touch.runs, 9)` (:565), probes 101 (:566), skips `mix.reads - 9` (:567).
-		if runs != 9 || probes != 101 || skips != float64(mix.reads-9) {
-			t.Fatalf("a touch: %v runs, %v probes, %v skipped of %d reads, want 9, 101, %d", runs, probes, skips, mix.reads, mix.reads-9)
+		// Pi v1.7.0 slice-14.ts:565-569: the commit index (slice 15 §3) leaves out the 41 reads whose bucket the
+		// touched row is not in (another app's lists, other teams' pages): 9 runs, 79 probes, `mix.reads - 9 - 41` skips.
+		if runs != 9 || probes != 79 || skips != float64(mix.reads-9-41) {
+			t.Fatalf("a touch: %v runs, %v probes, %v skipped of %d reads, want 9, 79, %d", runs, probes, skips, mix.reads, mix.reads-9-41)
 		}
 		// A write to another session: the worker following its own session runs nothing (:583-588).
 		before := mix.counts()

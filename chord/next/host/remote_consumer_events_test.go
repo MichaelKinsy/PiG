@@ -118,7 +118,7 @@ func bindMatch(t testing.TB, peer *RawPeer, hold int, variant string) {
 	t.Helper()
 	names := wireNames(t, Match, variant)
 	peer.Send(&link.BoundMessage{Holds: []link.BoundEntry{{
-		Hold: hold, Variant: names.Variant, Failed: []link.FailedMember{},
+		Hold: hold, Granted: names.Granted, Failed: []link.FailedMember{},
 		Members: []link.BoundMember{{Member: names.State["score"], Value: mustJSONPart(t, 0.0)}},
 	}}})
 }
@@ -312,8 +312,8 @@ func TestConsumerEvents(t *testing.T) {
 			if len(seen) != 0 {
 				t.Fatalf("seen = %v, want none", seen)
 			}
-			if got, _, _ := k.Match.Variant(); got != "watcher" {
-				t.Fatalf("variant = %q, want watcher", got)
+			if granted, _ := k.Match.Granted(); granted["paddle"] {
+				t.Fatalf("granted = %v, want no paddle", granted)
 			}
 		})
 

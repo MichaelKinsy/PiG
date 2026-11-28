@@ -82,28 +82,25 @@ func cdContracts(t *testing.T) map[string]*contracts.Contract {
 		},
 	}))
 
-	out["remote, two variants, every params kind"] = mustContract(contracts.Remote("test.remote-variants", contracts.RemoteDeclaration{
+	out["remote, grantable members, every params kind"] = mustContract(contracts.Remote("test.remote-variants", contracts.RemoteDeclaration{
 		Version: 2,
 		Params: contracts.Params{
 			contracts.Prop("who", contracts.Str()), contracts.Prop("n", contracts.Int()),
 			contracts.Prop("kind", contracts.OneOf("a", "b")), contracts.Prop("on", contracts.Bool()),
 		},
 		HostAddress: cdAddress,
-		Variants: []contracts.VariantEntry{
-			contracts.Var("admin", contracts.VariantDeclaration{
-				State:   []contracts.Property{contracts.Prop("label", contracts.Str()), contracts.Prop("secret", contracts.Obj(contracts.Prop("k", contracts.Str())))},
-				Methods: []contracts.MethodEntry{contracts.Meth("add", contracts.NewMethod(contracts.Int(), contracts.Int())), contracts.Meth("reset", contracts.NewMethod())},
-			}),
-			contracts.Var("user", contracts.VariantDeclaration{
-				State:   []contracts.Property{contracts.Prop("label", contracts.Str())},
-				Methods: []contracts.MethodEntry{contracts.Meth("add", contracts.NewMethod(contracts.Int(), contracts.Int()))},
-			}),
+		State: []contracts.RemoteStateEntry{
+			contracts.StateEntry("label", contracts.Str()),
+			contracts.StateEntry("secret", contracts.NewGrantable(contracts.Obj(contracts.Prop("k", contracts.Str())))),
+		},
+		Methods: []contracts.RemoteMethodEntry{
+			contracts.Meth("add", contracts.NewMethod(contracts.Int(), contracts.Int())),
+			contracts.Meth("reset", contracts.NewGrantable(contracts.NewMethod())),
 		},
 	}))
 
-	out["remote, no params and a variant with no members"] = mustContract(contracts.Remote("test.remote-empty", contracts.RemoteDeclaration{
+	out["remote, no params and no members"] = mustContract(contracts.Remote("test.remote-empty", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{}, HostAddress: cdAddress,
-		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{})},
 	}))
 
 	evolved, err := contracts.Evolve(pcIndexContract, func(e *contracts.LocalEditor) *contracts.LocalEditor {
@@ -114,7 +111,7 @@ func cdContracts(t *testing.T) map[string]*contracts.Contract {
 	}
 	out["local, evolved to version 2"] = evolved
 	remoteEvolved, err := contracts.Evolve(notesContract, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
-		return e.AddState("main", "extra", contracts.Bool())
+		return e.AddState("extra", contracts.Bool())
 	})
 	if err != nil {
 		t.Fatal(err)

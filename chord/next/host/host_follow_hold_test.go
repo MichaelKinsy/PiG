@@ -21,7 +21,7 @@ func TestFollowObserverSectionHoldsTheDeliverySchedulerSoTwoCommitsOfOneSectionA
 	typ := exLocal("app.held", contracts.Params{}, contracts.Mem("n", contracts.Int()))
 	observed := make(chan FollowObserver[any], 1)
 	host, _ := rvPlugins(t, HostOptions{}, rvPlugin("@app/held", func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(typ, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(typ, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{
 				"n": self.Follow(func(observer FollowObserver[any], _ context.Context) (*FollowAttachment[delta.JsonValue], error) {
 					observed <- observer

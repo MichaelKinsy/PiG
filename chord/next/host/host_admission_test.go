@@ -88,13 +88,8 @@ var admDoc = mustContract(contracts.Remote("test.doc", contracts.RemoteDeclarati
 	Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Str())},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
 	Admission:   func() *contracts.Schema { s := admModeSchema(); return &s }(),
-	Variants: []contracts.VariantEntry{
-		contracts.Var("reader", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("text", contracts.Str())}}),
-		contracts.Var("writer", contracts.VariantDeclaration{
-			State:   []contracts.Property{contracts.Prop("text", contracts.Str())},
-			Methods: []contracts.MethodEntry{{Name: "write", Value: contracts.NewMethod(contracts.Str(), contracts.Str())}},
-		}),
-	},
+	State:       []contracts.RemoteStateEntry{contracts.StateEntry("text", contracts.Str())},
+	Methods:     []contracts.RemoteMethodEntry{contracts.Meth("write", contracts.NewGrantable(contracts.NewMethod(contracts.Str(), contracts.Str())))},
 }))
 
 // admPanel: a consumer of a document on the same host: a derive over its text.
@@ -137,7 +132,7 @@ func (f *admFlag) get() bool   { f.mu.Lock(); defer f.mu.Unlock(); return f.on }
 // admAccessFacet is a facet serving Access (as contract).
 func admAccessFacet(code admAccessCode, contract *contracts.Contract, accepts contracts.AcceptsTable) Facet {
 	return DefineFacet(func(host FacetHost, _ FacetSelf) error {
-		return host.Serve(contract, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return host.Serve(contract, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			if code.Selves != nil {
 				code.Selves.add(self)
 			}
@@ -166,7 +161,7 @@ func admAccessFacet(code admAccessCode, contract *contracts.Contract, accepts co
 			if contract == admAccessV2 {
 				state["extra"] = Expose(state_constant("x"))
 			}
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: state,
 				Methods: map[string]contracts.MethodFunction{
 					"set": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -177,7 +172,7 @@ func admAccessFacet(code admAccessCode, contract *contracts.Contract, accepts co
 						return nil, err
 					},
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{Accepts: accepts})
 	})
 }
@@ -190,7 +185,10 @@ func admDecide(mode string, ok bool) (delta.JsonValue, error) {
 	if ok && mode == "throw" {
 		return nil, errors.New("the rule threw")
 	}
-	if ok && (mode == "read" || mode == "write") {
+	if ok && mode == "write" {
+		return Allow(jsonObject("mode", mode, "granted", []delta.JsonValue{"write"})), nil
+	}
+	if ok && mode == "read" {
 		return Allow(jsonObject("mode", mode)), nil
 	}
 	return Deny("no access"), nil
@@ -254,8 +252,8 @@ func admDocFacet(code admDocCode, contract *contracts.Contract, shares *admLog) 
 		admit = admitBy(false)
 	}
 	return DefineFacet(func(host FacetHost, _ FacetSelf) error {
-		err := host.Serve(contract, func(params *delta.JsonObject, _ data.Principal, admitted delta.JsonValue, self Self) (contracts.Implementation, error) {
-			id, mode := params.Value("id").(string), admitted.(*delta.JsonObject).Value("mode").(string)
+		err := host.Serve(contract, func(params *delta.JsonObject, _ data.Principal, admitted AdmittedValue, self Self) (contracts.MembersImplementation, error) {
+			id, mode := params.Value("id").(string), admitted.Data.Value("mode").(string)
 			code.Built.Append(id + ":" + mode)
 			if code.Declare != nil {
 				code.Declare(self, mode)
@@ -283,11 +281,6 @@ func admDocFacet(code admDocCode, contract *contracts.Contract, shares *admLog) 
 			shown := self.Derive([]any{text}, func(values []any) (delta.JsonValue, error) {
 				return values[0].(*delta.JsonObject).Value("text"), nil
 			})
-			if mode == "read" {
-				return contracts.Implementation{Variant: "reader", Members: contracts.VariantImplementation{
-					State: map[string]chord.Watchable[delta.JsonValue]{"text": shown},
-				}}, nil
-			}
 			write := func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 				next := args.(string)
 				// As a handler waits (`await gate`): it parks, and its caller's cancellation and its attempt's seal end the wait.
@@ -318,35 +311,35 @@ func admDocFacet(code admDocCode, contract *contracts.Contract, shares *admLog) 
 				}
 				return mode + ":" + next, nil
 			}
-			return contracts.Implementation{Variant: "writer", Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State:   map[string]chord.Watchable[delta.JsonValue]{"text": shown},
 				Methods: map[string]contracts.MethodFunction{"write": write},
-			}}, nil
+			}, nil
 		}, ServeOptions{Admit: admit, Linger: code.Linger})
 		if err != nil {
 			return err
 		}
 		if !code.NoShare {
-			if err := host.Serve(admShare, func(params *delta.JsonObject, _ Self) (contracts.Implementation, error) {
+			if err := host.Serve(admShare, func(params *delta.JsonObject, _ Self) (contracts.MembersImplementation, error) {
 				if shares != nil {
 					shares.Append(params.Value("id").(string))
 				}
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{"open": Expose(state_constant("yes"))},
-				}}, nil
+				}, nil
 			}, ServeOptions{}); err != nil {
 				return err
 			}
 		}
-		return host.Serve(admPanel, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return host.Serve(admPanel, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			doc := self.Get(contractOf(contract), jsonObject("id", params.Value("id")))
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"shout": self.Derive([]any{doc.Member("text")}, func(values []any) (delta.JsonValue, error) {
 						return upper(values[0].(string)), nil
 					}),
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})
 }
@@ -410,11 +403,11 @@ func admServed(t *testing.T, code admDocCode, options admOptions) *admServer {
 // admShareFacet is the plugin that serves Share, logging each run of its factory.
 func admShareFacet(shares *admLog) Facet {
 	return DefineFacet(func(host FacetHost, _ FacetSelf) error {
-		return host.Serve(admShare, func(params *delta.JsonObject, _ Self) (contracts.Implementation, error) {
+		return host.Serve(admShare, func(params *delta.JsonObject, _ Self) (contracts.MembersImplementation, error) {
 			shares.Append(params.Value("id").(string))
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"open": Expose(state_constant("yes"))},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})
 }
@@ -467,13 +460,19 @@ func admValue(ref *Reference, member string) (delta.JsonValue, error) {
 	return value, err
 }
 
-// admVariant is `ref.variant`: "" while none is bound.
+// admVariant returns "writer" if write is granted, "reader" if live/wasLive without write, "" otherwise.
 func admVariant(ref *Reference) string {
-	variant, bound, _ := ref.Variant()
-	if !bound {
+	if !ref.WasLive() && stateOfRef(ref).Kind != RefStateLive {
 		return ""
 	}
-	return variant
+	granted, err := ref.Granted()
+	if err != nil {
+		return ""
+	}
+	if granted["write"] {
+		return "writer"
+	}
+	return "reader"
 }
 
 // mustValue is `ref.member.value`.
@@ -644,7 +643,7 @@ func TestAdmissionTheWatchTable(t *testing.T) {
 		// meets the reader the new value selects, not the writer it was sent to.
 		crossed := admStart(t, doc, "write", "y")
 		s.delivered()
-		if got := told(admRejection(t, crossed)); got != [3]string{"invalid", "member", `test.doc(a) (variant reader) has no method "write"`} {
+		if got := told(admRejection(t, crossed)); got != [3]string{"forbidden", "", `test.doc(a) has not granted "write"`} {
 			t.Fatalf("write rejected with %v", got)
 		}
 		s.set("write", "server")
@@ -1141,21 +1140,21 @@ func TestAdmissionDeclarationErrors(t *testing.T) {
 		plain := mustContract(contracts.Remote("test.plain", contracts.RemoteDeclaration{
 			Version: 1, Params: contracts.Params{},
 			HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-			Variants:    []contracts.VariantEntry{contracts.Var("only", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("n", contracts.Int())}})},
+			State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 		}))
-		factory := func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Variant: "only", Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"n": Expose(state_constant(1.0))}}}, nil
+		factory := func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"n": Expose(state_constant(1.0))}}, nil
 		}
 		admit := func(*delta.JsonObject, data.Principal, AdmitSelf) (chord.Watchable[delta.JsonValue], error) {
 			return Expose(state_constant(Allow(jsonObject("mode", "read")))), nil
 		}
 		expectStrings(t, refused(t, func(host FacetHost) error { return host.Serve(admDoc, factory, ServeOptions{}) }),
-			`plugin "@test/app": test.doc: its contract declares an admission: serve it with admit`)
+			`plugin "@test/app": test.doc: its contract takes an admission (its admission, grantable members or flags): serve it with admit`)
 		expectStrings(t, refused(t, func(host FacetHost) error { return host.Serve(plain, factory, ServeOptions{Admit: admit}) }),
-			`plugin "@test/app": test.plain: admit needs the contract to declare its admission`)
+			`plugin "@test/app": test.plain: admit needs an admission, grantable members or flags in the contract`)
 		expectStrings(t, refused(t, func(host FacetHost) error {
-			return host.Serve(admShare, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-				return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"open": Expose(state_constant("yes"))}}}, nil
+			return host.Serve(admShare, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+				return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"open": Expose(state_constant("yes"))}}, nil
 			}, ServeOptions{Admit: admit})
 		}), `plugin "@test/app": test.share: only a remote type takes an admission (admit)`)
 	})
@@ -2012,10 +2011,10 @@ var admJournal = mustContract(contracts.Local("test.journal", contracts.LocalDec
 }))
 
 func admJournalServe(host FacetHost) error {
-	return host.Serve(admJournal, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+	return host.Serve(admJournal, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 		self := plain.(StoreSelf)
 		log := self.Table(admLogTable)
-		return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+		return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 			"append": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 				_, err := self.Tx(func(tx documents.Tx) (any, error) { return nil, tx.Put(log, jsonObject("line", args)) }, ctx)
 				return nil, err
@@ -2027,7 +2026,7 @@ func admJournalServe(host FacetHost) error {
 				}
 				return 1.0, nil
 			},
-		}}}, nil
+		}}, nil
 	}, ServeOptions{})
 }
 
@@ -2164,8 +2163,8 @@ var (
 	admReader = mustContract(contracts.Remote("test.reader", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-		Admission:   func() *contracts.Schema { s := contracts.Str(); return &s }(),
-		Variants:    []contracts.VariantEntry{contracts.Var("one", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("label", contracts.Str())}})},
+		Admission:   func() *contracts.Schema { s := contracts.Obj(contracts.Prop("v", contracts.Str())); return &s }(),
+		State:       []contracts.RemoteStateEntry{contracts.StateEntry("label", contracts.Str())},
 	}))
 )
 
@@ -2173,7 +2172,7 @@ var (
 // `put` writes a row.
 func admShelfFacet(failing *admFlag) Facet {
 	return DefineFacet(func(host FacetHost, _ FacetSelf) error {
-		return host.Serve(admShelf, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+		return host.Serve(admShelf, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 			self := plain.(StoreSelf)
 			rows := self.Table(admItemsTable)
 			mapped := func(row store.Row, _ PartnerRow) (delta.JsonValue, error) {
@@ -2182,7 +2181,7 @@ func admShelfFacet(failing *admFlag) Facet {
 				}
 				return row, nil
 			}
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				Queries: map[string]map[string]contracts.NamedQuery[delta.JsonValue, delta.JsonValue]{"items": self.Queries(rows, QueriesOptions{Map: mapped},
 					map[string]QueryBuilder{"all": {Build: func(delta.JsonValue) *store.Query {
 						return store.NewQuery(admItemsTable).OrderBy(func(e, _ store.ColumnRefs) *store.ColumnRef { return e["id"] }, "")
@@ -2191,7 +2190,7 @@ func admShelfFacet(failing *admFlag) Facet {
 					_, err := self.Tx(func(tx documents.Tx) (any, error) { return nil, tx.Put(rows, jsonObject("id", args)) }, ctx)
 					return nil, err
 				}},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})
 }
@@ -2199,13 +2198,13 @@ func admShelfFacet(failing *admFlag) Facet {
 // admReaderFacet is a facet serving Reader, whose admission reads the shelf's items live.
 func admReaderFacet() Facet {
 	return DefineFacet(func(host FacetHost, _ FacetSelf) error {
-		return host.Serve(admReader, func(*delta.JsonObject, data.Principal, delta.JsonValue, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Variant: "one", Members: contracts.VariantImplementation{
+		return host.Serve(admReader, func(*delta.JsonObject, data.Principal, AdmittedValue, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"label": Expose(state_constant("x"))},
-			}}, nil
+			}, nil
 		}, ServeOptions{Admit: func(_ *delta.JsonObject, _ data.Principal, self AdmitSelf) (chord.Watchable[delta.JsonValue], error) {
 			items := self.LiveQuery(self.Get(admShelf, jsonObject()).Queries("items")["all"], jsonObject(), 3)
-			return self.Derive([]any{items}, func([]any) (delta.JsonValue, error) { return Allow("yes"), nil }), nil
+			return self.Derive([]any{items}, func([]any) (delta.JsonValue, error) { return Allow(jsonObject("v", "yes")), nil }), nil
 		}})
 	})
 }

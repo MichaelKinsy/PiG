@@ -45,10 +45,8 @@ const (
 var benchSharedCounter = mustContract(contracts.Remote("bench.shared-counter", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Str())},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-	Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{
-		State:   []contracts.Property{contracts.Prop("count", contracts.Int())},
-		Methods: []contracts.MethodEntry{contracts.Meth("bump", contracts.NewMethod())},
-	})},
+	State:       []contracts.RemoteStateEntry{contracts.StateEntry("count", contracts.Int())},
+	Methods:     []contracts.RemoteMethodEntry{contracts.Meth("bump", contracts.NewMethod())},
 }))
 
 var benchSharedCount = exDefineState("count", documents.StateOptions{
@@ -57,9 +55,9 @@ var benchSharedCount = exDefineState("count", documents.StateOptions{
 
 func benchSharedFacet() Facet {
 	return DefineFacet(func(host FacetHost, _ FacetSelf) error {
-		return host.Serve(benchSharedCounter, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return host.Serve(benchSharedCounter, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			count := stateOf(self, benchSharedCount)
-			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"count": self.Derive([]any{count.s}, func(values []any) (delta.JsonValue, error) {
 						return values[0].(*delta.JsonObject).Value("n"), nil
@@ -70,7 +68,7 @@ func benchSharedFacet() Facet {
 						return nil, count.Change(func(draft *delta.Object) { _ = draft.Set("n", draft.Get("n").(float64)+1) }, ctx)
 					},
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})
 }

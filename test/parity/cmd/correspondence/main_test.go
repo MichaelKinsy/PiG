@@ -91,8 +91,8 @@ func TestPacketCurrentPin(t *testing.T) {
 	// and closing the correspondence gaps places every row in the work
 	// packet. Reproduce with:
 	//   go run ./test/parity/cmd/correspondence packet -root . -upstream-version 0.99.2 -target-commit <commit> -node "$(command -v node)"
-	if len(packet.Questions) != 34 || len(packet.Functions) != 10 {
-		t.Fatalf("packet settings/functions = %d/%d, want 34/10", len(packet.Questions), len(packet.Functions))
+	if len(packet.Questions) != 33 || len(packet.Functions) != 10 {
+		t.Fatalf("packet settings/functions = %d/%d, want 33/10", len(packet.Questions), len(packet.Functions))
 	}
 	foundPersistence := false
 	for _, question := range packet.Functions {
@@ -154,7 +154,7 @@ func TestWorkPacketCurrentPinKeepsAgentReadOnly(t *testing.T) {
 	// (current-state, dispatch, persistence, runtime-effects, value-domain).
 	// Reproduce with:
 	//   go run ./test/parity/cmd/correspondence work-packet -root . -upstream-version 0.99.2 -target-commit <commit> -role adversary -snapshot-id snapshot:test
-	if packet.Role != correspondence.AdversaryRole || packet.SnapshotID != "snapshot:test" || len(packet.Questions) != 44 || len(packet.ObligationIDs) != 214 || len(packet.UnresolvedEdges) != 11 || !slices.Equal(runtimeCandidates, wantRuntimeCandidates) || len(packet.WritePaths) != 0 {
+	if packet.Role != correspondence.AdversaryRole || packet.SnapshotID != "snapshot:test" || len(packet.Questions) != 43 || len(packet.ObligationIDs) != 209 || len(packet.UnresolvedEdges) != 11 || !slices.Equal(runtimeCandidates, wantRuntimeCandidates) || len(packet.WritePaths) != 0 {
 		t.Fatalf("work packet = role %s snapshot %s questions %d obligations %d unresolved %v writes %d", packet.Role, packet.SnapshotID, len(packet.Questions), len(packet.ObligationIDs), packet.UnresolvedEdges, len(packet.WritePaths))
 	}
 }

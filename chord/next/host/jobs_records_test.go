@@ -357,18 +357,18 @@ func runner(code string, job *JobDefinition, finished *finishedLog, options runn
 	var mu sync.Mutex
 	gates := options.gates
 	return DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(jobsRunner, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(jobsRunner, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			if options.native {
 				self.Open(func(context.Context) (any, error) { return code, nil },
 					func(any, NativeCloseReason, context.Context) error { return nil })
 			}
 			if job == nil {
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{"running": Expose(state.NewConstant([]any{}))},
 					Methods: map[string]contracts.MethodFunction{
 						"start": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return "", nil },
 					},
-				}}, nil
+				}, nil
 			}
 			handle := self.Job(job, JobImplementation{
 				Run: func(args any, ctx JobCtx) (any, error) {
@@ -398,7 +398,7 @@ func runner(code string, job *JobDefinition, finished *finishedLog, options runn
 					return nil
 				},
 			})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"running": Expose(handle.Running())},
 				Methods: map[string]contracts.MethodFunction{
 					"start": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -414,7 +414,7 @@ func runner(code string, job *JobDefinition, finished *finishedLog, options runn
 						return run.ID(), nil
 					},
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})
 }
@@ -617,14 +617,14 @@ func TestRecordsAReservationReleasedAfterASwapStartsTheOldCodesRunWithItsOwnArgs
 	var seen []any
 	var handle JobHandle
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/reserve", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(owner, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(owner, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			handle = self.Job(v1, JobImplementation{Run: func(args any, _ JobCtx) (any, error) {
 				mu.Lock()
 				defer mu.Unlock()
 				seen = append(seen, args.(*delta.JsonObject).Value("n"))
 				return float64(42), nil
 			}})
-			return contracts.Implementation{}, nil
+			return contracts.MembersImplementation{}, nil
 		}, ServeOptions{})
 	})}}, background))
 	// The object is live: Pi's `load` resolves with it served; hold a reference so it is.
@@ -638,9 +638,9 @@ func TestRecordsAReservationReleasedAfterASwapStartsTheOldCodesRunWithItsOwnArgs
 	reloaded := make(chan error, 1)
 	go func() {
 		_, err := host.Reload([]HostFacet{{Name: "@app/reserve", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(owner, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(owner, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				self.Job(v2, JobImplementation{Run: func(any, JobCtx) (any, error) { return float64(43), nil }})
-				return contracts.Implementation{}, nil
+				return contracts.MembersImplementation{}, nil
 			}, ServeOptions{})
 		})}}, background, ReloadOptions{})
 		reloaded <- err

@@ -19,9 +19,9 @@ func tokensUpstreamCases() []tokensUpstreamCase {
 		// .upstream/v0.87.1/packages/ai/test/tokens.test.ts:155
 		{"should include token stats when aborted mid-stream", "cerebras", "preferred", "", false, "", false},
 		// .upstream/v0.87.1/packages/ai/test/tokens.test.ts:167
-		{"should include token stats when aborted mid-stream", "cloudflare-workers-ai", "@cf/moonshotai/kimi-k2.6", "", false, "", false},
+		{"should include token stats when aborted mid-stream", "cloudflare-workers-ai", "@cf/zai-org/glm-5.3", "", false, "", false},
 		// .upstream/v0.87.1/packages/ai/test/tokens.test.ts:175
-		{"should include token stats when aborted mid-stream", "cloudflare-ai-gateway", "workers-ai/@cf/moonshotai/kimi-k2.6", "", false, "", false},
+		{"should include token stats when aborted mid-stream", "cloudflare-ai-gateway", "workers-ai/@cf/zai-org/glm-5.3", "", false, "", false},
 		// .upstream/v0.87.1/packages/ai/test/tokens.test.ts:183
 		{"should include token stats when aborted mid-stream", "huggingface", "moonshotai/Kimi-K2.5", "", false, "", false},
 		// .upstream/v0.99.1/packages/ai/test/tokens.test.ts:191 (0.99.1 moved Together to Kimi-K3)

@@ -472,12 +472,61 @@ func (d *diffState) diffArray(before, after []any, path Path) {
 	}
 	if len(before) == len(after) && len(before) > 1 &&
 		!sameValue(before[0], after[0]) && !sameValue(before[len(before)-1], after[len(after)-1]) {
+		if d.shifted(before, after, path) {
+			return
+		}
 		if order := permutation(before, after); order != nil {
 			d.emit(Op{"m", path, order})
 			return
 		}
 	}
 	d.diffArrayRegion(before, after, path, region{0, len(before), 0, len(after), 0})
+}
+
+// shifted emits the two ops of after as before shifted by k items, its items the same values (strictEqual): k new ones
+// in front and its last k gone, or its first k gone and k new ones behind.
+func (d *diffState) shifted(before, after []any, path Path) bool {
+	n := len(before)
+	down := indexOfStrict(after, before[0], 1)
+	if down > 0 && indexOfStrict(before, after[0], n-down) < 0 && sameRunStrict(before, 0, after, down, n-down) {
+		d.emit(Op{"p", path, 0, 0, copyItems(after[:down])})
+		d.emit(Op{"p", path, n, down, []any{}})
+		return true
+	}
+	up := indexOfStrict(before, after[0], 1)
+	if up > 0 && lastIndexOfStrict(before, after[n-1], up-1) < 0 && sameRunStrict(before, up, after, 0, n-up) {
+		d.emit(Op{"p", path, 0, up, []any{}})
+		d.emit(Op{"p", path, n - up, 0, copyItems(after[n-up:])})
+		return true
+	}
+	return false
+}
+
+func indexOfStrict(items []any, target JsonValue, from int) int {
+	for i := from; i < len(items); i++ {
+		if strictEqual(items[i], target) {
+			return i
+		}
+	}
+	return -1
+}
+
+func lastIndexOfStrict(items []any, target JsonValue, from int) int {
+	for i := from; i >= 0; i-- {
+		if strictEqual(items[i], target) {
+			return i
+		}
+	}
+	return -1
+}
+
+func sameRunStrict(before []any, from int, after []any, to int, count int) bool {
+	for offset := range count {
+		if !strictEqual(before[from+offset], after[to+offset]) {
+			return false
+		}
+	}
+	return true
 }
 
 func (d *diffState) diffObject(before, after *chordjson.Object, path Path) {

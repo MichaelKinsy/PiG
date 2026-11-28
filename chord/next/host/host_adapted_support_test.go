@@ -59,7 +59,7 @@ func adaptedVersion(version string, state ...contracts.Entry[contracts.StateMapp
 // (nil: nothing), as `self.get(Missing, {})` or `self.open(...)` do in the upstream factories.
 func adaptedConstants(contract *contracts.Contract, values map[string]delta.JsonValue, accepts contracts.AcceptsTable, with func(self Self)) Facet {
 	return DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(contract, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(contract, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			if with != nil {
 				with(self)
 			}
@@ -67,7 +67,7 @@ func adaptedConstants(contract *contracts.Contract, values map[string]delta.Json
 			for name, value := range values {
 				state[name] = constant(value)
 			}
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: state}}, nil
+			return contracts.MembersImplementation{State: state}, nil
 		}, ServeOptions{Accepts: accepts})
 	})
 }

@@ -31,7 +31,7 @@ func TestSettingsListUsesInjectedTheme(t *testing.T) {
 	}
 	list := NewSettingsList(items, 10, theme, nil, nil, SettingsListOptions{EnableSearch: false})
 	rendered := strings.Join(list.Render(60), "\n")
-	for _, want := range []string{">> <L*alpha>", "<V*on>", "<Lbeta >", "<Voff>", "<D  first setting>", "<H  Enter/Space to change · Esc to cancel>"} {
+	for _, want := range []string{">> <L*alpha>", "<V*on>", "<Lbeta >", "<Voff>", "<D  first setting>", "<H  enter/space to change · escape/ctrl+c to cancel>"} {
 		if !strings.Contains(rendered, want) {
 			t.Errorf("injected theme part %q missing from %q", want, rendered)
 		}

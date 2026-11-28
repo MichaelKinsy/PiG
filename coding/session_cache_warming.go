@@ -111,7 +111,7 @@ func (s *Session) buildRequestOptions(model *ai.Model, options ai.StreamOptions)
 	}
 	options.Headers = mergeRuntimeHeaders(model.ProviderMeta.Headers, options.Headers)
 	// Replaces the agent loop's default identity; read per request so telemetry changes apply at once (sdk.ts buildRequestOptions).
-	options.Identity = getClientIdentity(settings)
+	options.Identity = getClientIdentity()
 	options.TransformHeaders = s.extensionProviderHeadersHook
 	return options, nil
 }

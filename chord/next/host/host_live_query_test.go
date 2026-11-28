@@ -69,7 +69,7 @@ type lqQueries struct {
 
 // serveBoard serves `Board` with a live query of the newest `limit` items; declare runs first in its factory.
 func (q *lqQueries) serveBoard(h FacetHost, limit int64, declare func(self StoreSelf)) error {
-	return h.Serve(lqBoard, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+	return h.Serve(lqBoard, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 		self := plain.(StoreSelf)
 		if declare != nil {
 			declare(self)
@@ -86,7 +86,7 @@ func (q *lqQueries) serveBoard(h FacetHost, limit int64, declare func(self Store
 			_, err := self.Tx(func(tx documents.Tx) (any, error) { return nil, write(tx) }, ctx)
 			return nil, err
 		}
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{"items": query},
 			Methods: map[string]contracts.MethodFunction{
 				"put": exMethod(func(row *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
@@ -111,7 +111,7 @@ func (q *lqQueries) serveBoard(h FacetHost, limit int64, declare func(self Store
 					return tx(ctx, func(tx documents.Tx) error { return tx.Put(other, store.Row{"id": int64(arg.(float64))}) })
 				},
 			},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 }
 
@@ -372,7 +372,7 @@ func TestLiveQueryDeclarationRefusals(t *testing.T) {
 		t.Run("refuses "+each.what, func(t *testing.T) {
 			chordStore := memoryStore(t)
 			host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-				return h.Serve(lqBoard, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+				return h.Serve(lqBoard, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 					each.declare(plain.(StoreSelf))
 					panic("unreachable")
 				}, ServeOptions{})

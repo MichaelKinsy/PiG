@@ -32,8 +32,8 @@ func SupportsClaudeMidConvoEffort(modelID string) bool {
 	return claudeOpus5.MatchString(id) || claudeSonnetHaiku55.MatchString(id) || claudeFableMythos51.MatchString(id)
 }
 
-// SupportsClaudeMidConvoSystemMessages reports models that accept system messages and tool changes after the conversation starts.
-func SupportsClaudeMidConvoSystemMessages(modelID string) bool {
+// SupportsClaudeMidConvoChanges reports models that accept system messages and tool changes after the conversation starts.
+func SupportsClaudeMidConvoChanges(modelID string) bool {
 	return claudeSystemOpus.MatchString(modelID) || claudeSystemSonnet.MatchString(modelID) || claudeSystemFableMyth.MatchString(modelID)
 }
 

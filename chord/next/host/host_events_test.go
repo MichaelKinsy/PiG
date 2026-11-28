@@ -437,13 +437,11 @@ func TestEventsCostAContractWithoutEventMembersCostsNoEventBookkeepingPerBinding
 		}
 	}
 	// Their names share one empty list of event members.
-	variants, err := contracts.CurrentVariants(Notes)
+	cur, err := contracts.CurrentMembers(Notes)
 	must(t, err)
-	editor, _ := variants.Get("editor")
-	reader, _ := variants.Get("reader")
-	editorNames, readerNames := contracts.VariantNamesOf(editor), contracts.VariantNamesOf(reader)
-	if editorNames.Events == nil || readerNames.Events == nil || len(editorNames.Events)+len(readerNames.Events) != 0 {
-		t.Fatalf("events = %#v, %#v", editorNames.Events, readerNames.Events)
+	names := contracts.MemberOrder(cur)
+	if len(names.Events) != 0 {
+		t.Fatalf("events = %#v", names.Events)
 	}
 }
 

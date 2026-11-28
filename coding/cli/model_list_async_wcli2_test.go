@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding"
+	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
 func listModelsServices(t *testing.T, agentDir string) *coding.AgentSessionServices {
@@ -41,6 +42,8 @@ func TestListModelsWarnsOfTheLoadErrorBeforeTheTable(t *testing.T) {
 	if services.ModelRuntime().GetError() == "" {
 		t.Fatal("the malformed models.json produced no runtime error")
 	}
+	// Pi v1.7.0 (eee9f85fc): list-models.ts no longer prints the warning itself; createAgentSessionServices
+	// emits `models.json error: ...` as a warning diagnostic and main.ts writes diagnostics to stderr before listModels().
 	r, w, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)
@@ -48,6 +51,8 @@ func TestListModelsWarnsOfTheLoadErrorBeforeTheTable(t *testing.T) {
 	oldStdout, oldStderr := os.Stdout, os.Stderr
 	os.Stdout, os.Stderr = w, w
 	read := drainPipe(r)
+	diags := []codingagent.AgentSessionRuntimeDiagnostic{{Type: "warning", Message: "models.json error: " + services.ModelRuntime().GetError()}}
+	codingagent.WriteDiagnosticsToStderr(diags)
 	listErr := listModels(t.Context(), services.ModelRuntime(), services.Registry().ModelRegistry, "")
 	os.Stdout, os.Stderr = oldStdout, oldStderr
 	_ = w.Close()
@@ -57,7 +62,7 @@ func TestListModelsWarnsOfTheLoadErrorBeforeTheTable(t *testing.T) {
 		t.Fatalf("listModels = %v, read = %v", listErr, result.err)
 	}
 	out := string(result.data)
-	warning := strings.Index(out, "Warning: errors loading models.json:")
+	warning := strings.Index(out, "Warning: models.json error:")
 	header := regexp.MustCompile(`(?m)^provider +model +context +max-out +thinking +images$`).FindStringIndex(out)
 	if warning < 0 || header == nil {
 		t.Fatalf("want the load warning and the table, got:\n%s", out)

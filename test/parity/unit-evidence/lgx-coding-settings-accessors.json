@@ -143,15 +143,6 @@
    "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
   ],
   "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
-  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetEnableInstallTelemetry() bool {\n\tif sm.Get().EnableInstallTelemetry == nil {\n\t\treturn true\n\t}\n\treturn *sm.Get().EnableInstallTelemetry\n}` with `func (sm *SettingsManager) GetEnableInstallTelemetry() bool {\n\tif sm.Get().EnableInstallTelemetry == nil {\n\t\treturn false\n\t}\n\treturn *sm.Get().EnableInstallTelemetry\n}`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
- },
- {
-  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
-  "package": "./internal/codingagent",
-  "tests": [
-   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
-  ],
-  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
   "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetEnableSkillCommands() bool {\n\tv := sm.Get().EnableSkillCommands\n\tif v == nil {\n\t\treturn true // default: enabled\n\t}\n\treturn *v\n}` with `func (sm *SettingsManager) GetEnableSkillCommands() bool {\n\tv := sm.Get().EnableSkillCommands\n\tif v == nil {\n\t\treturn false // default: enabled\n\t}\n\treturn *v\n}`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
  },
  {
@@ -462,15 +453,6 @@
   ],
   "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
   "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetEnableAnalytics(enabled bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) {\n\t\ts.EnableAnalytics = &enabled\n\t\tif enabled && s.TrackingID == \"\" {\n\t\t\ts.TrackingID = uuid.NewString()\n\t\t}\n\t})\n}` with `func (sm *SettingsManager) SetEnableAnalytics(enabled bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) {\n\t\t_ = enabled\n\t\tif enabled && s.TrackingID == \"\" {\n\t\t\ts.TrackingID = uuid.NewString()\n\t\t}\n\t})\n}`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
- },
- {
-  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
-  "package": "./internal/codingagent",
-  "tests": [
-   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
-  ],
-  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
-  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetEnableInstallTelemetry(enabled bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { s.EnableInstallTelemetry = &enabled })\n}` with `func (sm *SettingsManager) SetEnableInstallTelemetry(enabled bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { _ = &enabled })\n}`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
  },
  {
   "upstream": "packages/coding-agent/src/core/settings-manager.ts",

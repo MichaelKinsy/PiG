@@ -42,16 +42,13 @@ var jobViewType = mustContract(contracts.Remote("app.view", contracts.RemoteDecl
 	Version:     1,
 	Params:      contracts.Params{},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-	Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{
-		State: []contracts.Property{contracts.Prop("running", contracts.Arr(contracts.Unknown()))},
-	})},
+	State:       []contracts.RemoteStateEntry{contracts.StateEntry("running", contracts.Arr(contracts.Unknown()))},
 }))
 
 var jobsType = mustContract(contracts.Remote("app.jobs", contracts.RemoteDeclaration{
 	Version:     1,
 	Params:      contracts.Params{},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-	Variants:    []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{})},
 }))
 
 func guestRevokedBy(principal data.Principal) ([]delta.JsonValue, error) {
@@ -84,15 +81,15 @@ func TestKeepAliveKeepsAnObjectWhoseLastReferenceGoesWhileItsStartsCommitPublish
 	var job JobHandle
 	var ran atomic.Bool
 	server := jobServer(t, func(h FacetHost) error {
-		return h.Serve(jobViewType, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return h.Serve(jobViewType, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			job = self.Job(jobEcho, JobImplementation{Run: func(args any, _ JobCtx) (any, error) {
 				ran.Store(true)
 				return textOf(args), nil
 			}})
 			// The running list as a state member, so the start's commit sends a state message.
-			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"running": Expose(job.Running())},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})
 	client := jobClient(t)
@@ -125,7 +122,7 @@ func TestObjectEndRevocationR11RunsSignalsFireWithTheEndsErrorTheDrainWaitsForTh
 	started := newJobGate()
 	var server Host
 	server = jobServer(t, func(h FacetHost) error {
-		return h.Serve(jobsType, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return h.Serve(jobsType, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			job = self.Job(jobEcho, JobImplementation{
 				Run: func(args any, ctx JobCtx) (any, error) {
 					started.Open()
@@ -146,7 +143,7 @@ func TestObjectEndRevocationR11RunsSignalsFireWithTheEndsErrorTheDrainWaitsForTh
 					return nil
 				},
 			})
-			return contracts.Implementation{Variant: "v"}, nil
+			return contracts.MembersImplementation{}, nil
 		}, ServeOptions{})
 	})
 	client := jobClient(t)
@@ -203,7 +200,7 @@ func TestObjectEndDrainsARunThatEndsItsOwnObjectBeforeItsFirstAwaitItsNativesSta
 	}
 	var server Host
 	server = jobServer(t, func(h FacetHost) error {
-		return h.Serve(jobsType, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return h.Serve(jobsType, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			self.Open(
 				func(context.Context) (any, error) { return nil, nil },
 				func(any, NativeCloseReason, context.Context) error { note("native closed"); return nil },
@@ -214,7 +211,7 @@ func TestObjectEndDrainsARunThatEndsItsOwnObjectBeforeItsFirstAwaitItsNativesSta
 				note("run stopped")
 				return textOf(args), nil
 			}})
-			return contracts.Implementation{Variant: "v"}, nil
+			return contracts.MembersImplementation{}, nil
 		}, ServeOptions{})
 	})
 	client := jobClient(t)
@@ -415,7 +412,7 @@ func TestGCAnEndedObjectReleasesItsRunsTheirDocumentsAndWaiters(t *testing.T) {
 	started := newJobGate()
 	var held JobHandle
 	host, _ := jobsLoaded(t, func(h FacetHost) error {
-		return h.Serve(jobItemType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(jobItemType, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			log := stateOf(self, jobLogState)
 			held = self.Job(jobShell, JobImplementation{Run: func(a any, ctx JobCtx) (any, error) {
 				state, err := ctx.State().Value()
@@ -431,9 +428,9 @@ func TestGCAnEndedObjectReleasesItsRunsTheirDocumentsAndWaiters(t *testing.T) {
 				untilDone(ctx)
 				return exitResult(1), nil
 			}})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"log": log.Member()},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, jobHostOptions{})
 	item, err := host.Get(background, jobItemType, jsonObject("id", float64(1)), GetOptions{})

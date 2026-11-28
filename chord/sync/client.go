@@ -62,6 +62,8 @@ func sharedHead(state *SyncState, local Seq) Seq {
 type SyncStateStore interface {
 	Get(ctx context.Context, sessionID string) (*SyncState, error)
 	Set(ctx context.Context, sessionID string, state SyncState) error
+	// Delete forgets a session's state: its next upload starts from the beginning (after remote_empty, or a deleted copy).
+	Delete(ctx context.Context, sessionID string) error
 }
 
 // StoreHead is a store's head as a sequence: `LastSeq`, 0 for a store without commits.
@@ -112,6 +114,9 @@ const (
 	// commits would reuse their sequences, so nothing is uploaded. Pull what it lost before the copy commits again; a pull
 	// applies from the local head.
 	Behind UploadType = "behind"
+	// Refused: the remote refused the next slot for good (RefusalReason): the bookmark and the outbox stay as they were,
+	// and uploading again sends the same slot. The host stops uploading until whatever was refused is fixed.
+	Refused UploadType = "refused"
 )
 
 // UploadResult is how an upload ended; the members its Type names are set.
@@ -120,6 +125,7 @@ type UploadResult struct {
 	Head       Seq
 	At         Seq
 	SyncedHead Seq
+	Reason     RefusalReason
 }
 
 // UploadOptions are what UploadSession takes.
@@ -191,6 +197,8 @@ func UploadSession(ctx context.Context, options UploadOptions) (UploadResult, er
 			return UploadResult{}, err
 		}
 		switch {
+		case result.Type == PutRefused:
+			return UploadResult{Type: Refused, Reason: result.Reason}, nil
 		case result.Type == PutNotHead:
 			// A history that does not end at `after` is another one too: the remote never held this copy's past `after`.
 			if result.Head == LogStart {
@@ -687,5 +695,10 @@ func (scratch *scratchState) Get(context.Context, string) (*SyncState, error) {
 
 func (scratch *scratchState) Set(_ context.Context, _ string, state SyncState) error {
 	scratch.state = &state
+	return nil
+}
+
+func (scratch *scratchState) Delete(context.Context, string) error {
+	scratch.state = nil
 	return nil
 }

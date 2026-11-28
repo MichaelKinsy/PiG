@@ -154,23 +154,21 @@ var deskMode = mustLocal("test.desk.mode", contracts.LocalDeclaration{Version: 1
 // (`reader` at first), else denied.
 var deskPlugin = map[string]string{
 	"server.ts": strings.Join([]string{
-		`import { allow, defineFacet, deny, hostKind, local, method, oneOf, remote, str } from "@test/app/v1";`,
+		`import { allow, defineFacet, deny, grantable, hostKind, local, method, remote, str } from "@test/app/v1";`,
 		`const DeskMode = local("test.desk.mode", { version: 1, params: {}, members: { mode: str(), set: method(str()) } });`,
-		`const text = { state: { text: str() } };`,
-		`const Desk = remote("test.desk", { version: 1, params: {}, hostAddress: () => hostKind("server")(), admission: oneOf("reader", "editor"), variants: { reader: text, editor: { ...text, methods: { write: method(str()) } } } });`,
+		`const Desk = remote("test.desk", { version: 1, params: {}, hostAddress: () => hostKind("server")(), state: { text: str() }, methods: { write: grantable(method(str())) } });`,
 		`export default defineFacet((h) => {`,
 		`	h.serve(DeskMode, (_params, self) => {`,
 		`		const mode = self.writable("reader");`,
 		`		return { mode: self.derive([mode], ([value]) => value), set: async (next) => { mode.set(next); return null; } };`,
 		`	});`,
-		`	h.serve(Desk, (_params, _principal, mode, self) => {`,
+		`	h.serve(Desk, (_params, _principal, _admitted, self) => {`,
 		`		const text = self.writable("a desk");`,
 		`		const shown = self.derive([text], ([value]) => value);`,
-		`		if (mode === "reader") return { variant: "reader", members: { text: shown } };`,
-		`		return { variant: "editor", members: { text: shown, write: async (next) => { text.set(next); return null; } } };`,
+		`		return { text: shown, write: async (next) => { text.set(next); return null; } };`,
 		`	}, {`,
 		`		admit: (_params, _principal, self) => self.derive([self.get(DeskMode, {}).mode], ([mode]) =>`,
-		`			mode === "reader" || mode === "editor" ? allow(mode) : deny("no access")),`,
+		`			mode === "editor" ? allow({ granted: ["write"] }) : mode === "reader" ? allow({}) : deny("no access")),`,
 		`	});`,
 		`});`,
 	}, "\n"),
@@ -193,7 +191,7 @@ func TestReactBindingsReadAReferenceInTheVariantItIsLiveInFollowingAChangeOfItsV
 			t.Fatal(err)
 		}
 	}
-	variant := func(name string) string { return `document.getElementById("desk")?.dataset.variant === "` + name + `"` }
+	variant := func(name string) string { return `document.getElementById("desk")?.dataset.mode === "` + name + `"` }
 	signIn(browser, s.app.OwnerLink())
 	browser.Run(`globalThis.showDesk()`)
 	browser.Wait(variant("reader"))

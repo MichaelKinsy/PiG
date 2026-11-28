@@ -104,10 +104,10 @@ func TestReferenceKeysAKeyWhoseFirstPinStillLoadsTheObjectRebindsToAKeyInTheStor
 	var seeded sync.Map
 	seed, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
 		for id, contract := range providers {
-			if err := h.Serve(contract, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			if err := h.Serve(contract, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				notes := self.State(kmStored).(*documents.Keyed)
 				seeded.Store(id, notes)
-				return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(notes)}}, nil
+				return contracts.MembersImplementation{Keyed: kmKeyed(notes)}, nil
 			}, ServeOptions{}); err != nil {
 				return err
 			}
@@ -125,19 +125,19 @@ func TestReferenceKeysAKeyWhoseFirstPinStillLoadsTheObjectRebindsToAKeyInTheStor
 	registry := newKmRegistry("a")
 	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
 		for id, contract := range providers {
-			if err := h.Serve(contract, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			if err := h.Serve(contract, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				notes := self.State(kmStored).(*documents.Keyed)
 				registry.setProvider(id, notes)
-				return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(notes)}}, nil
+				return contracts.MembersImplementation{Keyed: kmKeyed(notes)}, nil
 			}, ServeOptions{}); err != nil {
 				return err
 			}
 		}
-		if err := h.Serve(kmExposer, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(kmExposer, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			registry.addExposer(self)
 			self.State(kmOwn)
 			notes := self.Get(providers[registry.current()], jsonObject()).Keyed("notes")
-			return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(notes)}}, nil
+			return contracts.MembersImplementation{Keyed: kmKeyed(notes)}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}

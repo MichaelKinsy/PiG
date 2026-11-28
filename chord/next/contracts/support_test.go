@@ -1,7 +1,6 @@
 package contracts_test
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -148,18 +147,19 @@ func props(properties ...contracts.Property) contracts.Params {
 	return contracts.Params(append([]contracts.Property{}, properties...))
 }
 
-// remote declares a remote contract with the server host address; variants are `name: declaration` pairs.
-func remote(t testing.TB, name string, version float64, params contracts.Params, variants ...contracts.VariantEntry) *contracts.Contract {
+// remote declares a remote contract with the server host address.
+func remote(t testing.TB, name string, version float64, params contracts.Params, state []contracts.RemoteStateEntry, methods ...contracts.RemoteMethodEntry) *contracts.Contract {
 	t.Helper()
-	return must(declareRemote(name, version, params, variants...))
+	return must(declareRemote(name, version, params, state, methods...))
 }
 
-func declareRemote(name string, version float64, params contracts.Params, variants ...contracts.VariantEntry) (*contracts.Contract, error) {
+func declareRemote(name string, version float64, params contracts.Params, state []contracts.RemoteStateEntry, methods ...contracts.RemoteMethodEntry) (*contracts.Contract, error) {
 	return contracts.Remote(name, contracts.RemoteDeclaration{
 		Version:     version,
 		Params:      params,
 		HostAddress: serverAddress,
-		Variants:    variants,
+		State:       state,
+		Methods:     methods,
 	})
 }
 
@@ -169,12 +169,7 @@ func local(t testing.TB, name string, version float64, params contracts.Params, 
 	return must(contracts.Local(name, contracts.LocalDeclaration{Version: version, Params: params, Members: append([]contracts.LocalEntry{}, members...)}))
 }
 
-// variant is `{ state, methods }` of one remote variant.
-func variant(name string, state []contracts.Property, methods ...contracts.MethodEntry) contracts.VariantEntry {
-	return contracts.Var(name, contracts.VariantDeclaration{State: state, Methods: methods})
-}
-
-func state(properties ...contracts.Property) []contracts.Property { return properties }
+func rstate(entries ...contracts.RemoteStateEntry) []contracts.RemoteStateEntry { return entries }
 
 // dataOf is the Chord-owned data of a contract.
 func dataOf(t testing.TB, contract *contracts.Contract) *contracts.ContractData {
@@ -182,19 +177,14 @@ func dataOf(t testing.TB, contract *contracts.Contract) *contracts.ContractData 
 	return must(contracts.ContractDataOf(contract))
 }
 
-// currentVariants is `currentVariants(contract)`.
-func currentVariants(t testing.TB, contract *contracts.Contract) *contracts.NamedMap[*contracts.VariantData] {
+// currentMembers is `CurrentMembers(contract)`.
+func currentMembers(t testing.TB, contract *contracts.Contract) *contracts.MembersData {
 	t.Helper()
-	return must(contracts.CurrentVariants(contract))
+	return must(contracts.CurrentMembers(contract))
 }
-
-// keys lists the names of a map in order.
-func keys[V any](m *contracts.NamedMap[V]) []string { return append([]string{}, m.Keys()...) }
 
 // mapping functions, which the accepts tests never call.
 func fn(value delta.JsonValue) (delta.JsonValue, error) { return value, nil }
-
-func call(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) { return args, nil }
 
 func stateFn() contracts.StateMapping { return contracts.StateMapping{Func: fn} }
 

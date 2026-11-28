@@ -10,11 +10,12 @@ func (m *Model) CostRates() ModelCost {
 	}
 	c := m.Capabilities
 	return ModelCost{
-		Input:      c.InputCostPer1M,
-		Output:     c.OutputCostPer1M,
-		CacheRead:  c.CacheReadCostPer1M,
-		CacheWrite: c.CacheWriteCostPer1M,
-		Tiers:      c.CostTiers,
+		Input:       c.InputCostPer1M,
+		Output:      c.OutputCostPer1M,
+		CacheRead:   c.CacheReadCostPer1M,
+		CacheWrite:  c.CacheWriteCostPer1M,
+		ImageOutput: c.ImageOutputCostPer1M,
+		Tiers:       c.CostTiers,
 	}
 }
 
@@ -54,8 +55,19 @@ func calculateUsageCost(rates ModelCost, usage *Usage) UsageCost {
 		longWrite = *usage.CacheWrite1h
 	}
 	shortWrite := usage.CacheWrite - longWrite
+	// Image models price image tokens at imageOutput and the rest of output at output. Without the
+	// provider's split, all output counts as image tokens: the image price never undercharges.
+	imageTokens := 0
+	imageRate := 0.0
+	if rates.ImageOutput != nil {
+		imageRate = *rates.ImageOutput
+		imageTokens = usage.Output
+		if usage.ImageOutput != nil && *usage.ImageOutput < imageTokens {
+			imageTokens = *usage.ImageOutput
+		}
+	}
 	usage.Cost.Input = float64((input / 1000000) * float64(usage.Input))
-	usage.Cost.Output = float64((output / 1000000) * float64(usage.Output))
+	usage.Cost.Output = (float64(output*float64(usage.Output-imageTokens)) + float64(imageRate*float64(imageTokens))) / 1000000
 	usage.Cost.CacheRead = float64((cacheRead / 1000000) * float64(usage.CacheRead))
 	usage.Cost.CacheWrite = (float64(cacheWrite*float64(shortWrite)) + float64(input*2*float64(longWrite))) / 1000000
 	usage.Cost.Total = usage.Cost.Input + usage.Cost.Output + usage.Cost.CacheRead + usage.Cost.CacheWrite

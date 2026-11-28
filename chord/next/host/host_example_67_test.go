@@ -134,10 +134,10 @@ func TestExample67Events(t *testing.T) {
 	clock := exLocal("example.clock", contracts.Params{},
 		contracts.Mem("tick", exInt()), contracts.Mem("paddle", contracts.Event(sampleSchema)))
 	// What a client holds: the clock's tick and paddle, re-exposed (an event member forwarded unchanged).
-	game := exRemote("example.game", contracts.Params{}, exServerAddress, contracts.Var("player", contracts.VariantDeclaration{
-		State:  []contracts.Property{exProp("tick", exInt())},
-		Events: []contracts.Property{exProp("paddle", sampleSchema)},
-	}))
+	game := exRemote("example.game", contracts.Params{}, exServerAddress, contracts.RemoteDeclaration{
+		State:  []contracts.RemoteStateEntry{contracts.StateEntry("tick", exInt())},
+		Events: []contracts.RemoteEventEntry{contracts.EventEntry("paddle", sampleSchema)},
+	})
 	ticks := exDefineState("ticks", documents.StateOptions{
 		Schema: exObj(exProp("n", exInt())), Initial: func() *delta.JsonObject { return jsonObject("n", 0.0) },
 	})
@@ -147,7 +147,7 @@ func TestExample67Events(t *testing.T) {
 	var emittedT, emittedY []float64
 	ticked := make(chan struct{})
 	serverFacet := DefineFacet(func(host FacetHost, _ FacetSelf) error {
-		if err := host.Serve(clock, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := host.Serve(clock, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			counter := stateOf(self, ticks)
 			paddle := self.Events()
 			// The ticking: a routine emits a sample every 10 ms; every tenth also commits the tick (emit is no transaction
@@ -177,23 +177,23 @@ func TestExample67Events(t *testing.T) {
 					return nil
 				})
 			})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"tick": self.Derive([]any{counter.s}, func(values []any) (delta.JsonValue, error) {
 						return values[0].(*delta.JsonObject).Value("n"), nil
 					}),
 				},
 				Events: map[string]contracts.EventMember[delta.JsonValue]{"paddle": paddle},
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return host.Serve(game, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return host.Serve(game, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			held := self.Get(clock, jsonObject())
-			return contracts.Implementation{Variant: "player", Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State:  map[string]chord.Watchable[delta.JsonValue]{"tick": Expose(held.Member("tick"))},
 				Events: map[string]contracts.EventMember[delta.JsonValue]{"paddle": held.Events("paddle")},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})
 

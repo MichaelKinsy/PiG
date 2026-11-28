@@ -26,7 +26,7 @@ export default defineFacet((host) => {
 	host.serve(Counter, (_params, _principal, self) => {
 		[[if .Native]]self.open(async () => { [[if eq .Broken "open"]]throw new Error("the native does not open");[[end]] natives.opens.push([[.CodeJSON]]); return [[.CodeJSON]]; }, (value, reason) => { natives.closes.push(`${value}:${reason.kind}`); });[[end]]
 		const store = self.get(Store, {});
-		return { variant: "main", members: {
+		return {
 			label: self.derive([store.count], ([n]) => [[if .V2]]({ text: `[[.Code]]:${n}`, code: [[.CodeJSON]] })[[else]]`[[.Code]]:${n}`[[end]]),
 			count: self.derive([store.count], ([n]) => n),
 			[[if .V2]]add: async ({ n }, ctx) => ({ text: await store.add(n, ctx) }),[[else]]add: (n, ctx) => store.add(n, ctx),[[end]]
@@ -34,6 +34,6 @@ export default defineFacet((host) => {
 			slowAdd: async (name, ctx) => { const held = latch(name); held.entered.resolve(); await held.open.promise; return store.add(10, ctx); },
 			code: async () => [[.CodeJSON]],
 			visits: (ctx) => store.visits(ctx),
-		} };
-	}[[if .Accepts]], { accepts: { 1: { state: { main: { label: (current) => current.text } }, methods: { add: { args: (old) => ({ n: old }), result: (current) => current.text } } } } }[[end]]);
+		};
+	}[[if .Accepts]], { accepts: { 1: { state: { label: (current) => current.text }, methods: { add: { args: (old) => ({ n: old }), result: (current) => current.text } } } } }[[end]]);
 });

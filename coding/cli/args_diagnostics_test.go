@@ -104,7 +104,7 @@ func TestHelpListsOnlyOptionsPiGParses(t *testing.T) {
 	values := map[string]string{"--mode": "json", "--tui-mode": "regular", "--thinking": "low"}
 	for _, match := range option.FindAllStringSubmatch(upstreamHelp, -1) {
 		name := match[1]
-		if name == "--help" || name == "--version" {
+		if name == "--help" || name == "--version" || name == "--agent-dir" {
 			continue
 		}
 		args := []string{name}

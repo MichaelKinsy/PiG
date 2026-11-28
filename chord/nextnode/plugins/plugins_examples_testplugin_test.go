@@ -42,11 +42,11 @@ func TestExample52TestPlugin(t *testing.T) {
 	notesStub := TestStub{
 		Name: "@acme/notes", Contracts: []*contracts.Contract{notes},
 		Facet: host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-			return h.Serve(notes, func(params *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+			return h.Serve(notes, func(params *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
 				text := params.Value("project").(string) + ": buy milk, call bob, ship it"
-				return contracts.Implementation{Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{"text": self.Derive(nil, func([]any) (delta.JsonValue, error) { return text, nil })},
-				}}, nil
+				}, nil
 			}, host.ServeOptions{})
 		}),
 	}

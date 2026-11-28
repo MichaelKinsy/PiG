@@ -44,7 +44,7 @@ func TestCatalog(t *testing.T) {
 			if err != nil {
 				t.Fatalf("OpenStore: %v", err)
 			}
-			return opened.(*ChordStore)
+			return opened
 		}
 		first := open()
 		tableIn(t, first, edits)

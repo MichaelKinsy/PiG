@@ -134,7 +134,7 @@ func reimported(t *testing.T, store *ChordStore, edit func(parts []ArchivePart) 
 	noError(t, err)
 	imported, err := ImportStore(SqliteBackend(db), SlicePartSource(parts), background, StoreOptions{})
 	noError(t, err)
-	opened := imported.(*ChordStore)
+	opened := imported
 	t.Cleanup(func() { _ = opened.Close(background) })
 	return opened
 }

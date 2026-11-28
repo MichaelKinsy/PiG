@@ -116,7 +116,7 @@ func rrOneCommitTwoViews(t *testing.T, variant rrBatchStorage) {
 	var mu sync.Mutex
 	var computed []string
 	rrLoad(t, host, func(facetHost chordhost.FacetHost, _ chordhost.FacetSelf) error {
-		return facetHost.Serve(rrBoth, func(_ *delta.JsonObject, self chordhost.Self) (contracts.Implementation, error) {
+		return facetHost.Serve(rrBoth, func(_ *delta.JsonObject, self chordhost.Self) (contracts.MembersImplementation, error) {
 			harness := self.Open(
 				func(ctx context.Context) (any, error) {
 					registry := CreateRegistry()
@@ -160,7 +160,7 @@ func rrOneCommitTwoViews(t *testing.T, variant rrBatchStorage) {
 				mu.Unlock()
 				return out, nil
 			})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"pair": pair},
 				Methods: map[string]contracts.MethodFunction{
 					"both": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -183,7 +183,7 @@ func rrOneCommitTwoViews(t *testing.T, variant rrBatchStorage) {
 						return nil, err
 					},
 				},
-			}}, nil
+			}, nil
 		}, chordhost.ServeOptions{})
 	})
 	reference := rrHeld(t, host, rrBoth)

@@ -127,14 +127,17 @@ func (s *TuiScope) Hold(typ *contracts.Contract, params any) (*host.Reference, e
 	return held, nil
 }
 
-// Variant is a reader of ref narrowed to variant while it is live in it, else nil (loading, failed or denied, ended,
-// another variant), as React's `useVariant`: ref's state is followed until Dispose, so a change of its variant calls changed
-// (an admission's other allowed value binds another variant while it is held). True of the redraw that read it: a call made
-// after a wait may find another variant. A reference the scope's caller released ends its own watch and is not kept by the
-// scope (see followedStates).
-func (s *TuiScope) Variant(ref *host.Reference, variant string) func() *host.Reference {
+// Live is a reader of ref as React's `useLive` returns it (`surfaces.LiveGrant`): ref while it is live or loading
+// again after it last settled live, else nil. ref's state is followed until Dispose, so a rebind (another `granted`,
+// slice 15 §1.5) calls changed. True of the redraw that read it, not across a wait.
+func (s *TuiScope) Live(ref *host.Reference) func() *host.Reference {
 	s.follow(ref)
-	return func() *host.Reference { return surfaces.LiveIn(ref, variant) }
+	return func() *host.Reference {
+		if surfaces.LiveGrant(ref) == nil {
+			return nil
+		}
+		return ref
+	}
 }
 
 // follow follows the state of ref until Dispose, once however often Hold and Variant ask. Pi's `WeakSet` of the followed

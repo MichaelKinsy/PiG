@@ -1,4 +1,4 @@
-upstream_version = "1.6.1"
+upstream_version = "1.7.0"
 
 [[contract]]
 id = "coding-agent/extension-input/remapped-confirm"
@@ -115,7 +115,7 @@ id = "coding-agent/startup/init-lifecycle-order"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.init"
 family = "startup"
 kind = "startup-lifecycle"
-claim = "init returns at once when already initialized; otherwise it registers the signal handlers, prepares the changelog data, prints the model scope notice to stdout unless the renderer is fullscreen, mounts one component tree, binds app.clear to the Ctrl-C handler, Ctrl-D to the exit handler (empty editor only) and submit to handleStartupSubmit, which keeps the text in the editor and shows `Startup is still in progress`, focuses the editor, starts the UI before extensions load, sets isInitialized, reports the program status, applies the theme from settings and waits for the terminal colors, writing the color query before the first frame, before it builds the header"
+claim = "init returns at once when already initialized; otherwise it registers the signal handlers, prepares the changelog data, prints the model scope notice to stdout unless the renderer is fullscreen, mounts one component tree, binds app.clear to the Ctrl-C handler, Ctrl-D to the exit handler (empty editor only) and submit to handleStartupSubmit, which keeps the text in the editor and shows `Startup is still in progress`, focuses the editor, starts the UI before extensions load, sets isInitialized, reports the program status and program resume command, applies the theme from settings and waits for the terminal colors, writing the color query before the first frame, before it builds the header"
 status = "ported"
 pig_targets = [
   "internal/codingagent/interactive.go#Init",
@@ -150,7 +150,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
 start = "\tasync init(): Promise<void> {\n\t\tif (this.isInitialized) return;\n"
 end = "\t\t// Add header with keybindings from config (unless silenced)\n"
-sha256 = "af43dca1c731a93b1db2fd5f953be4273a85ac7232bdc59d33344347936bac34"
+sha256 = "85295207931ff1cbcdd036d13e0d6abe11ea1d074360ab6cbc7041ef1deee54f"
 keybindings = ["app.clear"]
 
 [[contract]]
@@ -1075,7 +1075,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
 start = "\tprivate async handleEvent(event: AgentSessionEvent): Promise<void> {"
 end = "\t\t\tcase \"queue_update\":"
-sha256 = "55fe328ea296b7662669195bc16dfb91f6a4833fd738b24f899aee5fdf61926a"
+sha256 = "dcb28864d6557a4f45ef4ba586eab54b2d54d85ef6305a8fd7a1ed3dfddd26cf"
 keybindings = []
 
 [[contract]]
@@ -1385,7 +1385,7 @@ evidence = [
 path = "packages/tui/src/tui-main-screen.ts"
 start = "\tprotected doRender(): void {"
 end = "\n\tprivate positionHardwareCursor"
-sha256 = "b3ace205f3aeeb20847bbaecc17d6eb13c11692f54751b41b5549130590da3bb"
+sha256 = "a51aeb4c3eb3359b81ce3b0a93611237ca4d39d829a8d8e5efed2010e301e6cd"
 keybindings = []
 
 [[contract]]
@@ -1475,8 +1475,8 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/components/custom-editor.ts"
 start = "\thandleInput(data: string): void {"
 end = "\n\t}\n}\n"
-sha256 = "38dce28b907b20a7fb15c4a9af4f58081637bb93a735b8c56a50f6d48be6c652"
-keybindings = ["app.clipboard.pasteImage", "app.exit", "app.interrupt", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.select.pageDown", "tui.select.pageUp"]
+sha256 = "548cba31ee2776a2b4a2d9c241eb9959daaff112c81a6f7b7582b2885734108f"
+keybindings = ["app.clipboard.pasteImage", "app.exit", "app.interrupt", "app.message.followUp", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.select.pageDown", "tui.select.pageUp"]
 
 [[contract]]
 id = "coding-agent/custom-editor/handler-order"
@@ -1501,8 +1501,8 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/components/custom-editor.ts"
 start = "\thandleInput(data: string): void {"
 end = "\n\t}\n}\n"
-sha256 = "38dce28b907b20a7fb15c4a9af4f58081637bb93a735b8c56a50f6d48be6c652"
-keybindings = ["app.clipboard.pasteImage", "app.exit", "app.interrupt", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.select.pageDown", "tui.select.pageUp"]
+sha256 = "548cba31ee2776a2b4a2d9c241eb9959daaff112c81a6f7b7582b2885734108f"
+keybindings = ["app.clipboard.pasteImage", "app.exit", "app.interrupt", "app.message.followUp", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.select.pageDown", "tui.select.pageUp"]
 
 # D87: Pi's 3D easter egg plays with PiG's models (the PiG mark's pig on a header click, the sprite's pig head for fullscreen /arminsayshi and /pigsayhi); the input handler is Pi's.
 [[contract]]
@@ -2038,7 +2038,7 @@ evidence = [
 path = "packages/tui/src/components/editor.ts"
 start = "\thandleInput(data: string): void {\n\t\tconst kb = getKeybindings();"
 end = "\n\tprivate layoutText("
-sha256 = "d95a7e584d8eb9c208048392a7b324925ab540e51c600855bbe257b06b071c29"
+sha256 = "b99a0aa0c659764a266ee5f79dd23244ac663c772ecf7827fe8f807ba5592110"
 keybindings = ['matchesKey:"shift+backspace"', 'matchesKey:"shift+delete"', 'matchesKey:"shift+space"', "tui.editor.cursorDown", "tui.editor.cursorLeft", "tui.editor.cursorLineEnd", "tui.editor.cursorLineStart", "tui.editor.cursorRight", "tui.editor.cursorUp", "tui.editor.cursorWordLeft", "tui.editor.cursorWordRight", "tui.editor.deleteCharBackward", "tui.editor.deleteCharForward", "tui.editor.deleteToLineEnd", "tui.editor.deleteToLineStart", "tui.editor.deleteWordBackward", "tui.editor.deleteWordForward", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.editor.jumpBackward", "tui.editor.jumpForward", "tui.editor.pageDown", "tui.editor.pageUp", "tui.editor.undo", "tui.editor.yank", "tui.editor.yankPop", "tui.input.copy", "tui.input.newLine", "tui.input.submit", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up", "tui.select.pageDown", "tui.select.pageUp"]
 
 [[contract]]
@@ -2369,8 +2369,8 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/components/custom-editor.ts"
 start = "\thandleInput(data: string): void {"
 end = "\t}\n}"
-sha256 = "f88513e8176d996ec993af613b07587a10fc935fcf9f6aade3babec7d0859110"
-keybindings = ["app.clipboard.pasteImage", "app.exit", "app.interrupt", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.select.pageDown", "tui.select.pageUp"]
+sha256 = "afe18dc6407a49888ce62fb5285bd8b875b2ac6656eff4d2d3aac637b41a1dda"
+keybindings = ["app.clipboard.pasteImage", "app.exit", "app.interrupt", "app.message.followUp", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.select.pageDown", "tui.select.pageUp"]
 
 [[contract]]
 id = "coding-agent/mcp-manager/status-cancel"
@@ -3551,7 +3551,7 @@ evidence = [
 path = "packages/tui/src/components/editor.ts"
 start = "\thandleInput(data: string): void {"
 end = "\tprivate layoutText(contentWidth: number): LayoutLine[] {"
-sha256 = "30a948186dcf98fbcc4373c0d57c223ff1d9f9914f17625baf7835591543c0f3"
+sha256 = "67075e7c07be0b80601fdb53dea1e1b5ef065aa3ad3a72b33ff60718bd0f22c9"
 keybindings = ['matchesKey:"shift+backspace"', 'matchesKey:"shift+delete"', 'matchesKey:"shift+space"', "tui.editor.cursorDown", "tui.editor.cursorLeft", "tui.editor.cursorLineEnd", "tui.editor.cursorLineStart", "tui.editor.cursorRight", "tui.editor.cursorUp", "tui.editor.cursorWordLeft", "tui.editor.cursorWordRight", "tui.editor.deleteCharBackward", "tui.editor.deleteCharForward", "tui.editor.deleteToLineEnd", "tui.editor.deleteToLineStart", "tui.editor.deleteWordBackward", "tui.editor.deleteWordForward", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.editor.jumpBackward", "tui.editor.jumpForward", "tui.editor.pageDown", "tui.editor.pageUp", "tui.editor.undo", "tui.editor.yank", "tui.editor.yankPop", "tui.input.copy", "tui.input.newLine", "tui.input.submit", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up", "tui.select.pageDown", "tui.select.pageUp"]
 
 [[contract]]
@@ -3978,7 +3978,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/components/config-selector.ts"
 start = "\trender(width: number): string[] {\n\t\tconst title = theme.bold("
 end = "\n}\n\nclass ResourceList"
-sha256 = "50f40763a2423f9870fb266427364cfb37a12de1c590bb9bf6f284750395a767"
+sha256 = "42000c0d1507e8fdcf50b757fcd732af48e7ccc691267af6af66b4f3b677f85d"
 keybindings = []
 
 [[contract]]
@@ -5175,7 +5175,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/components/session-selector.ts"
 start = "\trender(width: number): string[] {\n\t\tconst lines: string[] = [];\n\n\t\t// Render search input"
 end = "\tprivate buildTreePrefix("
-sha256 = "47399d2abfd865df759c097d8487fd22807725801a2303db97fdb6cb172e2175"
+sha256 = "9fd12d955dbc4003846f26cdf2c38db3d25dff8c072e16223dc4b749f7865dbc"
 keybindings = []
 [[contract]]
 id = "coding-agent/footer/render"
@@ -5694,7 +5694,7 @@ evidence = [
 path = "packages/coding-agent/src/extensions/llama/ui.ts"
 start = "\thandleInput(data: string): void {\n\t\tif (this.keybindings.matches(data, \"tui.select.up\")) {"
 end = "\t\tthis.scheduleSearch();\n\t}\n}"
-sha256 = "917eb5b8993d48050f3b7092950095874f36eefd255a9bf976a0de54b800703a"
+sha256 = "588d9c1cacdcbfa3647a5d105e2586fe42f43448b50d46f5bd78ae6bcba8e71a"
 keybindings = ["tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up"]
 
 [[contract]]
@@ -6415,7 +6415,7 @@ evidence = [
 path = "packages/tui/src/components/editor.ts"
 start = "\t\t// Handle autocomplete mode"
 end = "\t\t// Tab - trigger completion"
-sha256 = "2e6d8b44832e998c0df3b7c2ee6129df7ecaab8198165f51b90e5d37d2b645d8"
+sha256 = "32e308fd5e900c4f81e6b0f9f40d5134a38d68fa52cbdda37646a75a5eeefe14"
 keybindings = [
   "matchesKey:\"shift+backspace\"",
   "matchesKey:\"shift+delete\"",
@@ -7133,7 +7133,7 @@ evidence = [
 path = "packages/tui/src/components/editor.ts"
 start = "\thandleInput(data: string): void {\n\t\tconst kb = getKeybindings();"
 end = "\n\tprivate layoutText("
-sha256 = "d95a7e584d8eb9c208048392a7b324925ab540e51c600855bbe257b06b071c29"
+sha256 = "b99a0aa0c659764a266ee5f79dd23244ac663c772ecf7827fe8f807ba5592110"
 keybindings = [
   "matchesKey:\"shift+backspace\"",
   "matchesKey:\"shift+delete\"",

@@ -7,10 +7,10 @@ import {
   openBrowser,
   questionTerminal,
   updateMcpServerConfig
-} from "./chunk-ZSAMFY4Z.js";
+} from "./chunk-SJXPWYJY.js";
 import {
   ArminComponent
-} from "./chunk-M6IUD7SG.js";
+} from "./chunk-OCAAQZUH.js";
 import {
   AgentSession,
   BUG_REPORT_CUSTOM_ENTRY_TYPE,
@@ -85,7 +85,6 @@ import {
   isEditToolResult,
   isFindToolResult,
   isGrepToolResult,
-  isInstallTelemetryEnabled,
   isLsToolResult,
   isOfflineModeEnabled,
   isPowerShellToolResult,
@@ -124,13 +123,13 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-P2EKETZU.js";
+} from "./chunk-EMNAEWL7.js";
 import {
   CredentialSynchronizationError,
   InMemoryCodingAgentModelsStore,
   ModelRuntime,
   VIRTUAL_MODEL_STATE_ENTRY
-} from "./chunk-GGFXZTDN.js";
+} from "./chunk-M34VOFVE.js";
 import {
   convertToPng,
   createBashToolDefinition,
@@ -163,7 +162,7 @@ import {
   resolveReadPath,
   withFileMutationQueue,
   writeRenderers
-} from "./chunk-7PPV3CBH.js";
+} from "./chunk-LH6CBJ2H.js";
 import {
   fetchWithRetry,
   getPiUserAgent
@@ -173,13 +172,13 @@ import {
   TOOL_SEARCH_TOOL_NAME,
   createCodemodeToolDefinition,
   createToolSearchToolDefinition
-} from "./chunk-VK6FCESH.js";
+} from "./chunk-DJ4OUPC4.js";
 import {
   SETTINGS_DEFAULTS,
   addUsageToTotals,
   createUsageTotals,
   getUsageCostBreakdown
-} from "./chunk-V4RD65TK.js";
+} from "./chunk-VGQVQTNM.js";
 import {
   VisualLinePreview,
   formatReadLineRange,
@@ -189,7 +188,7 @@ import {
   stripAnsi,
   truncateToVisualLines,
   writeOutputFile
-} from "./chunk-TZ35YCTP.js";
+} from "./chunk-6GEUDJQJ.js";
 import {
   SYSTEM_THEME_NAME,
   THEME_TOKENS,
@@ -223,7 +222,7 @@ import {
   setThemeJsonValidator,
   stopThemeWatcher,
   theme
-} from "./chunk-F4Z3QMHU.js";
+} from "./chunk-LSKCOARN.js";
 import {
   AuthStorage,
   LIST_MCP_RESOURCES_TOOL,
@@ -233,7 +232,7 @@ import {
   getMcpToolExposure,
   raceWithAbortSignal,
   readStoredCredential
-} from "./chunk-5VMS2WUR.js";
+} from "./chunk-QO6LW4HU.js";
 import {
   DEFAULT_MAX_BYTES,
   DEFAULT_MAX_LINES,
@@ -245,7 +244,7 @@ import {
   truncateHead,
   truncateLine,
   truncateTail
-} from "./chunk-T3RX74C7.js";
+} from "./chunk-NEKNGRMG.js";
 import {
   APP_NAME,
   APP_TITLE,
@@ -278,13 +277,15 @@ import {
   isLocalPath,
   makeConfiguredSelfUpdateCommand,
   normalizePath,
+  pathsEqual,
   resolvePath,
   shortenHomePath,
   spawnProcess,
   spawnProcessSync,
   stripBom,
+  usesDefaultAgentDir,
   waitForChildProcess
-} from "./chunk-JGRZB36T.js";
+} from "./chunk-DJMRY3QF.js";
 import {
   __name
 } from "./chunk-FIOAHQVQ.js";
@@ -705,7 +706,7 @@ function createMcpResourceToolDefinitions(options) {
 __name(createMcpResourceToolDefinitions, "createMcpResourceToolDefinitions");
 
 // pi-dist/pi-coding-agent/extensions/mcp/runtime.lazy.js
-var loadMcpRuntime = /* @__PURE__ */ __name(() => import("./chunk-YX2QD4KZ.js"), "loadMcpRuntime");
+var loadMcpRuntime = /* @__PURE__ */ __name(() => import("./chunk-4AHFGLA3.js"), "loadMcpRuntime");
 
 // pi-dist/pi-coding-agent/extensions/mcp/ui.js
 import { Container as Container3, Input, SelectList, Spacer as Spacer2, Text as Text3, truncateToWidth, visibleWidth } from "../../../pi-tui.mjs";
@@ -723,7 +724,7 @@ import { getNativeClipboard } from "../../../pi-tui.mjs";
 // pi-dist/pi-coding-agent/utils/clipboard-command.js
 import { spawn } from "node:child_process";
 function runClipboardCommand(command, args, options) {
-  return new Promise((resolve7) => {
+  return new Promise((resolve8) => {
     const child = spawn(command, args, {
       stdio: ["pipe", options?.input === void 0 ? "pipe" : "ignore", "ignore"],
       cwd: "/",
@@ -738,7 +739,7 @@ function runClipboardCommand(command, args, options) {
         return;
       settled = true;
       clearTimeout(timer);
-      resolve7(result);
+      resolve8(result);
     }, "finish");
     const abort = /* @__PURE__ */ __name(() => {
       child.kill("SIGKILL");
@@ -1020,7 +1021,7 @@ var McpManagerView = class {
     this.tui.requestRender();
   }
   menu(build, subscribe) {
-    return new Promise((resolve7) => {
+    return new Promise((resolve8) => {
       let unsubscribe;
       let settled = false;
       const finish = /* @__PURE__ */ __name((value) => {
@@ -1028,7 +1029,7 @@ var McpManagerView = class {
           return;
         settled = true;
         unsubscribe?.();
-        resolve7(value);
+        resolve8(value);
       }, "finish");
       let selected;
       const render2 = /* @__PURE__ */ __name(() => {
@@ -1085,14 +1086,14 @@ var McpManagerView = class {
     });
   }
   redirectUrl(title, authorizationUrl, signal) {
-    return new Promise((resolve7) => {
+    return new Promise((resolve8) => {
       let settled = false;
       const finish = /* @__PURE__ */ __name((value) => {
         if (settled)
           return;
         settled = true;
         signal.removeEventListener("abort", onAbort);
-        resolve7(value);
+        resolve8(value);
       }, "finish");
       const onAbort = /* @__PURE__ */ __name(() => finish(void 0), "onAbort");
       if (signal.aborted) {
@@ -1552,8 +1553,8 @@ function createMcpExtension(options = {}) {
         let onAbort;
         await Promise.race([
           Promise.all(ready.map((attempt) => attempt.ready)),
-          new Promise((resolve7) => {
-            onAbort = /* @__PURE__ */ __name(() => resolve7(), "onAbort");
+          new Promise((resolve8) => {
+            onAbort = /* @__PURE__ */ __name(() => resolve8(), "onAbort");
             signal?.addEventListener("abort", onAbort, { once: true });
           })
         ]);
@@ -1978,7 +1979,7 @@ ${url.href}`, "info");
         reportProblems(ctx);
         return;
       }
-      const runtime = new Promise((resolve7) => setImmediate(resolve7)).then(() => loadMcpRuntime());
+      const runtime = new Promise((resolve8) => setImmediate(resolve8)).then(() => loadMcpRuntime());
       pending = Promise.all(enabled.map((server) => startConnection(server, runtime))).then(() => {
         if (!signal.aborted)
           reportProblems(ctx);
@@ -1999,8 +2000,8 @@ ${url.href}`, "info");
       let timer;
       const finished = await Promise.race([
         Promise.all(ready).then(() => true),
-        new Promise((resolve7) => {
-          timer = setTimeout(() => resolve7(false), startupWaitMs);
+        new Promise((resolve8) => {
+          timer = setTimeout(() => resolve8(false), startupWaitMs);
         })
       ]);
       clearTimeout(timer);
@@ -2172,8 +2173,39 @@ var tool_search_default = createToolSearchExtension();
 // pi-dist/pi-coding-agent/main.js
 import { createInterface } from "node:readline";
 import { modelsAreEqual as modelsAreEqual2 } from "../../pi-ai/sdk-bundle/index.js";
-import { setCapabilityOverrides as setCapabilityOverrides3 } from "../../../pi-tui.mjs";
-import chalk8 from "../../../chalk/source/index.js";
+import { setCapabilityOverrides as setCapabilityOverrides3, takeProgramResumeToken } from "../../../pi-tui.mjs";
+import chalk7 from "../../../chalk/source/index.js";
+
+// pi-dist/pi-coding-agent/cli/agent-dir-arg.js
+import { resolve as resolve2 } from "node:path";
+function applyAgentDirArg(args) {
+  const result = takeAgentDirArg(args);
+  if (result.kind === "ok" && result.agentDir) {
+    process.env[ENV_AGENT_DIR] = resolve2(expandTildePath(result.agentDir));
+  }
+  return result;
+}
+__name(applyAgentDirArg, "applyAgentDirArg");
+function takeAgentDirArg(args) {
+  const rest = [];
+  let agentDir;
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === "--") {
+      rest.push(...args.slice(i));
+      break;
+    }
+    if (arg !== "--agent-dir") {
+      rest.push(arg);
+      continue;
+    }
+    agentDir = args[++i];
+    if (!agentDir)
+      return { kind: "error", message: "--agent-dir requires a directory" };
+  }
+  return { kind: "ok", args: rest, agentDir };
+}
+__name(takeAgentDirArg, "takeAgentDirArg");
 
 // pi-dist/pi-coding-agent/cli/auth-command.js
 var AuthCommandError = class extends Error {
@@ -2673,7 +2705,7 @@ function createProcessLoginTerminal(onInterrupt) {
 __name(createProcessLoginTerminal, "createProcessLoginTerminal");
 function readSecret(message, signal, onInterrupt) {
   const stdin = process.stdin;
-  return new Promise((resolve7, reject) => {
+  return new Promise((resolve8, reject) => {
     if (signal.aborted) {
       reject(new Error("Login cancelled"));
       return;
@@ -2697,7 +2729,7 @@ function readSecret(message, signal, onInterrupt) {
       for (const char of chunk) {
         if (char === "\r" || char === "\n") {
           finish();
-          resolve7(value);
+          resolve8(value);
           return;
         }
         if (char === "") {
@@ -2789,13 +2821,13 @@ __name(resolveCredentialForPrint, "resolveCredentialForPrint");
 // pi-dist/pi-coding-agent/cli/file-processor.js
 import { access, readFile, stat } from "node:fs/promises";
 import chalk from "../../../chalk/source/index.js";
-import { resolve as resolve2 } from "path";
+import { resolve as resolve3 } from "path";
 async function processFileArguments(fileArgs, options) {
   const autoResizeImages = options?.autoResizeImages ?? true;
   let text = "";
   const images = [];
   for (const fileArg of fileArgs) {
-    const absolutePath = resolve2(resolveReadPath(fileArg, process.cwd()));
+    const absolutePath = resolve3(resolveReadPath(fileArg, process.cwd()));
     try {
       await access(absolutePath);
     } catch {
@@ -2868,7 +2900,6 @@ __name(buildInitialMessage, "buildInitialMessage");
 
 // pi-dist/pi-coding-agent/cli/list-models.js
 import { fuzzyFilter } from "../../../pi-tui.mjs";
-import chalk2 from "../../../chalk/source/index.js";
 function formatTokenCount(count) {
   if (count >= 1e6) {
     const millions = count / 1e6;
@@ -2882,11 +2913,6 @@ function formatTokenCount(count) {
 }
 __name(formatTokenCount, "formatTokenCount");
 async function listModels(modelRuntime, searchPattern, signal) {
-  const loadError = modelRuntime.getError();
-  if (loadError) {
-    console.error(chalk2.yellow(`Warning: errors loading models.json:
-${loadError}`));
-  }
   const models = [...await modelRuntime.getAvailable(void 0, { signal })];
   if (models.length === 0) {
     console.log(formatNoModelsAvailableMessage());
@@ -2954,7 +2980,7 @@ ${loadError}`));
 __name(listModels, "listModels");
 
 // pi-dist/pi-coding-agent/cli/project-trust.js
-import chalk3 from "../../../chalk/source/index.js";
+import chalk2 from "../../../chalk/source/index.js";
 
 // pi-dist/pi-coding-agent/cli/startup-ui.js
 import { ProcessTerminal, setCapabilityOverrides, setKeybindings, TuiMainScreen } from "../../../pi-tui.mjs";
@@ -3889,12 +3915,12 @@ Fell back to the system theme.`);
 // pi-dist/pi-coding-agent/utils/flush-stdout.js
 var STDOUT_FLUSH_TIMEOUT_MS = 1e3;
 function flushStdout() {
-  return new Promise((resolve7) => {
+  return new Promise((resolve8) => {
     const finish = /* @__PURE__ */ __name((error) => {
       clearTimeout(timer);
       if (!error)
         process.stdout.off("error", finish);
-      resolve7();
+      resolve8();
     }, "finish");
     const timer = setTimeout(finish, STDOUT_FLUSH_TIMEOUT_MS);
     process.stdout.on("error", finish);
@@ -3982,7 +4008,7 @@ __name(showStartupDialog, "showStartupDialog");
 async function clearStartupTui(ui) {
   ui.clear();
   ui.requestRender();
-  await new Promise((resolve7) => setTimeout(resolve7, 25));
+  await new Promise((resolve8) => setTimeout(resolve8, 25));
 }
 __name(clearStartupTui, "clearStartupTui");
 function shouldRunFirstTimeSetup(settingsPath = getSettingsPath()) {
@@ -4004,7 +4030,7 @@ function shouldRunFirstTimeSetup(settingsPath = getSettingsPath()) {
 __name(shouldRunFirstTimeSetup, "shouldRunFirstTimeSetup");
 async function showStartupSelector(settingsManager, title, options, blockedKind = "question") {
   const ui = await createStartupTui(settingsManager);
-  return new Promise((resolve7) => {
+  return new Promise((resolve8) => {
     let settled = false;
     const finish = /* @__PURE__ */ __name(async (result) => {
       if (settled) {
@@ -4014,7 +4040,7 @@ async function showStartupSelector(settingsManager, title, options, blockedKind 
       await clearStartupTui(ui);
       ui.stop();
       await flushStdout();
-      resolve7(result);
+      resolve8(result);
     }, "finish");
     const selector = new ExtensionSelectorComponent(title, options.map((option) => option.label), (option) => void finish(options.find((entry) => entry.label === option)?.value), () => void finish(void 0), { tui: ui });
     showStartupDialog(ui, selector, dialogBlockedStatus(blockedKind, title), settingsManager);
@@ -4023,7 +4049,7 @@ async function showStartupSelector(settingsManager, title, options, blockedKind 
 __name(showStartupSelector, "showStartupSelector");
 async function showFirstTimeSetup(settingsManager) {
   const ui = await createStartupTui(settingsManager);
-  return new Promise((resolve7) => {
+  return new Promise((resolve8) => {
     let settled = false;
     const finish = /* @__PURE__ */ __name(async (result) => {
       if (settled) {
@@ -4037,7 +4063,7 @@ async function showFirstTimeSetup(settingsManager) {
       await clearStartupTui(ui);
       ui.stop();
       await flushStdout();
-      resolve7();
+      resolve8();
     }, "finish");
     const component = new FirstTimeSetupComponent({
       onSubmit: /* @__PURE__ */ __name((result) => void finish(result), "onSubmit"),
@@ -4049,7 +4075,7 @@ async function showFirstTimeSetup(settingsManager) {
 __name(showFirstTimeSetup, "showFirstTimeSetup");
 async function showStartupInput(settingsManager, title, placeholder, blockedKind = "question") {
   const ui = await createStartupTui(settingsManager);
-  return new Promise((resolve7) => {
+  return new Promise((resolve8) => {
     let settled = false;
     const finish = /* @__PURE__ */ __name(async (result) => {
       if (settled) {
@@ -4060,7 +4086,7 @@ async function showStartupInput(settingsManager, title, placeholder, blockedKind
       await clearStartupTui(ui);
       ui.stop();
       await flushStdout();
-      resolve7(result);
+      resolve8(result);
     }, "finish");
     const input2 = new ExtensionInputComponent(title, placeholder, (value) => void finish(value), () => void finish(void 0), {
       tui: ui
@@ -4110,7 +4136,7 @@ ${message}`, [
       }, "input"),
       notify: /* @__PURE__ */ __name((message, type = "info") => {
         if (options.mode !== "interactive") {
-          const color = type === "error" ? chalk3.red : type === "warning" ? chalk3.yellow : chalk3.cyan;
+          const color = type === "error" ? chalk2.red : type === "warning" ? chalk2.yellow : chalk2.cyan;
           console.error(color(message));
         }
       }, "notify")
@@ -4675,12 +4701,12 @@ var SessionList = class {
         if (this.showCwd) {
           emptyMessage = `  No named sessions found. Press ${toggleKey} to show all.`;
         } else {
-          emptyMessage = `  No named sessions in current folder. Press ${toggleKey} to show all, or Tab to view all.`;
+          emptyMessage = `  No named sessions in current folder. Press ${toggleKey} to show all, or ${keyText("tui.input.tab")} to view all.`;
         }
       } else if (this.showCwd) {
         emptyMessage = "  No sessions found";
       } else {
-        emptyMessage = "  No sessions in current folder. Press Tab to view all.";
+        emptyMessage = `  No sessions in current folder. Press ${keyText("tui.input.tab")} to view all.`;
       }
       lines.push(theme.fg("muted", truncateToWidth2(emptyMessage, width, "\u2026")));
       return lines;
@@ -5033,7 +5059,7 @@ var SessionSelectorComponent = class extends Container7 {
     panel.addChild(new Spacer6(1));
     panel.addChild(this.renameInput);
     panel.addChild(new Spacer6(1));
-    panel.addChild(new Text7(theme.fg("muted", `${keyText("tui.select.confirm")} to save \xB7 ${keyText("tui.select.cancel")} to cancel`), 1, 0));
+    panel.addChild(new Text7(theme.fg("muted", `${keyText("tui.input.submit")} to save \xB7 ${keyText("tui.select.cancel")} to cancel`), 1, 0));
     this.buildBaseLayout(panel, { showHeader: false });
     this.requestRender();
   }
@@ -5168,7 +5194,7 @@ var SessionSelectorComponent = class extends Container7 {
 // pi-dist/pi-coding-agent/cli/session-picker.js
 async function selectSession(currentSessionsLoader, allSessionsLoader, settingsManager) {
   const ui = await createStartupTui(settingsManager);
-  return new Promise((resolve7) => {
+  return new Promise((resolve8) => {
     const keybindings = KeybindingsManager.create();
     setKeybindings2(keybindings);
     let resolved = false;
@@ -5179,12 +5205,12 @@ async function selectSession(currentSessionsLoader, allSessionsLoader, settingsM
     const selector = new SessionSelectorComponent(currentSessionsLoader, allSessionsLoader, (path6) => {
       if (!resolved) {
         resolved = true;
-        void stopUi().then(() => resolve7(path6));
+        void stopUi().then(() => resolve8(path6));
       }
     }, () => {
       if (!resolved) {
         resolved = true;
-        void stopUi().then(() => resolve7(null));
+        void stopUi().then(() => resolve8(null));
       }
     }, () => {
       void stopUi().then(() => process.exit(0));
@@ -5314,7 +5340,7 @@ function linkSignal(source, target) {
 }
 __name(linkSignal, "linkSignal");
 function sleep(ms, signal) {
-  return new Promise((resolve7, reject) => {
+  return new Promise((resolve8, reject) => {
     if (signal?.aborted) {
       reject(signal.reason ?? new Error("Cancelled"));
       return;
@@ -5325,7 +5351,7 @@ function sleep(ms, signal) {
     }, "abort");
     const timeout = setTimeout(() => {
       signal?.removeEventListener("abort", abort);
-      resolve7();
+      resolve8();
     }, ms);
     signal?.addEventListener("abort", abort, { once: true });
   });
@@ -6210,7 +6236,7 @@ var HuggingFaceSearch = class extends Container8 {
       return;
     }
     if (this.keybindings.matches(data, "tui.select.confirm")) {
-      const exact = /^[^/\s]+\/[^:\s]+(?::[^\s:]+)?$/u.test(this.query) ? this.query : void 0;
+      const exact = !this.selectionTouched && /^[^/\s]+\/[^:\s]+(?::[^\s:]+)?$/u.test(this.query) ? this.query : void 0;
       const selected = exact ?? this.filteredResults[this.selectedIndex]?.id;
       if (selected)
         this.close(selected);
@@ -6288,29 +6314,29 @@ var LlamaView = class {
       })),
       { value: DOWNLOAD_VALUE, label: "Download model\u2026", description: "Hugging Face owner/repository[:quant]" }
     ];
-    return new Promise((resolve7) => {
+    return new Promise((resolve8) => {
       const list = new SelectList2(items, Math.min(items.length, 12), selectTheme(this.theme), {
         minPrimaryColumnWidth: 36,
         maxPrimaryColumnWidth: 56
       });
       list.onSelect = (item) => {
         if (item.value === DOWNLOAD_VALUE)
-          resolve7({ type: "download" });
+          resolve8({ type: "download" });
         else {
           const model = byId.get(item.value);
           if (model)
-            resolve7({ type: "model", model });
+            resolve8({ type: "model", model });
         }
       };
-      list.onCancel = () => resolve7({ type: "close" });
+      list.onCancel = () => resolve8({ type: "close" });
       this.setContent(frame2(this.theme, "llama.cpp models", [new Text8(this.theme.fg("dim", serverUrl), 1, 0), new Spacer7(1), list], `${keyHint("tui.select.confirm", "load/unload/download")} \u2022 ${keyHint("tui.select.cancel", "close")}`), list);
     });
   }
   select(title, options) {
-    return new Promise((resolve7) => {
+    return new Promise((resolve8) => {
       const list = new SelectList2(options.map((option) => ({ value: option, label: option })), Math.min(options.length, 12), selectTheme(this.theme));
-      list.onSelect = (item) => resolve7(item.value);
-      list.onCancel = () => resolve7(void 0);
+      list.onSelect = (item) => resolve8(item.value);
+      list.onCancel = () => resolve8(void 0);
       this.setContent(frame2(this.theme, title, [new Spacer7(1), list], `${keyHint("tui.select.confirm", "select")} \u2022 ${keyHint("tui.select.cancel", "cancel")}`), list);
     });
   }
@@ -6326,8 +6352,8 @@ ${message}`, ["Retry", "Close"]);
     return choice === "Retry" ? "retry" : "close";
   }
   searchModels(search) {
-    return new Promise((resolve7) => {
-      const component = new HuggingFaceSearch(this.tui, this.theme, this.keybindings, search, this.searchCache, resolve7);
+    return new Promise((resolve8) => {
+      const component = new HuggingFaceSearch(this.tui, this.theme, this.keybindings, search, this.searchCache, resolve8);
       this.setContent(frame2(this.theme, "Download model", [new Spacer7(1), component], `${keyHint("tui.select.confirm", "select")} \u2022 ${keyHint("tui.select.cancel", "back")}`), component, component);
     });
   }
@@ -6336,8 +6362,8 @@ ${message}`, ["Retry", "Close"]);
   }
   progress(state) {
     if (!this.progressPromise) {
-      this.progressPromise = new Promise((resolve7) => {
-        this.progressResolver = resolve7;
+      this.progressPromise = new Promise((resolve8) => {
+        this.progressResolver = resolve8;
       });
     }
     this.showingProgress = true;
@@ -6365,10 +6391,10 @@ ${message}`, ["Retry", "Close"]);
   }
   handleInput(data) {
     if (this.progressResolver && this.keybindings.matches(data, "tui.select.cancel")) {
-      const resolve7 = this.progressResolver;
+      const resolve8 = this.progressResolver;
       this.progressPromise = void 0;
       this.progressResolver = void 0;
-      resolve7();
+      resolve8();
       return;
     }
     this.inputHandler?.handleInput?.(data);
@@ -6660,10 +6686,10 @@ var builtInExtensions = [
 ];
 
 // pi-dist/pi-coding-agent/extensions/mcp/cli.lazy.js
-var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-HFF2X35D.js"), "loadMcpCommand");
+var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-ENGJWF3F.js"), "loadMcpCommand");
 
 // pi-dist/pi-coding-agent/migrations.js
-import chalk4 from "../../../chalk/source/index.js";
+import chalk3 from "../../../chalk/source/index.js";
 import { existsSync as existsSync4, mkdirSync, readdirSync, readFileSync as readFileSync3, renameSync, rmSync, writeFileSync as writeFileSync2 } from "fs";
 import { dirname, join as join5 } from "path";
 var MIGRATION_GUIDE_URL = "https://github.com/earendil-works/pi/blob/main/packages/coding-agent/CHANGELOG.md#extensions-migration";
@@ -6753,10 +6779,10 @@ function migrateCommandsToPrompts(baseDir, label) {
   if (existsSync4(commandsDir) && !existsSync4(promptsDir)) {
     try {
       renameSync(commandsDir, promptsDir);
-      console.log(chalk4.green(`Migrated ${label} commands/ \u2192 prompts/`));
+      console.log(chalk3.green(`Migrated ${label} commands/ \u2192 prompts/`));
       return true;
     } catch (err) {
-      console.log(chalk4.yellow(`Warning: Could not migrate ${label} commands/ to prompts/: ${err instanceof Error ? err.message : err}`));
+      console.log(chalk3.yellow(`Warning: Could not migrate ${label} commands/ to prompts/: ${err instanceof Error ? err.message : err}`));
     }
   }
   return false;
@@ -6810,7 +6836,7 @@ function migrateToolsToBin() {
     }
   }
   if (movedAny) {
-    console.log(chalk4.green(`Migrated managed binaries tools/ \u2192 bin/`));
+    console.log(chalk3.green(`Migrated managed binaries tools/ \u2192 bin/`));
   }
 }
 __name(migrateToolsToBin, "migrateToolsToBin");
@@ -6853,21 +6879,21 @@ async function showDeprecationWarnings(warnings) {
   if (warnings.length === 0)
     return;
   for (const warning of warnings) {
-    console.log(chalk4.yellow(`Warning: ${warning}`));
+    console.log(chalk3.yellow(`Warning: ${warning}`));
   }
-  console.log(chalk4.yellow(`
+  console.log(chalk3.yellow(`
 Move your extensions to the extensions/ directory.`));
-  console.log(chalk4.yellow(`Migration guide: ${MIGRATION_GUIDE_URL}`));
-  console.log(chalk4.yellow(`Documentation: ${EXTENSIONS_DOC_URL}`));
-  console.log(chalk4.dim(`
+  console.log(chalk3.yellow(`Migration guide: ${MIGRATION_GUIDE_URL}`));
+  console.log(chalk3.yellow(`Documentation: ${EXTENSIONS_DOC_URL}`));
+  console.log(chalk3.dim(`
 Press any key to continue...`));
-  await new Promise((resolve7) => {
+  await new Promise((resolve8) => {
     process.stdin.setRawMode?.(true);
     process.stdin.resume();
     process.stdin.once("data", () => {
       process.stdin.setRawMode?.(false);
       process.stdin.pause();
-      resolve7();
+      resolve8();
     });
   });
   console.log();
@@ -6884,10 +6910,10 @@ function runMigrations(cwd) {
 __name(runMigrations, "runMigrations");
 
 // pi-dist/pi-coding-agent/modes/diagnostics-stderr.js
-import chalk5 from "../../../chalk/source/index.js";
+import chalk4 from "../../../chalk/source/index.js";
 function writeDiagnosticsToStderr(diagnostics) {
   for (const diagnostic of diagnostics) {
-    const color = diagnostic.type === "error" ? chalk5.red : diagnostic.type === "warning" ? chalk5.yellow : chalk5.dim;
+    const color = diagnostic.type === "error" ? chalk4.red : diagnostic.type === "warning" ? chalk4.yellow : chalk4.dim;
     const prefix = diagnostic.type === "error" ? "Error: " : diagnostic.type === "warning" ? "Warning: " : "";
     console.error(color(`${prefix}${diagnostic.message}`));
   }
@@ -6902,7 +6928,7 @@ import * as path5 from "node:path";
 import { isRetryableAssistantError } from "../../pi-ai/sdk-bundle/compat.js";
 import * as TuiLayouts from "../../../pi-tui.mjs";
 import { CombinedAutocompleteProvider, Container as Container31, fuzzyFilter as fuzzyFilter8, getCapabilities as getCapabilities4, hyperlink as hyperlink4, Markdown as Markdown7, matchesKey as matchesKey2, Spacer as Spacer28, setCapabilityOverrides as setCapabilityOverrides2, setKeybindings as setKeybindings3, Text as Text31, TruncatedText as TruncatedText3, TuiAltScreen as TuiAltScreen3, TuiMainScreen as TuiMainScreen3, visibleWidth as visibleWidth7 } from "../../../pi-tui.mjs";
-import chalk6 from "../../../chalk/source/index.js";
+import chalk5 from "../../../chalk/source/index.js";
 import { spawn as spawn4 } from "child_process";
 
 // pi-dist/pi-coding-agent/core/cache-stats.js
@@ -7576,10 +7602,10 @@ for (const [name, language] of Object.entries(eagerLanguages)) {
 var allLanguagesPromise;
 function loadAllHighlightLanguages() {
   if (!allLanguagesPromise) {
-    allLanguagesPromise = new Promise((resolve7) => {
+    allLanguagesPromise = new Promise((resolve8) => {
       setImmediate(() => {
-        void import("../../../highlight.js/lib/index.js").then(() => resolve7(), () => {
-          resolve7();
+        void import("../../../highlight.js/lib/index.js").then(() => resolve8(), () => {
+          resolve8();
         });
       });
     });
@@ -7758,13 +7784,13 @@ async function editInExternalEditor(options) {
     process.stdout.write(`Launching external editor: ${options.command}
 Pi will resume when the editor exits.
 `);
-    const exit = await new Promise((resolve7) => {
+    const exit = await new Promise((resolve8) => {
       const child = spawn2(editor, [...editorArgs, filePath], {
         stdio: "inherit",
         shell: process.platform === "win32"
       });
-      child.on("error", () => resolve7(null));
-      child.on("close", (code, signal) => resolve7(code ?? signal));
+      child.on("error", () => resolve8(null));
+      child.on("close", (code, signal) => resolve8(code ?? signal));
     });
     if (exit === null) {
       return { status: "failed", message: `Failed to launch external editor: ${options.command}` };
@@ -7838,7 +7864,7 @@ var ExtensionEditorComponent = class extends Container10 {
     this.addChild(this.editor);
     this.addChild(this.externalEditorStatus);
     this.addChild(new Spacer9(1));
-    const hint = keyHint("tui.select.confirm", "submit") + "  " + keyHint("tui.input.newLine", "newline") + "  " + keyHint("tui.select.cancel", "cancel") + `  ${keyHint("app.editor.external", "external editor")}`;
+    const hint = keyHint("tui.input.submit", "submit") + "  " + keyHint("tui.input.newLine", "newline") + "  " + keyHint("tui.select.cancel", "cancel") + `  ${keyHint("app.editor.external", "external editor")}`;
     this.addChild(new Text10(hint, 1, 0));
     this.addChild(new Spacer9(1));
     this.addChild(new DynamicBorder());
@@ -8024,7 +8050,7 @@ async function shareViaGist(tmpFile, context) {
     context.showStatus("Share cancelled");
   };
   try {
-    const result = await new Promise((resolve7) => {
+    const result = await new Promise((resolve8) => {
       proc = spawn3("gh", ["gist", "create", "--public=false", tmpFile]);
       let stdout = "";
       let stderr = "";
@@ -8034,8 +8060,8 @@ async function shareViaGist(tmpFile, context) {
       proc.stderr?.on("data", (data) => {
         stderr += data.toString();
       });
-      proc.on("error", (error) => resolve7({ stdout, stderr: stderr || error.message, code: null }));
-      proc.on("close", (code) => resolve7({ stdout, stderr, code }));
+      proc.on("error", (error) => resolve8({ stdout, stderr: stderr || error.message, code: null }));
+      proc.on("close", (code) => resolve8({ stdout, stderr, code }));
     });
     if (loader.signal.aborted)
       return;
@@ -8228,11 +8254,11 @@ function recordInSession(session, bundle, delivery) {
 }
 __name(recordInSession, "recordInSession");
 function input(context, title, description, initialValue) {
-  return new Promise((resolve7) => {
+  return new Promise((resolve8) => {
     let component;
     const finish = /* @__PURE__ */ __name((value) => {
       restoreEditor2(context, component);
-      resolve7(value);
+      resolve8(value);
     }, "finish");
     component = new ExtensionEditorComponent(context.ui, context.keybindings, title, initialValue, (value) => finish(value), () => finish(null), { description }, context.session.settingsManager.getExternalEditorCommand());
     showOverlay(context, component);
@@ -8240,11 +8266,11 @@ function input(context, title, description, initialValue) {
 }
 __name(input, "input");
 function choose(context, title, options, description) {
-  return new Promise((resolve7) => {
+  return new Promise((resolve8) => {
     let component;
     const finish = /* @__PURE__ */ __name((value) => {
       restoreEditor2(context, component);
-      resolve7(value);
+      resolve8(value);
     }, "finish");
     component = new ExtensionSelectorComponent(title, options, finish, () => finish(), {
       tui: context.ui,
@@ -8525,7 +8551,7 @@ var BashExecutionComponent = class extends Container12 {
     this.addChild(new DynamicBorder(borderColor));
     this.contentContainer = new Container12();
     this.addChild(this.contentContainer);
-    this.loader = new Loader2(ui, (spinner) => theme.fg(this.colorKey, spinner), (text) => theme.fg("muted", text), `Running... (${keyText("tui.select.cancel")} to cancel)`);
+    this.loader = new Loader2(ui, (spinner) => theme.fg(this.colorKey, spinner), (text) => theme.fg("muted", text), `Running... (${keyText("app.interrupt")} to cancel)`);
     this.addChild(new DynamicBorder(borderColor));
     this.updateDisplay();
   }
@@ -8863,8 +8889,16 @@ var CustomEditor = class extends Editor2 {
       super.handleInput(data);
       return;
     }
+    const followUpHandler = this.actionHandlers.get("app.message.followUp");
+    if (followUpHandler && this.keybindings.matches(data, "app.message.followUp")) {
+      if (this.confirmAutocomplete() === "applied") {
+        return;
+      }
+      followUpHandler();
+      return;
+    }
     for (const [action, handler] of this.actionHandlers) {
-      if (action !== "app.interrupt" && action !== "app.exit" && this.keybindings.matches(data, action)) {
+      if (action !== "app.interrupt" && action !== "app.exit" && action !== "app.message.followUp" && this.keybindings.matches(data, action)) {
         handler();
         return;
       }
@@ -9058,7 +9092,7 @@ function playEasterEgg3d(tui, egg) {
   if (tui.hasOverlay())
     return true;
   const screen = tui.getScreenLines();
-  import("./chunk-GNKSSQ6Q.js").then((module) => module.playEasterEgg3d(tui, screen, egg), () => {
+  import("./chunk-UAANET2K.js").then((module) => module.playEasterEgg3d(tui, screen, egg), () => {
   });
   return true;
 }
@@ -9073,7 +9107,7 @@ function playArmin3d(tui) {
 __name(playArmin3d, "playArmin3d");
 
 // pi-dist/pi-coding-agent/modes/interactive/components/footer.js
-import { isAbsolute, relative, resolve as resolve3, sep } from "node:path";
+import { isAbsolute, relative, resolve as resolve4, sep } from "node:path";
 import { truncateToWidth as truncateToWidth4, visibleWidth as visibleWidth5 } from "../../../pi-tui.mjs";
 function sanitizeStatusText(text) {
   return text.replace(/[\r\n\t]/g, " ").replace(/ +/g, " ").trim();
@@ -9094,8 +9128,8 @@ __name(formatTokens, "formatTokens");
 function formatCwdForFooter(cwd, home) {
   if (!home)
     return cwd;
-  const resolvedCwd = resolve3(cwd);
-  const resolvedHome = resolve3(home);
+  const resolvedCwd = resolve4(cwd);
+  const resolvedHome = resolve4(home);
   const relativeToHome = relative(resolvedHome, resolvedCwd);
   const isInsideHome = relativeToHome === "" || relativeToHome !== ".." && !relativeToHome.startsWith(`..${sep}`) && !isAbsolute(relativeToHome);
   if (!isInsideHome)
@@ -9436,8 +9470,8 @@ var LoginDialogComponent = class extends Container18 {
     this.contentContainer.addChild(this.input);
     this.contentContainer.addChild(new Text18(`(${keyHint("tui.select.cancel", "to cancel")})`, 1, 0));
     this.tui.requestRender();
-    return new Promise((resolve7, reject) => {
-      this.inputResolver = resolve7;
+    return new Promise((resolve8, reject) => {
+      this.inputResolver = resolve8;
       this.inputRejecter = reject;
     });
   }
@@ -9456,8 +9490,8 @@ var LoginDialogComponent = class extends Container18 {
     this.contentContainer.addChild(new Text18(`(${keyHint("tui.select.cancel", "to cancel,")} ${keyHint("tui.select.confirm", "to submit")})`, 1, 0));
     this.input.setValue("");
     this.tui.requestRender();
-    return new Promise((resolve7, reject) => {
-      this.inputResolver = resolve7;
+    return new Promise((resolve8, reject) => {
+      this.inputResolver = resolve8;
       this.inputRejecter = reject;
     });
   }
@@ -10636,7 +10670,8 @@ var SelectSubmenu = class extends Container22 {
     this.listChildIndex = this.children.length;
     this.addChild(this.selectList);
     this.addChild(new Spacer21(1));
-    const hint = submenuOptions?.searchable ? "  Type to filter \xB7 Enter to select \xB7 Esc to go back" : "  Enter to select \xB7 Esc to go back";
+    const keysHint = `${keyText("tui.select.confirm")} to select \xB7 ${keyText("tui.select.cancel")} to go back`;
+    const hint = submenuOptions?.searchable ? `  Type to filter \xB7 ${keysHint}` : `  ${keysHint}`;
     this.addChild(new Text22(theme.fg("dim", hint), 0, 0));
   }
   buildSelectList(options, preselect) {
@@ -11109,13 +11144,6 @@ var SettingsSelectorComponent = class extends Container23 {
         values: ["true", "header", "false"]
       },
       {
-        id: "install-telemetry",
-        label: "Install telemetry",
-        description: "Send an anonymous version/update ping after changelog-detected updates",
-        currentValue: config.enableInstallTelemetry ? "true" : "false",
-        values: ["true", "false"]
-      },
-      {
         id: "default-project-trust",
         label: "Default project trust",
         description: "Fallback behavior when no extension or saved trust decision decides project trust",
@@ -11274,7 +11302,7 @@ var SettingsSelectorComponent = class extends Container23 {
       {
         id: "fullscreen-copy-on-select",
         label: "Fullscreen copy on select",
-        description: "Automatically copy selected text in fullscreen mode; disable to copy selections with Ctrl+X",
+        description: `Automatically copy selected text in fullscreen mode; disable to copy selections with ${keyDisplayText("app.message.copy")}`,
         currentValue: config.fullscreenCopyOnSelect ? "true" : "false",
         values: ["true", "false"]
       },
@@ -11437,9 +11465,6 @@ var SettingsSelectorComponent = class extends Container23 {
           break;
         case "quiet-startup":
           callbacks.onQuietStartupChange(newValue === "header" ? "header" : newValue === "true");
-          break;
-        case "install-telemetry":
-          callbacks.onEnableInstallTelemetryChange(newValue === "true");
           break;
         case "default-project-trust": {
           const defaultProjectTrust = DEFAULT_PROJECT_TRUST_BY_LABEL.get(newValue);
@@ -13427,6 +13452,58 @@ var UserMessageSelectorComponent = class extends Container30 {
   }
 };
 
+// pi-dist/pi-coding-agent/modes/interactive/program-resume-reporter.js
+import { formatProgramResume, formatProgramResumeClear } from "../../../pi-tui.mjs";
+var ProgramResumeReporter = class {
+  static {
+    __name(this, "ProgramResumeReporter");
+  }
+  token;
+  getTerminal;
+  getResumeCommand;
+  /** The command the terminal holds for this process, as JSON. Undefined when it holds none. */
+  reported;
+  constructor(token, getTerminal, getResumeCommand) {
+    this.token = token;
+    this.getTerminal = getTerminal;
+    this.getResumeCommand = getResumeCommand;
+  }
+  /** Report the current command if it changed since the last report. */
+  report() {
+    const command = this.getResumeCommand();
+    if ((command && JSON.stringify(command)) !== this.reported)
+      this.send(command);
+  }
+  /**
+   * Report once the session gets a file to resume. No work while a command is reported: after that it only
+   * changes on a session switch, which calls {@link report}.
+   */
+  reportIfNone() {
+    if (this.reported === void 0)
+      this.report();
+  }
+  /**
+   * Report the current command even if unchanged. A program that ran while pi was suspended may have replaced
+   * pi's command in a terminal that keeps only the latest one.
+   */
+  reportAgain() {
+    const command = this.getResumeCommand();
+    if (command || this.reported !== void 0)
+      this.send(command);
+  }
+  /** Remove the command because the user quit. */
+  clear() {
+    if (this.reported !== void 0)
+      this.send(void 0);
+  }
+  send(command) {
+    const sender = { token: this.token, pid: process.pid, time: Math.floor(Date.now() / 1e3) };
+    const sequence = (command && formatProgramResume(command, sender)) ?? formatProgramResumeClear(sender);
+    this.reported = command && JSON.stringify(command);
+    this.getTerminal().write(sequence);
+  }
+};
+
 // pi-dist/pi-coding-agent/modes/interactive/tui-renderer.js
 import { ProcessTerminal as ProcessTerminal2, TuiAltScreen as TuiAltScreen2, TuiMainScreen as TuiMainScreen2 } from "../../../pi-tui.mjs";
 function createInteractiveTui(options) {
@@ -13575,22 +13652,39 @@ function quoteIfNeeded(value) {
   return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 __name(quoteIfNeeded, "quoteIfNeeded");
-function formatResumeCommand(sessionManager) {
-  if (!process.stdout.isTTY)
-    return void 0;
+function getResumeArgs(sessionManager) {
   if (!sessionManager.isPersisted())
     return void 0;
   const sessionFile = sessionManager.getSessionFile();
   if (!sessionFile || !fs3.existsSync(sessionFile))
     return void 0;
   const args = [APP_NAME];
+  if (!usesDefaultAgentDir()) {
+    args.push("--agent-dir", resolvePath(getAgentDir()));
+  }
   if (!sessionManager.usesDefaultSessionDir()) {
-    args.push("--session-dir", quoteIfNeeded(sessionManager.getSessionDir()));
+    args.push("--session-dir", sessionManager.getSessionDir());
   }
   args.push("--session", sessionManager.getSessionId());
-  return args.join(" ");
+  return args;
+}
+__name(getResumeArgs, "getResumeArgs");
+function formatResumeCommand(sessionManager) {
+  if (!process.stdout.isTTY)
+    return void 0;
+  return getResumeArgs(sessionManager)?.map(quoteIfNeeded).join(" ");
 }
 __name(formatResumeCommand, "formatResumeCommand");
+function getProgramResumeCommand(sessionManager, resumeFlags) {
+  const argv = getResumeArgs(sessionManager);
+  if (!argv)
+    return void 0;
+  const cwd = sessionManager.getCwd();
+  if (resumeFlags.length > 0 && !pathsEqual(cwd, process.cwd()))
+    return void 0;
+  return { argv: [...argv, ...resumeFlags], cwd };
+}
+__name(getProgramResumeCommand, "getProgramResumeCommand");
 function hasDefaultModelProvider(providerId) {
   return providerId in defaultModelPerProvider;
 }
@@ -13761,6 +13855,8 @@ var InteractiveMode = class _InteractiveMode {
   shutdownRequested = false;
   /** Reports working, blocked, done, and error states to terminals that support OSC 7501. */
   programStatus = new ProgramStatusReporter(() => this.ui.terminal, () => this.sessionManager.getSessionName());
+  /** Reports how to resume the session to terminals that support OSC 7577. Undefined without a token. */
+  programResume;
   /** The `/bug` hint is shown at most once per session so error output stays readable. */
   bugReportHintShown = false;
   installChangeWarningShown = false;
@@ -13814,6 +13910,9 @@ var InteractiveMode = class _InteractiveMode {
     const tuiMode = options.tuiMode ?? this.settingsManager.getTuiMode();
     this.options = { ...options, tuiMode };
     this.autoTrustOnReloadCwd = options.autoTrustOnReloadCwd;
+    if (options.programResumeToken) {
+      this.programResume = new ProgramResumeReporter(options.programResumeToken, () => this.ui.terminal, () => getProgramResumeCommand(this.sessionManager, options.programResumeFlags ?? []));
+    }
     this.runtimeHost.setBeforeSessionInvalidate(() => {
       this.resetExtensionUI();
     });
@@ -14145,6 +14244,7 @@ var InteractiveMode = class _InteractiveMode {
     this.ui.start();
     this.isInitialized = true;
     this.programStatus.report();
+    this.programResume?.report();
     this.ensurePngTranscoder();
     this.themeController.applyFromSettings();
     await this.themeController.waitForTerminalColors();
@@ -14284,10 +14384,6 @@ ${onboarding()}`, this.getStartupExpansionState(), 1, 0);
     if (migratedProviders && migratedProviders.length > 0) {
       this.showWarning(`Migrated credentials to auth.json: ${migratedProviders.join(", ")}`);
     }
-    const modelsJsonError = this.session.modelRuntime.getError();
-    if (modelsJsonError) {
-      this.showError(`models.json error: ${modelsJsonError}`);
-    }
     if (modelFallbackMessage) {
       this.showWarning(modelFallbackMessage);
     }
@@ -14345,25 +14441,25 @@ ${onboarding()}`, this.getStartupExpansionState(), 1, 0);
     if (!process.env.TMUX)
       return void 0;
     const runTmuxShow = /* @__PURE__ */ __name((option) => {
-      return new Promise((resolve7) => {
+      return new Promise((resolve8) => {
         const proc = spawn4("tmux", ["show", "-gv", option], {
           stdio: ["ignore", "pipe", "ignore"]
         });
         let stdout = "";
         const timer = setTimeout(() => {
           proc.kill();
-          resolve7(void 0);
+          resolve8(void 0);
         }, 2e3);
         proc.stdout?.on("data", (data) => {
           stdout += data.toString();
         });
         proc.on("error", () => {
           clearTimeout(timer);
-          resolve7(void 0);
+          resolve8(void 0);
         });
         proc.on("close", (code) => {
           clearTimeout(timer);
-          resolve7(code === 0 ? stdout.trim() : void 0);
+          resolve8(code === 0 ? stdout.trim() : void 0);
         });
       });
     }, "runTmuxShow");
@@ -14394,7 +14490,6 @@ ${onboarding()}`, this.getStartupExpansionState(), 1, 0);
     const entries = parseChangelog(changelogPath);
     if (!lastVersion) {
       this.settingsManager.setLastChangelogVersion(VERSION);
-      this.reportInstallTelemetry(VERSION);
       return void 0;
     }
     const newEntries = getNewEntries(entries, lastVersion);
@@ -14404,7 +14499,6 @@ ${onboarding()}`, this.getStartupExpansionState(), 1, 0);
     }
     if (newEntries.length > 0) {
       this.settingsManager.setLastChangelogVersion(VERSION);
-      this.reportInstallTelemetry(VERSION);
       return newEntries.map((e) => normalizeChangelogLinks(e.content, e)).join("\n\n");
     }
     return void 0;
@@ -14457,20 +14551,6 @@ ${onboarding()}`, this.getStartupExpansionState(), 1, 0);
     } catch {
       return void 0;
     }
-  }
-  reportInstallTelemetry(version) {
-    if (process.env.PI_OFFLINE) {
-      return;
-    }
-    if (!isInstallTelemetryEnabled(this.settingsManager)) {
-      return;
-    }
-    void fetch(`https://pi-in-go.dev/api/report-install?version=${encodeURIComponent(version)}`, {
-      headers: {
-        "User-Agent": getPiUserAgent(version)
-      },
-      signal: AbortSignal.timeout(5e3)
-    }).then(() => void 0).catch(() => void 0);
   }
   getMarkdownThemeWithSettings() {
     return {
@@ -15044,6 +15124,7 @@ ${warningLines()}`, 0, 0));
     this.unsubscribe?.();
     this.unsubscribe = void 0;
     this.programStatus.reset();
+    this.programResume?.report();
     this.applyRuntimeSettings();
     if (options.renderBeforeBind) {
       this.renderCurrentSessionState();
@@ -15104,7 +15185,7 @@ ${warningLines()}`, 0, 0));
     if (this.bugReportHintShown)
       return;
     this.bugReportHintShown = true;
-    this.chatContainer.addChild(new ThemedText(() => theme.fg("muted", `If this looks like a ${APP_NAME} bug, /bug sends a report to the developers.`), this.outputPad, 0));
+    this.chatContainer.addChild(new ThemedText(() => theme.fg("muted", `If this looks like a ${APP_NAME} bug, use /bug to send a report to the developers.`), this.outputPad, 0));
     this.ui.requestRender();
   }
   maybeSuggestBugReport(message) {
@@ -15572,16 +15653,16 @@ ${warningLines()}`, 0, 0));
    * Show a selector for extensions.
    */
   showExtensionSelector(title, options, opts) {
-    return new Promise((resolve7) => {
+    return new Promise((resolve8) => {
       if (opts?.signal?.aborted) {
-        resolve7(void 0);
+        resolve8(void 0);
         return;
       }
       const finish = /* @__PURE__ */ __name((option) => {
         opts?.signal?.removeEventListener("abort", onAbort);
         selector.dispose();
         this.removeExtensionDialog(selector);
-        resolve7(option);
+        resolve8(option);
       }, "finish");
       const onAbort = /* @__PURE__ */ __name(() => finish(void 0), "onAbort");
       opts?.signal?.addEventListener("abort", onAbort, { once: true });
@@ -15609,16 +15690,16 @@ ${message}`, ["Yes", "No"], {
    * Show a text input for extensions.
    */
   showExtensionInput(title, placeholder, opts) {
-    return new Promise((resolve7) => {
+    return new Promise((resolve8) => {
       if (opts?.signal?.aborted) {
-        resolve7(void 0);
+        resolve8(void 0);
         return;
       }
       const finish = /* @__PURE__ */ __name((value) => {
         opts?.signal?.removeEventListener("abort", onAbort);
         input2.dispose();
         this.removeExtensionDialog(input2);
-        resolve7(value);
+        resolve8(value);
       }, "finish");
       const onAbort = /* @__PURE__ */ __name(() => finish(void 0), "onAbort");
       opts?.signal?.addEventListener("abort", onAbort, { once: true });
@@ -15630,10 +15711,10 @@ ${message}`, ["Yes", "No"], {
    * Show a multi-line editor for extensions (with Ctrl+G support).
    */
   showExtensionEditor(title, prefill) {
-    return new Promise((resolve7) => {
+    return new Promise((resolve8) => {
       const finish = /* @__PURE__ */ __name((value) => {
         this.removeExtensionDialog(editor);
-        resolve7(value);
+        resolve8(value);
       }, "finish");
       const editor = new ExtensionEditorComponent(this.ui, this.keybindings, title, prefill, (value) => finish(value), () => finish(void 0), void 0, this.settingsManager.getExternalEditorCommand());
       this.pushExtensionDialog(editor, dialogBlockedStatus("question", title));
@@ -15720,7 +15801,7 @@ ${message}`, ["Yes", "No"], {
   async showExtensionCustom(factory, options) {
     const savedText = this.editor.getExpandedText?.() ?? this.editor.getText();
     const isOverlay = options?.overlay ?? false;
-    return new Promise((resolve7, reject) => {
+    return new Promise((resolve8, reject) => {
       let component;
       let overlayHandle;
       const overlayStatusSource = isOverlay && options?.blocked ? `extension-overlay:${this.nextBlockingOverlayId++}` : void 0;
@@ -15751,10 +15832,10 @@ ${message}`, ["Yes", "No"], {
         closed = true;
         if (isOverlay) {
           removeOverlay();
-          resolve7(result);
+          resolve8(result);
         } else {
           restoreEditor3();
-          resolve7(result);
+          resolve8(result);
           disposeComponent();
         }
       }, "close");
@@ -16069,7 +16150,7 @@ ${message}`, ["Yes", "No"], {
         const command = isExcluded ? text.slice(2).trim() : text.slice(1).trim();
         if (command) {
           if (this.session.isBashRunning) {
-            this.showWarning("A bash command is already running. Press Esc to cancel it first.");
+            this.showWarning(`A bash command is already running. Press ${keyText("app.interrupt")} to cancel it first.`);
             this.editor.setText(text);
             return;
           }
@@ -16118,6 +16199,8 @@ ${message}`, ["Yes", "No"], {
     }
     this.footer.invalidate();
     this.programStatus.handleEvent(event);
+    if (event.type === "message_start" || event.type === "agent_settled")
+      this.programResume?.reportIfNone();
     switch (event.type) {
       case "agent_start":
         this.pendingTools.clear();
@@ -16773,10 +16856,10 @@ ${message}`, ["Yes", "No"], {
     if (queuedInput !== void 0) {
       return queuedInput;
     }
-    return new Promise((resolve7) => {
+    return new Promise((resolve8) => {
       this.onInputCallback = (text) => {
         this.onInputCallback = void 0;
-        resolve7(text);
+        resolve8(text);
       };
     });
   }
@@ -16820,11 +16903,12 @@ ${message}`, ["Yes", "No"], {
     }
     this.themeController.disableAutoSync();
     await this.ui.terminal.drainInput(1e3);
+    this.programResume?.clear();
     this.stop();
     await this.runtimeHost.dispose();
     const resumeCommand = formatResumeCommand(this.sessionManager);
     if (resumeCommand) {
-      process.stdout.write(`${chalk6.dim("To resume this session:")}
+      process.stdout.write(`${chalk5.dim("To resume this session:")}
 ${resumeCommand}
 `);
     }
@@ -16892,6 +16976,8 @@ ${this.crashReportInstructions()}`);
   registerSignalHandlers() {
     this.unregisterSignalHandlers();
     const signals = ["SIGTERM", "SIGHUP"];
+    if (process.platform === "win32")
+      signals.push("SIGBREAK");
     for (const signal of signals) {
       const handler = /* @__PURE__ */ __name(() => {
         killTrackedDetachedChildren();
@@ -16934,6 +17020,7 @@ ${this.crashReportInstructions()}`);
       clearInterval(suspendKeepAlive);
       process.removeListener("SIGINT", ignoreSigint);
       this.ui.start();
+      this.programResume?.reportAgain();
       this.ui.requestRender(true);
     });
     try {
@@ -17338,7 +17425,6 @@ ${packageLines}`, 1, 0));
         hideThinkingBlock: this.hideThinkingBlock,
         mermaidRenderingMode: this.settingsManager.getMermaidRenderingMode(),
         collapseChangelog: this.settingsManager.getCollapseChangelog(),
-        enableInstallTelemetry: this.settingsManager.getEnableInstallTelemetry(),
         doubleEscapeAction: this.settingsManager.getDoubleEscapeAction(),
         treeFilterMode: this.settingsManager.getTreeFilterMode(),
         showHardwareCursor: this.settingsManager.getShowHardwareCursor(),
@@ -17446,9 +17532,6 @@ ${packageLines}`, 1, 0));
         onCollapseChangelogChange: /* @__PURE__ */ __name((collapsed) => {
           this.settingsManager.setCollapseChangelog(collapsed);
         }, "onCollapseChangelogChange"),
-        onEnableInstallTelemetryChange: /* @__PURE__ */ __name((enabled) => {
-          this.settingsManager.setEnableInstallTelemetry(enabled);
-        }, "onEnableInstallTelemetryChange"),
         onQuietStartupChange: /* @__PURE__ */ __name((quiet) => {
           this.settingsManager.setQuietStartup(quiet);
         }, "onQuietStartupChange"),
@@ -18379,7 +18462,7 @@ ${packageLines}`, 1, 0));
     }
   }
   showAuthSelect(dialog, prompt, providerId) {
-    return new Promise((resolve7, reject) => {
+    return new Promise((resolve8, reject) => {
       const restoreDialog = /* @__PURE__ */ __name(() => {
         this.editorContainer.clear();
         this.editorContainer.addChild(dialog);
@@ -18391,7 +18474,7 @@ ${packageLines}`, 1, 0));
         restoreDialog();
         const id = prompt.options.find((option) => option.label === optionLabel)?.id;
         if (id)
-          resolve7(id);
+          resolve8(id);
         else
           reject(new Error("Login cancelled"));
       }, () => {
@@ -18539,7 +18622,7 @@ ${packageLines}`, 1, 0));
     this.editorContainer.addChild(reloadBox);
     this.ui.setFocus(reloadBox);
     this.ui.requestRender(true);
-    await new Promise((resolve7) => process.nextTick(resolve7));
+    await new Promise((resolve8) => process.nextTick(resolve8));
     const dismissReloadBox = /* @__PURE__ */ __name((editor) => {
       this.editorContainer.clear();
       this.editorContainer.addChild(editor);
@@ -18578,7 +18661,7 @@ ${packageLines}`, 1, 0));
       const savedImplicitProjectTrust = this.maybeSaveImplicitProjectTrustAfterReload();
       const modelsJsonError = this.session.modelRuntime.getError();
       if (modelsJsonError) {
-        this.showError(`models.json error: ${modelsJsonError}`);
+        this.showWarning(`models.json error: ${modelsJsonError}`);
       }
       this.showStatus(savedImplicitProjectTrust ? "Reloaded keybindings, extensions, skills, prompts, themes, and context files; saved project trust" : "Reloaded keybindings, extensions, skills, prompts, themes, and context files");
       dismissReloadBox(this.editor);
@@ -18879,6 +18962,7 @@ ${theme.fg("dim", "Cache Re-billed:")} ${detail}`;
     const yankPop = this.getEditorKeyDisplay("tui.editor.yankPop");
     const undo = this.getEditorKeyDisplay("tui.editor.undo");
     const tab = this.getEditorKeyDisplay("tui.input.tab");
+    const cancelAutocomplete = this.getEditorKeyDisplay("tui.select.cancel");
     const interrupt = this.getAppKeyDisplay("app.interrupt");
     const clear = this.getAppKeyDisplay("app.clear");
     const exit = this.getAppKeyDisplay("app.exit");
@@ -18923,7 +19007,8 @@ ${theme.fg("dim", "Cache Re-billed:")} ${detail}`;
 | Key | Action |
 |-----|--------|
 | \`${tab}\` | Path completion / accept autocomplete |
-| \`${interrupt}\` | Cancel autocomplete / abort streaming |
+| \`${cancelAutocomplete}\` | Cancel autocomplete |
+| \`${interrupt}\` | Abort streaming or running bash command |
 | \`${clear}\` | Clear editor (first) / exit (second) |
 | \`${exit}\` | Exit (when editor is empty) |
 | \`${suspend}\` | Suspend to background |
@@ -19384,7 +19469,7 @@ var RpcClient = class {
     this.stopReadingStdout = attachJsonlLineReader(childProcess.stdout, (line) => {
       this.handleLine(line);
     });
-    await new Promise((resolve7) => setTimeout(resolve7, 100));
+    await new Promise((resolve8) => setTimeout(resolve8, 100));
     if (this.process.exitCode !== null) {
       const error = this.exitError ?? this.createProcessExitError(this.process.exitCode, this.process.signalCode);
       this.exitError = error;
@@ -19400,14 +19485,14 @@ var RpcClient = class {
     this.stopReadingStdout?.();
     this.stopReadingStdout = null;
     this.process.kill("SIGTERM");
-    await new Promise((resolve7) => {
+    await new Promise((resolve8) => {
       const timeout = setTimeout(() => {
         this.process?.kill("SIGKILL");
-        resolve7();
+        resolve8();
       }, 1e3);
       this.process?.on("exit", () => {
         clearTimeout(timeout);
-        resolve7();
+        resolve8();
       });
     });
     this.process = null;
@@ -19671,7 +19756,7 @@ var RpcClient = class {
    * Resolves when agent_settled event is received.
    */
   waitForIdle(timeout = 6e4) {
-    return new Promise((resolve7, reject) => {
+    return new Promise((resolve8, reject) => {
       const timer = setTimeout(() => {
         unsubscribe();
         reject(new Error(`Timeout waiting for agent to become idle. Stderr: ${this.stderr}`));
@@ -19680,7 +19765,7 @@ var RpcClient = class {
         if (event.type === "agent_settled") {
           clearTimeout(timer);
           unsubscribe();
-          resolve7();
+          resolve8();
         }
       });
     });
@@ -19689,7 +19774,7 @@ var RpcClient = class {
    * Collect events until agent becomes idle.
    */
   collectEvents(timeout = 6e4) {
-    return new Promise((resolve7, reject) => {
+    return new Promise((resolve8, reject) => {
       const events = [];
       const timer = setTimeout(() => {
         unsubscribe();
@@ -19700,7 +19785,7 @@ var RpcClient = class {
         if (event.type === "agent_settled") {
           clearTimeout(timer);
           unsubscribe();
-          resolve7(events);
+          resolve8(events);
         }
       });
     });
@@ -19761,7 +19846,7 @@ var RpcClient = class {
     }
     const id = `req_${++this.requestId}`;
     const fullCommand = { ...command, id };
-    return new Promise((resolve7, reject) => {
+    return new Promise((resolve8, reject) => {
       const timeout = setTimeout(() => {
         this.pendingRequests.delete(id);
         reject(new Error(`Timeout waiting for response to ${command.type}. Stderr: ${this.stderr}`));
@@ -19769,7 +19854,7 @@ var RpcClient = class {
       this.pendingRequests.set(id, {
         resolve: /* @__PURE__ */ __name((response) => {
           clearTimeout(timeout);
-          resolve7(response);
+          resolve8(response);
         }, "resolve"),
         reject: /* @__PURE__ */ __name((error) => {
           clearTimeout(timeout);
@@ -19825,7 +19910,7 @@ async function runRpcMode(runtimeHost) {
     if (opts?.signal?.aborted)
       return Promise.resolve(defaultValue);
     const id = crypto3.randomUUID();
-    return new Promise((resolve7, reject) => {
+    return new Promise((resolve8, reject) => {
       let timeoutId;
       const cleanup = /* @__PURE__ */ __name(() => {
         if (timeoutId)
@@ -19835,19 +19920,19 @@ async function runRpcMode(runtimeHost) {
       }, "cleanup");
       const onAbort = /* @__PURE__ */ __name(() => {
         cleanup();
-        resolve7(defaultValue);
+        resolve8(defaultValue);
       }, "onAbort");
       opts?.signal?.addEventListener("abort", onAbort, { once: true });
       if (opts?.timeout) {
         timeoutId = setTimeout(() => {
           cleanup();
-          resolve7(defaultValue);
+          resolve8(defaultValue);
         }, opts.timeout);
       }
       pendingExtensionRequests.set(id, {
         resolve: /* @__PURE__ */ __name((response) => {
           cleanup();
-          resolve7(parseResponse(response));
+          resolve8(parseResponse(response));
         }, "resolve"),
         reject
       });
@@ -19932,15 +20017,15 @@ async function runRpcMode(runtimeHost) {
     },
     async editor(title, prefill) {
       const id = crypto3.randomUUID();
-      return new Promise((resolve7, reject) => {
+      return new Promise((resolve8, reject) => {
         pendingExtensionRequests.set(id, {
           resolve: /* @__PURE__ */ __name((response) => {
             if ("cancelled" in response && response.cancelled) {
-              resolve7(void 0);
+              resolve8(void 0);
             } else if ("value" in response) {
-              resolve7(response.value);
+              resolve8(response.value);
             } else {
-              resolve7(void 0);
+              resolve8(void 0);
             }
           }, "resolve"),
           reject
@@ -20493,10 +20578,10 @@ __name(validateThemeJson, "validateThemeJson");
 
 // pi-dist/pi-coding-agent/package-manager-cli.js
 import { existsSync as existsSync8, mkdirSync as mkdirSync5, mkdtempSync as mkdtempSync3, readdirSync as readdirSync2, readFileSync as readFileSync11, renameSync as renameSync3, rmSync as rmSync7, writeFileSync as writeFileSync6 } from "node:fs";
-import { delimiter, dirname as dirname6, join as join14, resolve as resolve6 } from "node:path";
+import { delimiter, dirname as dirname6, join as join14, resolve as resolve7 } from "node:path";
 import { ModelsError } from "../../pi-ai/sdk-bundle/index.js";
 import { Markdown as Markdown8 } from "../../../pi-tui.mjs";
-import chalk7 from "../../../chalk/source/index.js";
+import chalk6 from "../../../chalk/source/index.js";
 import lockfile from "../../../proper-lockfile.mjs";
 
 // pi-dist/pi-coding-agent/cli/config-selector.js
@@ -20627,7 +20712,7 @@ var ConfigSelectorHeader = class {
     const sep3 = theme.fg("muted", " \xB7 ");
     const switchHint = this.projectModeAvailable ? keyHint("tui.input.tab", "switch mode") + sep3 : "";
     const actionHint = this.writeScope === "project" ? rawKeyHint("space", "cycle inherit/+/-") : rawKeyHint("space", "toggle");
-    const hint = switchHint + actionHint + sep3 + rawKeyHint("esc", "close");
+    const hint = switchHint + actionHint + sep3 + keyHint("tui.select.cancel", "close");
     const spacing = Math.max(1, width - visibleWidth8(title) - visibleWidth8(hint));
     const scopeHint = this.writeScope === "project" ? theme.fg("muted", `${CONFIG_DIR_NAME}/settings.json \xB7 inherited global resources are dimmed`) : theme.fg("muted", `~/${CONFIG_DIR_NAME}/agent/settings.json`);
     return [
@@ -21215,7 +21300,7 @@ var ConfigSelectorComponent = class extends Container32 {
 async function selectConfig(options) {
   initTheme(options.settingsManager.getTheme(), true);
   setKeybindings4(KeybindingsManager.create(options.agentDir));
-  return new Promise((resolve7) => {
+  return new Promise((resolve8) => {
     const ui = new TuiMainScreen4(new ProcessTerminal3(), options.settingsManager.getShowHardwareCursor(), options.agentDir);
     ui.setClearOnShrink(options.settingsManager.getClearOnShrink());
     let resolved = false;
@@ -21227,7 +21312,7 @@ async function selectConfig(options) {
     const selector = new ConfigSelectorComponent(options.resolvedPaths, options.settingsManager, options.cwd, options.agentDir, () => {
       if (!resolved) {
         resolved = true;
-        void stopUi().then(resolve7);
+        void stopUi().then(resolve8);
       }
     }, () => {
       void stopUi().then(() => process.exit(0));
@@ -21242,14 +21327,14 @@ __name(selectConfig, "selectConfig");
 // pi-dist/pi-coding-agent/utils/windows-self-update.js
 import { randomUUID as randomUUID6 } from "node:crypto";
 import { copyFileSync, existsSync as existsSync7, mkdirSync as mkdirSync4, renameSync as renameSync2, rmSync as rmSync6 } from "node:fs";
-import { basename as basename3, dirname as dirname5, join as join13, relative as relative4, resolve as resolve5, toNamespacedPath } from "node:path";
+import { basename as basename3, dirname as dirname5, join as join13, relative as relative4, resolve as resolve6, toNamespacedPath } from "node:path";
 var QUARANTINE_DIR_NAME = ".pi-native-quarantine";
 function normalizePath2(path6) {
-  return toNamespacedPath(resolve5(path6));
+  return toNamespacedPath(resolve6(path6));
 }
 __name(normalizePath2, "normalizePath");
 function getQuarantineRoot(packageDir) {
-  let current = resolve5(packageDir);
+  let current = resolve6(packageDir);
   while (true) {
     if (basename3(current).toLowerCase() === "node_modules") {
       return join13(current, QUARANTINE_DIR_NAME);
@@ -21327,7 +21412,7 @@ function getActiveManagedInstallRoot() {
   const configuredRoot = process.env.PI_MANAGED_INSTALL_ROOT?.trim();
   if (!configuredRoot)
     return void 0;
-  const managedRoot = resolve6(configuredRoot);
+  const managedRoot = resolve7(configuredRoot);
   const releasesDir = canonicalizePath(join14(managedRoot, "releases"));
   if (getCwdRelativePath(canonicalizePath(getPackageDir()), releasesDir) === void 0)
     return void 0;
@@ -21507,27 +21592,27 @@ async function runManagedSelfUpdate(managedRoot, version) {
 }
 __name(runManagedSelfUpdate, "runManagedSelfUpdate");
 var SELF_UPDATE_NOTE_MARKDOWN_THEME = {
-  heading: /* @__PURE__ */ __name((text) => chalk7.bold(chalk7.yellow(text)), "heading"),
-  link: /* @__PURE__ */ __name((text) => chalk7.cyan(text), "link"),
-  linkUrl: /* @__PURE__ */ __name((text) => chalk7.dim(text), "linkUrl"),
-  code: /* @__PURE__ */ __name((text) => chalk7.yellow(text), "code"),
-  codeBlock: /* @__PURE__ */ __name((text) => chalk7.dim(text), "codeBlock"),
-  codeBlockBorder: /* @__PURE__ */ __name((text) => chalk7.dim(text), "codeBlockBorder"),
-  quote: /* @__PURE__ */ __name((text) => chalk7.dim(text), "quote"),
-  quoteBorder: /* @__PURE__ */ __name((text) => chalk7.dim(text), "quoteBorder"),
-  hr: /* @__PURE__ */ __name((text) => chalk7.dim(text), "hr"),
-  listBullet: /* @__PURE__ */ __name((text) => chalk7.yellow(text), "listBullet"),
-  bold: /* @__PURE__ */ __name((text) => chalk7.bold(text), "bold"),
-  italic: /* @__PURE__ */ __name((text) => chalk7.italic(text), "italic"),
-  strikethrough: /* @__PURE__ */ __name((text) => chalk7.strikethrough(text), "strikethrough"),
-  underline: /* @__PURE__ */ __name((text) => chalk7.underline(text), "underline")
+  heading: /* @__PURE__ */ __name((text) => chalk6.bold(chalk6.yellow(text)), "heading"),
+  link: /* @__PURE__ */ __name((text) => chalk6.cyan(text), "link"),
+  linkUrl: /* @__PURE__ */ __name((text) => chalk6.dim(text), "linkUrl"),
+  code: /* @__PURE__ */ __name((text) => chalk6.yellow(text), "code"),
+  codeBlock: /* @__PURE__ */ __name((text) => chalk6.dim(text), "codeBlock"),
+  codeBlockBorder: /* @__PURE__ */ __name((text) => chalk6.dim(text), "codeBlockBorder"),
+  quote: /* @__PURE__ */ __name((text) => chalk6.dim(text), "quote"),
+  quoteBorder: /* @__PURE__ */ __name((text) => chalk6.dim(text), "quoteBorder"),
+  hr: /* @__PURE__ */ __name((text) => chalk6.dim(text), "hr"),
+  listBullet: /* @__PURE__ */ __name((text) => chalk6.yellow(text), "listBullet"),
+  bold: /* @__PURE__ */ __name((text) => chalk6.bold(text), "bold"),
+  italic: /* @__PURE__ */ __name((text) => chalk6.italic(text), "italic"),
+  strikethrough: /* @__PURE__ */ __name((text) => chalk6.strikethrough(text), "strikethrough"),
+  underline: /* @__PURE__ */ __name((text) => chalk6.underline(text), "underline")
 };
 function reportSettingsErrors(settingsManager, context) {
   const errors = settingsManager.drainErrors();
   for (const { scope, error } of errors) {
-    console.error(chalk7.yellow(`Warning (${context}, ${scope} settings): ${error.message}`));
+    console.error(chalk6.yellow(`Warning (${context}, ${scope} settings): ${error.message}`));
     if (error.stack) {
-      console.error(chalk7.dim(error.stack));
+      console.error(chalk6.dim(error.stack));
     }
   }
 }
@@ -21547,7 +21632,7 @@ function getPackageCommandUsage(command) {
 __name(getPackageCommandUsage, "getPackageCommandUsage");
 var CONFIG_COMMAND_USAGE = `${APP_NAME} config [-l] [--approve|--no-approve]`;
 function printConfigCommandHelp() {
-  console.log(`${chalk7.bold("Usage:")}
+  console.log(`${chalk6.bold("Usage:")}
   ${CONFIG_COMMAND_USAGE}
 
 Open the resource configuration TUI to enable or disable package resources.
@@ -21564,7 +21649,7 @@ __name(printConfigCommandHelp, "printConfigCommandHelp");
 function printPackageCommandHelp(command) {
   switch (command) {
     case "install":
-      console.log(`${chalk7.bold("Usage:")}
+      console.log(`${chalk6.bold("Usage:")}
   ${getPackageCommandUsage("install")}
 
 Install a package and add it to settings.
@@ -21584,7 +21669,7 @@ Examples:
 `);
       return;
     case "remove":
-      console.log(`${chalk7.bold("Usage:")}
+      console.log(`${chalk6.bold("Usage:")}
   ${getPackageCommandUsage("remove")}
 
 Remove a package and its source from settings.
@@ -21601,7 +21686,7 @@ Examples:
 `);
       return;
     case "update":
-      console.log(`${chalk7.bold("Usage:")}
+      console.log(`${chalk6.bold("Usage:")}
   ${getPackageCommandUsage("update")}
 
 Update pi, installed packages, or model catalogs.
@@ -21625,7 +21710,7 @@ Short forms:
 `);
       return;
     case "list":
-      console.log(`${chalk7.bold("Usage:")}
+      console.log(`${chalk6.bold("Usage:")}
   ${getPackageCommandUsage("list")}
 
 List installed packages from user and project settings.
@@ -21845,7 +21930,7 @@ async function refreshModelCatalogs2(agentDir) {
     const failures = [];
     for (const [provider, error] of result.errors) {
       if (error instanceof ModelsError && error.code === "oauth") {
-        console.warn(chalk7.yellow(`Warning: skipped model catalog for ${provider}: ${error.message}
+        console.warn(chalk6.yellow(`Warning: skipped model catalog for ${provider}: ${error.message}
 Log in again with \`${APP_NAME} auth login ${provider}\` to refresh it.`));
       } else {
         failures.push(`${provider}: ${error.message}`);
@@ -21857,7 +21942,7 @@ Log in again with \`${APP_NAME} auth login ${provider}\` to refresh it.`));
   } finally {
     clearTimeout(timeout);
   }
-  console.log(chalk7.green("Model catalogs refreshed"));
+  console.log(chalk6.green("Model catalogs refreshed"));
 }
 __name(refreshModelCatalogs2, "refreshModelCatalogs");
 function printSelfUpdateUnavailable(npmCommand, updatePackageTarget = PACKAGE_NAME) {
@@ -21872,12 +21957,12 @@ function printSelfUpdateUnavailable(npmCommand, updatePackageTarget = PACKAGE_NA
 }
 __name(printSelfUpdateUnavailable, "printSelfUpdateUnavailable");
 function printSelfUpdateFallback(command) {
-  console.error(chalk7.dim(`If this keeps failing, run this command yourself: ${command.display}`));
+  console.error(chalk6.dim(`If this keeps failing, run this command yourself: ${command.display}`));
 }
 __name(printSelfUpdateFallback, "printSelfUpdateFallback");
 function printPnpmSelfUpdateMetadataHint() {
-  console.error(chalk7.yellow("If pnpm reports missing package versions, its cached registry metadata may be stale."));
-  console.error(chalk7.yellow(`Run \`pnpm store prune\` and retry \`${APP_NAME} update --self\`.`));
+  console.error(chalk6.yellow("If pnpm reports missing package versions, its cached registry metadata may be stale."));
+  console.error(chalk6.yellow(`Run \`pnpm store prune\` and retry \`${APP_NAME} update --self\`.`));
 }
 __name(printPnpmSelfUpdateMetadataHint, "printPnpmSelfUpdateMetadataHint");
 function printSelfUpdateNote(note) {
@@ -21886,7 +21971,7 @@ function printSelfUpdateNote(note) {
     return;
   }
   console.log();
-  console.log(chalk7.bold(chalk7.yellow("Update note")));
+  console.log(chalk6.bold(chalk6.yellow("Update note")));
   try {
     const width = Math.max(20, process.stdout.columns ?? 80);
     const renderedLines = new Markdown8(trimmedNote, 0, 0, SELF_UPDATE_NOTE_MARKDOWN_THEME).render(width).map((line) => line.trimEnd());
@@ -21920,14 +22005,14 @@ async function getSelfUpdatePlan(force) {
       shouldRun: true
     };
   }
-  console.log(chalk7.green(`${APP_NAME} is already up to date (v${VERSION})`));
+  console.log(chalk6.green(`${APP_NAME} is already up to date (v${VERSION})`));
   return { packageName, installSpec, version: latestRelease.version, shouldRun: false };
 }
 __name(getSelfUpdatePlan, "getSelfUpdatePlan");
 async function runSelfUpdate(command) {
-  console.log(chalk7.dim(`Updating ${APP_NAME} with ${command.display}...`));
+  console.log(chalk6.dim(`Updating ${APP_NAME} with ${command.display}...`));
   for (const step of command.steps ?? [command]) {
-    await new Promise((resolve7, reject) => {
+    await new Promise((resolve8, reject) => {
       const child = spawnProcess(step.command, step.args, {
         stdio: "inherit"
       });
@@ -21936,7 +22021,7 @@ async function runSelfUpdate(command) {
       });
       child.on("close", (code, signal) => {
         if (code === 0) {
-          resolve7();
+          resolve8();
         } else if (signal) {
           reject(new Error(`${step.display} terminated by signal ${signal}`));
         } else {
@@ -21956,17 +22041,17 @@ async function runConfiguredSelfUpdate(argv, plan) {
     await runSelfUpdate(command);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown self-update command error";
-    console.error(chalk7.red(`Error: ${message}`));
+    console.error(chalk6.red(`Error: ${message}`));
     process.exitCode = 1;
     return;
   }
   const change = detectInstallChange();
   const installedVersion = change?.kind === "updated" && change.version === plan.version ? change.version : readVersionOnPath();
   if (installedVersion === plan.version) {
-    console.log(chalk7.green(`Updated ${APP_NAME} from ${VERSION} to ${plan.version}`));
+    console.log(chalk6.green(`Updated ${APP_NAME} from ${VERSION} to ${plan.version}`));
     return;
   }
-  console.log(chalk7.yellow(`Ran ${command.display}, but \`${APP_NAME} --version\` reports ${installedVersion ?? "no version"}, not ${plan.version}.`));
+  console.log(chalk6.yellow(`Ran ${command.display}, but \`${APP_NAME} --version\` reports ${installedVersion ?? "no version"}, not ${plan.version}.`));
 }
 __name(runConfiguredSelfUpdate, "runConfiguredSelfUpdate");
 function readVersionOnPath() {
@@ -21994,7 +22079,7 @@ function getCommandAppMode() {
 __name(getCommandAppMode, "getCommandAppMode");
 function reportProjectTrustWarnings(warnings) {
   for (const warning of warnings) {
-    console.error(chalk7.yellow(`Warning: ${warning}`));
+    console.error(chalk6.yellow(`Warning: ${warning}`));
   }
 }
 __name(reportProjectTrustWarnings, "reportProjectTrustWarnings");
@@ -22054,13 +22139,13 @@ async function handleConfigCommand(args, runtimeOptions = {}) {
     } else if (arg === "-na" || arg === "--no-approve") {
       projectTrustOverride = false;
     } else if (arg.startsWith("-")) {
-      console.error(chalk7.red(`Unknown option ${arg} for "config".`));
-      console.error(chalk7.dim(`Use "${APP_NAME} --help" or "${CONFIG_COMMAND_USAGE}".`));
+      console.error(chalk6.red(`Unknown option ${arg} for "config".`));
+      console.error(chalk6.dim(`Use "${APP_NAME} --help" or "${CONFIG_COMMAND_USAGE}".`));
       process.exitCode = 1;
       return true;
     } else {
-      console.error(chalk7.red(`Unexpected argument ${arg}.`));
-      console.error(chalk7.dim(`Usage: ${CONFIG_COMMAND_USAGE}`));
+      console.error(chalk6.red(`Unexpected argument ${arg}.`));
+      console.error(chalk6.dim(`Usage: ${CONFIG_COMMAND_USAGE}`));
       process.exitCode = 1;
       return true;
     }
@@ -22075,7 +22160,7 @@ async function handleConfigCommand(args, runtimeOptions = {}) {
   });
   reportProjectTrustWarnings(projectTrustWarnings);
   if (local && !settingsManager.isProjectTrusted()) {
-    console.error(chalk7.red("Project is not trusted. Use --approve to modify local resource config."));
+    console.error(chalk6.red("Project is not trusted. Use --approve to modify local resource config."));
     process.exitCode = 1;
     return true;
   }
@@ -22091,7 +22176,7 @@ async function handleConfigCommand(args, runtimeOptions = {}) {
   const projectResolvedPaths = settingsManager.isProjectTrusted() ? await new DefaultPackageManager({ cwd, agentDir, settingsManager, builtinExtensions }).resolve() : globalResolvedPaths;
   const installWarnings = new Set([...globalResolvedPaths.installFailures ?? [], ...projectResolvedPaths.installFailures ?? []].map(formatPackageInstallWarning));
   for (const warning of installWarnings) {
-    console.error(chalk7.yellow(`Warning: ${warning}`));
+    console.error(chalk6.yellow(`Warning: ${warning}`));
   }
   await selectConfig({
     resolvedPaths: { global: globalResolvedPaths, project: projectResolvedPaths },
@@ -22114,33 +22199,33 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
     return true;
   }
   if (options.invalidOption) {
-    console.error(chalk7.red(`Unknown option ${options.invalidOption} for "${options.command}".`));
-    console.error(chalk7.dim(`Use "${APP_NAME} --help" or "${getPackageCommandUsage(options.command)}".`));
+    console.error(chalk6.red(`Unknown option ${options.invalidOption} for "${options.command}".`));
+    console.error(chalk6.dim(`Use "${APP_NAME} --help" or "${getPackageCommandUsage(options.command)}".`));
     process.exitCode = 1;
     return true;
   }
   if (options.missingOptionValue) {
-    console.error(chalk7.red(`Missing value for ${options.missingOptionValue}.`));
-    console.error(chalk7.dim(`Usage: ${getPackageCommandUsage(options.command)}`));
+    console.error(chalk6.red(`Missing value for ${options.missingOptionValue}.`));
+    console.error(chalk6.dim(`Usage: ${getPackageCommandUsage(options.command)}`));
     process.exitCode = 1;
     return true;
   }
   if (options.invalidArgument) {
-    console.error(chalk7.red(`Unexpected argument ${options.invalidArgument}.`));
-    console.error(chalk7.dim(`Usage: ${getPackageCommandUsage(options.command)}`));
+    console.error(chalk6.red(`Unexpected argument ${options.invalidArgument}.`));
+    console.error(chalk6.dim(`Usage: ${getPackageCommandUsage(options.command)}`));
     process.exitCode = 1;
     return true;
   }
   if (options.conflictingOptions) {
-    console.error(chalk7.red(options.conflictingOptions));
-    console.error(chalk7.dim(`Usage: ${getPackageCommandUsage(options.command)}`));
+    console.error(chalk6.red(options.conflictingOptions));
+    console.error(chalk6.dim(`Usage: ${getPackageCommandUsage(options.command)}`));
     process.exitCode = 1;
     return true;
   }
   const source = options.source;
   if ((options.command === "install" || options.command === "remove") && !source) {
-    console.error(chalk7.red(`Missing ${options.command} source.`));
-    console.error(chalk7.dim(`Usage: ${getPackageCommandUsage(options.command)}`));
+    console.error(chalk6.red(`Missing ${options.command} source.`));
+    console.error(chalk6.dim(`Usage: ${getPackageCommandUsage(options.command)}`));
     process.exitCode = 1;
     return true;
   }
@@ -22149,7 +22234,7 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
       await refreshModelCatalogs2(getAgentDir());
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown model catalog refresh error";
-      console.error(chalk7.red(`Error: ${message}`));
+      console.error(chalk6.red(`Error: ${message}`));
       process.exitCode = 1;
     }
     return true;
@@ -22166,7 +22251,7 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
   });
   reportProjectTrustWarnings(projectTrustWarnings);
   if (!settingsManager.isProjectTrusted() && writesProjectPackageConfig) {
-    console.error(chalk7.red("Project is not trusted. Use --approve to modify local package config."));
+    console.error(chalk6.red("Project is not trusted. Use --approve to modify local package config."));
     process.exitCode = 1;
     return true;
   }
@@ -22179,11 +22264,11 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
     if (event.type === "result" && event.action === "update" && event.message) {
       updatedPackages.push(event.message);
     } else if (event.type === "start") {
-      process.stdout.write(chalk7.dim(`${event.message}
+      process.stdout.write(chalk6.dim(`${event.message}
 `));
     } else if (event.type === "progress" && event.message) {
       warningCount++;
-      process.stdout.write(chalk7.yellow(`${event.message}
+      process.stdout.write(chalk6.yellow(`${event.message}
 `));
     }
   });
@@ -22191,16 +22276,16 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
     switch (options.command) {
       case "install":
         await packageManager.installAndPersist(source, { local: options.local });
-        console.log(chalk7.green(`Installed ${source}`));
+        console.log(chalk6.green(`Installed ${source}`));
         return true;
       case "remove": {
         const removed = await packageManager.removeAndPersist(source, { local: options.local });
         if (!removed) {
-          console.error(chalk7.red(`No matching package found for ${source}`));
+          console.error(chalk6.red(`No matching package found for ${source}`));
           process.exitCode = 1;
           return true;
         }
-        console.log(chalk7.green(`Removed ${source}`));
+        console.log(chalk6.green(`Removed ${source}`));
         return true;
       }
       case "list": {
@@ -22208,18 +22293,18 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
         const userPackages = configuredPackages.filter((pkg) => pkg.scope === "user");
         const projectPackages = configuredPackages.filter((pkg) => pkg.scope === "project");
         if (configuredPackages.length === 0) {
-          console.log(chalk7.dim("No packages installed."));
+          console.log(chalk6.dim("No packages installed."));
           return true;
         }
         const formatPackage = /* @__PURE__ */ __name((pkg) => {
           const display = pkg.filtered ? `${pkg.source} (filtered)` : pkg.source;
           console.log(`  ${display}`);
           if (pkg.installedPath) {
-            console.log(chalk7.dim(`    ${pkg.installedPath}`));
+            console.log(chalk6.dim(`    ${pkg.installedPath}`));
           }
         }, "formatPackage");
         if (userPackages.length > 0) {
-          console.log(chalk7.bold("User packages:"));
+          console.log(chalk6.bold("User packages:"));
           for (const pkg of userPackages) {
             formatPackage(pkg);
           }
@@ -22227,7 +22312,7 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
         if (projectPackages.length > 0) {
           if (userPackages.length > 0)
             console.log();
-          console.log(chalk7.bold("Project packages:"));
+          console.log(chalk6.bold("Project packages:"));
           for (const pkg of projectPackages) {
             formatPackage(pkg);
           }
@@ -22237,20 +22322,20 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
       case "update": {
         const target = options.updateTarget ?? { type: "self" };
         if (options.showExtensionsSkippedNote) {
-          console.log(chalk7.dim(`Extensions are skipped. Run ${APP_NAME} update --extensions to update extensions.`));
+          console.log(chalk6.dim(`Extensions are skipped. Run ${APP_NAME} update --extensions to update extensions.`));
         }
         if (updateTargetIncludesExtensions(target)) {
           const updateSource = target.type === "extensions" ? target.source : void 0;
           await packageManager.update(updateSource);
           if (isOfflineModeEnabled()) {
-            console.log(chalk7.yellow("Skipped package updates (offline mode)"));
+            console.log(chalk6.yellow("Skipped package updates (offline mode)"));
           } else if (updatedPackages.length === 0 && warningCount > 0) {
-            console.log(chalk7.yellow(updateSource ? `${updateSource} was not updated, see the warnings above` : "No packages were updated, see the warnings above"));
+            console.log(chalk6.yellow(updateSource ? `${updateSource} was not updated, see the warnings above` : "No packages were updated, see the warnings above"));
           } else if (updatedPackages.length === 0) {
-            console.log(chalk7.green(updateSource ? `${updateSource} is already up to date` : "Packages are already up to date"));
+            console.log(chalk6.green(updateSource ? `${updateSource} is already up to date` : "Packages are already up to date"));
           } else {
             const count = updatedPackages.length;
-            console.log(chalk7.green(`Updated ${count} package${count === 1 ? "" : "s"}:`));
+            console.log(chalk6.green(`Updated ${count} package${count === 1 ? "" : "s"}:`));
             for (const message of updatedPackages) {
               console.log(`  ${message}`);
             }
@@ -22260,7 +22345,7 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
           const configuredSelfUpdateArgv = getConfiguredSelfUpdateArgv(settingsManager.getGlobalSettings().selfUpdateCommand);
           const managedInstallRoot = configuredSelfUpdateArgv ? void 0 : getActiveManagedInstallRoot();
           if (managedInstallRoot && options.force) {
-            console.error(chalk7.red(`Managed ${APP_NAME} installations do not support --force; rerun the installer to repair this installation.`));
+            console.error(chalk6.red(`Managed ${APP_NAME} installations do not support --force; rerun the installer to repair this installation.`));
             process.exitCode = 1;
             return true;
           }
@@ -22277,21 +22362,21 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
               printSelfUpdateNote(selfUpdatePlan.note);
             }
             try {
-              console.log(chalk7.dim(`Updating managed ${APP_NAME} installation...`));
+              console.log(chalk6.dim(`Updating managed ${APP_NAME} installation...`));
               await runManagedSelfUpdate(managedInstallRoot, selfUpdatePlan.version);
             } catch (error) {
               const message = error instanceof Error ? error.message : "Unknown managed update error";
-              console.error(chalk7.red(`Error: ${message}`));
+              console.error(chalk6.red(`Error: ${message}`));
               process.exitCode = 1;
               return true;
             }
-            console.log(chalk7.green(`Updated ${APP_NAME} from ${VERSION} to ${selfUpdatePlan.version}`));
+            console.log(chalk6.green(`Updated ${APP_NAME} from ${VERSION} to ${selfUpdatePlan.version}`));
             return true;
           }
           const installMethod = detectInstallMethod();
           if (process.platform === "win32" && installMethod !== "npm" && installMethod !== "pnpm") {
-            console.error(chalk7.red(`${APP_NAME} self-update on Windows is only supported for npm and pnpm installs.`));
-            console.error(chalk7.dim(`Detected install method: ${installMethod}. Update ${APP_NAME} manually.`));
+            console.error(chalk6.red(`${APP_NAME} self-update on Windows is only supported for npm and pnpm installs.`));
+            console.error(chalk6.dim(`Detected install method: ${installMethod}. Update ${APP_NAME} manually.`));
             process.exitCode = 1;
             return true;
           }
@@ -22315,7 +22400,7 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
             await runSelfUpdate(selfUpdateCommand);
           } catch (error) {
             const message = error instanceof Error ? error.message : "Unknown package command error";
-            console.error(chalk7.red(`Error: ${message}`));
+            console.error(chalk6.red(`Error: ${message}`));
             if (installMethod === "pnpm") {
               printPnpmSelfUpdateMetadataHint();
             }
@@ -22323,14 +22408,14 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
             process.exitCode = 1;
             return true;
           }
-          console.log(chalk7.green(`Updated ${APP_NAME} from ${VERSION} to ${selfUpdatePlan.version}`));
+          console.log(chalk6.green(`Updated ${APP_NAME} from ${VERSION} to ${selfUpdatePlan.version}`));
           if (installMethod === "npm") {
             const installerCommand = process.platform === "win32" ? 'powershell -c "irm https://pi.dev/install.ps1 | iex"' : "curl -fsSL https://pi.dev/install.sh | sh";
             console.log();
-            console.log(chalk7.yellow(`This npm installation of ${APP_NAME} does not pin its dependencies.`));
-            console.log(chalk7.yellow("Run the installer to migrate to a managed installation that does:"));
+            console.log(chalk6.yellow(`This npm installation of ${APP_NAME} does not pin its dependencies.`));
+            console.log(chalk6.yellow("Run the installer to migrate to a managed installation that does:"));
             console.log();
-            console.log(`  ${chalk7.bold(installerCommand)}`);
+            console.log(`  ${chalk6.bold(installerCommand)}`);
           }
         }
         return true;
@@ -22338,7 +22423,7 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown package command error";
-    console.error(chalk7.red(`Error: ${message}`));
+    console.error(chalk6.red(`Error: ${message}`));
     process.exitCode = 1;
     return true;
   }
@@ -22351,14 +22436,14 @@ async function readPipedStdin() {
   if (process.stdin.isTTY) {
     return void 0;
   }
-  return new Promise((resolve7) => {
+  return new Promise((resolve8) => {
     let data = "";
     process.stdin.setEncoding("utf8");
     process.stdin.on("data", (chunk) => {
       data += chunk;
     });
     process.stdin.on("end", () => {
-      resolve7(data.trim() || void 0);
+      resolve8(data.trim() || void 0);
     });
     process.stdin.resume();
   });
@@ -22443,7 +22528,7 @@ async function runAuthCommand(args) {
     command = parseAuthCommand(args);
   } catch (error) {
     const message = error instanceof AuthCommandError ? error.message : "Failed to parse auth command";
-    console.error(chalk8.red(`Error: ${message}`));
+    console.error(chalk7.red(`Error: ${message}`));
     process.exitCode = 1;
     return true;
   }
@@ -22452,8 +22537,8 @@ async function runAuthCommand(args) {
   const parsed = parseArgs(command.args);
   if (parsed.unknownFlags.size > 0) {
     const option = parsed.unknownFlags.keys().next().value;
-    console.error(chalk8.red(`Unknown option --${option} for "${getAuthCommandName(command.kind)}".`));
-    console.error(chalk8.dim(`Use "${APP_NAME} --help" or "${getAuthCommandUsage(command.kind)}".`));
+    console.error(chalk7.red(`Unknown option --${option} for "${getAuthCommandName(command.kind)}".`));
+    console.error(chalk7.dim(`Use "${APP_NAME} --help" or "${getAuthCommandUsage(command.kind)}".`));
     process.exitCode = 1;
     return true;
   }
@@ -22497,7 +22582,7 @@ async function runAuthCommand(args) {
     process.exitCode = result.status === "ready" ? 0 : result.status === "not_ready" ? 1 : 2;
   } catch (error) {
     const message = error instanceof AuthCommandError ? error.message : "Failed to resolve credential";
-    console.error(chalk8.red(`Error: ${message}`));
+    console.error(chalk7.red(`Error: ${message}`));
     process.exitCode = command.kind === "check" ? 2 : 1;
   }
   return true;
@@ -22543,14 +22628,14 @@ async function resolveSessionPath(sessionArg, cwd, sessionDir) {
 }
 __name(resolveSessionPath, "resolveSessionPath");
 async function promptConfirm(message) {
-  return new Promise((resolve7) => {
+  return new Promise((resolve8) => {
     const rl = createInterface({
       input: process.stdin,
       output: process.stdout
     });
     rl.question(`${message} [y/N] `, (answer) => {
       rl.close();
-      resolve7(answer.toLowerCase() === "y" || answer.toLowerCase() === "yes");
+      resolve8(answer.toLowerCase() === "y" || answer.toLowerCase() === "yes");
     });
   });
 }
@@ -22565,7 +22650,7 @@ function validateForkFlags(parsed) {
     parsed.noSession ? "--no-session" : void 0
   ].filter((flag) => flag !== void 0);
   if (conflictingFlags.length > 0) {
-    console.error(chalk8.red(`Error: --fork cannot be combined with ${conflictingFlags.join(", ")}`));
+    console.error(chalk7.red(`Error: --fork cannot be combined with ${conflictingFlags.join(", ")}`));
     process.exit(1);
   }
 }
@@ -22579,14 +22664,14 @@ function validateSessionIdFlags(parsed) {
     parsed.resume ? "--resume" : void 0
   ].filter((flag) => flag !== void 0);
   if (conflictingFlags.length > 0) {
-    console.error(chalk8.red(`Error: --session-id cannot be combined with ${conflictingFlags.join(", ")}`));
+    console.error(chalk7.red(`Error: --session-id cannot be combined with ${conflictingFlags.join(", ")}`));
     process.exit(1);
   }
   try {
     assertValidSessionId(parsed.sessionId);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(chalk8.red(`Error: ${message}`));
+    console.error(chalk7.red(`Error: ${message}`));
     process.exit(1);
   }
 }
@@ -22596,7 +22681,7 @@ function openSessionOrExit(path6, sessionDir) {
     return SessionManager.open(path6, sessionDir);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(chalk8.red(`Error: ${message}`));
+    console.error(chalk7.red(`Error: ${message}`));
     process.exit(1);
   }
 }
@@ -22606,7 +22691,7 @@ function forkSessionOrExit(sourcePath, cwd, sessionDir, sessionId) {
     return SessionManager.forkFrom(sourcePath, cwd, sessionDir, { id: sessionId });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(chalk8.red(`Error: ${message}`));
+    console.error(chalk7.red(`Error: ${message}`));
     process.exit(1);
   }
 }
@@ -22619,7 +22704,7 @@ async function createSessionManager(parsed, cwd, sessionDir, settingsManager) {
     if (parsed.sessionId) {
       const existingTarget = findLocalSessionByExactId(parsed.sessionId, cwd, sessionDir);
       if (existingTarget) {
-        console.error(chalk8.red(`Session already exists with id '${parsed.sessionId}'`));
+        console.error(chalk7.red(`Session already exists with id '${parsed.sessionId}'`));
         process.exit(1);
       }
     }
@@ -22630,7 +22715,7 @@ async function createSessionManager(parsed, cwd, sessionDir, settingsManager) {
       case "global":
         return forkSessionOrExit(resolved.path, cwd, sessionDir, parsed.sessionId);
       case "not_found":
-        console.error(chalk8.red(`No session found matching '${resolved.arg}'`));
+        console.error(chalk7.red(`No session found matching '${resolved.arg}'`));
         process.exit(1);
     }
   }
@@ -22641,16 +22726,16 @@ async function createSessionManager(parsed, cwd, sessionDir, settingsManager) {
       case "local":
         return openSessionOrExit(resolved.path, sessionDir);
       case "global": {
-        console.log(chalk8.yellow(`Session found in different project: ${resolved.cwd}`));
+        console.log(chalk7.yellow(`Session found in different project: ${resolved.cwd}`));
         const shouldFork = await promptConfirm("Fork this session into current directory?");
         if (!shouldFork) {
-          console.log(chalk8.dim("Aborted."));
+          console.log(chalk7.dim("Aborted."));
           process.exit(0);
         }
         return forkSessionOrExit(resolved.path, cwd, sessionDir);
       }
       case "not_found":
-        console.error(chalk8.red(`No session found matching '${resolved.arg}'`));
+        console.error(chalk7.red(`No session found matching '${resolved.arg}'`));
         process.exit(1);
     }
   }
@@ -22658,7 +22743,7 @@ async function createSessionManager(parsed, cwd, sessionDir, settingsManager) {
     try {
       const selectedPath = await selectSession((onProgress, signal) => SessionManager.list(cwd, sessionDir, onProgress, signal), (onProgress, signal) => SessionManager.listAll(sessionDir, onProgress, signal), settingsManager);
       if (!selectedPath) {
-        console.log(chalk8.dim("No session selected"));
+        console.log(chalk7.dim("No session selected"));
         process.exit(0);
       }
       return SessionManager.open(selectedPath, sessionDir);
@@ -22674,7 +22759,7 @@ async function createSessionManager(parsed, cwd, sessionDir, settingsManager) {
     if (existingSession) {
       return SessionManager.open(existingSession.path, sessionDir);
     }
-    console.error(chalk8.yellow(`Warning: No project session found with id '${parsed.sessionId}'; creating a new session with that id.`));
+    console.error(chalk7.yellow(`Warning: No project session found with id '${parsed.sessionId}'; creating a new session with that id.`));
   }
   return SessionManager.create(cwd, sessionDir, { id: parsed.sessionId });
 }
@@ -22755,8 +22840,15 @@ function resolveCliPaths(cwd, paths) {
   return paths?.map((value) => isLocalPath(value) ? resolvePath(value, cwd) : value);
 }
 __name(resolveCliPaths, "resolveCliPaths");
-async function main(args, options) {
+async function main(cliArgs, options) {
   resetTimings();
+  const agentDirArg = applyAgentDirArg(cliArgs);
+  if (agentDirArg.kind === "error") {
+    console.error(chalk7.red(`Error: ${agentDirArg.message}`));
+    process.exit(1);
+  }
+  const args = agentDirArg.args;
+  const programResumeToken = takeProgramResumeToken();
   setThemeJsonValidator(validateThemeJson);
   const extensionFactories = [...builtInExtensions, ...options?.extensionFactories ?? []];
   const offlineMode = args.includes("--offline") || isTruthyEnvFlag(process.env.PI_OFFLINE);
@@ -22777,7 +22869,7 @@ async function main(args, options) {
   } catch (error) {
     if (error.code !== "ENOENT")
       throw error;
-    console.error(chalk8.red("Error: The current working directory no longer exists. Change to an existing directory and try again."));
+    console.error(chalk7.red("Error: The current working directory no longer exists. Change to an existing directory and try again."));
     process.exit(1);
   }
   const agentDir = getAgentDir();
@@ -22803,7 +22895,7 @@ async function main(args, options) {
   const parsed = parseArgs(args);
   if (parsed.diagnostics.length > 0) {
     for (const d of parsed.diagnostics) {
-      const color = d.type === "error" ? chalk8.red : chalk8.yellow;
+      const color = d.type === "error" ? chalk7.red : chalk7.yellow;
       console.error(color(`${d.type === "error" ? "Error" : "Warning"}: ${d.message}`));
     }
     if (parsed.diagnostics.some((d) => d.type === "error")) {
@@ -22822,7 +22914,7 @@ async function main(args, options) {
       result = await exportFromFile(parsed.export, outputPath);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to export session";
-      console.error(chalk8.red(`Error: ${message}`));
+      console.error(chalk7.red(`Error: ${message}`));
       process.exit(1);
     }
     console.log(`Exported to: ${result}`);
@@ -22834,7 +22926,7 @@ async function main(args, options) {
     takeOverStdout();
   }
   if (parsed.mode === "rpc" && parsed.fileArgs.length > 0) {
-    console.error(chalk8.red("Error: @file arguments are not supported in RPC mode"));
+    console.error(chalk7.red("Error: @file arguments are not supported in RPC mode"));
     process.exit(1);
   }
   validateForkFlags(parsed);
@@ -22870,14 +22962,14 @@ async function main(args, options) {
           process.exit(0);
       }
     } else {
-      console.error(chalk8.red(new MissingSessionCwdError(missingSessionCwdIssue).message));
+      console.error(chalk7.red(new MissingSessionCwdError(missingSessionCwdIssue).message));
       process.exit(1);
     }
   }
   if (parsed.name !== void 0) {
     const name = normalizeSessionName(parsed.name);
     if (name === void 0) {
-      console.error(chalk8.red("Error: --name requires a non-empty value"));
+      console.error(chalk7.red("Error: --name requires a non-empty value"));
       process.exit(1);
     }
     sessionManager.appendSessionInfo(name);
@@ -22896,7 +22988,7 @@ async function main(args, options) {
   let announcePackageInstalls = packageCommandOutput === "capture";
   const onPackageProgress = /* @__PURE__ */ __name((event) => {
     if (announcePackageInstalls && event.type === "start" && event.message) {
-      console.error(chalk8.dim(event.message));
+      console.error(chalk7.dim(event.message));
     }
   }, "onPackageProgress");
   const createRuntime = /* @__PURE__ */ __name(async ({ cwd: cwd2, agentDir: agentDir2, sessionManager: sessionManager2, sessionStartEvent, projectTrustContext }) => {
@@ -23057,18 +23149,18 @@ async function main(args, options) {
   }
   if (hasRuntimeErrors) {
     if (runtime.diagnostics.some((diagnostic) => diagnostic.message.includes("Failed to load extension"))) {
-      console.error(chalk8.yellow(EXTENSION_LOAD_FAILURE_HINT));
+      console.error(chalk7.yellow(EXTENSION_LOAD_FAILURE_HINT));
     }
     process.exit(1);
   }
   time("createAgentSession");
   if (appMode !== "interactive" && !session.model) {
-    console.error(chalk8.red(formatNoModelsAvailableMessage()));
+    console.error(chalk7.red(formatNoModelsAvailableMessage()));
     process.exit(1);
   }
   const startupBenchmark = isTruthyEnvFlag(process.env.PI_STARTUP_BENCHMARK);
   if (startupBenchmark && appMode !== "interactive") {
-    console.error(chalk8.red("Error: PI_STARTUP_BENCHMARK only supports interactive mode"));
+    console.error(chalk7.red("Error: PI_STARTUP_BENCHMARK only supports interactive mode"));
     process.exit(1);
   }
   if (!offlineMode && appMode === "rpc") {
@@ -23093,21 +23185,23 @@ async function main(args, options) {
       initialMessages: parsed.messages,
       verbose: parsed.verbose,
       tuiMode: parsed.tuiMode,
-      initialThemeSetting: parsed.useTheme
+      initialThemeSetting: parsed.useTheme,
+      programResumeToken,
+      programResumeFlags: parsed.resumeFlags
     });
     if (startupBenchmark) {
       await interactiveMode.init();
       time("interactiveMode.init");
-      await new Promise((resolve7) => setTimeout(resolve7, 150));
+      await new Promise((resolve8) => setTimeout(resolve8, 150));
       interactiveMode.stop();
       await runtime.dispose();
       stopThemeWatcher();
       printTimings();
       if (process.stdout.writableLength > 0) {
-        await new Promise((resolve7) => process.stdout.once("drain", resolve7));
+        await new Promise((resolve8) => process.stdout.once("drain", resolve8));
       }
       if (process.stderr.writableLength > 0) {
-        await new Promise((resolve7) => process.stderr.once("drain", resolve7));
+        await new Promise((resolve8) => process.stderr.once("drain", resolve8));
       }
       return;
     }

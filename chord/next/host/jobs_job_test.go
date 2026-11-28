@@ -597,14 +597,14 @@ func TestJobStartIsRefusedBeforeItsObjectIsLiveAndOnceItEnded(t *testing.T) {
 	var early error
 	var job JobHandle
 	host, _ := jobsLoaded(t, func(h FacetHost) error {
-		return h.Serve(jobItemType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(jobItemType, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			log := stateOf(self, jobLogState)
 			job = self.Job(jobEcho, JobImplementation{Run: echoRun()})
 			// The object is not live while its factory runs: a start from the factory is refused.
 			_, early = job.Start(textArgs("a"), background, StartOptions{})
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"log": log.Member()},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	}, jobHostOptions{})
 	item, err := host.Get(background, jobItemType, jsonObject("id", float64(1)), GetOptions{})

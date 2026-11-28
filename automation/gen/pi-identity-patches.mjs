@@ -54,7 +54,6 @@ export const identityPatches = {
     ['const DEFAULT_INSTALLER_API_BASE = "https://pi.dev/api/installer/releases";', `const DEFAULT_INSTALLER_API_BASE = "${identity.hostedOrigin}/api/installer/releases";`],
   ],
   "pi-coding-agent/modes/interactive/interactive-mode.js": [
-    ["void fetch(`https://pi.dev/api/report-install?version=", `void fetch(\`${identity.hostedOrigin}/api/report-install?version=`],
   ],
   // D62: PiG never uploads bug reports. D64: PiG never sends a Radius token to Radius's share gateway.
   "pi-coding-agent/core/bug-report-upload.js": [

@@ -208,3 +208,26 @@ func (m *InteractiveMode) handleChangelogCommand() {
 	m.chatContainer.Add(tui.NewDynamicBorder())
 	m.requestRender()
 }
+
+// recordChangelogVersion updates the recorded changelog version on a fresh install
+// and on a version bump that has new changelog entries to show.
+func recordChangelogVersion(sm *SettingsManager, appVersion string, allEntries []ChangelogEntry) []ChangelogEntry {
+	lastSeen := sm.GetLastChangelogVersion()
+	if lastSeen == "" {
+		_ = sm.SetLastChangelogVersion(appVersion)
+		return nil
+	}
+	if lastSeen == appVersion {
+		return nil
+	}
+	newEntries, ok := GetNewEntries(allEntries, lastSeen)
+	if !ok {
+		_ = sm.SetLastChangelogVersion(appVersion)
+		return nil
+	}
+	if len(newEntries) == 0 {
+		return nil
+	}
+	_ = sm.SetLastChangelogVersion(appVersion)
+	return newEntries
+}

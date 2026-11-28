@@ -60,7 +60,7 @@ var (
 	usageShape = []shapeMember{
 		{"input", shapeInteger, false}, {"output", shapeInteger, false}, {"cacheRead", shapeInteger, false},
 		{"cacheWrite", shapeInteger, false}, {"cacheWrite1h", shapeInteger, true}, {"reasoning", shapeInteger, true},
-		{"totalTokens", shapeInteger, false}, {"cost", shapeCost, false},
+		{"imageOutput", shapeInteger, true}, {"totalTokens", shapeInteger, false}, {"cost", shapeCost, false},
 	}
 	costShape = []shapeMember{
 		{"input", shapeNumber, false}, {"output", shapeNumber, false}, {"cacheRead", shapeNumber, false},

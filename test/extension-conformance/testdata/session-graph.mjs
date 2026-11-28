@@ -184,7 +184,6 @@ const readAll = (s) => ({
     getShellCommandPrefix: orNull(s.getShellCommandPrefix()),
     getNpmCommand: orNull(s.getNpmCommand()),
     getCollapseChangelog: orNull(s.getCollapseChangelog()),
-    getEnableInstallTelemetry: orNull(s.getEnableInstallTelemetry()),
     getEnableAnalytics: orNull(s.getEnableAnalytics()),
     getPackages: orNull(s.getPackages()),
     getExtensionPaths: orNull(s.getExtensionPaths()),
@@ -323,7 +322,6 @@ async function settingsScript({ cwd, agentDir, configDir, brokenCwd }) {
   s.setImageAutoResize(false);
   s.setShowTerminalProgress(true);
   s.setEnableSkillCommands(false);
-  s.setEnableInstallTelemetry(false);
   s.setNotice("cacheMisses", false);
   s.setDefaultModelAndProvider("anthropic", "opus");
   s.setProjectPackages(["npm:proj"]);

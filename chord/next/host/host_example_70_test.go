@@ -70,7 +70,7 @@ var (
 // The store's plugin: one builder per listed query, a pure function of its arguments. `Reads` lists the columns the
 // mapping gets: a change of another column (`note`) is no change of an item.
 var ex70StoreFacet = DefineFacet(func(host FacetHost, _ FacetSelf) error {
-	return host.Serve(ex70Tasks, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+	return host.Serve(ex70Tasks, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 		self := plain.(StoreSelf)
 		rows := self.Table(ex70Rows)
 		tasks := self.Queries(rows, QueriesOptions{
@@ -95,7 +95,7 @@ var ex70StoreFacet = DefineFacet(func(host FacetHost, _ FacetSelf) error {
 			_, err := self.Tx(func(tx documents.Tx) (any, error) { return nil, write(tx) }, ctx)
 			return nil, err
 		}
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			Queries: map[string]map[string]contracts.NamedQuery[delta.JsonValue, delta.JsonValue]{"tasks": tasks},
 			Methods: map[string]contracts.MethodFunction{
 				"put": exMethod(func(row *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
@@ -115,18 +115,18 @@ var ex70StoreFacet = DefineFacet(func(host FacetHost, _ FacetSelf) error {
 					})
 				}),
 			},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 })
 
 // A reader in another plugin: the newest three tasks of the list it shows, and how many there are. Its arguments follow
 // `shown`: when it changes, the member keeps the previous rows until the new read has run.
 var ex70BoardFacet = DefineFacet(func(host FacetHost, _ FacetSelf) error {
-	return host.Serve(ex70Board, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+	return host.Serve(ex70Board, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 		tasks := self.Get(ex70Tasks, jsonObject()).Queries("tasks")
 		shown := self.Writable("home")
 		args := self.Derive([]any{shown}, func(values []any) (delta.JsonValue, error) { return jsonObject("list", values[0]), nil })
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{
 				"newest": self.LiveQuery(tasks["ofList"], args, 3),
 				// Exact and uncapped: count what an index bounds.
@@ -137,7 +137,7 @@ var ex70BoardFacet = DefineFacet(func(host FacetHost, _ FacetSelf) error {
 					return nil, shown.Set(list.(string))
 				},
 			},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 })
 

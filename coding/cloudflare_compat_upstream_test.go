@@ -27,7 +27,7 @@ func TestCloudflareExtensionHostAuthUsesCatalogModel(t *testing.T) {
 	probe := &modelOperationBridgeProbe{actions: map[string]any{}}
 	detach := icodingagent.WireModelOperations(probe, icodingagent.ModelOperationBindings{Registry: services.Registry().ModelRegistry})
 	defer detach()
-	auth := probe.actions["getModelAuth"].(func(context.Context, string, string) map[string]any)(t.Context(), "cloudflare-ai-gateway", "workers-ai/@cf/moonshotai/kimi-k2.6")
+	auth := probe.actions["getModelAuth"].(func(context.Context, string, string) map[string]any)(t.Context(), "cloudflare-ai-gateway", "workers-ai/@cf/zai-org/glm-5.3")
 	if auth["ok"] != true {
 		t.Fatalf("host auth=%+v, want same successful resolution as ModelRegistry.GetAPIKeyAndHeaders", auth)
 	}
@@ -128,12 +128,12 @@ func TestModelRuntimeCloudflareCompatUpstream(t *testing.T) {
 			name = "materializes the Cloudflare endpoint after extension-style auth resolution"
 		}
 		t.Run(name, func(t *testing.T) {
-			// .upstream/v0.87.1/packages/coding-agent/test/model-runtime-cloudflare-compat.test.ts:60,76
+			// .upstream/v1.7.0/packages/coding-agent/test/model-runtime-cloudflare-compat.test.ts:50,65
 			services := newRuntimeTestServices(t)
 			if err := services.Auth().Set("cloudflare-ai-gateway", ai.Credential{Type: ai.CredentialAPIKey, Key: "test-token", Env: map[string]string{"CLOUDFLARE_ACCOUNT_ID": "test-account", "CLOUDFLARE_GATEWAY_ID": "test-gateway"}}); err != nil {
 				t.Fatal(err)
 			}
-			model := services.ModelRuntime().GetModel("cloudflare-ai-gateway", "workers-ai/@cf/moonshotai/kimi-k2.6")
+			model := services.ModelRuntime().GetModel("cloudflare-ai-gateway", "workers-ai/@cf/zai-org/glm-5.3")
 			if model == nil {
 				t.Fatal("missing model")
 			}

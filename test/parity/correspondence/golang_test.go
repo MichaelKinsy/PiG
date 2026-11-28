@@ -38,7 +38,7 @@ func TestExtractGoCurrentSettingsAndPrompts(t *testing.T) {
 		"autocompact", "show-images", "image-width-cells", "auto-resize-images", "block-images", "skill-commands",
 		"show-hardware-cursor", "editor-padding", "output-padding", "autocomplete-max-visible", "clear-on-shrink",
 		"terminal-progress", "steering-mode", "follow-up-mode", "transport", "http-idle-timeout", "cache-warming-mode",
-		"hide-thinking", "mermaid-rendering", "collapse-changelog", "quiet-startup", "install-telemetry",
+		"hide-thinking", "mermaid-rendering", "collapse-changelog", "quiet-startup",
 		"default-project-trust", "double-escape-action", "tree-filter-mode", "mask-secret-input", "warnings", "notices", "model-thinking", "tui-mode",
 		"fullscreen-exit-output", "fullscreen-scrollbar", "fullscreen-copy-on-select", "fullscreen-wheel-scroll-lines", "theme",
 	}
@@ -189,7 +189,8 @@ func TestExtractGoFullscreenCopyOnSelectMatchesPi0861(t *testing.T) {
 	}
 	for _, item := range inventory.Tables[0].Items {
 		if item.ID == "fullscreen-copy-on-select" {
-			if item.Label != "Fullscreen copy on select" || item.Description != "Automatically copy selected text in fullscreen mode; disable to copy selections with Ctrl+X" || !slices.Equal(item.Values, []string{"true", "false"}) {
+			wantExpr := `"Automatically copy selected text in fullscreen mode; disable to copy selections with "+tui.ActionKeyDisplayTextOr("app.message.copy", "ctrl+x")`
+			if item.Label != "Fullscreen copy on select" || item.Description != "" || item.DescriptionExpression != wantExpr || !slices.Equal(item.Values, []string{"true", "false"}) {
 				t.Fatalf("fullscreen-copy-on-select = %#v", item)
 			}
 			return

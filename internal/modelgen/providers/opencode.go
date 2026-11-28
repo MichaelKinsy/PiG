@@ -167,7 +167,7 @@ func finalizeOpencodeModel(model ChatModel) {
 	if api == "anthropic-messages" {
 		// OpenCode Zen forwards mid-conversation system messages but rejects
 		// `tool_addition`/`tool_removal` blocks, so tool changes stay top-level.
-		if provider == "opencode" && SupportsClaudeMidConvoSystemMessages(id) {
+		if provider == "opencode" && SupportsClaudeMidConvoChanges(id) {
 			MergeCompat(model, O("supportsMidConvoSystemMessages", true))
 		}
 		// Pi 9ee7586a9: Zen and Go forward per-message effort and `thinking.block_binding`. Without

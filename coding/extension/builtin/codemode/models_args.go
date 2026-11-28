@@ -255,3 +255,55 @@ func imagesContextOf(context json.RawMessage) ai.ImagesContext {
 	}
 	return ai.ImagesContext{Input: input}
 }
+
+type codemodeImagesOptions struct {
+	AspectRatio string
+	Size        string
+}
+
+// checkImagesOptions validates optional generation options from a script; unknown keys fail so typos and
+// request fields such as `apiKey` never pass silently.
+//
+// upstream: execute.ts checkImagesOptions (Pi c863bdf19)
+func checkImagesOptions(raw json.RawMessage) (*codemodeImagesOptions, error) {
+	if len(raw) == 0 || jsonKind(raw) == 'n' {
+		return nil, nil
+	}
+	fail := func(problem string) error {
+		return fmt.Errorf("models.generateImages() %s. Expected options: { aspectRatio?, size? }.%s", problem, docsCitation(" See \"Generate images\" in %s."))
+	}
+	if !isRecord(raw) {
+		return nil, fail("expects an options object as its third argument, got " + describeValue(raw))
+	}
+	var record map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &record); err != nil {
+		return nil, fail("expects an options object as its third argument, got " + describeValue(raw))
+	}
+	for key := range record {
+		if key != "aspectRatio" && key != "size" {
+			return nil, fail("does not accept options." + key)
+		}
+	}
+	var checked codemodeImagesOptions
+	hasAny := false
+	if val, ok := record["aspectRatio"]; ok && len(val) > 0 && jsonKind(val) != 'n' {
+		str, ok := stringArg(val)
+		if !ok || strings.TrimSpace(str) == "" {
+			return nil, fail("options.aspectRatio must be a non-empty string, got " + describeValue(val))
+		}
+		checked.AspectRatio = strings.TrimSpace(str)
+		hasAny = true
+	}
+	if val, ok := record["size"]; ok && len(val) > 0 && jsonKind(val) != 'n' {
+		str, ok := stringArg(val)
+		if !ok || strings.TrimSpace(str) == "" {
+			return nil, fail("options.size must be a non-empty string, got " + describeValue(val))
+		}
+		checked.Size = strings.TrimSpace(str)
+		hasAny = true
+	}
+	if !hasAny {
+		return nil, nil
+	}
+	return &checked, nil
+}

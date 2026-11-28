@@ -1,5 +1,6 @@
 import { Container, fuzzyFilter, getKeybindings, Input, SelectList, Spacer, Text, } from "../../../../../pi-tui.mjs";
 import { getSelectListTheme, theme } from "../theme/theme.js";
+import { keyText } from "./keybinding-hints.js";
 const SUBMENU_SELECT_LIST_LAYOUT = {
     minPrimaryColumnWidth: 12,
     maxPrimaryColumnWidth: 32,
@@ -48,9 +49,8 @@ export class SelectSubmenu extends Container {
         this.addChild(this.selectList);
         // Hint
         this.addChild(new Spacer(1));
-        const hint = submenuOptions?.searchable
-            ? "  Type to filter \u00b7 Enter to select \u00b7 Esc to go back"
-            : "  Enter to select \u00b7 Esc to go back";
+        const keysHint = `${keyText("tui.select.confirm")} to select \u00b7 ${keyText("tui.select.cancel")} to go back`;
+        const hint = submenuOptions?.searchable ? `  Type to filter \u00b7 ${keysHint}` : `  ${keysHint}`;
         this.addChild(new Text(theme.fg("dim", hint), 0, 0));
     }
     buildSelectList(options, preselect) {

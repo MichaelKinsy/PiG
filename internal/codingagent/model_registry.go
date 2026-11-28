@@ -71,6 +71,7 @@ type ModelEntry struct {
 	OutputCost                         float64
 	CacheReadCost                      float64
 	CacheWriteCost                     float64
+	ImageOutputCost                    *float64
 	CostTiers                          []ai.CostTier
 	PromptCache                        ai.ModelPromptCache
 	Env                                map[string]string // provider-scoped env overrides (auth.json env)
@@ -173,19 +174,21 @@ type modelDefinition struct {
 }
 
 type modelCostJSON struct {
-	Input      float64       `json:"input"`
-	Output     float64       `json:"output"`
-	CacheRead  float64       `json:"cacheRead"`
-	CacheWrite float64       `json:"cacheWrite"`
-	Tiers      []ai.CostTier `json:"tiers,omitzero"`
+	Input       float64       `json:"input"`
+	Output      float64       `json:"output"`
+	CacheRead   float64       `json:"cacheRead"`
+	CacheWrite  float64       `json:"cacheWrite"`
+	ImageOutput *float64      `json:"imageOutput,omitempty"`
+	Tiers       []ai.CostTier `json:"tiers,omitzero"`
 }
 
 type modelCostOverrideJSON struct {
-	Input      *float64       `json:"input,omitempty"`
-	Output     *float64       `json:"output,omitempty"`
-	CacheRead  *float64       `json:"cacheRead,omitempty"`
-	CacheWrite *float64       `json:"cacheWrite,omitempty"`
-	Tiers      *[]ai.CostTier `json:"tiers,omitempty"`
+	Input       *float64       `json:"input,omitempty"`
+	Output      *float64       `json:"output,omitempty"`
+	CacheRead   *float64       `json:"cacheRead,omitempty"`
+	CacheWrite  *float64       `json:"cacheWrite,omitempty"`
+	ImageOutput *float64       `json:"imageOutput,omitempty"`
+	Tiers       *[]ai.CostTier `json:"tiers,omitempty"`
 }
 
 type modelOverrideJSON struct {

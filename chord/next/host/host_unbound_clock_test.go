@@ -157,7 +157,7 @@ func TestRequestsWaitingUnboundReportsNothingForARequestThatBindsOrEndsWithin5S(
 	advanceHost(loop, host, 1_000)
 	released.Release()
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(unboundMissing, func(params *delta.JsonObject, _ Self) (contracts.Implementation, error) {
+		return h.Serve(unboundMissing, func(params *delta.JsonObject, _ Self) (contracts.MembersImplementation, error) {
 			return impl("n", constant(float64(1))), nil
 		}, ServeOptions{})
 	})
@@ -214,7 +214,7 @@ func TestRequestsWaitingUnboundReportsARegistryNobodyServesOncePerValueWaitedFor
 	}))
 	loop := newScopeLoop()
 	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(reader, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(reader, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			value := self.Registry(absent)
 			return impl("n", self.Derive([]any{value}, func(values []any) (delta.JsonValue, error) { return float64(0), nil })), nil
 		}, ServeOptions{})

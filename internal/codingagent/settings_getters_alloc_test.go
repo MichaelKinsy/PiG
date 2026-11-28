@@ -74,7 +74,6 @@ func TestSettingsScalarGettersDoNotCopySettings(t *testing.T) {
 		"GetShellCommandPrefix":         func() { _ = sm.GetShellCommandPrefix() },
 		"GetEnableAnalytics":            func() { _ = sm.GetEnableAnalytics() },
 		"GetTrackingID":                 func() { _ = sm.GetTrackingID() },
-		"GetEnableInstallTelemetry":     func() { _ = sm.GetEnableInstallTelemetry() },
 		"GetModelThinkingLevel":         func() { _ = sm.GetModelThinkingLevel("a", "b") },
 		"GetWarnings":                   func() { _ = sm.GetWarnings() },
 		"GetExternalEditorCommand":      func() { _ = sm.GetExternalEditorCommand() },

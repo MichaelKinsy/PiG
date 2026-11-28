@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"slices"
 	"strings"
 	"time"
@@ -107,9 +106,6 @@ const listModelsTimeout = 15 * time.Second // upstream: coding-agent/src/main.ts
 // pass that fails, or that the bound or ctx ends, returns its error and no table line is printed. The caller owns process exit and extension-host
 // teardown.
 func listModels(ctx context.Context, runtime *coding.ModelRuntime, registry *codingagent.ModelRegistry, search string) error {
-	if loadErr := runtime.GetError(); loadErr != "" {
-		fmt.Fprintln(os.Stderr, chalkYellow("Warning: errors loading models.json:\n"+loadErr))
-	}
 	ctx, cancel := context.WithTimeout(ctx, listModelsTimeout)
 	defer cancel()
 	if _, err := runtime.GetAvailable(ctx); err != nil {

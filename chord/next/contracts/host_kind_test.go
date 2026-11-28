@@ -123,7 +123,6 @@ func TestHostKinds(t *testing.T) {
 }
 
 func TestHostAddress(t *testing.T) {
-	variants := variant("v", state(contracts.Prop("n", contracts.Int())))
 	byParams := func(params *delta.JsonObject) (contracts.Address, error) {
 		return session.Address(delta.JsonObjectOf("id", params.Value("session"))), nil
 	}
@@ -132,7 +131,6 @@ func TestHostAddress(t *testing.T) {
 			Version:     1,
 			Params:      props(contracts.Prop("session", contracts.Str())),
 			HostAddress: address,
-			Variants:    []contracts.VariantEntry{variants},
 		}))
 	}
 
@@ -155,7 +153,7 @@ func TestHostAddress(t *testing.T) {
 		}
 		same(onSession)
 		next := must(contracts.Evolve(onSession, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
-			return e.AddState("v", "m", contracts.Int())
+			return e.AddState("m", contracts.Int())
 		}))
 		same(next)
 	})

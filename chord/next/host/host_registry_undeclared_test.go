@@ -77,7 +77,7 @@ func TestRegistryUndeclaredReportsAgainAtAReloadOnlyWhenTheContributorsChangeAPr
 // namesSetter serves Setter, a host-lifetime object contributing a writable string to Names.
 func namesSetter(initial string) func(h FacetHost, _ FacetSelf) error {
 	return func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(rvSetterType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(rvSetterType, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			value := self.Writable(initial)
 			self.(StoreSelf).Contribute(rvNames, value)
 			return rvSetterImpl(value), nil

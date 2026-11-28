@@ -15,7 +15,6 @@ import (
 
 type identityCaptureCase struct {
 	provider, baseURL, sessionID string
-	telemetryDisabled            bool
 	providerHeaders              map[string]string
 }
 
@@ -23,11 +22,6 @@ type identityCaptureCase struct {
 func captureIdentityOptions(t *testing.T, tc identityCaptureCase) ai.StreamOptions {
 	t.Helper()
 	services := newTestServices(t)
-	if tc.telemetryDisabled {
-		if err := services.SettingsManager().SetEnableInstallTelemetry(false); err != nil {
-			t.Fatal(err)
-		}
-	}
 	var captured ai.StreamOptions
 	modelID := tc.provider + "-test-model"
 	if err := services.Registry().RegisterExtensionProvider(tc.provider, extension.ProviderConfig{API: ai.APIOpenAICompletions, APIKey: "test-api-key", BaseURL: tc.baseURL, Headers: tc.providerHeaders, StreamSimple: func(_ extension.Model, _ extension.AIContext, raw extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
@@ -78,23 +72,21 @@ func TestSDKIdentifiesPiGWithADetailedUserAgentAndAttributionAsACLIAgent(t *test
 	}
 }
 
-func TestSDKTurnsAttributionOffWhenTelemetryIsDisabled(t *testing.T) {
-	unsetTelemetryEnv(t)
-	options := captureIdentityOptions(t, identityCaptureCase{provider: "nvidia", baseURL: "https://integrate.api.nvidia.com/v1", telemetryDisabled: true})
-	want := &ai.ClientIdentity{UserAgent: new(ai.UserAgentDetailed), Version: new(Version), AttributionNull: true}
-	if !reflect.DeepEqual(options.Identity, want) {
-		t.Fatalf("identity = %#v, want %#v", options.Identity, want)
+func TestSDKAlwaysSendsProviderAttributionHeaders(t *testing.T) {
+	nvidia := captureIdentityOptions(t, identityCaptureCase{provider: "nvidia", baseURL: "https://integrate.api.nvidia.com/v1"})
+	want := &ai.ClientIdentity{UserAgent: new(ai.UserAgentDetailed), Version: new(Version), Attribution: new(ai.PiAttribution)}
+	if !reflect.DeepEqual(nvidia.Identity, want) {
+		t.Fatalf("nvidia identity = %+v, want %+v", nvidia.Identity, want)
 	}
-	if got := ai.GetAttributionHeaders(ai.ClientIdentityTarget{Provider: "nvidia", BaseURL: "https://integrate.api.nvidia.com/v1"}, options.Identity); len(got) != 0 {
-		t.Fatalf("attribution headers = %v, want none", got)
+	nvidiaModel := ai.ClientIdentityTarget{Provider: "nvidia", BaseURL: "https://integrate.api.nvidia.com/v1"}
+	if got := ai.GetAttributionHeaders(nvidiaModel, nvidia.Identity); got["X-BILLING-INVOKE-ORIGIN"] != "PiG" {
+		t.Fatalf("nvidia attribution headers = %v", got)
 	}
-}
 
-func TestSDKTurnsAttributionOffWithPITelemetryZero(t *testing.T) {
-	t.Setenv("PI_TELEMETRY", "0")
-	options := captureIdentityOptions(t, identityCaptureCase{provider: "openrouter", baseURL: "https://openrouter.ai/api/v1"})
-	if options.Identity == nil || !options.Identity.AttributionNull || options.Identity.Attribution != nil {
-		t.Fatalf("identity = %#v, want null attribution", options.Identity)
+	opencode := captureIdentityOptions(t, identityCaptureCase{provider: "opencode", baseURL: "https://opencode.ai/zen/v1"})
+	opencodeModel := ai.ClientIdentityTarget{Provider: "opencode", BaseURL: "https://opencode.ai/zen/v1"}
+	if got := ai.GetAttributionHeaders(opencodeModel, opencode.Identity); got["x-opencode-client"] != "PiG" {
+		t.Fatalf("opencode attribution headers = %v", got)
 	}
 }
 

@@ -38,16 +38,26 @@ func CheckSessionID(sessionID string) (string, error) {
 
 // FileSystemSyncRemote is a remote store in a directory, laid out as the real remote is: per session, one slot per batch
 // start, holding where the batch ends and which device created it, and snapshots named by their end. As the real remote,
-// it creates a slot only where the history ends. Creating a slot is check-then-write, without the atomicity of the real
-// remote across processes: for development and tests, with one process writing.
+// it creates a slot only where the history ends.
+//
+// One process writes a directory, through one instance: creating a slot is a check, then a write, queued per session in
+// this instance, so two uploads of a session cannot both create a slot. Across processes nothing guards it (the file
+// operations have no exclusive create): an app with several processes routes their uploads through one.
+//
+// Every file is flushed to disk before it is renamed into place, so a slot that exists survives a power loss with its
+// body. The head of a session's history is kept in a file, written after each slot, so creating one reads a few files,
+// not every slot.
 //
 //	{root}/{session}/slots/{after}.json     { after, to, device, archive?, folded? }, written once
 //	{root}/{session}/batches/{after}.batch  the commits (or an archive), until folded
 //	{root}/{session}/snapshots/{to}.batch   a store archive
+//	{root}/{session}/head.json              { head }: where the history ends, or a little before it
 //	{root}/{session}/meta.json              the host's description, last write wins
 type FileSystemSyncRemote struct {
-	fs   SyncFileSystem
-	root string
+	fs       SyncFileSystem
+	root     string
+	mu       stdsync.Mutex
+	creating map[string]chan struct{}
 }
 
 var _ SessionSyncMaintenance = (*FileSystemSyncRemote)(nil)
@@ -66,7 +76,36 @@ type slotFile struct {
 	Folded  bool   `json:"folded,omitempty"`
 }
 
+// headFile is the session's head file, written after each slot.
+type headFile struct {
+	Head Seq `json:"head"`
+}
+
 func (remote *FileSystemSyncRemote) PutBatch(ctx context.Context, sessionID string, after, to Seq, device string, body SyncBody, options PutBatchOptions) (PutBatchResult, error) {
+	next := make(chan struct{})
+	remote.mu.Lock()
+	if remote.creating == nil {
+		remote.creating = map[string]chan struct{}{}
+	}
+	previous := remote.creating[sessionID]
+	remote.creating[sessionID] = next
+	remote.mu.Unlock()
+	if previous != nil {
+		<-previous
+	}
+	defer func() {
+		remote.mu.Lock()
+		if remote.creating[sessionID] == next {
+			delete(remote.creating, sessionID)
+		}
+		remote.mu.Unlock()
+		close(next)
+	}()
+	return remote.create(ctx, sessionID, after, to, device, body, options)
+}
+
+// create is PutBatch once no other slot of the session is being created.
+func (remote *FileSystemSyncRemote) create(ctx context.Context, sessionID string, after, to Seq, device string, body SyncBody, options PutBatchOptions) (PutBatchResult, error) {
 	existing, err := remote.slot(ctx, sessionID, after)
 	if err != nil {
 		return PutBatchResult{}, err
@@ -74,11 +113,11 @@ func (remote *FileSystemSyncRemote) PutBatch(ctx context.Context, sessionID stri
 	if existing != nil {
 		return PutBatchResult{Type: PutExists, To: existing.To, Device: existing.Device}, nil
 	}
-	listing, err := remote.List(ctx, sessionID)
+	head, err := remote.head(ctx, sessionID)
 	if err != nil {
 		return PutBatchResult{}, err
 	}
-	if head := RemoteHead(listing); after != head {
+	if after != head {
 		return PutBatchResult{Type: PutNotHead, Head: head}, nil
 	}
 	if err := remote.write(ctx, sessionID, []string{"batches"}, pad(after)+".batch", body); err != nil {
@@ -88,7 +127,41 @@ func (remote *FileSystemSyncRemote) PutBatch(ctx context.Context, sessionID stri
 	if err := remote.writeSlot(ctx, sessionID, BatchInfo{After: after, To: to, Device: device, Archive: options.Archive}); err != nil {
 		return PutBatchResult{}, err
 	}
+	headBytes, err := json.Marshal(headFile{Head: to})
+	if err != nil {
+		return PutBatchResult{}, err
+	}
+	if err := remote.write(ctx, sessionID, nil, "head.json", once(headBytes)); err != nil {
+		return PutBatchResult{}, err
+	}
 	return PutBatchResult{Type: PutCreated}, nil
+}
+
+// head is where the session's history ends: the head file, then the chain of slots after it. A crash between a slot and
+// the head file leaves the file behind by that slot; a directory written before head files walks the chain once.
+func (remote *FileSystemSyncRemote) head(ctx context.Context, sessionID string) (Seq, error) {
+	bytes, err := remote.read(ctx, sessionID, "head.json")
+	if err != nil {
+		return 0, err
+	}
+	at := LogStart
+	if bytes != nil {
+		var file headFile
+		if err := json.Unmarshal(bytes, &file); err != nil {
+			return 0, fmt.Errorf("sync: head of session %s: %w", sessionID, err)
+		}
+		at = file.Head
+	}
+	for {
+		next, err := remote.slot(ctx, sessionID, at)
+		if err != nil {
+			return 0, err
+		}
+		if next == nil {
+			return at, nil
+		}
+		at = next.To
+	}
 }
 
 func (remote *FileSystemSyncRemote) GetBatch(ctx context.Context, sessionID string, after Seq) (SyncBody, error) {
@@ -195,7 +268,7 @@ func (remote *FileSystemSyncRemote) Sessions(ctx context.Context, _ *string) (Se
 	slices.Sort(ids)
 	sessions := make([]SessionSummary, 0, len(ids))
 	for _, id := range ids {
-		listing, err := remote.List(ctx, id)
+		head, err := remote.head(ctx, id)
 		if err != nil {
 			return SessionChanges{}, err
 		}
@@ -203,7 +276,7 @@ func (remote *FileSystemSyncRemote) Sessions(ctx context.Context, _ *string) (Se
 		if err != nil {
 			return SessionChanges{}, err
 		}
-		sessions = append(sessions, SessionSummary{ID: id, Head: RemoteHead(listing), Meta: meta})
+		sessions = append(sessions, SessionSummary{ID: id, Head: head, Meta: meta})
 	}
 	return SessionChanges{Sessions: sessions, Cursor: "", More: false}, nil
 }
@@ -353,8 +426,8 @@ func (body *oneChunk) Next(context.Context) ([]byte, bool, error) {
 
 func (*oneChunk) Close() error { return nil }
 
-// write writes a body through a temporary file and a rename, so a reader never sees half a file; the body is appended
-// chunk by chunk as it streams, and closed.
+// write writes a body through a temporary file, flushed to disk, and a rename, so a reader never sees half a file and a
+// renamed file keeps its content after a power loss; the body is appended chunk by chunk as it streams, and closed.
 func (remote *FileSystemSyncRemote) write(ctx context.Context, sessionID string, directory []string, name string, body SyncBody) (err error) {
 	defer func() { err = errors.Join(err, body.Close()) }()
 	dir, err := remote.path(ctx, sessionID, directory...)
@@ -386,6 +459,9 @@ func (remote *FileSystemSyncRemote) write(ctx context.Context, sessionID string,
 		if !ok {
 			break
 		}
+	}
+	if err := remote.fs.FlushFile(ctx, temporary); err != nil {
+		return errors.Join(err, remote.fs.Remove(context.WithoutCancel(ctx), temporary, false, true))
 	}
 	return remote.fs.RenameFile(ctx, temporary, path)
 }

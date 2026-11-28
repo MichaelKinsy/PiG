@@ -20,7 +20,7 @@ func anyModelFromDefinition(providerID string, prov providerConfig, md modelDefi
 	}
 	var cost ai.ModelCost
 	if md.Cost != nil {
-		cost = ai.ModelCost{Input: md.Cost.Input, Output: md.Cost.Output, CacheRead: md.Cost.CacheRead, CacheWrite: md.Cost.CacheWrite, Tiers: slices.Clone(md.Cost.Tiers)}
+		cost = ai.ModelCost{Input: md.Cost.Input, Output: md.Cost.Output, CacheRead: md.Cost.CacheRead, CacheWrite: md.Cost.CacheWrite, ImageOutput: md.Cost.ImageOutput, Tiers: slices.Clone(md.Cost.Tiers)}
 	}
 	var headers map[string]string
 	if md.Headers != nil {
@@ -193,6 +193,10 @@ func applyModelOverride(e *ModelEntry, ovr modelOverrideJSON) {
 		}
 		if ovr.Cost.CacheWrite != nil {
 			e.CacheWriteCost = *ovr.Cost.CacheWrite
+		}
+		if ovr.Cost.ImageOutput != nil {
+			v := *ovr.Cost.ImageOutput
+			e.ImageOutputCost = &v
 		}
 		if ovr.Cost.Tiers != nil {
 			e.CostTiers = slices.Clone(*ovr.Cost.Tiers)

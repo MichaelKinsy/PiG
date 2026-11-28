@@ -4,9 +4,9 @@ import { Counter } from "../counter/contract.ts";
 import { Summary } from "./contract.ts";
 export default defineFacet((host) => host.serve(Summary, ({ id }, _principal, self) => {
 	const counter = self.get(Counter, { id });
-	return { variant: "main", members: {
+	return {
 		label: self.derive([counter.count], ([count]) => `[[.Code]](${count})`),
 		count: self.derive([counter.count], ([count]) => count),
 		code: async () => [[.CodeJSON]],
-	} };
+	};
 }));

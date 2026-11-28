@@ -85,7 +85,7 @@ event: message_stop
 data: {"type":"message_stop"}
 
 `,
-			want:          `{"input":1234,"output":321,"cacheRead":5000,"cacheWrite":700,"totalTokens":7255,"cost":{"input":0.00617,"output":0.008025000000000001,"cacheRead":0.0025,"cacheWrite":0.004375,"total":0.021070000000000002,"totalFromProvider":false},"cacheWrite1h":0}`,
+			want:          `{"input":1234,"output":321,"cacheRead":5000,"cacheWrite":700,"totalTokens":7255,"cost":{"input":0.00617,"output":0.008025,"cacheRead":0.0025,"cacheWrite":0.004375,"total":0.02107,"totalFromProvider":false},"cacheWrite1h":0}`,
 			responseModel: "claude-opus-4-8",
 		},
 		{

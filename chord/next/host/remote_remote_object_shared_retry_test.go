@@ -31,9 +31,7 @@ var rsPlaced = mustContract(contracts.Remote("app.placed", contracts.RemoteDecla
 		}
 		return Server.Address(nil), nil
 	},
-	Variants: []contracts.VariantEntry{
-		contracts.Var("v", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("text", contracts.Str())}}),
-	},
+	State: []contracts.RemoteStateEntry{contracts.StateEntry("text", contracts.Str())},
 }))
 
 // rsBindText is Pi's `bindText`: it binds hold of rsPlaced with text.
@@ -41,7 +39,7 @@ func rsBindText(t testing.TB, peer *RawPeer, hold int, text string) {
 	t.Helper()
 	names := wireNames(t, rsPlaced, "v")
 	peer.Send(&link.BoundMessage{Holds: []link.BoundEntry{{
-		Hold: hold, Variant: names.Variant, Failed: []link.FailedMember{},
+		Hold: hold, Granted: names.Granted, Failed: []link.FailedMember{},
 		Members: []link.BoundMember{{Member: names.State["text"], Value: mustJSONPart(t, text)}},
 	}}})
 }

@@ -66,16 +66,16 @@ func TestExample17LimitsAndCompression(t *testing.T) {
 	store := exLocal("example.store", contracts.Params{exProp("id", exStr())},
 		contracts.Mem("entries", exArr(entry)), contracts.Mem("append", contracts.NewMethod(entry)))
 	conversation := exRemote("example.conversation", contracts.Params{exProp("id", exStr())}, exServerAddress,
-		contracts.Var("v", contracts.VariantDeclaration{
-			State:   []contracts.Property{exProp("entries", exArr(entry))},
-			Methods: []contracts.MethodEntry{contracts.Meth("append", contracts.NewMethod(entry))},
-		}))
+		contracts.RemoteDeclaration{
+			State:   []contracts.RemoteStateEntry{contracts.StateEntry("entries", exArr(entry))},
+			Methods: []contracts.RemoteMethodEntry{contracts.Meth("append", contracts.NewMethod(entry))},
+		})
 	entries := exDefineState("entries", documents.StateOptions{
 		Schema:  exObj(exProp("list", exArr(entry))),
 		Initial: func() *delta.JsonObject { return jsonObject("list", []any{}) },
 	})
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(store, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := h.Serve(store, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			doc := stateOf(self, entries)
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{
 				"entries": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) {
@@ -89,7 +89,7 @@ func TestExample17LimitsAndCompression(t *testing.T) {
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(conversation, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return h.Serve(conversation, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			backing := self.Get(store, jsonObject("id", exParam(params, "id")))
 			return exVariant("v", map[string]chord.Watchable[delta.JsonValue]{"entries": Expose(backing.Member("entries"))},
 				map[string]contracts.MethodFunction{

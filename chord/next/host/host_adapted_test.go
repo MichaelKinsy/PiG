@@ -71,10 +71,10 @@ var adaptedNotes = func() *documents.StateDefinition {
 
 // serveAdaptedV2 serves `NotesV2`, accepting v1 consumers (`clear` replaced, or refused with refuse).
 func serveAdaptedV2(h FacetHost, refuse bool) error {
-	return h.Serve(adaptedNotesV2, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+	return h.Serve(adaptedNotesV2, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 		items := stateOf(self, adaptedItems)
 		notes := self.State(adaptedNotes).(*documents.Keyed)
-		return contracts.Implementation{Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{
 				"items": self.Derive([]any{items.s}, func(values []any) (delta.JsonValue, error) {
 					return values[0].(*delta.JsonObject).Value("items"), nil
@@ -95,7 +95,7 @@ func serveAdaptedV2(h FacetHost, refuse bool) error {
 				}
 				return jsonObject("count", float64(len(items.Value().Value("items").([]any)))), nil
 			}},
-		}}, nil
+		}, nil
 	}, ServeOptions{Accepts: contracts.AcceptsTable{{Name: "1", Value: contracts.VersionMappings{
 		State: []contracts.Entry[contracts.StateMapping]{{Name: "items", Value: contracts.StateMapping{
 			Func: func(current delta.JsonValue) (delta.JsonValue, error) {
@@ -218,13 +218,13 @@ func TestAnOlderConsumerOfAProvidersAcceptedVersionReadsKeyedMembersMappedPerKey
 	mustLoad(t)(host.Load([]HostFacet{
 		{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return serveAdaptedV2(h, false) })},
 		{Name: "@test/view", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(view, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return h.Serve(view, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 				note, err := self.Get(adaptedNotesV1, jsonObject()).Keyed("notes").At(params.Value("key").(string))
-				return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+				return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 					"title": self.Derive([]any{Expose(note)}, func(values []any) (delta.JsonValue, error) {
 						return values[0].(*delta.JsonObject).Value("title"), nil
 					}),
-				}}}, err
+				}}, err
 			}, ServeOptions{})
 		})},
 	}, background))
@@ -267,19 +267,19 @@ func TestReloadAdaptedMembersFollowTheProvidersTopologyRebuildsAChangedMemberAda
 	host := newHost(t, HostOptions{OnError: func(HostError) {}})
 	defer closeHosts(t, host)
 	first := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(v2, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+		return h.Serve(v2, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 				"n": constant(jsonObject("value", 5.0)),
-			}}}, nil
+			}}, nil
 		}, ServeOptions{Accepts: contracts.AcceptsTable{{Name: "1", Value: contracts.VersionMappings{
 			State: state("n", func(n delta.JsonValue) (delta.JsonValue, error) { return n.(*delta.JsonObject).Value("value"), nil }),
 		}}}})
 	})
 	second := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(v3, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+		return h.Serve(v3, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 				"m": constant(9.0),
-			}}}, nil
+			}}, nil
 		}, ServeOptions{Accepts: contracts.AcceptsTable{{Name: "1", Value: contracts.VersionMappings{
 			State: state("n", func(whole delta.JsonValue) (delta.JsonValue, error) { return whole.(*delta.JsonObject).Value("m"), nil }),
 		}}}})
@@ -448,17 +448,17 @@ func adaptedEvolve(previous *contracts.Contract, edit func(e *contracts.LocalEdi
 // constant state member `extra` of a contract that has it, and the accepts table.
 func adaptedKeyedFacet(contract *contracts.Contract, member, key string, extra bool, accepts contracts.AcceptsTable) Facet {
 	return DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(contract, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(contract, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			docs := self.State(adaptedRowsDoc).(*documents.Keyed)
-			implementation := contracts.Implementation{Members: contracts.VariantImplementation{
+			implementation := contracts.MembersImplementation{
 				Keyed: map[string]contracts.KeyedWatchable[delta.JsonValue]{member: ExposeKeyed(docs)},
 				Methods: map[string]contracts.MethodFunction{"set": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					_, err := docs.Change(ctx, key, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", args) })
 					return nil, err
 				}},
-			}}
+			}
 			if extra {
-				implementation.Members.State = map[string]chord.Watchable[delta.JsonValue]{"extra": constant(0.0)}
+				implementation.State = map[string]chord.Watchable[delta.JsonValue]{"extra": constant(0.0)}
 			}
 			return implementation, nil
 		}, ServeOptions{Accepts: accepts})
@@ -482,16 +482,16 @@ func adaptedValueOf(ref *Reference, member string) delta.JsonValue {
 // row when not empty).
 func adaptedPinView(view, contract *contracts.Contract, member, key, field, name string) Facet {
 	return DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(view, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(view, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			pin, err := self.Get(contract, jsonObject()).Keyed(member).At(key)
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 				name: self.Derive([]any{Expose(pin)}, func(values []any) (delta.JsonValue, error) {
 					if field == "" {
 						return values[0], nil
 					}
 					return values[0].(*delta.JsonObject).Value(field), nil
 				}),
-			}}}, err
+			}}, err
 		}, ServeOptions{})
 	})
 }
@@ -778,10 +778,10 @@ func TestReloadAVersionRefusalKeepsTheWaitingReferencesLastValuesKeepsAnOlderWat
 	})
 	serve := func(value float64, accepts contracts.AcceptsTable) Facet {
 		return DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(v2, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-				return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+			return h.Serve(v2, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+				return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 					"n": constant(jsonObject("value", value)),
-				}}}, nil
+				}}, nil
 			}, ServeOptions{Accepts: accepts})
 		})
 	}
@@ -839,17 +839,17 @@ func TestReloadAHolderOfAVersionTheProviderAcceptsUnderAnotherFingerprintWaitsUn
 		return e.State("n", contracts.Obj(contracts.Prop("value", contracts.Int())))
 	})
 	first := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(held, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+		return h.Serve(held, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 				"n": constant(1.0), "other": constant(2.0),
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	})
 	second := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(next, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+		return h.Serve(next, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
 				"n": constant(jsonObject("value", 4.0)),
-			}}}, nil
+			}}, nil
 		}, ServeOptions{Accepts: contracts.AcceptsTable{{Name: "1", Value: contracts.VersionMappings{
 			State: []contracts.Entry[contracts.StateMapping]{{Name: "n", Value: contracts.StateMapping{
 				Func: func(v delta.JsonValue) (delta.JsonValue, error) { return v.(*delta.JsonObject).Value("value"), nil },
@@ -1486,9 +1486,9 @@ func TestAnInstancesMappingDetachesOnlyWhatItMadeKeepsAnUnchangedMemberTheInstan
 	d1 := adaptedLocal("app.shared-derive", contracts.Mem("n", contracts.Int()), contracts.Mem("set", contracts.NewMethod(contracts.Int())))
 	d2 := adaptedEvolve(d1, func(e *contracts.LocalEditor) *contracts.LocalEditor { return e.AddState("extra", contracts.Int()) })
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(d2, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(d2, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			counter := stateOf(self, adaptedCounter)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"n": self.Derive([]any{counter.s}, func(values []any) (delta.JsonValue, error) {
 						return values[0].(*delta.JsonObject).Value("n").(float64) * 2, nil
@@ -1498,7 +1498,7 @@ func TestAnInstancesMappingDetachesOnlyWhatItMadeKeepsAnUnchangedMemberTheInstan
 				Methods: map[string]contracts.MethodFunction{"set": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					return nil, counter.Change(func(draft *delta.Object) { _ = draft.Set("n", args) }, ctx)
 				}},
-			}}, nil
+			}, nil
 		}, ServeOptions{Accepts: contracts.AcceptsTable{{Name: "1"}}})
 	})
 	host := newHost(t, HostOptions{OnError: func(HostError) {}})
@@ -1531,15 +1531,15 @@ func TestKeyedMappingsPerMemberMapsOneDocumentExposedAsTwoKeyedMembersThroughEac
 		return e.Keyed("first", adaptedObjOf("n")).Keyed("second", adaptedObjOf("n"))
 	})
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(k2, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(k2, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			rows := self.State(adaptedRowsDoc).(*documents.Keyed)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				Keyed: map[string]contracts.KeyedWatchable[delta.JsonValue]{"first": ExposeKeyed(rows), "second": ExposeKeyed(rows)},
 				Methods: map[string]contracts.MethodFunction{"set": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					_, err := rows.Change(ctx, "a", func(draft *delta.Object) (any, error) { return nil, draft.Set("n", args) })
 					return nil, err
 				}},
-			}}, nil
+			}, nil
 		}, ServeOptions{Accepts: contracts.AcceptsTable{{Name: "1", Value: contracts.VersionMappings{Keyed: []contracts.Entry[contracts.KeyedMapping]{
 			{Name: "first", Value: contracts.KeyedMapping{Func: adaptedField("n")}},
 			{Name: "second", Value: contracts.KeyedMapping{Func: adaptedRowsTimes(10)}},

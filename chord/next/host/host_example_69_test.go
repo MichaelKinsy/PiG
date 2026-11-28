@@ -94,18 +94,13 @@ var (
 			s := contracts.Obj(contracts.Prop("mode", contracts.OneOf("read", "write")))
 			return &s
 		}(),
-		Variants: []contracts.VariantEntry{
-			contracts.Var("viewer", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("title", contracts.Str())}}),
-			contracts.Var("participant", contracts.VariantDeclaration{
-				State:   []contracts.Property{contracts.Prop("title", contracts.Str())},
-				Methods: []contracts.MethodEntry{{Name: "say", Value: contracts.NewMethod(contracts.Str(), contracts.Str())}},
-			}),
-		},
+		State:   []contracts.RemoteStateEntry{contracts.StateEntry("title", contracts.Str())},
+		Methods: []contracts.RemoteMethodEntry{contracts.Meth("say", contracts.NewGrantable(contracts.NewMethod(contracts.Str(), contracts.Str())))},
 	}))
 
 	// A type on the session's worker: the route decides who reaches a worker at all.
 	ex69Scratch = exRemote("example.scratch", contracts.Params{contracts.Prop("session", contracts.Str())}, exSessionAddress,
-		contracts.Var("pad", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("text", contracts.Str())}}),
+		contracts.RemoteDeclaration{State: []contracts.RemoteStateEntry{contracts.StateEntry("text", contracts.Str())}},
 	)
 )
 
@@ -169,7 +164,7 @@ func TestExample69Admission(t *testing.T) {
 
 	// The server's plugin: the store, the answers, the admitted transcript.
 	sessionsFacet := DefineFacet(func(host FacetHost, _ FacetSelf) error {
-		if err := host.Serve(ex69Sessions, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+		if err := host.Serve(ex69Sessions, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 			self := plain.(StoreSelf)
 			sessions := self.Table(ex69SessionRows)
 			shares := self.Table(ex69ShareRows)
@@ -183,7 +178,7 @@ func TestExample69Admission(t *testing.T) {
 			shareItem := func(row store.Row, _ PartnerRow) (delta.JsonValue, error) {
 				return jsonObject("person", row["person"], "session", row["session"], "mode", row["mode"]), nil
 			}
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				Queries: map[string]map[string]contracts.NamedQuery[delta.JsonValue, delta.JsonValue]{
 					// Each query runs on its table's key.
 					"sessions": self.Queries(sessions, QueriesOptions{Map: sessionItem, Reads: []string{"id", "title", "lastTouch"}}, map[string]QueryBuilder{
@@ -225,11 +220,11 @@ func TestExample69Admission(t *testing.T) {
 						})
 					}),
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		if err := host.Serve(ex69Answer, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		if err := host.Serve(ex69Answer, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			session, person := params.Value("session").(string), params.Value("person").(string)
 			sessions := self.Get(ex69Sessions, jsonObject())
 			found := self.LiveQuery(sessions.Queries("sessions")["one"], exConstant(jsonObject("id", session)), 1)
@@ -246,18 +241,15 @@ func TestExample69Admission(t *testing.T) {
 				}
 				return "none", nil
 			})
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"mode": mode}}}, nil
+			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"mode": mode}}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
 		// `admit` runs before the factory. It declares only what it reads; the factory gets the allowed value.
-		return host.Serve(ex69Transcript, func(params *delta.JsonObject, _ data.Principal, admitted delta.JsonValue, _ Self) (contracts.Implementation, error) {
-			session, mode := params.Value("session").(string), admitted.(*delta.JsonObject).Value("mode").(string)
+		return host.Serve(ex69Transcript, func(params *delta.JsonObject, _ data.Principal, admitted AdmittedValue, _ Self) (contracts.MembersImplementation, error) {
+			session, mode := params.Value("session").(string), admitted.Data.Value("mode").(string)
 			world.print(fmt.Sprintf("   (factory runs for %s as %s)", session, mode))
 			title := exConstant("transcript of " + session)
-			if mode == "read" {
-				return exVariant("viewer", map[string]chord.Watchable[delta.JsonValue]{"title": title}, nil), nil
-			}
 			say := func(text delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 				if _, err := chordctx.Receive(ctx, sayGate.get()); err != nil {
 					return nil, err
@@ -273,6 +265,9 @@ func TestExample69Admission(t *testing.T) {
 			return self.Derive([]any{answer.Member("mode")}, func(values []any) (delta.JsonValue, error) {
 				if values[0] == "none" {
 					return Deny("no access"), nil
+				}
+				if values[0] == "write" {
+					return Allow(jsonObject("mode", values[0], "granted", []delta.JsonValue{"say"})), nil
 				}
 				return Allow(jsonObject("mode", values[0])), nil
 			}), nil
@@ -308,7 +303,7 @@ func TestExample69Admission(t *testing.T) {
 			worker := newHost(t, HostOptions{Address: &address, Principal: principal, OnError: errs.push})
 			must(t, worker.Connect(up, LinkOptions{Principal: serverPrincipal()}, ctx))
 			facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-				return h.Serve(ex69Scratch, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
+				return h.Serve(ex69Scratch, func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {
 					return exVariant("pad", map[string]chord.Watchable[delta.JsonValue]{"text": exConstant("a scratch pad")}, nil), nil
 				}, ServeOptions{})
 			})
@@ -345,7 +340,14 @@ func TestExample69Admission(t *testing.T) {
 		if current.Kind == RefStateFailed {
 			return fmt.Sprintf("%s (%s)", current.Cause.Kind, current.Cause.Error.Message)
 		}
-		return fmt.Sprintf("%s %s", current.Kind, exVariantName(ref))
+		role := "viewer"
+		if exHasGrant(ref, "say") {
+			role = "participant"
+		}
+		if ref.binding.name == "example.scratch" {
+			role = "pad"
+		}
+		return fmt.Sprintf("%s %s", current.Kind, role)
 	}
 	startedList := func() string {
 		world.mu.Lock()
@@ -396,7 +398,7 @@ func TestExample69Admission(t *testing.T) {
 	gate := make(chan struct{})
 	sayGate.set(gate)
 	var said *parkedCallResult
-	if exVariantName(transcript) == "participant" {
+	if exHasGrant(transcript, "say") {
 		said = startCallWith(t, transcript, "say", "hello")
 	}
 	world.settled()

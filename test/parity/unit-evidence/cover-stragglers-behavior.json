@@ -844,15 +844,6 @@
    "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager"
   ],
   "upstream_reference": "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager reads every leaf of the pinned Pi's SETTINGS_DEFAULTS and the value Pi's SettingsManager getter returns on empty settings; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults does the same for codemode; the rendered settings.schema.json defaults are byte-equal to Pi's published schema",
-  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetEnableInstallTelemetry() bool {\\n\\treturn readMerged(sm, func(s *Settings) bool { return s.EnableInstallTelemetry == nil || *s.EnableInstallTelemetry })` with `func (sm *SettingsManager) GetEnableInstallTelemetry() bool {\\n\\treturn readMerged(sm, func(s *Settings) bool { return s.EnableInstallTelemetry != nil && *s.EnableInstallTelemetry })`; TestSettingsDefaultsMatchPiOnAnEmptySettingsManager fail"
- },
- {
-  "upstream": "packages/coding-agent/src/core/settings-defaults.ts",
-  "package": "./internal/codingagent",
-  "tests": [
-   "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager"
-  ],
-  "upstream_reference": "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager reads every leaf of the pinned Pi's SETTINGS_DEFAULTS and the value Pi's SettingsManager getter returns on empty settings; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults does the same for codemode; the rendered settings.schema.json defaults are byte-equal to Pi's published schema",
   "mutation": "internal/codingagent/settings.go: replace `MaxAgentDelayMs: 60000, // upstream default cap` with `MaxAgentDelayMs: 61000, // upstream default cap`; TestSettingsDefaultsMatchPiOnAnEmptySettingsManager fail"
  },
  {
@@ -907,41 +898,19 @@
   "upstream": "packages/coding-agent/src/core/client-identity.ts",
   "package": "./coding",
   "tests": [
-   "TestSDKIdentifiesPiGWithADetailedUserAgentAndAttributionAsACLIAgent",
-   "TestSDKTurnsAttributionOffWhenTelemetryIsDisabled"
+   "TestSDKIdentifiesPiGWithADetailedUserAgentAndAttributionAsACLIAgent"
   ],
   "upstream_reference": "packages/coding-agent/test/sdk-client-identity.test.ts ported (D26): the identity the session sends with each request",
-  "mutation": "coding/client_identity.go: replace `UserAgent: new(ai.UserAgentDetailed)` with `UserAgent: new(ai.UserAgentShort)`; TestSDKIdentifiesPiGWithADetailedUserAgentAndAttributionAsACLIAgent, TestSDKTurnsAttributionOffWhenTelemetryIsDisabled fail"
+  "mutation": "coding/client_identity.go: replace `UserAgent: new(ai.UserAgentDetailed)` with `UserAgent: new(ai.UserAgentShort)`; TestSDKIdentifiesPiGWithADetailedUserAgentAndAttributionAsACLIAgent fail"
  },
  {
   "upstream": "packages/coding-agent/src/core/client-identity.ts",
   "package": "./coding",
   "tests": [
-   "TestSDKIdentifiesPiGWithADetailedUserAgentAndAttributionAsACLIAgent",
-   "TestSDKTurnsAttributionOffWhenTelemetryIsDisabled"
+   "TestSDKIdentifiesPiGWithADetailedUserAgentAndAttributionAsACLIAgent"
   ],
   "upstream_reference": "packages/coding-agent/test/sdk-client-identity.test.ts ported (D26): the identity the session sends with each request",
-  "mutation": "coding/client_identity.go: replace `Version: new(Version)` with `Version: new(\"0.0.0\")`; TestSDKIdentifiesPiGWithADetailedUserAgentAndAttributionAsACLIAgent, TestSDKTurnsAttributionOffWhenTelemetryIsDisabled fail"
- },
- {
-  "upstream": "packages/coding-agent/src/core/client-identity.ts",
-  "package": "./coding",
-  "tests": [
-   "TestSDKTurnsAttributionOffWhenTelemetryIsDisabled",
-   "TestSDKTurnsAttributionOffWithPITelemetryZero"
-  ],
-  "upstream_reference": "packages/coding-agent/test/sdk-client-identity.test.ts ported (D26): the identity the session sends with each request",
-  "mutation": "coding/client_identity.go: replace `if settings.IsInstallTelemetryEnabled() {` with `if true {`; TestSDKTurnsAttributionOffWhenTelemetryIsDisabled, TestSDKTurnsAttributionOffWithPITelemetryZero fail"
- },
- {
-  "upstream": "packages/coding-agent/src/core/client-identity.ts",
-  "package": "./coding",
-  "tests": [
-   "TestSDKTurnsAttributionOffWhenTelemetryIsDisabled",
-   "TestSDKTurnsAttributionOffWithPITelemetryZero"
-  ],
-  "upstream_reference": "packages/coding-agent/test/sdk-client-identity.test.ts ported (D26): the identity the session sends with each request",
-  "mutation": "coding/client_identity.go: replace `identity.AttributionNull = true` with `identity.AttributionNull = false`; TestSDKTurnsAttributionOffWhenTelemetryIsDisabled, TestSDKTurnsAttributionOffWithPITelemetryZero fail"
+  "mutation": "coding/client_identity.go: replace `Version: new(Version)` with `Version: new(\"0.0.0\")`; TestSDKIdentifiesPiGWithADetailedUserAgentAndAttributionAsACLIAgent fail"
  },
  {
   "upstream": "packages/coding-agent/src/core/client-identity.ts",
@@ -951,17 +920,6 @@
   ],
   "upstream_reference": "packages/coding-agent/test/sdk-client-identity.test.ts ported (D26): the identity the session sends with each request",
   "mutation": "coding/client_identity.go: replace `identity.Attribution = new(ai.PiAttribution)` with `identity.Attribution = nil`; TestSDKIdentifiesPiGWithADetailedUserAgentAndAttributionAsACLIAgent fail"
- },
- {
-  "upstream": "packages/coding-agent/src/core/client-identity.ts",
-  "package": "./coding",
-  "tests": [
-   "TestSDKIdentifiesPiGWithADetailedUserAgentAndAttributionAsACLIAgent",
-   "TestSDKTurnsAttributionOffWhenTelemetryIsDisabled",
-   "TestSDKTurnsAttributionOffWithPITelemetryZero"
-  ],
-  "upstream_reference": "packages/coding-agent/test/sdk-client-identity.test.ts ported (D26): the identity the session sends with each request",
-  "mutation": "coding/client_identity.go: replace `if settings.IsInstallTelemetryEnabled() {` with `if !settings.IsInstallTelemetryEnabled() {`; TestSDKIdentifiesPiGWithADetailedUserAgentAndAttributionAsACLIAgent, TestSDKTurnsAttributionOffWhenTelemetryIsDisabled, TestSDKTurnsAttributionOffWithPITelemetryZero fail"
  },
  {
   "upstream": "packages/ai/src/utils/version.ts",

@@ -93,7 +93,7 @@ func TestReferencesSharingOneWireHoldSeenMembers(t *testing.T) {
 		rhSync(t, rig.Peer)
 		b := panel(t, rig.Client)
 		rsOpens(t, "a.y", a, "y", 2)
-		rsRejects(t, "b.y", b, "y", `has no state member "y"`, false)
+		rsRejects(t, "b.y", b, "y", `has not granted "y"`, false)
 		rig.Peer.Send(&link.LoadingMessage{Hold: hold})
 		rsBindPanel(t, rig.Peer, hold, "wide", map[string]float64{"x": 4, "y": 5})
 		rhSync(t, rig.Peer)

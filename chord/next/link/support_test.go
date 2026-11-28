@@ -168,7 +168,7 @@ func (peer *rawPeer) isClosed() bool {
 }
 
 func (peer *rawPeer) hello() {
-	peer.send(&link.HelloMessage{Protocol: 1, Incarnation: rawPeerIncarnation, Calls: 256})
+	peer.send(&link.HelloMessage{Protocol: 2, Incarnation: rawPeerIncarnation, Calls: 256})
 }
 
 // transported waits until messages and closes in flight on memory links have arrived (support.ts `transported`).

@@ -32,7 +32,7 @@
     },
     {
       "source": "test/parity/runner/driver_tmux.go",
-      "sha256": "66f367b4483ebe663625eef6dd6bd97ff3c243ebd2966eb53895696740d83a6b",
+      "sha256": "7ea3fa84d24b3815dbee70572c925ba4ee9dd2d8de505a6e42b979ec9feadaea",
       "reason": "Terminal state capture is not a byte-stream assertion; the terminal transcript, held from the program's first byte, is read only by wait_contains, by final_frame and by a scenario's own transcript_sequences_equal window. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage. The final capture is taken only from a still screen (the plain captures around the escaped one are equal, within the last step budget), and a capture_start absent from a capture a comparator reads, still absent when that budget ends, fails the run instead of comparing the whole screen. A capture no comparator reads is kept whole, not cropped."
     },
     {
@@ -501,7 +501,7 @@
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "Resume Session (Current Folder)",
-            "capture_end": "  No sessions in current folder. Press Tab to view all."
+            "capture_end": "  No sessions in current folder. Press tab to view all."
           },
           "reason": "Owned visible surface: --resume opens the startup picker without consuming the following positional argument.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
@@ -2825,9 +2825,9 @@
       "transforms": [
         {
           "kind": "normalize_replace",
-          "pattern": "pig? --session [0-9a-f-]{36}",
-          "with": "<bin> --session <session-id>",
-          "reason": "D2: the resume command names the host executable; the session id is random per run. The rest of the line and the session_shutdown line stay compared."
+          "pattern": "pig? --agent-dir /tmp/parity-snap-PIG?_CODING_AGENT_DIR-[0-9]+ --session [0-9a-f-]{36}",
+          "with": "<bin> --agent-dir <agent-dir> --session <session-id>",
+          "reason": "D2: the resume command names the host executable and each run's ephemeral snapshot agent directory; the session id is random per run. The --agent-dir and --session flags and the session_shutdown line stay compared."
         },
         {
           "kind": "output_normalized_equal",
@@ -2853,9 +2853,9 @@
       "transforms": [
         {
           "kind": "normalize_replace",
-          "pattern": "pig? --session [0-9a-f-]{36}",
-          "with": "<bin> --session <session-id>",
-          "reason": "D2: the resume command names the host executable; the session id is random per run. The rest of the line and the session_shutdown line stay compared."
+          "pattern": "pig? --agent-dir /tmp/parity-snap-PIG?_CODING_AGENT_DIR-[0-9]+ --session [0-9a-f-]{36}",
+          "with": "<bin> --agent-dir <agent-dir> --session <session-id>",
+          "reason": "D2: the resume command names the host executable and each run's ephemeral snapshot agent directory; the session id is random per run. The --agent-dir and --session flags and the session_shutdown line stay compared."
         },
         {
           "kind": "output_normalized_equal",
@@ -2881,9 +2881,9 @@
       "transforms": [
         {
           "kind": "normalize_replace",
-          "pattern": "pig? --session [0-9a-f-]{36}",
-          "with": "<bin> --session <session-id>",
-          "reason": "D2: the resume command names the host executable; the session id is random per run. The rest of the line and the session_shutdown line stay compared."
+          "pattern": "pig? --agent-dir /tmp/parity-snap-PIG?_CODING_AGENT_DIR-[0-9]+ --session [0-9a-f-]{36}",
+          "with": "<bin> --agent-dir <agent-dir> --session <session-id>",
+          "reason": "D2: the resume command names the host executable and each run's ephemeral snapshot agent directory; the session id is random per run. The --agent-dir and --session flags and the session_shutdown line stay compared."
         },
         {
           "kind": "output_normalized_equal",
@@ -5036,7 +5036,7 @@
             "capture_start": "$ sleep 30",
             "capture_end_regex": "─{100}"
           },
-          "reason": "Owned visible surface: A running `!` command shows Pi's loader row with the tui.select.cancel keys and no status row.",
+          "reason": "Owned visible surface: A running `!` command shows Pi's loader row with the app.interrupt keys and no status row.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -11135,7 +11135,7 @@
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "Resume Session (Current Folder)",
-            "capture_end": "  No sessions in current folder. Press Tab to view all."
+            "capture_end": "  No sessions in current folder. Press tab to view all."
           },
           "reason": "Owned visible surface: Both binaries render the empty /resume selector block exactly.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
@@ -11628,7 +11628,7 @@
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "Auto-compact",
-            "capture_end": "Type to search · Enter/Space to change · Esc to cancel"
+            "capture_end": "Type to search · enter/space to change · escape/ctrl+c to cancel"
           },
           "reason": "Owned visible surface: The main /settings block matches Pi; D64's omitted share-destination row and D80's added row cancel in the row count.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
@@ -11646,7 +11646,7 @@
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "> theme",
-            "capture_end": "Type to search · Enter/Space to change · Esc to cancel"
+            "capture_end": "Type to search · enter/space to change · escape/ctrl+c to cancel"
           },
           "reason": "Owned visible surface: Both binaries render the filtered /settings theme block exactly.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
@@ -11665,7 +11665,7 @@
           "configuration": {
             "capture_start": "Theme",
             "capture_start_last": true,
-            "capture_end": "Enter to select · Esc to go back"
+            "capture_end": "enter to select · escape/ctrl+c to go back"
           },
           "reason": "Owned visible surface: Both binaries render the /settings theme submenu exactly.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
@@ -11684,7 +11684,7 @@
           "configuration": {
             "capture_start": "Thinking Level for",
             "capture_start_last": true,
-            "capture_end": "Enter to select · Esc to go back"
+            "capture_end": "enter to select · escape/ctrl+c to go back"
           },
           "reason": "Owned visible surface: Both binaries render the per-model thinking step with its configured marker and clear-override action.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
@@ -11741,7 +11741,7 @@
           "configuration": {
             "capture_start": "Per-Model Thinking Level",
             "capture_start_last": true,
-            "capture_end": "Type to filter · Enter to select · Esc to go back"
+            "capture_end": "Type to filter · enter to select · escape/ctrl+c to go back"
           },
           "reason": "Owned visible surface: Both binaries render the searchable model step of per-model thinking settings exactly.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
@@ -11760,7 +11760,7 @@
           "configuration": {
             "capture_start": "Per-Model Thinking Level",
             "capture_start_last": true,
-            "capture_end": "Type to filter · Enter to select · Esc to go back"
+            "capture_end": "Type to filter · enter to select · escape/ctrl+c to go back"
           },
           "reason": "Owned visible surface: The model-thinking submenu preserves exact empty-search rendering and cannot confirm an absent model.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
@@ -11778,7 +11778,7 @@
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "> t",
-            "capture_end": "Type to search · Enter/Space to change · Esc to cancel"
+            "capture_end": "Type to search · enter/space to change · escape/ctrl+c to cancel"
           },
           "reason": "Owned visible surface: Both binaries edit the /settings search like an Input and reset the selection after a delegated key.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
@@ -11796,7 +11796,7 @@
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "Auto-compact",
-            "capture_end": "Type to search · Enter/Space to change · Esc to cancel"
+            "capture_end": "Type to search · enter/space to change · escape/ctrl+c to cancel"
           },
           "reason": "Owned visible surface: Tmux hides terminal image controls even inside an image-capable Herdr pane",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
@@ -11815,7 +11815,7 @@
           "configuration": {
             "capture_start": "Automatic Theme",
             "capture_start_last": true,
-            "capture_end": "Enter to select · Esc to go back"
+            "capture_end": "enter to select · escape/ctrl+c to go back"
           },
           "reason": "Owned visible surface: The automatic-theme child picker retains its parent heading and configured marker.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
@@ -11833,7 +11833,7 @@
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "> theme",
-            "capture_end": "Type to search · Enter/Space to change · Esc to cancel"
+            "capture_end": "Type to search · enter/space to change · escape/ctrl+c to cancel"
           },
           "reason": "Owned visible surface: The /settings search finds Pi's Session share destination row only in Pi (D64) and the Mask secret input row only in PiG (D80).",
           "limitations": "No claim about output outside this crop or transient terminal bytes."

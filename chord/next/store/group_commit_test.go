@@ -510,7 +510,7 @@ func TestGroupCommit(t *testing.T) {
 		noError(t, err)
 		imported, err := ImportStore(SqliteBackend(db), SlicePartSource(values), background, StoreOptions{})
 		noError(t, err)
-		store := imported.(*ChordStore)
+		store := imported
 		t.Cleanup(func() { _ = store.Close(background) })
 		held, entered, release := holdingWrite()
 		_, fence := recording()

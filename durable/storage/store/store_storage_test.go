@@ -269,7 +269,7 @@ func recorded(t *testing.T) (*chordstore.ChordStore, *StoreStorage) {
 	must(t, err)
 	storage := value(Open(background, opened, "harness"))
 	value(commitWrites(storage, rootWrite()))
-	return opened.(*chordstore.ChordStore), storage
+	return opened, storage
 }
 
 func base(n float64) durable.DocumentContent {
@@ -384,7 +384,7 @@ func TestStoreStorageArchives(t *testing.T) {
 		must(t, err)
 		replica, err := chordstore.OpenStore(chordstore.SqliteBackend(newMemoryDatabase(t)), background, chordstore.StoreOptions{})
 		must(t, err)
-		must(t, chordstore.ApplyBatch(replica.(*chordstore.ChordStore), commits, background))
+		must(t, chordstore.ApplyBatch(replica, commits, background))
 		if jsonOf(t, exportedParts(t, replica)) != jsonOf(t, exportedParts(t, store)) {
 			t.Fatal("the replica exports another archive")
 		}
@@ -402,7 +402,7 @@ func TestStoreStorageHeadMarkers(t *testing.T) {
 			outbox := true
 			opened, err := chordstore.OpenStore(chordstore.SqliteBackend(db), background, chordstore.StoreOptions{Outbox: &outbox})
 			must(t, err)
-			return opened.(*chordstore.ChordStore)
+			return opened
 		}
 		store := open()
 		storage := value(Open(background, store, "harness"))
@@ -456,7 +456,7 @@ func TestStoreStorageHeadMarkers(t *testing.T) {
 		must(t, err)
 		commits, err := store.Outbox().Read(0, 1000, background)
 		must(t, err)
-		must(t, chordstore.ApplyBatch(replica.(*chordstore.ChordStore), commits, background))
+		must(t, chordstore.ApplyBatch(replica, commits, background))
 		if got := heads(value(Open(background, replica, "harness"))); got != want {
 			t.Fatalf("heads in the replayed outbox = %v, want %v", got, want)
 		}

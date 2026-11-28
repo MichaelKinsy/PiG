@@ -27,7 +27,8 @@ Options:
   --session <path|id>            Open a session by file path or full/partial ID
   --session-id <id>              Use the current directory's existing session with the ID, creating it otherwise
   --fork <path|id>               Fork a session by file path or full/partial ID into the current directory
-  --session-dir <dir>            Directory for session storage and lookup
+  --session-dir <dir>            Directory for session storage and lookup (overrides PIG_CODING_AGENT_SESSION_DIR and the sessionDir setting)
+  --agent-dir <dir>              Config directory for settings, auth, and resources (overrides PIG_CODING_AGENT_DIR)
   --no-session                   Don't save session (ephemeral)
   --name, -n <name>              Set session display name
   --models <patterns>            Comma-separated model patterns for Ctrl+P cycling
@@ -178,12 +179,11 @@ Environment Variables:
   AWS_SECRET_ACCESS_KEY            - AWS secret key for Amazon Bedrock
   AWS_BEARER_TOKEN_BEDROCK         - Bedrock API key (bearer token)
   AWS_REGION                       - AWS region for Amazon Bedrock (e.g., us-east-1)
-  PIG_CODING_AGENT_DIR             - Config directory (default: ~/.pig/agent)
+  PIG_CODING_AGENT_DIR             - Config directory (default: ~/.pig/agent, overridden by --agent-dir)
   PIG_CODING_AGENT_SESSION_DIR     - Session storage directory (overridden by --session-dir)
   PIG_PACKAGE_DIR                  - Override package directory (for Nix/Guix store paths)
   PIG_OFFLINE                      - Disable startup network operations when set to 1/true/yes
   PIG_SELF_UPDATE_COMMAND          - Command pig update runs to update pig itself ({packageName}, {version}, {installSpec})
-  PIG_TELEMETRY                    - Override install telemetry when set to 1/true/yes or 0/false/no
 
 Built-in Tool Names:
   read       - Read file contents

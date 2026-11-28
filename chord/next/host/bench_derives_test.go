@@ -60,15 +60,15 @@ func BenchmarkDerives(b *testing.B) {
 	)
 	host := newHost(b, HostOptions{OnError: func(HostError) {}})
 	mustLoad(b)(host.Load([]HostFacet{{Name: "@bench/derives", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(benchDiamond, func(_ *delta.JsonObject, declared Self) (contracts.Implementation, error) {
+		return h.Serve(benchDiamond, func(_ *delta.JsonObject, declared Self) (contracts.MembersImplementation, error) {
 			self = declared
 			list = declared.State(benchListDoc).(*documents.Singleton)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"bottom": benchDiamondOver(declared, list)},
 				Methods: map[string]contracts.MethodFunction{
 					"touch": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil },
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})}}, background))
 	reference, err := host.Get(background, benchDiamond, jsonObject(), GetOptions{})

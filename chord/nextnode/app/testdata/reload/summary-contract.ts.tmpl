@@ -5,5 +5,6 @@ export const Summary = remote("reload.summary", {
 	version: 1,
 	params: { id: str() },
 	hostAddress: () => Server(),
-	variants: { main: { state: { label: str(), count: int() }, methods: { code: method(undefined, str()) } } },
+	state: { label: str(), count: int() },
+	methods: { code: method(undefined, str()) },
 });

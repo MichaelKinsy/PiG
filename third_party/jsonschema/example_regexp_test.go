@@ -5,8 +5,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/dlclark/regexp2"
 	"github.com/MichaelKinsy/PiG/third_party/jsonschema"
+	"github.com/dlclark/regexp2"
 )
 
 type dlclarkRegexp regexp2.Regexp

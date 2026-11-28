@@ -522,6 +522,9 @@ func (u *updates) retryLater(set *ScriptSet) {
 // reloaded with all and the stylesheets settled. False when it failed (reported `update_failed`): it is tried again.
 func (u *updates) apply(set ScriptSet) bool {
 	options := u.options
+	if set.Base == "" {
+		return true
+	}
 	if set.Base != options.Base {
 		options.Outdated()
 		return true

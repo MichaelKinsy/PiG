@@ -285,7 +285,7 @@ func newNodeReference(h *NodeHost, contract *contracts.Contract, declared *contr
 		state: map[string]*NodeMember{}, keyed: map[string]*NodeKeyed{}, methods: map[string]struct{}{}, events: map[string]*NodeEvents{}, eventMembers: []string{},
 		current: &host.RefState{Kind: host.RefStateLoading}, stateSeq: -1, watches: map[int]struct{}{}, done: make(chan struct{}),
 	}
-	variant := declared.Versions[len(declared.Versions)-1].Variants.Value(contracts.LocalVariant)
+	variant := declared.Versions[len(declared.Versions)-1].Members
 	for name := range variant.State.All() {
 		r.state[name] = &NodeMember{reference: r, name: name}
 	}

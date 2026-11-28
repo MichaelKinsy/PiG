@@ -89,14 +89,14 @@ func rrServe(done durable.AnyTask) func(chordhost.FacetHost, chordhost.FacetSelf
 		if err != nil {
 			return err
 		}
-		return host.Serve(rrPlugin, func(_ *delta.JsonObject, self chordhost.Self) (contracts.Implementation, error) {
+		return host.Serve(rrPlugin, func(_ *delta.JsonObject, self chordhost.Self) (contracts.MembersImplementation, error) {
 			extension := self.Writable(&durable.Extension{Name: "app.plugin"})
 			self.(chordhost.StoreSelf).Contribute(rrExtensions, extension)
-			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				"install": func(delta.JsonValue, context.Context) (delta.JsonValue, error) {
 					return nil, extension.Set(&durable.Extension{Name: "app.plugin", Tasks: []durable.AnyTask{done}})
 				},
-			}}}, nil
+			}}, nil
 		}, chordhost.ServeOptions{})
 	}
 }
@@ -344,7 +344,7 @@ func rrServeViews(host chordhost.FacetHost, _ chordhost.FacetSelf) error {
 	if err != nil {
 		return err
 	}
-	err = host.Serve(rrDurable, func(_ *delta.JsonObject, self chordhost.Self) (contracts.Implementation, error) {
+	err = host.Serve(rrDurable, func(_ *delta.JsonObject, self chordhost.Self) (contracts.MembersImplementation, error) {
 		harness := self.Open(
 			func(ctx context.Context) (any, error) {
 				opened, err := OpenHarness(ctx, storage.NewMemoryStorage(), HarnessOptions{Models: ai.CreateModels(), Registry: CreateRegistry()})
@@ -377,7 +377,7 @@ func rrServeViews(host chordhost.FacetHost, _ chordhost.FacetSelf) error {
 			}
 			return &chordhost.FollowAttachment[delta.JsonValue]{Value: value, Detach: observation.Detach}, nil
 		})
-		return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+		return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 			"close": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 				// The handler waits for the Harness, whose Session close ends the followers of its task graph: it gives the
 				// section back first (Pi's `await`), so that end enters one.
@@ -401,12 +401,12 @@ func rrServeViews(host chordhost.FacetHost, _ chordhost.FacetSelf) error {
 				_, err = root.Submit(ctx, durable.SubmissionDraft{Type: durable.SubmissionTypeWrite, Entry: &durable.EntryDraft{Kind: args.(string)}})
 				return nil, err
 			},
-		}}}, nil
+		}}, nil
 	}, chordhost.ServeOptions{})
 	if err != nil {
 		return err
 	}
-	return host.Serve(rrViewer, func(_ *delta.JsonObject, self chordhost.Self) (contracts.Implementation, error) {
+	return host.Serve(rrViewer, func(_ *delta.JsonObject, self chordhost.Self) (contracts.MembersImplementation, error) {
 		harness := self.Registry(rrHarnesses)
 		self.RetryOn(harness)
 		view := self.Follow(func(observer chordhost.FollowObserver[any], ctx context.Context) (*chordhost.FollowAttachment[delta.JsonValue], error) {
@@ -432,7 +432,7 @@ func rrServeViews(host chordhost.FacetHost, _ chordhost.FacetSelf) error {
 			}
 			return out, nil
 		})
-		return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"kinds": kinds}}}, nil
+		return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"kinds": kinds}}, nil
 	}, chordhost.ServeOptions{})
 }
 

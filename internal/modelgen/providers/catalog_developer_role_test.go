@@ -29,7 +29,6 @@ func TestCatalogOmitsRedundantSupportsDeveloperRole(t *testing.T) {
 	assertNoSupportsDeveloperRole(t, "KimiK3OpenAICompat", KimiK3OpenAICompat())
 
 	// 2. Direct compat helper constants/functions from providers/*.ts
-	assertNoSupportsDeveloperRole(t, "antLingCompat", antLingCompat())
 	assertNoSupportsDeveloperRole(t, "basetenBaseCompat", basetenBaseCompat())
 	assertNoSupportsDeveloperRole(t, "fireworksOpenAICompat", fireworksOpenAICompat())
 	assertNoSupportsDeveloperRole(t, "moonshotCompletionsCompat", moonshotCompletionsCompat())

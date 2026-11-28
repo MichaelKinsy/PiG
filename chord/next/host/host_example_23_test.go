@@ -28,12 +28,12 @@ func TestExample23KeyedWatches(t *testing.T) {
 	// The example's own window into the object: its keyed handle, to watch other keys from outside.
 	var notes *documents.Keyed
 	host, _ := exOpenHost(t, loadedOptions{}, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(notebook, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(notebook, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			handle := self.State(notesDef).(*documents.Keyed)
 			notes = handle
 			pinned, err := handle.At("pinned")
 			if err != nil {
-				return contracts.Implementation{}, err
+				return contracts.MembersImplementation{}, err
 			}
 			// Pinned while this attempt lives, and loaded before the object goes live.
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"pinned": Expose(pinned)}, map[string]contracts.MethodFunction{

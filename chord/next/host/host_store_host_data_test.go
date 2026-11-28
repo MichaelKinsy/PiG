@@ -92,7 +92,7 @@ var (
 // shdSessionsFacet is the facet serving `Sessions` on a host.
 func shdSessionsFacet(t testing.TB) func(FacetHost, FacetSelf) error {
 	return func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(shdSessions, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(shdSessions, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			meta := self.State(shdMeta).(*documents.Keyed)
 			plain := self.State(shdPlain).(*documents.Keyed)
 			rows := self.(StoreSelf).Table(shdLabelsTable)
@@ -390,7 +390,7 @@ func TestStoreHostDataImportRefusesAnotherKindATableAtAnotherVersionAndARowWhose
 	must(t, evolveErr)
 	target := memoryStore(t)
 	host, _ := exOpenHost(t, loadedOptions{Store: target}, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(shdSessions, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(shdSessions, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			self.(StoreSelf).Table(newer)
 			return exImpl(nil, map[string]contracts.MethodFunction{
 				"write": exMethod(func(*delta.JsonObject, context.Context) (delta.JsonValue, error) { return nil, nil }),

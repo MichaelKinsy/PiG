@@ -596,6 +596,7 @@ type Usage struct {
 	CacheWrite   int       `json:"cacheWrite"`
 	CacheWrite1h *int      `json:"cacheWrite1h,omitempty"`
 	Reasoning    *int      `json:"reasoning,omitempty"`
+	ImageOutput  *int      `json:"imageOutput,omitempty"`
 	TotalTokens  int       `json:"totalTokens"`
 	Cost         UsageCost `json:"cost"`
 	// splitsAfterCost records that a provider created CacheWrite1h or Reasoning after the other members (Usage.MarshalJSON).
@@ -996,8 +997,9 @@ type ModelCapabilities struct {
 	// CacheReadCostPer1M / CacheWriteCostPer1M are the separate cache rates
 	// upstream models expose; the write rate is for 5m (short) writes. 1h
 	// writes bill at 2x base input (see CalculateCost).
-	CacheReadCostPer1M  float64 // USD per 1M cache-read tokens
-	CacheWriteCostPer1M float64 // USD per 1M cache-write tokens
+	CacheReadCostPer1M   float64  // USD per 1M cache-read tokens
+	CacheWriteCostPer1M  float64  // USD per 1M cache-write tokens
+	ImageOutputCostPer1M *float64 // USD per 1M image output tokens (optional)
 	// CostTiers overrides the base rates for high-volume requests: the highest
 	// matching InputTokensAbove threshold applies to the whole request.
 	// Mirrors upstream ModelCost.tiers, presence included: nil is no tiers member, empty is tiers: [] (see ModelCost).
@@ -1068,11 +1070,12 @@ func (l *ModelInputLimits) Clone() *ModelInputLimits {
 // is an absent member and an empty one an authored [], which JSON keeps apart, so copies of a cost keep a nil Tiers nil and an
 // empty one empty (slices.Clone, not append to nil).
 type ModelCost struct {
-	Input      float64    `json:"input"`
-	Output     float64    `json:"output"`
-	CacheRead  float64    `json:"cacheRead"`
-	CacheWrite float64    `json:"cacheWrite"`
-	Tiers      []CostTier `json:"tiers,omitzero"`
+	Input       float64    `json:"input"`
+	Output      float64    `json:"output"`
+	CacheRead   float64    `json:"cacheRead"`
+	CacheWrite  float64    `json:"cacheWrite"`
+	ImageOutput *float64   `json:"imageOutput,omitempty"`
+	Tiers       []CostTier `json:"tiers,omitzero"`
 }
 
 // AnthropicAllowedFallbackModel describes a server-side fallback accepted by Anthropic.

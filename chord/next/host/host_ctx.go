@@ -128,6 +128,8 @@ func (c chained) Value(key any) any {
 }
 
 // Principal implements Ctx.
+func (c *callContext) UnwrapContext() context.Context { return c.Context }
+
 func (c *callContext) Principal() data.Principal { return c.principal }
 
 // Incarnation implements Ctx.

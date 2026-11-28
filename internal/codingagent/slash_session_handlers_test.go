@@ -416,7 +416,6 @@ func TestSettingsItems_UpstreamCoreRosterPresentAndOrdered(t *testing.T) {
 		"mermaid-rendering",
 		"collapse-changelog",
 		"quiet-startup",
-		"install-telemetry",
 		"double-escape-action",
 		"tree-filter-mode",
 		"warnings",
@@ -459,7 +458,6 @@ func TestSettingsItems_UpstreamDefaults(t *testing.T) {
 		"autocomplete-max-visible":  "5",
 		"clear-on-shrink":           "false",
 		"terminal-progress":         "false",
-		"install-telemetry":         "true",
 	} {
 		if settingStripped(id) { // a build that strips a built-in does not offer its row
 			continue

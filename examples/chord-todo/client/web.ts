@@ -4,7 +4,7 @@
 import type { ComponentType } from "react";
 import { defineRegistry } from "../../../chord/nextnode/surfaces/client/pi/chord/src/index.ts";
 
-export { useHold, useHost, useMessages, usePageState, useWatch } from "../../../chord/nextnode/surfaces/client/pi/chord/src/react/index.ts";
+export { useHold, useHost, useLive, useMessages, usePageState, useWatch } from "../../../chord/nextnode/surfaces/client/pi/chord/src/react/index.ts";
 
 /** A panel of the page: its name (a key, never shown) and its React component, which shows its own title. */
 export type Panel = { readonly name: string; readonly Component: ComponentType };

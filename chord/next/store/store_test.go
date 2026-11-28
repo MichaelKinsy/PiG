@@ -318,7 +318,7 @@ func TestStore(t *testing.T) {
 			noError(t, err)
 			imported, err := ImportStore(SqliteBackend(db), SlicePartSource(values), background, StoreOptions{})
 			noError(t, err)
-			store := imported.(*ChordStore)
+			store := imported
 			t.Cleanup(func() { _ = store.Close(background) })
 			if id := storeCreated(t, store); id != 2 {
 				t.Fatalf("first id = %d, want 2", id)
@@ -1092,7 +1092,7 @@ func TestStore(t *testing.T) {
 			noError(t, err)
 			imported, err := ImportStore(SqliteBackend(db), SlicePartSource(values), background, StoreOptions{})
 			noError(t, err)
-			store := imported.(*ChordStore)
+			store := imported
 			t.Cleanup(func() { _ = store.Close(background) })
 			storeCreated(t, store)
 			var receipts []string

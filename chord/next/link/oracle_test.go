@@ -215,7 +215,7 @@ func buildMessage(t testing.TB, spec *delta.JsonObject) link.Message {
 		message := &link.BoundMessage{Origin: origin}
 		for _, item := range spec.Value("holds").([]any) {
 			entry := item.(*delta.JsonObject)
-			bound := link.BoundEntry{Hold: specInt(entry, "hold"), Variant: specInt(entry, "variant"), Failed: specFailed(entry.Value("failed"))}
+			bound := link.BoundEntry{Hold: specInt(entry, "hold"), Granted: specIntList(entry, "granted"), Failed: specFailed(entry.Value("failed"))}
 			for _, member := range entry.Value("members").([]any) {
 				object := member.(*delta.JsonObject)
 				bound.Members = append(bound.Members, link.BoundMember{Member: specInt(object, "member"), Value: specPart(t, object.Value("value"))})
@@ -291,4 +291,17 @@ func TestWireFormatsMatchPi(t *testing.T) {
 			requireCanon(t, decode(t, link.TextCodec, text), message)
 		})
 	}
+}
+
+func specIntList(object *delta.JsonObject, key string) []int {
+	v := object.Value(key)
+	if v == nil {
+		return nil
+	}
+	raw := v.([]any)
+	out := make([]int, len(raw))
+	for i, x := range raw {
+		out[i] = int(x.(float64))
+	}
+	return out
 }

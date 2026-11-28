@@ -58,6 +58,7 @@ type modelRow struct {
 	OutputCost       float64
 	CacheRead        float64
 	CacheWrite       float64
+	ImageOutput      *float64
 	Tiers            []jsonCostTier
 	Reasoning        bool
 	Inputs           []string // text/image/audio/video
@@ -91,6 +92,7 @@ type ModelCompat struct {
 	CacheControlFormat                          string                     `json:"cacheControlFormat,omitempty"`
 	SendSessionAffinityHeaders                  *bool                      `json:"sendSessionAffinityHeaders,omitempty"`
 	SupportsStrictMode                          *bool                      `json:"supportsStrictMode,omitempty"`
+	SupportsReasoningReplay                     *bool                      `json:"supportsReasoningReplay,omitempty"`
 	SupportsStrictTools                         *bool                      `json:"supportsStrictTools,omitempty"`
 	SupportsOpenAIGrammarTools                  *bool                      `json:"supportsOpenAIGrammarTools,omitempty"`
 	SupportsExplicitPromptCacheMode             *bool                      `json:"supportsExplicitPromptCacheMode,omitempty"`
@@ -449,11 +451,12 @@ func (value *jsonOptionalInt) UnmarshalJSON(data []byte) error {
 
 // jsonCost is a catalog cost; a nil Tiers is a cost with no tiers member and an empty one a cost with tiers: [].
 type jsonCost struct {
-	Input      float64        `json:"input"`
-	Output     float64        `json:"output"`
-	CacheRead  float64        `json:"cacheRead"`
-	CacheWrite float64        `json:"cacheWrite"`
-	Tiers      []jsonCostTier `json:"tiers,omitzero"`
+	Input       float64        `json:"input"`
+	Output      float64        `json:"output"`
+	CacheRead   float64        `json:"cacheRead"`
+	CacheWrite  float64        `json:"cacheWrite"`
+	ImageOutput *float64       `json:"imageOutput,omitempty"`
+	Tiers       []jsonCostTier `json:"tiers,omitzero"`
 }
 
 // jsNumber marshals like JSON.stringify: a number that is not finite is null, and negative zero is 0.
@@ -465,13 +468,19 @@ func (n jsNumber) MarshalJSON() ([]byte, error) {
 
 // MarshalJSON writes the cost the way JSON.stringify writes it, so a NaN price (an unparsable OpenRouter price string) is null.
 func (c jsonCost) MarshalJSON() ([]byte, error) {
+	var imageOutput *jsNumber
+	if c.ImageOutput != nil {
+		v := jsNumber(*c.ImageOutput)
+		imageOutput = &v
+	}
 	return json.Marshal(struct {
-		Input      jsNumber       `json:"input"`
-		Output     jsNumber       `json:"output"`
-		CacheRead  jsNumber       `json:"cacheRead"`
-		CacheWrite jsNumber       `json:"cacheWrite"`
-		Tiers      []jsonCostTier `json:"tiers,omitzero"`
-	}{jsNumber(c.Input), jsNumber(c.Output), jsNumber(c.CacheRead), jsNumber(c.CacheWrite), c.Tiers})
+		Input       jsNumber       `json:"input"`
+		Output      jsNumber       `json:"output"`
+		CacheRead   jsNumber       `json:"cacheRead"`
+		CacheWrite  jsNumber       `json:"cacheWrite"`
+		ImageOutput *jsNumber      `json:"imageOutput,omitempty"`
+		Tiers       []jsonCostTier `json:"tiers,omitzero"`
+	}{jsNumber(c.Input), jsNumber(c.Output), jsNumber(c.CacheRead), jsNumber(c.CacheWrite), imageOutput, c.Tiers})
 }
 
 type jsonCostTier struct {
@@ -563,6 +572,7 @@ func parseDataJSON(path string) ([]modelRow, error) {
 			row.OutputCost = jm.Cost.Output
 			row.CacheRead = jm.Cost.CacheRead
 			row.CacheWrite = jm.Cost.CacheWrite
+			row.ImageOutput = jm.Cost.ImageOutput
 			row.Tiers = jm.Cost.Tiers
 		}
 		rows = append(rows, row)
@@ -939,14 +949,35 @@ func systemOneCompatLiteral(compat *ModelCompat) string {
 func emitImages(path, src string, rows []modelRow) error {
 	var b strings.Builder
 	writeCatalogHeader(&b, src, len(rows))
+	var imageRates []string
+	rateIndex := map[string]int{}
+	internRate := func(v float64) string {
+		lit := floatLit(v)
+		i, ok := rateIndex[lit]
+		if !ok {
+			i = len(imageRates)
+			rateIndex[lit] = i
+			imageRates = append(imageRates, lit)
+		}
+		return fmt.Sprintf("&generatedImageOutputRates[%d]", i)
+	}
 	fmt.Fprintf(&b, "// GeneratedImageModels is the static image model catalog (%d entries).\n", len(rows))
 	b.WriteString("var GeneratedImageModels = []ImageModel{\n")
 	for _, row := range rows {
 		fmt.Fprintf(&b, "\t{ID: %q, Name: %q, API: ImageAPI(%q), Provider: %q, BaseURL: %q,", row.ID, row.Name, row.API, row.Provider, row.BaseURL)
 		writeBaseModelFields(&b, row)
-		fmt.Fprintf(&b, " Output: %s, Cost: %s},\n", stringSliceLiteral(row.Output), modelCostLiteral(row))
+		cost := costLiteralWithRate(jsonCost{Input: row.InputCost, Output: row.OutputCost, CacheRead: row.CacheRead, CacheWrite: row.CacheWrite, ImageOutput: row.ImageOutput, Tiers: row.Tiers}, internRate)
+		fmt.Fprintf(&b, " Output: %s, Cost: %s},\n", stringSliceLiteral(row.Output), cost)
 	}
 	b.WriteString("}\n")
+	if len(imageRates) > 0 {
+		b.WriteString("\n// generatedImageOutputRates holds the static imageOutput rates Referenced by GeneratedImageModels without per-entry init allocations.\n")
+		b.WriteString("var generatedImageOutputRates = [...]float64{\n")
+		for _, lit := range imageRates {
+			fmt.Fprintf(&b, "\t%s,\n", lit)
+		}
+		b.WriteString("}\n")
+	}
 	return writeGoSource(path, b.String())
 }
 
@@ -1052,12 +1083,23 @@ func stringSliceLiteral(values []string) string {
 }
 
 func modelCostLiteral(row modelRow) string {
-	return costLiteral(jsonCost{Input: row.InputCost, Output: row.OutputCost, CacheRead: row.CacheRead, CacheWrite: row.CacheWrite, Tiers: row.Tiers})
+	return costLiteral(jsonCost{Input: row.InputCost, Output: row.OutputCost, CacheRead: row.CacheRead, CacheWrite: row.CacheWrite, ImageOutput: row.ImageOutput, Tiers: row.Tiers})
 }
 
 // costLiteral is a ModelCost literal for cost: one with no tiers member has no Tiers, and one with tiers: [] an empty Tiers.
 func costLiteral(cost jsonCost) string {
+	return costLiteralWithRate(cost, nil)
+}
+
+func costLiteralWithRate(cost jsonCost, ratePtr func(float64) string) string {
 	literal := fmt.Sprintf("ModelCost{Input: %s, Output: %s, CacheRead: %s, CacheWrite: %s", floatLit(cost.Input), floatLit(cost.Output), floatLit(cost.CacheRead), floatLit(cost.CacheWrite))
+	if cost.ImageOutput != nil {
+		if ratePtr != nil {
+			literal += ", ImageOutput: " + ratePtr(*cost.ImageOutput)
+		} else {
+			literal += fmt.Sprintf(", ImageOutput: new(float64(%s))", floatLit(*cost.ImageOutput))
+		}
+	}
 	if cost.Tiers != nil {
 		literal += ", Tiers: " + tiersLiteral(cost.Tiers)
 	}
@@ -1202,6 +1244,9 @@ func compatLiteral(jsonText string) string {
 	}
 	if compat.SupportsStrictMode != nil {
 		fields = append(fields, fmt.Sprintf("SupportsStrictMode:%s", boolPtrLit(*compat.SupportsStrictMode)))
+	}
+	if compat.SupportsReasoningReplay != nil {
+		fields = append(fields, fmt.Sprintf("SupportsReasoningReplay:%s", boolPtrLit(*compat.SupportsReasoningReplay)))
 	}
 	if compat.SupportsStrictTools != nil {
 		fields = append(fields, fmt.Sprintf("SupportsStrictTools:%s", boolPtrLit(*compat.SupportsStrictTools)))

@@ -121,8 +121,8 @@ func placedEditor(t testing.TB, rel *relayed, ctx context.Context) *Reference {
 	t.Helper()
 	notes, err := rel.Tab.Get(ctx, PlacedNotes, jsonObject("session", "S1"), GetOptions{})
 	must(t, err)
-	if variant, _, _ := notes.Variant(); variant != "editor" {
-		t.Fatalf("variant = %q, want the editor", variant)
+	if granted, _ := notes.Granted(); !granted["add"] {
+		t.Fatalf("granted = %v, want the editor", granted)
 	}
 	return notes
 }
@@ -326,10 +326,16 @@ func TestAcrossHostsHoldsThroughTheRelayUnderTheTabsSpanTheWorkersStartAndItsAct
 		t.Errorf("the activation links %v; the relay span is %v, the store's activation %v", linksOf(activation), relayHold.Context, noteStore.Context)
 	}
 	attributesWant(t, activation, map[string]any{"outcome": "parked"})
-	if len(activation.Events) != 1 || activation.Events[0].Name != "chord.park" {
-		t.Fatalf("the activation's events = %v, want one chord.park", activation.Events)
+	var parkEvent *telemetry.RecordedTelemetryEvent
+	for i := range activation.Events {
+		if activation.Events[i].Name == "chord.park" {
+			parkEvent = &activation.Events[i]
+		}
 	}
-	if cause, _ := activation.Events[0].Attributes.Get("cause"); cause != "loading" {
+	if parkEvent == nil {
+		t.Fatalf("the activation's events = %v, want a chord.park", activation.Events)
+	}
+	if cause, _ := parkEvent.Attributes.Get("cause"); cause != "loading" {
 		t.Errorf("park cause = %v, want loading", cause)
 	}
 	if !linksTo(resumed, activation) {
@@ -657,23 +663,21 @@ var quietOverALink = mustContract(contracts.Remote("app.quiet", contracts.Remote
 	Version:     1,
 	Params:      contracts.Params{},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-	Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
-		Methods: []contracts.MethodEntry{contracts.Meth("work", contracts.NewMethod())},
-	})},
+	Methods:     []contracts.RemoteMethodEntry{contracts.Meth("work", contracts.NewMethod())},
 }))
 
 func TestAnUntracedTypeOverALinkRecordsNothingUnderTheCallersCarrier(t *testing.T) {
 	recorder := telemetry.NewInMemoryTelemetryContext()
 	s := rawLinked(t, func(h FacetHost) error {
-		return h.Serve(quietOverALink, func(_ *delta.JsonObject, _ data.Principal, _ Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Variant: "main", Members: contracts.VariantImplementation{
+		return h.Serve(quietOverALink, func(_ *delta.JsonObject, _ data.Principal, _ Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{},
 				Methods: map[string]contracts.MethodFunction{
 					"work": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 						return ctx.(Ctx).Trace("app.inner", nil, func(Ctx) (any, error) { return nil, nil })
 					},
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{Untraced: true})
 	}, rawLinkedOptions{Telemetry: recorder})
 	provHold(t, s.Peer, 0, specOf(quietOverALink), jsonObject())

@@ -52,10 +52,13 @@ var (
 		Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("doc", benchCompressionShape)},
 	}))
 	// benchCompressionView is a tab's view of the 500 KB document, and a method returning 1 MiB.
-	benchCompressionView = remoteOneVariantNamed("bench.view", "owner", contracts.Params{}, contracts.VariantDeclaration{
-		State:   []contracts.Property{contracts.Prop("doc", benchCompressionShape)},
-		Methods: []contracts.MethodEntry{contracts.Meth("export", contracts.NewMethod(contracts.Schema{}, contracts.Str()))},
-	})
+	benchCompressionView = mustContract(contracts.Remote("bench.view", contracts.RemoteDeclaration{
+		Version:     1,
+		Params:      contracts.Params{},
+		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
+		State:       []contracts.RemoteStateEntry{contracts.StateEntry("doc", benchCompressionShape)},
+		Methods:     []contracts.RemoteMethodEntry{contracts.Meth("export", contracts.NewMethod(contracts.Schema{}, contracts.Str()))},
+	}))
 	benchCompressionResult = benchProse(1, 1024*1024)
 	benchCompressionDoc    = func() *documents.StateDefinition {
 		definition, err := documents.DefineState("doc", documents.StateOptions{
@@ -84,20 +87,20 @@ func benchCompressionLinked(b *testing.B, server, client link.Compression) (serv
 	onError := func(err HostError) { b.Errorf("onError %s", err.Kind) }
 	serverHost = newHost(b, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), Compression: server, OnError: onError})
 	mustLoad(b)(serverHost.Load([]HostFacet{{Name: "@bench/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
-		if err := host.Serve(benchCompressionStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+		if err := host.Serve(benchCompressionStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"doc": Expose(self.State(benchCompressionDoc))},
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return host.Serve(benchCompressionView, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Variant: "owner", Members: contracts.VariantImplementation{
+		return host.Serve(benchCompressionView, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"doc": Expose(self.Get(benchCompressionStore, jsonObject()).Member("doc"))},
 				Methods: map[string]contracts.MethodFunction{
 					"export": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return benchCompressionResult, nil },
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})}}, background))
 	clientHost = newHost(b, HostOptions{Compression: client, OnError: onError})

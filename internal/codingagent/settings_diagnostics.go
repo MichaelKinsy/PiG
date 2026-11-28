@@ -68,11 +68,11 @@ func (m *InteractiveMode) showModelsJSONError() {
 		return
 	}
 	if loadError := m.opts.ModelRegistry.LoadError(); loadError != "" {
-		m.showError("models.json error: " + loadError)
+		m.showWarning("models.json error: " + loadError)
 	}
 }
 
-// showInitNotices shows the startup notices in upstream init order: diagnostics, migrated credentials, the models.json error, then the model fallback message, even under quiet startup. PiG's frame pacing notice follows the diagnostics (showFramePacingNotice, D625).
+// showInitNotices shows the startup notices in upstream init order: diagnostics, migrated credentials, then the model fallback message, even under quiet startup. PiG's frame pacing notice follows the diagnostics (showFramePacingNotice, D625).
 // upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:init
 func (m *InteractiveMode) showInitNotices() {
 	m.showRuntimeDiagnostics(m.opts.StartupDiagnostics)
@@ -80,7 +80,6 @@ func (m *InteractiveMode) showInitNotices() {
 	if len(m.opts.MigratedProviders) > 0 {
 		m.showWarning("Migrated credentials to auth.json: " + strings.Join(m.opts.MigratedProviders, ", "))
 	}
-	m.showModelsJSONError()
 	if m.opts.ModelFallbackMessage != "" {
 		m.showWarning(m.opts.ModelFallbackMessage)
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -25,24 +26,19 @@ import (
 
 // keptContract is `Kept`: a remote object on the server: variant `a` has `bump` and `ping`, variant `b` only `ping`.
 var keptContract = func() *contracts.Contract {
-	label := rhProp("label", contracts.Str())
 	return mustContract(declareRemote("app.kept", contracts.RemoteDeclaration{
 		Version: 1, HostAddress: exServerAddress,
-		Variants: []contracts.VariantEntry{
-			contracts.Var("a", contracts.VariantDeclaration{State: []contracts.Property{label}, Methods: []contracts.MethodEntry{
-				contracts.Meth("bump", contracts.NewMethod(contracts.Schema{}, contracts.Int())),
-				contracts.Meth("ping", contracts.NewMethod(contracts.Schema{}, contracts.Int())),
-			}}),
-			contracts.Var("b", contracts.VariantDeclaration{State: []contracts.Property{label}, Methods: []contracts.MethodEntry{
-				contracts.Meth("ping", contracts.NewMethod(contracts.Schema{}, contracts.Int())),
-			}}),
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("label", contracts.Str())},
+		Methods: []contracts.RemoteMethodEntry{
+			contracts.Meth("bump", contracts.NewGrantable(contracts.NewMethod(contracts.Schema{}, contracts.Int()))),
+			contracts.Meth("ping", contracts.NewMethod(contracts.Schema{}, contracts.Int())),
 		},
 	}))
 }()
 
 // keptV2 is `Kept` v2: its label became an object, which v1 consumers are not mapped to (their version is dropped).
 var keptV2 = mustContract(contracts.Evolve(keptContract, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
-	return e.State("a", "label", contracts.Obj(contracts.Prop("text", contracts.Str())))
+	return e.State("label", contracts.Obj(contracts.Prop("text", contracts.Str())))
 }))
 
 // keptBroken is a local type whose factory throws (with params: no host-lifetime object): one needing it parks on its failure.
@@ -94,12 +90,12 @@ type keptCode struct {
 // keptFacet is `Kept` as code (with `Broken` served beside it).
 func keptFacet(t testing.TB, code keptCode) Facet {
 	return DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(keptBroken, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{}, errors.New("broken factory")
+		if err := h.Serve(keptBroken, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{}, errors.New("broken factory")
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(keptContract, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return h.Serve(keptContract, func(_ *delta.JsonObject, _ data.Principal, _ AdmittedValue, self Self) (contracts.MembersImplementation, error) {
 			if code.native {
 				self.Open(func(ctx context.Context) (any, error) {
 					if code.opened != nil {
@@ -123,17 +119,16 @@ func keptFacet(t testing.TB, code keptCode) Facet {
 				return float64(code.n), nil
 			}
 			label := constant("v" + string(rune('0'+code.n)))
-			if code.variant == "b" {
-				return contracts.Implementation{Variant: "b", Members: contracts.VariantImplementation{
-					State:   map[string]chord.Watchable[delta.JsonValue]{"label": label},
-					Methods: map[string]contracts.MethodFunction{"ping": ping},
-				}}, nil
-			}
-			return contracts.Implementation{Variant: "a", Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State:   map[string]chord.Watchable[delta.JsonValue]{"label": label},
 				Methods: map[string]contracts.MethodFunction{"bump": bump, "ping": ping},
-			}}, nil
-		}, ServeOptions{})
+			}, nil
+		}, ServeOptions{Admit: func(*delta.JsonObject, data.Principal, AdmitSelf) (chord.Watchable[delta.JsonValue], error) {
+			if code.variant == "b" {
+				return constant(Allow(delta.NewJsonObject(0))), nil
+			}
+			return constant(Allow(delta.JsonObjectOf("granted", []delta.JsonValue{"bump"}))), nil
+		}})
 	})
 }
 
@@ -170,7 +165,7 @@ func keptServer(t testing.TB, code keptCode, options keptOptions) *keptRig {
 	peer.Next("hello")
 	rhHold(peer, 0, keptContract)
 	peer.Next("bound")
-	return &keptRig{t: t, server: server, peer: peer, ends: [2]*link.MemoryLink{a, b}, names: wireNames(t, keptContract, "a")}
+	return &keptRig{t: t, server: server, peer: peer, ends: [2]*link.MemoryLink{a, b}, names: wireNames(t, keptContract, "bump")}
 }
 
 // reload reloads the server's plugin with code.
@@ -376,11 +371,11 @@ func TestHoldCallsInFlightAcrossALoadingUnbind(t *testing.T) {
 		k.peer.Next("loading")
 		opened.fire()
 		fresh := k.peer.Next("bound").(*link.BoundMessage)
-		if fresh.Holds[0].Variant != wireNames(t, keptContract, "b").Variant {
-			t.Fatalf("variant = %d, want b's", fresh.Holds[0].Variant)
+		if !slices.Equal(fresh.Holds[0].Granted, wireNames(t, keptContract, "none").Granted) {
+			t.Fatalf("granted = %v, want b's", fresh.Holds[0].Granted)
 		}
-		if call, code, reason, _ := k.error(); call != 0 || code != "invalid" || reason != "member" {
-			t.Fatalf("error = call %d %s/%s, want call 0 invalid/member", call, code, reason)
+		if call, code, reason, _ := k.error(); call != 0 || code != "forbidden" {
+			t.Fatalf("error = call %d %s/%s, want call 0 forbidden", call, code, reason)
 		}
 		if call, value := k.result(); call != 1 || value != 2.0 {
 			t.Fatalf("result = %d %v, want 1 2", call, value)
@@ -394,18 +389,20 @@ func TestHoldCallsInFlightAcrossALoadingUnbind(t *testing.T) {
 		ran := &keptRan{}
 		k := keptServer(t, keptCode{n: 1, native: true}, keptOptions{})
 		k.reloadFacet(DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(keptV2, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+			return h.Serve(keptV2, func(_ *delta.JsonObject, _ data.Principal, _ AdmittedValue, self Self) (contracts.MembersImplementation, error) {
 				self.Open(func(ctx context.Context) (any, error) { opened.await(t, ctx); return nil, nil },
 					func(any, NativeCloseReason, context.Context) error { return nil })
 				ping := func(delta.JsonValue, context.Context) (delta.JsonValue, error) {
 					ran.push("ping")
 					return 2.0, nil
 				}
-				return contracts.Implementation{Variant: "a", Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State:   map[string]chord.Watchable[delta.JsonValue]{"label": constant(jsonObject("text", "v2"))},
 					Methods: map[string]contracts.MethodFunction{"bump": ping, "ping": ping},
-				}}, nil
-			}, ServeOptions{})
+				}, nil
+			}, ServeOptions{Admit: func(*delta.JsonObject, data.Principal, AdmitSelf) (chord.Watchable[delta.JsonValue], error) {
+				return constant(Allow(delta.JsonObjectOf("granted", []delta.JsonValue{"bump"}))), nil
+			}})
 		}))
 		k.call(0, "ping")
 		k.peer.Next("loading")
@@ -473,17 +470,19 @@ func TestHoldCallsInFlightAcrossALoadingUnbind(t *testing.T) {
 		var self Self
 		server := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), OnError: func(HostError) {}})
 		facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(keptContract, func(_ *delta.JsonObject, _ data.Principal, declared Self) (contracts.Implementation, error) {
+			return h.Serve(keptContract, func(_ *delta.JsonObject, _ data.Principal, _ AdmittedValue, declared Self) (contracts.MembersImplementation, error) {
 				self = declared
 				ping := func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					gate.await(t, ctx)
 					return 1.0, nil
 				}
-				return contracts.Implementation{Variant: "a", Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State:   map[string]chord.Watchable[delta.JsonValue]{"label": constant("v1")},
 					Methods: map[string]contracts.MethodFunction{"bump": ping, "ping": ping},
-				}}, nil
-			}, ServeOptions{})
+				}, nil
+			}, ServeOptions{Admit: func(*delta.JsonObject, data.Principal, AdmitSelf) (chord.Watchable[delta.JsonValue], error) {
+				return constant(Allow(delta.JsonObjectOf("granted", []delta.JsonValue{"bump"}))), nil
+			}})
 		})
 		mustLoad(t)(server.Load([]HostFacet{{Name: "@test/app", Facet: facet}}, background))
 		a, b := link.MemoryLinkPair()
@@ -492,7 +491,7 @@ func TestHoldCallsInFlightAcrossALoadingUnbind(t *testing.T) {
 		peer.Next("hello")
 		rhHold(peer, 0, keptContract)
 		peer.Next("bound")
-		k := &keptRig{t: t, server: server, peer: peer, ends: [2]*link.MemoryLink{a, b}, names: wireNames(t, keptContract, "a")}
+		k := &keptRig{t: t, server: server, peer: peer, ends: [2]*link.MemoryLink{a, b}, names: wireNames(t, keptContract, "bump")}
 		k.call(0, "ping")
 		k.sync()
 		failLive(self, data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "it broke"}, nil))
@@ -512,22 +511,20 @@ func TestHoldCallsInFlightAcrossALoadingUnbind(t *testing.T) {
 // keptPlaced is `Kept` placed on a session's worker.
 var keptPlaced = mustContract(declareRemote("app.placed-kept", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{contracts.Prop("session", contracts.Str())}, HostAddress: exSessionAddress,
-	Variants: []contracts.VariantEntry{contracts.Var("a", contracts.VariantDeclaration{
-		State:   []contracts.Property{rhProp("label", contracts.Str())},
-		Methods: []contracts.MethodEntry{contracts.Meth("ping", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
-	})},
+	State:   []contracts.RemoteStateEntry{contracts.StateEntry("label", contracts.Str())},
+	Methods: []contracts.RemoteMethodEntry{contracts.Meth("ping", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
 }))
 
 // keptServePlaced serves `PlacedKept` answering n (recorded in ran), with a native that opens once opened fires.
 func keptServePlaced(t testing.TB, h FacetHost, n int, ran *keptRan, opened, gate signal) error {
-	return h.Serve(keptPlaced, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+	return h.Serve(keptPlaced, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 		self.Open(func(ctx context.Context) (any, error) {
 			if opened != nil {
 				opened.await(t, ctx)
 			}
 			return nil, nil
 		}, func(any, NativeCloseReason, context.Context) error { return nil })
-		return contracts.Implementation{Variant: "a", Members: contracts.VariantImplementation{
+		return contracts.MembersImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{"label": constant("v" + string(rune('0'+n)))},
 			Methods: map[string]contracts.MethodFunction{"ping": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 				if gate != nil {
@@ -536,7 +533,7 @@ func keptServePlaced(t testing.TB, h FacetHost, n int, ran *keptRan, opened, gat
 				ran.push(string(rune('0' + n)))
 				return float64(n), nil
 			}},
-		}}, nil
+		}, nil
 	}, ServeOptions{})
 }
 
@@ -634,9 +631,9 @@ func TestHoldCallsCrossingAFailedOrABoundOnTheWire(t *testing.T) {
 		k.peer.Ack(link.Optional[int]{})
 		k.reload(keptCode{n: 2, variant: "b", ran: ran})
 		bound := k.peer.Next("bound").(*link.BoundMessage)
-		b := wireNames(t, keptContract, "b")
-		if bound.Holds[0].Variant != b.Variant {
-			t.Fatalf("variant = %d, want %d", bound.Holds[0].Variant, b.Variant)
+		b := wireNames(t, keptContract, "none")
+		if !slices.Equal(bound.Holds[0].Granted, b.Granted) {
+			t.Fatalf("granted = %v, want %v", bound.Holds[0].Granted, b.Granted)
 		}
 		// Sent before the consumer applied that `bound`: by variant a's indexes (`bump` is 0, which is `ping` in b).
 		k.call(0, "bump")
@@ -646,7 +643,7 @@ func TestHoldCallsCrossingAFailedOrABoundOnTheWire(t *testing.T) {
 		if len(first) != 1 || first[0].Kind() != "error" {
 			t.Fatalf("answers to 0 = %v, want one error", first)
 		}
-		if inner := first[0].(*link.ErrorMessage).Error.Value("error").(*delta.JsonObject); inner.Value("code") != "invalid" || inner.Value("reason") != "member" {
+		if inner := first[0].(*link.ErrorMessage).Error.Value("error").(*delta.JsonObject); inner.Value("code") != "forbidden" {
 			t.Fatalf("error = %s, want invalid/member", rhWire(t, first[0].(*link.ErrorMessage).Error))
 		}
 		second := k.answersTo(1)
@@ -673,12 +670,12 @@ func TestHoldCallsCrossingAFailedOrABoundOnTheWire(t *testing.T) {
 		k.peer.Ack(link.Optional[int]{})
 		// A (variant a, acknowledged), then B (variant b) and C (variant a again), neither acknowledged.
 		k.reload(keptCode{n: 2, variant: "b", ran: ran})
-		if bound := k.peer.Next("bound").(*link.BoundMessage); bound.Holds[0].Variant != wireNames(t, keptContract, "b").Variant {
-			t.Fatalf("variant = %d, want b's", bound.Holds[0].Variant)
+		if bound := k.peer.Next("bound").(*link.BoundMessage); !slices.Equal(bound.Holds[0].Granted, wireNames(t, keptContract, "none").Granted) {
+			t.Fatalf("granted = %v, want b's", bound.Holds[0].Granted)
 		}
 		k.reload(keptCode{n: 3, variant: "a", ran: ran})
-		if bound := k.peer.Next("bound").(*link.BoundMessage); bound.Holds[0].Variant != wireNames(t, keptContract, "a").Variant {
-			t.Fatalf("variant = %d, want a's", bound.Holds[0].Variant)
+		if bound := k.peer.Next("bound").(*link.BoundMessage); !slices.Equal(bound.Holds[0].Granted, wireNames(t, keptContract, "bump").Granted) {
+			t.Fatalf("granted = %v, want a's", bound.Holds[0].Granted)
 		}
 		// Sent before B was applied: index 0 is A's `bump`.
 		k.peer.Send(&link.CallMessage{Call: 0, Hold: 0, Method: 0})
@@ -712,16 +709,18 @@ func TestHoldCallsCrossingAFailedOrABoundOnTheWire(t *testing.T) {
 		var self Self
 		server := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), OnError: func(HostError) {}})
 		facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(keptContract, func(_ *delta.JsonObject, _ data.Principal, declared Self) (contracts.Implementation, error) {
+			return h.Serve(keptContract, func(_ *delta.JsonObject, _ data.Principal, _ AdmittedValue, declared Self) (contracts.MembersImplementation, error) {
 				mu.Lock()
 				self = declared
 				mu.Unlock()
 				ping := func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return 1.0, nil }
-				return contracts.Implementation{Variant: "a", Members: contracts.VariantImplementation{
+				return contracts.MembersImplementation{
 					State:   map[string]chord.Watchable[delta.JsonValue]{"label": constant("v1")},
 					Methods: map[string]contracts.MethodFunction{"bump": ping, "ping": ping},
-				}}, nil
-			}, ServeOptions{})
+				}, nil
+			}, ServeOptions{Admit: func(*delta.JsonObject, data.Principal, AdmitSelf) (chord.Watchable[delta.JsonValue], error) {
+				return constant(Allow(delta.JsonObjectOf("granted", []delta.JsonValue{"bump"}))), nil
+			}})
 		})
 		mustLoad(t)(server.Load([]HostFacet{{Name: "@test/app", Facet: facet}}, background))
 		a, b := link.MemoryLinkPair()
@@ -770,12 +769,14 @@ func TestHoldCallsCrossingAFailedOrABoundOnTheWire(t *testing.T) {
 		// The new code serves version 2 only: the version 1 hold is refused.
 		answer := func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return 2.0, nil }
 		k.reloadFacet(DefineFacet(func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(keptV2, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
-				return contracts.Implementation{Variant: "a", Members: contracts.VariantImplementation{
+			return h.Serve(keptV2, func(*delta.JsonObject, data.Principal, AdmittedValue, Self) (contracts.MembersImplementation, error) {
+				return contracts.MembersImplementation{
 					State:   map[string]chord.Watchable[delta.JsonValue]{"label": constant(jsonObject("text", "v2"))},
 					Methods: map[string]contracts.MethodFunction{"bump": answer, "ping": answer},
-				}}, nil
-			}, ServeOptions{})
+				}, nil
+			}, ServeOptions{Admit: func(*delta.JsonObject, data.Principal, AdmitSelf) (chord.Watchable[delta.JsonValue], error) {
+				return constant(Allow(delta.JsonObjectOf("granted", []delta.JsonValue{"bump"}))), nil
+			}})
 		}))
 		failed := k.peer.Next("failed").(*link.FailedMessage)
 		if failed.Cause.Kind != "waiting" || !strings.Contains(rhWire(t, failed.Cause.Error), "contract_mismatch") {

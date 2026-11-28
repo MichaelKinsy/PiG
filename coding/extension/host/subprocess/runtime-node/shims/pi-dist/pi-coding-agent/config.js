@@ -4,7 +4,7 @@ import { homedir } from "os";
 import { basename, dirname, join, resolve, sep, win32 } from "path";
 import { fileURLToPath } from "url";
 import { spawnProcessSync } from "./utils/child-process.js";
-import { normalizePath } from "./utils/paths.js";
+import { normalizePath, pathsEqual } from "./utils/paths.js";
 import { stripBom } from "./utils/text.js";
 // =============================================================================
 // Package Detection
@@ -501,11 +501,25 @@ export function getShareViewerUrl(gistId) {
 }
 // =============================================================================
 // User Config Paths (~/.pi/agent/*)
+// Read these when needed, never into a module-level constant. main() applies --agent-dir by setting
+// PI_CODING_AGENT_DIR after every module has loaded, so a value cached at load silently keeps ~/.pi/agent with the
+// flag, and pi mixes two profiles (for example credentials from the wrong auth.json). With the variable set before
+// pi starts it works, so tests that only set the variable do not catch it.
 // =============================================================================
-/** Get the agent config directory (e.g., ~/.pi/agent/) */
+/**
+ * Get the agent config directory (e.g., ~/.pi/agent/). `--agent-dir` sets PI_CODING_AGENT_DIR at startup, so this
+ * reads both. Do not cache the result at module load (see above).
+ */
 // pig divergence (D2): independent SDK instances share the host's default config root.
 import { CONFIG_DIR_NAME, getAgentDir } from "../../pig-config.mjs";
 export { getAgentDir };
+/** True unless `--agent-dir` or PI_CODING_AGENT_DIR moved the agent config directory away from ~/.pi/agent/ */
+export function usesDefaultAgentDir() {
+    return pathsEqual(getAgentDir(), getHomeAgentDir());
+}
+function getHomeAgentDir() {
+    return join(homedir(), CONFIG_DIR_NAME, "agent");
+}
 /** Get path to user's custom themes directory */
 export function getCustomThemesDir() {
     return join(getAgentDir(), "themes");

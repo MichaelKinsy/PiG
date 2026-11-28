@@ -384,8 +384,8 @@ func TestWorkerBatchWritesSpansAndMetricsAsTheyAreStampedWithItsHostAnyoneElseHa
 	client, _ := clientOf(t, s, worker, host.HostOptions{})
 	held, err := client.Get(background, telemetryingest.WorkerTelemetry, delta.NewJsonObject(0), host.GetOptions{})
 	must(t, err)
-	if variant, _, _ := held.Variant(); variant != "worker" {
-		t.Fatalf("variant = %q", variant)
+	if granted, err := held.Granted(); err != nil || !granted["ingest"] {
+		t.Fatalf("granted = %v, %v", granted, err)
 	}
 	own := spanRow(incarnationOf(client), 1, func(row *delta.JsonObject) {
 		row.Set("id", "w:1")
@@ -411,8 +411,8 @@ func TestWorkerBatchWritesSpansAndMetricsAsTheyAreStampedWithItsHostAnyoneElseHa
 	page, _ := clientOf(t, other, principalOf("owner"), host.HostOptions{})
 	heldOther, err := page.Get(background, telemetryingest.WorkerTelemetry, delta.NewJsonObject(0), host.GetOptions{})
 	must(t, err)
-	if variant, _, _ := heldOther.Variant(); variant != "other" {
-		t.Fatalf("variant = %q", variant)
+	if granted, err := heldOther.Granted(); err != nil || granted["ingest"] {
+		t.Fatalf("granted = %v, %v", granted, err)
 	}
 }
 

@@ -51,7 +51,7 @@ var (
 // queries, as each factory run declared them.
 func prProviderPlugin(migrated bool, declared *instances[OwnQuery]) HostFacet {
 	return HostFacet{Name: "@test/provider", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(prProvider, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+		return h.Serve(prProvider, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 			self := plain.(StoreSelf)
 			definition, column := prOld, "text"
 			if migrated {
@@ -86,7 +86,7 @@ func prProviderPlugin(migrated bool, declared *instances[OwnQuery]) HostFacet {
 					return nil, nil
 				})
 			}
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				Queries: map[string]nqNamed{"rows": rows},
 				Methods: map[string]contracts.MethodFunction{
 					"put": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
@@ -94,14 +94,14 @@ func prProviderPlugin(migrated bool, declared *instances[OwnQuery]) HostFacet {
 					}),
 					"later": later,
 				},
-			}}, nil
+			}, nil
 		}, ServeOptions{})
 	})}
 }
 
 // prOthers is the other owner: the gates' commits, the view reading the provider's query and the screen listing it.
 var prOthers = HostFacet{Name: "@test/others", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-	if err := h.Serve(prGates, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+	if err := h.Serve(prGates, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 		self := plain.(StoreSelf)
 		table := self.Table(prGate)
 		return exImpl(nil, map[string]contracts.MethodFunction{"put": func(arg delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -111,14 +111,14 @@ var prOthers = HostFacet{Name: "@test/others", Facet: DefineFacet(func(h FacetHo
 	}, ServeOptions{}); err != nil {
 		return err
 	}
-	if err := h.Serve(prView, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+	if err := h.Serve(prView, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 		self := plain.(StoreSelf)
 		all := self.Get(prProvider, jsonObject()).Queries("rows")["all"]
 		return exImpl(map[string]chord.Watchable[delta.JsonValue]{"items": self.LiveQuery(all, jsonObject(), 10)}, nil), nil
 	}, ServeOptions{}); err != nil {
 		return err
 	}
-	return h.Serve(prScreen, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+	return h.Serve(prScreen, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 		all := self.Get(prProvider, jsonObject()).Queries("rows")["all"]
 		handle := self.List("rows", []ListSource{{Query: all, Args: jsonObject()}}, ListOptions{First: 1})
 		return exImpl(map[string]chord.Watchable[delta.JsonValue]{"items": handle.Value()}, map[string]contracts.MethodFunction{

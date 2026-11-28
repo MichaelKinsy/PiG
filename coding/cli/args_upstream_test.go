@@ -49,13 +49,13 @@ func TestArgsUpstream(t *testing.T) {
 		{name: "records an empty --api-key value", args: []string{"--api-key", ""}, want: Args{apiKeySet: true}},
 		{name: "an --api-key taken as another option's value is not the flag", args: []string{"--model", "--api-key", "--provider", "--model"}, want: Args{Model: "--api-key", Provider: "--model"}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:103
-		{name: "parses --system-prompt", args: []string{"--system-prompt", "You are a helpful assistant"}, want: Args{SystemPrompt: "You are a helpful assistant", systemPromptSet: true}},
+		{name: "parses --system-prompt", args: []string{"--system-prompt", "You are a helpful assistant"}, want: Args{SystemPrompt: "You are a helpful assistant", systemPromptSet: true, ResumeFlags: []string{"--system-prompt", "You are a helpful assistant"}}},
 		// Pi args.ts preserves an explicitly supplied empty systemPrompt rather than omitting the property.
-		{name: "preserves empty --system-prompt presence", args: []string{"--system-prompt", ""}, want: Args{systemPromptSet: true}},
+		{name: "preserves empty --system-prompt presence", args: []string{"--system-prompt", ""}, want: Args{systemPromptSet: true, ResumeFlags: []string{"--system-prompt", ""}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:108
-		{name: "parses --append-system-prompt", args: []string{"--append-system-prompt", "Additional context"}, want: Args{AppendSystemPrompt: []string{"Additional context"}}},
+		{name: "parses --append-system-prompt", args: []string{"--append-system-prompt", "Additional context"}, want: Args{AppendSystemPrompt: []string{"Additional context"}, ResumeFlags: []string{"--append-system-prompt", "Additional context"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:113
-		{name: "parses multiple --append-system-prompt flags", args: []string{"--append-system-prompt", "Context A", "--append-system-prompt", "Context B"}, want: Args{AppendSystemPrompt: []string{"Context A", "Context B"}}},
+		{name: "parses multiple --append-system-prompt flags", args: []string{"--append-system-prompt", "Context A", "--append-system-prompt", "Context B"}, want: Args{AppendSystemPrompt: []string{"Context A", "Context B"}, ResumeFlags: []string{"--append-system-prompt", "Context A", "--append-system-prompt", "Context B"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:118
 		{name: "parses --session", args: []string{"--session", "/path/to/session.jsonl"}, want: Args{Session: "/path/to/session.jsonl"}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:123
@@ -67,9 +67,9 @@ func TestArgsUpstream(t *testing.T) {
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:139
 		{name: "parses --thinking", args: []string{"--thinking", "high"}, want: Args{Thinking: "high"}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:144
-		{name: "parses --models as comma-separated list", args: []string{"--models", "gpt-4o,claude-sonnet,gemini-pro"}, want: Args{Models: []string{"gpt-4o", "claude-sonnet", "gemini-pro"}}},
+		{name: "parses --models as comma-separated list", args: []string{"--models", "gpt-4o,claude-sonnet,gemini-pro"}, want: Args{Models: []string{"gpt-4o", "claude-sonnet", "gemini-pro"}, ResumeFlags: []string{"--models", "gpt-4o,claude-sonnet,gemini-pro"}}},
 		// .upstream/v1.0.1/packages/coding-agent/test/args.test.ts:150 (Issue #10334)
-		{name: "ignores empty entries in --models", args: []string{"--models", "gpt-4o, ,claude-sonnet,"}, want: Args{Models: []string{"gpt-4o", "claude-sonnet"}}},
+		{name: "ignores empty entries in --models", args: []string{"--models", "gpt-4o, ,claude-sonnet,"}, want: Args{Models: []string{"gpt-4o", "claude-sonnet"}, ResumeFlags: []string{"--models", "gpt-4o, ,claude-sonnet,"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:152
 		{name: "parses --mode text", args: []string{"--mode", "text"}, want: Args{Mode: "text", modeSet: true}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:152
@@ -105,51 +105,51 @@ func TestArgsUpstream(t *testing.T) {
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:233
 		{name: "preserves custom session IDs for non-persisting commands --no-session", args: []string{"--session-id", "ephemeral-id", "--no-session"}, want: Args{SessionID: "ephemeral-id", SessionIDSet: true, NoSession: true}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:250
-		{name: "parses single --extension", args: []string{"--extension", "./my-extension.ts"}, want: Args{Extensions: []string{"./my-extension.ts"}}},
+		{name: "parses single --extension", args: []string{"--extension", "./my-extension.ts"}, want: Args{Extensions: []string{"./my-extension.ts"}, ResumeFlags: []string{"--extension", "./my-extension.ts"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:255
-		{name: "parses -e shorthand", args: []string{"-e", "./my-extension.ts"}, want: Args{Extensions: []string{"./my-extension.ts"}}},
+		{name: "parses -e shorthand", args: []string{"-e", "./my-extension.ts"}, want: Args{Extensions: []string{"./my-extension.ts"}, ResumeFlags: []string{"-e", "./my-extension.ts"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:260
-		{name: "parses multiple --extension flags", args: []string{"--extension", "./ext1.ts", "-e", "./ext2.ts"}, want: Args{Extensions: []string{"./ext1.ts", "./ext2.ts"}}},
+		{name: "parses multiple --extension flags", args: []string{"--extension", "./ext1.ts", "-e", "./ext2.ts"}, want: Args{Extensions: []string{"./ext1.ts", "./ext2.ts"}, ResumeFlags: []string{"--extension", "./ext1.ts", "-e", "./ext2.ts"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:267
-		{name: "parses --no-extensions flag", args: []string{"--no-extensions"}, want: Args{NoExtensions: true}},
+		{name: "parses --no-extensions flag", args: []string{"--no-extensions"}, want: Args{NoExtensions: true, ResumeFlags: []string{"--no-extensions"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:272
-		{name: "parses --no-extensions with explicit -e flags", args: []string{"--no-extensions", "-e", "foo.ts", "-e", "bar.ts"}, want: Args{NoExtensions: true, Extensions: []string{"foo.ts", "bar.ts"}}},
+		{name: "parses --no-extensions with explicit -e flags", args: []string{"--no-extensions", "-e", "foo.ts", "-e", "bar.ts"}, want: Args{NoExtensions: true, Extensions: []string{"foo.ts", "bar.ts"}, ResumeFlags: []string{"--no-extensions", "-e", "foo.ts", "-e", "bar.ts"}}},
 		// .upstream/v1.0.4/packages/coding-agent/test/args.test.ts:285 ("--no-mcp flag").
-		{name: "parses --no-mcp flag", args: []string{"--no-mcp"}, want: Args{NoMcp: true}},
+		{name: "parses --no-mcp flag", args: []string{"--no-mcp"}, want: Args{NoMcp: true, ResumeFlags: []string{"--no-mcp"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:280
-		{name: "parses single --skill", args: []string{"--skill", "./skill-dir"}, want: Args{Skills: []string{"./skill-dir"}}},
+		{name: "parses single --skill", args: []string{"--skill", "./skill-dir"}, want: Args{Skills: []string{"./skill-dir"}, ResumeFlags: []string{"--skill", "./skill-dir"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:285
-		{name: "parses multiple --skill flags", args: []string{"--skill", "./skill-a", "--skill", "./skill-b"}, want: Args{Skills: []string{"./skill-a", "./skill-b"}}},
+		{name: "parses multiple --skill flags", args: []string{"--skill", "./skill-a", "--skill", "./skill-b"}, want: Args{Skills: []string{"./skill-a", "./skill-b"}, ResumeFlags: []string{"--skill", "./skill-a", "--skill", "./skill-b"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:292
-		{name: "parses single --prompt-template", args: []string{"--prompt-template", "./prompts"}, want: Args{PromptTemplates: []string{"./prompts"}}},
+		{name: "parses single --prompt-template", args: []string{"--prompt-template", "./prompts"}, want: Args{PromptTemplates: []string{"./prompts"}, ResumeFlags: []string{"--prompt-template", "./prompts"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:297
-		{name: "parses multiple --prompt-template flags", args: []string{"--prompt-template", "./one", "--prompt-template", "./two"}, want: Args{PromptTemplates: []string{"./one", "./two"}}},
+		{name: "parses multiple --prompt-template flags", args: []string{"--prompt-template", "./one", "--prompt-template", "./two"}, want: Args{PromptTemplates: []string{"./one", "./two"}, ResumeFlags: []string{"--prompt-template", "./one", "--prompt-template", "./two"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:304
-		{name: "parses single --theme", args: []string{"--theme", "./theme.json"}, want: Args{Themes: []string{"./theme.json"}}},
+		{name: "parses single --theme", args: []string{"--theme", "./theme.json"}, want: Args{Themes: []string{"./theme.json"}, ResumeFlags: []string{"--theme", "./theme.json"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:309
-		{name: "parses multiple --theme flags", args: []string{"--theme", "./dark.json", "--theme", "./light.json"}, want: Args{Themes: []string{"./dark.json", "./light.json"}}},
+		{name: "parses multiple --theme flags", args: []string{"--theme", "./dark.json", "--theme", "./light.json"}, want: Args{Themes: []string{"./dark.json", "./light.json"}, ResumeFlags: []string{"--theme", "./dark.json", "--theme", "./light.json"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:316
 		{name: "parses --use-theme", args: []string{"--use-theme", "light"}, want: Args{UseTheme: new("light")}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:321
 		{name: "reports when the theme name value is missing", args: []string{"--use-theme", "--print"}, want: Args{Print: true, Diagnostics: []argDiagnostic{{Type: "error", Message: "--use-theme requires a theme name"}}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:330
-		{name: "parses --no-skills flag", args: []string{"--no-skills"}, want: Args{NoSkills: true}},
+		{name: "parses --no-skills flag", args: []string{"--no-skills"}, want: Args{NoSkills: true, ResumeFlags: []string{"--no-skills"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:337
-		{name: "parses --no-prompt-templates flag", args: []string{"--no-prompt-templates"}, want: Args{NoPromptTemplates: true}},
+		{name: "parses --no-prompt-templates flag", args: []string{"--no-prompt-templates"}, want: Args{NoPromptTemplates: true, ResumeFlags: []string{"--no-prompt-templates"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:344
-		{name: "parses --no-themes flag", args: []string{"--no-themes"}, want: Args{NoThemes: true}},
+		{name: "parses --no-themes flag", args: []string{"--no-themes"}, want: Args{NoThemes: true, ResumeFlags: []string{"--no-themes"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:351
-		{name: "parses --no-context-files flag", args: []string{"--no-context-files"}, want: Args{NoContextFiles: true}},
+		{name: "parses --no-context-files flag", args: []string{"--no-context-files"}, want: Args{NoContextFiles: true, ResumeFlags: []string{"--no-context-files"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:356
-		{name: "parses -nc shorthand", args: []string{"-nc"}, want: Args{NoContextFiles: true}},
+		{name: "parses -nc shorthand", args: []string{"-nc"}, want: Args{NoContextFiles: true, ResumeFlags: []string{"-nc"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:363
-		{name: "parses --approve", args: []string{"--approve"}, want: Args{ProjectTrustOverride: new(true)}},
+		{name: "parses --approve", args: []string{"--approve"}, want: Args{ProjectTrustOverride: new(true), ResumeFlags: []string{"--approve"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:368
-		{name: "parses -a shorthand", args: []string{"-a"}, want: Args{ProjectTrustOverride: new(true)}},
+		{name: "parses -a shorthand", args: []string{"-a"}, want: Args{ProjectTrustOverride: new(true), ResumeFlags: []string{"-a"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:373
-		{name: "parses --no-approve", args: []string{"--no-approve"}, want: Args{ProjectTrustOverride: new(false)}},
+		{name: "parses --no-approve", args: []string{"--no-approve"}, want: Args{ProjectTrustOverride: new(false), ResumeFlags: []string{"--no-approve"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:378
-		{name: "parses -na shorthand", args: []string{"-na"}, want: Args{ProjectTrustOverride: new(false)}},
+		{name: "parses -na shorthand", args: []string{"-na"}, want: Args{ProjectTrustOverride: new(false), ResumeFlags: []string{"-na"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:385
 		{name: "parses --verbose flag", args: []string{"--verbose"}, want: Args{Verbose: true}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:392
@@ -165,31 +165,31 @@ func TestArgsUpstream(t *testing.T) {
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:416
 		{name: "does not recognize the old --ui-mode flag", args: []string{"--ui-mode", "fullscreen"}, want: Args{UnknownFlags: map[string]any{"ui-mode": "fullscreen"}, UnknownFlagOrder: []string{"ui-mode"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:424
-		{name: "parses --no-tools flag", args: []string{"--no-tools"}, want: Args{NoTools: true}},
+		{name: "parses --no-tools flag", args: []string{"--no-tools"}, want: Args{NoTools: true, ResumeFlags: []string{"--no-tools"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:429
-		{name: "parses -nt shorthand", args: []string{"-nt"}, want: Args{NoTools: true}},
+		{name: "parses -nt shorthand", args: []string{"-nt"}, want: Args{NoTools: true, ResumeFlags: []string{"-nt"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:434
-		{name: "parses --no-builtin-tools flag", args: []string{"--no-builtin-tools"}, want: Args{NoBuiltinTools: true}},
+		{name: "parses --no-builtin-tools flag", args: []string{"--no-builtin-tools"}, want: Args{NoBuiltinTools: true, ResumeFlags: []string{"--no-builtin-tools"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:439
-		{name: "parses -nbt shorthand", args: []string{"-nbt"}, want: Args{NoBuiltinTools: true}},
+		{name: "parses -nbt shorthand", args: []string{"-nbt"}, want: Args{NoBuiltinTools: true, ResumeFlags: []string{"-nbt"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:444
-		{name: "parses --tools flag", args: []string{"--tools", "read,bash"}, want: Args{Tools: []string{"read", "bash"}}},
+		{name: "parses --tools flag", args: []string{"--tools", "read,bash"}, want: Args{Tools: []string{"read", "bash"}, ResumeFlags: []string{"--tools", "read,bash"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:449
-		{name: "parses -t shorthand", args: []string{"-t", "read,bash"}, want: Args{Tools: []string{"read", "bash"}}},
+		{name: "parses -t shorthand", args: []string{"-t", "read,bash"}, want: Args{Tools: []string{"read", "bash"}, ResumeFlags: []string{"-t", "read,bash"}}},
 		// .upstream/v1.1.0/packages/coding-agent/test/args.test.ts:468
-		{name: "parses +name and -name tool modifiers", args: []string{"-t", "+codemode,-write"}, want: Args{Tools: []string{"+codemode", "-write"}}},
+		{name: "parses +name and -name tool modifiers", args: []string{"-t", "+codemode,-write"}, want: Args{Tools: []string{"+codemode", "-write"}, ResumeFlags: []string{"-t", "+codemode,-write"}}},
 		// .upstream/v1.1.0/packages/coding-agent/test/args.test.ts:474
-		{name: "rejects tool names mixed with modifiers", args: []string{"--tools", "read,+codemode"}, want: Args{Diagnostics: []argDiagnostic{{Type: "error", Message: "--tools: tool names cannot be mixed with +name or -name entries"}}}},
+		{name: "rejects tool names mixed with modifiers", args: []string{"--tools", "read,+codemode"}, want: Args{Diagnostics: []argDiagnostic{{Type: "error", Message: "--tools: tool names cannot be mixed with +name or -name entries"}}, ResumeFlags: []string{"--tools", "read,+codemode"}}},
 		// .upstream/v1.1.0/packages/coding-agent/test/args.test.ts:482
-		{name: "rejects patterns in tool modifiers", args: []string{"-t", "+mcp__radius__*"}, want: Args{Diagnostics: []argDiagnostic{{Type: "error", Message: "-t: +name and -name entries take exact tool names, not patterns: +mcp__radius__*"}}}},
+		{name: "rejects patterns in tool modifiers", args: []string{"-t", "+mcp__radius__*"}, want: Args{Diagnostics: []argDiagnostic{{Type: "error", Message: "-t: +name and -name entries take exact tool names, not patterns: +mcp__radius__*"}}, ResumeFlags: []string{"-t", "+mcp__radius__*"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:454
-		{name: "parses --exclude-tools flag", args: []string{"--exclude-tools", "read,bash"}, want: Args{ExcludeTools: []string{"read", "bash"}}},
+		{name: "parses --exclude-tools flag", args: []string{"--exclude-tools", "read,bash"}, want: Args{ExcludeTools: []string{"read", "bash"}, ResumeFlags: []string{"--exclude-tools", "read,bash"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:459
-		{name: "parses -xt shorthand", args: []string{"-xt", "read,bash"}, want: Args{ExcludeTools: []string{"read", "bash"}}},
+		{name: "parses -xt shorthand", args: []string{"-xt", "read,bash"}, want: Args{ExcludeTools: []string{"read", "bash"}, ResumeFlags: []string{"-xt", "read,bash"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:464
-		{name: "parses --no-tools with explicit --tools flags", args: []string{"--no-tools", "--tools", "read,bash"}, want: Args{NoTools: true, Tools: []string{"read", "bash"}}},
+		{name: "parses --no-tools with explicit --tools flags", args: []string{"--no-tools", "--tools", "read,bash"}, want: Args{NoTools: true, Tools: []string{"read", "bash"}, ResumeFlags: []string{"--no-tools", "--tools", "read,bash"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:470
-		{name: "parses --no-builtin-tools with explicit --tools flags", args: []string{"--no-builtin-tools", "--tools", "read,bash"}, want: Args{NoBuiltinTools: true, Tools: []string{"read", "bash"}}},
+		{name: "parses --no-builtin-tools with explicit --tools flags", args: []string{"--no-builtin-tools", "--tools", "read,bash"}, want: Args{NoBuiltinTools: true, Tools: []string{"read", "bash"}, ResumeFlags: []string{"--no-builtin-tools", "--tools", "read,bash"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:478
 		{name: "parses plain text messages", args: []string{"hello", "world"}, want: Args{Messages: []string{"hello", "world"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:483

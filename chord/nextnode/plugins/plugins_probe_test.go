@@ -26,9 +26,7 @@ import (
 var probeContract = mustContract(contracts.Remote("test.probe", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return workerKind.Address(nil), nil },
-	Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
-		Methods: []contracts.MethodEntry{contracts.Meth("call", contracts.NewMethod(contracts.Str(), contracts.Str()))},
-	})},
+	Methods:     []contracts.RemoteMethodEntry{contracts.Meth("call", contracts.NewMethod(contracts.Str(), contracts.Str()))},
 }))
 
 // probeCore writes the probe's module under dir and returns the core facet that loads it. cacheDir is the NodeOptions.CacheDir
@@ -60,7 +58,7 @@ const Probe = remote("test.probe", {
 	version: 1,
 	params: {},
 	hostAddress: () => Worker(),
-	variants: { main: { state: {}, methods: { call: method(str(), str()) } } },
+	methods: { call: method(str(), str()) },
 });
 const ops = { ` + ops + ` };
 export default defineFacet((host) =>
@@ -68,12 +66,9 @@ export default defineFacet((host) =>
 		const held = {};
 		` + setup + `
 		return {
-			variant: "main",
-			members: {
-				call: async (request, ctx) => {
-					const { op, args } = JSON.parse(request);
-					return JSON.stringify((await ops[op](args, { ctx, self, held })) ?? null);
-				},
+			call: async (request, ctx) => {
+				const { op, args } = JSON.parse(request);
+				return JSON.stringify((await ops[op](args, { ctx, self, held })) ?? null);
 			},
 		};
 	}),
@@ -161,10 +156,8 @@ var workerKind = mustKind(contracts.NewHostKind("test.worker"))
 var notesContract = mustContract(contracts.Remote("test.notes", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return workerKind.Address(nil), nil },
-	Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
-		State:   []contracts.Property{contracts.Prop("label", contracts.Str()), contracts.Prop("count", contracts.Int())},
-		Methods: []contracts.MethodEntry{contracts.Meth("add", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
-	})},
+	State:       []contracts.RemoteStateEntry{contracts.StateEntry("label", contracts.Str()), contracts.StateEntry("count", contracts.Int())},
+	Methods:     []contracts.RemoteMethodEntry{contracts.Meth("add", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
 }))
 
 func TestProbeSmoke(t *testing.T) {

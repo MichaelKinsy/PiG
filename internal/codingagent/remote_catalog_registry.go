@@ -68,14 +68,15 @@ func (r *ModelRegistry) builtinBase(id string, fallback ai.ModelsStreamFunction)
 	r.mu.RUnlock()
 	if radius != nil {
 		base := &ai.ModelsProvider{
-			ID:           radius.ID(),
-			Name:         radius.Name(),
-			Auth:         radius.Auth(),
-			GetModels:    func() ([]*ai.Model, error) { return radius.GetModels(), nil },
-			GetAllModels: func() ([]ai.AnyModel, error) { return radius.GetAllModels(), nil },
-			Classify:     radius.Classify,
-			Stream:       fallback,
-			StreamSimple: r.simpleFallback(id, fallback),
+			ID:             radius.ID(),
+			Name:           radius.Name(),
+			Auth:           radius.Auth(),
+			GetModels:      func() ([]*ai.Model, error) { return radius.GetModels(), nil },
+			GetAllModels:   func() ([]ai.AnyModel, error) { return radius.GetAllModels(), nil },
+			Classify:       radius.Classify,
+			GenerateImages: radius.GenerateImages,
+			Stream:         fallback,
+			StreamSimple:   r.simpleFallback(id, fallback),
 		}
 		return base
 	}

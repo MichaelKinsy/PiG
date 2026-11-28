@@ -22,6 +22,7 @@ type ptyProcess struct {
 	master *os.File
 	cmd    *exec.Cmd
 	pid    int
+	group  *programGroup
 }
 
 func winsize(cols, rows uint16) *unix.Winsize { return &unix.Winsize{Row: rows, Col: cols} }
@@ -185,19 +186,34 @@ func startPty(request *ptyRequest) (*ptyProcess, *Failure) {
 		return nil, spawnFailure(err)
 	}
 	proc.pid = cmd.Process.Pid
+	// When the shell exits, its session's jobs are killed before it is reaped (its pid, the session's id, names no
+	// other process until then), as the jobs of a terminal that closes are: a background job does not outlive it.
+	group, err := newGroup(cmd)
+	if err != nil {
+		killTree(cmd.Process.Pid)
+		_ = cmd.Wait()
+		_ = master.Close()
+		return nil, spawnFailure(err)
+	}
+	proc.group = group
 	return proc, nil
 }
 
-// killGroup kills the program's process group.
+// killGroup kills the terminal's session while its shell is not reaped.
 func (p *ptyProcess) killGroup() {
-	if err := syscall.Kill(-p.pid, syscall.SIGKILL); err != nil {
-		_ = syscall.Kill(p.pid, syscall.SIGKILL)
-	}
+	p.group.kill()
 }
 
-// wait waits for the program to exit and returns its exit code, 128 plus the signal for a program a signal ended.
+// wait waits for the shell to exit, kills what is left in its session, forgets its registration and reaps the shell.
+// Returns its exit code, 128 plus the signal for a program a signal ended.
 func (p *ptyProcess) wait() (int, error) {
+	exited := p.group.waitForExit()
+	p.group.end()
+	p.group.forget()
 	err := p.cmd.Wait()
+	if exited != nil {
+		return 0, exited
+	}
 	if err == nil {
 		return 0, nil
 	}

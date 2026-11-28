@@ -4,18 +4,18 @@
 	"type": "module",
 	"description": "Runs Pi Durable 1.1.0 (the pinned packages) against the stores PiG's Go Pi Durable reads and writes, and Photon 0.3.3 (Pi Durable's image processor) for the image oracle.",
 	"dependencies": {
-		"@earendil-works/chord": "file:../../third_party/pi-packs/earendil-works-chord-1.6.1.tgz",
-		"@earendil-works/pi-ai": "file:../../third_party/pi-packs/earendil-works-pi-ai-1.6.1.tgz",
-		"@earendil-works/pi-durable": "file:../../third_party/pi-packs/earendil-works-pi-durable-1.6.1.tgz",
-		"@earendil-works/pi-telemetry": "file:../../third_party/pi-packs/earendil-works-pi-telemetry-1.6.1.tgz",
+		"@earendil-works/chord": "file:../../third_party/pi-packs/earendil-works-chord-1.7.0.tgz",
+		"@earendil-works/pi-ai": "file:../../third_party/pi-packs/earendil-works-pi-ai-1.7.0.tgz",
+		"@earendil-works/pi-durable": "file:../../third_party/pi-packs/earendil-works-pi-durable-1.7.0.tgz",
+		"@earendil-works/pi-telemetry": "file:../../third_party/pi-packs/earendil-works-pi-telemetry-1.7.0.tgz",
 		"@silvia-odwyer/photon": "0.3.3"
 	},
 	"overrides": {
-		"@earendil-works/chord": "file:../../third_party/pi-packs/earendil-works-chord-1.6.1.tgz",
-		"@earendil-works/pi-ai": "file:../../third_party/pi-packs/earendil-works-pi-ai-1.6.1.tgz",
-		"@earendil-works/pi-codemode": "file:../../third_party/pi-packs/earendil-works-pi-codemode-1.6.1.tgz",
-		"@earendil-works/pi-durable": "file:../../third_party/pi-packs/earendil-works-pi-durable-1.6.1.tgz",
-		"@earendil-works/pi-schema": "file:../../third_party/pi-packs/earendil-works-pi-schema-1.6.1.tgz",
-		"@earendil-works/pi-telemetry": "file:../../third_party/pi-packs/earendil-works-pi-telemetry-1.6.1.tgz"
+		"@earendil-works/chord": "file:../../third_party/pi-packs/earendil-works-chord-1.7.0.tgz",
+		"@earendil-works/pi-ai": "file:../../third_party/pi-packs/earendil-works-pi-ai-1.7.0.tgz",
+		"@earendil-works/pi-codemode": "file:../../third_party/pi-packs/earendil-works-pi-codemode-1.7.0.tgz",
+		"@earendil-works/pi-durable": "file:../../third_party/pi-packs/earendil-works-pi-durable-1.7.0.tgz",
+		"@earendil-works/pi-schema": "file:../../third_party/pi-packs/earendil-works-pi-schema-1.7.0.tgz",
+		"@earendil-works/pi-telemetry": "file:../../third_party/pi-packs/earendil-works-pi-telemetry-1.7.0.tgz"
 	}
 }

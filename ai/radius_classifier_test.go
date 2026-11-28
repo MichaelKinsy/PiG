@@ -24,7 +24,7 @@ func TestRadiusClassifierSupport(t *testing.T) {
 						"contextWindow": 128000, "maxTokens": 4096,
 					},
 				},
-				"classifiers": []map[string]any{
+				"decision": []map[string]any{
 					{
 						"id": "cls-1", "name": "Classifier 1",
 						"input":         []string{"text", "image"},
@@ -134,7 +134,7 @@ func TestRadiusClassifierSupport(t *testing.T) {
 		GatewayConfig: json.RawMessage(`{
 			"baseUrl": "https://legacy.radius.test/v1",
 			"models": [{"id":"legacy-chat","name":"Legacy","reasoning":false,"input":["text"],"cost":{"input":1,"output":1,"cacheRead":0,"cacheWrite":0},"contextWindow":8192,"maxTokens":1024}],
-			"classifiers": [{"id":"legacy-cls","name":"Legacy Cls","input":["text"],"cost":{"input":0.1,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":8192}]
+			"decision": [{"id":"legacy-cls","name":"Legacy Cls","input":["text"],"cost":{"input":0.1,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":8192}]
 		}`),
 	}
 	legacyProvider := NewRadiusProvider(RadiusProviderOptions{ID: "radius-legacy", Name: "Radius Legacy", Gateway: "https://legacy.radius.test"})

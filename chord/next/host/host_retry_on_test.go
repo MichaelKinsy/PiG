@@ -248,23 +248,23 @@ func serveModels(h FacetHost) error {
 	if err != nil {
 		return err
 	}
-	return h.Serve(retryRuntime, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+	return h.Serve(retryRuntime, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 		count := self.Writable(0.0)
 		self.(StoreSelf).Contribute(retryModels, count)
-		return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+		return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 			"set": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
 				var err error
 				enterOf(self)(func() { err = count.Set(args) })
 				return nil, err
 			},
-		}}}, nil
+		}}, nil
 	}, ServeOptions{})
 }
 
 // serveUser serves `User`, whose open reads the models first and fails broken when there were none (after wait, if given);
 // opens counts its attempts.
 func serveUser(h FacetHost, opens *atomic.Int32, wait func()) error {
-	return h.Serve(retryUser, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+	return h.Serve(retryUser, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 		models := self.Registry(retryModels)
 		self.RetryOn(models)
 		self.Open(func(context.Context) (any, error) {
@@ -279,7 +279,7 @@ func serveUser(h FacetHost, opens *atomic.Int32, wait func()) error {
 			}
 			return nil, nil
 		}, func(any, NativeCloseReason, context.Context) error { return nil })
-		return contracts.Implementation{}, nil
+		return contracts.MembersImplementation{}, nil
 	}, ServeOptions{})
 }
 
@@ -320,11 +320,11 @@ func TestRetryOnDoesNothingWhileTheObjectIsParkedFailedWaitingItsDependenciesDec
 		if err := serveModels(h); err != nil {
 			return err
 		}
-		return h.Serve(retryUser, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(retryUser, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			factories.Add(1)
 			self.RetryOn(self.Registry(retryModels))
 			self.Get(missing, jsonObject())
-			return contracts.Implementation{}, nil
+			return contracts.MembersImplementation{}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	user := mustHold(t, host, retryUser, jsonObject("id", 1.0))
@@ -403,13 +403,13 @@ func TestRetryOnIgnoresWakesWhileLive(t *testing.T) {
 		if err := serveModels(h); err != nil {
 			return err
 		}
-		return h.Serve(retryUser, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(retryUser, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			self.RetryOn(self.Registry(retryModels))
 			self.Open(func(context.Context) (any, error) {
 				opens.Add(1)
 				return nil, nil
 			}, func(any, NativeCloseReason, context.Context) error { return nil })
-			return contracts.Implementation{}, nil
+			return contracts.MembersImplementation{}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	user := mustHold(t, host, retryUser, jsonObject("id", 1.0))
@@ -432,18 +432,18 @@ func TestRetryOnRefusesSourcesThatEndWithAnAttemptAReferencesMemberItsOwnWritabl
 		Version: 1, Params: contracts.Params{contracts.Prop("which", contracts.Int())},
 	}))
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(other, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+		if err := h.Serve(other, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(1.0)},
-			}}, nil
+			}, nil
 		}, ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(picky, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return h.Serve(picky, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 			ref := self.Get(other, jsonObject())
 			sources := []any{ref.Member("n"), self.Writable(1.0), ref.State(), state.NewConstant(1.0)}
 			self.RetryOn(sources[int(params.Value("which").(float64))])
-			return contracts.Implementation{}, nil
+			return contracts.MembersImplementation{}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	for _, which := range []float64{0, 1, 2} {
@@ -496,13 +496,13 @@ func TestRetryOnDoesNotWakeAnObjectByItsOwnContributionsLeavingItFailedLiveNoRet
 		if err := serveModels(h); err != nil {
 			return err
 		}
-		return h.Serve(contributor, func(_ *delta.JsonObject, own Self) (contracts.Implementation, error) {
+		return h.Serve(contributor, func(_ *delta.JsonObject, own Self) (contracts.MembersImplementation, error) {
 			mu.Lock()
 			self = own
 			mu.Unlock()
 			own.(StoreSelf).Contribute(retryModels, 1.0)
 			own.RetryOn(own.Registry(retryModels))
-			return contracts.Implementation{}, nil
+			return contracts.MembersImplementation{}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
 	models, err := host.Registry(background, retryModels, GetOptions{})

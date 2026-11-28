@@ -110,7 +110,7 @@ func nextHeld(peer *RawPeer) heldHold { return heldOf(peer.Next("hold")) }
 func bindPlaced(t testing.TB, peer *RawPeer, held heldHold, count float64, variant wireIndexes) {
 	t.Helper()
 	peer.Send(&link.BoundMessage{Origin: held.origin, Holds: []link.BoundEntry{{
-		Hold: held.hold, Variant: variant.Variant,
+		Hold: held.hold, Granted: variant.Granted,
 		Members: []link.BoundMember{
 			{Member: variant.State["notes"], Value: link.Text("[]")},
 			{Member: variant.State["count"], Value: mustJSONPart(t, count)},
@@ -186,7 +186,7 @@ func TestRelayIDsAndOrigins(t *testing.T) {
 			held := heldOf(message)
 			bindPlaced(t, worker, held, 3, editor)
 			bound := r.Raw.Next("bound").(*link.BoundMessage)
-			if bound.Origin.Ok || bound.Holds[0].Hold != 7 || bound.Holds[0].Variant != editor.Variant {
+			if bound.Origin.Ok || bound.Holds[0].Hold != 7 || !slices.Equal(bound.Holds[0].Granted, editor.Granted) {
 				t.Fatalf("bound = %+v, want hold 7 of the editor variant without origin", bound)
 			}
 			provCall(t, r.Raw, 5, 7, add, jsonObject("text", "x"))
@@ -332,7 +332,7 @@ func TestRelayPartsAreNeverParsed(t *testing.T) {
 			worker := r.Workers.At(t, 0)
 			held := heldOf(worker.Next("hold"))
 			worker.Send(&link.BoundMessage{Origin: held.origin, Holds: []link.BoundEntry{{
-				Hold: held.hold, Variant: editor.Variant, Failed: []link.FailedMember{},
+				Hold: held.hold, Granted: editor.Granted, Failed: []link.FailedMember{},
 				Members: []link.BoundMember{{Member: editor.State["notes"], Value: unparsablePart()}, {Member: editor.State["count"], Value: mustJSONPart(t, 1.0)}},
 			}}})
 			bound := parent.Next("bound").(*link.BoundMessage).Holds[0]
@@ -552,10 +552,10 @@ func TestRelayWindow(t *testing.T) {
 			slow := newPausableLink(b)
 			must(t, tab.Connect(slow, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
 			mustLoad(t)(tab.Load([]HostFacet{{Name: "@test/pair", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
-				return h.Serve(Pair, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+				return h.Serve(Pair, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 					one := self.Get(PlacedNotes, jsonObject("session", "S1"))
 					two := self.Get(PlacedNotes, jsonObject("session", "S1"))
-					return contracts.Implementation{Members: contracts.VariantImplementation{
+					return contracts.MembersImplementation{
 						State: map[string]chord.Watchable[delta.JsonValue]{
 							"pair": self.Derive([]any{one.Member("count"), two.Member("count")}, func(values []any) (delta.JsonValue, error) {
 								pair := formatNumber(values[0].(float64)) + "/" + formatNumber(values[1].(float64))
@@ -563,7 +563,7 @@ func TestRelayWindow(t *testing.T) {
 								return pair, nil
 							}),
 						},
-					}}, nil
+					}, nil
 				}, ServeOptions{})
 			})}}, background))
 			view, err := tab.Get(background, Pair, jsonObject(), GetOptions{})
@@ -620,8 +620,8 @@ func TestRelayUpstreamDrop(t *testing.T) {
 			held := nextHeld(first)
 			bindPlaced(t, first, held, 1, editor)
 			notes := awaitReference(t, got)
-			if variant, _, _ := notes.Variant(); variant != "editor" {
-				t.Fatalf("variant = %q, want editor", variant)
+			if granted, _ := notes.Granted(); !granted["add"] {
+				t.Fatalf("granted = %v, want add", granted)
 			}
 			call := startCall(t, notes, "wait", nil, background)
 			first.Next("call")
@@ -643,8 +643,8 @@ func TestRelayUpstreamDrop(t *testing.T) {
 			if kind := refStateKind(notes); kind != RefStateLive {
 				t.Fatalf("state = %s, want live", kind)
 			}
-			if variant, _, _ := notes.Variant(); variant != "reader" {
-				t.Fatalf("variant = %q, want reader", variant)
+			if granted, _ := notes.Granted(); granted["add"] {
+				t.Fatalf("granted = %v, want no add", granted)
 			}
 			nexttest.RequireJSONEqual(t, memberValue(t, notes, "count"), 4.0)
 			if r.Errors.Tab.Len() != 0 {
@@ -1195,7 +1195,7 @@ func TestRelayLimitsAndCompression(t *testing.T) {
 				first := workers.At(t, 0)
 				held := nextHeld(first)
 				first.Send(&link.BoundMessage{Holds: []link.BoundEntry{{
-					Hold: held.hold, Variant: editor.Variant, Failed: []link.FailedMember{},
+					Hold: held.hold, Granted: editor.Granted, Failed: []link.FailedMember{},
 					Members: boundMembers(t, mustJSONPart(t, []any{jsonObject("text", string(repeatBytes('z', 60)))}), mustJSONPart(t, 1.0)),
 				}}})
 				if released := first.Next("release").(*link.ReleaseMessage); released.Hold != held.hold {

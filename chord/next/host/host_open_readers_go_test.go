@@ -111,12 +111,12 @@ var rlContract = mustContract(declareLocal("test.late", contracts.LocalDeclarati
 // over a reading that is adopted as a task after the section that found it not ready.
 func rlFacet(late *rlReading) Facet {
 	return DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(rlContract, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+		return h.Serve(rlContract, func(_ *delta.JsonObject, plain Self) (contracts.MembersImplementation, error) {
 			a := plain.(*attempt)
 			a.readers = append(a.readers, rlReaderOver(a.object.host, late, a.dependencyMoved, func(task func()) { goTask(a.loop(), task, task) }))
-			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+			return contracts.MembersImplementation{Methods: map[string]contracts.MethodFunction{
 				"ping": exMethod(func(*delta.JsonObject, context.Context) (delta.JsonValue, error) { return nil, nil }),
-			}}}, nil
+			}}, nil
 		}, ServeOptions{})
 	})
 }

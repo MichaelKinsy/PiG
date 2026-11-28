@@ -46,23 +46,24 @@ type Rule struct {
 
 // Rule IDs.
 const (
-	RuleContextGetters      = "context-getters-return-error"
-	RuleOptionalBool        = "optional-bool-pointer"
-	RuleContextUsage        = "context-usage-nullable"
-	RuleEditorComponent     = "set-editor-component-factory"
-	RuleConstrainedSampling = "constrained-sampling-union"
-	RuleAutocompleteFactory = "autocomplete-provider-factory"
-	RuleNotComparable       = "struct-not-comparable"
-	RuleTransformHeaders    = "provider-stream-transform-headers-removed"
-	RuleProviderCredential  = "provider-credential-ordered"
-	RuleSystemPromptGetter  = "before-agent-start-system-prompt-getter"
-	RuleReadonlySession     = "context-session-manager-readonly"
-	RuleModelRegistryFind   = "model-registry-find-returns-error"
-	RuleDialogResults       = "dialog-results-are-json-values"
-	RuleHostHighlightCode   = "host-helpers-highlight-code-no-markdown"
-	RuleMarkdownTransformer = "markdown-transformer-options"
-	RuleSetModelObject      = "set-model-takes-model-object"
-	RuleSettingsNotices     = "settings-manager-notices"
+	RuleContextGetters          = "context-getters-return-error"
+	RuleOptionalBool            = "optional-bool-pointer"
+	RuleContextUsage            = "context-usage-nullable"
+	RuleEditorComponent         = "set-editor-component-factory"
+	RuleConstrainedSampling     = "constrained-sampling-union"
+	RuleAutocompleteFactory     = "autocomplete-provider-factory"
+	RuleNotComparable           = "struct-not-comparable"
+	RuleTransformHeaders        = "provider-stream-transform-headers-removed"
+	RuleProviderCredential      = "provider-credential-ordered"
+	RuleSystemPromptGetter      = "before-agent-start-system-prompt-getter"
+	RuleReadonlySession         = "context-session-manager-readonly"
+	RuleModelRegistryFind       = "model-registry-find-returns-error"
+	RuleDialogResults           = "dialog-results-are-json-values"
+	RuleHostHighlightCode       = "host-helpers-highlight-code-no-markdown"
+	RuleMarkdownTransformer     = "markdown-transformer-options"
+	RuleSetModelObject          = "set-model-takes-model-object"
+	RuleSettingsNotices         = "settings-manager-notices"
+	RuleInstallTelemetryRemoved = "settings-manager-install-telemetry-removed"
 )
 
 // markdownTransformerSymbol names the changed method as apidiff reports it.
@@ -290,6 +291,15 @@ func Rules() []Rule {
 			Changes: []Change{
 				{Symbol: "SettingsManager.GetShowCacheMissNotices", Old: "func() (bool, error)", New: "use GetNotices", Since: "0.8.1"},
 				{Symbol: "SettingsManager.SetShowCacheMissNotices", Old: "func(bool) error", New: "use SetNotice", Since: "0.8.1"},
+			},
+		},
+		{
+			ID:      RuleInstallTelemetryRemoved,
+			Summary: "SettingsManager install telemetry methods removed (Pi v1.7.0)",
+			Remedy:  "Remove calls to GetEnableInstallTelemetry and SetEnableInstallTelemetry. Pi v1.7.0 removed install telemetry reporting and the enableInstallTelemetry setting.",
+			Changes: []Change{
+				{Symbol: "SettingsManager.GetEnableInstallTelemetry", Old: "func() (bool, error)", New: "removed", Since: "0.9.0"},
+				{Symbol: "SettingsManager.SetEnableInstallTelemetry", Old: "func(bool) error", New: "removed", Since: "0.9.0"},
 			},
 		},
 	}

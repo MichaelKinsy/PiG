@@ -77,8 +77,9 @@ func jsArithmetic(object map[string]any, key string) float64 {
 
 // CalculateCost is pi-ai's calculateCost: it prices usage at the model's per-million-token rates and stores the result in usage["cost"] (an object the caller supplies, as in
 // Pi), which it also returns. The rates are the model's cost, or those of the tier with the highest inputTokensAbove that the request's input (input, cacheRead and cacheWrite
-// tokens) exceeds. Cache writes that usage["cacheWrite1h"] reports are charged at twice the input rate. Numbers are float64 (an int or json.Number is not read: decode with
-// the SDK's JSON decoder). usage["cost"] that is not an object is a TypeError in Pi and an error here.
+// tokens) exceeds. Cache writes that usage["cacheWrite1h"] reports are charged at twice the input rate. When model["cost"]["imageOutput"] is set, up to usage["output"] image
+// output tokens (usage["imageOutput"], or all output tokens when omitted) are charged at that rate and the rest of output at output. Numbers are float64 (an int or json.Number
+// is not read: decode with the SDK's JSON decoder). usage["cost"] that is not an object is a TypeError in Pi and an error here.
 func CalculateCost(model, usage map[string]any) (map[string]any, error) {
 	cost, ok := usage["cost"].(map[string]any)
 	if !ok {
@@ -104,10 +105,23 @@ func CalculateCost(model, usage map[string]any) (map[string]any, error) {
 	}
 	cacheWrite := jsArithmetic(usage, "cacheWrite")
 	shortWrite := cacheWrite - longWrite
+	// Image models price image tokens at imageOutput and the rest of output at output. Without the
+	// provider's split, all output counts as image tokens: the image price never undercharges.
+	outputTokens := jsArithmetic(usage, "output")
+	imageRate := 0.0
+	imageTokens := 0.0
+	if value, present := modelCost["imageOutput"]; present && value != nil {
+		imageRate = jsNumber(value)
+		usageImageOutput := outputTokens
+		if imgVal, ok := usage["imageOutput"]; ok && imgVal != nil {
+			usageImageOutput = jsNumber(imgVal)
+		}
+		imageTokens = math.Min(outputTokens, usageImageOutput)
+	}
 	rateInput, rateOutput, rateCacheRead, rateCacheWrite := jsNumber(rates["input"]), jsNumber(rates["output"]), jsNumber(rates["cacheRead"]), jsNumber(rates["cacheWrite"])
 	// float64(...) stops the compiler from fusing a multiply and an add into one rounding, which JavaScript never does.
 	input := float64(float64(rateInput/1000000) * jsArithmetic(usage, "input"))
-	output := float64(float64(rateOutput/1000000) * jsArithmetic(usage, "output"))
+	output := (float64(rateOutput*float64(outputTokens-imageTokens)) + float64(imageRate*imageTokens)) / 1000000
 	cacheReadCost := float64(float64(rateCacheRead/1000000) * jsArithmetic(usage, "cacheRead"))
 	cacheWriteCost := (float64(rateCacheWrite*shortWrite) + float64(float64(rateInput*2)*longWrite)) / 1000000
 	cost["input"], cost["output"], cost["cacheRead"], cost["cacheWrite"] = input, output, cacheReadCost, cacheWriteCost

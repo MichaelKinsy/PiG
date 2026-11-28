@@ -32,6 +32,11 @@ func (s *AgentSessionServices) applyLoadedExtensions(ctx context.Context) {
 	})
 	release()
 	s.ModelRuntime().Refresh(ctx, ai.ModelsRefreshOptions{AllowNetwork: new(false)})
+	// A warning, like invalid settings: the runtime keeps working without the file's models, and an error would
+	// make the CLI exit.
+	if modelsJSONError := s.ModelRuntime().GetError(); modelsJSONError != "" {
+		s.diagnostics = append(s.diagnostics, AgentSessionRuntimeDiagnostic{Type: "warning", Message: "models.json error: " + modelsJSONError})
+	}
 	values, _ := s.ApplyExtensionFlagValues(loaded.Extensions)
 	if runtime.FlagValues == nil && len(values) > 0 {
 		runtime.FlagValues = map[string]any{}

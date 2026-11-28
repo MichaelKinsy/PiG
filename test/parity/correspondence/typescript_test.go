@@ -43,7 +43,7 @@ func TestExtractTypeScriptCurrentPin(t *testing.T) {
 		"show-hardware-cursor", "editor-padding", "output-padding", "autocomplete-max-visible", "clear-on-shrink",
 		"terminal-progress", "steering-mode", "follow-up-mode", "transport", "share-destination", "http-idle-timeout", "cache-warming-mode",
 		"hide-thinking", "mermaid-rendering", "collapse-changelog", "quiet-startup",
-		"install-telemetry", "default-project-trust", "double-escape-action", "tree-filter-mode", "warnings", "notices",
+		"default-project-trust", "double-escape-action", "tree-filter-mode", "warnings", "notices",
 		"model-thinking", "tui-mode", "fullscreen-exit-output", "fullscreen-scrollbar", "fullscreen-copy-on-select", "fullscreen-wheel-scroll-lines", "theme",
 	}
 	if !reflect.DeepEqual(ids, wantIDs) {

@@ -6,7 +6,8 @@ import (
 )
 
 func TestPortWave09FormatResumeCommand(t *testing.T) {
-	t.Parallel()
+	// upstream: format-resume-command.test.ts deletes ENV_AGENT_DIR in beforeEach so default-dir tests omit --agent-dir.
+	t.Setenv(ENV_AGENT_DIR, "")
 
 	// upstream: packages/coding-agent/test/format-resume-command.test.ts:53
 	t.Run("returns a session resume command for default session dirs", func(t *testing.T) {

@@ -38,10 +38,8 @@ func PreferenceContract(name string, pick contracts.Schema) (*contracts.Contract
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) {
 			return serverKind.Address(nil), nil
 		},
-		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
-			State:   []contracts.Property{contracts.Prop("pick", pick)},
-			Methods: []contracts.MethodEntry{contracts.Meth("choose", contracts.NewMethod(pick))},
-		})},
+		State:   []contracts.RemoteStateEntry{contracts.StateEntry("pick", pick)},
+		Methods: []contracts.RemoteMethodEntry{contracts.Meth("choose", contracts.NewMethod(pick))},
 	})
 }
 
@@ -73,9 +71,9 @@ func PreferenceFacet(choice *contracts.Contract, store string, pick contracts.Sc
 		return host.Facet{}, err
 	}
 	return host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		if err := h.Serve(pickStore, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+		if err := h.Serve(pickStore, func(_ *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
 			document := self.State(picks).(*documents.Singleton)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"picks": self.Derive([]any{document}, func(values []any) (delta.JsonValue, error) {
 						return values[0].(*delta.JsonObject).Value("picks"), nil
@@ -101,14 +99,14 @@ func PreferenceFacet(choice *contracts.Contract, store string, pick contracts.Sc
 						return nil, err
 					},
 				},
-			}}, nil
+			}, nil
 		}, host.ServeOptions{}); err != nil {
 			return err
 		}
-		return h.Serve(choice, func(_ *delta.JsonObject, principal data.Principal, self host.Self) (contracts.Implementation, error) {
+		return h.Serve(choice, func(_ *delta.JsonObject, principal data.Principal, self host.Self) (contracts.MembersImplementation, error) {
 			picks := self.Get(pickStore, delta.NewJsonObject(0))
 			key := data.PrincipalKey(principal, chordctx.Background(), nil)
-			return contracts.Implementation{Variant: "main", Members: contracts.VariantImplementation{
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					// A key that is a principal's canonical JSON: only an own key is a pick.
 					"pick": self.Derive([]any{picks.Member("picks")}, func(values []any) (delta.JsonValue, error) {
@@ -123,7 +121,7 @@ func PreferenceFacet(choice *contracts.Contract, store string, pick contracts.Sc
 						return picks.Call("set", delta.JsonObjectOf("key", key, "pick", next), ctx)
 					},
 				},
-			}}, nil
+			}, nil
 		}, host.ServeOptions{})
 	}), nil
 }

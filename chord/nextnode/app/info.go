@@ -51,8 +51,8 @@ type AppInfoValues struct {
 // AppInfoFacet is the facet serving AppInfo with info.
 func AppInfoFacet(info AppInfoValues) host.Facet {
 	return host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		return h.Serve(AppInfo, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+		return h.Serve(AppInfo, func(_ *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"dataDir": constantMember(self, info.DataDir),
 					"name":    constantMember(self, info.Name),
@@ -60,7 +60,7 @@ func AppInfoFacet(info AppInfoValues) host.Facet {
 					// The same object at every get: its principal key is computed once.
 					"owner": constantMember(self, info.Owner),
 				},
-			}}, nil
+			}, nil
 		}, host.ServeOptions{})
 	})
 }
@@ -77,13 +77,13 @@ type WorkerInfoValues struct {
 // WorkerInfoFacet is the facet serving WorkerInfo with the worker's address and start data.
 func WorkerInfoFacet(info WorkerInfoValues) host.Facet {
 	return host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		return h.Serve(WorkerInfo, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+		return h.Serve(WorkerInfo, func(_ *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"address": constantMember(self, delta.JsonObjectOf("kind", info.Kind, "key", info.Key, "params", info.Params)),
 					"start":   constantMember(self, info.Start),
 				},
-			}}, nil
+			}, nil
 		}, host.ServeOptions{})
 	})
 }

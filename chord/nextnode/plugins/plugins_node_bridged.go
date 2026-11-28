@@ -455,7 +455,7 @@ func hasEvents(contract *contracts.Contract) bool {
 	if err != nil {
 		return false
 	}
-	return declared.Versions[len(declared.Versions)-1].Variants.Value(contracts.LocalVariant).Events.Len() > 0
+	return declared.Versions[len(declared.Versions)-1].Members.Events.Len() > 0
 }
 
 // tap taps reference, held as handle, on the event port of goHost (opened with the first reference tapped on that host):

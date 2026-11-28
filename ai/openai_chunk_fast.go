@@ -159,7 +159,7 @@ func foldsToChoiceField(key string) bool {
 }
 
 func foldsToDeltaField(key string) bool {
-	for _, field := range [...]string{"role", "content", "tool_calls", "reasoning_details", "reasoning_content", "reasoning", "reasoning_text"} {
+	for _, field := range [...]string{"role", "content", "tool_calls", "reasoning_details", "reasoning_content", "reasoning", "reasoning_text", "reasoning_opaque"} {
 		if namesAlike(key, field) {
 			return true
 		}
@@ -294,7 +294,7 @@ func (p *chunkScanner) delta() (oaiDelta, bool) {
 	if !p.byte('{') {
 		return delta, false
 	}
-	var seen [6]bool
+	var seen [7]bool
 	p.ws()
 	if p.byte('}') {
 		return delta, true
@@ -323,6 +323,8 @@ func (p *chunkScanner) delta() (oaiDelta, bool) {
 			slot, target = 3, &delta.Reasoning
 		case "reasoning_text":
 			slot, target = 4, &delta.ReasoningText
+		case "reasoning_opaque":
+			slot, target = 6, &delta.ReasoningOpaque
 		case "tool_calls":
 			if seen[5] {
 				return delta, false

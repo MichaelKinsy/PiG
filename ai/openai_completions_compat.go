@@ -56,14 +56,12 @@ func detectOpenAICompletionsCompat(providerID, baseURL, modelID string) OpenAICo
 	}
 	thinkingFormat := "openai"
 	switch {
-	case isDeepSeek:
+	case isDeepSeek || isAntLing:
 		thinkingFormat = "deepseek"
 	case isZai:
 		thinkingFormat = "zai"
 	case isTogether:
 		thinkingFormat = "together"
-	case isAntLing:
-		thinkingFormat = "ant-ling"
 	case isOpenRouter:
 		thinkingFormat = "openrouter"
 	}
@@ -118,6 +116,10 @@ func getOpenAICompletionsCompat(providerID, baseURL, modelID string, model *Open
 		}
 	}
 	// The overlay sets exported fields; the member order of the model's compat objects goes with them.
+	if detected.ThinkingFormat == "ant-ling" {
+		// Deprecated alias: keep existing models.json files valid now that Ant Ling uses the DeepSeek toggle.
+		detected.ThinkingFormat = "deepseek"
+	}
 	detected.objectOrder = model.objectOrder
 	return &detected
 }

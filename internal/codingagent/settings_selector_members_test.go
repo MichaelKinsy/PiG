@@ -26,7 +26,7 @@ func TestSettingsSelectorReportsEveryCyclingRowThroughItsCallback(t *testing.T) 
 		AutoCompact: true, ShowImages: true, ImageWidthCells: 60, AutoResizeImages: true, BlockImages: false,
 		EnableSkillCommands: true, SteeringMode: "one-at-a-time", FollowUpMode: "one-at-a-time", Transport: "sse",
 		HttpIdleTimeoutMs: 60000, ThinkingLevel: "medium", AvailableThinkingLevels: []string{"off", "low", "medium", "high"},
-		HideThinkingBlock: false, CollapseChangelog: false, EnableInstallTelemetry: true,
+		HideThinkingBlock: false, CollapseChangelog: false,
 		DoubleEscapeAction: "tree", TreeFilterMode: "default", ShowHardwareCursor: false, EditorPaddingX: 0,
 		AutocompleteMaxVisible: 5, DefaultProjectTrust: "ask", ClearOnShrink: false, ShowTerminalProgress: false,
 		TuiMode: "regular", DefaultModel: "not set",
@@ -44,7 +44,6 @@ func TestSettingsSelectorReportsEveryCyclingRowThroughItsCallback(t *testing.T) 
 		OnHttpIdleTimeoutMsChange:      func(v int) { record("HttpIdleTimeoutMs")(v) },
 		OnHideThinkingBlockChange:      func(v bool) { record("HideThinkingBlock")(v) },
 		OnCollapseChangelogChange:      func(v bool) { record("CollapseChangelog")(v) },
-		OnEnableInstallTelemetryChange: func(v bool) { record("EnableInstallTelemetry")(v) },
 		OnDoubleEscapeActionChange:     func(v string) { record("DoubleEscapeAction")(v) },
 		OnTreeFilterModeChange:         func(v string) { record("TreeFilterMode")(v) },
 		OnShowHardwareCursorChange:     func(v bool) { record("ShowHardwareCursor")(v) },
@@ -66,15 +65,13 @@ func TestSettingsSelectorReportsEveryCyclingRowThroughItsCallback(t *testing.T) 
 	want := map[string]string{
 		"AutoCompact": "false", "AutoResizeImages": "false", "AutocompleteMaxVisible": "7", "BlockImages": "true",
 		"ClearOnShrink": "true", "CollapseChangelog": "true", "DefaultProjectTrust": "always", "DoubleEscapeAction": "fork",
-		"EditorPaddingX": "1", "EnableInstallTelemetry": "false", "EnableSkillCommands": "false", "FollowUpMode": "all",
+		"EditorPaddingX": "1", "EnableSkillCommands": "false", "FollowUpMode": "all",
 		"HideThinkingBlock": "true", "HttpIdleTimeoutMs": "120000", "ImageWidthCells": "80",
 		"ShowHardwareCursor": "true", "ShowImages": "false", "ShowTerminalProgress": "true", "SteeringMode": "all",
 		"Transport": "websocket", "TreeFilterMode": "no-tools", "TuiMode": "fullscreen",
 	}
-	for name, row := range map[string]string{"CollapseChangelog": "collapse-changelog", "EnableInstallTelemetry": "install-telemetry"} {
-		if settingStripped(row) { // a build that strips the changelog does not offer these rows
-			delete(want, name)
-		}
+	if settingStripped("collapse-changelog") { // a build that strips the changelog does not offer this row
+		delete(want, "CollapseChangelog")
 	}
 	for name, value := range want {
 		if got, ok := fired[name]; !ok || got != value {

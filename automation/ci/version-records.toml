@@ -321,7 +321,19 @@ paths = [
   "changelog.d/bundled-catalog-pi-160-bc302875f2.md",
   "docs/parity/DIVERGENCES.md",
   "docs/parity/divergences/D661.md",
-  "docs/parity/divergences/D662.md",
   "docs/release/0.8.0-release-notes-draft.md",
+  "docs/site/docs/bug-ledger.md",
+]
+
+[[record]]
+version = "1.6.1"
+reason = "Historical changelog fragments, equivalence reports, bug-ledger entries, and divergence records written and measured against Pi 1.6.1 before the pin advanced to Pi 1.7.0."
+paths = [
+  "changelog.d/ai-retry-streaming-3bfed27f85.md",
+  "changelog.d/pi161-staged-15768bbd67.md",
+  "docs/parity/DIVERGENCES.md",
+  "docs/parity/divergences/D88.md",
+  "docs/parity/equivalence/lw-ai2-e46b7b04e7.md",
+  "docs/parity/equivalence/lw-body-4cfaf24153.md",
   "docs/site/docs/bug-ledger.md",
 ]

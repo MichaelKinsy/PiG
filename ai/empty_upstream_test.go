@@ -33,7 +33,7 @@ func TestEmptyMessagesUpstream(t *testing.T) {
 	models := []modelCase{
 		{"google", "gemini-2.5-flash"}, {"openai", "gpt-4o-mini"}, {"openai", "gpt-5-mini"}, {"azure", "gpt-4o-mini"},
 		{"anthropic", "claude-haiku-4-5"}, {"xai", "grok-4.3"}, {"groq", "openai/gpt-oss-20b"}, {"cerebras", "gpt-oss-120b"},
-		{"cloudflare-workers-ai", "@cf/moonshotai/kimi-k2.6"}, {"cloudflare-ai-gateway", "workers-ai/@cf/moonshotai/kimi-k2.6"},
+		{"cloudflare-workers-ai", "@cf/zai-org/glm-5.3"}, {"cloudflare-ai-gateway", "workers-ai/@cf/zai-org/glm-5.3"},
 		{"huggingface", "moonshotai/Kimi-K2.5"}, {"together", "moonshotai/Kimi-K3"}, {"baseten", "zai-org/GLM-5.2"}, {"zai", "glm-5.2"},
 		{"mistral", "mistral-medium-latest"}, {"minimax", "MiniMax-M2.7"}, {"xiaomi", "mimo-v2.6-pro"}, {"xiaomi-token-plan-cn", "mimo-v2.6-pro"},
 		{"xiaomi-token-plan-ams", "mimo-v2.6-pro"}, {"xiaomi-token-plan-sgp", "mimo-v2.6-pro"}, {"qwen-token-plan", "qwen3.7-max"},

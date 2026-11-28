@@ -3,7 +3,9 @@ package host
 import (
 	"context"
 	"errors"
+	"math"
 	"sort"
+	"strings"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
@@ -44,6 +46,8 @@ type OwnQuery struct {
 	builder    func(args delta.JsonValue) *store.Query
 	projection store.Projection
 	mapper     func(row store.Row, partner PartnerRow) (delta.JsonValue, error)
+	// shared are its open shared reads by shape and arguments: they go with it (with the provider's attempt).
+	shared *store.SharedReads
 	// args is the schema of its arguments: its own (a private query), or the contract's once its member was checked.
 	args   *contracts.Snapshot
 	listed bool
@@ -58,6 +62,7 @@ func newOwnQuery(owner, name string, handle *store.TableHandle, builder func(arg
 		builder:    builder,
 		projection: store.Projection{Reads: options.Reads, PartnerReads: options.PartnerReads},
 		mapper:     options.Map,
+		shared:     store.NewSharedReads(),
 		args:       args,
 	}
 }
@@ -91,14 +96,71 @@ func (q *OwnQuery) Target(args delta.JsonValue, ctx context.Context) (store.Live
 	if err != nil {
 		return store.LiveTarget{}, err
 	}
+	// A schema without a type checks nothing: what is no strict JSON is refused here, in the walk that makes the key.
+	key, err := canonicalJSONOnly(args, ctx)
+	if err != nil {
+		return store.LiveTarget{}, err
+	}
 	handle := q.Handle
 	return store.LiveTarget{
-		Spec: store.QuerySpec{Query: query, Table: handle.Sql.Table, Projection: q.projection, Owner: handle},
+		Spec:    store.QuerySpec{Query: query, Table: handle.Sql.Table, Projection: q.projection, Owner: handle},
+		Sharing: &store.Sharing{Shared: q.shared, Args: key},
 		Decode: func(stored store.StoredRead, decoding context.Context) (delta.JsonValue, error) {
 			return q.decode(query, stored, decoding)
 		},
 	}, nil
 }
+
+// canonicalJSONOnly validates that value is strict JSON (rejecting NaN, Inf, non-JSON types, etc. with invalid/args)
+// and returns its canonical JSON string (-0 -> 0, keys sorted in UTF-16 order).
+func canonicalJSONOnly(value delta.JsonValue, ctx context.Context) (string, error) {
+	if err := checkStrictJSON(value); err != nil {
+		return "", err
+	}
+	return data.CanonicalJson(value, ctx), nil
+}
+
+func checkStrictJSON(value any) error {
+	switch v := value.(type) {
+	case nil, bool, string:
+		return nil
+	case float64:
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			return data.Invalid(data.ReasonArgs, "query arguments must be JSON: non-finite number")
+		}
+		return nil
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+		return nil
+	case []delta.JsonValue:
+		for _, item := range v {
+			if err := checkStrictJSON(item); err != nil {
+				return err
+			}
+		}
+		return nil
+	case *delta.JsonObject:
+		if v == nil {
+			return nil
+		}
+		for _, k := range v.Keys() {
+			if err := checkStrictJSON(v.Value(k)); err != nil {
+				return err
+			}
+		}
+		return nil
+	case map[string]delta.JsonValue:
+		for _, item := range v {
+			if err := checkStrictJSON(item); err != nil {
+				return err
+			}
+		}
+		return nil
+	default:
+		return data.Invalid(data.ReasonArgs, "query arguments must be JSON")
+	}
+}
+
+var _ = strings.Builder{}
 
 // PageOf is up to limit items for args after the cursor after, and the cursor of the next page when there is one.
 func (q *OwnQuery) PageOf(args delta.JsonValue, limit int64, ctx context.Context, after *string) (contracts.QueryPage[delta.JsonValue], error) {

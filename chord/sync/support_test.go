@@ -201,6 +201,13 @@ func (osFiles) AppendFile(_ context.Context, path string, content []byte) error 
 	_, err = file.Write(content)
 	return errors.Join(err, file.Close())
 }
+func (osFiles) FlushFile(_ context.Context, path string) error {
+	file, err := os.OpenFile(path, os.O_RDWR, 0)
+	if err != nil {
+		return err
+	}
+	return errors.Join(file.Sync(), file.Close())
+}
 func (osFiles) RenameFile(_ context.Context, source, destination string) error {
 	return os.Rename(source, destination)
 }
@@ -262,6 +269,11 @@ func (state *memoryState) Get(_ context.Context, sessionID string) (*SyncState, 
 
 func (state *memoryState) Set(_ context.Context, sessionID string, next SyncState) error {
 	state.states[sessionID] = next
+	return nil
+}
+
+func (state *memoryState) Delete(_ context.Context, sessionID string) error {
+	delete(state.states, sessionID)
 	return nil
 }
 

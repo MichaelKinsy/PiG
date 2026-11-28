@@ -73,7 +73,7 @@ func openStoreAt(t testing.TB, path string) *store.ChordStore {
 	if err != nil {
 		t.Fatalf("OpenStore: %v", err)
 	}
-	return opened.(*store.ChordStore)
+	return opened
 }
 
 func filesOf(t *testing.T, options ...fixtureOptions) *fixture {

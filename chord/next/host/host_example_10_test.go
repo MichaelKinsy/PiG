@@ -17,18 +17,18 @@ import (
 // --- 10-drops.ts ---------------------------------------------------------------------------------------------------
 
 func TestExample10Drops(t *testing.T) {
-	notes := exRemote("example.notes", contracts.Params{exProp("session", exStr())}, exServerAddress, contracts.Var("editor", contracts.VariantDeclaration{
-		State: []contracts.Property{exProp("notes", exArr(exStr()))},
-		Methods: []contracts.MethodEntry{
+	notes := exRemote("example.notes", contracts.Params{exProp("session", exStr())}, exServerAddress, contracts.RemoteDeclaration{
+		State: []contracts.RemoteStateEntry{contracts.StateEntry("notes", exArr(exStr()))},
+		Methods: []contracts.RemoteMethodEntry{
 			contracts.Meth("add", contracts.NewMethod(exObj(exProp("text", exStr())), exInt())),
 			contracts.Meth("slow", contracts.NewMethod()),
 		},
-	}))
+	})
 	doc := exStringListDoc("notes")
 	// Lingers for a minute after its last reference: a client that reconnects within it finds its notes again.
 	linger := 60 * time.Second
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(notes, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+		return h.Serve(notes, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {
 			notesDoc := stateOf(self, doc)
 			return exVariant("editor", map[string]chord.Watchable[delta.JsonValue]{
 				"notes": self.Derive([]any{notesDoc.s}, func(values []any) (delta.JsonValue, error) {
@@ -48,8 +48,8 @@ func TestExample10Drops(t *testing.T) {
 	mustLoad(t)(client.Load(nil, background))
 	connect := func() *link.MemoryLink { return exTwoPartyHosts(t, server, client, ownerPrincipal()) }
 	held := exHold(t, client, notes, jsonObject("session", "S1"))
-	if exStateNow(t, held) != "loading" || exVariantName(held) != "" {
-		t.Fatalf("held without a link: %s, variant %q", exStateNow(t, held), exVariantName(held))
+	if exStateNow(t, held) != "loading" {
+		t.Fatalf("held without a link: %s", exStateNow(t, held))
 	}
 	watch, kinds := exStateKinds(t, held)
 	type result struct {
@@ -67,9 +67,6 @@ func TestExample10Drops(t *testing.T) {
 		t.Fatalf("parked call's result once live: %v, %v", got.value, got.err)
 	}
 	exEqual(t, "notes", exValue(t, held, "notes"), exJSON(t, `["written while loading"]`))
-	if exVariantName(held) != "editor" {
-		t.Fatalf("variant = %q", exVariantName(held))
-	}
 	inFlight := make(chan error, 1)
 	go func() { _, err := held.Call("slow", nil, background); inFlight <- err }()
 	scopeEventually(t, "the call is running on the server", func() bool { return exActivity(t, server).Calls == 1 })

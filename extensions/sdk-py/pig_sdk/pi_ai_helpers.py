@@ -97,7 +97,8 @@ def clamp_thinking_level(model: Mapping[str, Any], level: str) -> str:
 def calculate_cost(model: Mapping[str, Any], usage: dict[str, Any]) -> dict[str, Any]:
     """pi-ai's calculateCost: it prices usage at the model's per-million-token rates and stores the result in ``usage["cost"]`` (a dict the caller supplies, as in Pi),
     which it also returns. The rates are the model's cost, or those of the tier with the highest inputTokensAbove that the request's input (input, cacheRead and cacheWrite
-    tokens) exceeds. Cache writes that ``usage["cacheWrite1h"]`` reports are charged at twice the input rate."""
+    tokens) exceeds. Cache writes that ``usage["cacheWrite1h"]`` reports are charged at twice the input rate. When ``model["cost"]["imageOutput"]`` is set, up to
+    ``usage["output"]`` image output tokens (``usage["imageOutput"]``, or all output tokens when omitted) are charged at that rate and the rest of output at ``output``."""
     cost = usage.get("cost")
     if not isinstance(cost, dict):
         raise TypeError("usage.cost is not an object")
@@ -114,12 +115,24 @@ def calculate_cost(model: Mapping[str, Any], usage: dict[str, Any]) -> dict[str,
     long_write = _number(usage.get("cacheWrite1h")) if usage.get("cacheWrite1h") is not None else 0.0
     cache_write = _number(usage.get("cacheWrite", _ABSENT))
     short_write = cache_write - long_write
+    # Image models price image tokens at imageOutput and the rest of output at output. Without the
+    # provider's split, all output counts as image tokens: the image price never undercharges.
+    output_tokens = _number(usage.get("output", _ABSENT))
+    raw_image_rate = model_cost.get("imageOutput")
+    if raw_image_rate is None:
+        image_rate = 0.0
+        image_tokens = 0.0
+    else:
+        image_rate = _number(raw_image_rate)
+        raw_image_output = usage.get("imageOutput")
+        usage_image_output = output_tokens if raw_image_output is None else _number(raw_image_output)
+        image_tokens = math.nan if math.isnan(output_tokens) or math.isnan(usage_image_output) else min(output_tokens, usage_image_output)
 
     def rate(key: str) -> float:
         return _number(rates.get(key, _ABSENT))
 
     cost["input"] = (rate("input") / 1000000) * _number(usage.get("input", _ABSENT))
-    cost["output"] = (rate("output") / 1000000) * _number(usage.get("output", _ABSENT))
+    cost["output"] = (rate("output") * (output_tokens - image_tokens) + image_rate * image_tokens) / 1000000
     cost["cacheRead"] = (rate("cacheRead") / 1000000) * _number(usage.get("cacheRead", _ABSENT))
     cost["cacheWrite"] = (rate("cacheWrite") * short_write + rate("input") * 2 * long_write) / 1000000
     cost["total"] = cost["input"] + cost["output"] + cost["cacheRead"] + cost["cacheWrite"]

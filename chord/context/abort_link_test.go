@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// pi: packages/chord/src/context/abort-origin.ts
 // A context derived from a source of this package is aborted inside the source's cancel function, before it returns and before
 // any listener runs: Pi's `AbortSignal.any` marks every composite of a source aborted, then runs the listeners
 // (abort_order_pi_oracle_test.go runs Pi's own code over the same scenarios).

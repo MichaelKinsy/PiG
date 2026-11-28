@@ -81,10 +81,10 @@ var tpNotesStub = TestStub{
 	Name:      "@acme/notes",
 	Contracts: []*contracts.Contract{tpNotes},
 	Facet: host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		return h.Serve(tpNotes, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{
+		return h.Serve(tpNotes, func(_ *delta.JsonObject, self host.Self) (contracts.MembersImplementation, error) {
+			return contracts.MembersImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"words": self.Derive(nil, func([]any) (delta.JsonValue, error) { return 42.0, nil })},
-			}}, nil
+			}, nil
 		}, host.ServeOptions{})
 	}),
 }

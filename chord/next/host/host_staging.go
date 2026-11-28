@@ -252,23 +252,41 @@ func stageEntry(plugin string, entry servedEntry, types *namedMap[*served], regi
 	return nil
 }
 
-// servedAdmissionOf is a served type's admission (slice 14 §2.1; declaration policy): a remote contract that declares an
-// `admission` is served with `admit`, and only such a contract is; anything else refuses the plugin.
+// servedAdmissionOf is a served type's admission (slice 14 §2.1, slice 15 §1.2; declaration policy): a remote contract
+// that declares an `admission`, grantable members or flags is served with `admit`, and only such a contract is; anything
+// else refuses the plugin. Its fingerprint covers the admission's schema and the names it may grant: what staging compares.
 func servedAdmissionOf(contract *contracts.Contract, declared *contracts.AdmissionData, admit Admit) (*servedAdmission, error) {
-	if declared == nil && admit == nil {
+	cur, err := contracts.CurrentVersion(contract)
+	if err != nil {
+		return nil, err
+	}
+	takes := declared != nil || len(cur.Grants) > 0
+	if !takes && admit == nil {
 		return nil, nil
 	}
 	if contract.Kind == contracts.KindLocal {
 		return nil, fmt.Errorf("%s: only a remote type takes an admission (admit)", contract.Name)
 	}
-	if declared == nil {
-		return nil, fmt.Errorf("%s: admit needs the contract to declare its admission", contract.Name)
+	if !takes {
+		return nil, fmt.Errorf("%s: admit needs an admission, grantable members or flags in the contract", contract.Name)
 	}
 	if admit == nil {
-		return nil, fmt.Errorf("%s: its contract declares an admission: serve it with admit", contract.Name)
+		return nil, fmt.Errorf("%s: its contract takes an admission (its admission, grantable members or flags): serve it with admit", contract.Name)
+	}
+	var admFp delta.JsonValue
+	if declared != nil {
+		admFp = declared.Fingerprint
+	}
+	grantsArr := make([]delta.JsonValue, len(cur.Grants))
+	for i, g := range cur.Grants {
+		grantsArr[i] = g
+	}
+	fp, err := contracts.FingerprintOf(delta.JsonObjectOf("admission", admFp, "grants", grantsArr))
+	if err != nil {
+		return nil, err
 	}
 	// Plugin code: what it returns is checked when an attempt runs it.
-	return &servedAdmission{admit: admit, fingerprint: declared.Fingerprint}, nil
+	return &servedAdmission{admit: admit, fingerprint: fp}, nil
 }
 
 // Recorded is what a recorded factory declared: what a reload's fate and checks need, nothing activated.
@@ -326,7 +344,14 @@ func recordFactory(object *chordObject, entry *served, ctx context.Context) (Rec
 			return nil, err
 		}
 		if admitted := object.admittedValue(); admitted != nil && admitted.fingerprint == entry.admission.fingerprint {
-			return entry.admitted(object.params, object.principal, admitted.value, recording)
+			impl, err := entry.admitted(object.params, object.principal, admitted.admitted, recording)
+			if err != nil {
+				return nil, err
+			}
+			if _, err := grantedImplementation(entry.contract, implementationOf(impl), admitted.granted); err != nil {
+				return nil, err
+			}
+			return impl, nil
 		}
 		return nil, nil
 	})
@@ -674,6 +699,15 @@ func (r *recordingSelf) Tx(func(tx documents.Tx) (any, error), context.Context) 
 // Follow implements Self.
 func (r *recordingSelf) Follow(FollowAttach[delta.JsonValue]) chord.Watchable[delta.JsonValue] {
 	r.assertDeclaring("follow")
+	return state.ConstantOf[delta.JsonValue](nil)
+}
+
+// FollowOver implements Self.
+func (r *recordingSelf) FollowOver(over any, _ FollowOverAttach[any, delta.JsonValue]) chord.Watchable[delta.JsonValue] {
+	r.assertDeclaring("follow")
+	if _, err := followedOver(over, r.object.text); err != nil {
+		panic(err)
+	}
 	return state.ConstantOf[delta.JsonValue](nil)
 }
 
