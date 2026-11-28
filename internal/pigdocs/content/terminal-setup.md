@@ -108,6 +108,30 @@ report a display problem.
 
 As in Pi, a row wider than the terminal is fatal only when it reaches a differential render. PiG then writes `pi-tui-crash.log` to the agent directory (the system temp directory when there is none) with the terminal width, the offending row and its width, and every rendered row, restores the terminal, prints the error with the log path, and exits with status 1. The first render, a forced full render, and the full render after a resize emit an over-wide row unchanged.
 
+## Recover the terminal after Pi was killed
+
+PiG turns on key, mouse, and paste reporting while it runs, and the alternate screen in fullscreen mode. It turns them off when it exits. If PiG is killed (`kill -9`, Task Manager, out of memory), they stay on and the shell types the reports into the prompt.
+
+The real fix is to find what kills PiG and stop it. Look for an out-of-memory kill in the terminal, or a script or IDE that ends the process, and report what you find.
+
+To reset the terminal, run this in the affected pane. Starting and quitting PiG again is not enough.
+
+bash or zsh:
+
+```bash
+printf '\e[<16u\e[=0;1u\e[>4;0m\e[?2004;1000;1002;1003;1004;1006l\e[?7;25h'
+```
+
+PowerShell:
+
+```powershell
+$e = [char]27; [Console]::Write("$e[<16u$e[=0;1u$e[>4;0m$e[?2004;1000;1002;1003;1004;1006l$e[?7;25h")
+```
+
+If the prompt still shows PiG's last screen, also run `printf '\e[?1049l'` or `[Console]::Write("$([char]27)[?1049l")`. Only in that case: otherwise it confuses the shell's line editor.
+
+If you cannot type in the pane, start PiG in another tab and ask it to reset your other terminal tab with the reset sequence from PiG's terminal-setup docs. Then press `Ctrl+C` in the fixed tab to clear the line.
+
 ## Related
 
 - [Keybindings](keybindings.md) lists the actions and their default keys.

@@ -243,7 +243,7 @@ func TestActivityValueIsOneObjectUntilTheNextChange(t *testing.T) {
 var Kept = mustContract(declareRemote("app.kept", contracts.RemoteDeclaration{
 	Version:     1,
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return serverAddress(), nil },
-	State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
+	State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 }))
 
 // activityOf is host.activity.value: the counts now.

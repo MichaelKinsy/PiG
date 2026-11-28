@@ -87,6 +87,7 @@ These options apply to `pig [options] [prompt]`. Run `pig --help` for the full l
 | `--session <path\|id>` | Use a session file or a partial session UUID. |
 | `--fork <path\|id>` | Fork a session file or partial UUID into a new session. |
 | `--session-dir <dir>` | Directory for session storage and lookup. |
+| `--agent-dir <dir>` | Config directory for settings, auth, and resources (overrides `PIG_CODING_AGENT_DIR`). |
 | `--no-session` | Do not save the session. |
 | `--listen <path>` | Serve one RPC session per connection on the Unix socket at path; requires `--mode rpc` (D232). Every session has its own extension processes, so no extension process, and none of its module-level state, is shared between sessions (extensions compiled into the host program run in the server process; see the RPC page). |
 | `--listen-share-extensions` | With `--listen`, let the sessions share extension processes (D232). Warning: module-level state (Node module variables, `process.env`, `globalThis`; Go, Rust, Python and Lisp package variables) is then shared between sessions. |

@@ -37,7 +37,7 @@ function comparedFlags(expression, variable) {
         flags.push({ value: argument.text, node: argument });
       }
     }
-    if (ts.isBinaryExpression(node) && [ts.SyntaxKind.EqualsEqualsEqualsToken, ts.SyntaxKind.EqualsEqualsToken].includes(node.operatorToken.kind)) {
+    if (ts.isBinaryExpression(node) && [ts.SyntaxKind.EqualsEqualsEqualsToken, ts.SyntaxKind.EqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsEqualsToken].includes(node.operatorToken.kind)) {
       const pairs = [[node.left, node.right], [node.right, node.left]];
       for (const [candidate, literal] of pairs) {
         if (ts.isIdentifier(candidate) && candidate.text === variable && ts.isStringLiteral(literal) && (FLAG.test(literal.text) || SHORT_FLAG.test(literal.text))) {
@@ -246,12 +246,15 @@ function mergeParserAndHelp(records, help, sourceRoot) {
 
 export function extractCLIInventory({ sourceRoot, upstreamVersion }) {
   const argsFile = path.join(sourceRoot, "packages/coding-agent/src/cli/args.ts");
+  const agentDirArgFile = path.join(sourceRoot, "packages/coding-agent/src/cli/agent-dir-arg.ts");
   const packageFile = path.join(sourceRoot, "packages/coding-agent/src/package-manager-cli.ts");
   const mainGroups = parserGroups(argsFile, "parseArgs", "arg", ["pi"]);
+  const agentDirGroups = fs.existsSync(agentDirArgFile) ? parserGroups(agentDirArgFile, "takeAgentDirArg", "arg", ["pi"]) : [];
   const packageGroups = parserGroups(packageFile, "parsePackageCommand", "arg", PACKAGE_COMMANDS.map((command) => `pi-${command}`));
   const configGroups = parserGroups(packageFile, "handleConfigCommand", "arg", ["pi-config"]);
   const records = [
     ...recordsFromGroups(argsFile, mainGroups),
+    ...(agentDirGroups.length ? recordsFromGroups(agentDirArgFile, agentDirGroups) : []),
     ...recordsFromGroups(packageFile, packageGroups),
     ...recordsFromGroups(packageFile, configGroups),
   ];

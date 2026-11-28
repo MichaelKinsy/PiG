@@ -71,17 +71,17 @@ func TestTogetherModels(t *testing.T) {
 		assertCatalogJSON(t, (&Model{Capabilities: m.ToCapabilities()}).CostRates(), `{"input":3,"output":15,"cacheRead":0.3,"cacheWrite":0}`)
 		assertCatalogJSON(t, m.Compat, `{"supportsStore":false,"supportsReasoningEffort":false,"maxTokensField":"max_tokens","thinkingFormat":"together","supportsStrictMode":false,"supportsLongCacheRetention":false}`)
 	})
-	// .upstream/v0.99.1/packages/ai/test/together-models.test.ts:45
-	t.Run("models Together reasoning controls from the Together API surface", func(t *testing.T) {
-		gpt := mustGeneratedModel(t, "together", "openai/gpt-oss-120b")
-		assertCatalogJSON(t, gpt.ThinkingLevelMap, `{"off":null,"minimal":null,"low":"low","medium":"medium","high":"high","max":null,"xhigh":null}`)
-		if gpt.Compat == nil || gpt.Compat.SupportsReasoningEffort == nil || !*gpt.Compat.SupportsReasoningEffort || gpt.Compat.ThinkingFormat != "openai" {
-			t.Fatalf("compat = %+v", gpt.Compat)
-		}
-		deepseek := mustGeneratedModel(t, "together", "deepseek-ai/DeepSeek-V4-Pro-0813")
-		assertCatalogJSON(t, deepseek.ThinkingLevelMap, `{"minimal":null,"low":null,"medium":null,"high":"high","xhigh":null}`)
-		if deepseek.Compat == nil || deepseek.Compat.SupportsReasoningEffort == nil || !*deepseek.Compat.SupportsReasoningEffort || deepseek.Compat.ThinkingFormat != "together" {
-			t.Fatalf("compat = %+v", deepseek.Compat)
+	// .upstream/v1.7.0/packages/ai/test/together-models.test.ts:44
+	t.Run("gives every Together reasoning model the Together thinking toggle", func(t *testing.T) {
+		for _, id := range []string{"deepseek-ai/DeepSeek-V4.1-Flash", "zai-org/GLM-5.3"} {
+			m := mustGeneratedModel(t, "together", id)
+			if !m.Reasoning {
+				t.Fatalf("%s reasoning = false, want true", id)
+			}
+			assertCatalogJSON(t, m.ThinkingLevelMap, `{"minimal":null,"low":null,"medium":null}`)
+			if m.Compat == nil || m.Compat.SupportsReasoningEffort == nil || *m.Compat.SupportsReasoningEffort || m.Compat.ThinkingFormat != "together" {
+				t.Fatalf("%s compat = %+v", id, m.Compat)
+			}
 		}
 	})
 	// .upstream/v0.99.1/packages/ai/test/together-models.test.ts:80

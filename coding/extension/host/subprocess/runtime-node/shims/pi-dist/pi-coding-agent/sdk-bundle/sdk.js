@@ -17,15 +17,14 @@ import {
   formatNoModelsAvailableMessage,
   getDefaultSessionDir,
   getToolListError,
-  isInstallTelemetryEnabled,
   isToolModifier,
   markRuntimeStreamFunction,
   time
-} from "./chunk-P2EKETZU.js";
+} from "./chunk-EMNAEWL7.js";
 import {
   ModelRuntime,
   getBranchSelection
-} from "./chunk-GGFXZTDN.js";
+} from "./chunk-M34VOFVE.js";
 import {
   createBashTool,
   createCodingTools,
@@ -38,20 +37,20 @@ import {
   createReadTool,
   createWriteTool,
   withFileMutationQueue
-} from "./chunk-7PPV3CBH.js";
+} from "./chunk-LH6CBJ2H.js";
 import "./chunk-PNTN457B.js";
-import "./chunk-V4RD65TK.js";
-import "./chunk-TZ35YCTP.js";
-import "./chunk-F4Z3QMHU.js";
+import "./chunk-VGQVQTNM.js";
+import "./chunk-6GEUDJQJ.js";
+import "./chunk-LSKCOARN.js";
 import {
   createToolNameMatcher
-} from "./chunk-5VMS2WUR.js";
-import "./chunk-T3RX74C7.js";
+} from "./chunk-QO6LW4HU.js";
+import "./chunk-NEKNGRMG.js";
 import {
   VERSION,
   getAgentDir,
   resolvePath
-} from "./chunk-JGRZB36T.js";
+} from "./chunk-DJMRY3QF.js";
 import {
   __name
 } from "./chunk-FIOAHQVQ.js";
@@ -63,12 +62,12 @@ import { clampThinkingLevel, streamSimple } from "../../pi-ai/sdk-bundle/compat.
 
 // pi-dist/pi-coding-agent/core/client-identity.js
 import { PI_ATTRIBUTION } from "../../pi-ai/sdk-bundle/index.js";
-function getClientIdentity(settingsManager) {
+function getClientIdentity() {
   return {
     userAgent: "detailed",
     // pig divergence (D26, D65): PiG's product identity replaces Pi's; see automation/gen/pi-identity-patches.mjs.
     version: process.env.PIG_PRODUCT_VERSION ?? VERSION,
-    attribution: isInstallTelemetryEnabled(settingsManager) ? PI_ATTRIBUTION : null
+    attribution: PI_ATTRIBUTION
   };
 }
 __name(getClientIdentity, "getClientIdentity");
@@ -188,8 +187,8 @@ async function createAgentSession(options = {}) {
       websocketConnectTimeoutMs: options2.websocketConnectTimeoutMs ?? settingsManager.getWebSocketConnectTimeoutMs(),
       maxRetries: options2.maxRetries ?? providerRetrySettings.maxRetries,
       maxRetryDelayMs: options2.maxRetryDelayMs ?? providerRetrySettings.maxRetryDelayMs,
-      // Replaces the agent loop's default identity; read per request so telemetry changes apply at once.
-      identity: getClientIdentity(settingsManager),
+      // Replaces the agent loop's default identity.
+      identity: getClientIdentity(),
       transformHeaders: /* @__PURE__ */ __name(async (headers) => headerRunner?.hasHandlers("before_provider_headers") ? headerRunner.emitBeforeProviderHeaders(headers) : headers, "transformHeaders")
     };
   }, "buildRequestOptions");

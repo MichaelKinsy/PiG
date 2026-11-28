@@ -663,7 +663,7 @@ var quietOverALink = mustContract(contracts.Remote("app.quiet", contracts.Remote
 	Version:     1,
 	Params:      contracts.Params{},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-	Methods: []contracts.RemoteMethodEntry{contracts.Meth("work", contracts.NewMethod())},
+	Methods:     []contracts.RemoteMethodEntry{contracts.Meth("work", contracts.NewMethod())},
 }))
 
 func TestAnUntracedTypeOverALinkRecordsNothingUnderTheCallersCarrier(t *testing.T) {

@@ -220,6 +220,7 @@ func CreatePlugins(options PluginsOptions, ctx context.Context) *Plugins {
 		panic("plugins: PluginsOptions.Build is required (build.BuildFacet)")
 	}
 	if ctx == nil {
+		//portlint:allow ctxmapping nil-context default when caller omits optional ctx (plugins.ts createPlugins takes no AbortSignal)
 		ctx = context.Background()
 	}
 	ownCtx, ownCancel := context.WithCancelCause(context.WithoutCancel(ctx))
@@ -329,9 +330,10 @@ type Plugins struct {
 
 // makingSet is one shared first-making of a kind's current set.
 type makingSet struct {
-	done chan struct{}
-	set  *scriptSet
-	err  error
+	done     chan struct{}
+	doneOnce sync.Once
+	set      *scriptSet
+	err      error
 }
 
 func closedChan() chan struct{} {
@@ -864,7 +866,7 @@ func (c *Plugins) set(kind string, ctx context.Context) (*scriptSet, error) {
 					delete(c.making, kind)
 				}
 			})
-			close(making.done)
+			making.doneOnce.Do(func() { close(making.done) })
 		})
 	}
 	select {

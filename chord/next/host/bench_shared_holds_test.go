@@ -45,8 +45,8 @@ const (
 var benchSharedCounter = mustContract(contracts.Remote("bench.shared-counter", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Str())},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-	State: []contracts.RemoteStateEntry{contracts.StateEntry("count", contracts.Int())},
-		Methods: []contracts.RemoteMethodEntry{contracts.Meth("bump", contracts.NewMethod())},
+	State:       []contracts.RemoteStateEntry{contracts.StateEntry("count", contracts.Int())},
+	Methods:     []contracts.RemoteMethodEntry{contracts.Meth("bump", contracts.NewMethod())},
 }))
 
 var benchSharedCount = exDefineState("count", documents.StateOptions{

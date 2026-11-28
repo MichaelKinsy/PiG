@@ -25,7 +25,7 @@ var channelThing = mustContract(contracts.Remote("app.thing", contracts.RemoteDe
 	Version:     1,
 	Params:      contracts.Params{},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-	State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
+	State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 }))
 
 // channelElapse is Pi's `elapse(ms)`: fake time in heartbeat ticks, letting the links deliver between them.

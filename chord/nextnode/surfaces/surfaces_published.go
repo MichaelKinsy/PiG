@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"maps"
 	"regexp"
 	"slices"
 	"strings"
@@ -95,9 +96,7 @@ func (p *PublishedScripts) Push(ctx context.Context) error {
 	set := p.set
 	already := p.hasPushed && sameScriptSet(p.pushed, set)
 	snapshot := make(map[string]published, len(p.current))
-	for k, v := range p.current {
-		snapshot[k] = v
-	}
+	maps.Copy(snapshot, p.current)
 	p.mu.Unlock()
 	if already {
 		return nil
@@ -134,9 +133,7 @@ func (p *PublishedScripts) Step(name string) plugins.RolloutStep {
 			// Against the set clients last got: an apply retrying a failed push reports what that push carries.
 			p.mu.Lock()
 			before := make(map[string]published, len(p.pushedScripts))
-			for plugin, each := range p.pushedScripts {
-				before[plugin] = each
-			}
+			maps.Copy(before, p.pushedScripts)
 			p.mu.Unlock()
 			failed, err := p.publish(applied[p.kind])
 			if err != nil {

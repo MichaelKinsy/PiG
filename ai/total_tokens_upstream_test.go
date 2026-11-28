@@ -36,9 +36,9 @@ func TestTotalTokensUpstream(t *testing.T) {
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:289
 		{"cerebras", "gpt-oss-120b", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:312
-		{"cloudflare-workers-ai", "@cf/moonshotai/kimi-k2.6", "", false, false, ""},
+		{"cloudflare-workers-ai", "@cf/zai-org/glm-5.3", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:337
-		{"cloudflare-ai-gateway", "workers-ai/@cf/moonshotai/kimi-k2.6", "", false, false, ""},
+		{"cloudflare-ai-gateway", "workers-ai/@cf/zai-org/glm-5.3", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:362
 		{"huggingface", "moonshotai/Kimi-K2.5", "", false, false, ""},
 		// .upstream/v0.99.1/packages/ai/test/total-tokens.test.ts:381 (0.99.1 moved Together to Kimi-K3)

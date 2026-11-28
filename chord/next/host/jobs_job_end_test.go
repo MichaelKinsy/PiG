@@ -42,14 +42,13 @@ var jobViewType = mustContract(contracts.Remote("app.view", contracts.RemoteDecl
 	Version:     1,
 	Params:      contracts.Params{},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-	State: []contracts.RemoteStateEntry{contracts.StateEntry("running", contracts.Arr(contracts.Unknown()))},
+	State:       []contracts.RemoteStateEntry{contracts.StateEntry("running", contracts.Arr(contracts.Unknown()))},
 }))
 
 var jobsType = mustContract(contracts.Remote("app.jobs", contracts.RemoteDeclaration{
 	Version:     1,
 	Params:      contracts.Params{},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-	
 }))
 
 func guestRevokedBy(principal data.Principal) ([]delta.JsonValue, error) {

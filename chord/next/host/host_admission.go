@@ -540,7 +540,7 @@ func (d *Decision) read(ctx context.Context) *verdict {
 				d.countWalk()
 				return d.allowRoute(value)
 			}
-			return d.allowObject(value, label)
+			return d.allowObject(ctx, value, label)
 		}
 		if text, ok := reason.(string); ok && kind == "deny" {
 			if hasMessage && message != nil && !contracts.IsMessageData(message) {
@@ -566,7 +566,7 @@ func brokenRead(message, label string) *verdict {
 	return &verdict{kind: verdictBroken, err: data.AsChordError(errors.New(message), label)}
 }
 
-func (d *Decision) allowObject(value delta.JsonValue, label string) *verdict {
+func (d *Decision) allowObject(ctx context.Context, value delta.JsonValue, label string) *verdict {
 	obj, ok := value.(*delta.JsonObject)
 	if !ok || obj == nil {
 		return brokenRead("its admission's value is an object (allow({ granted, ...data }))", label)
@@ -583,7 +583,7 @@ func (d *Decision) allowObject(value delta.JsonValue, label string) *verdict {
 			for _, item := range listed {
 				name, ok := item.(string)
 				if !ok || !slices.Contains(grants, name) {
-					return brokenRead(fmt.Sprintf("its admission granted %s: no grantable member or flag of its contract", jsStringifyAny(item)), label)
+					return brokenRead(fmt.Sprintf("its admission granted %s: no grantable member or flag of its contract", jsStringifyAny(ctx, item)), label)
 				}
 				if _, dup := seen[name]; !dup {
 					seen[name] = struct{}{}
@@ -642,11 +642,11 @@ func (d *Decision) deny(reason string, message delta.JsonValue) *verdict {
 	return v
 }
 
-func jsStringifyAny(value any) string {
+func jsStringifyAny(ctx context.Context, value any) string {
 	if s, ok := value.(string); ok {
 		return jsStringify(s)
 	}
-	return data.CanonicalJson(value, context.Background())
+	return data.CanonicalJson(value, ctx)
 }
 
 // assertDeclaring is the context `Admit` runs under; outside it, a declaration is refused.

@@ -71,8 +71,8 @@ var server = must(contracts.NewHostKind("server"))
 var Desk = must(contracts.Remote("test.desk", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return server.Address(nil), nil },
-	State:   []contracts.RemoteStateEntry{contracts.StateEntry("text", contracts.Str())},
-	Methods: []contracts.RemoteMethodEntry{contracts.Meth("write", contracts.NewGrantable(contracts.NewMethod(contracts.Str())))},
+	State:       []contracts.RemoteStateEntry{contracts.StateEntry("text", contracts.Str())},
+	Methods:     []contracts.RemoteMethodEntry{contracts.Meth("write", contracts.NewGrantable(contracts.NewMethod(contracts.Str())))},
 }))
 
 // deskMode is the mode `Desk`'s admission reads.

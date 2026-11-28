@@ -67,7 +67,7 @@ func TestExample17LimitsAndCompression(t *testing.T) {
 		contracts.Mem("entries", exArr(entry)), contracts.Mem("append", contracts.NewMethod(entry)))
 	conversation := exRemote("example.conversation", contracts.Params{exProp("id", exStr())}, exServerAddress,
 		contracts.RemoteDeclaration{
-			State: []contracts.RemoteStateEntry{contracts.StateEntry("entries", exArr(entry))},
+			State:   []contracts.RemoteStateEntry{contracts.StateEntry("entries", exArr(entry))},
 			Methods: []contracts.RemoteMethodEntry{contracts.Meth("append", contracts.NewMethod(entry))},
 		})
 	entries := exDefineState("entries", documents.StateOptions{

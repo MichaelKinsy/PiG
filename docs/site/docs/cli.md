@@ -1,6 +1,6 @@
 # Command line
 
-This page lists the `pig` command-line verbs and subcommands, and the `pig docs` commands for the embedded reference bundle. [Command line by example](/docs/latest/cli-examples) runs the common ones and shows their output. PiG follows the command line of Pi 1.6.1 ([Pi's command line reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/cli.md)). Run `pig --help` or append `--help` to a command for the exact interface of the installed binary.
+This page lists the `pig` command-line verbs and subcommands, and the `pig docs` commands for the embedded reference bundle. [Command line by example](/docs/latest/cli-examples) runs the common ones and shows their output. PiG follows the command line of Pi 1.7.0 ([Pi's command line reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/cli.md)). Run `pig --help` or append `--help` to a command for the exact interface of the installed binary.
 
 ## CLI verbs
 
@@ -88,6 +88,7 @@ These options apply to `pig [options] [prompt]`. Run `pig --help` for the full l
 | `--session <path\|id>` | Open a session by file path or full/partial ID. |
 | `--fork <path\|id>` | Fork a session by file path or full/partial ID into the current directory. |
 | `--session-dir <dir>` | Directory for session storage and lookup. |
+| `--agent-dir <dir>` | Config directory for settings, auth, and resources (overrides `PIG_CODING_AGENT_DIR`). |
 | `--no-session` | Do not save the session. |
 | `--listen <path>` | Serve one RPC session per connection on the Unix socket at path; requires `--mode rpc` (D232). Every session has its own extension processes, so no extension process, and none of its module-level state, is shared between sessions (extensions compiled into the host program run in the server process; see the RPC page). Nobody is authenticated: keep the socket in a directory only you can write; PiG makes it private to you, and on Windows refuses a socket other users can reach. |
 | `--listen-share-extensions` | With `--listen`, let the sessions share extension processes (D232). Warning: module-level state (Node module variables, `process.env`, `globalThis`; Go, Rust, Python and Lisp package variables) is then shared between sessions. |
@@ -107,7 +108,7 @@ These options apply to `pig [options] [prompt]`. Run `pig --help` for the full l
 | `--approve`, `-a` | Trust project-local files for this run. |
 | `--no-approve`, `-na` | Ignore project-local files for this run. |
 | `--offline` | Turn off startup network operations, as `PI_OFFLINE=1` does. |
-| `--no-stdin` | Ignore piped stdin. Use it when the process that starts PiG leaves the stdin pipe open and never closes it. Without it, PiG waits for end of input, as Pi does. Pi 1.6.1 has no such option and treats `--no-stdin` as an unknown extension flag (D150, [Pi #10415](https://github.com/earendil-works/pi/issues/10415)). |
+| `--no-stdin` | Ignore piped stdin. Use it when the process that starts PiG leaves the stdin pipe open and never closes it. Without it, PiG waits for end of input, as Pi does. Pi 1.7.0 has no such option and treats `--no-stdin` as an unknown extension flag (D150, [Pi #10415](https://github.com/earendil-works/pi/issues/10415)). |
 | `--piglet <name\|path>` | Run a named Piglet or the Piglet file at a path. A Piglet Binary lays the selected Piglet over its own, unless it was built with `build.closed: true`, which makes it refuse the option ([Accept overlay Piglets](/docs/latest/piglet-binaries#accept-overlay-piglets)). See [Piglets](/docs/latest/piglets). |
 
 Extensions can register their own options, such as `--plan` from a plan-mode extension.

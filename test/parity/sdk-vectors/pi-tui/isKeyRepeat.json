@@ -1,6 +1,6 @@
 {
- "pin": "1.6.1",
- "package": "pi-tui@1.6.1",
+ "pin": "1.7.0",
+ "package": "pi-tui@1.7.0",
  "module": "pi-tui",
  "export": "isKeyRepeat",
  "cases": [

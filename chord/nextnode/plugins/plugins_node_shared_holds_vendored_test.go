@@ -55,9 +55,9 @@ var shServer = mustKind(contracts.NewHostKind("server"))
 var shCounter = mustContract(contracts.Remote("test.shared-counter", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return shServer.Address(nil), nil },
-	State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
-		Methods: []contracts.RemoteMethodEntry{contracts.Meth("slow", contracts.NewMethod(
-			contracts.Obj(contracts.Prop("who", contracts.Str())), contracts.Str()))},
+	State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
+	Methods: []contracts.RemoteMethodEntry{contracts.Meth("slow", contracts.NewMethod(
+		contracts.Obj(contracts.Prop("who", contracts.Str())), contracts.Str()))},
 }))
 
 // shConsumer is the consumer's script over a vendored tree: Pi's chord, a link over the process's pipes, a host connected
@@ -142,13 +142,14 @@ const Counter = remote("test.shared-counter", {
 	version: 1,
 	params: {},
 	hostAddress: () => Server(),
-	variants: { v: { state: { n: int() }, methods: { slow: method(obj({ who: str() }), str()) } } },
+	state: { n: int() },
+	methods: { slow: method(obj({ who: str() }), str()) },
 });
 
 const a = await host.get(Counter, {}, BACKGROUND_CONTEXT);
 const b = await host.get(Counter, {}, BACKGROUND_CONTEXT);
 assert.notEqual(a, b, "two references");
-assert.deepEqual([a.variant, a.n.value, b.variant, b.n.value], ["v", 1, "v", 1]);
+assert.deepEqual([a.n.value, b.n.value], [1, 1]);
 await turn();
 say("got twice");
 

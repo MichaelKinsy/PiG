@@ -35,6 +35,7 @@ func runShutdownInputLoop(t *testing.T, m *InteractiveMode, source io.Reader) er
 // resume hint. Drive both the key handler and the loop's exit branch: testing
 // either alone misses the duplicate Ctrl+D hint.
 func TestInteractiveQuitPrintsOneHintAfterTerminalRestore(t *testing.T) {
+	t.Setenv(ENV_AGENT_DIR, "")
 	// upstream: packages/coding-agent/test/suite/regressions/5080-signal-shutdown-extension-cleanup.test.ts:143
 	setStdoutTTY(t, true)
 	for _, key := range []string{"\x04", "\x03\x03", "extension"} {

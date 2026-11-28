@@ -56,13 +56,13 @@ var (
 		contracts.Meth("echo", contracts.NewMethod(contracts.Str(), contracts.Str())))
 	rhAsker = mustContract(contracts.Remote("app.asker", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{contracts.Prop("session", contracts.Str())}, HostAddress: exSessionAddress,
-		State: []contracts.RemoteStateEntry{contracts.StateEntry("who", contracts.Str())},
-			Methods: []contracts.RemoteMethodEntry{contracts.Meth("ask", contracts.NewMethod(contracts.Str(), contracts.Str()))},
+		State:   []contracts.RemoteStateEntry{contracts.StateEntry("who", contracts.Str())},
+		Methods: []contracts.RemoteMethodEntry{contracts.Meth("ask", contracts.NewMethod(contracts.Str(), contracts.Str()))},
 	}))
 	rhNeighbour = mustContract(contracts.Remote("app.neighbour", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{contracts.Prop("session", contracts.Str()), contracts.Prop("other", contracts.Str())},
 		HostAddress: exSessionAddress,
-		State: []contracts.RemoteStateEntry{contracts.StateEntry("count", contracts.Int())},
+		State:       []contracts.RemoteStateEntry{contracts.StateEntry("count", contracts.Int())},
 	}))
 )
 

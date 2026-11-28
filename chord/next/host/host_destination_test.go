@@ -26,7 +26,7 @@ func routeRemoteNotes(t testing.TB, hostAddress contracts.HostAddress) *contract
 		Version:     1,
 		Params:      contracts.Params{contracts.Prop("session", contracts.Str())},
 		HostAddress: hostAddress,
-		State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
+		State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 	})
 	if err != nil {
 		t.Fatal(err)

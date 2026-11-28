@@ -38,7 +38,7 @@ export class BashExecutionComponent extends Container {
         // Content container (holds dynamic content between borders)
         this.contentContainer = new Container();
         this.addChild(this.contentContainer);
-        this.loader = new Loader(ui, (spinner) => theme.fg(this.colorKey, spinner), (text) => theme.fg("muted", text), `Running... (${keyText("tui.select.cancel")} to cancel)`);
+        this.loader = new Loader(ui, (spinner) => theme.fg(this.colorKey, spinner), (text) => theme.fg("muted", text), `Running... (${keyText("app.interrupt")} to cancel)`);
         // Bottom border
         this.addChild(new DynamicBorder(borderColor));
         this.updateDisplay();

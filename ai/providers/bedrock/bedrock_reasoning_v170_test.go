@@ -1,3 +1,5 @@
+//go:build !pig_strip_bedrock_converse_stream
+
 package bedrock
 
 // Ports Pi v1.7.0 Bedrock tests from:

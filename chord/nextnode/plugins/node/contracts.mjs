@@ -1,13 +1,13 @@
 // Contracts as data (docs/plan/chord-plugins-node-evaluator.md 10.2): the Go side sends a contract as the normal form its
-// fingerprint hashes (kind, params, members or variants, each with its schemas' normal forms) with its name, version and
-// fingerprint, and `contractOf` declares the Pi contract of it with Pi's own `local`/`remote`. The rebuilt contract hashes to
-// the fingerprint it crossed with, or `contractOf` throws: a type that differs from what the other side declared is refused
-// as Pi refuses a contract of another fingerprint.
-import { event, keyed, local, method, remote } from "@earendil-works/chord";
+// fingerprint hashes (kind, params, members, and for remote contracts grantable and flags, each with its schemas' normal
+// forms) with its name, version and fingerprint, and `contractOf` declares the Pi contract of it with Pi's own
+// `local`/`remote`. The rebuilt contract hashes to the fingerprint it crossed with, or `contractOf` throws: a type that
+// differs from what the other side declared is refused as Pi refuses a contract of another fingerprint.
+import { event, grantable, keyed, local, method, queries, remote } from "@earendil-works/chord";
 
 /**
  * A local contract's members as its declaration: `{ state }` is a state schema, `{ event }` an event member (the local
- * marker `event(...)`), `{ keyed }` a keyed member and `{ args, result }` a method.
+ * marker `event(...)`), `{ keyed }` a keyed member, `{ queries, args }` a queries member and `{ args, result }` a method.
  */
 function localMembers(members) {
 	return Object.fromEntries(
@@ -15,20 +15,22 @@ function localMembers(members) {
 			if (Object.hasOwn(node, "state")) return [name, node.state];
 			if (Object.hasOwn(node, "event")) return [name, event(node.event)];
 			if (Object.hasOwn(node, "keyed")) return [name, keyed(node.keyed)];
+			if (Object.hasOwn(node, "queries")) return [name, queries(node.queries, node.args)];
 			return [name, method(node.args, node.result)];
 		}),
 	);
 }
 
-/** A remote variant's declaration: its state schemas, its event members' schemas (when it has any) and its methods. */
-function remoteVariant(members) {
+/** A remote contract's members, marking any in `grantableSet` with `grantable(...)`. */
+function remoteMembers(members, grantableSet) {
 	const state = {};
 	const events = {};
 	const methods = {};
+	const wrap = (name, value) => (grantableSet.has(name) ? grantable(value) : value);
 	for (const [name, node] of Object.entries(members)) {
-		if (Object.hasOwn(node, "state")) state[name] = node.state;
-		else if (Object.hasOwn(node, "event")) events[name] = node.event;
-		else methods[name] = method(node.args, node.result);
+		if (Object.hasOwn(node, "state")) state[name] = wrap(name, node.state);
+		else if (Object.hasOwn(node, "event")) events[name] = wrap(name, node.event);
+		else methods[name] = wrap(name, method(node.args, node.result));
 	}
 	return Object.keys(events).length === 0 ? { state, methods } : { state, events, methods };
 }
@@ -53,9 +55,14 @@ export function contractOf(data, options = {}) {
 						(() => {
 							throw new Error(`${name}: a remote contract that crossed as data has no host address`);
 						}),
-					variants: Object.fromEntries(
-						Object.entries(normal.variants).map(([variant, members]) => [variant, remoteVariant(members)]),
-					),
+					...remoteMembers(normal.members, new Set(normal.grantable ?? [])),
+					...(normal.flags && normal.flags.length > 0
+						? {
+								flags: Object.fromEntries(
+									normal.flags.map((flag) => [flag, { namespace: name, key: flag, params: [] }]),
+								),
+							}
+						: {}),
 				});
 	if (options.verify !== false && contract.fingerprint !== fingerprint) {
 		throw new Error(`${name}: crossed as data with fingerprint ${fingerprint}, rebuilt with ${contract.fingerprint}`);

@@ -79,14 +79,14 @@ func TestAddCorrespondenceDenominatorGeneratesExactOpenGraph(t *testing.T) {
 	// hide-thinking's fix for the pre-existing "thinking" typo below) plus
 	// fullscreen-wheel-scroll-lines, which raises the behaviors/mappings/
 	// direct-fact counts by the same four settings. Reproduce by running this test.
-	if behaviors != 44 || mappings != 44 || directFacts != 36 || normalizedSettingFacts != 34 || normalizedFunctionFacts != 10 {
-		t.Fatalf("generated behaviors/mappings/facts = %d/%d/%d/%d/%d, want 44/44/36/34/10", behaviors, mappings, directFacts, normalizedSettingFacts, normalizedFunctionFacts)
+	if behaviors != 43 || mappings != 43 || directFacts != 35 || normalizedSettingFacts != 33 || normalizedFunctionFacts != 10 {
+		t.Fatalf("generated behaviors/mappings/facts = %d/%d/%d/%d/%d, want 43/43/35/33/10", behaviors, mappings, directFacts, normalizedSettingFacts, normalizedFunctionFacts)
 	}
 	// 213 matches test/parity/cmd/correspondence/main_test.go's independently
 	// reproduced work-packet obligationIds count for the same 34-row
 	// settings inventory.
-	if obligations != 214 {
-		t.Fatalf("generated obligations = %d, want 214", obligations)
+	if obligations != 209 {
+		t.Fatalf("generated obligations = %d, want 209", obligations)
 	}
 	lineageFact := graph.Records["fact:correspondence:setting-lineage:autocompact"].(*Fact)
 	if len(lineageFact.PinIDs) != 7 {

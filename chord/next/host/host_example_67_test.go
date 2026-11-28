@@ -135,7 +135,7 @@ func TestExample67Events(t *testing.T) {
 		contracts.Mem("tick", exInt()), contracts.Mem("paddle", contracts.Event(sampleSchema)))
 	// What a client holds: the clock's tick and paddle, re-exposed (an event member forwarded unchanged).
 	game := exRemote("example.game", contracts.Params{}, exServerAddress, contracts.RemoteDeclaration{
-		State: []contracts.RemoteStateEntry{contracts.StateEntry("tick", exInt())},
+		State:  []contracts.RemoteStateEntry{contracts.StateEntry("tick", exInt())},
 		Events: []contracts.RemoteEventEntry{contracts.EventEntry("paddle", sampleSchema)},
 	})
 	ticks := exDefineState("ticks", documents.StateOptions{

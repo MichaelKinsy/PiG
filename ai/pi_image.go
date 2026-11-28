@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"slices"
 	"strings"
-	"time"
 )
 
 const piImageLabel = "Pi Image"
@@ -27,7 +26,7 @@ type PiImageRequestOptions struct {
 	AspectRatio string         `json:"aspectRatio,omitempty"`
 	Size        string         `json:"size,omitempty"`
 	SessionID   *string        `json:"sessionId,omitempty"`
-	Metadata    map[string]any `json:"metadata,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitzero"`
 }
 
 // PiImageRequest is the wire request body sent by pi-image to POST <baseUrl>/image.
@@ -101,7 +100,7 @@ func GenerateImagesPiImage(ctx context.Context, model ImageModel, imagesCtx Imag
 		Model:      model.ID,
 		Output:     []ImagesOutputContent{},
 		StopReason: ImagesStopReasonStop,
-		Timestamp:  time.Now().UnixMilli(),
+		Timestamp:  nowMillis(),
 	}
 
 	fail := func(err error) AssistantImages {

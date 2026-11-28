@@ -968,13 +968,14 @@ func wireNames(t testing.TB, typ *contracts.Contract, grantSpec ...string) wireI
 	ver, err := contracts.CurrentVersion(typ)
 	must(t, err)
 	granted := map[string]bool{}
-	if len(grantSpec) == 1 && (grantSpec[0] == "editor" || grantSpec[0] == "main" || grantSpec[0] == "player" || grantSpec[0] == "all") {
+	switch {
+	case len(grantSpec) == 1 && (grantSpec[0] == "editor" || grantSpec[0] == "main" || grantSpec[0] == "player" || grantSpec[0] == "all"):
 		for _, g := range ver.Grants {
 			granted[g] = true
 		}
-	} else if len(grantSpec) == 1 && (grantSpec[0] == "reader" || grantSpec[0] == "" || grantSpec[0] == "none") {
+	case len(grantSpec) == 1 && (grantSpec[0] == "reader" || grantSpec[0] == "" || grantSpec[0] == "none"):
 		// no grants
-	} else {
+	default:
 		for _, g := range grantSpec {
 			granted[g] = true
 		}

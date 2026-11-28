@@ -373,7 +373,7 @@ func (d *Documents) ownEnd(err error, tx *Transaction, admitted bool, token *Sea
 	if !token.EndedBy(ctx) {
 		return false
 	}
-	return !admitted || tx.CutWith(err) || err == context.Cause(ctx)
+	return !admitted || tx.CutWith(err) || errors.Is(err, context.Cause(ctx))
 }
 
 // callTx runs fn on tx. A transaction cut at its token's seal (or discarded) aborts its drafts, and Pi's overlay proxy then

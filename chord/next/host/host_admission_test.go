@@ -88,8 +88,8 @@ var admDoc = mustContract(contracts.Remote("test.doc", contracts.RemoteDeclarati
 	Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Str())},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
 	Admission:   func() *contracts.Schema { s := admModeSchema(); return &s }(),
-	State:   []contracts.RemoteStateEntry{contracts.StateEntry("text", contracts.Str())},
-	Methods: []contracts.RemoteMethodEntry{contracts.Meth("write", contracts.NewGrantable(contracts.NewMethod(contracts.Str(), contracts.Str())))},
+	State:       []contracts.RemoteStateEntry{contracts.StateEntry("text", contracts.Str())},
+	Methods:     []contracts.RemoteMethodEntry{contracts.Meth("write", contracts.NewGrantable(contracts.NewMethod(contracts.Str(), contracts.Str())))},
 }))
 
 // admPanel: a consumer of a document on the same host: a derive over its text.
@@ -1140,7 +1140,7 @@ func TestAdmissionDeclarationErrors(t *testing.T) {
 		plain := mustContract(contracts.Remote("test.plain", contracts.RemoteDeclaration{
 			Version: 1, Params: contracts.Params{},
 			HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-			State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
+			State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 		}))
 		factory := func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {
 			return contracts.MembersImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"n": Expose(state_constant(1.0))}}, nil
@@ -2164,7 +2164,7 @@ var (
 		Version: 1, Params: contracts.Params{},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
 		Admission:   func() *contracts.Schema { s := contracts.Obj(contracts.Prop("v", contracts.Str())); return &s }(),
-		State: []contracts.RemoteStateEntry{contracts.StateEntry("label", contracts.Str())},
+		State:       []contracts.RemoteStateEntry{contracts.StateEntry("label", contracts.Str())},
 	}))
 )
 

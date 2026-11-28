@@ -44,9 +44,14 @@ func pricedModel(t *testing.T) (*AgentSessionServices, *ai.Model, ai.UsageCost) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Priced at run time in float64, as JavaScript evaluates calculateCost.
+	// Priced at run time in float64, matching Pi v1.7.0 calculateCost (output multiplies before dividing by 1e6).
 	price := func(rate float64, tokens int) float64 { return (rate / 1000000) * float64(tokens) }
-	want := ai.UsageCost{Input: price(3, 1000), Output: price(15, 500), CacheRead: price(0.3, 1000), TotalFromProvider: new(false)}
+	want := ai.UsageCost{
+		Input:             price(3, 1000),
+		Output:            (15.0 * 500) / 1000000,
+		CacheRead:         price(0.3, 1000),
+		TotalFromProvider: new(false),
+	}
 	want.Total = want.Input + want.Output + want.CacheRead + want.CacheWrite
 	return services, model, want
 }

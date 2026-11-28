@@ -32,16 +32,16 @@ func TestExample63OptimisticAnswers(t *testing.T) {
 	sessions := mustContract(contracts.Remote("example.sessions", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-		State: []contracts.RemoteStateEntry{contracts.StateEntry("titles", contracts.Map(contracts.Str()))},
-			Methods: []contracts.RemoteMethodEntry{contracts.Meth("report", contracts.NewMethod(report))},
+		State:       []contracts.RemoteStateEntry{contracts.StateEntry("titles", contracts.Map(contracts.Str()))},
+		Methods:     []contracts.RemoteMethodEntry{contracts.Meth("report", contracts.NewMethod(report))},
 	}))
 	sessionTitle := mustContract(contracts.Remote("example.session-title", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Str())},
 		HostAddress: func(params *delta.JsonObject) (contracts.Address, error) {
 			return Session.Address(jsonObject("id", params.Value("id"))), nil
 		},
-		State: []contracts.RemoteStateEntry{contracts.StateEntry("title", contracts.Str())},
-			Methods: []contracts.RemoteMethodEntry{contracts.Meth("rename", contracts.NewMethod(contracts.Str()))},
+		State:   []contracts.RemoteStateEntry{contracts.StateEntry("title", contracts.Str())},
+		Methods: []contracts.RemoteMethodEntry{contracts.Meth("rename", contracts.NewMethod(contracts.Str()))},
 	}))
 	indexDoc, err := documents.DefineState("index", documents.StateOptions{
 		Schema: contracts.Obj(contracts.Prop("titles", contracts.Map(contracts.Str()))), Version: 1,

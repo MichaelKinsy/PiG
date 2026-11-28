@@ -40,6 +40,7 @@ func allPids() []int {
 	}
 	pids := make([]int, 0, len(entries))
 	for _, entry := range entries {
+		//portlint:allow numbers /proc directory names are Linux PID integers (daemon/src/sys/unix.rs:all_pids str::parse::<i32>), not JS parseInt
 		pid, err := strconv.Atoi(entry.Name())
 		if err == nil {
 			pids = append(pids, pid)

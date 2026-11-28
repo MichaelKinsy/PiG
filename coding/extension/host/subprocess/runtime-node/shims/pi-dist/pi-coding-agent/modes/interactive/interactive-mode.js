@@ -11,7 +11,7 @@ import * as TuiLayouts from "../../../../pi-tui.mjs";
 import { CombinedAutocompleteProvider, Container, fuzzyFilter, getCapabilities, hyperlink, Markdown, matchesKey, Spacer, setCapabilityOverrides, setKeybindings, Text, TruncatedText, TuiAltScreen, TuiMainScreen, visibleWidth, } from "../../../../pi-tui.mjs";
 import chalk from "../../../../chalk/source/index.js";
 import { spawn } from "child_process";
-import { APP_NAME, APP_TITLE, CONFIG_DIR_NAME, detectInstallChange, getAgentDir, getAuthPath, getDebugLogPath, getDocsPath, VERSION, } from "../../config.js";
+import { APP_NAME, APP_TITLE, CONFIG_DIR_NAME, detectInstallChange, getAgentDir, getAuthPath, getDebugLogPath, getDocsPath, usesDefaultAgentDir, VERSION, } from "../../config.js";
 import { parseSkillBlock } from "../../core/agent-session.js";
 import { SessionImportFileNotFoundError } from "../../core/agent-session-runtime.js";
 import { CACHE_TTL_MS, collectCacheMisses, computeCacheWaste, detectCacheMiss, } from "../../core/cache-stats.js";
@@ -33,7 +33,6 @@ import { formatMissingSessionCwdPrompt, getMissingSessionCwdOptions, MissingSess
 import { SessionManager, sessionEntryToContextMessages, } from "../../core/session-manager.js";
 import { BUILTIN_SLASH_COMMANDS } from "../../core/slash-commands.js";
 import { getSourcePackageKey } from "../../core/source-info.js";
-import { isInstallTelemetryEnabled } from "../../core/telemetry.js";
 import { withBuiltInRenderers } from "../../core/tools/renderers/index.js";
 import { hasTrustRequiringProjectResources, ProjectTrustStore } from "../../core/trust-manager.js";
 import { getUsageCostBreakdown } from "../../core/usage-totals.js";
@@ -44,8 +43,7 @@ import { extensionForImageMimeType, readClipboardImage } from "../../utils/clipb
 import { flushStdout } from "../../utils/flush-stdout.js";
 import { parseGitUrl } from "../../utils/git.js";
 import { ensurePngTranscoder } from "../../utils/image-convert.js";
-import { getCwdRelativePath, shortenHomePath } from "../../utils/paths.js";
-import { getPiUserAgent } from "../../utils/pi-user-agent.js";
+import { getCwdRelativePath, pathsEqual, resolvePath, shortenHomePath } from "../../utils/paths.js";
 import { killTrackedDetachedChildren } from "../../utils/shell.js";
 import { loadAllHighlightLanguages } from "../../utils/syntax-highlight.js";
 import { stripBom } from "../../utils/text.js";
@@ -91,6 +89,7 @@ import { UserMessageSelectorComponent } from "./components/user-message-selector
 import { editInExternalEditor } from "./external-editor.js";
 import { refreshModelCatalogs } from "./model-catalog-refresh.js";
 import { getModelSearchText } from "./model-search.js";
+import { ProgramResumeReporter } from "./program-resume-reporter.js";
 import { dialogBlockedStatus, ProgramStatusReporter } from "./program-status-reporter.js";
 import { shareSession } from "./session-share.js";
 import { getAvailableThemes, getAvailableThemesWithPaths, getEditorTheme, getMarkdownTheme, getThemeByName, onThemeChange, SYSTEM_THEME_NAME, setRegisteredThemes, stopThemeWatcher, Theme, theme, } from "./theme/theme.js";
@@ -176,20 +175,44 @@ function quoteIfNeeded(value) {
     }
     return `'${value.replace(/'/g, `'\\''`)}'`;
 }
-export function formatResumeCommand(sessionManager) {
-    if (!process.stdout.isTTY)
-        return undefined;
+/** Arguments that open the session in a new process, or undefined while the session has no file to open. */
+function getResumeArgs(sessionManager) {
     if (!sessionManager.isPersisted())
         return undefined;
     const sessionFile = sessionManager.getSessionFile();
     if (!sessionFile || !fs.existsSync(sessionFile))
         return undefined;
     const args = [APP_NAME];
+    if (!usesDefaultAgentDir()) {
+        args.push("--agent-dir", resolvePath(getAgentDir()));
+    }
     if (!sessionManager.usesDefaultSessionDir()) {
-        args.push("--session-dir", quoteIfNeeded(sessionManager.getSessionDir()));
+        args.push("--session-dir", sessionManager.getSessionDir());
     }
     args.push("--session", sessionManager.getSessionId());
-    return args.join(" ");
+    return args;
+}
+/** The resume command as shell text for the user to copy. */
+export function formatResumeCommand(sessionManager) {
+    if (!process.stdout.isTTY)
+        return undefined;
+    return getResumeArgs(sessionManager)?.map(quoteIfNeeded).join(" ");
+}
+/**
+ * The command a terminal runs to bring this session back (OSC 7577): the command printed on exit plus the
+ * restriction and resource flags pi was started with, run in the session's directory. Undefined, so the terminal
+ * clears it, when there is no session file, or when flags were typed in another directory than the session's:
+ * a relative path in them would point elsewhere, and a session without its restrictions must not come back.
+ */
+export function getProgramResumeCommand(sessionManager, resumeFlags) {
+    const argv = getResumeArgs(sessionManager);
+    if (!argv)
+        return undefined;
+    const cwd = sessionManager.getCwd();
+    // pi never changes its working directory, so it is still the one the flags were typed in.
+    if (resumeFlags.length > 0 && !pathsEqual(cwd, process.cwd()))
+        return undefined;
+    return { argv: [...argv, ...resumeFlags], cwd };
 }
 function hasDefaultModelProvider(providerId) {
     return providerId in defaultModelPerProvider;
@@ -362,6 +385,8 @@ export class InteractiveMode {
     shutdownRequested = false;
     /** Reports working, blocked, done, and error states to terminals that support OSC 7501. */
     programStatus = new ProgramStatusReporter(() => this.ui.terminal, () => this.sessionManager.getSessionName());
+    /** Reports how to resume the session to terminals that support OSC 7577. Undefined without a token. */
+    programResume;
     /** The `/bug` hint is shown at most once per session so error output stays readable. */
     bugReportHintShown = false;
     installChangeWarningShown = false;
@@ -415,6 +440,9 @@ export class InteractiveMode {
         const tuiMode = options.tuiMode ?? this.settingsManager.getTuiMode();
         this.options = { ...options, tuiMode };
         this.autoTrustOnReloadCwd = options.autoTrustOnReloadCwd;
+        if (options.programResumeToken) {
+            this.programResume = new ProgramResumeReporter(options.programResumeToken, () => this.ui.terminal, () => getProgramResumeCommand(this.sessionManager, options.programResumeFlags ?? []));
+        }
         this.runtimeHost.setBeforeSessionInvalidate(() => {
             this.resetExtensionUI();
         });
@@ -777,6 +805,7 @@ export class InteractiveMode {
         this.ui.start();
         this.isInitialized = true;
         this.programStatus.report();
+        this.programResume?.report();
         this.ensurePngTranscoder();
         this.themeController.applyFromSettings();
         // The header and startup notices bake theme colors into their text, so build them once the terminal
@@ -940,10 +969,6 @@ export class InteractiveMode {
         if (migratedProviders && migratedProviders.length > 0) {
             this.showWarning(`Migrated credentials to auth.json: ${migratedProviders.join(", ")}`);
         }
-        const modelsJsonError = this.session.modelRuntime.getError();
-        if (modelsJsonError) {
-            this.showError(`models.json error: ${modelsJsonError}`);
-        }
         if (modelFallbackMessage) {
             this.showWarning(modelFallbackMessage);
         }
@@ -1057,9 +1082,8 @@ export class InteractiveMode {
         const changelogPath = getChangelogPath();
         const entries = parseChangelog(changelogPath);
         if (!lastVersion) {
-            // Fresh install - record the version, send telemetry, don't show changelog
+            // Fresh install - record the version, don't show changelog
             this.settingsManager.setLastChangelogVersion(VERSION);
-            this.reportInstallTelemetry(VERSION);
             return undefined;
         }
         const newEntries = getNewEntries(entries, lastVersion);
@@ -1070,7 +1094,6 @@ export class InteractiveMode {
         }
         if (newEntries.length > 0) {
             this.settingsManager.setLastChangelogVersion(VERSION);
-            this.reportInstallTelemetry(VERSION);
             return newEntries.map((e) => normalizeChangelogLinks(e.content, e)).join("\n\n");
         }
         return undefined;
@@ -1131,22 +1154,6 @@ export class InteractiveMode {
         catch {
             return undefined;
         }
-    }
-    reportInstallTelemetry(version) {
-        if (process.env.PI_OFFLINE) {
-            return;
-        }
-        if (!isInstallTelemetryEnabled(this.settingsManager)) {
-            return;
-        }
-        void fetch(`https://pi-in-go.dev/api/report-install?version=${encodeURIComponent(version)}`, {
-            headers: {
-                "User-Agent": getPiUserAgent(version),
-            },
-            signal: AbortSignal.timeout(5000),
-        })
-            .then(() => undefined)
-            .catch(() => undefined);
     }
     getMarkdownThemeWithSettings() {
         return {
@@ -1743,6 +1750,7 @@ export class InteractiveMode {
         this.unsubscribe?.();
         this.unsubscribe = undefined;
         this.programStatus.reset();
+        this.programResume?.report();
         this.applyRuntimeSettings();
         if (options.renderBeforeBind) {
             this.renderCurrentSessionState();
@@ -1805,7 +1813,7 @@ export class InteractiveMode {
         if (this.bugReportHintShown)
             return;
         this.bugReportHintShown = true;
-        this.chatContainer.addChild(new ThemedText(() => theme.fg("muted", `If this looks like a ${APP_NAME} bug, /bug sends a report to the developers.`), this.outputPad, 0));
+        this.chatContainer.addChild(new ThemedText(() => theme.fg("muted", `If this looks like a ${APP_NAME} bug, use /bug to send a report to the developers.`), this.outputPad, 0));
         this.ui.requestRender();
     }
     maybeSuggestBugReport(message) {
@@ -2846,7 +2854,7 @@ export class InteractiveMode {
                 const command = isExcluded ? text.slice(2).trim() : text.slice(1).trim();
                 if (command) {
                     if (this.session.isBashRunning) {
-                        this.showWarning("A bash command is already running. Press Esc to cancel it first.");
+                        this.showWarning(`A bash command is already running. Press ${keyText("app.interrupt")} to cancel it first.`);
                         this.editor.setText(text);
                         return;
                     }
@@ -2902,6 +2910,10 @@ export class InteractiveMode {
         }
         this.footer.invalidate();
         this.programStatus.handleEvent(event);
+        // The session file, and with it the resume command, appears when the first prompt is written, which
+        // happens after its message_end reaches listeners. The reply's message_start or the run's end sees it.
+        if (event.type === "message_start" || event.type === "agent_settled")
+            this.programResume?.reportIfNone();
         switch (event.type) {
             case "agent_start":
                 this.pendingTools.clear();
@@ -3659,7 +3671,7 @@ export class InteractiveMode {
         // `signal-exit` checks the listener list during the same SIGTERM/SIGHUP
         // dispatch and re-sends the signal if only its own listeners remain.
         if (options?.fromSignal) {
-            // Signal-triggered shutdown (SIGTERM/SIGHUP). Emit extension cleanup
+            // Signal-triggered shutdown (SIGTERM/SIGHUP, SIGBREAK on Windows). Emit extension cleanup
             // (session_shutdown) BEFORE touching the terminal. Extension teardown
             // such as removing sockets does not write to the tty, so it must not be
             // skipped if a later terminal-restore write fails on a dead or stalled
@@ -3681,6 +3693,8 @@ export class InteractiveMode {
         // This prevents escape sequences from leaking to the parent shell over slow SSH.
         this.themeController.disableAutoSync();
         await this.ui.terminal.drainInput(1000);
+        // The user ended pi, so the terminal must not bring it back. Signal shutdowns above keep the command.
+        this.programResume?.clear();
         this.stop();
         await this.runtimeHost.dispose();
         const resumeCommand = formatResumeCommand(this.sessionManager);
@@ -3755,6 +3769,12 @@ export class InteractiveMode {
     registerSignalHandlers() {
         this.unregisterSignalHandlers();
         const signals = ["SIGTERM", "SIGHUP"];
+        // Without a listener, a console Ctrl+Break ends the process without running any JavaScript,
+        // leaving the alternate screen, mouse reporting and keyboard modes on (#12133). Raw mode does
+        // not block it, and a console child calling GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT) on a
+        // process that is not a group leader sends it to every process in the console.
+        if (process.platform === "win32")
+            signals.push("SIGBREAK");
         for (const signal of signals) {
             const handler = () => {
                 // SIGHUP no longer hard-exits: graceful shutdown emits session_shutdown
@@ -3811,6 +3831,7 @@ export class InteractiveMode {
             clearInterval(suspendKeepAlive);
             process.removeListener("SIGINT", ignoreSigint);
             this.ui.start();
+            this.programResume?.reportAgain();
             this.ui.requestRender(true);
         });
         try {
@@ -4249,7 +4270,6 @@ export class InteractiveMode {
                 hideThinkingBlock: this.hideThinkingBlock,
                 mermaidRenderingMode: this.settingsManager.getMermaidRenderingMode(),
                 collapseChangelog: this.settingsManager.getCollapseChangelog(),
-                enableInstallTelemetry: this.settingsManager.getEnableInstallTelemetry(),
                 doubleEscapeAction: this.settingsManager.getDoubleEscapeAction(),
                 treeFilterMode: this.settingsManager.getTreeFilterMode(),
                 showHardwareCursor: this.settingsManager.getShowHardwareCursor(),
@@ -4358,9 +4378,6 @@ export class InteractiveMode {
                 },
                 onCollapseChangelogChange: (collapsed) => {
                     this.settingsManager.setCollapseChangelog(collapsed);
-                },
-                onEnableInstallTelemetryChange: (enabled) => {
-                    this.settingsManager.setEnableInstallTelemetry(enabled);
                 },
                 onQuietStartupChange: (quiet) => {
                     this.settingsManager.setQuietStartup(quiet);
@@ -5605,7 +5622,7 @@ export class InteractiveMode {
             const savedImplicitProjectTrust = this.maybeSaveImplicitProjectTrustAfterReload();
             const modelsJsonError = this.session.modelRuntime.getError();
             if (modelsJsonError) {
-                this.showError(`models.json error: ${modelsJsonError}`);
+                this.showWarning(`models.json error: ${modelsJsonError}`);
             }
             this.showStatus(savedImplicitProjectTrust
                 ? "Reloaded keybindings, extensions, skills, prompts, themes, and context files; saved project trust"
@@ -5908,6 +5925,7 @@ export class InteractiveMode {
         const yankPop = this.getEditorKeyDisplay("tui.editor.yankPop");
         const undo = this.getEditorKeyDisplay("tui.editor.undo");
         const tab = this.getEditorKeyDisplay("tui.input.tab");
+        const cancelAutocomplete = this.getEditorKeyDisplay("tui.select.cancel");
         // App keybindings
         const interrupt = this.getAppKeyDisplay("app.interrupt");
         const clear = this.getAppKeyDisplay("app.clear");
@@ -5953,7 +5971,8 @@ export class InteractiveMode {
 | Key | Action |
 |-----|--------|
 | \`${tab}\` | Path completion / accept autocomplete |
-| \`${interrupt}\` | Cancel autocomplete / abort streaming |
+| \`${cancelAutocomplete}\` | Cancel autocomplete |
+| \`${interrupt}\` | Abort streaming or running bash command |
 | \`${clear}\` | Clear editor (first) / exit (second) |
 | \`${exit}\` | Exit (when editor is empty) |
 | \`${suspend}\` | Suspend to background |

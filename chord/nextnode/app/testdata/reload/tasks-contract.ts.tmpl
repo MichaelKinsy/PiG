@@ -5,5 +5,6 @@ export const Tasks = remote("reload.tasks", {
 	version: 1,
 	params: { id: str() },
 	hostAddress: ({ id }) => Project({ id }),
-	variants: { main: { state: { entries: arr(str()), running: int() }, methods: { start: method(str(), str()) } } },
+	state: { entries: arr(str()), running: int() },
+	methods: { start: method(str(), str()) },
 });

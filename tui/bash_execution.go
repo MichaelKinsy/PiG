@@ -73,7 +73,7 @@ func NewBashExecutionComponent(command string, ui TUI, excludeFromContext bool, 
 	b.loader = NewLoader(ui,
 		func(spinner string) string { return ActiveTheme().Fg(colorKey, spinner) },
 		func(text string) string { return ActiveTheme().Fg("muted", text) },
-		"Running... ("+ActionKeyText("app.interrupt")+" to cancel)", nil,
+		"Running... ("+ActionKeyTextOr("app.interrupt", "escape")+" to cancel)", nil,
 	)
 	border := func(text string) string { return ActiveTheme().Fg(colorKey, text) }
 	// upstream: bash-execution.ts constructor children: a spacer, the top border, the content and the bottom border.

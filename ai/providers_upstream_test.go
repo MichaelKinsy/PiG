@@ -163,23 +163,29 @@ func TestBuiltinProvidersUpstream(t *testing.T) {
 			}
 		}
 	})
-	// .upstream/v0.87.1/packages/ai/test/providers.test.ts:200
+	// .upstream/v1.7.0/packages/ai/test/providers.test.ts:238
 	t.Run("routes proxied tool changes through verified transports only", func(t *testing.T) {
-		for _, row := range [][3]string{
-			{"opencode", "gpt-5.6-terra", "claude-opus-5"},
-			{"github-copilot", "gpt-6.1-terra", "claude-opus-5.5"},
+		for _, row := range [][2]string{
+			{"opencode", "gpt-5.6-terra"},
+			{"github-copilot", "gpt-6.1-terra"},
 		} {
-			provider, gptID, claudeID := row[0], row[1], row[2]
+			provider, gptID := row[0], row[1]
 			compat := providerModelUpstream(t, provider, gptID).Compat
 			if compat == nil || compat.SupportsAdditionalTools == nil || !*compat.SupportsAdditionalTools || compat.SupportsToolSearch != nil {
 				t.Fatal(provider, compat)
 			}
-			if value := providerModelUpstream(t, provider, claudeID).Compat; value != nil && value.SupportsMidConvoToolChanges != nil {
-				t.Fatal(provider)
-			}
 		}
-		if value := providerModelUpstream(t, "anthropic", "claude-opus-5").Compat; value == nil || value.SupportsMidConvoToolChanges == nil || !*value.SupportsMidConvoToolChanges {
-			t.Fatal(value)
+		// OpenCode rejects tool_addition/tool_removal blocks; Copilot passes them through (#12316).
+		if value := providerModelUpstream(t, "opencode", "claude-opus-5").Compat; value != nil && value.SupportsMidConvoToolChanges != nil {
+			t.Fatal("opencode")
+		}
+		for _, row := range [][2]string{
+			{"anthropic", "claude-opus-5"},
+			{"github-copilot", "claude-opus-5.5"},
+		} {
+			if value := providerModelUpstream(t, row[0], row[1]).Compat; value == nil || value.SupportsMidConvoToolChanges == nil || !*value.SupportsMidConvoToolChanges {
+				t.Fatal(row, value)
+			}
 		}
 		for _, provider := range []string{"moonshotai", "moonshotai-cn", "opencode", "opencode-go"} {
 			value := providerModelUpstream(t, provider, "kimi-k3").Compat

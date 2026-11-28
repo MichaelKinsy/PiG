@@ -2332,39 +2332,13 @@ var Editor = class {
         return;
       }
       if (kb.matches(data, "tui.input.tab")) {
-        const selected = this.autocompleteList.getSelectedItem();
-        if (selected && this.autocompleteProvider) {
-          this.pushUndoSnapshot();
-          this.lastAction = null;
-          const result = this.autocompleteProvider.applyCompletion(this.state.lines, this.state.cursorLine, this.state.cursorCol, selected, this.autocompletePrefix);
-          this.state.lines = result.lines;
-          this.state.cursorLine = result.cursorLine;
-          this.setCursorCol(result.cursorCol);
-          this.cancelAutocomplete();
-          if (this.onChange)
-            this.onChange(this.getText());
-        }
+        if (this.applySelectedCompletion() && this.onChange)
+          this.onChange(this.getText());
         return;
       }
       if (kb.matches(data, "tui.select.confirm")) {
-        const selected = this.autocompleteList.getSelectedItem();
-        if (selected && this.autocompleteProvider) {
-          const beforeCursor = (this.state.lines[this.state.cursorLine] || "").slice(0, this.state.cursorCol);
-          const submitsCommand = this.autocompletePrefix.startsWith("/") && this.isInSlashCommandNameContext(beforeCursor);
-          this.pushUndoSnapshot();
-          this.lastAction = null;
-          const result = this.autocompleteProvider.applyCompletion(this.state.lines, this.state.cursorLine, this.state.cursorCol, selected, this.autocompletePrefix);
-          this.state.lines = result.lines;
-          this.state.cursorLine = result.cursorLine;
-          this.setCursorCol(result.cursorCol);
-          if (submitsCommand) {
-            this.cancelAutocomplete();
-          } else {
-            this.cancelAutocomplete();
-            if (this.onChange)
-              this.onChange(this.getText());
-            return;
-          }
+        if (this.confirmAutocomplete() === "applied") {
+          return;
         }
       }
     }
@@ -3554,6 +3528,42 @@ var Editor = class {
   cancelAutocomplete() {
     this.cancelAutocompleteRequest();
     this.clearAutocompleteUi();
+  }
+  /**
+   * Apply the currently selected autocomplete suggestion.
+   * Returns "none" if no completion was applied, "applied" if inserted without submitting,
+   * or "submit" if a slash command name was completed and should be submitted.
+   */
+  confirmAutocomplete() {
+    const beforeCursor = (this.state.lines[this.state.cursorLine] || "").slice(0, this.state.cursorCol);
+    const submitsCommand = this.autocompletePrefix.startsWith("/") && this.isInSlashCommandNameContext(beforeCursor);
+    if (!this.applySelectedCompletion()) {
+      return "none";
+    }
+    if (submitsCommand) {
+      return "submit";
+    }
+    if (this.onChange)
+      this.onChange(this.getText());
+    return "applied";
+  }
+  /** Insert the selected autocomplete suggestion and close the menu. Returns false if nothing was selected. */
+  applySelectedCompletion() {
+    if (!this.autocompleteState || !this.autocompleteList || !this.autocompleteProvider) {
+      return false;
+    }
+    const selected = this.autocompleteList.getSelectedItem();
+    if (!selected) {
+      return false;
+    }
+    this.pushUndoSnapshot();
+    this.lastAction = null;
+    const result = this.autocompleteProvider.applyCompletion(this.state.lines, this.state.cursorLine, this.state.cursorCol, selected, this.autocompletePrefix);
+    this.state.lines = result.lines;
+    this.state.cursorLine = result.cursorLine;
+    this.setCursorCol(result.cursorCol);
+    this.cancelAutocomplete();
+    return true;
   }
   isShowingAutocomplete() {
     return this.autocompleteState !== null;
@@ -6847,8 +6857,11 @@ var SettingsList = class {
     this.selectedIndex = 0;
   }
   addHintLine(lines, width) {
+    const kb = getKeybindings5();
+    const confirm = [...kb.getKeys("tui.select.confirm"), "space"].join("/");
+    const keysHint = `${confirm} to change \xB7 ${kb.getKeys("tui.select.cancel").join("/")} to cancel`;
     lines.push("");
-    lines.push(truncateToWidth4(this.theme.hint(this.searchEnabled ? "  Type to search \xB7 Enter/Space to change \xB7 Esc to cancel" : "  Enter/Space to change \xB7 Esc to cancel"), width));
+    lines.push(truncateToWidth4(this.theme.hint(this.searchEnabled ? `  Type to search \xB7 ${keysHint}` : `  ${keysHint}`), width));
   }
 };
 
@@ -6951,6 +6964,60 @@ var VStack = class extends Stack {
 import { getKeybindings as getKeybindings8, getSelectPageIndex as getSelectPageIndex3, KeybindingsManager, setKeybindings, TUI_KEYBINDINGS } from "../keybindings.js";
 import { decodeKittyPrintable as decodeKittyPrintable2, isKeyRelease as isKeyRelease2, isKeyRepeat, isKittyProtocolActive, Key, matchesKey as matchesKey2, parseKey, setKittyProtocolActive as setKittyProtocolActive2 } from "../keys.js";
 import { getNativeClipboard } from "../native-platform.js";
+
+// pi-dist/pi-tui/program-resume.js
+import { createHash } from "node:crypto";
+import { isAbsolute } from "node:path";
+var PROGRAM_RESUME_TOKEN_ENV = "OSC7577_TOKEN";
+function takeProgramResumeToken(env = process.env) {
+  const token = env[PROGRAM_RESUME_TOKEN_ENV];
+  delete env[PROGRAM_RESUME_TOKEN_ENV];
+  return token || void 0;
+}
+__name(takeProgramResumeToken, "takeProgramResumeToken");
+var MAX_SEQUENCE_BYTES = 2048;
+var MAX_ARGV_ELEMENTS = 64;
+function formatProgramResume(command, sender) {
+  if (!isReportableCommand(command))
+    return void 0;
+  const pairs = [`argv=${command.argv.map(encodeText).join(",")}`];
+  if (command.cwd !== void 0)
+    pairs.push(`cwd=${encodeText(command.cwd)}`);
+  const sequence = formatReport(pairs, sender);
+  return Buffer.byteLength(sequence, "utf8") <= MAX_SEQUENCE_BYTES ? sequence : void 0;
+}
+__name(formatProgramResume, "formatProgramResume");
+function formatProgramResumeClear(sender) {
+  return formatReport(["clear=1"], sender);
+}
+__name(formatProgramResumeClear, "formatProgramResumeClear");
+function formatReport(pairs, sender) {
+  const body = [`pid=${sender.pid}`, `time=${sender.time}`, ...pairs].join(":");
+  const mac = createHash("sha256").update(`${body}:${sender.token}`, "utf8").digest("hex");
+  return `\x1B]7577;${body}:mac=${mac}\x1B\\`;
+}
+__name(formatReport, "formatReport");
+var CONTROL_CHARACTER = /[\u0000-\u001f\u007f-\u009f]/;
+function isReportableText(text) {
+  return text.isWellFormed() && !CONTROL_CHARACTER.test(text);
+}
+__name(isReportableText, "isReportableText");
+function isReportableCommand(command) {
+  const [program] = command.argv;
+  if (program === void 0 || command.argv.length > MAX_ARGV_ELEMENTS)
+    return false;
+  const isBareName = program.length > 0 && !program.startsWith("-") && !/[\\/]/.test(program);
+  if (!isBareName && !isAbsolute(program))
+    return false;
+  if (command.cwd !== void 0 && !(isAbsolute(command.cwd) && isReportableText(command.cwd)))
+    return false;
+  return command.argv.every(isReportableText);
+}
+__name(isReportableCommand, "isReportableCommand");
+function encodeText(text) {
+  return Buffer.from(text, "utf8").toString("base64");
+}
+__name(encodeText, "encodeText");
 
 // pi-dist/pi-tui/program-status.js
 import { replaceControlCharacters } from "../utils.js";
@@ -10419,9 +10486,8 @@ var TuiMainScreen = class extends TuiBase2 {
       const isImage = isImageLine4(line);
       const imageReservedRows = isImage ? this.getKittyImageReservedRows(newLines, i, renderEnd) : 1;
       if (imageReservedRows > 1) {
-        const imageStartScreenRow = i - viewportTop;
-        if (imageStartScreenRow < 0 || imageStartScreenRow + imageReservedRows > height) {
-          logRedraw(`kitty image pre-clear would scroll (${imageStartScreenRow} + ${imageReservedRows} > ${height})`);
+        if (imageReservedRows > height) {
+          logRedraw(`kitty image taller than screen (${imageReservedRows} > ${height})`);
           fullRender(true);
           return;
         }
@@ -10597,6 +10663,8 @@ export {
   encodeITerm2,
   encodeKitty,
   foregroundAnsi,
+  formatProgramResume,
+  formatProgramResumeClear,
   formatProgramStatus,
   fuzzyFilter,
   fuzzyMatch,
@@ -10645,6 +10713,7 @@ export {
   stripTerminalSequences3 as stripTerminalSequences,
   styleText,
   styleTextWithAnsi,
+  takeProgramResumeToken,
   truncateToWidth9 as truncateToWidth,
   visibleWidth15 as visibleWidth,
   wrapTextWithAnsi4 as wrapTextWithAnsi

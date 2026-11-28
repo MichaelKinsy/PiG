@@ -123,6 +123,19 @@
 (deftest the-default-retry-delay-cap-is-pis
   (check-equal 60000 pig:+default-max-agent-retry-delay-ms+))
 
+;; Pi v1.7.0 packages/ai/src/models.ts:calculateCost: imageOutput prices image output tokens separately from text output tokens.
+(deftest calculate-cost-image-output
+  (let ((model (pig:from-json "{\"id\":\"img\",\"provider\":\"p\",\"api\":\"x\",\"reasoning\":false,\"cost\":{\"input\":3,\"output\":10,\"imageOutput\":40,\"cacheRead\":0,\"cacheWrite\":0}}")))
+    (dolist (case (list (list "{\"input\":1000,\"output\":1000,\"imageOutput\":600,\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{}}" 0.028d0 0.031d0)
+                        (list "{\"input\":1000,\"output\":1000,\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{}}" 0.04d0 0.043000000000000003d0)
+                        (list "{\"input\":0,\"output\":500,\"imageOutput\":900,\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{}}" 0.02d0 0.02d0)
+                        (list "{\"input\":0,\"output\":1000,\"imageOutput\":0,\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{}}" 0.01d0 0.01d0)))
+      (destructuring-bind (json want-output want-total) case
+        (let ((got (pig:calculate-cost model (pig:from-json json))))
+          (check-equal want-output (pig:jget got "output") json)
+          (check-equal want-total (pig:jget got "total") json))))))
+
+
 (deftest every-pi-ai-helper-matches-the-pinned-package
   (dolist (entry *tt-helpers*)
     (let ((failures '()))

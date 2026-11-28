@@ -4,6 +4,7 @@ package ai
 
 import (
 	"context"
+	"maps"
 	"sync"
 	"time"
 )
@@ -315,9 +316,7 @@ func cloneRadiusClassifierModel(model *ClassifierModel) *ClassifierModel {
 	}
 	if model.Headers != nil {
 		copied.Headers = make(map[string]string, len(model.Headers))
-		for k, v := range model.Headers {
-			copied.Headers[k] = v
-		}
+		maps.Copy(copied.Headers, model.Headers)
 	}
 	copied.Compat = cloneRadiusSystemOneCompat(model.Compat)
 	return &copied
@@ -339,9 +338,7 @@ func cloneRadiusImageModel(model *ImageModel) *ImageModel {
 	}
 	if model.Headers != nil {
 		copied.Headers = make(map[string]string, len(model.Headers))
-		for k, v := range model.Headers {
-			copied.Headers[k] = v
-		}
+		maps.Copy(copied.Headers, model.Headers)
 	}
 	return &copied
 }

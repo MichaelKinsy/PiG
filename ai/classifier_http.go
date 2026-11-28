@@ -22,6 +22,7 @@ import (
 )
 
 // upstream: packages/ai/src/api/classifier-shared.ts:postClassifierRequest (maxRetries)
+// upstream: packages/ai/src/api/json-request.ts:postJsonRequest
 const defaultClassifierMaxRetries = 2
 
 // ClassifierHTTPError is a failed HTTP attempt: a non-2xx response, or a timeout (no status, no headers). Only these

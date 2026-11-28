@@ -10,10 +10,10 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 
 | Module | Rows | type-only (identity by kind) | Node served | Go gaps | Rust gaps | Python gaps | Lisp gaps |
 |---|---|---|---|---|---|---|---|
-| `pi-coding-agent` | 930 | 310 | 920 | 258 | 258 | 258 | 258 |
-| `pi-tui` | 372 | 85 | 371 | 102 | 102 | 102 | 102 |
-| `pi-ai` | 114 | 204 | 114 | 82 | 82 | 82 | 82 |
-| `pi-ai/compat` | 174 | 211 | 174 | 139 | 139 | 139 | 139 |
+| `pi-coding-agent` | 928 | 310 | 918 | 258 | 258 | 258 | 258 |
+| `pi-tui` | 375 | 87 | 374 | 105 | 105 | 105 | 105 |
+| `pi-ai` | 114 | 207 | 114 | 82 | 82 | 82 | 82 |
+| `pi-ai/compat` | 174 | 214 | 174 | 139 | 139 | 139 | 139 |
 | `pi-agent-core` | 45 | 35 | 45 | 45 | 45 | 45 | 45 |
 
 ## Lanes that own gaps
@@ -23,7 +23,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | C2AgentLoop | C2Sessions lane follow-up (pi-agent-core Agent loop in the SDKs) | 0.5.2 | 172 | The pi-agent-core Agent class and its loop functions (agentLoop, runAgentLoop, runToolCall, streamProxy, setDefaultStreamFn) as an in-process loop in each SDK over the host's model streaming, with a conformance row per SDK that runs a turn through the hooks |
 | C2SessionsEmbedder | C2Sessions lane (createAgentSession family, E1/E6), designed out pending an owner divergence | 0.5.2 | 8 | AgentSession.agent returns pi-agent-core's Agent, the object whose beforeToolCall, afterToolCall, convertToLlm, transformContext, getApiKey and streamFunction hooks are in-process functions of the embedder that drive the model loop; and createReplacedSessionContext returns an object of closures over the replaced session. Neither value has a wire form (a function does not cross the extension socket, and the host owns the loop), so they are not ported to any SDK. Closing row: an owner-approved numbered divergence for these two members, after which the cells become divergence:D<n> |
 | C2SessionsGraph | C2Sessions lane follow-up (session graph objects of a child session) | 0.5.2 | 16 | AgentSession.extensionRunner, settingsManager, resourceLoader and modelRuntime as session graph handles of the child's own objects (the way AgentSession.sessionManager is one, CallChildSessionSessionManager), for each SDK, with a conformance row that reads the child's value through the handle |
-| SdkExportsLedger | SdkExportsLedger lane (Pi application internals no extension scan imports) | 0.5.2 | 1580 | Owner decision per export, listed with usage counts in handoffs/0.5.2/sdk-exports-internals.md: a numbered divergence in docs/parity/DIVERGENCES.md (cells become divergence:D<n>), or a real lane with a port and a conformance row |
+| SdkExportsLedger | SdkExportsLedger lane (Pi application internals no extension scan imports) | 0.5.2 | 1592 | Owner decision per export, listed with usage counts in handoffs/0.5.2/sdk-exports-internals.md: a numbered divergence in docs/parity/DIVERGENCES.md (cells become divergence:D<n>), or a real lane with a port and a conformance row |
 | SdkPiAiHelpers | SdkPiAiHelpers lane (pi-ai pure helpers, StringEnum, host getters, E17-E22) | 0.5.2 | 328 | Pure helpers with vector tests from Pi at the pin; host getters and the pi-ai compat calls with a conformance row per SDK |
 | SdkSessionGraph | SdkSessionGraph lane (SessionManager/SettingsManager/ModelRuntime/resource loader, E2-E5) | 0.5.2 | 252 | Host calls for session open/list/inMemory, scoped settings, standalone model runtime, resource loader and package manager, with a conformance row per SDK |
 | SdkTuiHelpers | SdkTuiHelpers lane (pi-tui helpers, keys, keybindings, theme and rendering helpers, E8-E16) | 0.5.2 | 148 | Pure helpers ported per SDK with vector tests from Pi at the pin (test/parity/sdk-vectors), keybinding and theme helpers with a conformance row per SDK |
@@ -634,7 +634,6 @@ None.
 | `SettingsManager.getDoubleEscapeAction` | 0 | served | native:SettingsManager.GetDoubleEscapeAction | native:SettingsManager::get_double_escape_action | native:SettingsManager.get_double_escape_action | native:pig:settings-get-double-escape-action |
 | `SettingsManager.getEditorPaddingX` | 0 | served | native:SettingsManager.GetEditorPaddingX | native:SettingsManager::get_editor_padding_x | native:SettingsManager.get_editor_padding_x | native:pig:settings-get-editor-padding-x |
 | `SettingsManager.getEnableAnalytics` | 0 | served | native:SettingsManager.GetEnableAnalytics | native:SettingsManager::get_enable_analytics | native:SettingsManager.get_enable_analytics | native:pig:settings-get-enable-analytics |
-| `SettingsManager.getEnableInstallTelemetry` | 0 | served | native:SettingsManager.GetEnableInstallTelemetry | native:SettingsManager::get_enable_install_telemetry | native:SettingsManager.get_enable_install_telemetry | native:pig:settings-get-enable-install-telemetry |
 | `SettingsManager.getEnableSkillCommands` | 0 | served | native:SettingsManager.GetEnableSkillCommands | native:SettingsManager::get_enable_skill_commands | native:SettingsManager.get_enable_skill_commands | native:pig:settings-get-enable-skill-commands |
 | `SettingsManager.getEnabledModels` | 0 | served | native:SettingsManager.GetEnabledModels | native:SettingsManager::get_enabled_models | native:SettingsManager.get_enabled_models | native:pig:settings-get-enabled-models |
 | `SettingsManager.getExtensionChangelogVersion` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -702,7 +701,6 @@ None.
 | `SettingsManager.setDoubleEscapeAction` | 0 | served | native:SettingsManager.SetDoubleEscapeAction | native:SettingsManager::set_double_escape_action | native:SettingsManager.set_double_escape_action | native:pig:settings-set-double-escape-action |
 | `SettingsManager.setEditorPaddingX` | 0 | served | native:SettingsManager.SetEditorPaddingX | native:SettingsManager::set_editor_padding_x | native:SettingsManager.set_editor_padding_x | native:pig:settings-set-editor-padding-x |
 | `SettingsManager.setEnableAnalytics` | 0 | served | native:SettingsManager.SetEnableAnalytics | native:SettingsManager::set_enable_analytics | native:SettingsManager.set_enable_analytics | native:pig:settings-set-enable-analytics |
-| `SettingsManager.setEnableInstallTelemetry` | 0 | served | native:SettingsManager.SetEnableInstallTelemetry | native:SettingsManager::set_enable_install_telemetry | native:SettingsManager.set_enable_install_telemetry | native:pig:settings-set-enable-install-telemetry |
 | `SettingsManager.setEnableSkillCommands` | 0 | served | native:SettingsManager.SetEnableSkillCommands | native:SettingsManager::set_enable_skill_commands | native:SettingsManager.set_enable_skill_commands | native:pig:settings-set-enable-skill-commands |
 | `SettingsManager.setEnabledModels` | 0 | served | native:SettingsManager.SetEnabledModels | native:SettingsManager::set_enabled_models | native:SettingsManager.set_enabled_models | native:pig:settings-set-enabled-models |
 | `SettingsManager.setExtensionChangelogVersion` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -1300,6 +1298,8 @@ None.
 | `encodeITerm2` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `encodeKitty` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `foregroundAnsi` | 1 | served | native:tui.ForegroundAnsi | native:tui::foreground_ansi | native:tui.foreground_ansi | native:pig:tui-foreground-ansi |
+| `formatProgramResume` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `formatProgramResumeClear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `formatProgramStatus` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `fuzzyFilter` | 13 | served | native:tui.FuzzyFilter | native:tui::fuzzy_filter | native:tui.fuzzy_filter | native:pig:tui-fuzzy-filter |
 | `fuzzyMatch` | 4 | served | native:tui.FuzzyMatch | native:tui::fuzzy_match | native:tui.fuzzy_match | native:pig:tui-fuzzy-match |
@@ -1348,6 +1348,7 @@ None.
 | `stripTerminalSequences` | 12 | served | native:tui.StripTerminalSequences | native:tui::strip_terminal_sequences | native:tui.strip_terminal_sequences | native:pig:tui-strip-terminal-sequences |
 | `styleText` | 0 | served | native:tui.StyleText | native:tui::style_text | native:tui.style_text | native:pig:tui-style-text |
 | `styleTextWithAnsi` | 1 | served | native:tui.StyleTextWithAnsi | native:tui::style_text_with_ansi | native:style_text_with_ansi | native:pig:tui-style-text-with-ansi |
+| `takeProgramResumeToken` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `truncateToWidth` | 91 | served | native:tui.TruncateToWidth | native:tui::truncate_to_width | native:tui.truncate_to_width | native:pig:tui-truncate-to-width |
 | `visibleWidth` | 75 | served | native:tui.VisibleWidth | native:tui::visible_width | native:tui.visible_width | native:pig:tui-visible-width |
 | `wrapTextWithAnsi` | 45 | served | native:tui.WrapTextWithAnsi | native:tui::wrap_text_with_ansi | native:tui.wrap_text_with_ansi | native:pig:tui-wrap-text-with-ansi |

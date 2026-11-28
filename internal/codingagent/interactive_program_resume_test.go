@@ -153,6 +153,7 @@ func newInteractiveModeForResumeTest(t *testing.T, cwd, sessionDir, token, progr
 }
 
 func TestInteractiveProgramResumeLifecycleAndPigletBinaryName(t *testing.T) {
+	t.Setenv(ENV_AGENT_DIR, "")
 	const token = "interactive-resume-token-1234"
 	cwd := t.TempDir()
 	sessionDir := t.TempDir()

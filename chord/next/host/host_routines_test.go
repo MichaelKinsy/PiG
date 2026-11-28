@@ -1736,7 +1736,6 @@ func TestRoutinesActAsTheOwnersCallerPrincipal(t *testing.T) {
 	watcher := mustContract(contracts.Remote("app.watcher", contracts.RemoteDeclaration{Params: contracts.Params{},
 		Version:     1,
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-		
 	}))
 	l := linked(t, func(h FacetHost) error {
 		return h.Serve(watcher, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {

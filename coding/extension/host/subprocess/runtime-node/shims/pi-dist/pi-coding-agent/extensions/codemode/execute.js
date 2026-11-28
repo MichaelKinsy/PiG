@@ -204,6 +204,34 @@ function checkImagesContext(context) {
     });
     return context;
 }
+const IMAGES_OPTION_KEYS = new Set(["aspectRatio", "size"]);
+/** Validate optional generation options from a script; unknown keys throw, so typos and request fields such as `apiKey` never pass silently. */
+function checkImagesOptions(options) {
+    if (options === undefined || options === null)
+        return undefined;
+    const fail = (problem) => new Error(`models.generateImages() ${problem}. Expected options: { aspectRatio?, size? }. See "Generate images" in ${CODEMODE_DOCS_PATH}.`);
+    if (typeof options !== "object" || Array.isArray(options)) {
+        throw fail(`expects an options object as its third argument, got ${describeValue(options)}`);
+    }
+    const record = options;
+    const unknownKey = Object.keys(record).find((key) => !IMAGES_OPTION_KEYS.has(key));
+    if (unknownKey !== undefined)
+        throw fail(`does not accept options.${unknownKey}`);
+    const checked = {};
+    if (record.aspectRatio !== undefined) {
+        if (typeof record.aspectRatio !== "string" || record.aspectRatio.trim().length === 0) {
+            throw fail(`options.aspectRatio must be a non-empty string, got ${describeValue(record.aspectRatio)}`);
+        }
+        checked.aspectRatio = record.aspectRatio.trim();
+    }
+    if (record.size !== undefined) {
+        if (typeof record.size !== "string" || record.size.trim().length === 0) {
+            throw fail(`options.size must be a non-empty string, got ${describeValue(record.size)}`);
+        }
+        checked.size = record.size.trim();
+    }
+    return Object.keys(checked).length > 0 ? checked : undefined;
+}
 /** Runs at most `limit` calls at once, in call order. */
 function createLimiter(limit) {
     let active = 0;
@@ -729,11 +757,14 @@ function createModelGlobals(models, toolCallId, calls, publish, addUsage, addGen
             return model === undefined ? undefined : toModelInfo(model);
         },
         "models.classify": (args, { signal }) => runModelCall("models.classify", "classifier", args, checkClassifierContext, (resolved, context) => models.classify(resolved, context, { signal })),
-        "models.generateImages": (args, { signal }) => runModelCall("models.generateImages", "image", args, checkImagesContext, async (resolved, context) => {
-            const result = await models.generateImages(resolved, context, { signal });
-            addGeneratedImages(result.output.filter((block) => block.type === "image").length);
-            return result;
-        }),
+        "models.generateImages": (args, { signal }) => {
+            const [, , rawOptions] = args;
+            return runModelCall("models.generateImages", "image", args, (context) => ({ context: checkImagesContext(context), options: checkImagesOptions(rawOptions) }), async (resolved, { context, options }) => {
+                const result = await models.generateImages(resolved, context, { ...options, signal });
+                addGeneratedImages(result.output.filter((block) => block.type === "image").length);
+                return result;
+            });
+        },
     };
     return Object.entries(implementations).map(([name, execute]) => ({ name, spread: true, execute }));
 }

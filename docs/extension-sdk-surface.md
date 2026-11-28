@@ -2,7 +2,7 @@
 
 # Extension SDK surface matrix
 
-Every extension-facing surface of Pi 1.6.1's extension API, and how each PiG extension runtime realizes it. The rows come from Pi's `packages/coding-agent/src/core/extensions/types.ts` and the declarations it re-exports or exposes through its members (`EventBus`, `ExecOptions`/`ExecResult`, `CacheWarmingDecisionEvent`, `ReadonlySessionManager`, `ModelRegistry`, `Theme`, `AgentToolResult`), read from `.upstream/v1.6.1`.
+Every extension-facing surface of Pi 1.7.0's extension API, and how each PiG extension runtime realizes it. The rows come from Pi's `packages/coding-agent/src/core/extensions/types.ts` and the declarations it re-exports or exposes through its members (`EventBus`, `ExecOptions`/`ExecResult`, `CacheWarmingDecisionEvent`, `ReadonlySessionManager`, `ModelRegistry`, `Theme`, `AgentToolResult`), read from `.upstream/v1.7.0`.
 
 A cell's status comes from the runtime itself: the Go SDK's exported identifiers, the Rust SDK's `pub` items, the Python SDK's classes, members and parameters and the Lisp SDK's exported symbols and the keyword and optional parameters of its exported functions, read from their source, and the Node runtime's objects, read by instantiating the runtime in Node (`test/parity/cmd/sdksurface/probe.mjs`), plus the properties it reads from an extension's definitions. [`test/parity/ledgers/sdk-surface.toml`](../test/parity/ledgers/sdk-surface.toml) names the symbol where a language's naming differs from the default rule and says why a realization is a stand-in; a named symbol that does not exist is `missing`. Payload, result and option fields that cross the subprocess wire are also checked against the host's Go decoding type, so a field an SDK sends but the host drops is `missing`. The PiG additive sections list surfaces PiG adds where Pi has none, such as the component kit (D107); the map names each one's symbols, and its cells are classified the same way.
 
@@ -10,7 +10,7 @@ A cell's status comes from the runtime itself: the Go SDK's exported identifiers
 - `stand-in/partial`: the symbol exists; the note says what differs and why.
 - `missing`: no symbol. Each missing cell is listed in [`test/parity/sdk-surface-exceptions.toml`](../test/parity/sdk-surface-exceptions.toml) with its reviewed reason, and `go test ./test/parity/cmd/sdksurface` fails on any other.
 
-The package sections list every runtime export of the modules Pi serves to extensions (`pi-coding-agent`, `pi-tui`, `pi-ai`, `pi-ai/compat`, `pi-ai/models`, `pi-ai/providers/all`, `pi-agent-core`), from the compiler-derived inventory of Pi's `.d.ts` files (`test/parity/interfaces/upstream-v1.6.1.json`), and every public instance member of each exported class represented by that inventory. Static factories and overload-specific reachability are outside this probe. Only the Node runtime imports these modules. The probe loads each module the runtime serves and classifies every value by where its code lives, using the V8 inspector's function locations:
+The package sections list every runtime export of the modules Pi serves to extensions (`pi-coding-agent`, `pi-tui`, `pi-ai`, `pi-ai/compat`, `pi-ai/models`, `pi-ai/providers/all`, `pi-agent-core`), from the compiler-derived inventory of Pi's `.d.ts` files (`test/parity/interfaces/upstream-v1.7.0.json`), and every public instance member of each exported class represented by that inventory. Static factories and overload-specific reachability are outside this probe. Only the Node runtime imports these modules. The probe loads each module the runtime serves and classifies every value by where its code lives, using the V8 inspector's function locations:
 
 - `Pi's own code`: the function originates in the vendored pinned modules or their dependencies; host import rewrites can still affect behavior (D73).
 - `bridged`: PiG's implementation in the extension runtime, a line-for-line port or a host bridge, locked by the D73 tests (`TestNodeRuntimeShimsExportEveryPinnedPiValue`, `TestPiTuiComponentsMatchThePinnedPackage`, `TestPiAiUtilitiesMatchThePinnedPackage`, `TestPiThemeHelpersMatchThePinnedPackage`).
@@ -41,12 +41,12 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | Python | 35 | 0 | 0 |
 | Lisp | 35 | 0 | 0 |
 
-1663 package exports and class members, Node runtime:
+1664 package exports and class members, Node runtime:
 
 | Module | Pi's own code | bridged | stand-in | missing (all with a reviewed exception) |
 |---|---|---|---|---|
-| `pi-coding-agent` | 910 | 10 | 0 | 10 |
-| `pi-tui` | 370 | 1 | 0 | 1 |
+| `pi-coding-agent` | 908 | 10 | 0 | 10 |
+| `pi-tui` | 373 | 1 | 0 | 1 |
 | `pi-ai` | 107 | 7 | 0 | 0 |
 | `pi-ai/compat` | 159 | 15 | 0 | 0 |
 | `pi-ai/models` | 16 | 0 | 0 | 0 |
@@ -2015,7 +2015,6 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: SettingsManager.getDoubleEscapeAction` | `SettingsManager.getDoubleEscapeAction` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getEditorPaddingX` | `SettingsManager.getEditorPaddingX` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getEnableAnalytics` | `SettingsManager.getEnableAnalytics` | Pi's own code |
-| `pi-coding-agent: SettingsManager.getEnableInstallTelemetry` | `SettingsManager.getEnableInstallTelemetry` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getEnableSkillCommands` | `SettingsManager.getEnableSkillCommands` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getEnabledModels` | `SettingsManager.getEnabledModels` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getExtensionChangelogVersion` | `SettingsManager.getExtensionChangelogVersion` | Pi's own code |
@@ -2083,7 +2082,6 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: SettingsManager.setDoubleEscapeAction` | `SettingsManager.setDoubleEscapeAction` | Pi's own code |
 | `pi-coding-agent: SettingsManager.setEditorPaddingX` | `SettingsManager.setEditorPaddingX` | Pi's own code |
 | `pi-coding-agent: SettingsManager.setEnableAnalytics` | `SettingsManager.setEnableAnalytics` | Pi's own code |
-| `pi-coding-agent: SettingsManager.setEnableInstallTelemetry` | `SettingsManager.setEnableInstallTelemetry` | Pi's own code |
 | `pi-coding-agent: SettingsManager.setEnableSkillCommands` | `SettingsManager.setEnableSkillCommands` | Pi's own code |
 | `pi-coding-agent: SettingsManager.setEnabledModels` | `SettingsManager.setEnabledModels` | Pi's own code |
 | `pi-coding-agent: SettingsManager.setExtensionChangelogVersion` | `SettingsManager.setExtensionChangelogVersion` | Pi's own code |
@@ -2681,6 +2679,8 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-tui: encodeITerm2` | `function encodeITerm2` | Pi's own code |
 | `pi-tui: encodeKitty` | `function encodeKitty` | Pi's own code |
 | `pi-tui: foregroundAnsi` | `function foregroundAnsi` | Pi's own code |
+| `pi-tui: formatProgramResume` | `function formatProgramResume` | Pi's own code |
+| `pi-tui: formatProgramResumeClear` | `function formatProgramResumeClear` | Pi's own code |
 | `pi-tui: formatProgramStatus` | `function formatProgramStatus` | Pi's own code |
 | `pi-tui: fuzzyFilter` | `function fuzzyFilter` | Pi's own code |
 | `pi-tui: fuzzyMatch` | `function fuzzyMatch` | Pi's own code |
@@ -2729,6 +2729,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-tui: stripTerminalSequences` | `function stripTerminalSequences` | Pi's own code |
 | `pi-tui: styleText` | `function styleText` | Pi's own code |
 | `pi-tui: styleTextWithAnsi` | `function styleTextWithAnsi` | Pi's own code |
+| `pi-tui: takeProgramResumeToken` | `function takeProgramResumeToken` | Pi's own code |
 | `pi-tui: truncateToWidth` | `function truncateToWidth` | Pi's own code |
 | `pi-tui: visibleWidth` | `function visibleWidth` | Pi's own code |
 | `pi-tui: wrapTextWithAnsi` | `function wrapTextWithAnsi` | Pi's own code |

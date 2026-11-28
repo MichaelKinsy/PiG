@@ -100,7 +100,7 @@ func TestInteractiveAssistantBugHintOnce(t *testing.T) {
 			if tc.hint {
 				want = 1
 			}
-			if got := strings.Count(text, " If this looks like a pig bug, /bug sends a report to the developers."); got != want {
+			if got := strings.Count(text, " If this looks like a pig bug, use /bug to send a report to the developers."); got != want {
 				t.Errorf("hint count %d want %d: %q", got, want, text)
 			}
 			if status := strings.Join(m.statusLine.Render(120), "\n"); strings.Contains(status, "Provider request") {

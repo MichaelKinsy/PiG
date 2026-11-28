@@ -31,7 +31,7 @@ import (
 var cbWhoContract = mustContract(contracts.Remote("test.who", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return workerKind.Address(nil), nil },
-	State: []contracts.RemoteStateEntry{contracts.StateEntry("log", contracts.Str())},
+	State:       []contracts.RemoteStateEntry{contracts.StateEntry("log", contracts.Str())},
 }))
 
 // cbWhoPlugin serves `test.who`.
@@ -44,13 +44,13 @@ const Who = remote("test.who", {
 	version: 1,
 	params: {},
 	hostAddress: () => Worker(),
-	variants: { main: { state: { log: str() } } },
+	state: { log: str() },
 });
 const made = [];
 module.exports = { default: defineFacet((host) =>
 	host.serve(Who, (_params, principal) => {
 		made.push(principal.kind);
-		return { variant: "main", members: { log: constant(made.join(";")) } };
+		return { log: constant(made.join(";")) };
 	}),
 ) };
 })`)
@@ -433,21 +433,18 @@ const Probe = remote("test.probe", {
 	version: 1,
 	params: {},
 	hostAddress: () => hostKind("test.worker")(),
-	variants: { main: { state: {}, methods: { call: method(str(), str()) } } },
+	methods: { call: method(str(), str()) },
 });
 const uncached = (i) => callSync("principalKey", { kind: "guest", session: "S" + i });
 const memoized = memoizedByPrincipal((principal) => JSON.stringify(principal), (principal) => callSync("principalKey", principal));
 const keyOf = { uncached, memoized: (i) => memoized({ kind: "guest", session: "S" + (i % 8) }) };
 export default defineFacet((host) =>
 	host.serve(Probe, () => ({
-		variant: "main",
-		members: {
-			call: async (request) => {
-				const { n, mode } = JSON.parse(request);
-				const start = process.hrtime.bigint();
-				for (let i = 0; i < n; i++) keyOf[mode](i);
-				return JSON.stringify(Number(process.hrtime.bigint() - start) / n);
-			},
+		call: async (request) => {
+			const { n, mode } = JSON.parse(request);
+			const start = process.hrtime.bigint();
+			for (let i = 0; i < n; i++) keyOf[mode](i);
+			return JSON.stringify(Number(process.hrtime.bigint() - start) / n);
 		},
 	})),
 );

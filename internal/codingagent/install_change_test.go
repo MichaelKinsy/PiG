@@ -217,6 +217,7 @@ func TestInstallChangeWarningRestartCommand(t *testing.T) {
 	t.Cleanup(func() { stdoutIsTTY = previous })
 
 	t.Run("persisted session on a terminal", func(t *testing.T) {
+		t.Setenv(ENV_AGENT_DIR, "")
 		stdoutIsTTY = func() bool { return true }
 		path := installedProgram(t)
 		m := installChangeMode(t, installchange.NewTracker(path))

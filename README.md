@@ -17,14 +17,14 @@ SPDX-License-Identifier: MIT
 [![Minimum Go version](https://img.shields.io/github/go-mod/go-version/MichaelKinsy/PiG?label=Go%20%E2%89%A5)](go.mod)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Latest release](https://img.shields.io/github/v/release/MichaelKinsy/PiG?sort=semver)](https://github.com/MichaelKinsy/PiG/releases)
-[![Pi pin 1.6.1](https://img.shields.io/badge/Pi%20pin-1.6.1-8A2BE2)](https://github.com/earendil-works/pi/releases/tag/v1.6.1)
+[![Pi pin 1.7.0](https://img.shields.io/badge/Pi%20pin-1.7.0-8A2BE2)](https://github.com/earendil-works/pi/releases/tag/v1.7.0)
 [![Pi port progress](.github/badges/parity-coverage.svg)](test/parity/generated/coverage.md)
 [![Follow PiG on X](https://img.shields.io/badge/X-%40PiGCodingAgent-000000?logo=x&logoColor=white)](https://x.com/PiGCodingAgent)
 [![Join r/PiGCodingAgent](https://img.shields.io/badge/Reddit-r%2FPiGCodingAgent-FF4500?logo=reddit&logoColor=white)](https://www.reddit.com/r/PiGCodingAgent/)
 
 PiG is [Pi](https://github.com/earendil-works/pi), the minimal and extensible coding agent for the terminal, rebuilt in Go as one native binary. The binary needs no Node.js. Pi's TypeScript extensions run on your Node.js 22.13 or newer through PiG's compatible runtime modules, and [extension API parity](docs/extension-api-parity.md) lists the differences. You can also write extensions in Go, Rust, Python, or Common Lisp, and bundle extensions, skills, and prompts into a Piglet: one named agent you can share or build into its own executable.
 
-PiG is a pre-stable 0.x release. Core paths are ported and checked against Pi 1.6.1 with paired parity scenarios; edge cases are still hardening. See the [port status](test/parity/generated/coverage.md) and [file map](docs/parity/PORT_MAP.md) for current scope and evidence.
+PiG is a pre-stable 0.x release. Core paths are ported and checked against Pi 1.7.0 with paired parity scenarios; edge cases are still hardening. See the [port status](test/parity/generated/coverage.md) and [file map](docs/parity/PORT_MAP.md) for current scope and evidence.
 
 If PiG behaves differently from Pi, that is either a bug or a documented divergence. Windows support is a preview.
 
@@ -117,7 +117,7 @@ PiG adds a Go implementation to the Pi ecosystem and follows the Pi reference im
 - Prefer changes that reduce the cost of the next upstream sync.
 - Share generally useful findings with the broader ecosystem when the contribution route permits it.
 
-The pinned Pi release is 1.6.1 at commit `ef4a1cfcca62b77ad3558337ff3e1c7f6beeadfe`. The pin names the behavior oracle. It does not claim that every upstream change is already ported: [`test/parity/generated/coverage.md`](test/parity/generated/coverage.md) reports verified behavior, and the upgrade ledgers under [`test/parity/upstream-sync/`](test/parity/upstream-sync/) list each upstream change and its disposition.
+The pinned Pi release is 1.7.0 at commit `fb0fe823539f6d04850f6e34748c01f01f212e1f`. The pin names the behavior oracle. It does not claim that every upstream change is already ported: [`test/parity/generated/coverage.md`](test/parity/generated/coverage.md) reports verified behavior, and the upgrade ledgers under [`test/parity/upstream-sync/`](test/parity/upstream-sync/) list each upstream change and its disposition.
 
 PiG's current package scope covers Pi's agent, AI, coding-agent, and TUI
 packages. It does not implement Pi's experimental remote Session packages or
@@ -135,7 +135,7 @@ its standalone telemetry and evaluation packages. See
 - Main verification gate: `make check`
 - Full verification and coverage refresh: `make verify`
 
-`pig version` prints the PiG release and the pinned Pi release as separate fields. The interactive startup line prints PiG's version as `<PiG release>+<Pi release>`, for example `0.8.0+1.6.1`: the Pi release is semver build metadata, so the version sorts as the PiG release. `pig --version` and `pig -v` print the pinned Pi package version alone, exactly as `pi --version` does, so a launcher that checks Pi's version reads it. That change is new in PiG 0.8.0: PiG 0.7.0 prints its own version with the Pi release as build metadata for `pig --version`. Neither command reads user configuration.
+`pig version` prints the PiG release and the pinned Pi release as separate fields. The interactive startup line prints PiG's version as `<PiG release>+<Pi release>`, for example `0.8.0+1.7.0`: the Pi release is semver build metadata, so the version sorts as the PiG release. `pig --version` and `pig -v` print the pinned Pi package version alone, exactly as `pi --version` does, so a launcher that checks Pi's version reads it. That change is new in PiG 0.8.0: PiG 0.7.0 prints its own version with the Pi release as build metadata for `pig --version`. Neither command reads user configuration.
 
 ## Repository map
 

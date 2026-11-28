@@ -130,7 +130,9 @@ first accepted level, else \"off\". A level that is not one of Pi's is the first
 (defun calculate-cost (model usage)
   "pi-ai's calculateCost: prices USAGE at the model's per-million-token rates and stores the result in (jget usage \"cost\") (a hash-table the
 caller supplies, as in Pi), which it also returns. The rates are the model's cost, or those of the tier with the highest inputTokensAbove that
-the request's input (input, cacheRead and cacheWrite tokens) exceeds. Cache writes that cacheWrite1h reports are charged at twice the input rate."
+the request's input (input, cacheRead and cacheWrite tokens) exceeds. Cache writes that cacheWrite1h reports are charged at twice the input rate.
+When model.cost.imageOutput is set, up to usage.output image output tokens (usage.imageOutput, or all output tokens when omitted) are charged at
+that rate and the rest of output at output."
   (let ((cost (ai-get usage "cost")))
     (unless (hash-table-p cost) (error "usage.cost is not an object"))
     (ai-with-js-floats
@@ -142,10 +144,21 @@ the request's input (input, cacheRead and cacheWrite tokens) exceeds. Cache writ
           (let ((above (ai-number (ai-get tier "inputTokensAbove"))))
             (when (and (> input-tokens above) (> above matched)) (setf rates tier matched above))))
         (let* ((long-write (if (ai-opt usage "cacheWrite1h") (ai-number (ai-opt usage "cacheWrite1h")) 0d0))
-               (short-write (- (ai-number (ai-get usage "cacheWrite")) long-write)))
+               (short-write (- (ai-number (ai-get usage "cacheWrite")) long-write))
+               (output-tokens (ai-number (ai-get usage "output")))
+               (raw-image-rate (ai-opt model-cost "imageOutput"))
+               (image-rate (if (null raw-image-rate) 0d0 (ai-number raw-image-rate)))
+               (image-tokens
+                (if (null raw-image-rate)
+                    0d0
+                    (let* ((raw-image-output (ai-opt usage "imageOutput"))
+                           (usage-image-output (if (null raw-image-output) output-tokens (ai-number raw-image-output))))
+                      (cond ((or (sb-ext:float-nan-p output-tokens) (sb-ext:float-nan-p usage-image-output)) *ai-nan*)
+                            ((< usage-image-output output-tokens) usage-image-output)
+                            (t output-tokens))))))
           (flet ((rate (key) (ai-number (ai-get rates key))))
             (setf (gethash "input" cost) (* (/ (rate "input") 1000000) (ai-number (ai-get usage "input")))
-                  (gethash "output" cost) (* (/ (rate "output") 1000000) (ai-number (ai-get usage "output")))
+                  (gethash "output" cost) (/ (+ (* (rate "output") (- output-tokens image-tokens)) (* image-rate image-tokens)) 1000000)
                   (gethash "cacheRead" cost) (* (/ (rate "cacheRead") 1000000) (ai-number (ai-get usage "cacheRead")))
                   (gethash "cacheWrite" cost) (/ (+ (* (rate "cacheWrite") short-write) (* (rate "input") 2 long-write)) 1000000)
                   (gethash "total" cost) (+ (gethash "input" cost) (gethash "output" cost) (gethash "cacheRead" cost) (gethash "cacheWrite" cost))

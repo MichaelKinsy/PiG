@@ -1239,7 +1239,7 @@ func TestHoldRetriesAcrossLinksQuiesceAtTheirBudget(t *testing.T) {
 					Version:     1,
 					Params:      contracts.Params{},
 					HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return kind.Address(nil), nil },
-					State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
+					State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 				}))
 			}
 			localA, localB := local("app.a"), local("app.b")

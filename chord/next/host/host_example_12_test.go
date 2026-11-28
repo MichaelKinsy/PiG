@@ -12,8 +12,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
-	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
+	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
 // --- 12-routes.ts --------------------------------------------------------------------------------------------------
@@ -80,7 +80,12 @@ func TestExample12Routes(t *testing.T) {
 					if err != nil {
 						return nil, err
 					}
-					return fmt.Sprintf("%s variant, %v", func() string { if exHasGrant(reference, "add") { return "editor" }; return "reader" }(), who), nil
+					return fmt.Sprintf("%s variant, %v", func() string {
+						if exHasGrant(reference, "add") {
+							return "editor"
+						}
+						return "reader"
+					}(), who), nil
 				}),
 			}), nil
 		}, ServeOptions{})

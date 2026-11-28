@@ -144,7 +144,7 @@ func TestModelsJSONErrorIsShown(t *testing.T) {
 	}
 	m.opts.ModelRegistry = NewModelRegistry(agentDir)
 	m.showModelsJSONError()
-	if text := reloadChatText(m); !strings.Contains(text, "Error: models.json error: Failed to parse models.json") {
+	if text := reloadChatText(m); !strings.Contains(text, "Warning: models.json error: Failed to parse models.json") {
 		t.Fatalf("transcript = %q", text)
 	}
 }
@@ -163,7 +163,7 @@ func TestInitNoticesFollowUpstreamOrder(t *testing.T) {
 	m.opts.ModelFallbackMessage = "FALLBACK"
 	m.showInitNotices()
 	text := reloadChatText(m)
-	order := []string{"DIAGNOSTIC", "Migrated credentials to auth.json: anthropic, openai", "models.json error:", "FALLBACK"}
+	order := []string{"DIAGNOSTIC", "Migrated credentials to auth.json: anthropic, openai", "FALLBACK"}
 	last := -1
 	for _, want := range order {
 		at := strings.Index(text, want)

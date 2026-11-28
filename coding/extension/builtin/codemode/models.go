@@ -246,7 +246,7 @@ func (r *run) modelGlobals(models modelRuntime) []sandbox.Tool {
 				image, _ := resolved.(*ai.ImageModel)
 				var callOpts []ai.ModelsImagesOptions
 				if imageOpts != nil {
-					callOpts = []ai.ModelsImagesOptions{{ImagesOptions: ai.ImagesOptions{AspectRatio: imageOpts.AspectRatio, Size: imageOpts.Size}}}
+					callOpts = []ai.ModelsImagesOptions{{AspectRatio: imageOpts.AspectRatio, Size: imageOpts.Size}}
 				}
 				generated := models.GenerateImages(ctx, image, request, callOpts...)
 				count := 0

@@ -232,17 +232,14 @@ const Probe = remote("test.probe", {
 	version: 1,
 	params: {},
 	hostAddress: () => Worker(),
-	variants: { main: { state: {}, methods: { call: method(str(), str()) } } },
+	methods: { call: method(str(), str()) },
 });
 const ops = { ` + benchOps + ` };
 export default defineFacet((host) =>
 	host.serve(Probe, () => ({
-		variant: "main",
-		members: {
-			call: async (request) => {
-				const { op, args } = JSON.parse(request);
-				return JSON.stringify((await ops[op](args)) ?? null);
-			},
+		call: async (request) => {
+			const { op, args } = JSON.parse(request);
+			return JSON.stringify((await ops[op](args)) ?? null);
 		},
 	})),
 );

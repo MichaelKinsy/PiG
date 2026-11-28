@@ -620,7 +620,7 @@ var PlacedMatch = mustContract(contracts.Remote("app.placed-match", contracts.Re
 var Lobby = mustContract(contracts.Remote("app.lobby", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{contracts.Prop("session", contracts.Str())},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-	Events: []contracts.RemoteEventEntry{contracts.EventEntry("paddle", Sample)},
+	Events:      []contracts.RemoteEventEntry{contracts.EventEntry("paddle", Sample)},
 }))
 
 // Ports "events across real hosts › reach a tab from a worker through the relay, and through the server's
@@ -699,7 +699,7 @@ func TestRelayedCallsInARealWorkersFiniteWindowNeverExceedItWhenAHoldWithAForwar
 		waiter := mustContract(contracts.Remote("app.waiter", contracts.RemoteDeclaration{
 			Version: 1, Params: contracts.Params{contracts.Prop("session", contracts.Str()), contracts.Prop("id", contracts.Int())},
 			HostAddress: exSessionAddress,
-			Methods: []contracts.RemoteMethodEntry{contracts.Meth("wait", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
+			Methods:     []contracts.RemoteMethodEntry{contracts.Meth("wait", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
 		}))
 		var mu sync.Mutex
 		var runs []int

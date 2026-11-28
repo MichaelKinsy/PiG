@@ -980,7 +980,7 @@ func TestHostReferenceSourceSubscribersAHoldOverALinkOnARemoteObjectReExposingAL
 		view := mustContract(contracts.Remote("app.view", contracts.RemoteDeclaration{
 			Version: 1, Params: contracts.Params{},
 			HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return serverAddress(), nil },
-			State: []contracts.RemoteStateEntry{contracts.StateEntry("n", kmSchema)},
+			State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", kmSchema)},
 		}))
 		counter := kmDefine("counter", documents.StateOptions{})
 		attempts := &attemptList{}
@@ -1415,7 +1415,7 @@ func TestHostReferenceSourceAReferenceKeepsTheLastValuesOfItsAttachedInstancesVa
 	typ := mustContract(contracts.Remote("app.remote-unread", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return serverAddress(), nil },
-		State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
+		State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 	}))
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		return h.Serve(typ, func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {

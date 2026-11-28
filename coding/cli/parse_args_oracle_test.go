@@ -13,7 +13,7 @@ import (
 
 // canonicalArgs is Pi's Args as parseArgs returns it: a property is present only when parseArgs set it.
 func canonicalArgs(a Args) map[string]any {
-	out := map[string]any{"messages": nonNil(a.Messages), "fileArgs": nonNil(a.FileArgs)}
+	out := map[string]any{"messages": nonNil(a.Messages), "fileArgs": nonNil(a.FileArgs), "resumeFlags": nonNil(a.ResumeFlags)}
 	str := func(key, value string) {
 		if value != "" {
 			out[key] = value

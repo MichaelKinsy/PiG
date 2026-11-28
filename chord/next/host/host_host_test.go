@@ -621,7 +621,7 @@ var (
 	hostCatalog = mustContract(declareRemote("app.catalog", contracts.RemoteDeclaration{
 		Version:     1,
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-		State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
+		State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 	}))
 )
 
@@ -1271,12 +1271,12 @@ var (
 	principalWho = mustContract(declareRemote("app.who", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Int())},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-		State: []contracts.RemoteStateEntry{contracts.StateEntry("who", contracts.Str())},
+		State:       []contracts.RemoteStateEntry{contracts.StateEntry("who", contracts.Str())},
 	}))
 	principalOuter = mustContract(declareRemote("app.outer", contracts.RemoteDeclaration{
 		Version:     1,
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-		State: []contracts.RemoteStateEntry{contracts.StateEntry("who", contracts.Str())},
+		State:       []contracts.RemoteStateEntry{contracts.StateEntry("who", contracts.Str())},
 	}))
 	principalInner = mustContract(declareLocal("app.inner", contracts.LocalDeclaration{
 		Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Int())},
@@ -1454,7 +1454,7 @@ func TestHostPrincipalsRemoteObjectsWithEmptyParamsAreNotActivatedByLoadTheyLive
 		empty := mustContract(declareRemote("app.empty", contracts.RemoteDeclaration{
 			Version:     1,
 			HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-			State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
+			State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 		}))
 		l := linked(t, func(h FacetHost) error {
 			return h.Serve(empty, func(_ *delta.JsonObject, principal data.Principal, _ Self) (contracts.MembersImplementation, error) {
@@ -2724,7 +2724,9 @@ func TestHostReloadAnAbortWhileStagingDoesNotCommitWhenTheContextIsAbortedByTheS
 			if before != nil {
 				before()
 			}
-			return h.Serve(typ, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) { return impl("n", constant(n)), nil }, ServeOptions{})
+			return h.Serve(typ, func(*delta.JsonObject, Self) (contracts.MembersImplementation, error) {
+				return impl("n", constant(n)), nil
+			}, ServeOptions{})
 		})
 	}
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@astra/cancel", Facet: serve(1, nil)}}, background))
@@ -2807,7 +2809,7 @@ func TestBindRemoteReferencesSharingOneWireHoldOneHoldPerTypeVersionFingerprintP
 			Version:     version,
 			Params:      contracts.Params{contracts.Prop("a", contracts.Str()), contracts.Prop("b", contracts.Str())},
 			HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return address(), nil },
-			State: []contracts.RemoteStateEntry{contracts.StateEntry(member, contracts.Int())},
+			State:       []contracts.RemoteStateEntry{contracts.StateEntry(member, contracts.Int())},
 		}))
 	}
 	onServer := func() contracts.Address { return Server.Address(nil) }
@@ -2895,7 +2897,7 @@ func TestBindRemoteReferencesSharingOneWireHoldOneHoldPerCallersIncarnationCtxGe
 	opener := mustContract(contracts.Remote("app.opener", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-		Methods: []contracts.RemoteMethodEntry{contracts.Meth("open", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
+		Methods:     []contracts.RemoteMethodEntry{contracts.Meth("open", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
 	}))
 	gate := newSignal()
 	var opened atomic.Int32

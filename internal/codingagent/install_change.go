@@ -1,10 +1,11 @@
 package codingagent
 
 import (
+	"os"
+
 	"github.com/MichaelKinsy/PiG/internal/installchange"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/tui"
-	"os"
 )
 
 // installChangeCause states what changed. A replaced or removed executable uses Pi's sentence for a removed install

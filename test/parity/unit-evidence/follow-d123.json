@@ -3,7 +3,7 @@
   "upstream": "packages/chord/src/contracts/accepts.ts",
   "package": "./chord/next/contracts",
   "tests": [
-   "TestAcceptsVersions"
+   "TestCheckAcceptsV170"
   ],
   "upstream_reference": "packages/chord/src/contracts/accepts.ts",
   "mutation": "chord/next/contracts/accepts.go: `index == -1 || index == len(data.Versions)-1` -> `index == -1` (TestAcceptsVersions FAILS)"
@@ -12,7 +12,7 @@
   "upstream": "packages/chord/src/contracts/contract.ts",
   "package": "./chord/next/contracts",
   "tests": [
-   "TestContractHandles"
+   "TestContractHandlesAndOrder"
   ],
   "upstream_reference": "packages/chord/src/contracts/contract.ts",
   "mutation": "chord/next/contracts/contract.go: `contract.self != contract ||` removed from ContractDataOf (TestContractHandles FAILS)"
@@ -21,7 +21,7 @@
   "upstream": "packages/chord/src/contracts/declare.ts",
   "package": "./chord/next/contracts",
   "tests": [
-   "TestReservedMemberNames"
+   "TestDeclareRemoteAndLocal"
   ],
   "upstream_reference": "packages/chord/src/contracts/declare.ts",
   "mutation": "chord/next/contracts/declare.go: `\"then\": true, ` removed from reservedMembers (TestReservedMemberNames FAILS)"
@@ -30,8 +30,7 @@
   "upstream": "packages/chord/src/contracts/evolve.ts",
   "package": "./chord/next/contracts",
   "tests": [
-   "TestEvolveEdits",
-   "TestEvolveHistory"
+   "TestEvolveRemoteAndGrantable"
   ],
   "upstream_reference": "packages/chord/src/contracts/evolve.ts",
   "mutation": "chord/next/contracts/evolve.go: `version := current.Version + 1` -> `+ 2` (TestEvolveEdits FAILS)"
@@ -40,7 +39,7 @@
   "upstream": "packages/chord/src/contracts/fingerprint.ts",
   "package": "./chord/next/contracts",
   "tests": [
-   "TestFingerprints"
+   "TestFingerprintStability"
   ],
   "upstream_reference": "packages/chord/src/contracts/fingerprint.ts",
   "mutation": "chord/next/contracts/fingerprint.go: `0x01000193` -> `0x01000195` (TestFingerprints FAILS)"
@@ -49,7 +48,7 @@
   "upstream": "packages/chord/src/contracts/history.ts",
   "package": "./chord/next/contracts",
   "tests": [
-   "TestMemberHelpers"
+   "TestContractHandlesAndOrder"
   ],
   "upstream_reference": "packages/chord/src/contracts/history.ts",
   "mutation": "chord/next/contracts/history.go: `seen[name] = true` -> `seen[name] = false` (TestMemberHelpers FAILS)"
@@ -68,7 +67,7 @@
   "package": "./chord/next/contracts",
   "tests": [
    "TestHostKinds",
-   "TestDeclarationChecks"
+   "TestDeclareRemoteAndLocal"
   ],
   "upstream_reference": "packages/chord/src/contracts/names.ts",
   "mutation": "chord/next/contracts/names.go: `c == '@' ||` removed from CheckName (TestHostKinds FAILS)"
@@ -96,8 +95,8 @@
   "upstream": "packages/chord/src/contracts/schema.ts",
   "package": "./chord/next/contracts",
   "tests": [
-   "TestDeclarationChecks",
-   "TestEvolveEdits"
+   "TestDeclareRemoteAndLocal",
+   "TestEvolveRemoteAndGrantable"
   ],
   "upstream_reference": "packages/chord/src/contracts/schema.ts",
   "mutation": "chord/next/contracts/namedmap.go: Keys() returns `sortStrings(m.names)` instead of `m.names` (TestDeclarationChecks FAILS)"
@@ -106,8 +105,8 @@
   "upstream": "packages/chord/src/contracts/schema.ts",
   "package": "./chord/next/contracts",
   "tests": [
-   "TestContractVariantNames",
-   "TestFingerprints"
+   "TestContractHandlesAndOrder",
+   "TestFingerprintStability"
   ],
   "upstream_reference": "packages/chord/src/contracts/schema.ts",
   "mutation": "chord/next/contracts/jsorder.go: compare16 `return sign(c)` -> `return sign(-c)` (TestContractVariantNames FAILS)"

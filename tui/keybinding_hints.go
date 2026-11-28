@@ -82,6 +82,16 @@ func ActionKeyText(action string) string {
 	return FormatKeyText(strings.Join(keys, "/"), false)
 }
 
+// ActionKeyTextOr is ActionKeyText for an action that may not be registered
+// (app actions outside the interactive mode, such as in component tests),
+// falling back to the upstream default keys.
+func ActionKeyTextOr(action, fallback string) string {
+	if GetTUIKeybindings().HasBinding(action) {
+		return ActionKeyText(action)
+	}
+	return FormatKeyText(fallback, false)
+}
+
 // ActionKeyDisplayTextOr is ActionKeyDisplayText for an action that may not be
 // registered (app actions outside the interactive mode, such as in component
 // tests), falling back to the upstream default keys.

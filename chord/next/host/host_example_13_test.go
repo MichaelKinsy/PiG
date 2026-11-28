@@ -206,7 +206,7 @@ func exRelayContracts() (sessionInfo, notes *contracts.Contract) {
 	sessionInfo = exLocal("example.session-info", contracts.Params{}, contracts.Mem("init", initSchema))
 	notes = exRemote("example.notes", contracts.Params{exProp("session", exStr())}, exSessionAddress,
 		contracts.RemoteDeclaration{
-			State: []contracts.RemoteStateEntry{contracts.StateEntry("info", initSchema), contracts.StateEntry("notes", exArr(exStr()))},
+			State:   []contracts.RemoteStateEntry{contracts.StateEntry("info", initSchema), contracts.StateEntry("notes", exArr(exStr()))},
 			Methods: []contracts.RemoteMethodEntry{contracts.Meth("add", contracts.NewMethod(exObj(exProp("text", exStr())), exInt()))},
 		})
 	return sessionInfo, notes

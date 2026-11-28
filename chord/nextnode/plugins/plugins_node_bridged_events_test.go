@@ -558,7 +558,7 @@ var tlServer = mustKind(contracts.NewHostKind("test.goserver"))
 var tlEcho = mustContract(contracts.Remote("test.goecho", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return tlServer.Address(nil), nil },
-	Methods: []contracts.RemoteMethodEntry{contracts.Meth("echo", contracts.NewMethod(contracts.Num(), contracts.Num()))},
+	Methods:     []contracts.RemoteMethodEntry{contracts.Meth("echo", contracts.NewMethod(contracts.Num(), contracts.Num()))},
 }))
 
 // tlRelay is `test.relay`, served by the plugin below: `relay(n)` calls the Go server's `echo(n)` over the Node host's link.
@@ -592,7 +592,7 @@ func TestAPluginsCallOfATypeTheGoHostServesOverTheNodeHostsTrustedLinkCompletes(
 	plugin := handmade(t, "@test/relay", "server", `(function (require, module, exports) {
 const { defineFacet, hostKind, local, method, num, remote } = require("@earendil-works/chord");
 const Server = hostKind("test.goserver");
-const Echo = remote("test.goecho", { version: 1, params: {}, hostAddress: () => Server(), variants: { main: { state: {}, methods: { echo: method(num(), num()) } } } });
+const Echo = remote("test.goecho", { version: 1, params: {}, hostAddress: () => Server(), methods: { echo: method(num(), num()) } });
 const Relay = local("test.relay", { version: 1, params: {}, members: { relay: method(num(), num()) } });
 module.exports = { default: defineFacet((host) => host.serve(Relay, (_params, self) => {
 	const echo = self.get(Echo, {});

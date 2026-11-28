@@ -301,7 +301,7 @@ func TestCtxAGetStillWaitingWhenItsHandlerSettlesGivesUpItsReferenceIsReleasedAt
 	far := mustContract(declareRemote("app.far", contracts.RemoteDeclaration{
 		Version:     1,
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-		State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
+		State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 	}))
 	starter := mustContract(declareLocal("app.starter", contracts.LocalDeclaration{Params: contracts.Params{},
 		Version: 1,
@@ -693,7 +693,7 @@ func TestCtxGetRejectsWithTheAcquireErrorWhileItsHandlerRuns(t *testing.T) {
 	far := mustContract(declareRemote("app.far-away", contracts.RemoteDeclaration{
 		Version:     1,
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-		State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
+		State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 	}))
 	var got error
 	var reference *Reference
@@ -738,7 +738,7 @@ func TestCtxGetMakesTheReferenceForTheCallerPrincipalAndIncarnation(t *testing.T
 	peer := mustContract(declareRemote("app.ctx-peer", contracts.RemoteDeclaration{
 		Version:     1,
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-		State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
+		State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 	}))
 	door := mustContract(declareRemote("app.ctx-door", contracts.RemoteDeclaration{
 		Version:     1,

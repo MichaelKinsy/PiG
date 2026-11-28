@@ -56,7 +56,7 @@ func (c *ex68Counted) get(kind string) int {
 func TestExample68SharedHolds(t *testing.T) {
 	// A counter on the server: its count, and a method that adds one.
 	counter := exRemote("example.shared-counter", contracts.Params{}, exServerAddress, contracts.RemoteDeclaration{
-		State: []contracts.RemoteStateEntry{contracts.StateEntry("count", exInt())},
+		State:   []contracts.RemoteStateEntry{contracts.StateEntry("count", exInt())},
 		Methods: []contracts.RemoteMethodEntry{contracts.Meth("bump", contracts.NewMethod())},
 	})
 	count := exDefineState("count", documents.StateOptions{

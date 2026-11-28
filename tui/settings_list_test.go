@@ -79,7 +79,7 @@ func TestSettingsListWithoutSearch(t *testing.T) {
 		"→ Light theme  light",
 		"  Apply        save and go back",
 		"",
-		"  Enter/Space to change · Esc to cancel",
+		"  enter/space to change · escape/ctrl+c to cancel",
 	}
 	if strings.Join(plain, "\n") != strings.Join(want, "\n") {
 		t.Fatalf("render =\n%s\nwant\n%s", strings.Join(plain, "\n"), strings.Join(want, "\n"))
@@ -133,11 +133,11 @@ func TestSettingsListShowsHintLine(t *testing.T) {
 	if !strings.Contains(joined, "Type to search") {
 		t.Error("missing hint line")
 	}
-	if !strings.Contains(joined, "Enter/Space to change") {
-		t.Error("missing Enter/Space hint")
+	if !strings.Contains(joined, "enter/space to change") {
+		t.Error("missing enter/space hint")
 	}
-	if !strings.Contains(joined, "Esc to cancel") {
-		t.Error("missing Esc hint")
+	if !strings.Contains(joined, "escape/ctrl+c to cancel") {
+		t.Error("missing escape/ctrl+c hint")
 	}
 }
 
@@ -289,7 +289,7 @@ func TestSettingsListUsesTheInjectedTheme(t *testing.T) {
 	}, 5, theme, nil, nil, SettingsListOptions{EnableSearch: false})
 
 	text := stripANSI(strings.Join(list.Render(60), "\n"))
-	for _, want := range []string{">> [L*Alpha", "[V*on]", "[LBeta", "[Voff]", "[D  about alpha]", "[H  Enter/Space to change"} {
+	for _, want := range []string{">> [L*Alpha", "[V*on]", "[LBeta", "[Voff]", "[D  about alpha]", "[H  enter/space to change"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("missing %q in:\n%s", want, text)
 		}

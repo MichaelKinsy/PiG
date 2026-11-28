@@ -307,7 +307,9 @@ func TestObjectCyclesAcrossHostsKeepNoObjectAndSoNoChainOnceReleasedGC(t *testin
 
 func TestObjectGCOfReleasedReferencesKeepsNothingInAReleasedReferenceOrAStoppedWatch(t *testing.T) {
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(objStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) { return serveStore(self), nil }, ServeOptions{})
+		return h.Serve(objStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
+			return serveStore(self), nil
+		}, ServeOptions{})
 	}, loadedOptions{})
 	store := mustGet(t, host, objStore, jsonObject())
 	held := mustGet(t, host, objStore, jsonObject())
@@ -333,7 +335,9 @@ func TestObjectGCOfReleasedReferencesKeepsNeitherTheDeclaringObjectNorTheHostInA
 	var attempts []weak.Pointer[attempt]
 	var declared *Reference
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(objStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) { return serveStore(self), nil }, ServeOptions{}); err != nil {
+		if err := h.Serve(objStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
+			return serveStore(self), nil
+		}, ServeOptions{}); err != nil {
 			return err
 		}
 		return h.Serve(attemptPage, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {

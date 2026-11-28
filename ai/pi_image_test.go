@@ -78,15 +78,13 @@ func TestPiImageGenerateImagesSuccess(t *testing.T) {
 	result := GenerateImagesPiImage(context.Background(), model, ImagesContext{
 		Input: []ImagesInputContent{TextContent{Text: "Draw a cat"}},
 	}, PiImageOptions{
-		ImagesOptions: ImagesOptions{
-			APIKey:      "radius-key",
-			AspectRatio: "16:9",
-			Size:        "2K",
-			Metadata:    map[string]any{"trace": "abc"},
-			OnResponse: func(resp ProviderResponse, m ImageModel) error {
-				sawResponse = resp
-				return nil
-			},
+		APIKey:      "radius-key",
+		AspectRatio: "16:9",
+		Size:        "2K",
+		Metadata:    map[string]any{"trace": "abc"},
+		OnResponse: func(resp ProviderResponse, m ImageModel) error {
+			sawResponse = resp
+			return nil
 		},
 		SessionID: &sessionID,
 	})
@@ -137,7 +135,7 @@ func TestPiImageComputesCatalogCostWhenProviderOmitsCost(t *testing.T) {
 	model := testPiImageModel(srv.URL)
 	result := GenerateImagesPiImage(context.Background(), model, ImagesContext{
 		Input: []ImagesInputContent{TextContent{Text: "Draw"}},
-	}, PiImageOptions{ImagesOptions: ImagesOptions{APIKey: "radius-key"}})
+	}, PiImageOptions{APIKey: "radius-key"})
 
 	if result.StopReason != ImagesStopReasonStop {
 		t.Fatalf("StopReason = %q, error = %q", result.StopReason, result.ErrorMessage)
@@ -166,7 +164,7 @@ func TestPiImageRejectsMalformedOutputAndTextOnlyInputImages(t *testing.T) {
 	model := testPiImageModel(srv.URL)
 	bad := GenerateImagesPiImage(context.Background(), model, ImagesContext{
 		Input: []ImagesInputContent{TextContent{Text: "Draw"}},
-	}, PiImageOptions{ImagesOptions: ImagesOptions{APIKey: "radius-key"}})
+	}, PiImageOptions{APIKey: "radius-key"})
 	if bad.StopReason != ImagesStopReasonError || !strings.Contains(bad.ErrorMessage, "invalid image block") {
 		t.Fatalf("expected invalid image block error, got stop=%q err=%q", bad.StopReason, bad.ErrorMessage)
 	}
@@ -175,7 +173,7 @@ func TestPiImageRejectsMalformedOutputAndTextOnlyInputImages(t *testing.T) {
 	textOnly.Input = []string{"text"}
 	rejected := GenerateImagesPiImage(context.Background(), textOnly, ImagesContext{
 		Input: []ImagesInputContent{ImageContent{Data: "AAAA", MimeType: "image/png"}},
-	}, PiImageOptions{ImagesOptions: ImagesOptions{APIKey: "radius-key"}})
+	}, PiImageOptions{APIKey: "radius-key"})
 	if rejected.StopReason != ImagesStopReasonError || !strings.Contains(rejected.ErrorMessage, "does not support image input") {
 		t.Fatalf("expected image input rejection, got stop=%q err=%q", rejected.StopReason, rejected.ErrorMessage)
 	}
@@ -190,7 +188,7 @@ func TestPiImageAbortedAndRetry(t *testing.T) {
 	model := testPiImageModel("http://127.0.0.1:1")
 	aborted := GenerateImagesPiImage(ctx, model, ImagesContext{
 		Input: []ImagesInputContent{TextContent{Text: "Draw"}},
-	}, PiImageOptions{ImagesOptions: ImagesOptions{APIKey: "radius-key"}})
+	}, PiImageOptions{APIKey: "radius-key"})
 	if aborted.StopReason != ImagesStopReasonAborted {
 		t.Fatalf("StopReason = %q, want aborted", aborted.StopReason)
 	}

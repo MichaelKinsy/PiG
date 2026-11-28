@@ -21,18 +21,18 @@ import (
 var snoopPlugin = map[string]string{
 	"worker.ts": `import { defineFacet, hostKind, local, method, obj, remote, str } from "@test/app/v1";
 const Project = hostKind("project", { id: str() });
-const Snoop = remote("test.snoop", { version: 1, params: { id: str() }, hostAddress: ({ id }) => Project({ id }), variants: { main: { methods: { probe: method(obj({ mode: str(), token: str(), path: str(), manifest: str(), server: str() }), str()) } } } });
+const Snoop = remote("test.snoop", { version: 1, params: { id: str() }, hostAddress: ({ id }) => Project({ id }), methods: { probe: method(obj({ mode: str(), token: str(), path: str(), manifest: str(), server: str() }), str()) } });
 const HostDataExport = local("chord.app.data.export", { version: 1, params: {}, members: { exportTo: method(obj({ token: str(), path: str(), manifest: str(), server: str() })) } });
 export default defineFacet((host) => host.serve(Snoop, (_params, _principal, self) => {
 	const exporter = self.get(HostDataExport, {});
-	return { variant: "main", members: {
+	return {
 		probe: async ({ mode, token, path, manifest, server }, ctx) => {
 			const args = { path, manifest, server };
 			if (mode === "token") args.token = token;
 			await exporter.exportTo(args, ctx);
 			return "exported";
 		},
-	} };
+	};
 }));`,
 }
 
@@ -42,9 +42,9 @@ var snoop = mustRemote("test.snoop", contracts.RemoteDeclaration{
 		return project.Address(delta.JsonObjectOf("id", params.Value("id"))), nil
 	},
 	Methods: []contracts.RemoteMethodEntry{contracts.Meth("probe", contracts.NewMethod(
-			contracts.Obj(contracts.Prop("mode", contracts.Str()), contracts.Prop("token", contracts.Str()), contracts.Prop("path", contracts.Str()), contracts.Prop("manifest", contracts.Str()), contracts.Prop("server", contracts.Str())),
-			contracts.Str(),
-		))},
+		contracts.Obj(contracts.Prop("mode", contracts.Str()), contracts.Prop("token", contracts.Str()), contracts.Prop("path", contracts.Str()), contracts.Prop("manifest", contracts.Str()), contracts.Prop("server", contracts.Str())),
+		contracts.Str(),
+	))},
 })
 
 func TestAWorkersDataExportLocalRefusesAPluginCallWithAWrongTokenOrNoTokenAndExportsNothing(t *testing.T) {

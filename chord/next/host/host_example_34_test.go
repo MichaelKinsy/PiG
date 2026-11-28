@@ -21,7 +21,7 @@ import (
 func TestExample34Versions(t *testing.T) {
 	// The shared contract, as every plugin bundles it: v1, then v2 where a note gained a tag.
 	notesV1 := exRemote("example.notes", contracts.Params{}, exServerAddress, contracts.RemoteDeclaration{
-		State: []contracts.RemoteStateEntry{contracts.StateEntry("notes", exArr(exStr()))},
+		State:   []contracts.RemoteStateEntry{contracts.StateEntry("notes", exArr(exStr()))},
 		Methods: []contracts.RemoteMethodEntry{contracts.Meth("add", contracts.NewMethod(exObj(exProp("text", exStr())), exInt()))},
 	})
 	notesV2, err := contracts.Evolve(notesV1, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {

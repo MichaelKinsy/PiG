@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"github.com/MichaelKinsy/PiG/internal/jsonwire"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // openAICompletionsReasoningFields are the assistant message fields that carry plain reasoning text,
@@ -62,20 +63,27 @@ func decodeOpaqueThinkingSignature(signature string) *completionsThinkingSignatu
 	if !jsonwire.Valid(signature) {
 		return nil
 	}
-	var parsed map[string]any
+	var parsed map[string]json.RawMessage
 	if json.Unmarshal([]byte(signature), &parsed) != nil {
 		return nil
 	}
-	opaque, ok := parsed["reasoning_opaque"].(string)
-	if !ok || opaque == "" {
+	opaqueRaw, hasOpaque := parsed["reasoning_opaque"]
+	if !hasOpaque || len(opaqueRaw) == 0 || opaqueRaw[0] != '"' {
+		return nil
+	}
+	var opaque string
+	if json.Unmarshal(opaqueRaw, &opaque) != nil || opaque == "" {
 		return nil
 	}
 	fieldRaw, hasField := parsed["field"]
 	if !hasField {
 		return &completionsThinkingSignature{kind: completionsThinkingSignatureOpaque, opaque: opaque}
 	}
-	field, ok := fieldRaw.(string)
-	if !ok || !isOpenAICompletionsReasoningField(field) {
+	if len(fieldRaw) == 0 || fieldRaw[0] != '"' {
+		return nil
+	}
+	var field string
+	if json.Unmarshal(fieldRaw, &field) != nil || !isOpenAICompletionsReasoningField(field) {
 		return nil
 	}
 	return &completionsThinkingSignature{kind: completionsThinkingSignatureOpaque, field: field, opaque: opaque}
@@ -93,13 +101,17 @@ func encodeCompletionsThinkingSignature(sig completionsThinkingSignature) string
 	case completionsThinkingSignatureField:
 		return sig.field
 	case completionsThinkingSignatureDetails:
-		encoded, err := json.Marshal(sig.details)
+		details := sig.details
+		if details == nil {
+			details = []json.RawMessage{}
+		}
+		encoded, err := jsstring.MarshalJSON(details)
 		if err != nil {
 			return ""
 		}
 		return string(encoded)
 	case completionsThinkingSignatureOpaque:
-		encoded, err := json.Marshal(opaqueThinkingSignatureWire{
+		encoded, err := jsstring.MarshalJSON(opaqueThinkingSignatureWire{
 			Field:           sig.field,
 			ReasoningOpaque: sig.opaque,
 		})

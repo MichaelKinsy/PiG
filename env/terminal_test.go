@@ -461,15 +461,19 @@ func TestOpenTerminalKillsEverythingInTheSessionOnCloseAndOnALostConnection(t *t
 	})
 }
 
-// pty.rs ends the request once the program exited and its terminal stayed silent for EXIT_GRACE (100 ms): a background
-// job that still holds the terminal does not keep it running, and is not killed.
+// pty.rs kills every process in the terminal's session when the shell exits, and ends the request once the program
+// exited and its terminal stayed silent for EXIT_GRACE (100 ms): a detached daemon (new session via setsid) that still
+// holds the terminal open does not keep the request running, and is not killed.
 func TestOpenTerminalEndsWhenTheProgramExitsThoughABackgroundJobHoldsTheTerminal(t *testing.T) {
 	eachDaemon(t, func(t *testing.T) {
 		connection, cwd := terminalConnection(t)
 		output := newCollector()
+		// Detach the background sleep into a new session before the shell exits (printing its own pid after setsid so
+		// the session has already detached before the shell exits and kills its own session), while keeping the pty fd
+		// open so EXIT_GRACE ends the terminal request on both Linux and macOS.
+		script := `if command -v setsid >/dev/null 2>&1; then setsid sh -c 'printf "job:%s:\n" $$; exec sleep 60' & else python3 -c "import os, sys, time; os.setsid(); sys.stdout.write(f'job:{os.getpid()}:\n'); sys.stdout.flush(); time.sleep(60)" & fi; sleep 0.2; exit 3`
 		terminal, err := OpenTerminal(background, connection, TerminalOptions{
-			// The job ignores the hangup the shell's exit sends, so it keeps the terminal open.
-			Cwd: cwd, Argv: []string{"/bin/sh", "-c", `trap '' HUP; sleep 60 & printf 'job:%s:\n' $!; exit 3`}, Cols: 80, Rows: 24, OnData: output.onData,
+			Cwd: cwd, Argv: []string{"/bin/sh", "-c", script}, Cols: 80, Rows: 24, OnData: output.onData,
 		})
 		if err != nil {
 			t.Fatal(err)

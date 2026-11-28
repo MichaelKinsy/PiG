@@ -119,6 +119,7 @@ func TestUpstreamSignalShutdownExtensionCleanup(t *testing.T) {
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/suite/regressions/5080-signal-shutdown-extension-cleanup.test.ts:135
 	t.Run("interactive quit prints a resume hint for persisted sessions", func(t *testing.T) {
+		t.Setenv(ENV_AGENT_DIR, "")
 		setStdoutTTY(t, true)
 		// The upstream test expects chalk.dim at its own chalk level; FORCE_COLOR pins that level to 1 here.
 		t.Setenv("FORCE_COLOR", "1")
@@ -182,6 +183,7 @@ func TestUpstreamSignalShutdownExtensionCleanup(t *testing.T) {
 // interactive-mode.ts:4516 writes `${chalk.dim("To resume this session:")}\n${resumeCommand}\n` (#12237, Pi 63dec2621); at chalk level 0 (FORCE_COLOR=0, --no-color, TERM=dumb,
 // an unknown TERM) chalk.dim returns the text unchanged. PiG always wrote the dim codes.
 func TestResumeHintIsPlainAtChalkLevelZero(t *testing.T) {
+	t.Setenv(ENV_AGENT_DIR, "")
 	setStdoutTTY(t, true)
 	t.Setenv("FORCE_COLOR", "0")
 	var order []string

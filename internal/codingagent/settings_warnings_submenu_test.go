@@ -8,7 +8,7 @@ import (
 
 // Upstream's Warnings row opens WarningSettingsSubmenu, a SettingsList with
 // Math.min(items.length, 10) rows and no search (settings-selector.ts), so
-// its hint is "Enter/Space to change · Esc to cancel" and it has no search
+// its hint is "enter/space to change · escape/ctrl+c to cancel" and it has no search
 // line. Changing its row saves at once; Esc returns to the main list.
 // Pi: packages/coding-agent/src/core/settings-manager.ts:1524 (SettingsManager.getWarnings).
 func TestSettingsWarningsSubmenuHasNoSearch(t *testing.T) {
@@ -27,7 +27,7 @@ func TestSettingsWarningsSubmenuHasNoSearch(t *testing.T) {
 	if strings.Contains(submenu, "Type to search") || strings.Contains(submenu, "\n> ") || strings.HasPrefix(strings.TrimLeft(submenu, "─\n"), "> ") {
 		t.Fatalf("the Warnings submenu has a search input:\n%s", submenu)
 	}
-	if !strings.Contains(submenu, "Enter/Space to change · Esc to cancel") {
+	if !strings.Contains(submenu, "enter/space to change · escape/ctrl+c to cancel") {
 		t.Fatalf("the Warnings submenu lacks upstream's hint:\n%s", submenu)
 	}
 	before := m.opts.SettingsManager.GetWarnings().AnthropicExtraUsage

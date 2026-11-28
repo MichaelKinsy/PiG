@@ -195,14 +195,14 @@ func TestOpenAICompletionsCloudflareEmptyToolsUpstream(t *testing.T) {
 		system       string
 		conservative bool
 	}{
-		// .upstream/v0.87.1/packages/ai/test/openai-completions-empty-tools.test.ts:163
-		{name: "uses conservative OpenAI-compatible fields for Cloudflare AI Gateway /compat models", model: "workers-ai/@cf/moonshotai/kimi-k2.6", options: ai.StreamOptions{MaxTokens: 1234, Thinking: ai.ThinkingLevelHigh}, system: "You are helpful.", conservative: true},
-		// .upstream/v0.87.1/packages/ai/test/openai-completions-empty-tools.test.ts:200
-		{name: "resolves Cloudflare AI Gateway base URL through provider auth", model: "workers-ai/@cf/moonshotai/kimi-k2.6"},
-		// .upstream/v0.87.1/packages/ai/test/openai-completions-empty-tools.test.ts:214
+		// .upstream/v1.7.0/packages/ai/test/openai-completions-empty-tools.test.ts:164
+		{name: "uses conservative OpenAI-compatible fields for Cloudflare AI Gateway /compat models", model: "workers-ai/@cf/zai-org/glm-5.3", options: ai.StreamOptions{MaxTokens: 1234, Thinking: ai.ThinkingLevelHigh}, system: "You are helpful.", conservative: true},
+		// .upstream/v1.7.0/packages/ai/test/openai-completions-empty-tools.test.ts:201
+		{name: "resolves Cloudflare AI Gateway base URL through provider auth", model: "workers-ai/@cf/zai-org/glm-5.3"},
+		// .upstream/v1.7.0/packages/ai/test/openai-completions-empty-tools.test.ts:215
 		{name: "preserves inline upstream Authorization for Cloudflare AI Gateway BYOK requests", model: "gpt-5.1", options: ai.StreamOptions{Headers: ai.ProviderHeadersFromStrings(map[string]string{"Authorization": "Bearer upstream-token"})}},
-		// .upstream/v0.87.1/packages/ai/test/openai-completions-empty-tools.test.ts:233
-		{name: "sends session affinity headers for Workers AI through Cloudflare AI Gateway", model: "workers-ai/@cf/moonshotai/kimi-k2.6", options: ai.StreamOptions{SessionID: "session-1"}},
+		// .upstream/v1.7.0/packages/ai/test/openai-completions-empty-tools.test.ts:234
+		{name: "sends session affinity headers for Workers AI through Cloudflare AI Gateway", model: "workers-ai/@cf/zai-org/glm-5.3", options: ai.StreamOptions{SessionID: "session-1"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Setenv("CLOUDFLARE_API_KEY", "cf-token")

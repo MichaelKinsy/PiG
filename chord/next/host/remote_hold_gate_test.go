@@ -58,8 +58,8 @@ var gateSlow = mustContract(declareLocal("app.gate-slow", contracts.LocalDeclara
 // gateGated is `Gated`: a remote object over the provider; `bump` answers its code's number.
 var gateGated = mustContract(declareRemote("app.gated", contracts.RemoteDeclaration{
 	Version: 1, HostAddress: exServerAddress,
-	State: []contracts.RemoteStateEntry{contracts.StateEntry("label", contracts.Str())},
-		Methods: []contracts.RemoteMethodEntry{contracts.Meth("bump", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
+	State:   []contracts.RemoteStateEntry{contracts.StateEntry("label", contracts.Str())},
+	Methods: []contracts.RemoteMethodEntry{contracts.Meth("bump", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
 }))
 
 // gateServeSlow serves `Slow`, whose native opens once opened fires.

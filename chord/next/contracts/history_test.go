@@ -21,7 +21,7 @@ func TestGrantableAndFlagsAndMessageData(t *testing.T) {
 		Version:     1,
 		Params:      contracts.Params{contracts.Prop("id", contracts.Str())},
 		HostAddress: serverAddress,
-		Admission:   ptr(contracts.Obj(contracts.Prop("role", contracts.Str()))),
+		Admission:   new(contracts.Obj(contracts.Prop("role", contracts.Str()))),
 		State: []contracts.RemoteStateEntry{
 			contracts.StateEntry("title", contracts.Str()),
 			contracts.StateEntry("draft", contracts.NewGrantable(contracts.Str())),
@@ -91,7 +91,7 @@ func TestGrantableAndFlagsAndMessageData(t *testing.T) {
 		Version:     1,
 		Params:      contracts.Params{},
 		HostAddress: serverAddress,
-		Admission:   ptr(contracts.Obj(contracts.Prop("granted", contracts.Arr(contracts.Str())))),
+		Admission:   new(contracts.Obj(contracts.Prop("granted", contracts.Arr(contracts.Str())))),
 	})
 	if err == nil {
 		t.Fatal("expected admission with granted field to be refused")
@@ -104,5 +104,3 @@ func TestGrantableAndFlagsAndMessageData(t *testing.T) {
 	}
 	_ = delta.JsonObjectOf
 }
-
-func ptr[T any](v T) *T { return &v }

@@ -32,6 +32,6 @@ export default defineFacet((host) => {
 	});
 	host.serve(Tasks, (_params, _principal, self) => {
 		const runner = self.get(Runner, {});
-		return { variant: "main", members: { entries: runner.entries, running: runner.running, start: (name, ctx) => runner.start(name, ctx) } };
+		return { entries: runner.entries, running: runner.running, start: (name, ctx) => runner.start(name, ctx) };
 	});
 });

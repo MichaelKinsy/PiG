@@ -66,7 +66,7 @@ type RadiusGatewayImageModel struct {
 	Input   []string          `json:"input"`
 	Output  []string          `json:"output"`
 	Cost    ModelCost         `json:"cost"`
-	Headers map[string]string `json:"headers,omitempty"`
+	Headers map[string]string `json:"headers,omitempty"` //portlint:allow emptydrop decoded from Radius /v1/config; absent and empty headers are identical in model requests
 }
 
 // RadiusGatewayConfig is the sanitized /v1/config document of a gateway.

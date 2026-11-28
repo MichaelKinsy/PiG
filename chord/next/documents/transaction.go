@@ -766,7 +766,7 @@ func (tx *Transaction) cutError() error {
 // CutWith reports whether err is its cut's error (or a revoked draft panic from the cut): the seal discarded it, nothing
 // else failed it.
 func (tx *Transaction) CutWith(err error) bool {
-	return tx.cut != nil && (err == tx.cut || errors.Is(err, delta.ErrRevoked))
+	return tx.cut != nil && (errors.Is(err, tx.cut) || errors.Is(err, delta.ErrRevoked))
 }
 
 // refreshQueries stages the refresh of the store's reads over the tables this transaction wrote (slice 14 §3.2; Pi

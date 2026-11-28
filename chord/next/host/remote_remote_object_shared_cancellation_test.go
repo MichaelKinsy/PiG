@@ -182,7 +182,7 @@ func TestReferencesSharingOneWireHoldCancellation(t *testing.T) {
 		deepWaiter := mustContract(contracts.Remote("app.deep-waiter", contracts.RemoteDeclaration{
 			Version: 1, Params: contracts.Params{},
 			HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return deep.Address(nil), nil },
-			State: rsWaiterState(), Methods: rsWaiterMethods(),
+			State:       rsWaiterState(), Methods: rsWaiterMethods(),
 		}))
 		seen := &rsTags{}
 		var mu sync.Mutex

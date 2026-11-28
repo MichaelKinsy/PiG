@@ -590,5 +590,8 @@ func cloneUsage(usage Usage) Usage {
 	if usage.Reasoning != nil {
 		usage.Reasoning = new(*usage.Reasoning)
 	}
+	if usage.ImageOutput != nil {
+		usage.ImageOutput = new(*usage.ImageOutput)
+	}
 	return usage
 }

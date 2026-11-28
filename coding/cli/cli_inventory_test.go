@@ -53,7 +53,16 @@ func TestCLIInventoryTopLevelFlagsParseAsPiParses(t *testing.T) {
 	type check func(t *testing.T, got Args)
 	list := func(want ...string) []string { return want }
 	cases := map[string]check{
-		"--api-key":              func(t *testing.T, a Args) { assert.Equal(t, "value", a.APIKey) },                   // args.ts:119
+		"--api-key": func(t *testing.T, a Args) { assert.Equal(t, "value", a.APIKey) }, // args.ts:119
+		"--agent-dir": func(t *testing.T, a Args) {
+			// Pi strips --agent-dir in applyAgentDirArg before parseArgs, so parseArgs sees it in UnknownFlags;
+			// ApplyAgentDirArg extracts the directory path.
+			assert.Equal(t, "value", a.UnknownFlags["agent-dir"])
+			rest, dir, errMsg := ApplyAgentDirArg([]string{"--agent-dir", "value"})
+			assert.Empty(t, errMsg)
+			assert.Equal(t, "value", dir)
+			assert.Empty(t, rest)
+		},
 		"--append-system-prompt": func(t *testing.T, a Args) { assert.Equal(t, list("value"), a.AppendSystemPrompt) }, // args.ts:123
 		"--approve": func(t *testing.T, a Args) {
 			require.NotNil(t, a.ProjectTrustOverride)

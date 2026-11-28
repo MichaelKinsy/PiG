@@ -15,6 +15,7 @@ import { getSystemMessageText, renderSystemMessageUpdate } from "../utils/text.j
 import { getDeclaredTools, resolveTranscript, resolveTranscriptTools, } from "../utils/transcript.js";
 import { appendGrammarToolInputJsonDelta, closeGrammarToolInputJson, createGrammarToolInputProperties, getGrammarToolInput, getJsonSchemaToolParameters, resolveGrammarConstrainedSampling, resolveJsonSchemaStrictSampling, } from "./constrained-sampling.js";
 import { buildCopilotDynamicHeaders, hasCopilotVisionInput } from "./github-copilot-headers.js";
+import { appendOpenAIReasoningDetail, decodeLegacyToolCallReasoningDetail, decodeThinkingSignature, encodeThinkingSignature, isOpenAIReasoningDetail, OPENAI_COMPLETIONS_REASONING_FIELDS, } from "./openai-completions-reasoning.js";
 import { clampOpenAIPromptCacheKey } from "./openai-prompt-cache.js";
 import { buildBaseOptions, clampThinkingBudgetToAnswerRoom, resolveSamplingParams, thinkingBudgetForLevel, } from "./simple-options.js";
 import { transformMessages } from "./transform-messages.js";
@@ -65,82 +66,6 @@ function isToolCallBlock(block) {
 function isImageContentBlock(block) {
     return block.type === "image";
 }
-function isReasoningDetailObject(detail) {
-    return typeof detail === "object" && detail !== null && !Array.isArray(detail);
-}
-function hasValidCommonReasoningDetailFields(candidate) {
-    return ((candidate.id === undefined || candidate.id === null || typeof candidate.id === "string") &&
-        (candidate.format === undefined || typeof candidate.format === "string") &&
-        (candidate.index === undefined || typeof candidate.index === "number"));
-}
-function isOpenAIReasoningDetail(detail) {
-    if (!isReasoningDetailObject(detail) || !hasValidCommonReasoningDetailFields(detail)) {
-        return false;
-    }
-    switch (detail.type) {
-        case "reasoning.summary":
-            return typeof detail.summary === "string";
-        case "reasoning.encrypted":
-            return typeof detail.data === "string";
-        case "reasoning.text":
-            return (typeof detail.text === "string" &&
-                (detail.signature === undefined || detail.signature === null || typeof detail.signature === "string"));
-        default:
-            return false;
-    }
-}
-function parseOpenAIReasoningDetails(signature) {
-    if (!signature)
-        return undefined;
-    try {
-        const parsed = JSON.parse(signature);
-        return Array.isArray(parsed) && parsed.length > 0 && parsed.every(isOpenAIReasoningDetail) ? parsed : undefined;
-    }
-    catch {
-        return undefined;
-    }
-}
-function parseLegacyEncryptedReasoningDetail(signature) {
-    if (!signature)
-        return undefined;
-    try {
-        const parsed = JSON.parse(signature);
-        return isOpenAIReasoningDetail(parsed) &&
-            parsed.type === "reasoning.encrypted" &&
-            typeof parsed.id === "string" &&
-            parsed.id.length > 0 &&
-            parsed.data.length > 0
-            ? parsed
-            : undefined;
-    }
-    catch {
-        return undefined;
-    }
-}
-function fillMissingCommonReasoningDetailFields(target, source) {
-    target.id ??= source.id;
-    target.format ||= source.format;
-    target.index ??= source.index;
-}
-function appendOpenAIReasoningDetail(details, detail) {
-    const lastDetail = details[details.length - 1];
-    if (detail.type === "reasoning.text" && lastDetail?.type === "reasoning.text") {
-        lastDetail.text += detail.text;
-        lastDetail.signature ||= detail.signature;
-        fillMissingCommonReasoningDetailFields(lastDetail, detail);
-        return;
-    }
-    if (detail.type === "reasoning.summary" && lastDetail?.type === "reasoning.summary") {
-        lastDetail.summary += detail.summary;
-        fillMissingCommonReasoningDetailFields(lastDetail, detail);
-        return;
-    }
-    details.push({ ...detail });
-}
-const OPENAI_COMPLETIONS_REASONING_FIELDS = ["reasoning", "reasoning_content", "reasoning_text"];
-function isOpenAICompletionsReasoningField(field) {
-    return OPENAI_COMPLETIONS_REASONING_FIELDS.includes(field);
-}
 function resolveCacheRetention(cacheRetention, env) {
     if (cacheRetention) {
         return cacheRetention;
@@ -171,12 +96,24 @@ export const stream = (model, context, options) => {
             stopReason: "pending",
             timestamp: Date.now(),
         };
-        // `reasoning_details` are replay metadata, not user-visible stream deltas.
+        // `reasoning_details` and `reasoning_opaque` are replay metadata, not user-visible stream deltas.
         // Keep them in memory during streaming and serialize once when the block is finalized.
         let streamedReasoningDetails;
-        const applyStreamedReasoningDetails = (block) => {
+        let streamedReasoningField;
+        // Copilot sends one opaque value per reasoning segment; like its VS Code client, the latest one is
+        // replayed with the concatenated reasoning text.
+        let streamedReasoningOpaque;
+        // Without either, the block keeps the reasoning field name it was created with.
+        const applyStreamedReplayData = (block) => {
             if (streamedReasoningDetails !== undefined) {
-                block.thinkingSignature = JSON.stringify(streamedReasoningDetails);
+                block.thinkingSignature = encodeThinkingSignature({ kind: "details", details: streamedReasoningDetails });
+            }
+            else if (streamedReasoningOpaque !== undefined) {
+                block.thinkingSignature = encodeThinkingSignature({
+                    kind: "opaque",
+                    field: streamedReasoningField,
+                    opaque: streamedReasoningOpaque,
+                });
             }
         };
         try {
@@ -236,7 +173,7 @@ export const stream = (model, context, options) => {
                     });
                 }
                 else if (block.type === "thinking") {
-                    applyStreamedReasoningDetails(block);
+                    applyStreamedReplayData(block);
                     stream.push({
                         type: "thinking_end",
                         contentIndex,
@@ -386,10 +323,9 @@ export const stream = (model, context, options) => {
                     // or reasoning (other openai compatible endpoints)
                     // Use the first non-empty reasoning field to avoid duplication
                     // (e.g., chutes.ai returns both reasoning_content and reasoning with same content)
-                    const reasoningFields = ["reasoning_content", "reasoning", "reasoning_text"];
                     const deltaFields = choice.delta;
                     let foundReasoningField = null;
-                    for (const field of reasoningFields) {
+                    for (const field of OPENAI_COMPLETIONS_REASONING_FIELDS) {
                         const value = deltaFields[field];
                         if (typeof value === "string" && value.length > 0) {
                             foundReasoningField = field;
@@ -402,6 +338,7 @@ export const stream = (model, context, options) => {
                             const thinkingSignature = model.provider === "opencode-go" && foundReasoningField === "reasoning"
                                 ? "reasoning_content"
                                 : foundReasoningField;
+                            streamedReasoningField = thinkingSignature;
                             const block = ensureThinkingBlock(thinkingSignature);
                             block.thinking += delta;
                             stream.push({
@@ -412,6 +349,11 @@ export const stream = (model, context, options) => {
                             });
                         }
                     }
+                    const reasoningOpaque = deltaFields.reasoning_opaque;
+                    if (typeof reasoningOpaque === "string" && reasoningOpaque.length > 0) {
+                        ensureThinkingBlock("");
+                        streamedReasoningOpaque = reasoningOpaque;
+                    }
                     const reasoningDetails = choice.delta.reasoning_details;
                     if (Array.isArray(reasoningDetails)) {
                         for (const detail of reasoningDetails) {
@@ -419,9 +361,6 @@ export const stream = (model, context, options) => {
                                 continue;
                             ensureThinkingBlock("");
                             streamedReasoningDetails ??= [];
-                            // Keep provider replay data in the existing signature slot. OpenRouter streams
-                            // reasoning_details as deltas: consecutive text/summary deltas are merged into
-                            // logical entries, while encrypted entries remain opaque and discrete.
                             appendOpenAIReasoningDetail(streamedReasoningDetails, detail);
                         }
                     }
@@ -496,7 +435,7 @@ export const stream = (model, context, options) => {
         catch (error) {
             for (const block of output.content) {
                 if (block.type === "thinking") {
-                    applyStreamedReasoningDetails(block);
+                    applyStreamedReplayData(block);
                 }
             }
             output.stopReason = options?.signal?.aborted ? "aborted" : "error";
@@ -692,12 +631,6 @@ function buildParams(model, context, options, compat = getCompat(model), cacheRe
         }
         else if (model.thinkingLevelMap?.off !== null) {
             openRouterParams.reasoning = { effort: model.thinkingLevelMap?.off ?? "none" };
-        }
-    }
-    else if (compat.thinkingFormat === "ant-ling" && model.reasoning && options?.reasoningEffort) {
-        const effort = model.thinkingLevelMap?.[options.reasoningEffort];
-        if (typeof effort === "string") {
-            params.reasoning = { effort };
         }
     }
     else if (compat.thinkingFormat === "together" && model.reasoning) {
@@ -981,13 +914,7 @@ export function convertMessages(model, context, compat, options) {
             const assistantText = assistantTextParts.map((part) => part.text).join("");
             const thinkingBlocks = msg.content.filter(isThinkingContentBlock);
             const toolCalls = msg.content.filter(isToolCallBlock);
-            const signedReasoningDetails = thinkingBlocks
-                .map((block) => parseOpenAIReasoningDetails(block.thinkingSignature))
-                .find((details) => details !== undefined);
-            const legacyReasoningDetails = toolCalls
-                .map((toolCall) => parseLegacyEncryptedReasoningDetail(toolCall.thoughtSignature))
-                .filter((detail) => detail !== undefined);
-            const preservedReasoningDetails = signedReasoningDetails ?? (legacyReasoningDetails.length > 0 ? legacyReasoningDetails : undefined);
+            const reasoningReplay = resolveReasoningReplay(thinkingBlocks, toolCalls);
             const nonEmptyThinkingBlocks = thinkingBlocks.filter((block) => block.thinking.trim().length > 0);
             if (nonEmptyThinkingBlocks.length > 0) {
                 if (compat.requiresThinkingAsText) {
@@ -1007,14 +934,13 @@ export function convertMessages(model, context, compat, options) {
                         assistantMsg.content = assistantText;
                     }
                     // reasoning_details is the structured alternative to a raw reasoning field.
-                    if (!preservedReasoningDetails) {
-                        // Use the signature from the first thinking block if available (for llama.cpp server + gpt-oss)
-                        let signature = nonEmptyThinkingBlocks[0].thinkingSignature;
-                        if (model.provider === "opencode-go" && signature === "reasoning") {
-                            signature = "reasoning_content";
+                    if (reasoningReplay?.kind !== "details") {
+                        let field = reasoningReplay?.field;
+                        if (model.provider === "opencode-go" && field === "reasoning") {
+                            field = "reasoning_content";
                         }
-                        if (signature && isOpenAICompletionsReasoningField(signature)) {
-                            assistantMsg[signature] = nonEmptyThinkingBlocks.map((block) => block.thinking).join("\n");
+                        if (field) {
+                            assistantMsg[field] = nonEmptyThinkingBlocks.map((block) => block.thinking).join("\n");
                         }
                     }
                 }
@@ -1050,8 +976,11 @@ export function convertMessages(model, context, compat, options) {
                     };
                 });
             }
-            if (preservedReasoningDetails) {
-                assistantMsg.reasoning_details = preservedReasoningDetails;
+            if (reasoningReplay?.kind === "details") {
+                assistantMsg.reasoning_details = reasoningReplay.details;
+            }
+            else if (reasoningReplay?.kind === "opaque") {
+                assistantMsg.reasoning_opaque = reasoningReplay.opaque;
             }
             if (compat.requiresReasoningContentOnAssistantMessages &&
                 model.reasoning &&
@@ -1136,6 +1065,27 @@ export function convertMessages(model, context, compat, options) {
         lastRole = msg.role;
     }
     return params;
+}
+/**
+ * The reasoning replay data of one assistant message: the first `reasoning_details` (or, for older sessions, the
+ * encrypted details on its tool calls), else the latest Copilot `reasoning_opaque`, else the reasoning field of
+ * the first thinking block with text.
+ */
+function resolveReasoningReplay(thinkingBlocks, toolCalls) {
+    const signatures = thinkingBlocks.map((block) => decodeThinkingSignature(block.thinkingSignature));
+    const details = signatures.find((signature) => signature?.kind === "details");
+    if (details)
+        return details;
+    const legacyDetails = toolCalls
+        .map((toolCall) => decodeLegacyToolCallReasoningDetail(toolCall.thoughtSignature))
+        .filter((detail) => detail !== undefined);
+    if (legacyDetails.length > 0)
+        return { kind: "details", details: legacyDetails };
+    const opaque = signatures.findLast((signature) => signature?.kind === "opaque");
+    if (opaque)
+        return opaque;
+    const firstWithText = signatures[thinkingBlocks.findIndex((block) => block.thinking.trim().length > 0)];
+    return firstWithText?.kind === "field" ? firstWithText : undefined;
 }
 function convertTools(tools, compat) {
     return tools.map((tool) => {
@@ -1289,17 +1239,15 @@ function detectCompat(model) {
         requiresToolsWithToolHistory: false,
         requiresThinkingAsText: false,
         requiresReasoningContentOnAssistantMessages: isDeepSeek,
-        thinkingFormat: isDeepSeek
+        thinkingFormat: isDeepSeek || isAntLing
             ? "deepseek"
             : isZai
                 ? "zai"
                 : isTogether
                     ? "together"
-                    : isAntLing
-                        ? "ant-ling"
-                        : isOpenRouter
-                            ? "openrouter"
-                            : "openai",
+                    : isOpenRouter
+                        ? "openrouter"
+                        : "openai",
         openRouterRouting: {},
         vercelGatewayRouting: {},
         chatTemplateKwargs: {},
@@ -1344,7 +1292,9 @@ function getCompat(model) {
         requiresThinkingAsText: model.compat.requiresThinkingAsText ?? detected.requiresThinkingAsText,
         requiresReasoningContentOnAssistantMessages: model.compat.requiresReasoningContentOnAssistantMessages ??
             detected.requiresReasoningContentOnAssistantMessages,
-        thinkingFormat: model.compat.thinkingFormat ?? detected.thinkingFormat,
+        thinkingFormat: model.compat.thinkingFormat === "ant-ling"
+            ? "deepseek"
+            : (model.compat.thinkingFormat ?? detected.thinkingFormat),
         openRouterRouting: model.compat.openRouterRouting ?? {},
         vercelGatewayRouting: model.compat.vercelGatewayRouting ?? detected.vercelGatewayRouting,
         chatTemplateKwargs: model.compat.chatTemplateKwargs ?? detected.chatTemplateKwargs,

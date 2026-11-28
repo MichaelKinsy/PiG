@@ -139505,23 +139505,21 @@
     {
       "id": "pkg:ai/utils/openrouter-finish-reason#readOpenRouterNativeFinishReason",
       "upstreamShapeHash": "sha256:83034d8e0f2c712ea85d6d33dc9e0eb2d28d3e91de758e6429e2ff1c3b43a92b",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "No normalized-name candidate exists in the scanned Pig production packages."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#readOpenRouterNativeFinishReason"
-      ],
+      "pigCandidates": [],
       "missingClosure": [
-        "shape-translation-review",
+        "pig-go-shape",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"

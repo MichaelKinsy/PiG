@@ -1825,8 +1825,8 @@
  "packages/coding-agent/src/core/client-identity.ts": [
   {
    "file": "coding/client_identity.go",
-   "old": "\tif settings.IsInstallTelemetryEnabled() {",
-   "new": "\tif !settings.IsInstallTelemetryEnabled() {"
+   "old": "UserAgent:   new(ai.UserAgentDetailed),",
+   "new": "UserAgent:   new(ai.UserAgentShort),"
   }
  ],
  "packages/coding-agent/src/core/compaction/branch-summarization.ts": [
@@ -4864,18 +4864,6 @@
    "new": "build.StartupDiagnostics = append(slices.Clone(b.settingsDiagnostics), codingagent.CollectSettingsDiagnostics(services.SettingsManager())...)"
   }
  ],
- "packages/coding-agent/src/core/telemetry.ts": [
-  {
-   "file": "internal/codingagent/settings.go",
-   "old": "case \"1\", \"true\", \"yes\":",
-   "new": "case \"1\", \"true\":"
-  },
-  {
-   "file": "internal/codingagent/install_telemetry.go",
-   "old": "return sm != nil && sm.IsInstallTelemetryEnabled()",
-   "new": "return sm != nil"
-  }
- ],
  "packages/coding-agent/src/core/settings-manager.ts": [
   {
    "file": "internal/codingagent/settings.go",
@@ -6701,13 +6689,6 @@
    "file": "chord/next/host/host_tiling.go",
    "old": "\tif known != nil && page.after != nil && t.compare(page.after, known) >= 0 {\n",
    "new": "\tif false && known != nil && page.after != nil && t.compare(page.after, known) >= 0 {\n"
-  }
- ],
- "packages/chord/src/surfaces/variant.ts": [
-  {
-   "file": "chord/next/surfaces/surfaces_variant.go",
-   "old": "\treturn ref\n",
-   "new": "\treturn nil\n"
   }
  ],
  "packages/durable/src/harness/parks.ts": [

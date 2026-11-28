@@ -550,3 +550,65 @@ func TestAssistantMessageEventStreamTimesItsFinalMessage(t *testing.T) {
 		}
 	}
 }
+
+// Pi v1.7.0 packages/ai/src/models.ts:calculateCost: imageOutput prices image output tokens separately from text output tokens.
+func TestCalculateCostImageOutput(t *testing.T) {
+	model := map[string]any{
+		"id": "img", "provider": "p", "api": "x", "reasoning": false,
+		"cost": map[string]any{"input": 3.0, "output": 10.0, "imageOutput": 40.0, "cacheRead": 0.0, "cacheWrite": 0.0},
+	}
+	cases := []struct {
+		name       string
+		usage      map[string]any
+		wantOutput float64
+		wantTotal  float64
+	}{
+		{
+			name: "split image and text output",
+			usage: map[string]any{
+				"input": 1000.0, "output": 1000.0, "imageOutput": 600.0, "cacheRead": 0.0, "cacheWrite": 0.0,
+				"cost": map[string]any{},
+			},
+			wantOutput: 0.028,
+			wantTotal:  0.031,
+		},
+		{
+			name: "omitted imageOutput bills all output at image rate",
+			usage: map[string]any{
+				"input": 1000.0, "output": 1000.0, "cacheRead": 0.0, "cacheWrite": 0.0,
+				"cost": map[string]any{},
+			},
+			wantOutput: 0.04,
+			wantTotal:  0.043000000000000003,
+		},
+		{
+			name: "imageOutput greater than output clamps to output",
+			usage: map[string]any{
+				"input": 0.0, "output": 500.0, "imageOutput": 900.0, "cacheRead": 0.0, "cacheWrite": 0.0,
+				"cost": map[string]any{},
+			},
+			wantOutput: 0.02,
+			wantTotal:  0.02,
+		},
+		{
+			name: "zero imageOutput bills all output at text rate",
+			usage: map[string]any{
+				"input": 0.0, "output": 1000.0, "imageOutput": 0.0, "cacheRead": 0.0, "cacheWrite": 0.0,
+				"cost": map[string]any{},
+			},
+			wantOutput: 0.01,
+			wantTotal:  0.01,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := CalculateCost(model, tc.usage)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got["output"] != tc.wantOutput || got["total"] != tc.wantTotal {
+				t.Errorf("got output=%v total=%v, want output=%v total=%v", got["output"], got["total"], tc.wantOutput, tc.wantTotal)
+			}
+		})
+	}
+}

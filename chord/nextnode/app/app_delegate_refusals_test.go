@@ -16,10 +16,10 @@ import (
 // two hosts' tables say, not an authorization of the principal.
 const secretPlugin = `import { ChordError, constant, defineFacet, hostKind, remote, str } from "@test/app/v1";
 const Server = hostKind("server");
-const Secret = remote("probe.secret", { version: 1, params: {}, hostAddress: () => Server(), variants: { main: { state: { who: str() } } } });
+const Secret = remote("probe.secret", { version: 1, params: {}, hostAddress: () => Server(), state: { who: str() } });
 export default defineFacet((host) => host.serve(Secret, (_params, principal, _self) => {
 	if (principal?.kind !== "owner") throw new ChordError({ code: "forbidden", message: "probe.secret: the owner's only" });
-	return { variant: "main", members: { who: constant(JSON.stringify(principal)) } };
+	return { who: constant(JSON.stringify(principal)) };
 }));
 `
 
@@ -28,7 +28,7 @@ func serverRemote(t *testing.T, name string) *contracts.Contract {
 	return mustRemote(name, contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-		State: []contracts.RemoteStateEntry{contracts.StateEntry("who", contracts.Str())},
+		State:       []contracts.RemoteStateEntry{contracts.StateEntry("who", contracts.Str())},
 	})
 }
 

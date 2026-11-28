@@ -95,10 +95,7 @@ func TestPtyShellSelfExitKillsBackgroundJobInOwnGroup(t *testing.T) {
 		var buf strings.Builder
 		proc.read(done, func(b []byte) bool {
 			buf.Write(b)
-			if strings.Contains(buf.String(), "\n") {
-				return false
-			}
-			return true
+			return !strings.Contains(buf.String(), "\n")
 		})
 		outCh <- buf.String()
 	}()

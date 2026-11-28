@@ -19,9 +19,9 @@ func toolWithoutResultUpstreamCases() []toolWithoutResultCase {
 		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:164
 		{"should filter out tool calls without corresponding tool results", "cerebras", "gpt-oss-120b", "", false, ""},
 		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:172
-		{"should filter out tool calls without corresponding tool results", "cloudflare-workers-ai", "@cf/moonshotai/kimi-k2.6", "", false, ""},
+		{"should filter out tool calls without corresponding tool results", "cloudflare-workers-ai", "@cf/zai-org/glm-5.3", "", false, ""},
 		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:180
-		{"should filter out tool calls without corresponding tool results", "cloudflare-ai-gateway", "workers-ai/@cf/moonshotai/kimi-k2.6", "", false, ""},
+		{"should filter out tool calls without corresponding tool results", "cloudflare-ai-gateway", "workers-ai/@cf/zai-org/glm-5.3", "", false, ""},
 		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:188
 		{"should filter out tool calls without corresponding tool results", "huggingface", "moonshotai/Kimi-K2.5", "", false, ""},
 		// .upstream/v0.99.1/packages/ai/test/tool-call-without-result.test.ts:196 (0.99.1 moved Together to Kimi-K3)

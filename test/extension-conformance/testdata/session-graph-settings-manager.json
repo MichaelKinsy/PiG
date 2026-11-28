@@ -23,7 +23,6 @@
 		"getDoubleEscapeAction": "tree",
 		"getEditorPaddingX": 2,
 		"getEnableAnalytics": false,
-		"getEnableInstallTelemetry": false,
 		"getEnableSkillCommands": false,
 		"getEnabledModels": [
 			"m1",
@@ -53,7 +52,6 @@
 			"doubleEscapeAction": "tree",
 			"editorPaddingX": 2,
 			"enableAnalytics": false,
-			"enableInstallTelemetry": false,
 			"enableSkillCommands": false,
 			"enabledModels": [
 				"m1",
@@ -207,7 +205,6 @@
 			"doubleEscapeAction": "tree",
 			"editorPaddingX": 2,
 			"enableAnalytics": false,
-			"enableInstallTelemetry": false,
 			"enableSkillCommands": false,
 			"enabledModels": [
 				"m1",
@@ -350,7 +347,6 @@
 			"doubleEscapeAction": "tree",
 			"editorPaddingX": 2,
 			"enableAnalytics": false,
-			"enableInstallTelemetry": false,
 			"enableSkillCommands": false,
 			"enabledModels": [
 				"m1",
@@ -473,7 +469,6 @@
 		"getDoubleEscapeAction": "tree",
 		"getEditorPaddingX": 0,
 		"getEnableAnalytics": false,
-		"getEnableInstallTelemetry": true,
 		"getEnableSkillCommands": true,
 		"getEnabledModels": [
 			"a*"
@@ -696,7 +691,6 @@
 		"getDoubleEscapeAction": "tree",
 		"getEditorPaddingX": 2,
 		"getEnableAnalytics": false,
-		"getEnableInstallTelemetry": false,
 		"getEnableSkillCommands": false,
 		"getEnabledModels": [
 			"m1",
@@ -727,7 +721,6 @@
 			"doubleEscapeAction": "tree",
 			"editorPaddingX": 2,
 			"enableAnalytics": false,
-			"enableInstallTelemetry": false,
 			"enableSkillCommands": false,
 			"enabledModels": [
 				"m1",
@@ -879,7 +872,6 @@
 			"doubleEscapeAction": "tree",
 			"editorPaddingX": 2,
 			"enableAnalytics": false,
-			"enableInstallTelemetry": false,
 			"enableSkillCommands": false,
 			"enabledModels": [
 				"m1",

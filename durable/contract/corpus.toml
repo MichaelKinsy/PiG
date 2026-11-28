@@ -10,7 +10,7 @@
 
 [pin]
 reference = "earendil-works/pi"
-commit = "ef4a1cfcca62b77ad3558337ff3e1c7f6beeadfe"
+commit = "fb0fe823539f6d04850f6e34748c01f01f212e1f"
 release = "1.0.4"
 
 [[scenario]]
@@ -1639,7 +1639,7 @@ id = "U-store-storage-commit"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/store-storage-commit.test.ts"
-sha256 = "c8fd32997069adb4c189ea6cd627fd8a604505a6883f8eba51f2630912ab11ed"
+sha256 = "c818f3a9bc961041181a405d32a7f67a358e84453f32f4deead0600c3c7f1bfb"
 owner = "dcore-store"
 levels = ["tests"]
 status = "pending"
@@ -1650,7 +1650,7 @@ id = "U-store-storage"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/store-storage.test.ts"
-sha256 = "9f06e4301173e03ca35ab2396357a73d7540b33370249e942764ec900c5d35a9"
+sha256 = "20c1e0976dad4630aaf712be08d3e8b586f6c49863f3fa299a097b824ae40006"
 owner = "dcore-store"
 levels = ["tests"]
 status = "pending"

@@ -50,10 +50,10 @@ func TestAppStartsAWorkerPerAddressWithTheKitsStartDataAndItsOwnDirectoryTwoKind
 	})
 	teamPlugin := map[string]string{"teamworker.ts": `import { defineFacet, hostKind, remote, str, unknown, WorkerInfo } from "@test/app/v1";
 const Team = hostKind("team", { id: str() });
-const Members = remote("test.members", { version: 1, params: { id: str() }, hostAddress: ({ id }) => Team({ id }), variants: { main: { state: { start: unknown() } } } });
+const Members = remote("test.members", { version: 1, params: { id: str() }, hostAddress: ({ id }) => Team({ id }), state: { start: unknown() } });
 export default defineFacet((host) => host.serve(Members, (_params, _principal, self) => {
 	const info = self.get(WorkerInfo, {});
-	return { variant: "main", members: { start: self.derive([info.start], ([value]) => value) } };
+	return { start: self.derive([info.start], ([value]) => value) };
 }));`}
 	s := startTestApp(t, map[string]map[string]string{"notes": notesPlugin, "team": teamPlugin}, func(o *AppOptions) {
 		o.Workers = []AppWorkerKind{testWorker(t, project, ""), testWorker(t, team, "teamworker")}

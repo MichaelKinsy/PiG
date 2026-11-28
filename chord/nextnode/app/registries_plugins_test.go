@@ -33,8 +33,8 @@ const Project = hostKind("project", { id: str() });
 		return head + `const Read = local("test.reg.` + strings.ToLower(registry) + `", { version: 1, params: {}, members: { v: str() } });
 export default defineFacet((host) => host.serve(Read, (_params, self) => ({ v: self.derive([self.registry(` + registry + `)], ([value]) => ` + expression + `) })));`
 	}
-	return head + `const Read = remote("test.reg.worker.` + strings.ToLower(registry) + `", { version: 1, params: { id: str() }, hostAddress: ({ id }) => Project({ id }), variants: { main: { state: { v: str() } } } });
-export default defineFacet((host) => host.serve(Read, (_params, _principal, self) => ({ variant: "main", members: { v: self.derive([self.registry(` + registry + `)], ([value]) => ` + expression + `) } })));`
+	return head + `const Read = remote("test.reg.worker.` + strings.ToLower(registry) + `", { version: 1, params: { id: str() }, hostAddress: ({ id }) => Project({ id }), state: { v: str() } });
+export default defineFacet((host) => host.serve(Read, (_params, _principal, self) => ({ v: self.derive([self.registry(` + registry + `)], ([value]) => ` + expression + `) })));`
 }
 
 // localesOf and themesOf are the expressions of the readers: the locales offered, the ids of the themes.

@@ -29,9 +29,9 @@ var Match = mustContract(contracts.Remote("app.match", contracts.RemoteDeclarati
 	Version:     1,
 	Params:      contracts.Params{contracts.Prop("id", contracts.Int())},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-	State:   []contracts.RemoteStateEntry{contracts.StateEntry("score", contracts.Int())},
-	Events:  []contracts.RemoteEventEntry{contracts.EventEntry("paddle", contracts.NewGrantable(Sample)), contracts.EventEntry("ball", contracts.NewGrantable(Sample))},
-	Methods: []contracts.RemoteMethodEntry{contracts.Meth("bump", contracts.NewGrantable(contracts.NewMethod()))},
+	State:       []contracts.RemoteStateEntry{contracts.StateEntry("score", contracts.Int())},
+	Events:      []contracts.RemoteEventEntry{contracts.EventEntry("paddle", contracts.NewGrantable(Sample)), contracts.EventEntry("ball", contracts.NewGrantable(Sample))},
+	Methods:     []contracts.RemoteMethodEntry{contracts.Meth("bump", contracts.NewGrantable(contracts.NewMethod()))},
 }))
 
 // tickerCounter is the state the ticker counts in.

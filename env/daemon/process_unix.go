@@ -9,8 +9,9 @@ import (
 	"slices"
 	"syscall"
 
-	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 	"golang.org/x/sys/unix"
+
+	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
 // programAttributes starts the program as the leader of a new session, so a kill reaches every descendant that stays in

@@ -55,7 +55,11 @@ func hotkeysMarkdown(shortcuts []extension.ExtensionShortcut) string {
 	section("Other")
 	row("Path completion / accept autocomplete", "tui.input.tab")
 	row("Cancel autocomplete", "tui.select.cancel")
-	row("Abort streaming or running bash command", "app.interrupt")
+	if pigstrip.Has(pigstrip.ListTools, "bash") {
+		row("Abort streaming", "app.interrupt")
+	} else {
+		row("Abort streaming or running bash command", "app.interrupt")
+	}
 	row("Clear editor (first) / exit (second)", "app.clear")
 	row("Exit (when editor is empty)", "app.exit")
 	row("Suspend to background", "app.suspend")

@@ -131,7 +131,7 @@ func TestUnknownAPINamePrintSendsNothingAndReportsPiText(t *testing.T) {
 			return `{"anthropic":{"type":"oauth","access":"access-token","refresh":"refresh-token","expires":4102444800000}}`
 		}},
 		{name: "settings-default-model", api: "nosuchapi", settings: func(string) string { return `{"defaultProvider":"odd","defaultModel":"m"}` }},
-		{name: "extension-registered-provider", api: "nosuchapi", args: []string{"--model", "extp/m", "-e", fixture}, models: func(string) string { return `{}` }},
+		{name: "extension-registered-provider", api: "nosuchapi", args: []string{"--model", "extp/m", "-e", fixture}, models: func(string) string { return `{"providers":{}}` }},
 		// The credential is resolved before the api is looked up (model-runtime.ts:725-729 prepareRequest, then provider.stream), so its failure is the error.
 		{name: "failing-key-first", api: "nosuchapi", args: []string{"--model", "odd/m"}, models: func(baseURL string) string {
 			return fmt.Sprintf(`{"providers":{"odd":{"baseUrl":%q,"apiKey":"!exit 1","api":"nosuchapi","models":[{"id":"m"}]}}}`, baseURL)

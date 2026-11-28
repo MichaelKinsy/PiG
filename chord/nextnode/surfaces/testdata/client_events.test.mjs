@@ -29,7 +29,7 @@ const Game = remote("test.game", {
 	version: 1,
 	params: {},
 	hostAddress: () => Server(),
-	variants: { player: { events: { paddle: Sample } } },
+	events: { paddle: Sample },
 });
 
 /** Waits until `done()` holds, at most two seconds. */
@@ -90,7 +90,7 @@ describe("events of the vendored client", () => {
 					facet: defineFacet((h) =>
 						h.serve(Game, (_params, _principal, self) => {
 							paddle = self.events();
-							return { variant: "player", members: { paddle } };
+							return { paddle };
 						}),
 					),
 				},

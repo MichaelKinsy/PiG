@@ -126,7 +126,7 @@ func TestStagingARemoteTypeOnAHostWithoutAnAddressIsRefusedAsAtLoad(t *testing.T
 	remoteType := mustContract(declareRemote("app.remote", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-		State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
+		State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 	}))
 	host := newHost(t, HostOptions{Principal: serverPrincipal(), OnError: noopOnError})
 	defer closeHosts(t, host)
@@ -507,7 +507,7 @@ func TestStagingPerPluginTheClosureRuleChecksARequestAsARealBindDoesTheKeptProvi
 	consumed := mustContract(declareRemote("app.provider", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Int())},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return hereKind.Address(nil), nil },
-		State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
+		State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 	}))
 	consumer := mustContract(declareLocal("app.consumer", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())}}))
 	consumerFacet := func(id float64) Facet {

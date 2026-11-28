@@ -218,8 +218,8 @@ func TestSetupKeyHandlersRegistrationOrderDecidesOverlappingBindings(t *testing.
 	var registered []keyHandlerCase
 	for _, c := range keyHandlerCases {
 		switch c.action {
-		case "app.interrupt", "app.exit", "app.clipboard.pasteImage":
-			// CustomEditor checks these three before the registered actions.
+		case "app.interrupt", "app.exit", "app.clipboard.pasteImage", "app.message.followUp":
+			// CustomEditor checks these four before the registered actions.
 		default:
 			registered = append(registered, c)
 		}

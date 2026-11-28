@@ -208,7 +208,7 @@ func TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound(t *testin
 		return mustContract(declareRemote(name, contracts.RemoteDeclaration{
 			Version:     1,
 			HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return address(), nil },
-			State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
+			State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 		}))
 	}
 	a := remoteN("app.a", func() contracts.Address { return Server.Address(nil) })

@@ -19,7 +19,7 @@ replace(`export function getAgentDir() {
     if (envDir) {
         return expandTildePath(envDir);
     }
-    return join(homedir(), CONFIG_DIR_NAME, "agent");
+    return getHomeAgentDir();
 }`, `// pig divergence (D2): independent SDK instances share the host's default config root.
 import { CONFIG_DIR_NAME, getAgentDir } from "../../pig-config.mjs";
 export { getAgentDir };`);

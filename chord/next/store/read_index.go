@@ -137,13 +137,6 @@ type ReadIndex struct {
 	filings map[*RegisteredRead]*readFiling
 }
 
-func newReadIndex() *ReadIndex {
-	return &ReadIndex{
-		tables:  map[string]*tableIndex{},
-		filings: map[*RegisteredRead]*readFiling{},
-	}
-}
-
 // Add files read under every table it uses: by its bucket on its own table when it has one, else unindexed.
 func (ri *ReadIndex) Add(read *RegisteredRead) {
 	plan := read.Plan

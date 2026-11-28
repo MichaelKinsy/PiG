@@ -20,7 +20,7 @@ func TestSelectSubmenuRendersTitleDescriptionAndHint(t *testing.T) {
 	if !strings.Contains(joined, "Select reasoning depth") {
 		t.Fatalf("missing description: %s", joined)
 	}
-	if !strings.Contains(joined, "Enter to select") {
+	if !strings.Contains(joined, "enter to select · escape/ctrl+c to go back") {
 		t.Fatalf("missing hint: %s", joined)
 	}
 	if strings.Contains(joined, "filter:") {

@@ -375,7 +375,7 @@ func TestHostRevokeAbandonsAnActivationInProgress(t *testing.T) {
 		slow := mustContract(declareRemote("app.slow", contracts.RemoteDeclaration{
 			Version:     1,
 			HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-			State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
+			State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 		}))
 		var mu sync.Mutex
 		var aborted []error
@@ -793,7 +793,6 @@ var thereKind = mustKind(contracts.NewHostKind("app-there"))
 var remoteThere = mustContract(declareRemote("app.remote", contracts.RemoteDeclaration{
 	Version:     1,
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return thereKind.Address(nil), nil },
-	
 }))
 
 // Mirrors "revocation of this host's own requests over its paths (fix round 1) › ends a guest's ctx.get waiting for its route before any link exists, at once (Astra 1, Sol 1)".

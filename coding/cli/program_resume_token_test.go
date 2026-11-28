@@ -63,12 +63,13 @@ func TestMainTakesProgramResumeTokenBeforeAnyCommand(t *testing.T) {
 		if !ok || fn.Name.Name != "Main" {
 			continue
 		}
-		if len(fn.Body.List) < 2 {
-			t.Fatalf("Main has %d statements, want at least 2", len(fn.Body.List))
+		if len(fn.Body.List) < 3 {
+			t.Fatalf("Main has %d statements, want at least 3", len(fn.Body.List))
 		}
-		assign, ok := fn.Body.List[1].(*ast.AssignStmt)
+		// Pi v1.7.0 (main.ts:610-619): ApplyAgentDirArg (+ its error exit) runs first, then TakeProgramResumeToken() before any subcommand or child process.
+		assign, ok := fn.Body.List[2].(*ast.AssignStmt)
 		if !ok || len(assign.Rhs) != 1 {
-			t.Fatalf("Main's second statement is %T, want programResumeToken := tui.TakeProgramResumeToken()", fn.Body.List[1])
+			t.Fatalf("Main's third statement is %T, want programResumeToken := tui.TakeProgramResumeToken()", fn.Body.List[2])
 		}
 		call, ok := assign.Rhs[0].(*ast.CallExpr)
 		if !ok {

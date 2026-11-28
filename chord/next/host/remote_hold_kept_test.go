@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -511,8 +511,8 @@ func TestHoldCallsInFlightAcrossALoadingUnbind(t *testing.T) {
 // keptPlaced is `Kept` placed on a session's worker.
 var keptPlaced = mustContract(declareRemote("app.placed-kept", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{contracts.Prop("session", contracts.Str())}, HostAddress: exSessionAddress,
-	State: []contracts.RemoteStateEntry{contracts.StateEntry("label", contracts.Str())},
-		Methods: []contracts.RemoteMethodEntry{contracts.Meth("ping", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
+	State:   []contracts.RemoteStateEntry{contracts.StateEntry("label", contracts.Str())},
+	Methods: []contracts.RemoteMethodEntry{contracts.Meth("ping", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
 }))
 
 // keptServePlaced serves `PlacedKept` answering n (recorded in ran), with a native that opens once opened fires.

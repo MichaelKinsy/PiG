@@ -87,7 +87,7 @@ func TestSlashReloadSavesImplicitTrustThenShowsModelsJSONError(t *testing.T) {
 	}
 	h.Do(func() { h.Enter("/reload") })
 	chat := h.Chat()
-	modelsError := strings.Index(chat, "Error: models.json error: Failed to parse models.json")
+	modelsError := strings.Index(chat, "Warning: models.json error: Failed to parse models.json")
 	status := strings.Index(chat, "Reloaded keybindings, extensions, skills, prompts, themes, and context files; saved project trust")
 	if modelsError < 0 || status < 0 || modelsError > status {
 		t.Fatalf("models.json error (%d) must precede the saved-trust status (%d):\n%s", modelsError, status, chat)
@@ -145,7 +145,7 @@ func TestSlashReloadTrustSaveFailureWarnsBeforeModelsJSONError(t *testing.T) {
 	h.Do(func() { h.Enter("/reload") })
 	chat := h.Chat()
 	warning := strings.Index(chat, "Warning: Could not save project trust after reload: ")
-	modelsError := strings.Index(chat, "Error: models.json error: ")
+	modelsError := strings.Index(chat, "Warning: models.json error: ")
 	if warning < 0 || modelsError < 0 || warning > modelsError {
 		t.Fatalf("trust warning (%d) must precede the models.json error (%d):\n%s", warning, modelsError, chat)
 	}

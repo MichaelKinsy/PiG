@@ -94,7 +94,7 @@ func TestEventMembersBindAnEventOnlyContractLiveNoStateToHydrateAtOnceOverALinkT
 		Version:     1,
 		Params:      contracts.Params{},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-		Events: []contracts.RemoteEventEntry{contracts.EventEntry("ticks", Sample)},
+		Events:      []contracts.RemoteEventEntry{contracts.EventEntry("ticks", Sample)},
 	}))
 	l := linked(t, func(h FacetHost) error {
 		return h.Serve(only, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.MembersImplementation, error) {

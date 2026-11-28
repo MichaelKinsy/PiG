@@ -39,7 +39,7 @@ func presenceViewed(members ...string) *contracts.Contract {
 		Version:     1,
 		Params:      contracts.Params{},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return serverAddress(), nil },
-		State: properties,
+		State:       properties,
 	}))
 }
 
@@ -168,7 +168,7 @@ func TestHostReferencesFeedsDerivesInFactoriesViewersPerSessionALinkDropADepartu
 		Version:     1,
 		Params:      contracts.Params{contracts.Prop("session", contracts.Str())},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return serverAddress(), nil },
-		State: []contracts.RemoteStateEntry{contracts.StateEntry("here", contracts.Int())},
+		State:       []contracts.RemoteStateEntry{contracts.StateEntry("here", contracts.Int())},
 	}))
 	server := presenceServer(t, func(h FacetHost) error {
 		if err := h.Serve(shown, func(*delta.JsonObject, data.Principal, Self) (contracts.MembersImplementation, error) {
@@ -436,7 +436,7 @@ func TestHostReferencesHasNoEntriesForLingeringObjects(t *testing.T) {
 		Version:     1,
 		Params:      contracts.Params{},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return serverAddress(), nil },
-		State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
+		State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 	}))
 	linger := 60 * time.Second
 	hosts := linked(t, func(h FacetHost) error {

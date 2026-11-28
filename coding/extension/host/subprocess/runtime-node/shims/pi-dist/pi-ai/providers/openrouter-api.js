@@ -38,4 +38,14 @@ export function openRouterCost(pricing) {
     });
     return tiers.length > 0 ? { ...base, tiers } : base;
 }
+/**
+ * `openRouterCost` for image models, adding `image_output` as `imageOutput`. Image tokens often cost
+ * 10x or more the `completion` rate that the same response's text and reasoning tokens cost.
+ */
+export function openRouterImageCost(pricing) {
+    const cost = openRouterCost(pricing);
+    return pricing?.image_output === undefined
+        ? cost
+        : { ...cost, imageOutput: perMillion(pricing.image_output, cost.output) };
+}
 //# sourceMappingURL=openrouter-api.js.map

@@ -6,8 +6,9 @@
  */
 import { createInterface } from "node:readline";
 import { modelsAreEqual } from "../pi-ai/sdk-bundle/index.js";
-import { setCapabilityOverrides } from "../../pi-tui.mjs";
+import { setCapabilityOverrides, takeProgramResumeToken } from "../../pi-tui.mjs";
 import chalk from "../../chalk/source/index.js";
+import { applyAgentDirArg } from "./cli/agent-dir-arg.js";
 import { normalizeSessionName, parseArgs, printHelp } from "./cli/args.js";
 import { checkProviderAuth, createAuthCheckModelRuntime, getProviderCredential, } from "./cli/auth-check.js";
 import { AuthCommandError, getAuthCommandName, getAuthCommandUsage, isAuthCommandHelp, parseAuthCommand, printAuthCommandHelp, validateAuthCommandArgs, } from "./cli/auth-command.js";
@@ -480,8 +481,20 @@ function buildSessionOptions(parsed, scopedModels, hasExistingSession, modelRunt
 function resolveCliPaths(cwd, paths) {
     return paths?.map((value) => (isLocalPath(value) ? resolvePath(value, cwd) : value));
 }
-export async function main(args, options) {
+export async function main(cliArgs, options) {
     resetTimings();
+    // First, before anything reads the agent dir, and before subcommands are recognized so the flag works with them.
+    // Modules have already loaded at this point: a value they cached from getAgentDir() at load ignores the flag.
+    const agentDirArg = applyAgentDirArg(cliArgs);
+    if (agentDirArg.kind === "error") {
+        console.error(chalk.red(`Error: ${agentDirArg.message}`));
+        process.exit(1);
+    }
+    const args = agentDirArg.args;
+    // Taken in every mode, before anything starts a child process: pi reports its own resume command, and
+    // shells, editors and extension processes it starts must not replace it or register commands that later
+    // run with the user's rights (OSC 7577).
+    const programResumeToken = takeProgramResumeToken();
     // Commands and startup selectors can load user-authored themes before runtime creation.
     setThemeJsonValidator(validateThemeJson);
     const extensionFactories = [...builtInExtensions, ...(options?.extensionFactories ?? [])];
@@ -864,6 +877,8 @@ export async function main(args, options) {
             verbose: parsed.verbose,
             tuiMode: parsed.tuiMode,
             initialThemeSetting: parsed.useTheme,
+            programResumeToken,
+            programResumeFlags: parsed.resumeFlags,
         });
         if (startupBenchmark) {
             await interactiveMode.init();

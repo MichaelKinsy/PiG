@@ -453,7 +453,7 @@ func sessionListInputCases() []sessionContractCase {
 		{name: "tab/switches-back-to-the-current-scope", fixture: "big", keys: []string{skTab, skTab}, check: sessionWantContains("Resume Session (Current Folder)", "◉ Current Folder")},
 		{name: "tab/shows-the-working-directory-in-the-all-scope", fixture: "big", keys: []string{skTab}, check: sessionWantContains("/other/place")},
 		{name: "tab/is-not-typed-into-the-search", fixture: "big", keys: []string{skTab}, check: sessionWantContains("> ")},
-		{name: "tab/empty-current-scope-offers-the-all-scope", fixture: "empty-current", keys: []string{}, check: sessionWantContains("No sessions in current folder. Press Tab to view all.")},
+		{name: "tab/empty-current-scope-offers-the-all-scope", fixture: "empty-current", keys: []string{}, check: sessionWantContains("No sessions in current folder. Press tab to view all.")},
 		{name: "tab/lists-the-all-scope-after-an-empty-current-scope", fixture: "empty-current", keys: []string{skTab}, check: sessionWantRows(10)},
 		{name: "tab/empty-everywhere-says-so", fixture: "empty", keys: []string{skTab}, check: sessionWantContains("No sessions found")},
 		{name: "tab/untouched-selection-restarts-at-the-first-row", fixture: "big", keys: []string{skTab}, check: sessionWantSelected("message number 21")},
@@ -487,7 +487,7 @@ func sessionListInputCases() []sessionContractCase {
 		{name: "named/filters-to-named-sessions", fixture: "big", keys: []string{skCtrlN}, check: sessionWantAll(sessionWantContains("Name: Named"), sessionWantRows(4))},
 		{name: "named/toggles-back-to-all", fixture: "big", keys: []string{skCtrlN, skCtrlN}, check: sessionWantAll(sessionWantContains("Name: All"), sessionWantRows(10))},
 		{name: "named/names-padded-by-javascript-whitespace-count", fixture: "big", keys: []string{skCtrlN}, check: sessionWantContains("spaced")},
-		{name: "named/empty-current-scope-message", fixture: "unnamed", keys: []string{skCtrlN}, check: sessionWantContains("No named sessions in current folder. Press ctrl+n to show all, or Tab to view all.")},
+		{name: "named/empty-current-scope-message", fixture: "unnamed", keys: []string{skCtrlN}, check: sessionWantContains("No named sessions in current folder. Press ctrl+n to show all, or tab to view all.")},
 		{name: "named/empty-all-scope-message", fixture: "unnamed", keys: []string{skTab, skCtrlN}, check: sessionWantContains("No named sessions found. Press ctrl+n to show all.")},
 		{name: "named/with-a-search", fixture: "big", keys: []string{"n", "a", "m", "e", "d", "-", "1", skCtrlN}, check: sessionWantRows(2)},
 		{name: "named/clamps-the-selection", fixture: "big", keys: []string{skDown, skDown, skDown, skDown, skDown, skCtrlN}, check: sessionWantSelected("named")},
@@ -555,7 +555,7 @@ func sessionListInputCases() []sessionContractCase {
 		// branch 15: everything else edits the search
 		{name: "search/typing-filters-the-list", fixture: "big", keys: []string{"t", "o", "p", "i", "c", "1"}, check: sessionWantAll(sessionWantRows(5), sessionWantContains("topic1"))},
 		{name: "search/backspace-widens-the-list", fixture: "big", keys: []string{"t", "o", "p", "i", "c", "1", "\x7f"}, check: sessionWantRows(10)},
-		{name: "search/no-match-shows-the-empty-list", fixture: "big", keys: []string{"q", "q", "q", "q"}, check: sessionWantContains("No sessions in current folder. Press Tab to view all.")},
+		{name: "search/no-match-shows-the-empty-list", fixture: "big", keys: []string{"q", "q", "q", "q"}, check: sessionWantContains("No sessions in current folder. Press tab to view all.")},
 		{name: "search/selects-the-top-match", fixture: "big", keys: []string{recent, skPageDn, "t", "o", "p", "i", "c", "1"}, check: sessionWantSelected("named-1 ")},
 		{name: "search/regex-query", fixture: "big", keys: []string{"r", "e", ":", "n", "u", "m", "b", "e", "r", " ", "1", "[0-3]"}, check: sessionWantContains("re:number 1[0-3]")},
 		{name: "search/phrase-query", fixture: "big", keys: []string{"\"", "n", "u", "m", "b", "e", "r", " ", "7", "\""}, check: sessionWantRows(1)},
@@ -598,7 +598,7 @@ func sessionComponentInputCases() []sessionContractCase {
 		{name: "rename-mode/selection-survives-the-round-trip", fixture: "big", keys: []string{recent, skDown, skDown, skCtrlR, skEscape}, check: sessionWantSelected("message number 2 ")},
 		{name: "rename-mode/rename-key-is-not-nested", fixture: "big", keys: []string{skCtrlR, skCtrlR}, check: sessionWantContains("Rename Session")},
 		{name: "rename-mode/header-and-list-are-hidden", fixture: "big", keys: []string{skCtrlR}, check: sessionWantLacks("Resume Session", "tab scope", "message number")},
-		{name: "rename-mode/panel-shows-the-save-and-cancel-keys", fixture: "big", bindings: map[string][]string{"tui.select.confirm": {"ctrl+y"}, "tui.select.cancel": {"ctrl+g"}}, keys: []string{skCtrlR}, check: sessionWantContains("ctrl+y to save · ctrl+g to cancel")},
+		{name: "rename-mode/panel-shows-the-save-and-cancel-keys", fixture: "big", bindings: map[string][]string{"tui.select.confirm": {"ctrl+y"}, "tui.select.cancel": {"ctrl+g"}}, keys: []string{skCtrlR}, check: sessionWantContains("enter to save · ctrl+g to cancel")},
 		{name: "rename-mode/the-input-is-focused", fixture: "big", keys: []string{skCtrlR}, check: func(t *testing.T, tr sessionContractTrace) {
 			t.Helper()
 			if !strings.Contains(strings.Join(tr.last(), "\n"), "\x1b_pi:c\x07") {

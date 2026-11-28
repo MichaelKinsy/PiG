@@ -193,7 +193,7 @@ var providerKept = mustContract(contracts.Remote("app.kept", contracts.RemoteDec
 	Version:     1,
 	Params:      contracts.Params{contracts.Prop("id", contracts.Int())},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-	State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
+	State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 }))
 
 // remoteOneVariant declares a remote type of the server with the one variant v.
@@ -1243,7 +1243,7 @@ func TestProviderOrigins(t *testing.T) {
 
 // Halves is a constant, and a member that fails once `set(2)`.
 var Halves = remoteOneVariant("app.halves", contracts.Params{}, contracts.RemoteDeclaration{
-	State: []contracts.RemoteStateEntry{contracts.StateEntry("one", contracts.Int()), contracts.StateEntry("half", contracts.Int())},
+	State:   []contracts.RemoteStateEntry{contracts.StateEntry("one", contracts.Int()), contracts.StateEntry("half", contracts.Int())},
 	Methods: []contracts.RemoteMethodEntry{contracts.Meth("set", contracts.NewMethod(contracts.Int()))},
 })
 

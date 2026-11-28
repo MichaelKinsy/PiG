@@ -236,6 +236,12 @@ func (b *surfaceBuild) run(ctx context.Context) *buildOutcome {
 	if err != nil {
 		return &buildOutcome{err: err}
 	}
+	b.mu.Lock()
+	closed := b.closed
+	b.mu.Unlock()
+	if closed {
+		return &buildOutcome{err: errClosed}
+	}
 	published := NewPublishedScripts(b.surface, b.options.kind, b.prefix, base.Hash, b.options.plugins, b.server)
 	if _, err := published.Start(ctx); err != nil {
 		return &buildOutcome{err: err}

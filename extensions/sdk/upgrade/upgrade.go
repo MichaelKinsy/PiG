@@ -53,7 +53,8 @@ const (
 	RuleHostHighlightCode   = impl.RuleHostHighlightCode
 	RuleMarkdownTransformer = impl.RuleMarkdownTransformer
 	RuleSetModelObject      = impl.RuleSetModelObject
-	RuleSettingsNotices     = impl.RuleSettingsNotices
+	RuleSettingsNotices         = impl.RuleSettingsNotices
+	RuleInstallTelemetryRemoved = impl.RuleInstallTelemetryRemoved
 )
 
 // Rules returns every rule, in the order the SDK changed.

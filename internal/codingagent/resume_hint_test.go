@@ -27,6 +27,7 @@ func TestQuoteIfNeeded(t *testing.T) {
 }
 
 func TestResumeCommand(t *testing.T) {
+	t.Setenv(ENV_AGENT_DIR, "")
 	dir := t.TempDir()
 	existing := filepath.Join(dir, "sess.jsonl")
 	if err := os.WriteFile(existing, []byte("{}\n"), 0o600); err != nil {

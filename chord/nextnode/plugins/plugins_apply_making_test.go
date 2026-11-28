@@ -3,7 +3,6 @@ package plugins
 import (
 	"context"
 	"errors"
-	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -11,7 +10,6 @@ import (
 	"time"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
-	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
@@ -341,8 +339,6 @@ func TestPluginsCloseAbortsFirstMakingWhenBuildsAlreadyDone(t *testing.T) {
 // writeItemPlugin writes a minimal single-facet worker plugin in root/dir named "@test/<dir>".
 func writeItemPlugin(t *testing.T, root, dir, label string) {
 	t.Helper()
-	_ = host.ReloadReport{}
-	_ = slices.Equal([]string{}, []string{})
 	writeFiles(t, root+"/"+dir, map[string]string{
 		"package.json": `{"name":"@test/` + dir + `","type":"module"}`,
 		"worker.ts":    `export const label = "` + label + `";`,

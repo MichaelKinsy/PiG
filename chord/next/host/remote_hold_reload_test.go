@@ -29,8 +29,8 @@ import (
 // rhShown is `Shown`: a remote object on the server: a label, a counter and `bump`.
 var rhShown = mustContract(contracts.Remote("app.shown", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{}, HostAddress: exServerAddress,
-	State: []contracts.RemoteStateEntry{contracts.StateEntry("label", contracts.Str()), contracts.StateEntry("n", contracts.Int())},
-		Methods: []contracts.RemoteMethodEntry{contracts.Meth("bump", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
+	State:   []contracts.RemoteStateEntry{contracts.StateEntry("label", contracts.Str()), contracts.StateEntry("n", contracts.Int())},
+	Methods: []contracts.RemoteMethodEntry{contracts.Meth("bump", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
 }))
 
 // rhShownV2 is `Shown` v2: its label became an object; v1 consumers map back through `accepts`.
@@ -467,8 +467,8 @@ func TestHoldsAcrossMoreThanOneSwapKeepsARealSubscriberWhenAChangedConstantLater
 	typ := mustContract(contracts.Remote("sol.wire", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return kind.Address(nil), nil },
-		State: []contracts.RemoteStateEntry{contracts.StateEntry("x", contracts.Int())},
-			Methods: []contracts.RemoteMethodEntry{contracts.Meth("set", contracts.NewMethod(contracts.Int()))},
+		State:       []contracts.RemoteStateEntry{contracts.StateEntry("x", contracts.Int())},
+		Methods:     []contracts.RemoteMethodEntry{contracts.Meth("set", contracts.NewMethod(contracts.Int()))},
 	}))
 	doc, err := documents.DefineState("wire", documents.StateOptions{
 		Schema: contracts.Obj(contracts.Prop("n", contracts.Int())), Version: 1,
@@ -660,11 +660,11 @@ func TestHoldWaitingForAWindowSlotWhoseSlotFreesBetweenTheOldAttemptsSealAndItsE
 		window := mustContract(contracts.Remote("app.window", contracts.RemoteDeclaration{
 			Version: 1, Params: contracts.Params{}, HostAddress: exServerAddress,
 			State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
-				Methods: []contracts.RemoteMethodEntry{
-					contracts.Meth("bump", contracts.NewMethod(contracts.Schema{}, contracts.Int())),
-					contracts.Meth("slow", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
-					contracts.Meth("start", contracts.NewMethod()),
-				},
+			Methods: []contracts.RemoteMethodEntry{
+				contracts.Meth("bump", contracts.NewMethod(contracts.Schema{}, contracts.Int())),
+				contracts.Meth("slow", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
+				contracts.Meth("start", contracts.NewMethod()),
+			},
 		}))
 		wait, err := DefineJob("app.window-wait", JobOptions{Version: 1, Args: contracts.Obj(), Result: contracts.Str()})
 		must(t, err)

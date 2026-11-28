@@ -521,7 +521,7 @@ func lastIndexOfStrict(items []any, target JsonValue, from int) int {
 }
 
 func sameRunStrict(before []any, from int, after []any, to int, count int) bool {
-	for offset := 0; offset < count; offset++ {
+	for offset := range count {
 		if !strictEqual(before[from+offset], after[to+offset]) {
 			return false
 		}

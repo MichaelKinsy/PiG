@@ -113,7 +113,9 @@ func (f *flakyFactory) factory(loop eventLoop, fails func(attempt int) bool, gat
 func TestObjectIdentityOneObjectPerParamsKeyAParamsTypeLivesFromItsFirstGetToItsLastRelease(t *testing.T) {
 	var factory atomic.Int32
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(objStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) { return serveStore(self), nil }, ServeOptions{}); err != nil {
+		if err := h.Serve(objStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
+			return serveStore(self), nil
+		}, ServeOptions{}); err != nil {
 			return err
 		}
 		return h.Serve(attemptPage, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
@@ -177,7 +179,9 @@ func TestObjectIdentityKeepsATypeWithEmptyParamsAcrossReleases(t *testing.T) {
 func TestObjectIdentityDropsAnEndedObjectsDocumentsAndDetachesItsDerivesFromOtherObjectsMembers(t *testing.T) {
 	meter := nexttest.Metered(t)
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(objStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) { return serveStore(self), nil }, ServeOptions{}); err != nil {
+		if err := h.Serve(objStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
+			return serveStore(self), nil
+		}, ServeOptions{}); err != nil {
 			return err
 		}
 		return h.Serve(attemptPage, func(params *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
@@ -620,7 +624,9 @@ func TestObjectGCCollectsAnEndedObjectWithItsDocumentsDerivesAndWatches(t *testi
 	var mu sync.Mutex
 	var attempts []weak.Pointer[attempt]
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(objStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) { return serveStore(self), nil }, ServeOptions{}); err != nil {
+		if err := h.Serve(objStore, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
+			return serveStore(self), nil
+		}, ServeOptions{}); err != nil {
 			return err
 		}
 		return h.Serve(attemptPage, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {

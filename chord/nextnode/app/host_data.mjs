@@ -22,7 +22,7 @@ const HostData = remote("chord.app.data", {
 	version: 1,
 	params: { address: str() },
 	hostAddress: ({ address }) => JSON.parse(address),
-	variants: { main: { methods: { exportTo: method(obj({ path: str(), manifest: str(), server: str() })) } } },
+	methods: { exportTo: method(obj({ path: str(), manifest: str(), server: str() })) },
 });
 
 const HostDataExport = local("chord.app.data.export", {
@@ -38,11 +38,8 @@ export default defineFacet((host) =>
 		}
 		const exporter = self.get(HostDataExport, {});
 		return {
-			variant: "main",
-			members: {
-				exportTo: ({ path, manifest, server }, ctx) =>
-					exporter.exportTo({ token: TOKEN, path, manifest, server }, ctx),
-			},
+			exportTo: ({ path, manifest, server }, ctx) =>
+				exporter.exportTo({ token: TOKEN, path, manifest, server }, ctx),
 		};
 	}),
 );

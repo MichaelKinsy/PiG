@@ -214,10 +214,10 @@ func TestTransactionCancelledAttributionERNDL1190(t *testing.T) {
 						})
 					})
 					return contracts.MembersImplementation{
-							Methods: map[string]contracts.MethodFunction{
-								"touch": func(_ delta.JsonValue, _ context.Context) (delta.JsonValue, error) { return nil, nil },
-							},
-						}, nil
+						Methods: map[string]contracts.MethodFunction{
+							"touch": func(_ delta.JsonValue, _ context.Context) (delta.JsonValue, error) { return nil, nil },
+						},
+					}, nil
 				}, ServeOptions{})
 			}),
 		}}, background); err != nil {
@@ -256,18 +256,18 @@ func TestTransactionCancelledAttributionERNDL1190(t *testing.T) {
 				return fh.Serve(ownerContract, func(_ *delta.JsonObject, self Self) (contracts.MembersImplementation, error) {
 					_ = self.State(listDef)
 					return contracts.MembersImplementation{
-							Methods: map[string]contracts.MethodFunction{
-								"touch": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-									defer close(done)
-									return self.Tx(func(tx documents.Tx) (any, error) {
-										close(entered)
-										chordctx.Suspend(ctx)
-										<-ctx.Done()
-										return nil, context.Cause(ctx)
-									}, ctx)
-								},
+						Methods: map[string]contracts.MethodFunction{
+							"touch": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+								defer close(done)
+								return self.Tx(func(tx documents.Tx) (any, error) {
+									close(entered)
+									chordctx.Suspend(ctx)
+									<-ctx.Done()
+									return nil, context.Cause(ctx)
+								}, ctx)
 							},
-						}, nil
+						},
+					}, nil
 				}, ServeOptions{})
 			}),
 		}}, background); err != nil {

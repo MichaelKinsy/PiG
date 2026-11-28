@@ -45,7 +45,7 @@ var serverKind = must(contracts.NewHostKind("server"))
 var who = must(contracts.Remote("test.who", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return serverKind.Address(nil), nil },
-	Methods: []contracts.RemoteMethodEntry{contracts.Meth("who", contracts.NewMethod(contracts.Schema{}, contracts.Str()))},
+	Methods:     []contracts.RemoteMethodEntry{contracts.Meth("who", contracts.NewMethod(contracts.Schema{}, contracts.Str()))},
 }))
 
 var serveWho = host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {

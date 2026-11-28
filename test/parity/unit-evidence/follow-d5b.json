@@ -188,7 +188,7 @@
    "TestMemberCheckRefusesAMethodTheImplementationDoesNotOwn",
    "TestMemberCheckNamesADeriveInErrorsByItsMemberWhenExposedElseByItsPosition",
    "TestCheckImplementationChecksALocalContractsMembersAsGiven",
-   "TestCheckImplementationChecksARemoteContractsVariant",
+   "TestCheckImplementationChecksALocalContractsMembersAsGiven",
    "TestAttachDerivesReportsUnderTheExposingMemberAcceptsNativeSourcesAndPropagatesAThrowingGetter",
    "TestContributionOfFollowsWatchablesAndNativesLeavesOtherValuesPlainAndFollowsAnotherRegistrysValue"
   ],

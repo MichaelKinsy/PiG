@@ -32,6 +32,8 @@ export { renderLatex } from "./latex.js";
 // Native platform integration
 export { getNativeClipboard } from "./native-platform.js";
 export { oklabToOkhslLightness } from "./oklab.js";
+// Program resume reporting (OSC 7577)
+export { formatProgramResume, formatProgramResumeClear, takeProgramResumeToken, } from "./program-resume.js";
 // Program status reporting (OSC 7501)
 export { formatProgramStatus } from "./program-status.js";
 // Input buffering for batch splitting

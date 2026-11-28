@@ -325,7 +325,6 @@ fn read_all(s: &SettingsManager) -> io::Result<Value> {
         "getShellCommandPrefix" => get_shell_command_prefix,
         "getNpmCommand" => get_npm_command,
         "getCollapseChangelog" => get_collapse_changelog,
-        "getEnableInstallTelemetry" => get_enable_install_telemetry,
         "getEnableAnalytics" => get_enable_analytics,
         "getPackages" => get_packages,
         "getExtensionPaths" => get_extension_paths,
@@ -542,7 +541,6 @@ fn settings_script(ctx: &Context, args: &Value) -> io::Result<Value> {
     s.set_image_auto_resize(false)?;
     s.set_show_terminal_progress(true)?;
     s.set_enable_skill_commands(false)?;
-    s.set_enable_install_telemetry(false)?;
     s.set_notice("cacheMisses", false)?;
     s.set_default_model_and_provider("anthropic", "opus")?;
     s.set_project_packages(json!(["npm:proj"]))?;

@@ -1,6 +1,6 @@
-import { calculateCost } from "../models.js";
 import { formatProviderError, normalizeProviderError } from "../utils/error-body.js";
 import { isRecord, postClassifierRequest, requiredNumber } from "./classifier-shared.js";
+import { parsePiUsage } from "./json-request.js";
 /**
  * pi-decision API implementation.
  *
@@ -11,50 +11,12 @@ import { isRecord, postClassifierRequest, requiredNumber } from "./classifier-sh
  * envelope, matching `pi-messages`.
  */
 const LABEL = "Pi Decision";
-function finiteNonNegative(value) {
-    return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : 0;
-}
 function requiredUnitInterval(value, field) {
     const num = requiredNumber(LABEL, value, field);
     if (num < 0 || num > 1) {
         throw new Error(`${LABEL} returned out-of-range ${field}: ${num}`);
     }
     return num;
-}
-function parseUsage(value, model) {
-    if (!isRecord(value) || (typeof value.input !== "number" && typeof value.output !== "number"))
-        return undefined;
-    const input = finiteNonNegative(value.input);
-    const output = finiteNonNegative(value.output);
-    const cacheRead = finiteNonNegative(value.cacheRead);
-    const cacheWrite = finiteNonNegative(value.cacheWrite);
-    const totalTokens = typeof value.totalTokens === "number" && Number.isFinite(value.totalTokens) && value.totalTokens >= 0
-        ? value.totalTokens
-        : input + output + cacheRead + cacheWrite;
-    const usage = {
-        input,
-        output,
-        cacheRead,
-        cacheWrite,
-        totalTokens,
-        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-    };
-    if (isRecord(value.cost) && typeof value.cost.total === "number" && Number.isFinite(value.cost.total)) {
-        usage.cost = {
-            input: finiteNonNegative(value.cost.input),
-            output: finiteNonNegative(value.cost.output),
-            cacheRead: finiteNonNegative(value.cost.cacheRead),
-            cacheWrite: finiteNonNegative(value.cost.cacheWrite),
-            total: finiteNonNegative(value.cost.total),
-            ...(typeof value.cost.totalFromProvider === "boolean"
-                ? { totalFromProvider: value.cost.totalFromProvider }
-                : {}),
-        };
-    }
-    else {
-        calculateCost(model, usage);
-    }
-    return usage;
 }
 function parseProbabilities(value, id, criteria) {
     if (!isRecord(value))
@@ -142,7 +104,7 @@ export const classify = async (model, context, options) => {
             throw new Error(`${LABEL} returned an unexpected response`);
         if (typeof body.responseId === "string" && body.responseId)
             output.responseId = body.responseId;
-        const usage = parseUsage(body.usage, model);
+        const usage = parsePiUsage(body.usage, model);
         if (usage)
             output.usage = usage;
         output.answers = parseAnswers(body.answers, context);

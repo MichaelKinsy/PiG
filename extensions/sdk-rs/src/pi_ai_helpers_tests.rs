@@ -621,3 +621,41 @@ fn read_stored_credential_matches_the_pinned_package() {
     }
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// Pi v1.7.0 `packages/ai/src/models.ts:calculateCost`: `imageOutput` prices image output tokens separately from text output tokens.
+#[test]
+fn calculate_cost_image_output() {
+    let model = json!({
+        "id": "img",
+        "provider": "p",
+        "api": "x",
+        "reasoning": false,
+        "cost": {"input": 3, "output": 10, "imageOutput": 40, "cacheRead": 0, "cacheWrite": 0},
+    });
+    for (mut usage, want_output, want_total) in [
+        (
+            json!({"input": 1000, "output": 1000, "imageOutput": 600, "cacheRead": 0, "cacheWrite": 0, "cost": {}}),
+            0.028,
+            0.031,
+        ),
+        (
+            json!({"input": 1000, "output": 1000, "cacheRead": 0, "cacheWrite": 0, "cost": {}}),
+            0.04,
+            0.043000000000000003,
+        ),
+        (
+            json!({"input": 0, "output": 500, "imageOutput": 900, "cacheRead": 0, "cacheWrite": 0, "cost": {}}),
+            0.02,
+            0.02,
+        ),
+        (
+            json!({"input": 0, "output": 1000, "imageOutput": 0, "cacheRead": 0, "cacheWrite": 0, "cost": {}}),
+            0.01,
+            0.01,
+        ),
+    ] {
+        let got = calculate_cost(&model, &mut usage).unwrap();
+        assert_eq!(got["output"].as_f64(), Some(want_output), "{usage}");
+        assert_eq!(got["total"].as_f64(), Some(want_total), "{usage}");
+    }
+}

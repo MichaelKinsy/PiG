@@ -110,7 +110,7 @@ type HostError struct {
 	// Reason and Role are a link_closed error's close reason (`heartbeat`) and link role (`parent`, `child`, `route`).
 	Reason link.LinkCloseReason
 	Role   string
-	Member  string
+	Member string
 	// Query is a query_failed's query: the table's name for `self.query`, the named query's label for `self.liveQuery`,
 	// `self.count` and `self.list` (slice 14).
 	Query    string

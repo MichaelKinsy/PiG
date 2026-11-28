@@ -1,7 +1,6 @@
 package contracts_test
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -184,13 +183,8 @@ func currentMembers(t testing.TB, contract *contracts.Contract) *contracts.Membe
 	return must(contracts.CurrentMembers(contract))
 }
 
-// keys lists the names of a map in order.
-func keys[V any](m *contracts.NamedMap[V]) []string { return append([]string{}, m.Keys()...) }
-
 // mapping functions, which the accepts tests never call.
 func fn(value delta.JsonValue) (delta.JsonValue, error) { return value, nil }
-
-func call(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) { return args, nil }
 
 func stateFn() contracts.StateMapping { return contracts.StateMapping{Func: fn} }
 

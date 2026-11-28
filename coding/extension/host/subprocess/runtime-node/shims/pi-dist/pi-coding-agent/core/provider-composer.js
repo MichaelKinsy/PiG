@@ -67,6 +67,7 @@ function applyModelOverride(model, override) {
                 output: override.cost.output ?? model.cost.output,
                 cacheRead: override.cost.cacheRead ?? model.cost.cacheRead,
                 cacheWrite: override.cost.cacheWrite ?? model.cost.cacheWrite,
+                imageOutput: override.cost.imageOutput ?? model.cost.imageOutput,
                 tiers: override.cost.tiers ?? model.cost.tiers,
             }
             : model.cost,

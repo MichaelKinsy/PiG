@@ -32,7 +32,7 @@ import {
   uuidv7,
   validateToolArguments,
   validateToolCall
-} from "./chunk-IBQEMAWV.js";
+} from "./chunk-47INTSR7.js";
 import {
   StreamingJsonParser,
   ToolCallArgumentsStream,
@@ -64,11 +64,11 @@ import {
   openAICodexResponsesApi,
   openAIResponsesApi,
   piMessagesApi
-} from "./chunk-YPHTEPPF.js";
+} from "./chunk-N5PALSLV.js";
 import {
   anthropicMessagesApi,
   openAICompletionsApi
-} from "./chunk-FE542Z2F.js";
+} from "./chunk-CYTXXLQK.js";
 import {
   envApiKeyAuth,
   lazyOAuth
@@ -104,7 +104,7 @@ import {
   resolveTranscriptTools,
   toToolDeclaration,
   withoutInitialSystemMessage
-} from "./chunk-HK22DBOK.js";
+} from "./chunk-5FR3CSGH.js";
 import {
   PI_AI_VERSION,
   PI_ATTRIBUTION,
@@ -122,7 +122,7 @@ import {
   mergeClientIdentity,
   renderSystemMessageUpdate,
   withClientIdentity
-} from "./chunk-7PEBEP6Y.js";
+} from "./chunk-5ASU6EDP.js";
 import {
   __name
 } from "./chunk-SHUYVCID.js";

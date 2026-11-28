@@ -19,7 +19,7 @@ import (
 
 func TestExample16PresenceAndActivity(t *testing.T) {
 	doc := exRemote("example.doc", contracts.Params{exProp("id", exStr())}, exServerAddress, contracts.RemoteDeclaration{
-		State: []contracts.RemoteStateEntry{contracts.StateEntry("viewers", exInt())},
+		State:   []contracts.RemoteStateEntry{contracts.StateEntry("viewers", exInt())},
 		Methods: []contracts.RemoteMethodEntry{contracts.Meth("think", contracts.NewMethod(contracts.Schema{}, exInt()))},
 	})
 	userOf := func(name string) data.Principal { return jsonObject("kind", "user", "name", name) }

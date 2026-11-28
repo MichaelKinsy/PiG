@@ -28,7 +28,7 @@ var benchBindingCounter = mustContract(contracts.Local("bench.counter", contract
 var benchBindingView = mustContract(contracts.Remote("bench.view", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Str())},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
-	State: []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
+	State:       []contracts.RemoteStateEntry{contracts.StateEntry("n", contracts.Int())},
 }))
 
 func benchBindingFacet() Facet {

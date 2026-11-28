@@ -3,6 +3,7 @@ package host
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord"
@@ -103,6 +104,7 @@ type followOverState struct {
 	activation context.Context
 
 	firstDone chan struct{}
+	firstOnce sync.Once
 	firstAtt  *FollowAttachment[delta.JsonValue]
 	firstErr  error
 	firstOpen bool
@@ -149,7 +151,7 @@ func (f *followOverState) resolveFirst(att *FollowAttachment[delta.JsonValue]) {
 	}
 	f.firstOpen = false
 	f.firstAtt = att
-	close(f.firstDone)
+	f.firstOnce.Do(func() { close(f.firstDone) })
 }
 
 func (f *followOverState) rejectFirst(err error) {
@@ -158,7 +160,7 @@ func (f *followOverState) rejectFirst(err error) {
 	}
 	f.firstOpen = false
 	f.firstErr = err
-	close(f.firstDone)
+	f.firstOnce.Do(func() { close(f.firstDone) })
 }
 
 // Invalidate implements state.Dependent: over changed in the current batch (marking only).
@@ -200,11 +202,12 @@ func (f *followOverState) activating() bool {
 func (f *followOverState) given() (any, bool) {
 	start := f.over.Start()
 	var v any
-	if start.Kind == state.StartValue {
+	switch {
+	case start.Kind == state.StartValue:
 		v = start.Value
-	} else if start.HasLast {
+	case start.HasLast:
 		v = start.Last
-	} else {
+	default:
 		return nil, false
 	}
 	if v == nil {
@@ -348,11 +351,12 @@ func (o followOverObserver) Advance(call chord.WatchCall[any], ctx context.Conte
 		if !f.counts(o.att) {
 			return
 		}
-		if o.att.observation == nil {
+		switch {
+		case o.att.observation == nil:
 			o.att.held = foldHeld(o.att.held, call)
-		} else if call.Kind == chord.WatchCallFailed && f.activating() {
+		case call.Kind == chord.WatchCallFailed && f.activating():
 			f.fail(call.Error)
-		} else {
+		default:
 			f.observer.Advance(call, ctx)
 		}
 	})

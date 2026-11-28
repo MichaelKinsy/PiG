@@ -28,29 +28,18 @@ var piIdentity = regexp.MustCompile(`(?i)(^pi$|^pi[ /(]|pi\.dev|^pi-coding-agent
 func TestModelRuntimeRequestsCarryPiGAttributionNeverPis(t *testing.T) {
 	type wire struct {
 		provider string
-		enabled  bool
 		want     map[string]string
-		absent   []string
 	}
 	cases := []wire{
-		{provider: "openrouter", enabled: true, want: map[string]string{
+		{provider: "openrouter", want: map[string]string{
 			"HTTP-Referer": pigidentity.AttributionURL, "X-OpenRouter-Title": pigidentity.AttributionName, "X-OpenRouter-Categories": pigidentity.AttributionCategory,
 		}},
-		{provider: "openrouter", enabled: false, absent: []string{"HTTP-Referer", "X-OpenRouter-Title", "X-OpenRouter-Categories"}},
-		{provider: "nvidia", enabled: true, want: map[string]string{"X-BILLING-INVOKE-ORIGIN": pigidentity.AttributionName}},
-		{provider: "nvidia", enabled: false, absent: []string{"X-BILLING-INVOKE-ORIGIN"}},
-		// The OpenCode session header is not attribution: it does not depend on the telemetry gate.
-		{provider: "opencode", enabled: true, want: map[string]string{"x-opencode-session": "session-1", "x-opencode-client": pigidentity.AttributionName}},
-		{provider: "opencode", enabled: false, want: map[string]string{"x-opencode-session": "session-1"}, absent: []string{"x-opencode-client"}},
-		{provider: "opencode-go", enabled: true, want: map[string]string{"x-opencode-session": "session-1", "x-opencode-client": pigidentity.AttributionName}},
+		{provider: "nvidia", want: map[string]string{"X-BILLING-INVOKE-ORIGIN": pigidentity.AttributionName}},
+		{provider: "opencode", want: map[string]string{"x-opencode-session": "session-1", "x-opencode-client": pigidentity.AttributionName}},
+		{provider: "opencode-go", want: map[string]string{"x-opencode-session": "session-1", "x-opencode-client": pigidentity.AttributionName}},
 	}
 	for _, tc := range cases {
-		t.Run(fmt.Sprintf("%s/telemetry=%v", tc.provider, tc.enabled), func(t *testing.T) {
-			if tc.enabled {
-				t.Setenv("PI_TELEMETRY", "1")
-			} else {
-				t.Setenv("PI_TELEMETRY", "0")
-			}
+		t.Run(tc.provider, func(t *testing.T) {
 			requests := make(chan http.Header, 1)
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				_, _ = io.Copy(io.Discard, r.Body)
@@ -82,11 +71,6 @@ func TestModelRuntimeRequestsCarryPiGAttributionNeverPis(t *testing.T) {
 			for name, want := range tc.want {
 				if got := headers.Get(name); got != want {
 					t.Errorf("%s = %q, want %q", name, got, want)
-				}
-			}
-			for _, name := range tc.absent {
-				if got := headers.Get(name); got != "" {
-					t.Errorf("%s = %q, want it absent", name, got)
 				}
 			}
 			if got := headers.Get("User-Agent"); !strings.HasPrefix(got, pigidentity.UserAgentProduct+"/") {

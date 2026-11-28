@@ -27,6 +27,10 @@
     "go": "ai/types.go#StreamOptions.ToolChoice",
     "reason": "Pi types toolChoice per API as a compile-time union (openai-responses.ts:121); T10 cannot compare it with Go. Go carries one StreamOptions.ToolChoice (types.go, `any`) for every API with the same runtime value space, a string name or the provider's object, and each provider reads it: openai_responses.go:1062 sends a non-nil value as tool_choice (string or object); locked by openai_responses_compat_upstream_test.go. The compile-time narrowing per API has no runtime effect, and the U1 rows for the other APIs are not covered by this entry."
   },
+  "pkg:ai/.#PiImageRequest": {
+    "go": "ai/pi_image.go#PiImageRequest",
+    "reason": "Pi packages/ai/src/api/pi-image.ts declares PiImageRequest.context as ImagesContext ({ input: ImagesInputContent[] }). In PiG, ai/pi_image.go uses piImageWireContext{Input []ImagesInputContent}, an unexported wire struct with identical JSON field `input` so empty slice serializes as `[]` matching JS."
+  },
   "pkg:ai/.#ProviderImagesOptions": {
     "go": "ai/images.go#ProviderImagesOptions",
     "reason": "Pi ai/src/types.ts:343 is ImagesOptions & Record<string, unknown>: the open record is the per-provider extension slot. LEAD-ANSWERS-ledger #2 maps per-provider options to typed Go fields by json tag, so the Go struct carries the ImagesOptions members and each provider option; A7 never reads an open record operand, so this is reviewed rather than ruled. lg-decide reviewed exception (lead order: close the last rows by rules or reviewed exceptions)."
@@ -95,6 +99,10 @@
     "go": "ai/openai_responses.go#OpenAIResponsesStreamOptions.ResolveServiceTier",
     "reason": "Pi api/openai-responses-shared.ts types the tier parameters as ResponseCreateParamsStreaming[\"service_tier\"], the OpenAI SDK's \"auto\" | \"default\" | \"flex\" | \"scale\" | \"priority\" | null. Go carries the tier as a string (ai:ServiceTier is string in representations.json), with \"\" for null/undefined; the callbacks receive and return the same tier values."
   },
+  "pkg:ai/api/pi-image#PiImageRequest": {
+    "go": "ai/pi_image.go#PiImageRequest",
+    "reason": "Pi packages/ai/src/api/pi-image.ts declares PiImageRequest.context as ImagesContext ({ input: ImagesInputContent[] }). In PiG, ai/pi_image.go uses piImageWireContext{Input []ImagesInputContent}, an unexported wire struct with identical JSON field `input` so empty slice serializes as `[]` matching JS."
+  },
   "pkg:ai/api/system-one-shared#ResolvedSystemOneCompat": {
     "go": "ai/system_one.go#ResolvedSystemOneCompat",
     "reason": "Pi system-one-shared.ts:51 declares ResolvedSystemOneCompat = Required<SystemOneCompat>, the compat with every field resolved (imageInput always one of assets, images or state-image-urls; sendImageOptInHeader always a boolean). PiG's SystemOneCompat keeps the optional boolean as *bool so an unset field is detectable (the schema's optional member); ResolvedSystemOneCompat (ai/system_one.go) has the same two members with the optional ones made required: SendImageOptInHeader is a plain bool and ImageInput a SystemOneImageInput. Rule T9t cannot see through Required<> to the changed pointer, so it stays undecided. The DetectCompat of both transports (ai/system_one.go) returns it, and the transports' tests (TestTypesafeSystemOneUpstream, TestCloudflareWorkersAISystemOneUpstream) assert the resolved values per provider, baseUrl and model ID."
@@ -130,6 +138,10 @@
   "pkg:ai/compat#OpenAIResponsesOptions::property:toolChoice": {
     "go": "ai/types.go#StreamOptions.ToolChoice",
     "reason": "Pi types toolChoice per API as a compile-time union (openai-responses.ts:121); T10 cannot compare it with Go. Go carries one StreamOptions.ToolChoice (types.go, `any`) for every API with the same runtime value space, a string name or the provider's object, and each provider reads it: openai_responses.go:1062 sends a non-nil value as tool_choice (string or object); locked by openai_responses_compat_upstream_test.go. The compile-time narrowing per API has no runtime effect, and the U1 rows for the other APIs are not covered by this entry."
+  },
+  "pkg:ai/compat#PiImageRequest": {
+    "go": "ai/pi_image.go#PiImageRequest",
+    "reason": "Pi packages/ai/src/api/pi-image.ts declares PiImageRequest.context as ImagesContext ({ input: ImagesInputContent[] }). In PiG, ai/pi_image.go uses piImageWireContext{Input []ImagesInputContent}, an unexported wire struct with identical JSON field `input` so empty slice serializes as `[]` matching JS."
   },
   "pkg:ai/compat#ProviderImagesOptions": {
     "go": "ai/images.go#ProviderImagesOptions",
@@ -294,10 +306,6 @@
   "pkg:chord/.#FacetSelf::property:contribute::call:0": {
     "go": "chord/next/host/host_facet.go#FacetSelf.Contribute",
     "reason": "Pi chord/src/host/facet.ts:54 contribute<C>(R, value: Contribution<C>) takes a value, a Watchable or a NativeWatchable. Go has no union: Contribute takes the value as any and the registry classifies it at run time (registries.ContributionKind), as the reviewed pkg:chord/.#Contribution row records. Locked by TestExample29Registries (chord/next/host/host_example_29_test.go)."
-  },
-  "pkg:chord/.#Held": {
-    "go": "chord/next/host/host_reference.go#Held",
-    "reason": "Pi chord/src/host/reference.ts:42 Held<C> is a Reference whose variant is also undefined until its first binding (a conditional type on the contract kind; documents/persistence.ts declares an unrelated Held for held ops, which the detector cannot tell apart by name). Go's host.Held is an alias of Reference, whose Variant is unbound until its first binding (host_reference.go). Locked by TestHoldGC (chord/next/host/remote_hold_test.go)."
   },
   "pkg:chord/.#Host::property:activity": {
     "go": "chord/next/host/host_host.go#Host.Activity",
@@ -591,6 +599,10 @@
     "go": "chord/next/store/engine.go#LoadDocument",
     "reason": "Pi store/engine.ts loadDocument(executor: Pick<SqliteExecutor, \"all\">, ...) takes the one method of the executor a list read needs. Go's rowLister is that Pick as an interface (store/engine.go: All(sql, params...)), which every sqlite executor satisfies; the Promise is a blocking call (TestEngineHistoryRules, chord/next/store/engine_test.go: a rewindable record loaded at every point of its lifetime)."
   },
+  "pkg:chord/.#local::call:0": {
+    "go": "chord/next/contracts/declare.go#Local",
+    "reason": "Pi packages/chord/src/contracts/declare.ts declares local(name, declaration) with a TypeScript NoInfer generic wrapper on declaration to guide type inference; Go has no NoInfer type utility and takes LocalDeclaration (a concrete declaration map/struct with the same members)."
+  },
   "pkg:chord/.#max::call:0": {
     "go": "chord/next/store/expression.go#Max",
     "reason": "Pi store/expression.ts max<K extends \"int\" | \"num\">(a: Operand<number, K>, b: Operand<number, K>): Expression<number, K> is the larger of two operands; an Operand is `Expression<number, K> | number` (a union, with K a phantom type parameter). Go has no unions or phantom parameters, so store.Max(a, b any) takes each operand as an *Expression or a number and builds the same expression node (expression.go), which the evaluator checks (expression_test.go, evaluate_test.go)."
@@ -682,6 +694,10 @@
   "pkg:chord/plugins#PluginRoot": {
     "go": "chord/nextnode/plugins/model/model_discover.go#PluginRoot",
     "reason": "Pi 1.5.0+c23b9ec1 plugins/discover.ts PluginRoot = string | { readonly path: string; readonly required?: boolean }: a root is a path, or a path marked required. Go has no unions: plugins.PluginRoot is the one struct of the object form (Path, Required) and the string form is PluginRoot{Path: path} (plugins_discover.go). TestDiscoverPlugins* and TestCreatePluginsRequiredRoot* read both forms' behavior (a required root's failing plugin rejects the load)."
+  },
+  "pkg:chord/plugins#TestPluginOptions": {
+    "go": "chord/nextnode/plugins/plugins_testing.go#TestPluginOptions",
+    "reason": "Pi packages/chord/src/node/plugins/testing.ts names the store interface ChordStore; Go names the equivalent store interface store.Store in chord/next/store."
   },
   "pkg:chord/sync#JsonObject": {
     "go": "chord/sync/remote.go#JsonObject",
@@ -830,10 +846,6 @@
   "pkg:coding-agent/.#ReadonlyFooterDataProvider": {
     "go": "coding/extension/ui_factories.go#ReadonlyFooterDataProvider",
     "reason": "Pi coding-agent/src/core/footer-data-provider.ts:385 declares `type ReadonlyFooterDataProvider = Pick<FooterDataProvider, \"getGitBranch\" | \"getExtensionStatuses\" | \"getAvailableProviderCount\" | \"onBranchChange\">`: a view of the FooterDataProvider class that leaves out setExtensionStatus, setAvailableProviderCount and dispose. A4/T9 cannot decide a Pick over a class. Go declares the view as an interface of exactly those four members (GetGitBranch, GetExtensionStatuses, GetAvailableProviderCount, OnBranchChange), implemented by *codingagent.FooterDataProvider (footer_data_provider.go:48-87), which the host passes as the third argument of an extension's footer factory (ext_ui_context.go:446, interactive-mode.ts setExtensionFooter). A Pick of a class is an interface of the picked members in Go (the consumer-owned small interface), not a struct. Evidence: internal/codingagent/ext_ui_factories_test.go (the factory receives the footer's own provider) and coding/extension/host/subprocess/ctx_mode_test.go:201 (the subprocess footer factory reads the same four members)."
-  },
-  "pkg:coding-agent/.#RpcSessionState::property:model": {
-    "go": "coding/cli/rpc_types.go#RPCSessionState.Model",
-    "reason": "Pi rpc-types.ts:97 model?: Model<any> is the Model object get_state serializes. PiG's ai.Model carries a Provider object and nested metadata that are not wire data, so get_state projects it as RPCModel (coding/cli/rpc_types.go, rpcModelValue) with every JSON member of Pi's Model, including the optional type (rpc_model_type_test.go); the member is the pointer so a nil session model reports the unknown placeholder rpc-mode.ts reports."
   },
   "pkg:coding-agent/.#SettingsCallbacks::property:onNoticeChange::call:0": {
     "go": "internal/codingagent/settings_selector.go#SettingsCallbacks.OnNoticeChange",

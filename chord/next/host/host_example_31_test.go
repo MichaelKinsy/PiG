@@ -21,7 +21,7 @@ import (
 func TestExample31ParkedDependencies(t *testing.T) {
 	// The server's notes (the notes plugin), placed on the server.
 	notes := exRemote("example.notes", contracts.Params{}, exServerAddress, contracts.RemoteDeclaration{
-		State: []contracts.RemoteStateEntry{contracts.StateEntry("list", exArr(exStr()))},
+		State:   []contracts.RemoteStateEntry{contracts.StateEntry("list", exArr(exStr()))},
 		Methods: []contracts.RemoteMethodEntry{contracts.Meth("add", contracts.NewMethod(exObj(exProp("text", exStr()))))},
 	})
 	// A panel in the tab: a local object over the server's notes.

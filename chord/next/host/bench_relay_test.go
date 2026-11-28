@@ -62,10 +62,10 @@ var benchRelayView = mustContract(contracts.Remote("bench.view", contracts.Remot
 		return Session.Address(jsonObject("id", params.Value("session"))), nil
 	},
 	State: []contracts.RemoteStateEntry{contracts.StateEntry("doc", benchRelayShape)},
-		Methods: []contracts.RemoteMethodEntry{
-			contracts.Meth("stream", contracts.NewMethod(contracts.Str())),
-			contracts.Meth("ping", contracts.NewMethod(contracts.Int(), contracts.Int())),
-		},
+	Methods: []contracts.RemoteMethodEntry{
+		contracts.Meth("stream", contracts.NewMethod(contracts.Str())),
+		contracts.Meth("ping", contracts.NewMethod(contracts.Int(), contracts.Int())),
+	},
 }))
 
 // relayStart is what a worker gets in its start message: its session and the payload its store begins with.

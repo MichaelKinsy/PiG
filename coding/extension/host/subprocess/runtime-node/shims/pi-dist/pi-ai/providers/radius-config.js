@@ -12,6 +12,22 @@ function isRadiusGatewayClassifierModel(value) {
         !Array.isArray(model.cost) &&
         typeof model.contextWindow === "number");
 }
+function sanitizeModalities(values) {
+    return values.filter((value) => value === "text" || value === "image");
+}
+function isRadiusGatewayImageModel(value) {
+    if (typeof value !== "object" || value === null || Array.isArray(value))
+        return false;
+    const model = value;
+    return (typeof model.id === "string" &&
+        typeof model.name === "string" &&
+        Array.isArray(model.input) &&
+        Array.isArray(model.output) &&
+        model.output.includes("image") &&
+        typeof model.cost === "object" &&
+        model.cost !== null &&
+        !Array.isArray(model.cost));
+}
 function isRadiusGatewayModel(value) {
     if (!isRadiusGatewayClassifierModel(value))
         return false;
@@ -21,14 +37,23 @@ function isRadiusGatewayModel(value) {
 function sanitizeRadiusGatewayConfig(config) {
     if (typeof config !== "object" || config === null || Array.isArray(config))
         return undefined;
-    const { baseUrl, models, classifiers } = config;
+    const { baseUrl, models, decision, images } = config;
     if (typeof baseUrl !== "string" || !Array.isArray(models))
         return undefined;
     return {
         baseUrl,
         models: models.filter(isRadiusGatewayModel).map((model) => ({ ...model })),
-        ...(Array.isArray(classifiers)
-            ? { classifiers: classifiers.filter(isRadiusGatewayClassifierModel).map((model) => ({ ...model })) }
+        ...(Array.isArray(decision)
+            ? { decision: decision.filter(isRadiusGatewayClassifierModel).map((model) => ({ ...model })) }
+            : {}),
+        ...(Array.isArray(images)
+            ? {
+                images: images.filter(isRadiusGatewayImageModel).map((model) => ({
+                    ...model,
+                    input: sanitizeModalities(model.input),
+                    output: sanitizeModalities(model.output),
+                })),
+            }
             : {}),
     };
 }
@@ -47,16 +72,29 @@ export function getRadiusModelsFromConfig(providerId, config) {
         baseUrl: config.baseUrl,
     }));
 }
+export function getRadiusClassifierModelsFromConfig(providerId, config) {
+    return (config.decision ?? []).map((model) => ({
+        ...model,
+        type: "classifier",
+        api: "pi-decision",
+        provider: providerId,
+        baseUrl: config.baseUrl,
+    }));
+}
+export function getRadiusImageModelsFromConfig(providerId, config) {
+    return (config.images ?? []).map((model) => ({
+        ...model,
+        type: "image",
+        api: "pi-image",
+        provider: providerId,
+        baseUrl: config.baseUrl,
+    }));
+}
 export function getRadiusAllModelsFromConfig(providerId, config) {
     return [
         ...getRadiusModelsFromConfig(providerId, config),
-        ...(config.classifiers ?? []).map((model) => ({
-            ...model,
-            type: "classifier",
-            api: "pi-decision",
-            provider: providerId,
-            baseUrl: config.baseUrl,
-        })),
+        ...getRadiusClassifierModelsFromConfig(providerId, config),
+        ...getRadiusImageModelsFromConfig(providerId, config),
     ];
 }
 export function getRadiusModels(providerId, credential) {

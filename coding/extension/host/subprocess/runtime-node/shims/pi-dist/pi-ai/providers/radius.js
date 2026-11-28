@@ -1,9 +1,10 @@
 import { piDecisionApi } from "../api/pi-decision.lazy.js";
+import { piImageApi } from "../api/pi-image.lazy.js";
 import { piMessagesApi } from "../api/pi-messages.lazy.js";
 import { envApiKeyAuth, lazyOAuth } from "../auth/helpers.js";
 import { loadRadiusOAuth } from "../auth/oauth/load.js";
 import { isModelType } from "../utils/model-operations.js";
-import { RADIUS_MODELS } from "./radius.models.js";
+import { RADIUS_CLASSIFIER_MODELS, RADIUS_IMAGE_MODELS, RADIUS_MODELS } from "./radius.models.js";
 import { DEFAULT_RADIUS_GATEWAY, getRadiusAllModelsFromConfig, getRadiusModels, loadRadiusGatewayConfig, normalizeRadiusGatewayUrl, } from "./radius-config.js";
 /** Radius gateway provider with a persisted, dynamically refreshed catalog. */
 export function radiusProvider(options = {}) {
@@ -11,13 +12,18 @@ export function radiusProvider(options = {}) {
     const name = options.name ?? "Radius";
     const gateway = normalizeRadiusGatewayUrl(options.gateway ?? DEFAULT_RADIUS_GATEWAY);
     const baselineModels = gateway === normalizeRadiusGatewayUrl(DEFAULT_RADIUS_GATEWAY)
-        ? Object.values(RADIUS_MODELS).map((model) => ({ ...model, provider: id }))
+        ? [
+            ...Object.values(RADIUS_MODELS),
+            ...Object.values(RADIUS_CLASSIFIER_MODELS),
+            ...Object.values(RADIUS_IMAGE_MODELS),
+        ].map((model) => ({ ...model, provider: id }))
         : [];
     // Gateway catalog for this account. Radius org owners can disable models, so once known it replaces
     // the shipped baseline instead of overlaying it. The baseline only covers the time before any catalog exists.
     let dynamicModels;
     const streams = piMessagesApi();
     const classifiers = piDecisionApi();
+    const images = piImageApi();
     return {
         id,
         name,
@@ -30,7 +36,8 @@ export function radiusProvider(options = {}) {
         refreshModels: async (context) => {
             const stored = context.stored;
             if (stored) {
-                const restored = stored.models.filter((model) => model.provider === id && (isModelType(model, "chat") || isModelType(model, "classifier")));
+                const restored = stored.models.filter((model) => model.provider === id &&
+                    (isModelType(model, "chat") || isModelType(model, "classifier") || isModelType(model, "image")));
                 if (!(await context.publish({
                     update: () => {
                         dynamicModels = restored;
@@ -70,6 +77,7 @@ export function radiusProvider(options = {}) {
         stream: (model, context, streamOptions) => streams.stream(model, context, streamOptions),
         streamSimple: (model, context, streamOptions) => streams.streamSimple(model, context, streamOptions),
         classify: (model, context, classifyOptions) => classifiers.classify(model, context, classifyOptions),
+        generateImages: (model, context, imageOptions) => images.generateImages(model, context, imageOptions),
     };
 }
 //# sourceMappingURL=radius.js.map
